@@ -54,7 +54,7 @@ public class MainVerticle extends AbstractVerticle {
       })
       .listen(8080, res -> {
         if (res.succeeded()) {
-          System.out.println("Server started on port 8080");
+          System.out.println("Server started on port 8080, http://localhost:8080/mock?n=2000");
         } else {
           System.err.println("Failed to start server: " + res.cause().getMessage());
         }

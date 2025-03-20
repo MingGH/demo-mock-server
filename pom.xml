@@ -21,6 +21,11 @@
 
     <main.verticle>com.example.demo_mock_server.MainVerticle</main.verticle>
     <launcher.class>io.vertx.core.Launcher</launcher.class>
+
+    <project.version>${project.version}</project.version>
+    <docker.registry.publish.url>registry.cn-hongkong.aliyuncs.com</docker.registry.publish.url>
+    <docker.namespace>runnable-run</docker.namespace>
+    <java.version>17</java.version>
   </properties>
 
   <dependencyManagement>
@@ -85,6 +90,21 @@
 
   <build>
     <plugins>
+
+      <plugin>
+        <groupId>com.spotify</groupId>
+        <artifactId>dockerfile-maven-plugin</artifactId>
+        <version>1.4.13</version>
+        <configuration>
+          <repository>${docker.registry.publish.url}/${docker.namespace}/${project.name}</repository>
+          <tag>${project.version}</tag>
+          <buildArgs>
+            <JAR_NAME>${project.name}</JAR_NAME>
+            <JAR_FILE>target/${project.build.finalName}.jar</JAR_FILE>
+          </buildArgs>
+        </configuration>
+      </plugin>
+
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${maven-compiler-plugin.version}</version>

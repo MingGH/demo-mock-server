@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>缓存数据分页</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            text-align: center;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input, button {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .pagination button {
+            padding: 5px 10px;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        th {
+            background: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+
+<h1>缓存数据分页</h1>
+
+<div class="controls">
+	<div class="pagination">
+		<button onclick="prevPage()">上一页</button>
+		<span id="pageInfo"></span>
+		<button onclick="nextPage()">下一页</button>
+	</div>
+	<label for="nValue">n参数：</label>
+    <input type="number" id="nValue" value="200" min="1" max="5000" step="1">
+    <button onclick="refreshData()">刷新数据</button>
+</div>
+
+<div id="data"></div>
+
+
+
+<script>
+    const CACHE_KEY = "cachedData";
+    const CACHE_TIME_KEY = "cacheTime";
+    const CACHE_DURATION = 5 * 60 * 1000;  // 5分钟缓存
+    const pageSize = 10;
+
+    let currentPage = 1;
+    let data = [];
+
+    // 页面加载时检查缓存
+    window.onload = () => {
+        loadData();
+    };
+
+    // 加载数据
+    function loadData() {
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        const cacheTime = localStorage.getItem(CACHE_TIME_KEY);
+
+        if (cachedData && cacheTime && (Date.now() - cacheTime < CACHE_DURATION)) {
+            console.log("使用缓存数据");
+            data = JSON.parse(cachedData);
+            displayPage();
+        } else {
+            console.log("缓存过期或不存在，重新加载数据");
+            fetchData();
+        }
+    }
+
+    // 从后端获取数据
+    async function fetchData() {
+        const n = document.getElementById("nValue").value || 200;
+        const url = `https://demo-mockserver.runnable.run/mock?n=${n}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`请求失败: ${response.status}`);
+            }
+
+            data = await response.json();
+
+            // 缓存数据
+            localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+            localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+
+            currentPage = 1;
+            displayPage();
+        } catch (error) {
+            console.error("获取数据失败:", error);
+            alert("数据加载失败！");
+        }
+    }
+
+    // 显示当前页数据
+    function displayPage() {
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageData = data.slice(start, end);
+
+        const table = document.createElement("table");
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>姓名</th>
+                    <th>邮箱</th>
+                    <th>电话</th>
+                    <th>地址</th>
+                    <th>公司</th>
+                    <th>生日</th>
+                    <th>职位</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${pageData.map(person => `
+                    <tr>
+                        <td>${person.id}</td>
+                        <td>${person.name}</td>
+                        <td>${person.email}</td>
+                        <td>${person.phone}</td>
+                        <td>${person.address}</td>
+                        <td>${person.company}</td>
+                        <td>${person.dob}</td>
+                        <td>${person.job}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        `;
+
+        const container = document.getElementById("data");
+        container.innerHTML = "";
+        container.appendChild(table);
+
+        document.getElementById("pageInfo").textContent = `第 ${currentPage} 页 / 共 ${Math.ceil(data.length / pageSize)} 页`;
+    }
+
+    // 手动刷新数据
+    function refreshData() {
+        console.log("手动刷新数据");
+        fetchData();
+    }
+
+    // 上一页
+    function prevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            displayPage();
+        }
+    }
+
+    // 下一页
+    function nextPage() {
+        if (currentPage < Math.ceil(data.length / pageSize)) {
+            currentPage++;
+            displayPage();
+        }
+    }
+</script>
+
+</body>
+</html>

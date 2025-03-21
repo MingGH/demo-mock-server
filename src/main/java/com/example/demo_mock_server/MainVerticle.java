@@ -3,8 +3,11 @@ package com.example.demo_mock_server;
 import com.github.javafaker.Faker;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.CorsHandler;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -17,13 +20,26 @@ public class MainVerticle extends AbstractVerticle {
 
   @Override
   public void start() {
-    vertx.createHttpServer()
-      .requestHandler(req -> {
+    Router router = Router.router(vertx);
+    // 允许跨域请求
+    router.route().handler(CorsHandler.create("*")  // 允许所有域名访问
+      .allowedMethod(io.vertx.core.http.HttpMethod.GET)
+      .allowedMethod(io.vertx.core.http.HttpMethod.POST)
+      .allowedMethod(io.vertx.core.http.HttpMethod.PUT)
+      .allowedMethod(io.vertx.core.http.HttpMethod.DELETE)
+      .allowedHeader("Content-Type")
+      .allowedHeader("Authorization")
+      .allowedHeader("Accept")
+      .allowedHeader("Origin"));
+
+    router.get("/mock")
+      .handler(routerCtx -> {
+        HttpServerRequest req = routerCtx.request();
         if ("/mock".equals(req.path()) && req.method().name().equalsIgnoreCase("GET")) {
           String nParam = req.getParam("n");
 
-          if (nParam == null || !nParam.matches("\\d+") || Integer.parseInt(nParam) < 2000 || Integer.parseInt(nParam) > 100_0000) {
-            req.response().setStatusCode(400).end("Invalid parameter 'n' (2000 <= n <= 100_0000)");
+          if (nParam == null || !nParam.matches("\\d+") || Integer.parseInt(nParam) < 200 || Integer.parseInt(nParam) > 100_0000) {
+            req.response().setStatusCode(400).end("Invalid parameter 'n' (200 <= n <= 100_0000)");
             return;
           }
 
@@ -36,7 +52,18 @@ public class MainVerticle extends AbstractVerticle {
             .write("[");  // JSON 数组开始
 
           generateFakeData(n)
-            .doOnNext(person -> response.write(person.encode() + ","))
+            .index()  // 为每个元素附加索引
+            .doOnNext(tuple -> {
+              long idx = tuple.getT1();
+              String person = tuple.getT2().encode();
+
+              // 判断是否为最后一个元素
+              if (idx == n - 1) {
+                response.write(person);  // 最后一个元素后不加逗号
+              } else {
+                response.write(person + ",");
+              }
+            })
             .doOnError(err -> {
               response.setStatusCode(500).end("Error: " + err.getMessage());
             })
@@ -44,14 +71,17 @@ public class MainVerticle extends AbstractVerticle {
               long duration = System.currentTimeMillis() - start;
               System.out.println("Generated " + n + " records in " + duration + " ms");
 
-              // 去掉最后一个逗号并关闭 JSON 数组
-              response.end("]");
+              response.end("]");  // 补上结束的括号
             })
             .subscribe();
         } else {
           req.response().setStatusCode(404).end("Not Found");
         }
-      })
+      });
+
+
+    vertx.createHttpServer()
+      .requestHandler(router)
       .listen(8080, res -> {
         if (res.succeeded()) {
           System.out.println("Server started on port 8080, http://localhost:8080/mock?n=2000");

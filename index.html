@@ -99,7 +99,7 @@
     // 从后端获取数据
     async function fetchData() {
         const n = document.getElementById("nValue").value || 200;
-        const url = `https://demo-mockserver.runnable.run/mock?n=${n}`;
+        const url = `https://demo-api-mockserver.runnable.run/mock?n=${n}`;
 
         try {
             const response = await fetch(url);

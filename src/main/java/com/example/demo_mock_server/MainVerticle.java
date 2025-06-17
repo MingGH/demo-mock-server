@@ -32,6 +32,8 @@ public class MainVerticle extends AbstractVerticle {
       .allowedHeader("Accept")
       .allowedHeader("Origin"));
 
+
+
     router.get("/mock")
       .handler(routerCtx -> {
         HttpServerRequest req = routerCtx.request();

@@ -27,7 +27,7 @@ jobs:
         run: |
           docker login --username=${{ secrets.ALI_CONTAINER_USER }} --password="${{ secrets.ALI_CONTAINER_PWD }}" registry.cn-hongkong.aliyuncs.com
       - name: Push Docker image to Ali Container
-        # docker push registry.cn-hongkong.aliyuncs.com/runnable-run/demo-mock-server:${{ env.VERSION }}
+        #  docker push registry.cn-hongkong.aliyuncs.com/runnable-run/demo-mock-server:${{ env.VERSION }}
         run: |
           docker tag registry.cn-hongkong.aliyuncs.com/runnable-run/demo-mock-server:${{ env.VERSION }} registry.cn-hongkong.aliyuncs.com/runnable-run/demo-mock-server:latest
           docker push registry.cn-hongkong.aliyuncs.com/runnable-run/demo-mock-server:latest

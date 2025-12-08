@@ -47,30 +47,23 @@ public abstract class AbstractStreamHandler<T> implements Handler<RoutingContext
     private void streamJsonResponse(Vertx vertx, HttpServerResponse response, int n) {
         long start = System.currentTimeMillis();
 
-        response.putHeader("Content-Type", "application/json")
-            .setChunked(true)
-            .write("[");
+        response.putHeader("Content-Type", "application/json");
 
         generateData(n)
-            .index()
-            .doOnNext(tuple -> {
-                long idx = tuple.getT1();
-                String json = formatItem(tuple.getT2());
-                String content = idx == n - 1 ? json : json + ",";
-                // 确保在 event loop 线程写入
-                vertx.runOnContext(v -> response.write(content));
-            })
-            .doOnError(err -> 
-                vertx.runOnContext(v -> 
+            .map(this::formatItem)
+            .collectList()
+            .subscribe(
+                items -> {
+                    long duration = System.currentTimeMillis() - start;
+                    System.out.println(getLogPrefix() + items.size() + " records in " + duration + " ms");
+                    
+                    String json = "[" + String.join(",", items) + "]";
+                    vertx.runOnContext(v -> response.end(json));
+                },
+                err -> vertx.runOnContext(v -> 
                     response.setStatusCode(500).end("Error: " + err.getMessage())
                 )
-            )
-            .doOnComplete(() -> {
-                long duration = System.currentTimeMillis() - start;
-                System.out.println(getLogPrefix() + n + " records in " + duration + " ms");
-                vertx.runOnContext(v -> response.end("]"));
-            })
-            .subscribe();
+            );
     }
 
     /**

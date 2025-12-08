@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>随机中文名生成器</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: #0a0a0f;
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: white;
+    }
+
+    /* 动态渐变背景 */
+    .bg-gradient {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(ellipse at 20% 20%, rgba(120, 0, 255, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(255, 0, 128, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(0, 200, 255, 0.1) 0%, transparent 60%);
+      animation: bgPulse 8s ease-in-out infinite;
+      z-index: 0;
+    }
+    @keyframes bgPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.1); }
+    }
+
+    /* 星星粒子 */
+    .stars {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle var(--duration) ease-in-out infinite;
+      animation-delay: var(--delay);
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.2; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.5); }
+    }
+
+    /* 流星 */
+    .meteor {
+      position: fixed;
+      width: 2px;
+      height: 80px;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.8), transparent);
+      animation: meteor 3s linear infinite;
+      opacity: 0;
+      z-index: 1;
+    }
+    @keyframes meteor {
+      0% { transform: translateY(-100px) translateX(0) rotate(45deg); opacity: 0; }
+      10% { opacity: 1; }
+      100% { transform: translateY(100vh) translateX(200px) rotate(45deg); opacity: 0; }
+    }
+
+    .container {
+      position: relative;
+      z-index: 10;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      font-size: 14px;
+      transition: all 0.3s;
+      padding: 8px 16px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.05);
+    }
+    .back-link:hover { 
+      color: #00d4ff; 
+      background: rgba(0, 212, 255, 0.1);
+      transform: translateX(-5px); 
+    }
+
+    .header {
+      text-align: center;
+      margin: 30px 0 50px;
+    }
+    .header h1 {
+      font-size: clamp(2rem, 8vw, 4rem);
+      font-weight: 800;
+      background: linear-gradient(90deg, #00d4ff, #a855f7, #ec4899, #00d4ff);
+      background-size: 300% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradient 4s ease infinite;
+      text-shadow: 0 0 60px rgba(168, 85, 247, 0.5);
+    }
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .header p {
+      color: rgba(255,255,255,0.5);
+      margin-top: 15px;
+      font-size: 1.1rem;
+      letter-spacing: 2px;
+    }
+
+    /* 控制面板 */
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 50px;
+      flex-wrap: wrap;
+    }
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.05);
+      padding: 12px 24px;
+      border-radius: 50px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .input-group label { 
+      color: rgba(255,255,255,0.7); 
+      font-size: 14px;
+    }
+    .input-group input {
+      background: transparent;
+      border: none;
+      color: #00d4ff;
+      font-size: 20px;
+      font-weight: 700;
+      width: 70px;
+      text-align: center;
+      outline: none;
+    }
+    
+    .btn {
+      padding: 14px 35px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+      overflow: hidden;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s;
+    }
+    .btn:hover::before { left: 100%; }
+    .btn-generate {
+      background: linear-gradient(135deg, #00d4ff, #a855f7);
+      color: white;
+      box-shadow: 0 8px 30px rgba(0, 212, 255, 0.4);
+    }
+    .btn-copy {
+      background: linear-gradient(135deg, #a855f7, #ec4899);
+      color: white;
+      box-shadow: 0 8px 30px rgba(168, 85, 247, 0.4);
+    }
+    .btn:hover {
+      transform: translateY(-4px) scale(1.05);
+      box-shadow: 0 15px 50px rgba(0, 212, 255, 0.5);
+    }
+    .btn:active { transform: scale(0.95); }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* 名字展示区 */
+    .names-stage {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 25px;
+      min-height: 320px;
+      flex-wrap: wrap;
+      perspective: 1500px;
+      padding: 20px;
+    }
+
+    .name-card {
+      width: 200px;
+      height: 260px;
+      background: linear-gradient(145deg, 
+        rgba(255,255,255,0.1) 0%, 
+        rgba(255,255,255,0.02) 100%);
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transform-style: preserve-3d;
+    }
+    
+    /* 霓虹边框 */
+    .name-card::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      background: linear-gradient(45deg, #00d4ff, #a855f7, #ec4899, #00d4ff);
+      background-size: 400% 400%;
+      border-radius: 26px;
+      z-index: -1;
+      animation: borderGlow 3s ease infinite;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .name-card:hover::before { opacity: 1; }
+    @keyframes borderGlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    /* 光泽扫过 */
+    .name-card::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(
+        45deg, 
+        transparent 40%, 
+        rgba(255,255,255,0.15) 50%, 
+        transparent 60%
+      );
+      animation: cardShine 4s ease-in-out infinite;
+    }
+    @keyframes cardShine {
+      0% { transform: translateX(-100%) rotate(45deg); }
+      100% { transform: translateX(100%) rotate(45deg); }
+    }
+
+    .name-card .index {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.3);
+      font-weight: 700;
+      font-family: monospace;
+    }
+    
+    .name-card .emoji {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
+    }
+    
+    .name-card .name {
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(180deg, #fff 0%, rgba(255,255,255,0.6) 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .name-card .decoration {
+      position: absolute;
+      bottom: 20px;
+      display: flex;
+      gap: 5px;
+    }
+    .name-card .decoration span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00d4ff, #a855f7);
+      opacity: 0.5;
+    }
+
+    /* 统计信息 */
+    .stats {
+      text-align: center;
+      margin: 40px 0 20px;
+      color: rgba(255,255,255,0.5);
+      font-size: 14px;
+    }
+    .stats .highlight {
+      color: #00d4ff;
+      font-weight: 700;
+      font-size: 1.3em;
+      text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+    }
+
+    /* 分页控制 */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 25px;
+      margin-top: 30px;
+    }
+    .page-btn {
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .page-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(168, 85, 247, 0.3));
+      border-color: #00d4ff;
+      transform: scale(1.15);
+      box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+    }
+    .page-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+    .page-info {
+      font-size: 18px;
+      color: rgba(255,255,255,0.6);
+      min-width: 120px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: linear-gradient(135deg, #00d4ff, #a855f7);
+      color: white;
+      padding: 16px 35px;
+      border-radius: 50px;
+      font-weight: 600;
+      opacity: 0;
+      z-index: 1000;
+      box-shadow: 0 10px 40px rgba(0, 212, 255, 0.4);
+    }
+
+    /* 初始提示 */
+    .placeholder {
+      text-align: center;
+      color: rgba(255,255,255,0.3);
+      font-size: 1.1rem;
+    }
+    .placeholder .icon { 
+      font-size: 5rem; 
+      margin-bottom: 25px;
+      animation: bounce 2s ease-in-out infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+
+    /* 加载动画 */
+    .loading-ring {
+      display: inline-block;
+      width: 60px;
+      height: 60px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #00d4ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-gradient"></div>
+<div class="stars" id="stars"></div>
+<div class="meteor" style="left: 20%; animation-delay: 0s;"></div>
+<div class="meteor" style="left: 50%; animation-delay: 2s;"></div>
+<div class="meteor" style="left: 80%; animation-delay: 4s;"></div>
+
+<div class="container">
+  <a href="index.html" class="back-link">← 返回主页</a>
+  
+  <div class="header">
+    <h1>🀄 随机中文名生成器</h1>
+    <p>为你的项目注入独特的中国风</p>
+  </div>
+
+  <div class="controls">
+    <div class="input-group">
+      <label>生成数量</label>
+      <input type="number" id="count" value="5" min="1" max="10000">
+    </div>
+    <button class="btn btn-generate" id="generateBtn" onclick="generate()">
+      ✨ 开始生成
+    </button>
+    <button class="btn btn-copy" onclick="copyAll()">
+      📋 复制全部
+    </button>
+  </div>
+
+  <div class="names-stage" id="stage">
+    <div class="placeholder">
+      <div class="icon">🎲</div>
+      <p>点击「开始生成」创造独特的中文名</p>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="pagination" id="pagination" style="display: none;">
+    <button class="page-btn" id="prevBtn" onclick="prevPage()">‹</button>
+    <span class="page-info" id="pageInfo"></span>
+    <button class="page-btn" id="nextBtn" onclick="nextPage()">›</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // 创建星星
+  const starsContainer = document.getElementById('stars');
+  for (let i = 0; i < 100; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    const size = Math.random() * 3 + 1;
+    star.style.cssText = `
+      left: ${Math.random() * 100}%;
+      top: ${Math.random() * 100}%;
+      width: ${size}px;
+      height: ${size}px;
+      --duration: ${2 + Math.random() * 3}s;
+      --delay: ${Math.random() * 2}s;
+    `;
+    starsContainer.appendChild(star);
+  }
+
+  const emojis = ['👤', '🧑', '👩', '👨', '🧒', '👴', '👵', '🎭', '🌟', '💫', '✨', '🔮'];
+  let allNames = [];
+  let currentPage = 1;
+  let floatAnimation = null;
+  const pageSize = 5;
+
+  async function generate() {
+    const count = parseInt(document.getElementById('count').value) || 5;
+    const btn = document.getElementById('generateBtn');
+    const stage = document.getElementById('stage');
+    
+    btn.disabled = true;
+    btn.innerHTML = '⏳ 生成中...';
+    
+    // 停止之前的悬浮动画
+    if (floatAnimation) {
+      floatAnimation.kill();
+      floatAnimation = null;
+    }
+    
+    // 退场动画
+    const cards = document.querySelectorAll('.name-card');
+    if (cards.length > 0) {
+      await gsap.to(cards, {
+        opacity: 0,
+        scale: 0.5,
+        rotationY: 180,
+        duration: 0.4,
+        stagger: 0.08,
+        ease: 'power2.in'
+      });
+    }
+    
+    stage.innerHTML = '<div class="loading-ring"></div>';
+
+    try {
+      const startTime = Date.now();
+      const response = await fetch(
+        `https://demo-api-mockserver.runnable.run/chinese-names?n=${count}`
+      );
+      
+      if (!response.ok) throw new Error(`请求失败: ${response.status}`);
+      
+      allNames = await response.json();
+      const duration = Date.now() - startTime;
+      
+      document.getElementById('stats').innerHTML = 
+        `共生成 <span class="highlight">${allNames.length}</span> 个中文名，耗时 <span class="highlight">${duration}ms</span>`;
+      
+      currentPage = 1;
+      renderPage();
+      
+      const totalPages = Math.ceil(allNames.length / pageSize);
+      document.getElementById('pagination').style.display = totalPages > 1 ? 'flex' : 'none';
+      
+    } catch (error) {
+      console.error(error);
+      stage.innerHTML = `<div class="placeholder"><div class="icon">❌</div><p>生成失败: ${error.message}</p></div>`;
+      document.getElementById('stats').innerHTML = '';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '✨ 开始生成';
+    }
+  }
+
+  function renderPage() {
+    const stage = document.getElementById('stage');
+    const start = (currentPage - 1) * pageSize;
+    const pageNames = allNames.slice(start, start + pageSize);
+    const totalPages = Math.ceil(allNames.length / pageSize);
+    
+    stage.innerHTML = pageNames.map((name, i) => `
+      <div class="name-card" onclick="copyName('${name}')">
+        <span class="index">#${String(start + i + 1).padStart(3, '0')}</span>
+        <span class="emoji">${emojis[Math.floor(Math.random() * emojis.length)]}</span>
+        <span class="name">${name}</span>
+        <div class="decoration">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    `).join('');
+    
+    const cards = document.querySelectorAll('.name-card');
+    
+    // 入场动画
+    gsap.fromTo(cards, 
+      { 
+        opacity: 0, 
+        y: 80, 
+        rotationX: -60,
+        scale: 0.7
+      },
+      { 
+        opacity: 1, 
+        y: 0, 
+        rotationX: 0, 
+        scale: 1,
+        duration: 0.8,
+        stagger: 0.12,
+        ease: 'back.out(1.4)',
+        onComplete: startFloatAnimation
+      }
+    );
+    
+    document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+    document.getElementById('prevBtn').disabled = currentPage === 1;
+    document.getElementById('nextBtn').disabled = currentPage === totalPages;
+  }
+
+  function startFloatAnimation() {
+    const cards = document.querySelectorAll('.name-card');
+    floatAnimation = gsap.to(cards, {
+      y: -12,
+      duration: 2.5,
+      repeat: -1,
+      yoyo: true,
+      ease: 'sine.inOut',
+      stagger: {
+        each: 0.3,
+        from: 'center'
+      }
+    });
+  }
+
+  async function prevPage() {
+    if (currentPage > 1) {
+      if (floatAnimation) floatAnimation.kill();
+      await gsap.to('.name-card', {
+        opacity: 0, 
+        x: 150, 
+        rotationY: -30,
+        duration: 0.35, 
+        stagger: 0.06,
+        ease: 'power2.in'
+      });
+      currentPage--;
+      renderPage();
+    }
+  }
+
+  async function nextPage() {
+    const totalPages = Math.ceil(allNames.length / pageSize);
+    if (currentPage < totalPages) {
+      if (floatAnimation) floatAnimation.kill();
+      await gsap.to('.name-card', {
+        opacity: 0, 
+        x: -150, 
+        rotationY: 30,
+        duration: 0.35, 
+        stagger: 0.06,
+        ease: 'power2.in'
+      });
+      currentPage++;
+      renderPage();
+    }
+  }
+
+  function copyName(name) {
+    navigator.clipboard.writeText(name).then(() => {
+      showToast(`✅ 已复制: ${name}`);
+    });
+    
+    // 点击特效
+    gsap.to(event.currentTarget, {
+      scale: 0.9,
+      duration: 0.1,
+      yoyo: true,
+      repeat: 1
+    });
+  }
+
+  function copyAll() {
+    if (allNames.length === 0) {
+      showToast('⚠️ 请先生成中文名');
+      return;
+    }
+    navigator.clipboard.writeText(allNames.join('\n')).then(() => {
+      showToast(`✅ 已复制 ${allNames.length} 个中文名`);
+    });
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    gsap.killTweensOf(toast);
+    gsap.fromTo(toast, 
+      { opacity: 0, y: 50 },
+      { opacity: 1, y: 0, duration: 0.5, ease: 'back.out(1.7)' }
+    );
+    gsap.to(toast, { 
+      opacity: 0, 
+      y: 50, 
+      duration: 0.4, 
+      delay: 2.5,
+      ease: 'power2.in'
+    });
+  }
+
+  // 卡片 3D 倾斜效果
+  document.addEventListener('mousemove', (e) => {
+    const cards = document.querySelectorAll('.name-card');
+    cards.forEach(card => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      const distance = Math.sqrt(
+        Math.pow(e.clientX - (rect.left + rect.width/2), 2) + 
+        Math.pow(e.clientY - (rect.top + rect.height/2), 2)
+      );
+      
+      if (distance < 300) {
+        gsap.to(card, {
+          rotationY: x / 15,
+          rotationX: -y / 15,
+          duration: 0.5,
+          ease: 'power2.out'
+        });
+      } else {
+        gsap.to(card, {
+          rotationY: 0,
+          rotationX: 0,
+          duration: 0.5
+        });
+      }
+    });
+  });
+</script>
+</body>
+</html>

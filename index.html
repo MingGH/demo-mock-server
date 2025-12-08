@@ -3,252 +3,89 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IndexedDB缓存分页</title>
+  <title>Mock Server Demo</title>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: Arial, sans-serif;
-      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       padding: 20px;
-      line-height: 1.6;
     }
     h1 {
-      text-align: center;
+      color: white;
+      margin-bottom: 40px;
+      font-size: 2.5rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
     }
-    .controls {
+    .cards {
       display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
       justify-content: center;
-      gap: 10px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      width: 320px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      transition: transform 0.3s, box-shadow 0.3s;
+      text-decoration: none;
+      color: inherit;
+    }
+    .card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .card-icon {
+      font-size: 48px;
       margin-bottom: 20px;
     }
-    input, button {
-      padding: 8px 12px;
-      font-size: 14px;
+    .card h2 {
+      color: #333;
+      margin-bottom: 12px;
+      font-size: 1.4rem;
     }
-    .pagination {
-      display: flex;
-      justify-content: center;
-      margin-top: 20px;
+    .card p {
+      color: #666;
+      line-height: 1.6;
+      font-size: 0.95rem;
     }
-    .pagination button {
-      padding: 5px 10px;
-      margin: 0 5px;
-      cursor: pointer;
+    .footer {
+      margin-top: 40px;
+      color: rgba(255,255,255,0.8);
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 10px;
-      border: 1px solid #ccc;
-      text-align: left;
-    }
-    th {
-      background: #f4f4f4;
+    .footer a {
+      color: white;
+      margin: 0 10px;
     }
   </style>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3694254708490002"
-          crossorigin="anonymous"></script>
 </head>
 <body>
-
-<h1>IndexedDB缓存数据分页</h1>
-
-<div class="controls">
-  <div class="pagination">
-    <button onclick="prevPage()">上一页</button>
-    <span id="pageInfo"></span>
-    <button onclick="nextPage()">下一页</button>
+  <h1>🚀 Mock Server Demo</h1>
+  
+  <div class="cards">
+    <a href="mock-data.html" class="card">
+      <div class="card-icon">📊</div>
+      <h2>IndexedDB 缓存分页</h2>
+      <p>从后端获取大量模拟数据，使用 IndexedDB 本地缓存，支持分页浏览，体验流畅的数据展示。</p>
+    </a>
+    
+    <a href="chinese-names.html" class="card">
+      <div class="card-icon">🀄</div>
+      <h2>随机中文名生成</h2>
+      <p>批量生成随机中文姓名，支持自定义数量，一键复制，适合测试数据填充场景。</p>
+    </a>
   </div>
-  <label for="nValue">n参数：</label>
-  <input type="number" id="nValue" value="200" min="1" max="5000" step="1" style="width: 150px">
-  <button onclick="refreshData()">刷新数据</button>
-
-  <span>
-      <a href="https://github.com/MingGH/demo-mock-server" target="_blank">源码地址</a>
-      <a href="https://www.runnable.run/"  target="_blank">前往博客</a>
-  </span>
-</div>
-
-<div id="data"></div>
-
-
-
-<script>
-  const DB_NAME = "DataCacheDB";
-  const STORE_NAME = "PersonData";
-  const CACHE_EXPIRATION = 5 * 60 * 1000; // 5分钟缓存
-  const pageSize = 10;
-
-  let currentPage = 1;
-  let totalRecords = 0;
-
-  // 初始化数据库
-  function initDB() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 1);
-
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: "id" });
-        }
-      };
-
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = (event) => reject("数据库初始化失败: " + event.target.error);
-    });
-  }
-
-  // 保存数据到 IndexedDB
-  async function saveToDB(data) {
-    const db = await initDB();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-
-    store.clear();  // 清理旧数据
-    data.forEach((item, index) => {
-      store.put({ id: index + 1, ...item });
-    });
-
-    db.close();
-    localStorage.setItem("lastFetchTime", Date.now().toString());
-  }
-
-  // 从 IndexedDB 加载数据
-  async function loadFromDB() {
-    const db = await initDB();
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const request = store.getAll();
-
-    return new Promise((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = (event) => reject("读取失败: " + event.target.error);
-    });
-  }
-
-  // 检查缓存是否过期
-  async function loadData() {
-    const lastFetchTime = localStorage.getItem("lastFetchTime");
-
-    if (lastFetchTime && Date.now() - lastFetchTime < CACHE_EXPIRATION) {
-      console.log("使用缓存数据");
-
-      try {
-        const cachedData = await loadFromDB();
-        if (cachedData.length > 0) {
-          totalRecords = cachedData.length;
-          displayPage(cachedData);
-          return;
-        }
-      } catch (error) {
-        console.warn("读取缓存失败:", error);
-      }
-    }
-
-    console.log("缓存过期或不存在，重新加载数据");
-    fetchData();
-  }
-
-  // 从后端请求数据
-  async function fetchData() {
-    const n = document.getElementById("nValue").value || 200;
-    const url = `https://demo-api-mockserver.runnable.run/mock?n=${n}`;
-
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`请求失败: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      totalRecords = data.length;
-
-      // 将数据存储到 IndexedDB
-      await saveToDB(data);
-
-      currentPage = 1;
-      displayPage(data);
-    } catch (error) {
-      console.error("获取数据失败:", error);
-      alert("数据加载失败！");
-    }
-  }
-
-  // 分页展示数据
-  async function displayPage(data) {
-    const start = (currentPage - 1) * pageSize;
-    const end = start + pageSize;
-    const pageData = data.slice(start, end);
-
-    const table = document.createElement("table");
-    table.innerHTML = `
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>姓名</th>
-                    <th>邮箱</th>
-                    <th>电话</th>
-                    <th>地址</th>
-                    <th>公司</th>
-                    <th>生日</th>
-                    <th>职位</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${pageData.map(person => `
-                    <tr>
-                        <td>${person.id}</td>
-                        <td>${person.name}</td>
-                        <td>${person.email}</td>
-                        <td>${person.phone}</td>
-                        <td>${person.address}</td>
-                        <td>${person.company}</td>
-                        <td>${person.dob}</td>
-                        <td>${person.job}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        `;
-
-    const container = document.getElementById("data");
-    container.innerHTML = "";
-    container.appendChild(table);
-
-    document.getElementById("pageInfo").textContent = `第 ${currentPage} 页 / 共 ${Math.ceil(totalRecords / pageSize)} 页`;
-  }
-
-  // 手动刷新数据
-  function refreshData() {
-    console.log("手动刷新数据");
-    fetchData();
-  }
-
-  // 上一页
-  async function prevPage() {
-    if (currentPage > 1) {
-      currentPage--;
-      const data = await loadFromDB();
-      displayPage(data);
-    }
-  }
-
-  // 下一页
-  async function nextPage() {
-    if (currentPage < Math.ceil(totalRecords / pageSize)) {
-      currentPage++;
-      const data = await loadFromDB();
-      displayPage(data);
-    }
-  }
-
-  // 页面加载时初始化
-  window.onload = () => {
-    loadData();
-  };
-</script>
-
+  
+  <div class="footer">
+    <a href="https://github.com/MingGH/demo-mock-server" target="_blank">GitHub 源码</a>
+    <a href="https://www.runnable.run/" target="_blank">博客</a>
+  </div>
 </body>
 </html>

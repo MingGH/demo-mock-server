@@ -5,68 +5,292 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IndexedDB缓存分页</title>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
     body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      line-height: 1.6;
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
     }
-    h1 { text-align: center; }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
     .back-link {
-      display: inline-block;
-      margin-bottom: 20px;
-      color: #667eea;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.6);
       text-decoration: none;
+      font-size: 14px;
+      padding: 10px 18px;
+      border-radius: 25px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.3s;
     }
-    .back-link:hover { text-decoration: underline; }
+    .back-link:hover { 
+      color: #00d4ff; 
+      background: rgba(0, 212, 255, 0.1);
+      border-color: rgba(0, 212, 255, 0.3);
+      transform: translateX(-5px); 
+    }
+
+    .header {
+      text-align: center;
+      margin: 30px 0 40px;
+    }
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00d4ff, #a855f7, #00d4ff);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradient 4s ease infinite;
+    }
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .header p {
+      color: rgba(255,255,255,0.5);
+      margin-top: 10px;
+    }
+
     .controls {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 20px;
+      gap: 15px;
+      margin-bottom: 30px;
       flex-wrap: wrap;
     }
-    input, button {
-      padding: 8px 12px;
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.05);
+      padding: 10px 20px;
+      border-radius: 30px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .input-group label {
+      color: rgba(255,255,255,0.7);
       font-size: 14px;
     }
-    button {
-      cursor: pointer;
-      background: #667eea;
-      color: white;
+    .input-group input {
+      background: transparent;
       border: none;
-      border-radius: 4px;
+      color: #00d4ff;
+      font-size: 16px;
+      font-weight: 600;
+      width: 80px;
+      text-align: center;
+      outline: none;
     }
-    button:hover { background: #5a6fd6; }
-    .pagination { display: flex; align-items: center; gap: 10px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
-    th { background: #f4f4f4; }
-    .links a { margin: 0 10px; color: #667eea; }
+
+    .btn {
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #00d4ff, #a855f7);
+      color: white;
+      box-shadow: 0 5px 20px rgba(0, 212, 255, 0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0, 212, 255, 0.4);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .page-btn {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .page-btn:hover:not(:disabled) {
+      background: rgba(0, 212, 255, 0.2);
+      border-color: #00d4ff;
+      transform: scale(1.1);
+    }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .page-info {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .links {
+      display: flex;
+      gap: 15px;
+    }
+    .links a {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.3s;
+    }
+    .links a:hover { color: #00d4ff; }
+
+    /* 表格容器 */
+    .table-container {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 15px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    th {
+      background: rgba(0, 212, 255, 0.1);
+      color: #00d4ff;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    td {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+    }
+    tr:hover td {
+      background: rgba(255,255,255,0.03);
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* ID 列样式 */
+    td:first-child {
+      color: #a855f7;
+      font-weight: 600;
+      font-family: monospace;
+    }
+
+    /* 加载状态 */
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: rgba(255,255,255,0.5);
+    }
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #00d4ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 统计信息 */
+    .stats {
+      text-align: center;
+      margin-top: 20px;
+      color: rgba(255,255,255,0.4);
+      font-size: 13px;
+    }
+    .stats .highlight {
+      color: #00d4ff;
+      font-weight: 600;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .controls { flex-direction: column; }
+      .table-container { overflow-x: auto; }
+      table { min-width: 800px; }
+    }
   </style>
 </head>
 <body>
 
-<a href="index.html" class="back-link">← 返回主页</a>
-<h1>IndexedDB缓存数据分页</h1>
-
-<div class="controls">
-  <div class="pagination">
-    <button onclick="prevPage()">上一页</button>
-    <span id="pageInfo"></span>
-    <button onclick="nextPage()">下一页</button>
+<div class="container">
+  <a href="index.html" class="back-link">← 返回主页</a>
+  
+  <div class="header">
+    <h1>📊 IndexedDB 缓存分页</h1>
+    <p>高性能本地缓存，流畅的数据浏览体验</p>
   </div>
-  <label for="nValue">n参数：</label>
-  <input type="number" id="nValue" value="200" min="200" max="100000" step="100">
-  <button onclick="refreshData()">刷新数据</button>
-  <span class="links">
-    <a href="https://github.com/MingGH/demo-mock-server" target="_blank">源码</a>
-    <a href="https://www.runnable.run/" target="_blank">博客</a>
-  </span>
-</div>
 
-<div id="data"></div>
+  <div class="controls">
+    <div class="pagination">
+      <button class="page-btn" id="prevBtn" onclick="prevPage()">‹</button>
+      <span class="page-info" id="pageInfo">-</span>
+      <button class="page-btn" id="nextBtn" onclick="nextPage()">›</button>
+    </div>
+    
+    <div class="input-group">
+      <label>数据量</label>
+      <input type="number" id="nValue" value="200" min="200" max="100000" step="100">
+    </div>
+    
+    <button class="btn btn-primary" id="refreshBtn" onclick="refreshData()">
+      🔄 刷新数据
+    </button>
+    
+    <div class="links">
+      <a href="https://github.com/MingGH/demo-mock-server" target="_blank">GitHub</a>
+      <a href="https://www.runnable.run/" target="_blank">博客</a>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <div id="data">
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        <p>加载中...</p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="stats" id="stats"></div>
+</div>
 
 <script>
   const DB_NAME = "DataCacheDB";
@@ -75,6 +299,7 @@
   const pageSize = 10;
   let currentPage = 1;
   let totalRecords = 0;
+  let cachedData = [];
 
   function initDB() {
     return new Promise((resolve, reject) => {
@@ -115,10 +340,11 @@
     const lastFetchTime = localStorage.getItem("lastFetchTime");
     if (lastFetchTime && Date.now() - lastFetchTime < CACHE_EXPIRATION) {
       try {
-        const cachedData = await loadFromDB();
+        cachedData = await loadFromDB();
         if (cachedData.length > 0) {
           totalRecords = cachedData.length;
-          displayPage(cachedData);
+          displayPage();
+          updateStats(true);
           return;
         }
       } catch (error) {
@@ -131,49 +357,88 @@
   async function fetchData() {
     const n = document.getElementById("nValue").value || 200;
     const url = `https://demo-api-mockserver.runnable.run/mock?n=${n}`;
+    const btn = document.getElementById("refreshBtn");
+    
+    btn.disabled = true;
+    btn.textContent = "⏳ 加载中...";
+    document.getElementById("data").innerHTML = `
+      <div class="loading">
+        <div class="loading-spinner"></div>
+        <p>正在获取 ${n} 条数据...</p>
+      </div>`;
+    
+    const startTime = Date.now();
+    
     try {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`请求失败: ${response.status}`);
-      const data = await response.json();
-      totalRecords = data.length;
-      await saveToDB(data);
+      cachedData = await response.json();
+      totalRecords = cachedData.length;
+      await saveToDB(cachedData);
       currentPage = 1;
-      displayPage(data);
+      displayPage();
+      updateStats(false, Date.now() - startTime);
     } catch (error) {
       console.error("获取数据失败:", error);
-      alert("数据加载失败！");
+      document.getElementById("data").innerHTML = `
+        <div class="loading">
+          <p style="color: #ff6b6b;">❌ 加载失败: ${error.message}</p>
+        </div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "🔄 刷新数据";
     }
   }
 
-  function displayPage(data) {
+  function displayPage() {
     const start = (currentPage - 1) * pageSize;
-    const pageData = data.slice(start, start + pageSize);
-    const table = document.createElement("table");
-    table.innerHTML = `
-      <thead><tr>
-        <th>ID</th><th>姓名</th><th>邮箱</th><th>电话</th>
-        <th>地址</th><th>公司</th><th>生日</th><th>职位</th>
-      </tr></thead>
-      <tbody>${pageData.map(p => `<tr>
-        <td>${p.id}</td><td>${p.name}</td><td>${p.email}</td><td>${p.phone}</td>
-        <td>${p.address}</td><td>${p.company}</td><td>${p.dob}</td><td>${p.job}</td>
-      </tr>`).join('')}</tbody>`;
-    const container = document.getElementById("data");
-    container.innerHTML = "";
-    container.appendChild(table);
-    document.getElementById("pageInfo").textContent = 
-      `第 ${currentPage} 页 / 共 ${Math.ceil(totalRecords / pageSize)} 页`;
+    const pageData = cachedData.slice(start, start + pageSize);
+    const totalPages = Math.ceil(totalRecords / pageSize);
+    
+    document.getElementById("data").innerHTML = `
+      <table>
+        <thead><tr>
+          <th>ID</th><th>姓名</th><th>邮箱</th><th>电话</th>
+          <th>地址</th><th>公司</th><th>生日</th><th>职位</th>
+        </tr></thead>
+        <tbody>${pageData.map(p => `<tr>
+          <td>#${String(p.id).padStart(4, '0')}</td>
+          <td>${p.name}</td>
+          <td>${p.email}</td>
+          <td>${p.phone}</td>
+          <td>${p.address}</td>
+          <td>${p.company}</td>
+          <td>${p.dob}</td>
+          <td>${p.job}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    
+    document.getElementById("pageInfo").textContent = `${currentPage} / ${totalPages}`;
+    document.getElementById("prevBtn").disabled = currentPage === 1;
+    document.getElementById("nextBtn").disabled = currentPage === totalPages;
+  }
+
+  function updateStats(fromCache, duration) {
+    const stats = document.getElementById("stats");
+    if (fromCache) {
+      stats.innerHTML = `📦 从 IndexedDB 缓存加载 <span class="highlight">${totalRecords}</span> 条数据`;
+    } else {
+      stats.innerHTML = `✨ 获取 <span class="highlight">${totalRecords}</span> 条数据，耗时 <span class="highlight">${duration}ms</span>`;
+    }
   }
 
   function refreshData() { fetchData(); }
-  async function prevPage() {
-    if (currentPage > 1) { currentPage--; displayPage(await loadFromDB()); }
+  
+  function prevPage() {
+    if (currentPage > 1) { currentPage--; displayPage(); }
   }
-  async function nextPage() {
+  
+  function nextPage() {
     if (currentPage < Math.ceil(totalRecords / pageSize)) { 
-      currentPage++; displayPage(await loadFromDB()); 
+      currentPage++; displayPage(); 
     }
   }
+  
   window.onload = () => loadData();
 </script>
 </body>

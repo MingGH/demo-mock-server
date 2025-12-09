@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>财务决策风险模拟器</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin: 20px 0 40px;
+    }
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #f472b6, #fb923c, #facc15, #f472b6);
+      background-size: 300% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradient 6s ease infinite;
+    }
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .header p {
+      color: rgba(255,255,255,0.5);
+      margin-top: 12px;
+    }
+
+    /* 输入区域 */
+    .input-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .input-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 20px;
+    }
+    .input-card label {
+      display: block;
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .input-card input {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px 15px;
+      color: white;
+      font-size: 18px;
+      font-weight: 600;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .input-card input:focus {
+      border-color: #f472b6;
+    }
+    .input-card .unit {
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    /* 按钮 */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 14px 32px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #f472b6, #fb923c);
+      color: white;
+      box-shadow: 0 5px 25px rgba(244, 114, 182, 0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 35px rgba(244, 114, 182, 0.4);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* 结果区域 */
+    .results {
+      display: none;
+    }
+    .results.show {
+      display: block;
+    }
+
+    /* 风险卡片 */
+    .risk-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    @media (max-width: 700px) {
+      .risk-cards { grid-template-columns: 1fr; }
+    }
+
+    .risk-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      text-align: center;
+    }
+    .risk-card h3 {
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 10px;
+    }
+    .risk-card .value {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    .risk-card .label {
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    }
+    .risk-card.buy .value { color: #f472b6; }
+    .risk-card.nobuy .value { color: #4ade80; }
+
+    /* 对比条 */
+    .compare-bar {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .compare-bar h3 {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .bar-container {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .bar-item {
+      flex: 1;
+    }
+    .bar-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 8px;
+    }
+    .bar {
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      transition: width 0.5s ease;
+    }
+    .bar.buy { background: linear-gradient(90deg, #f472b6, #fb923c); }
+    .bar.nobuy { background: linear-gradient(90deg, #4ade80, #22d3ee); }
+
+    /* 图表区域 */
+    .chart-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .chart-section h3 {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+
+    /* 解读 */
+    .interpretation {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+    }
+    .interpretation h3 {
+      color: #facc15;
+      margin-bottom: 15px;
+    }
+    .interpretation p {
+      color: rgba(255,255,255,0.7);
+      line-height: 1.8;
+      margin-bottom: 10px;
+    }
+    .interpretation .highlight {
+      color: #f472b6;
+      font-weight: 600;
+    }
+    .interpretation .safe {
+      color: #4ade80;
+      font-weight: 600;
+    }
+
+    /* 方法说明 */
+    .method {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    }
+    .method summary {
+      cursor: pointer;
+      color: rgba(255,255,255,0.6);
+    }
+    .method p {
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>💰 财务决策风险模拟器</h1>
+    <p>用蒙特卡洛模拟，看看这笔消费的真实风险</p>
+  </div>
+
+  <div class="input-section">
+    <div class="input-card">
+      <label>💵 当前存款</label>
+      <input type="number" id="savings" value="50000" min="0" step="1000">
+      <div class="unit">元</div>
+    </div>
+    <div class="input-card">
+      <label>📈 月收入</label>
+      <input type="number" id="income" value="5000" min="0" step="500">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>📉 月支出</label>
+      <input type="number" id="expense" value="3500" min="0" step="500">
+      <div class="unit">元/月（日常开销）</div>
+    </div>
+    <div class="input-card">
+      <label>🛍️ 计划消费</label>
+      <input type="number" id="purchase" value="20000" min="0" step="1000">
+      <div class="unit">元（那个包/电脑/...）</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" onclick="runSimulation()">🎲 运行 1000 次模拟</button>
+  </div>
+
+  <div class="results" id="results">
+    <div class="risk-cards">
+      <div class="risk-card buy">
+        <h3>🛍️ 买了之后</h3>
+        <div class="value" id="riskBuy">-</div>
+        <div class="label">12个月内"吃土"概率</div>
+      </div>
+      <div class="risk-card nobuy">
+        <h3>💪 不买的话</h3>
+        <div class="value" id="riskNoBuy">-</div>
+        <div class="label">12个月内"吃土"概率</div>
+      </div>
+    </div>
+
+    <div class="compare-bar">
+      <h3>📊 应急储备金对比（建议至少覆盖 6 个月支出）</h3>
+      <div class="bar-container">
+        <div class="bar-item">
+          <div class="bar-label">买了之后能撑</div>
+          <div class="bar buy" id="barBuy" style="width: 50%">- 个月</div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">不买能撑</div>
+          <div class="bar nobuy" id="barNoBuy" style="width: 100%">- 个月</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <h3>📈 1000 次模拟的存款走势（展示前 50 条路径）</h3>
+      <div class="chart-container">
+        <canvas id="chart"></canvas>
+      </div>
+    </div>
+
+    <div class="interpretation" id="interpretation">
+      <h3>🎯 解读</h3>
+      <p id="interpretText"></p>
+    </div>
+
+    <details class="method">
+      <summary>📐 模拟方法说明</summary>
+      <p>
+        本模拟使用蒙特卡洛方法，对未来 12 个月的财务状况进行 1000 次随机模拟。<br><br>
+        每次模拟中：<br>
+        • 8% 概率触发失业，一旦失业持续 3-6 个月零收入<br>
+        • 15% 概率产生 2000-17000 元意外支出（生病/维修/红包等）<br>
+        • 3% 概率产生 10000-40000 元大额意外（大病/事故）<br>
+        • 日常支出有 ±30% 的随机波动<br><br>
+        "吃土"定义为：存款降至 0 以下（任意月份）。
+      </p>
+    </details>
+  </div>
+</div>
+
+<script>
+let chart = null;
+
+function runSimulation() {
+  const savings = parseFloat(document.getElementById('savings').value) || 0;
+  const income = parseFloat(document.getElementById('income').value) || 0;
+  const expense = parseFloat(document.getElementById('expense').value) || 0;
+  const purchase = parseFloat(document.getElementById('purchase').value) || 0;
+  
+  const months = 12;
+  const simulations = 1000;
+  
+  // 运行模拟
+  const resultsBuy = simulate(savings - purchase, income, expense, months, simulations);
+  const resultsNoBuy = simulate(savings, income, expense, months, simulations);
+  
+  // 计算破产概率
+  const riskBuy = (resultsBuy.bankruptCount / simulations * 100).toFixed(1);
+  const riskNoBuy = (resultsNoBuy.bankruptCount / simulations * 100).toFixed(1);
+  
+  // 计算应急储备月数
+  const monthsBuy = Math.max(0, (savings - purchase) / expense).toFixed(1);
+  const monthsNoBuy = (savings / expense).toFixed(1);
+  
+  // 显示结果
+  document.getElementById('results').classList.add('show');
+  document.getElementById('riskBuy').textContent = riskBuy + '%';
+  document.getElementById('riskNoBuy').textContent = riskNoBuy + '%';
+  
+  // 更新对比条
+  const maxMonths = Math.max(parseFloat(monthsNoBuy), 12);
+  document.getElementById('barBuy').style.width = (monthsBuy / maxMonths * 100) + '%';
+  document.getElementById('barBuy').textContent = monthsBuy + ' 个月';
+  document.getElementById('barNoBuy').style.width = (monthsNoBuy / maxMonths * 100) + '%';
+  document.getElementById('barNoBuy').textContent = monthsNoBuy + ' 个月';
+  
+  // 绘制图表
+  drawChart(resultsBuy.paths, resultsNoBuy.paths, months);
+  
+  // 生成解读
+  generateInterpretation(riskBuy, riskNoBuy, monthsBuy, monthsNoBuy, purchase);
+}
+
+function simulate(initialSavings, income, expense, months, simulations) {
+  let bankruptCount = 0;
+  const paths = [];
+  
+  for (let i = 0; i < simulations; i++) {
+    let balance = initialSavings;
+    const path = [balance];
+    let bankrupt = false;
+    let unemployedMonths = 0; // 失业持续月数
+    
+    for (let m = 0; m < months; m++) {
+      let monthIncome = income;
+      
+      // 失业模型：一旦失业，持续3-6个月
+      if (unemployedMonths > 0) {
+        monthIncome = 0;
+        unemployedMonths--;
+      } else if (Math.random() < 0.08) {
+        // 8% 概率触发失业，持续3-6个月
+        unemployedMonths = 3 + Math.floor(Math.random() * 4);
+        monthIncome = 0;
+      }
+      
+      // 支出波动：±30%
+      let monthExpense = expense * (0.7 + Math.random() * 0.6);
+      
+      // 意外支出：15% 概率，金额更大
+      if (Math.random() < 0.15) {
+        monthExpense += 2000 + Math.random() * 15000;
+      }
+      
+      // 大额意外：3% 概率（大病/事故）
+      if (Math.random() < 0.03) {
+        monthExpense += 10000 + Math.random() * 30000;
+      }
+      
+      balance = balance + monthIncome - monthExpense;
+      path.push(balance);
+      
+      if (balance < 0) {
+        bankrupt = true;
+      }
+    }
+    
+    if (bankrupt) bankruptCount++;
+    if (i < 50) paths.push(path);
+  }
+  
+  return { bankruptCount, paths };
+}
+
+function drawChart(pathsBuy, pathsNoBuy, months) {
+  const ctx = document.getElementById('chart').getContext('2d');
+  
+  if (chart) chart.destroy();
+  
+  const labels = Array.from({length: months + 1}, (_, i) => `第${i}月`);
+  
+  const datasets = [];
+  
+  // 买了的路径（粉色）
+  pathsBuy.slice(0, 20).forEach((path, i) => {
+    datasets.push({
+      data: path,
+      borderColor: 'rgba(244, 114, 182, 0.3)',
+      borderWidth: 1,
+      pointRadius: 0,
+      fill: false,
+      tension: 0.1
+    });
+  });
+  
+  // 不买的路径（绿色）
+  pathsNoBuy.slice(0, 20).forEach((path, i) => {
+    datasets.push({
+      data: path,
+      borderColor: 'rgba(74, 222, 128, 0.3)',
+      borderWidth: 1,
+      pointRadius: 0,
+      fill: false,
+      tension: 0.1
+    });
+  });
+  
+  // 零线
+  datasets.push({
+    data: Array(months + 1).fill(0),
+    borderColor: 'rgba(255, 100, 100, 0.8)',
+    borderWidth: 2,
+    borderDash: [5, 5],
+    pointRadius: 0,
+    fill: false
+  });
+  
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { 
+            color: 'rgba(255,255,255,0.4)',
+            callback: v => (v/10000).toFixed(1) + '万'
+          }
+        }
+      }
+    }
+  });
+}
+
+function generateInterpretation(riskBuy, riskNoBuy, monthsBuy, monthsNoBuy, purchase) {
+  let text = '';
+  
+  const riskDiff = (riskBuy - riskNoBuy).toFixed(1);
+  
+  if (riskBuy > 30) {
+    text = `<span class="highlight">风险较高！</span>买了之后，未来一年内"吃土"的概率是 ${riskBuy}%，差不多每 ${Math.round(100/riskBuy)} 个类似情况的人里就有 1 个会遇到财务危机。`;
+  } else if (riskBuy > 10) {
+    text = `风险中等。买了之后"吃土"概率是 ${riskBuy}%，比不买高了 <span class="highlight">${riskDiff} 个百分点</span>。`;
+  } else {
+    text = `<span class="safe">风险可控。</span>买了之后"吃土"概率只有 ${riskBuy}%，财务状况相对健康。`;
+  }
+  
+  text += `<br><br>`;
+  
+  if (monthsBuy < 3) {
+    text += `⚠️ 买完后应急储备金只够 <span class="highlight">${monthsBuy} 个月</span>，低于建议的 3-6 个月安全线。一旦失业或生病，缓冲空间很小。`;
+  } else if (monthsBuy < 6) {
+    text += `买完后还有 ${monthsBuy} 个月的应急储备，勉强达标，但建议再攒一些再考虑大额消费。`;
+  } else {
+    text += `<span class="safe">买完后还有 ${monthsBuy} 个月的应急储备</span>，超过 6 个月安全线，财务弹性不错。`;
+  }
+  
+  text += `<br><br>`;
+  text += `💡 这不是说"不该买"，而是让你清楚这笔消费的真实代价。如果这 ${purchase/10000} 万能带来的快乐值得这个风险，那就买；如果只是一时冲动，不妨再等等。`;
+  
+  document.getElementById('interpretText').innerHTML = text;
+}
+
+// 页面加载时不自动运行，等用户点击
+</script>
+
+</body>
+</html>

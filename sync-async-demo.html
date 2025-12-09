@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>同步 vs 异步 - 可视化演示</title>
+  <script src="components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0c0c1e 0%, #1a1a3e 50%, #0d1f3c 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin: 20px 0 40px;
+    }
+    .header h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00d4ff, #ff6b9d, #c084fc, #00d4ff);
+      background-size: 300% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradient 6s ease infinite;
+    }
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .header p {
+      color: rgba(255,255,255,0.5);
+      margin-top: 12px;
+      font-size: 1.1rem;
+    }
+
+    /* 场景选择 */
+    .scene-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
+    }
+    .scene-tab {
+      padding: 12px 24px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 30px;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+    .scene-tab:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.2);
+    }
+    .scene-tab.active {
+      background: linear-gradient(135deg, #00d4ff, #c084fc);
+      border-color: transparent;
+      color: white;
+      font-weight: 600;
+    }
+
+    /* 演示区域 */
+    .demo-area {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+    @media (max-width: 900px) {
+      .demo-area { grid-template-columns: 1fr; }
+    }
+
+    .demo-box {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      backdrop-filter: blur(10px);
+    }
+    .demo-box h2 {
+      font-size: 1.3rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .demo-box.sync h2 { color: #ff6b6b; }
+    .demo-box.async h2 { color: #4ade80; }
+    
+    .demo-box .subtitle {
+      color: rgba(255,255,255,0.4);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    /* 任务轨道 */
+    .track-container {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 200px;
+    }
+    .track {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      height: 40px;
+    }
+    .track:last-child { margin-bottom: 0; }
+    .track-label {
+      width: 80px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      flex-shrink: 0;
+    }
+    .track-bar {
+      flex: 1;
+      height: 100%;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+    .task-block {
+      position: absolute;
+      height: 100%;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: white;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .task-block.active { opacity: 1; }
+    .task-block.task1 { background: linear-gradient(135deg, #f472b6, #ec4899); }
+    .task-block.task2 { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+    .task-block.task3 { background: linear-gradient(135deg, #a78bfa, #8b5cf6); }
+    .task-block.waiting { 
+      background: repeating-linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.1) 5px, transparent 5px, transparent 10px);
+    }
+
+    /* 时间轴 */
+    .timeline {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+      padding: 0 80px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* 统计 */
+    .stats-row {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .stat-item {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+    .sync .stat-value { color: #ff6b6b; }
+    .async .stat-value { color: #4ade80; }
+    .stat-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 4px;
+    }
+
+    /* 控制按钮 */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    .btn {
+      padding: 14px 32px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #00d4ff, #c084fc);
+      color: white;
+      box-shadow: 0 5px 25px rgba(0, 212, 255, 0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 35px rgba(0, 212, 255, 0.4);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.15);
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* 解释卡片 */
+    .explanation {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    .explanation h3 {
+      color: #00d4ff;
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+    }
+    .explanation p {
+      color: rgba(255,255,255,0.7);
+      line-height: 1.8;
+      margin-bottom: 12px;
+    }
+    .explanation code {
+      background: rgba(0,212,255,0.1);
+      color: #00d4ff;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* 代码对比 */
+    .code-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    @media (max-width: 900px) {
+      .code-compare { grid-template-columns: 1fr; }
+    }
+    .code-block {
+      background: #1e1e2e;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .code-header {
+      background: rgba(255,255,255,0.05);
+      padding: 10px 15px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .code-header.sync { color: #ff6b6b; }
+    .code-header.async { color: #4ade80; }
+    .code-content {
+      padding: 15px;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-x: auto;
+    }
+    .code-content .keyword { color: #c084fc; }
+    .code-content .function { color: #60a5fa; }
+    .code-content .string { color: #4ade80; }
+    .code-content .comment { color: rgba(255,255,255,0.3); }
+
+    /* 生活类比 */
+    .analogy {
+      background: linear-gradient(135deg, rgba(192, 132, 252, 0.1), rgba(0, 212, 255, 0.1));
+      border-radius: 16px;
+      padding: 25px;
+      margin-top: 30px;
+      border: 1px solid rgba(192, 132, 252, 0.2);
+    }
+    .analogy h3 {
+      color: #c084fc;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .analogy-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 600px) {
+      .analogy-content { grid-template-columns: 1fr; }
+    }
+    .analogy-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .analogy-item h4 {
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .analogy-item.sync h4 { color: #ff6b6b; }
+    .analogy-item.async h4 { color: #4ade80; }
+    .analogy-item p {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>⚡ 同步 vs 异步</h1>
+    <p>一看就懂的可视化演示</p>
+  </div>
+
+  <div class="scene-tabs">
+    <div class="scene-tab active" onclick="switchScene('restaurant')">🍜 餐厅点餐</div>
+    <div class="scene-tab" onclick="switchScene('download')">📥 文件下载</div>
+    <div class="scene-tab" onclick="switchScene('api')">🌐 API请求</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="startBtn" onclick="startDemo()">▶️ 开始演示</button>
+    <button class="btn btn-secondary" onclick="resetDemo()">🔄 重置</button>
+  </div>
+
+  <div class="demo-area">
+    <!-- 同步演示 -->
+    <div class="demo-box sync">
+      <h2>🔴 同步模式</h2>
+      <p class="subtitle" id="syncSubtitle">一个任务完成后才能开始下一个</p>
+      
+      <div class="track-container">
+        <div class="track">
+          <span class="track-label">主线程</span>
+          <div class="track-bar" id="syncTrack">
+            <div class="task-block task1" id="syncTask1" style="left:0; width:33%">任务1</div>
+            <div class="task-block task2" id="syncTask2" style="left:33%; width:33%">任务2</div>
+            <div class="task-block task3" id="syncTask3" style="left:66%; width:34%">任务3</div>
+          </div>
+        </div>
+        <div class="timeline">
+          <span>0s</span><span>3s</span><span>6s</span><span>9s</span>
+        </div>
+      </div>
+      
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-value" id="syncTime">-</div>
+          <div class="stat-label">总耗时</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="syncBlocked">-</div>
+          <div class="stat-label">阻塞时间</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 异步演示 -->
+    <div class="demo-box async">
+      <h2>🟢 异步模式</h2>
+      <p class="subtitle" id="asyncSubtitle">多个任务可以同时进行</p>
+      
+      <div class="track-container">
+        <div class="track">
+          <span class="track-label">任务1</span>
+          <div class="track-bar">
+            <div class="task-block task1" id="asyncTask1" style="left:0; width:33%">执行中</div>
+          </div>
+        </div>
+        <div class="track">
+          <span class="track-label">任务2</span>
+          <div class="track-bar">
+            <div class="task-block task2" id="asyncTask2" style="left:0; width:33%">执行中</div>
+          </div>
+        </div>
+        <div class="track">
+          <span class="track-label">任务3</span>
+          <div class="track-bar">
+            <div class="task-block task3" id="asyncTask3" style="left:0; width:33%">执行中</div>
+          </div>
+        </div>
+        <div class="timeline">
+          <span>0s</span><span>3s</span><span>6s</span><span>9s</span>
+        </div>
+      </div>
+      
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-value" id="asyncTime">-</div>
+          <div class="stat-label">总耗时</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="asyncSaved">-</div>
+          <div class="stat-label">节省时间</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 场景配置
+const scenes = {
+  restaurant: {
+    name: '餐厅点餐',
+    syncSubtitle: '服务员等一桌点完才去下一桌',
+    asyncSubtitle: '服务员同时接待多桌客人',
+    tasks: ['点餐', '上菜', '结账'],
+    durations: [3, 3, 3]
+  },
+  download: {
+    name: '文件下载',
+    syncSubtitle: '下载完一个文件才能下载下一个',
+    asyncSubtitle: '多个文件同时下载',
+    tasks: ['文件A', '文件B', '文件C'],
+    durations: [3, 3, 3]
+  },
+  api: {
+    name: 'API请求',
+    syncSubtitle: '等待响应期间程序卡住',
+    asyncSubtitle: '发起请求后继续执行其他代码',
+    tasks: ['用户信息', '订单列表', '商品数据'],
+    durations: [3, 3, 3]
+  }
+};
+
+let currentScene = 'restaurant';
+let isRunning = false;
+
+function switchScene(scene) {
+  if (isRunning) return;
+  currentScene = scene;
+  
+  document.querySelectorAll('.scene-tab').forEach(tab => tab.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  const config = scenes[scene];
+  document.getElementById('syncSubtitle').textContent = config.syncSubtitle;
+  document.getElementById('asyncSubtitle').textContent = config.asyncSubtitle;
+  
+  // 更新任务名称
+  document.getElementById('syncTask1').textContent = config.tasks[0];
+  document.getElementById('syncTask2').textContent = config.tasks[1];
+  document.getElementById('syncTask3').textContent = config.tasks[2];
+  document.getElementById('asyncTask1').textContent = config.tasks[0];
+  document.getElementById('asyncTask2').textContent = config.tasks[1];
+  document.getElementById('asyncTask3').textContent = config.tasks[2];
+  
+  resetDemo();
+}
+
+function startDemo() {
+  if (isRunning) return;
+  isRunning = true;
+  document.getElementById('startBtn').disabled = true;
+  
+  // 重置状态
+  resetVisuals();
+  
+  const config = scenes[currentScene];
+  const totalSync = config.durations.reduce((a, b) => a + b, 0);
+  const totalAsync = Math.max(...config.durations);
+  
+  // 同步动画 - 顺序执行
+  setTimeout(() => {
+    document.getElementById('syncTask1').classList.add('active');
+  }, 0);
+  
+  setTimeout(() => {
+    document.getElementById('syncTask2').classList.add('active');
+  }, 1000);
+  
+  setTimeout(() => {
+    document.getElementById('syncTask3').classList.add('active');
+  }, 2000);
+  
+  setTimeout(() => {
+    document.getElementById('syncTime').textContent = totalSync + 's';
+    document.getElementById('syncBlocked').textContent = (totalSync - config.durations[0]) + 's';
+  }, 3000);
+  
+  // 异步动画 - 同时执行
+  setTimeout(() => {
+    document.getElementById('asyncTask1').classList.add('active');
+    document.getElementById('asyncTask2').classList.add('active');
+    document.getElementById('asyncTask3').classList.add('active');
+  }, 0);
+  
+  setTimeout(() => {
+    document.getElementById('asyncTime').textContent = totalAsync + 's';
+    document.getElementById('asyncSaved').textContent = (totalSync - totalAsync) + 's';
+    isRunning = false;
+    document.getElementById('startBtn').disabled = false;
+  }, 1000);
+}
+
+function resetDemo() {
+  isRunning = false;
+  document.getElementById('startBtn').disabled = false;
+  resetVisuals();
+  
+  document.getElementById('syncTime').textContent = '-';
+  document.getElementById('syncBlocked').textContent = '-';
+  document.getElementById('asyncTime').textContent = '-';
+  document.getElementById('asyncSaved').textContent = '-';
+}
+
+function resetVisuals() {
+  document.querySelectorAll('.task-block').forEach(block => {
+    block.classList.remove('active');
+  });
+}
+
+// 初始化
+switchScene('restaurant');
+</script>
+
+<!-- 解释部分 -->
+<div class="container">
+  <div class="explanation">
+    <h3>💡 一句话理解</h3>
+    <p><strong>同步</strong>：做完一件事才能做下一件，中间只能干等着。就像排队买奶茶，前面的人不走你就得等。</p>
+    <p><strong>异步</strong>：发起一个任务后不用等它完成，可以先去做别的事。就像点了外卖继续工作，外卖到了再去拿。</p>
+  </div>
+
+  <div class="explanation">
+    <h3>🔧 代码对比</h3>
+    <div class="code-compare">
+      <div class="code-block">
+        <div class="code-header sync">🔴 同步代码</div>
+        <div class="code-content">
+<span class="comment">// 同步：按顺序执行，会阻塞</span><br/>
+<span class="keyword">const</span> user = <span class="function">getUser</span>(<span class="string">'123'</span>);     <span class="comment">// 等3秒</span><br/>
+<span class="keyword">const</span> orders = <span class="function">getOrders</span>(user.id); <span class="comment">// 再等3秒</span><br/>
+<span class="keyword">const</span> products = <span class="function">getProducts</span>();   <span class="comment">// 再等3秒</span><br/>
+<span class="comment">// 总共需要 9 秒</span>
+        </div>
+      </div>
+      <div class="code-block">
+        <div class="code-header async">🟢 异步代码</div>
+        <div class="code-content">
+<span class="comment">// 异步：同时发起，不阻塞</span><br/>
+<span class="keyword">const</span> [user, orders, products] = 
+  <span class="keyword">await</span> <span class="function">Promise.all</span>([<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="function">getUser</span>(<span class="string">'123'</span>),<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="function">getOrders</span>(<span class="string">'123'</span>),<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;<span class="function">getProducts</span>()<br/>
+  ]);<br/>
+<span class="comment">// 总共只需要 3 秒！</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="analogy">
+    <h3>🎯 生活中的例子</h3>
+    <div class="analogy-content">
+      <div class="analogy-item sync">
+        <h4>🔴 同步场景</h4>
+        <p>• 排队取号等叫号<br>• 打电话等对方接听<br>• ATM机前排队取钱<br>• 等红绿灯过马路</p>
+      </div>
+      <div class="analogy-item async">
+        <h4>🟢 异步场景</h4>
+        <p>• 点外卖后继续工作<br>• 洗衣机洗衣服时看电视<br>• 发微信后不用等回复<br>• 预约挂号后先去办别的事</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="explanation" style="margin-top: 30px;">
+    <h3>🎓 什么时候用哪个？</h3>
+    <p><strong>用同步</strong>：当后续操作依赖前一步的结果时。比如必须先登录才能获取用户信息。</p>
+    <p><strong>用异步</strong>：当多个操作相互独立、可以并行时。比如同时加载页面的多个模块。</p>
+    <p style="margin-top: 15px; padding: 15px; background: rgba(0,212,255,0.1); border-radius: 8px;">
+      <strong>记住</strong>：异步不是万能的，但在 I/O 密集型操作（网络请求、文件读写、数据库查询）中，异步能显著提升性能和用户体验。
+    </p>
+  </div>
+</div>
+
+</body>
+</html>

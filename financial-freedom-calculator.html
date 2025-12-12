@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>最初级财富自由计算器 - 你离躺平还有多远？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; }
+
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #22d3ee, #a78bfa, #f472b6, #22d3ee);
+      background-size: 300% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradient 6s ease infinite;
+    }
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    .section-title {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      margin-bottom: 15px;
+      padding-left: 5px;
+      border-left: 3px solid #a78bfa;
+    }
+
+    .input-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .input-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 15px;
+    }
+    .input-card label {
+      display: block;
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .input-card input, .input-card select {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .input-card input:focus, .input-card select:focus { border-color: #a78bfa; }
+    .input-card select option { background: #1e293b; }
+    .input-card .unit { color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 4px; }
+
+    .controls { display: flex; justify-content: center; margin: 30px 0; }
+    .btn {
+      padding: 14px 40px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: linear-gradient(135deg, #a78bfa, #22d3ee);
+      color: white;
+      box-shadow: 0 5px 25px rgba(167, 139, 250, 0.3);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 35px rgba(167, 139, 250, 0.4);
+    }
+
+    .results { display: none; }
+    .results.show { display: block; animation: fadeIn 0.5s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    .result-hero {
+      background: linear-gradient(135deg, rgba(167,139,250,0.15), rgba(34,211,238,0.15));
+      border-radius: 20px;
+      border: 1px solid rgba(167,139,250,0.3);
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    .result-hero .label { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 10px; }
+    .result-hero .amount {
+      font-size: 3.5rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #22d3ee, #a78bfa);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .result-hero .amount span { font-size: 1.5rem; }
+    .result-hero .sub { color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 10px; }
+
+    .breakdown {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .breakdown-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 20px;
+      text-align: center;
+    }
+    .breakdown-card .icon { font-size: 24px; margin-bottom: 8px; }
+    .breakdown-card .value { font-size: 1.5rem; font-weight: 700; color: #22d3ee; }
+    .breakdown-card .label { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 5px; }
+
+    .chart-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .chart-section h3 { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 20px; text-align: center; }
+    .chart-container { position: relative; height: 280px; }
+
+    .levels {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .levels h3 { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 20px; }
+    .level-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .level-item:last-child { border-bottom: none; }
+    .level-item .rank { width: 30px; font-size: 18px; }
+    .level-item .name { flex: 1; color: rgba(255,255,255,0.8); }
+    .level-item .amount { font-weight: 600; color: #a78bfa; }
+    .level-item.current { background: rgba(167,139,250,0.1); border-radius: 8px; margin: 0 -10px; padding: 12px 10px; }
+    .level-item.current .name { color: #22d3ee; font-weight: 600; }
+
+    .tips {
+      background: rgba(34,211,238,0.1);
+      border-radius: 12px;
+      border: 1px solid rgba(34,211,238,0.2);
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+    .tips h3 { color: #22d3ee; font-size: 14px; margin-bottom: 12px; }
+    .tips ul { list-style: none; }
+    .tips li { color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.8; padding-left: 20px; position: relative; }
+    .tips li::before { content: '💡'; position: absolute; left: 0; }
+
+    .formula {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    }
+    .formula summary { cursor: pointer; color: rgba(255,255,255,0.6); }
+    .formula p { margin-top: 10px; line-height: 1.8; }
+    .formula code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; }
+
+    @media (max-width: 600px) {
+      .result-hero .amount { font-size: 2.5rem; }
+      .header h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🏖️ 最初级财富自由计算器</h1>
+    <p>算算你离"躺平"还差多少钱</p>
+  </div>
+
+  <div class="section-title">💰 基本生活开支</div>
+  <div class="input-section">
+    <div class="input-card">
+      <label>🏠 住房支出</label>
+      <input type="number" id="housing" value="2000" min="0" step="100">
+      <div class="unit">元/月（房贷/房租）</div>
+    </div>
+    <div class="input-card">
+      <label>🍜 餐饮支出</label>
+      <input type="number" id="food" value="2000" min="0" step="100">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>🚗 交通出行</label>
+      <input type="number" id="transport" value="500" min="0" step="50">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>📱 通讯网络</label>
+      <input type="number" id="telecom" value="200" min="0" step="50">
+      <div class="unit">元/月</div>
+    </div>
+  </div>
+
+  <div class="section-title">🎯 其他必要支出</div>
+  <div class="input-section">
+    <div class="input-card">
+      <label>🏥 医疗保险</label>
+      <input type="number" id="medical" value="500" min="0" step="100">
+      <div class="unit">元/月（含商业保险）</div>
+    </div>
+    <div class="input-card">
+      <label>👨‍👩‍👧 赡养支出</label>
+      <input type="number" id="family" value="1000" min="0" step="100">
+      <div class="unit">元/月（父母/子女）</div>
+    </div>
+    <div class="input-card">
+      <label>🎮 娱乐休闲</label>
+      <input type="number" id="entertainment" value="800" min="0" step="100">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>📦 其他杂项</label>
+      <input type="number" id="misc" value="500" min="0" step="100">
+      <div class="unit">元/月</div>
+    </div>
+  </div>
+
+  <div class="section-title">⚙️ 计算参数</div>
+  <div class="input-section">
+    <div class="input-card">
+      <label>📈 预期年化收益率</label>
+      <select id="returnRate">
+        <option value="0.03">3% - 保守型（大额存单/国债）</option>
+        <option value="0.04" selected>4% - 稳健型（债券基金为主）</option>
+        <option value="0.05">5% - 平衡型（股债混合）</option>
+        <option value="0.06">6% - 进取型（指数基金为主）</option>
+      </select>
+    </div>
+    <div class="input-card">
+      <label>📊 通胀预期</label>
+      <select id="inflation">
+        <option value="0.02">2% - 低通胀</option>
+        <option value="0.03" selected>3% - 正常水平</option>
+        <option value="0.04">4% - 较高通胀</option>
+      </select>
+    </div>
+    <div class="input-card">
+      <label>🛡️ 安全边际</label>
+      <select id="safetyMargin">
+        <option value="1.0">无（刚好够用）</option>
+        <option value="1.2" selected>20%（推荐）</option>
+        <option value="1.5">50%（保守）</option>
+        <option value="2.0">100%（非常保守）</option>
+      </select>
+    </div>
+    <div class="input-card">
+      <label>⏰ 计划躺平年限</label>
+      <select id="years">
+        <option value="30">30年</option>
+        <option value="40" selected>40年</option>
+        <option value="50">50年（永续）</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="calculate()">🧮 开始计算</button>
+  </div>
+
+  <div class="results" id="results">
+    <div class="result-hero">
+      <div class="label">🎯 你的最初级财富自由门槛</div>
+      <div class="amount" id="totalAmount">0<span>万元</span></div>
+      <div class="sub" id="subText">每月被动收入覆盖基本生活开支</div>
+    </div>
+
+    <div class="breakdown">
+      <div class="breakdown-card">
+        <div class="icon">💸</div>
+        <div class="value" id="monthlyExpense">0</div>
+        <div class="label">月支出</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="icon">📅</div>
+        <div class="value" id="yearlyExpense">0</div>
+        <div class="label">年支出</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="icon">📈</div>
+        <div class="value" id="realReturn">0%</div>
+        <div class="label">实际收益率</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="icon">🛡️</div>
+        <div class="value" id="safetyAmount">0</div>
+        <div class="label">安全边际</div>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <h3>📊 月支出构成</h3>
+      <div class="chart-container">
+        <canvas id="pieChart"></canvas>
+      </div>
+    </div>
+
+    <div class="levels">
+      <h3>🏆 财富自由等级参考</h3>
+      <div id="levelList"></div>
+    </div>
+
+    <div class="tips">
+      <h3>💡 实现建议</h3>
+      <ul id="tipsList"></ul>
+    </div>
+
+    <details class="formula">
+      <summary>📐 计算公式说明</summary>
+      <p id="formulaText"></p>
+    </details>
+  </div>
+</div>
+
+<script>
+let pieChart = null;
+
+function calculate() {
+  // 获取所有输入
+  const housing = parseFloat(document.getElementById('housing').value) || 0;
+  const food = parseFloat(document.getElementById('food').value) || 0;
+  const transport = parseFloat(document.getElementById('transport').value) || 0;
+  const telecom = parseFloat(document.getElementById('telecom').value) || 0;
+  const medical = parseFloat(document.getElementById('medical').value) || 0;
+  const family = parseFloat(document.getElementById('family').value) || 0;
+  const entertainment = parseFloat(document.getElementById('entertainment').value) || 0;
+  const misc = parseFloat(document.getElementById('misc').value) || 0;
+  
+  const returnRate = parseFloat(document.getElementById('returnRate').value);
+  const inflation = parseFloat(document.getElementById('inflation').value);
+  const safetyMargin = parseFloat(document.getElementById('safetyMargin').value);
+  const years = parseInt(document.getElementById('years').value);
+  
+  // 计算月支出和年支出
+  const monthlyExpense = housing + food + transport + telecom + medical + family + entertainment + misc;
+  const yearlyExpense = monthlyExpense * 12;
+  
+  // 实际收益率 = 名义收益率 - 通胀率
+  const realReturn = returnRate - inflation;
+  
+  // 使用年金现值公式计算所需本金
+  // 如果是永续（50年），使用永续年金公式：本金 = 年支出 / 实际收益率
+  // 否则使用普通年金现值公式
+  let baseAmount;
+  if (years >= 50 || realReturn <= 0) {
+    // 永续年金或实际收益率为负时，使用简单倍数
+    baseAmount = realReturn > 0 ? yearlyExpense / realReturn : yearlyExpense * years;
+  } else {
+    // 普通年金现值公式：PV = PMT × [(1 - (1+r)^-n) / r]
+    baseAmount = yearlyExpense * (1 - Math.pow(1 + realReturn, -years)) / realReturn;
+  }
+  
+  // 加上安全边际
+  const totalAmount = baseAmount * safetyMargin;
+  
+  // 显示结果
+  document.getElementById('results').classList.add('show');
+  document.getElementById('totalAmount').innerHTML = (totalAmount / 10000).toFixed(0) + '<span>万元</span>';
+  document.getElementById('monthlyExpense').textContent = monthlyExpense.toLocaleString() + '元';
+  document.getElementById('yearlyExpense').textContent = (yearlyExpense / 10000).toFixed(1) + '万';
+  document.getElementById('realReturn').textContent = (realReturn * 100).toFixed(1) + '%';
+  document.getElementById('safetyAmount').textContent = '+' + ((safetyMargin - 1) * 100).toFixed(0) + '%';
+  
+  document.getElementById('subText').textContent = 
+    `每月被动收入 ${monthlyExpense.toLocaleString()} 元，覆盖 ${years} 年生活开支`;
+
+  // 绘制饼图
+  drawPieChart({
+    '住房': housing,
+    '餐饮': food,
+    '交通': transport,
+    '通讯': telecom,
+    '医疗': medical,
+    '赡养': family,
+    '娱乐': entertainment,
+    '其他': misc
+  });
+  
+  // 显示财富自由等级
+  showLevels(totalAmount, monthlyExpense);
+  
+  // 显示建议
+  showTips(totalAmount, monthlyExpense, realReturn, safetyMargin);
+  
+  // 显示公式说明
+  showFormula(yearlyExpense, realReturn, safetyMargin, years, baseAmount, totalAmount);
+  
+  // 滚动到结果
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function drawPieChart(data) {
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  
+  if (pieChart) pieChart.destroy();
+  
+  const labels = Object.keys(data).filter(k => data[k] > 0);
+  const values = labels.map(k => data[k]);
+  const colors = ['#f472b6', '#fb923c', '#facc15', '#4ade80', '#22d3ee', '#a78bfa', '#f87171', '#94a3b8'];
+  
+  pieChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors.slice(0, labels.length),
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { color: 'rgba(255,255,255,0.7)', padding: 15, font: { size: 12 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = (context.raw / total * 100).toFixed(1);
+              return `${context.label}: ${context.raw}元 (${percentage}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function showLevels(currentAmount, monthlyExpense) {
+  const levels = [
+    { name: '生存自由', emoji: '🥣', multiplier: 0.5, desc: '基本温饱' },
+    { name: '初级自由', emoji: '🏠', multiplier: 1.0, desc: '当前水平' },
+    { name: '舒适自由', emoji: '✈️', multiplier: 2.0, desc: '偶尔旅游' },
+    { name: '品质自由', emoji: '🚗', multiplier: 3.0, desc: '有车有房' },
+    { name: '豪华自由', emoji: '🏝️', multiplier: 5.0, desc: '想买就买' },
+    { name: '终极自由', emoji: '🚀', multiplier: 10.0, desc: '财务无忧' }
+  ];
+  
+  let html = '';
+  levels.forEach(level => {
+    const amount = currentAmount * level.multiplier;
+    const isCurrent = level.multiplier === 1.0;
+    html += `
+      <div class="level-item ${isCurrent ? 'current' : ''}">
+        <div class="rank">${level.emoji}</div>
+        <div class="name">${level.name} <span style="color:rgba(255,255,255,0.4);font-size:12px">${level.desc}</span></div>
+        <div class="amount">${(amount / 10000).toFixed(0)}万</div>
+      </div>
+    `;
+  });
+  
+  document.getElementById('levelList').innerHTML = html;
+}
+
+function showTips(totalAmount, monthlyExpense, realReturn, safetyMargin) {
+  const tips = [];
+  
+  // 根据金额给出建议
+  if (totalAmount < 1000000) {
+    tips.push('你的目标金额相对较低，通过稳定工作+合理储蓄，5-10年内有望实现');
+  } else if (totalAmount < 3000000) {
+    tips.push('300万以内的目标，建议通过"主业收入+副业+投资"三管齐下');
+  } else {
+    tips.push('目标金额较高，除了储蓄投资，可以考虑创业或发展高收入技能');
+  }
+  
+  // 根据收益率给出建议
+  if (realReturn <= 0.01) {
+    tips.push('实际收益率较低，建议学习基础投资知识，适当配置权益类资产');
+  } else if (realReturn >= 0.03) {
+    tips.push('预期收益率较高，请确保有足够的投资经验和风险承受能力');
+  }
+  
+  // 根据安全边际给出建议
+  if (safetyMargin < 1.2) {
+    tips.push('建议增加安全边际，应对意外支出和市场波动');
+  }
+  
+  // 通用建议
+  tips.push('财富自由不是终点，而是新生活的起点。建议提前规划退休后的生活方式');
+  tips.push('定期复盘调整计划，每年重新评估一次目标金额');
+  
+  document.getElementById('tipsList').innerHTML = tips.map(t => `<li>${t}</li>`).join('');
+}
+
+function showFormula(yearlyExpense, realReturn, safetyMargin, years, baseAmount, totalAmount) {
+  const html = `
+    <strong>核心公式：</strong><br><br>
+    
+    <code>实际收益率 = 名义收益率 - 通胀率 = ${(realReturn * 100 + 3).toFixed(1)}% - 3% = ${(realReturn * 100).toFixed(1)}%</code><br><br>
+    
+    <code>基础本金 = 年支出 × 年金现值系数</code><br>
+    <code>= ${(yearlyExpense/10000).toFixed(1)}万 × ${(baseAmount/yearlyExpense).toFixed(1)} = ${(baseAmount/10000).toFixed(0)}万</code><br><br>
+    
+    <code>最终金额 = 基础本金 × 安全边际</code><br>
+    <code>= ${(baseAmount/10000).toFixed(0)}万 × ${safetyMargin} = ${(totalAmount/10000).toFixed(0)}万</code><br><br>
+    
+    <strong>说明：</strong><br>
+    • 年金现值系数考虑了${years}年的时间跨度和复利效应<br>
+    • 安全边际用于应对意外支出、市场波动、通胀超预期等风险<br>
+    • 这是"最初级"财富自由，仅覆盖基本生活，不含大额消费和品质升级<br>
+    • 实际执行中建议每年根据实际情况调整
+  `;
+  
+  document.getElementById('formulaText').innerHTML = html;
+}
+
+// 输入变化时自动重新计算
+document.querySelectorAll('input, select').forEach(el => {
+  el.addEventListener('change', () => {
+    if (document.getElementById('results').classList.contains('show')) {
+      calculate();
+    }
+  });
+});
+</script>
+
+</body>
+</html>

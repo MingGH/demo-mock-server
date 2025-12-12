@@ -1,5 +1,12 @@
 // 统一 Header 组件
 (function() {
+  // 加载 Umami 统计
+  const umamiScript = document.createElement('script');
+  umamiScript.defer = true;
+  umamiScript.src = 'https://umami.runnable.run/script.js';
+  umamiScript.dataset.websiteId = '60f1c767-3f2a-4be2-ad53-f9e4e1372785';
+  document.head.appendChild(umamiScript);
+
   // 加载 Google AdSense
   const adsScript = document.createElement('script');
   adsScript.async = true;

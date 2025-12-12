@@ -374,32 +374,34 @@ function generateNavCurve(months, pattern, volatility) {
   
   for (let i = 1; i <= months; i++) {
     const progress = i / months;
-    let trend = 0;
+    let targetNav = 1; // 目标净值
     
     switch (pattern) {
-      case 'smile': // 微笑曲线：先跌后涨
-        trend = -volatility * Math.sin(Math.PI * progress) + volatility * 0.3 * progress;
+      case 'smile': // 微笑曲线：先跌后涨，最终高于起点
+        // 二次函数：在 progress=0.4 时到达谷底，最终涨到 1 + 0.3*volatility
+        targetNav = 1 + volatility * (4 * (progress - 0.4) * (progress - 0.4) - 0.64 + 0.3 * progress);
         break;
-      case 'frown': // 哭泣曲线：先涨后跌
-        trend = volatility * Math.sin(Math.PI * progress) - volatility * 0.3 * progress;
+      case 'frown': // 哭泣曲线：先涨后跌，最终低于起点
+        // 在 progress=0.4 时到达顶峰，最终跌到 1 - 0.3*volatility
+        targetNav = 1 + volatility * (-4 * (progress - 0.4) * (progress - 0.4) + 0.64 - 0.3 * progress);
         break;
       case 'bull': // 持续上涨
-        trend = volatility * progress;
+        targetNav = 1 + volatility * progress;
         break;
       case 'bear': // 持续下跌
-        trend = -volatility * progress;
+        targetNav = 1 - volatility * 0.7 * progress;
         break;
-      case 'volatile': // 剧烈震荡
-        trend = volatility * 0.5 * Math.sin(6 * Math.PI * progress);
+      case 'volatile': // 剧烈震荡，最终小幅上涨
+        targetNav = 1 + volatility * 0.5 * Math.sin(5 * Math.PI * progress) + volatility * 0.15 * progress;
         break;
       case 'flat': // 横盘震荡
-        trend = volatility * 0.2 * Math.sin(8 * Math.PI * progress);
+        targetNav = 1 + volatility * 0.2 * Math.sin(6 * Math.PI * progress);
         break;
     }
     
-    // 添加随机噪声
-    const noise = (Math.random() - 0.5) * volatility * 0.1;
-    const newNav = Math.max(0.1, nav[nav.length - 1] * (1 + trend / months + noise));
+    // 添加小幅随机噪声
+    const noise = (Math.random() - 0.5) * volatility * 0.05;
+    const newNav = Math.max(0.1, targetNav + noise);
     nav.push(newNav);
   }
   
@@ -475,8 +477,6 @@ function runSimulation() {
   
   // 生成结论
   generateConclusion(pattern, result.totalReturn, years);
-  
-  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
 }
 
 function runAllScenarios() {
@@ -545,8 +545,6 @@ function runAllScenarios() {
       • 定投不是万能的，它只是降低了择时风险
     </div>
   `;
-  
-  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
 }
 
 function drawChart(navCurve, costLine, months) {

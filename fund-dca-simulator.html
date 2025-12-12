@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>基金定投模拟器 - 定投一定赚钱吗？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+
+    .container { max-width: 1000px; margin: 0 auto; }
+
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #10b981, #3b82f6, #10b981);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    .section-title {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      margin-bottom: 15px;
+      padding-left: 10px;
+      border-left: 3px solid #10b981;
+    }
+
+    .input-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+
+    .input-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+
+    .input-item label {
+      display: block;
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .input-item input, .input-item select {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px 15px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .input-item input:focus, .input-item select:focus {
+      outline: none;
+      border-color: #10b981;
+    }
+    .input-item select option { background: #1e293b; }
+    .input-item .hint { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 5px; }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 14px 35px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #10b981, #3b82f6);
+      color: white;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover { transform: translateY(-2px); }
+
+    .results { display: none; }
+    .results.show { display: block; }
+
+    /* 结果卡片 */
+    .result-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .result-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 15px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 20px;
+      text-align: center;
+    }
+    .result-card .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 8px; }
+    .result-card .value { font-size: 1.8rem; font-weight: 700; }
+    .result-card.profit .value { color: #10b981; }
+    .result-card.loss .value { color: #ef4444; }
+    .result-card.neutral .value { color: #3b82f6; }
+    .result-card .sub { color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 5px; }
+
+    /* 图表 */
+    .chart-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .chart-section h3 {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .chart-container { position: relative; height: 300px; }
+
+    /* 场景对比 */
+    .scenarios {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .scenarios h3 {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px;
+    }
+    .scenario-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      border-left: 4px solid;
+    }
+    .scenario-card.win { border-color: #10b981; }
+    .scenario-card.lose { border-color: #ef4444; }
+    .scenario-card .name { font-weight: 600; margin-bottom: 10px; }
+    .scenario-card.win .name { color: #10b981; }
+    .scenario-card.lose .name { color: #ef4444; }
+    .scenario-card .desc { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 10px; line-height: 1.5; }
+    .scenario-card .result { font-size: 18px; font-weight: 700; }
+    .scenario-card.win .result { color: #10b981; }
+    .scenario-card.lose .result { color: #ef4444; }
+
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1));
+      border-radius: 16px;
+      border: 1px solid rgba(16,185,129,0.2);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .conclusion h3 { color: #10b981; font-size: 16px; margin-bottom: 15px; }
+    .conclusion p {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 10px;
+    }
+    .conclusion .key-point {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    .conclusion .key-point strong { color: #fbbf24; }
+
+    /* 原理说明 */
+    .explanation {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+    }
+    .explanation h3 { color: #3b82f6; font-size: 16px; margin-bottom: 15px; }
+    .explanation p {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 12px;
+    }
+    .explanation ul {
+      list-style: none;
+      margin: 15px 0;
+    }
+    .explanation li {
+      padding: 8px 0;
+      padding-left: 25px;
+      position: relative;
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+    }
+    .explanation li::before {
+      content: '•';
+      position: absolute;
+      left: 8px;
+      color: #10b981;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .result-card .value { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>📈 基金定投模拟器</h1>
+    <p>定投一定赚钱吗？用数据说话</p>
+  </div>
+
+  <div class="input-section">
+    <div class="section-title">💰 定投参数设置</div>
+    <div class="input-grid">
+      <div class="input-item">
+        <label>每月定投金额</label>
+        <input type="number" id="monthlyAmount" value="1000" min="100" step="100">
+        <div class="hint">元/月</div>
+      </div>
+      <div class="input-item">
+        <label>定投年限</label>
+        <select id="years">
+          <option value="1">1年</option>
+          <option value="3" selected>3年</option>
+          <option value="5">5年</option>
+          <option value="10">10年</option>
+          <option value="20">20年</option>
+        </select>
+      </div>
+      <div class="input-item">
+        <label>市场走势模式</label>
+        <select id="marketPattern">
+          <option value="smile">😊 微笑曲线（先跌后涨）</option>
+          <option value="frown">😢 哭泣曲线（先涨后跌）</option>
+          <option value="bull">🐂 持续上涨</option>
+          <option value="bear">🐻 持续下跌</option>
+          <option value="volatile">🎢 剧烈震荡</option>
+          <option value="flat">😐 横盘震荡</option>
+        </select>
+      </div>
+      <div class="input-item">
+        <label>波动幅度</label>
+        <select id="volatility">
+          <option value="0.1">低（±10%）</option>
+          <option value="0.3" selected>中（±30%）</option>
+          <option value="0.5">高（±50%）</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" onclick="runSimulation()">🚀 开始模拟</button>
+    <button class="btn btn-secondary" onclick="runAllScenarios()">📊 对比所有场景</button>
+  </div>
+
+  <div class="results" id="results">
+    <div class="result-cards">
+      <div class="result-card neutral">
+        <div class="label">总投入</div>
+        <div class="value" id="totalInvest">-</div>
+        <div class="sub">本金</div>
+      </div>
+      <div class="result-card" id="finalCard">
+        <div class="label">最终市值</div>
+        <div class="value" id="finalValue">-</div>
+        <div class="sub" id="finalSub">-</div>
+      </div>
+      <div class="result-card" id="returnCard">
+        <div class="label">总收益率</div>
+        <div class="value" id="totalReturn">-</div>
+        <div class="sub" id="returnSub">-</div>
+      </div>
+      <div class="result-card neutral">
+        <div class="label">持有份额</div>
+        <div class="value" id="totalShares">-</div>
+        <div class="sub">平均成本 <span id="avgCost">-</span></div>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <h3>📈 净值走势 vs 定投成本线</h3>
+      <div class="chart-container">
+        <canvas id="mainChart"></canvas>
+      </div>
+    </div>
+
+    <div class="scenarios" id="scenariosSection" style="display:none;">
+      <h3>🎭 不同市场走势下的定投结果</h3>
+      <div class="scenario-grid" id="scenarioGrid"></div>
+    </div>
+
+    <div class="conclusion" id="conclusion"></div>
+
+    <div class="explanation">
+      <h3>🤔 定投的核心逻辑</h3>
+      <p><strong>定投不是稳赚不赔的魔法</strong>，它的本质是"平均成本法"：</p>
+      <ul>
+        <li>净值低时，同样的钱买更多份额</li>
+        <li>净值高时，同样的钱买更少份额</li>
+        <li>长期下来，持仓成本趋向于平均值</li>
+      </ul>
+      
+      <p><strong>定投赚钱的前提是：</strong></p>
+      <ul>
+        <li>最终卖出时的净值 > 你的平均成本</li>
+        <li>市场长期向上（或至少回到起点以上）</li>
+        <li>你能坚持到"微笑曲线"的右半边</li>
+      </ul>
+      
+      <p><strong>定投亏钱的情况：</strong></p>
+      <ul>
+        <li>持续下跌且不反弹（如日本股市失落的30年）</li>
+        <li>先涨后跌，高位入场低位离场</li>
+        <li>中途放弃，没等到反弹就割肉</li>
+      </ul>
+      
+      <p style="color:#fbbf24; margin-top:15px;">
+        💡 定投是一种纪律性投资策略，不是收益保证。选对标的、坚持长期、合理止盈，才是关键。
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+let mainChart = null;
+
+// 生成不同模式的净值曲线
+function generateNavCurve(months, pattern, volatility) {
+  const nav = [1]; // 起始净值为1
+  
+  for (let i = 1; i <= months; i++) {
+    const progress = i / months;
+    let trend = 0;
+    
+    switch (pattern) {
+      case 'smile': // 微笑曲线：先跌后涨
+        trend = -volatility * Math.sin(Math.PI * progress) + volatility * 0.3 * progress;
+        break;
+      case 'frown': // 哭泣曲线：先涨后跌
+        trend = volatility * Math.sin(Math.PI * progress) - volatility * 0.3 * progress;
+        break;
+      case 'bull': // 持续上涨
+        trend = volatility * progress;
+        break;
+      case 'bear': // 持续下跌
+        trend = -volatility * progress;
+        break;
+      case 'volatile': // 剧烈震荡
+        trend = volatility * 0.5 * Math.sin(6 * Math.PI * progress);
+        break;
+      case 'flat': // 横盘震荡
+        trend = volatility * 0.2 * Math.sin(8 * Math.PI * progress);
+        break;
+    }
+    
+    // 添加随机噪声
+    const noise = (Math.random() - 0.5) * volatility * 0.1;
+    const newNav = Math.max(0.1, nav[nav.length - 1] * (1 + trend / months + noise));
+    nav.push(newNav);
+  }
+  
+  return nav;
+}
+
+// 计算定投结果
+function calculateDCA(monthlyAmount, navCurve) {
+  let totalShares = 0;
+  let totalInvest = 0;
+  const costLine = [];
+  const valueHistory = [];
+  
+  for (let i = 0; i < navCurve.length; i++) {
+    if (i > 0) {
+      // 每月定投
+      const shares = monthlyAmount / navCurve[i];
+      totalShares += shares;
+      totalInvest += monthlyAmount;
+    }
+    
+    const avgCost = totalShares > 0 ? totalInvest / totalShares : navCurve[0];
+    costLine.push(avgCost);
+    valueHistory.push(totalShares * navCurve[i]);
+  }
+  
+  const finalValue = totalShares * navCurve[navCurve.length - 1];
+  const totalReturn = totalInvest > 0 ? (finalValue - totalInvest) / totalInvest * 100 : 0;
+  const avgCost = totalInvest / totalShares;
+  
+  return {
+    totalInvest,
+    totalShares,
+    finalValue,
+    totalReturn,
+    avgCost,
+    costLine,
+    valueHistory
+  };
+}
+
+function runSimulation() {
+  const monthlyAmount = parseFloat(document.getElementById('monthlyAmount').value) || 1000;
+  const years = parseInt(document.getElementById('years').value);
+  const pattern = document.getElementById('marketPattern').value;
+  const volatility = parseFloat(document.getElementById('volatility').value);
+  
+  const months = years * 12;
+  const navCurve = generateNavCurve(months, pattern, volatility);
+  const result = calculateDCA(monthlyAmount, navCurve);
+  
+  // 显示结果
+  document.getElementById('results').classList.add('show');
+  document.getElementById('scenariosSection').style.display = 'none';
+  
+  document.getElementById('totalInvest').textContent = formatMoney(result.totalInvest);
+  document.getElementById('finalValue').textContent = formatMoney(result.finalValue);
+  document.getElementById('totalShares').textContent = result.totalShares.toFixed(2);
+  document.getElementById('avgCost').textContent = result.avgCost.toFixed(4);
+  
+  const profit = result.finalValue - result.totalInvest;
+  document.getElementById('finalSub').textContent = (profit >= 0 ? '+' : '') + formatMoney(profit);
+  document.getElementById('totalReturn').textContent = (result.totalReturn >= 0 ? '+' : '') + result.totalReturn.toFixed(2) + '%';
+  
+  // 设置颜色
+  const isProfit = result.totalReturn >= 0;
+  document.getElementById('finalCard').className = 'result-card ' + (isProfit ? 'profit' : 'loss');
+  document.getElementById('returnCard').className = 'result-card ' + (isProfit ? 'profit' : 'loss');
+  document.getElementById('returnSub').textContent = isProfit ? '盈利' : '亏损';
+  
+  // 绘制图表
+  drawChart(navCurve, result.costLine, months);
+  
+  // 生成结论
+  generateConclusion(pattern, result.totalReturn, years);
+  
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function runAllScenarios() {
+  const monthlyAmount = parseFloat(document.getElementById('monthlyAmount').value) || 1000;
+  const years = parseInt(document.getElementById('years').value);
+  const volatility = parseFloat(document.getElementById('volatility').value);
+  const months = years * 12;
+  
+  const patterns = [
+    { id: 'smile', name: '😊 微笑曲线', desc: '先跌后涨，定投最爱' },
+    { id: 'frown', name: '😢 哭泣曲线', desc: '先涨后跌，定投噩梦' },
+    { id: 'bull', name: '🐂 持续上涨', desc: '牛市行情' },
+    { id: 'bear', name: '🐻 持续下跌', desc: '熊市行情' },
+    { id: 'volatile', name: '🎢 剧烈震荡', desc: '过山车行情' },
+    { id: 'flat', name: '😐 横盘震荡', desc: '磨人行情' }
+  ];
+  
+  const results = patterns.map(p => {
+    const navCurve = generateNavCurve(months, p.id, volatility);
+    const result = calculateDCA(monthlyAmount, navCurve);
+    return { ...p, ...result };
+  });
+  
+  // 显示结果
+  document.getElementById('results').classList.add('show');
+  document.getElementById('scenariosSection').style.display = 'block';
+  
+  // 用第一个场景的数据填充主卡片
+  const first = results[0];
+  document.getElementById('totalInvest').textContent = formatMoney(first.totalInvest);
+  document.getElementById('finalValue').textContent = '-';
+  document.getElementById('totalShares').textContent = '-';
+  document.getElementById('avgCost').textContent = '-';
+  document.getElementById('totalReturn').textContent = '-';
+  document.getElementById('finalSub').textContent = '见下方对比';
+  document.getElementById('returnSub').textContent = '';
+  document.getElementById('finalCard').className = 'result-card neutral';
+  document.getElementById('returnCard').className = 'result-card neutral';
+  
+  // 渲染场景对比
+  const grid = document.getElementById('scenarioGrid');
+  grid.innerHTML = results.map(r => {
+    const isWin = r.totalReturn >= 0;
+    return `
+      <div class="scenario-card ${isWin ? 'win' : 'lose'}">
+        <div class="name">${r.name}</div>
+        <div class="desc">${r.desc}</div>
+        <div class="result">${isWin ? '+' : ''}${r.totalReturn.toFixed(2)}%</div>
+      </div>
+    `;
+  }).join('');
+  
+  // 隐藏图表，显示对比结论
+  document.querySelector('.chart-section').style.display = 'none';
+  
+  const winCount = results.filter(r => r.totalReturn >= 0).length;
+  document.getElementById('conclusion').innerHTML = `
+    <h3>📊 场景对比结论</h3>
+    <p>在 ${years} 年定投周期、${volatility * 100}% 波动幅度下：</p>
+    <p><strong>${winCount} / 6</strong> 种市场走势能让定投盈利。</p>
+    <div class="key-point">
+      <strong>关键发现：</strong><br>
+      • 微笑曲线（先跌后涨）是定投最理想的场景<br>
+      • 哭泣曲线（先涨后跌）是定投最糟糕的场景<br>
+      • 持续下跌不反弹 = 必亏<br>
+      • 定投不是万能的，它只是降低了择时风险
+    </div>
+  `;
+  
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function drawChart(navCurve, costLine, months) {
+  document.querySelector('.chart-section').style.display = 'block';
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  
+  if (mainChart) mainChart.destroy();
+  
+  const labels = Array.from({ length: months + 1 }, (_, i) => {
+    if (i === 0) return '开始';
+    if (i % 12 === 0) return `${i/12}年`;
+    return '';
+  });
+  
+  mainChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '基金净值',
+          data: navCurve,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0
+        },
+        {
+          label: '平均成本',
+          data: costLine,
+          borderColor: '#10b981',
+          borderDash: [5, 5],
+          fill: false,
+          tension: 0.1,
+          pointRadius: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: 'rgba(255,255,255,0.7)' }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.5)' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.5)' }
+        }
+      }
+    }
+  });
+}
+
+function generateConclusion(pattern, returnRate, years) {
+  let html = '<h3>💡 本次模拟结论</h3>';
+  
+  const patternNames = {
+    smile: '微笑曲线（先跌后涨）',
+    frown: '哭泣曲线（先涨后跌）',
+    bull: '持续上涨',
+    bear: '持续下跌',
+    volatile: '剧烈震荡',
+    flat: '横盘震荡'
+  };
+  
+  html += `<p>在 <strong>${patternNames[pattern]}</strong> 的市场中定投 ${years} 年：</p>`;
+  
+  if (returnRate >= 20) {
+    html += `<p>🎉 收益率 <strong style="color:#10b981">${returnRate.toFixed(2)}%</strong>，表现优秀！</p>`;
+  } else if (returnRate >= 0) {
+    html += `<p>✅ 收益率 <strong style="color:#10b981">${returnRate.toFixed(2)}%</strong>，实现盈利。</p>`;
+  } else if (returnRate >= -20) {
+    html += `<p>⚠️ 收益率 <strong style="color:#ef4444">${returnRate.toFixed(2)}%</strong>，小幅亏损。</p>`;
+  } else {
+    html += `<p>❌ 收益率 <strong style="color:#ef4444">${returnRate.toFixed(2)}%</strong>，亏损较大。</p>`;
+  }
+  
+  html += '<div class="key-point">';
+  
+  switch (pattern) {
+    case 'smile':
+      html += '<strong>微笑曲线是定投的最佳场景：</strong><br>下跌时积累了大量低成本份额，反弹时收益放大。这就是"别人恐惧我贪婪"的数学原理。';
+      break;
+    case 'frown':
+      html += '<strong>哭泣曲线是定投的噩梦：</strong><br>上涨时买入成本高，下跌时市值缩水。如果你在牛市顶点开始定投，可能要等很久才能回本。';
+      break;
+    case 'bull':
+      html += '<strong>持续上涨时：</strong><br>定投能赚钱，但不如一次性买入。因为你后面买的成本越来越高，拉高了平均成本。';
+      break;
+    case 'bear':
+      html += '<strong>持续下跌时：</strong><br>定投也救不了你。虽然成本在降低，但如果市场不反弹，你只是在"越跌越买"。';
+      break;
+    case 'volatile':
+      html += '<strong>剧烈震荡时：</strong><br>定投的优势体现出来了——高抛低吸被动实现。但最终结果取决于你卖出时的位置。';
+      break;
+    case 'flat':
+      html += '<strong>横盘震荡时：</strong><br>定投收益有限，但至少不会大亏。这种行情考验耐心。';
+      break;
+  }
+  
+  html += '</div>';
+  
+  document.getElementById('conclusion').innerHTML = html;
+}
+
+function formatMoney(num) {
+  if (num >= 10000) {
+    return (num / 10000).toFixed(2) + '万';
+  }
+  return num.toFixed(0) + '元';
+}
+</script>
+
+</body>
+</html>

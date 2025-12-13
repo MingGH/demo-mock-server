@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>复利计算器 - 定期存款终值计算</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; }
+
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    .input-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .section-title {
+      color: #fbbf24;
+      font-size: 16px;
+      margin-bottom: 20px;
+      padding-left: 10px;
+      border-left: 3px solid #fbbf24;
+    }
+    .input-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .input-item label {
+      display: block;
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .input-item input, .input-item select {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px 15px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .input-item input:focus, .input-item select:focus {
+      outline: none;
+      border-color: #fbbf24;
+    }
+    .input-item select option { background: #1a1a2e; }
+    .input-item .hint { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 5px; }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin: 30px 0;
+    }
+    .btn {
+      padding: 14px 40px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(251,191,36,0.3); }
+
+    .results { display: none; }
+    .results.show { display: block; }
+
+    .result-hero {
+      background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(245,158,11,0.1));
+      border-radius: 20px;
+      border: 1px solid rgba(251,191,36,0.3);
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    .result-hero .label { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 10px; }
+    .result-hero .amount {
+      font-size: 3.5rem;
+      font-weight: 700;
+      color: #fbbf24;
+    }
+    .result-hero .amount span { font-size: 1.5rem; }
+    .result-hero .sub { color: rgba(255,255,255,0.5); font-size: 14px; margin-top: 15px; }
+    .result-hero .profit { color: #4ade80; font-weight: 600; }
+
+    .breakdown {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .breakdown-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 20px;
+      text-align: center;
+    }
+    .breakdown-card .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 8px; }
+    .breakdown-card .value { font-size: 1.5rem; font-weight: 700; color: #fbbf24; }
+    .breakdown-card .sub { color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 5px; }
+
+    .chart-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .chart-section h3 { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 20px; text-align: center; }
+    .chart-container { position: relative; height: 300px; }
+
+    .formula-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .formula-section h3 { color: #fbbf24; font-size: 16px; margin-bottom: 20px; }
+    .formula-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 15px;
+      font-family: 'Courier New', monospace;
+    }
+    .formula-box .formula {
+      font-size: 18px;
+      color: #fbbf24;
+      margin-bottom: 10px;
+    }
+    .formula-box .explain {
+      font-size: 13px;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.6;
+    }
+    .step {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-left: 3px solid #fbbf24;
+    }
+    .step .title { color: #fbbf24; font-size: 14px; margin-bottom: 8px; }
+    .step .content { color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; }
+    .step .content code {
+      background: rgba(251,191,36,0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #fbbf24;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .result-hero .amount { font-size: 2.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>💰 复利计算器</h1>
+    <p>定期存款终值计算，看看复利的威力</p>
+  </div>
+
+  <div class="input-section">
+    <div class="section-title">📊 存款参数</div>
+    <div class="input-grid">
+      <div class="input-item">
+        <label>每期存入金额</label>
+        <input type="number" id="payment" value="5000" min="100" step="100">
+        <div class="hint">元</div>
+      </div>
+      <div class="input-item">
+        <label>存入频率</label>
+        <select id="frequency">
+          <option value="monthly">每月存入</option>
+          <option value="yearly">每年存入</option>
+        </select>
+      </div>
+      <div class="input-item">
+        <label>年利率</label>
+        <input type="number" id="rate" value="15" min="0" max="100" step="0.1">
+        <div class="hint">%</div>
+      </div>
+      <div class="input-item">
+        <label>存款年限</label>
+        <input type="number" id="years" value="5" min="1" max="50" step="1">
+        <div class="hint">年</div>
+      </div>
+      <div class="input-item">
+        <label>存入时点</label>
+        <select id="timing">
+          <option value="begin">期初存入（先付年金）</option>
+          <option value="end">期末存入（后付年金）</option>
+        </select>
+      </div>
+      <div class="input-item">
+        <label>复利频率</label>
+        <select id="compound">
+          <option value="yearly">年复利</option>
+          <option value="monthly">月复利</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="calculate()">🧮 计算终值</button>
+  </div>
+
+  <div class="results" id="results">
+    <div class="result-hero">
+      <div class="label">📈 终值（Future Value）</div>
+      <div class="amount" id="finalValue">0<span>元</span></div>
+      <div class="sub">
+        本金投入 <span id="totalPrincipal">0</span> 元，
+        利息收益 <span class="profit" id="totalInterest">0</span> 元
+      </div>
+    </div>
+
+    <div class="breakdown">
+      <div class="breakdown-card">
+        <div class="label">总投入本金</div>
+        <div class="value" id="principalDisplay">0</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="label">利息收益</div>
+        <div class="value" id="interestDisplay">0</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="label">收益率</div>
+        <div class="value" id="returnRate">0%</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="label">存入次数</div>
+        <div class="value" id="periods">0</div>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <h3>📊 资产增长曲线</h3>
+      <div class="chart-container">
+        <canvas id="growthChart"></canvas>
+      </div>
+    </div>
+
+    <div class="formula-section">
+      <h3>📐 计算公式与步骤</h3>
+      <div id="formulaContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let growthChart = null;
+
+function calculate() {
+  const payment = parseFloat(document.getElementById('payment').value) || 0;
+  const frequency = document.getElementById('frequency').value;
+  const annualRate = parseFloat(document.getElementById('rate').value) / 100 || 0;
+  const years = parseInt(document.getElementById('years').value) || 0;
+  const timing = document.getElementById('timing').value;
+  const compound = document.getElementById('compound').value;
+  
+  // 计算期数和每期利率
+  let periodsPerYear = frequency === 'monthly' ? 12 : 1;
+  let totalPeriods = years * periodsPerYear;
+  
+  // 计算每期利率（根据复利频率）
+  let ratePerPeriod;
+  if (compound === 'yearly') {
+    // 年复利：需要转换为等效的期利率
+    if (frequency === 'monthly') {
+      // 月存年复利：每月存入，但利息按年计算
+      ratePerPeriod = Math.pow(1 + annualRate, 1/12) - 1;
+    } else {
+      ratePerPeriod = annualRate;
+    }
+  } else {
+    // 月复利
+    ratePerPeriod = annualRate / 12;
+    if (frequency === 'yearly') {
+      // 年存月复利：转换为年利率
+      ratePerPeriod = Math.pow(1 + annualRate/12, 12) - 1;
+    }
+  }
+  
+  // 计算终值
+  let futureValue;
+  if (timing === 'begin') {
+    // 先付年金（期初存入）：FV = PMT × [(1+r)^n - 1] / r × (1+r)
+    futureValue = payment * ((Math.pow(1 + ratePerPeriod, totalPeriods) - 1) / ratePerPeriod) * (1 + ratePerPeriod);
+  } else {
+    // 后付年金（期末存入）：FV = PMT × [(1+r)^n - 1] / r
+    futureValue = payment * ((Math.pow(1 + ratePerPeriod, totalPeriods) - 1) / ratePerPeriod);
+  }
+  
+  const totalPrincipal = payment * totalPeriods;
+  const totalInterest = futureValue - totalPrincipal;
+  const returnRate = (totalInterest / totalPrincipal * 100).toFixed(2);
+  
+  // 显示结果
+  document.getElementById('results').classList.add('show');
+  document.getElementById('finalValue').innerHTML = formatMoney(futureValue) + '<span>元</span>';
+  document.getElementById('totalPrincipal').textContent = formatMoney(totalPrincipal);
+  document.getElementById('totalInterest').textContent = formatMoney(totalInterest);
+  document.getElementById('principalDisplay').textContent = formatMoney(totalPrincipal);
+  document.getElementById('interestDisplay').textContent = formatMoney(totalInterest);
+  document.getElementById('returnRate').textContent = returnRate + '%';
+  document.getElementById('periods').textContent = totalPeriods + '次';
+  
+  // 绘制图表
+  drawChart(payment, ratePerPeriod, totalPeriods, timing);
+  
+  // 显示公式
+  showFormula(payment, annualRate, years, frequency, timing, compound, ratePerPeriod, totalPeriods, futureValue, totalPrincipal);
+}
+
+function drawChart(payment, rate, periods, timing) {
+  const ctx = document.getElementById('growthChart').getContext('2d');
+  if (growthChart) growthChart.destroy();
+  
+  const labels = [];
+  const principalData = [];
+  const totalData = [];
+  
+  let cumPrincipal = 0;
+  let cumValue = 0;
+  
+  for (let i = 0; i <= periods; i++) {
+    labels.push(i);
+    
+    if (i > 0) {
+      cumPrincipal += payment;
+      if (timing === 'begin') {
+        cumValue = (cumValue + payment) * (1 + rate);
+      } else {
+        cumValue = cumValue * (1 + rate) + payment;
+      }
+    }
+    
+    principalData.push(cumPrincipal);
+    totalData.push(cumValue);
+  }
+  
+  growthChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '总资产',
+          data: totalData,
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251,191,36,0.1)',
+          fill: true,
+          tension: 0.3
+        },
+        {
+          label: '本金',
+          data: principalData,
+          borderColor: '#64748b',
+          borderDash: [5, 5],
+          fill: false,
+          tension: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.7)' } }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: '期数', color: 'rgba(255,255,255,0.5)' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.5)' }
+        },
+        y: {
+          title: { display: true, text: '金额（元）', color: 'rgba(255,255,255,0.5)' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { 
+            color: 'rgba(255,255,255,0.5)',
+            callback: v => v >= 10000 ? (v/10000).toFixed(0) + '万' : v
+          }
+        }
+      }
+    }
+  });
+}
+
+function showFormula(payment, annualRate, years, frequency, timing, compound, ratePerPeriod, totalPeriods, futureValue, totalPrincipal) {
+  const freqText = frequency === 'monthly' ? '月' : '年';
+  const timingText = timing === 'begin' ? '期初（先付年金）' : '期末（后付年金）';
+  
+  let html = '';
+  
+  // 公式说明
+  html += '<div class="formula-box">';
+  if (timing === 'begin') {
+    html += '<div class="formula">FV = PMT × [(1+r)ⁿ - 1] / r × (1+r)</div>';
+    html += '<div class="explain">先付年金终值公式：每期期初存入，比后付年金多计一期利息</div>';
+  } else {
+    html += '<div class="formula">FV = PMT × [(1+r)ⁿ - 1] / r</div>';
+    html += '<div class="explain">后付年金终值公式：每期期末存入</div>';
+  }
+  html += '</div>';
+  
+  // 计算步骤
+  html += '<div class="step"><div class="title">Step 1: 确定参数</div><div class="content">';
+  html += `每期存入 PMT = <code>${payment}</code> 元<br>`;
+  html += `年利率 = <code>${(annualRate * 100).toFixed(1)}%</code><br>`;
+  html += `存入频率 = <code>每${freqText}</code>，存入时点 = <code>${timingText}</code><br>`;
+  html += `总期数 n = ${years}年 × ${frequency === 'monthly' ? 12 : 1} = <code>${totalPeriods}</code> 期`;
+  html += '</div></div>';
+  
+  html += '<div class="step"><div class="title">Step 2: 计算每期利率</div><div class="content">';
+  if (compound === 'yearly' && frequency === 'monthly') {
+    html += `年复利转月利率：r = (1 + ${(annualRate * 100).toFixed(1)}%)^(1/12) - 1 = <code>${(ratePerPeriod * 100).toFixed(4)}%</code>`;
+  } else if (compound === 'monthly' && frequency === 'yearly') {
+    html += `月复利转年利率：r = (1 + ${(annualRate * 100).toFixed(1)}%/12)^12 - 1 = <code>${(ratePerPeriod * 100).toFixed(4)}%</code>`;
+  } else {
+    html += `每期利率 r = <code>${(ratePerPeriod * 100).toFixed(4)}%</code>`;
+  }
+  html += '</div></div>';
+  
+  html += '<div class="step"><div class="title">Step 3: 代入公式计算</div><div class="content">';
+  const factor = (Math.pow(1 + ratePerPeriod, totalPeriods) - 1) / ratePerPeriod;
+  html += `年金终值系数 = [(1+${(ratePerPeriod * 100).toFixed(4)}%)^${totalPeriods} - 1] / ${(ratePerPeriod * 100).toFixed(4)}% = <code>${factor.toFixed(4)}</code><br>`;
+  if (timing === 'begin') {
+    html += `FV = ${payment} × ${factor.toFixed(4)} × (1+${(ratePerPeriod * 100).toFixed(4)}%) = <code>${futureValue.toFixed(2)}</code> 元`;
+  } else {
+    html += `FV = ${payment} × ${factor.toFixed(4)} = <code>${futureValue.toFixed(2)}</code> 元`;
+  }
+  html += '</div></div>';
+  
+  html += '<div class="step"><div class="title">Step 4: 结果汇总</div><div class="content">';
+  html += `本金投入：${totalPeriods} × ${payment} = <code>${totalPrincipal.toFixed(0)}</code> 元<br>`;
+  html += `终值：<code>${futureValue.toFixed(2)}</code> 元<br>`;
+  html += `利息收益：<code>${(futureValue - totalPrincipal).toFixed(2)}</code> 元`;
+  html += '</div></div>';
+  
+  document.getElementById('formulaContent').innerHTML = html;
+}
+
+function formatMoney(num) {
+  if (num >= 100000000) return (num / 100000000).toFixed(2) + '亿';
+  if (num >= 10000) return (num / 10000).toFixed(2) + '万';
+  return num.toFixed(2);
+}
+</script>
+
+</body>
+</html>

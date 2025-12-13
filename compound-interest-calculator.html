@@ -484,8 +484,8 @@ function showFormula(payment, annualRate, years, frequency, timing, compound, ra
 }
 
 function formatMoney(num) {
-  if (num >= 100000000) return (num / 100000000).toFixed(2) + '亿';
-  if (num >= 10000) return (num / 10000).toFixed(2) + '万';
+  if (num >= 100000000) return (num / 100000000).toFixed(4) + '亿';
+  if (num >= 10000) return (num / 10000).toFixed(4) + '万';
   return num.toFixed(2);
 }
 </script>

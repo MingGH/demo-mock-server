@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>存100万有多难？- 打工人攒钱计算器</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b);
+      background-size: 300% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradient 6s ease infinite;
+    }
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    .section-title {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      margin-bottom: 15px;
+      padding-left: 5px;
+      border-left: 3px solid #f59e0b;
+    }
+    .input-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .input-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 15px;
+    }
+    .input-card label {
+      display: block;
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .input-card input, .input-card select {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    .input-card input:focus, .input-card select:focus { border-color: #f59e0b; }
+    .input-card select option { background: #1e293b; }
+    .input-card .unit { color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 4px; }
+    .controls { display: flex; justify-content: center; margin: 30px 0; }
+    .btn {
+      padding: 14px 40px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: white;
+      box-shadow: 0 5px 25px rgba(245, 158, 11, 0.3);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 35px rgba(245, 158, 11, 0.4);
+    }
+
+    .results { display: none; }
+    .results.show { display: block; animation: fadeIn 0.5s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .result-hero {
+      background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.15));
+      border-radius: 20px;
+      border: 1px solid rgba(245,158,11,0.3);
+      padding: 40px;
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    .result-hero .label { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 10px; }
+    .result-hero .amount {
+      font-size: 3.5rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .result-hero .amount span { font-size: 1.5rem; }
+    .result-hero .sub { color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 10px; }
+    .result-hero.impossible { border-color: rgba(239,68,68,0.5); background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(127,29,29,0.2)); }
+    .breakdown {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .breakdown-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 20px;
+      text-align: center;
+    }
+    .breakdown-card .icon { font-size: 24px; margin-bottom: 8px; }
+    .breakdown-card .value { font-size: 1.3rem; font-weight: 700; color: #f59e0b; }
+    .breakdown-card .label { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 5px; }
+    .breakdown-card.negative .value { color: #ef4444; }
+    .breakdown-card.positive .value { color: #22c55e; }
+
+    .chart-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .chart-section h3 { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 20px; text-align: center; }
+    .chart-container { position: relative; height: 300px; }
+    .timeline {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .timeline h3 { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 20px; }
+    .timeline-bar {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      height: 40px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+    .timeline-fill {
+      height: 100%;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444);
+      transition: width 1s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 10px;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+    }
+    .life-stages {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .stage-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+      border-left: 3px solid #f59e0b;
+    }
+    .stage-card .age { color: #f59e0b; font-weight: 600; font-size: 14px; }
+    .stage-card .event { color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 5px; }
+    .stage-card .impact { color: rgba(255,255,255,0.4); font-size: 12px; margin-top: 5px; }
+
+    .reality-check {
+      background: rgba(239,68,68,0.1);
+      border-radius: 12px;
+      border: 1px solid rgba(239,68,68,0.2);
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+    .reality-check h3 { color: #ef4444; font-size: 14px; margin-bottom: 12px; }
+    .reality-check ul { list-style: none; }
+    .reality-check li { color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.8; padding-left: 20px; position: relative; }
+    .reality-check li::before { content: '⚠️'; position: absolute; left: 0; }
+    .comparison {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .comparison h3 { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 20px; }
+    .comparison-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .comparison-item:last-child { border-bottom: none; }
+    .comparison-item .icon { width: 40px; font-size: 20px; }
+    .comparison-item .desc { flex: 1; color: rgba(255,255,255,0.7); font-size: 13px; }
+    .comparison-item .years { font-weight: 600; color: #f59e0b; min-width: 80px; text-align: right; }
+    .formula {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    }
+    .formula summary { cursor: pointer; color: rgba(255,255,255,0.6); }
+    .formula p { margin-top: 10px; line-height: 1.8; }
+    .formula code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; }
+    @media (max-width: 600px) {
+      .result-hero .amount { font-size: 2.5rem; }
+      .header h1 { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>💰 存100万有多难？</h1>
+    <p>打工人攒钱真相计算器</p>
+  </div>
+
+  <div class="section-title">💼 收入情况</div>
+  <div class="input-section">
+    <div class="input-card">
+      <label>💵 月薪（税后）</label>
+      <input type="number" id="salary" value="5000" min="0" step="500">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>🎁 年终奖</label>
+      <input type="number" id="bonus" value="5000" min="0" step="1000">
+      <div class="unit">元/年（税后）</div>
+    </div>
+    <div class="input-card">
+      <label>📈 预期年涨薪</label>
+      <select id="salaryGrowth">
+        <option value="0">0% - 躺平不涨</option>
+        <option value="0.03">3% - 跟上通胀</option>
+        <option value="0.05" selected>5% - 正常涨幅</option>
+        <option value="0.08">8% - 表现优秀</option>
+        <option value="0.10">10% - 跳槽达人</option>
+      </select>
+    </div>
+    <div class="input-card">
+      <label>🎂 当前年龄</label>
+      <input type="number" id="currentAge" value="25" min="18" max="60">
+      <div class="unit">岁</div>
+    </div>
+  </div>
+
+  <div class="section-title">🏠 固定支出</div>
+  <div class="input-section">
+    <div class="input-card">
+      <label>🏠 房租/房贷</label>
+      <input type="number" id="housing" value="1500" min="0" step="100">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>🍜 吃饭</label>
+      <input type="number" id="food" value="1500" min="0" step="100">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>🚇 交通</label>
+      <input type="number" id="transport" value="300" min="0" step="50">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>📱 话费网费</label>
+      <input type="number" id="telecom" value="150" min="0" step="50">
+      <div class="unit">元/月</div>
+    </div>
+  </div>
+
+  <div class="section-title">🎮 弹性支出</div>
+  <div class="input-section">
+    <div class="input-card">
+      <label>👕 购物娱乐</label>
+      <input type="number" id="shopping" value="500" min="0" step="100">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>👨‍👩‍👧 孝敬父母</label>
+      <input type="number" id="parents" value="500" min="0" step="100">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>🎉 社交人情</label>
+      <input type="number" id="social" value="300" min="0" step="100">
+      <div class="unit">元/月</div>
+    </div>
+    <div class="input-card">
+      <label>📦 其他杂项</label>
+      <input type="number" id="misc" value="250" min="0" step="50">
+      <div class="unit">元/月</div>
+    </div>
+  </div>
+
+  <div class="section-title">⚙️ 计算设置</div>
+  <div class="input-section">
+    <div class="input-card">
+      <label>🎯 目标金额</label>
+      <select id="targetAmount">
+        <option value="300000">30万 - 小目标</option>
+        <option value="500000">50万 - 首付钱</option>
+        <option value="1000000" selected>100万 - 人生第一桶金</option>
+        <option value="2000000">200万 - 中产门槛</option>
+        <option value="3000000">300万 - 一线首付</option>
+      </select>
+    </div>
+    <div class="input-card">
+      <label>📈 理财收益率</label>
+      <select id="investReturn">
+        <option value="0">0% - 放银行活期</option>
+        <option value="0.02">2% - 货币基金</option>
+        <option value="0.035" selected>3.5% - 大额存单</option>
+        <option value="0.05">5% - 稳健理财</option>
+        <option value="0.07">7% - 基金定投</option>
+      </select>
+    </div>
+    <div class="input-card">
+      <label>📊 通胀率</label>
+      <select id="inflation">
+        <option value="0.02">2% - 官方CPI</option>
+        <option value="0.03" selected>3% - 实际感受</option>
+        <option value="0.05">5% - 体感通胀</option>
+      </select>
+    </div>
+    <div class="input-card">
+      <label>💍 是否考虑结婚</label>
+      <select id="marriage">
+        <option value="0">不考虑</option>
+        <option value="100000">10万 - 简单办</option>
+        <option value="200000" selected>20万 - 正常水平</option>
+        <option value="300000">30万 - 体面一点</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="calculate()">🧮 算算要多久</button>
+  </div>
+
+  <div class="results" id="results">
+    <div class="result-hero" id="resultHero">
+      <div class="label">🎯 存到目标金额需要</div>
+      <div class="amount" id="yearsNeeded">0<span>年</span></div>
+      <div class="sub" id="resultSub">从现在开始，不吃不喝也要...</div>
+    </div>
+
+    <div class="breakdown">
+      <div class="breakdown-card">
+        <div class="icon">💰</div>
+        <div class="value" id="monthlyIncome">0</div>
+        <div class="label">月收入</div>
+      </div>
+      <div class="breakdown-card negative">
+        <div class="icon">💸</div>
+        <div class="value" id="monthlyExpense">0</div>
+        <div class="label">月支出</div>
+      </div>
+      <div class="breakdown-card" id="savingCard">
+        <div class="icon">🐷</div>
+        <div class="value" id="monthlySaving">0</div>
+        <div class="label">月结余</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="icon">📊</div>
+        <div class="value" id="savingRate">0%</div>
+        <div class="label">储蓄率</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="icon">🎂</div>
+        <div class="value" id="targetAge">0</div>
+        <div class="label">达成年龄</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="icon">📅</div>
+        <div class="value" id="totalYearIncome">0</div>
+        <div class="label">30年总收入</div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <h3>⏰ 人生进度条（工作30年）</h3>
+      <div class="timeline-bar">
+        <div class="timeline-fill" id="timelineFill">0%</div>
+      </div>
+      <div class="timeline-labels">
+        <span>25岁开始工作</span>
+        <span id="targetMark">?岁存到100万</span>
+        <span>55岁退休</span>
+      </div>
+      <div class="life-stages" id="lifeStages"></div>
+    </div>
+
+    <div class="chart-section">
+      <h3>📈 财富积累曲线</h3>
+      <div class="chart-container">
+        <canvas id="wealthChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <h3>💸 收入 vs 支出构成</h3>
+      <div class="chart-container">
+        <canvas id="pieChart"></canvas>
+      </div>
+    </div>
+
+    <div class="comparison">
+      <h3>🔄 不同场景对比</h3>
+      <div id="comparisonList"></div>
+    </div>
+
+    <div class="reality-check" id="realityCheck">
+      <h3>⚠️ 扎心真相</h3>
+      <ul id="realityList"></ul>
+    </div>
+
+    <details class="formula">
+      <summary>📐 计算说明</summary>
+      <p id="formulaText"></p>
+    </details>
+  </div>
+</div>
+
+<script>
+let wealthChart = null;
+let pieChart = null;
+
+function calculate() {
+  const salary = parseFloat(document.getElementById('salary').value) || 0;
+  const bonus = parseFloat(document.getElementById('bonus').value) || 0;
+  const salaryGrowth = parseFloat(document.getElementById('salaryGrowth').value);
+  const currentAge = parseInt(document.getElementById('currentAge').value) || 25;
+  
+  const housing = parseFloat(document.getElementById('housing').value) || 0;
+  const food = parseFloat(document.getElementById('food').value) || 0;
+  const transport = parseFloat(document.getElementById('transport').value) || 0;
+  const telecom = parseFloat(document.getElementById('telecom').value) || 0;
+  const shopping = parseFloat(document.getElementById('shopping').value) || 0;
+  const parents = parseFloat(document.getElementById('parents').value) || 0;
+  const social = parseFloat(document.getElementById('social').value) || 0;
+  const misc = parseFloat(document.getElementById('misc').value) || 0;
+  
+  const targetAmount = parseFloat(document.getElementById('targetAmount').value);
+  const investReturn = parseFloat(document.getElementById('investReturn').value);
+  const inflation = parseFloat(document.getElementById('inflation').value);
+  const marriageCost = parseFloat(document.getElementById('marriage').value);
+  
+  const monthlyExpense = housing + food + transport + telecom + shopping + parents + social + misc;
+  const monthlyIncome = salary;
+  const yearlyIncome = salary * 12 + bonus;
+  const monthlySaving = monthlyIncome - monthlyExpense;
+  const savingRate = monthlyIncome > 0 ? (monthlySaving / monthlyIncome * 100) : 0;
+
+  // 模拟逐年积累
+  let wealth = 0;
+  let yearsNeeded = -1;
+  const wealthData = [0];
+  const labels = [currentAge];
+  let totalIncome30Years = 0;
+  let currentSalary = salary;
+  let marriageDeducted = false;
+  
+  for (let year = 1; year <= 40; year++) {
+    const age = currentAge + year;
+    const yearlyExpense = monthlyExpense * 12 * Math.pow(1 + inflation, year);
+    currentSalary = salary * Math.pow(1 + salaryGrowth, year);
+    const yearIncome = currentSalary * 12 + bonus * Math.pow(1 + salaryGrowth, year);
+    const yearlySaving = yearIncome - yearlyExpense;
+    
+    if (year <= 30) totalIncome30Years += yearIncome;
+    
+    // 结婚支出（假设30岁结婚）
+    if (marriageCost > 0 && age === 30 && !marriageDeducted) {
+      wealth -= marriageCost;
+      marriageDeducted = true;
+    }
+    
+    wealth = wealth * (1 + investReturn) + yearlySaving;
+    wealthData.push(Math.max(0, wealth));
+    labels.push(age);
+    
+    if (wealth >= targetAmount && yearsNeeded === -1) {
+      yearsNeeded = year;
+    }
+  }
+  
+  const impossible = yearsNeeded === -1;
+  const targetAge = impossible ? '无法达成' : (currentAge + yearsNeeded);
+  
+  // 显示结果
+  document.getElementById('results').classList.add('show');
+  const heroEl = document.getElementById('resultHero');
+  heroEl.classList.toggle('impossible', impossible);
+  
+  if (impossible) {
+    document.getElementById('yearsNeeded').innerHTML = '∞<span>年</span>';
+    document.getElementById('resultSub').textContent = '按当前收支，40年内无法达成目标...';
+  } else {
+    document.getElementById('yearsNeeded').innerHTML = yearsNeeded + '<span>年</span>';
+    document.getElementById('resultSub').textContent = `${currentAge}岁开始，${targetAge}岁存到${(targetAmount/10000).toFixed(0)}万`;
+  }
+  
+  document.getElementById('monthlyIncome').textContent = monthlyIncome.toLocaleString() + '元';
+  document.getElementById('monthlyExpense').textContent = monthlyExpense.toLocaleString() + '元';
+  document.getElementById('monthlySaving').textContent = monthlySaving.toLocaleString() + '元';
+  document.getElementById('savingRate').textContent = savingRate.toFixed(1) + '%';
+  document.getElementById('targetAge').textContent = targetAge + (typeof targetAge === 'number' ? '岁' : '');
+  document.getElementById('totalYearIncome').textContent = (totalIncome30Years / 10000).toFixed(0) + '万';
+  
+  const savingCard = document.getElementById('savingCard');
+  savingCard.classList.toggle('negative', monthlySaving < 0);
+  savingCard.classList.toggle('positive', monthlySaving > 0);
+
+  // 时间线
+  const progress = impossible ? 100 : Math.min(100, (yearsNeeded / 30) * 100);
+  document.getElementById('timelineFill').style.width = progress + '%';
+  document.getElementById('timelineFill').textContent = impossible ? '超出工作年限' : yearsNeeded + '年';
+  document.getElementById('targetMark').textContent = impossible ? '40年内无法达成' : `${targetAge}岁存到${(targetAmount/10000).toFixed(0)}万`;
+  
+  // 人生阶段
+  showLifeStages(currentAge, yearsNeeded, marriageCost);
+  
+  // 图表
+  drawWealthChart(labels, wealthData, targetAmount, yearsNeeded, currentAge);
+  drawPieChart(monthlyIncome, { housing, food, transport, telecom, shopping, parents, social, misc });
+  
+  // 对比
+  showComparison(salary, monthlyExpense, targetAmount, investReturn, inflation, salaryGrowth, bonus);
+  
+  // 扎心真相
+  showReality(monthlySaving, savingRate, yearsNeeded, totalIncome30Years, targetAmount, impossible);
+  
+  // 公式
+  showFormula(monthlyIncome, monthlyExpense, monthlySaving, savingRate, investReturn, inflation, salaryGrowth);
+  
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showLifeStages(currentAge, yearsNeeded, marriageCost) {
+  const stages = [];
+  if (marriageCost > 0) {
+    stages.push({ age: '30岁', event: '结婚', impact: `-${(marriageCost/10000).toFixed(0)}万` });
+  }
+  stages.push({ age: '35岁', event: '可能有娃', impact: '支出大增' });
+  stages.push({ age: '40岁', event: '上有老下有小', impact: '压力最大' });
+  stages.push({ age: '50岁', event: '子女教育高峰', impact: '学费惊人' });
+  
+  document.getElementById('lifeStages').innerHTML = stages.map(s => `
+    <div class="stage-card">
+      <div class="age">${s.age}</div>
+      <div class="event">${s.event}</div>
+      <div class="impact">${s.impact}</div>
+    </div>
+  `).join('');
+}
+
+function drawWealthChart(labels, data, target, yearsNeeded, currentAge) {
+  const ctx = document.getElementById('wealthChart').getContext('2d');
+  if (wealthChart) wealthChart.destroy();
+  
+  const targetLine = new Array(labels.length).fill(target);
+  
+  wealthChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels.map(age => age + '岁'),
+      datasets: [{
+        label: '累计财富',
+        data: data,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 3
+      }, {
+        label: '目标金额',
+        data: targetLine,
+        borderColor: '#ef4444',
+        borderDash: [5, 5],
+        pointRadius: 0,
+        borderWidth: 2,
+        fill: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.7)' } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + (ctx.raw / 10000).toFixed(1) + '万'
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: 'rgba(255,255,255,0.5)' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: {
+          ticks: {
+            color: 'rgba(255,255,255,0.5)',
+            callback: v => (v / 10000).toFixed(0) + '万'
+          },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+}
+
+function drawPieChart(income, expenses) {
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  if (pieChart) pieChart.destroy();
+  
+  const expenseLabels = ['房租/房贷', '吃饭', '交通', '话费', '购物娱乐', '孝敬父母', '社交', '其他'];
+  const expenseValues = [expenses.housing, expenses.food, expenses.transport, expenses.telecom, 
+                         expenses.shopping, expenses.parents, expenses.social, expenses.misc];
+  const totalExpense = expenseValues.reduce((a, b) => a + b, 0);
+  const saving = income - totalExpense;
+  
+  pieChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: [...expenseLabels.filter((_, i) => expenseValues[i] > 0), saving > 0 ? '结余' : ''],
+      datasets: [{
+        data: [...expenseValues.filter(v => v > 0), saving > 0 ? saving : 0].filter(v => v > 0),
+        backgroundColor: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#3b82f6', '#8b5cf6', '#ec4899', '#10b981'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: 'rgba(255,255,255,0.7)', padding: 10, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const pct = (ctx.raw / income * 100).toFixed(1);
+              return `${ctx.label}: ${ctx.raw}元 (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function showComparison(salary, expense, target, investReturn, inflation, growth, bonus) {
+  const scenarios = [
+    { icon: '🍜', desc: '不吃不喝（0支出）', saving: salary },
+    { icon: '🏠', desc: '回老家住（省房租）', saving: salary - expense + parseFloat(document.getElementById('housing').value) },
+    { icon: '📈', desc: '工资翻倍', saving: salary * 2 - expense },
+    { icon: '💼', desc: '搞个副业（+2000/月）', saving: salary + 2000 - expense },
+    { icon: '🎯', desc: '极限省钱（只花2000）', saving: salary - 2000 }
+  ];
+  
+  const html = scenarios.map(s => {
+    let years = '无法达成';
+    if (s.saving > 0) {
+      // 简化计算
+      const yearlySaving = s.saving * 12 + bonus;
+      if (investReturn > 0) {
+        years = Math.ceil(Math.log(target * investReturn / yearlySaving + 1) / Math.log(1 + investReturn));
+      } else {
+        years = Math.ceil(target / yearlySaving);
+      }
+      years = years > 50 ? '50+' : years;
+    }
+    return `
+      <div class="comparison-item">
+        <div class="icon">${s.icon}</div>
+        <div class="desc">${s.desc}（月存${s.saving > 0 ? s.saving.toLocaleString() : 0}元）</div>
+        <div class="years">${typeof years === 'number' ? years + '年' : years}</div>
+      </div>
+    `;
+  }).join('');
+  
+  document.getElementById('comparisonList').innerHTML = html;
+}
+
+function showReality(saving, rate, years, total30, target, impossible) {
+  const truths = [];
+  
+  if (saving <= 0) {
+    truths.push('月光族警告：你每个月都在吃老本，存钱？先活下去再说');
+  } else if (rate < 20) {
+    truths.push(`储蓄率只有${rate.toFixed(1)}%，低于20%的健康线，攒钱速度堪忧`);
+  }
+  
+  if (impossible) {
+    truths.push('按当前节奏，工作到退休也存不到目标金额，需要开源节流双管齐下');
+  } else if (years > 20) {
+    truths.push(`需要${years}年，意味着你要保持这个状态到${years > 30 ? '退休以后' : '中年'}才能达成`);
+  }
+  
+  truths.push(`30年总收入约${(total30/10000).toFixed(0)}万，看起来不少，但扣掉生活开支、结婚、养娃、医疗...`);
+  truths.push('以上还没算：买房首付、装修、生病、失业、父母养老、孩子教育...');
+  truths.push('通胀是隐形杀手：今天的100万，20年后购买力可能只剩50万');
+  
+  if (target >= 1000000) {
+    truths.push('100万对普通打工人来说，真的是一个需要十年以上才能触及的目标');
+  }
+  
+  document.getElementById('realityList').innerHTML = truths.map(t => `<li>${t}</li>`).join('');
+}
+
+function showFormula(income, expense, saving, rate, invest, inflation, growth) {
+  document.getElementById('formulaText').innerHTML = `
+    <strong>基础数据：</strong><br>
+    <code>月收入 ${income.toLocaleString()}元 - 月支出 ${expense.toLocaleString()}元 = 月结余 ${saving.toLocaleString()}元</code><br>
+    <code>储蓄率 = ${saving.toLocaleString()} / ${income.toLocaleString()} = ${rate.toFixed(1)}%</code><br><br>
+    
+    <strong>计算模型：</strong><br>
+    • 每年工资按 ${(growth*100).toFixed(0)}% 增长<br>
+    • 支出按通胀率 ${(inflation*100).toFixed(0)}% 增长<br>
+    • 存款按 ${(invest*100).toFixed(1)}% 年化收益复利<br>
+    • 30岁扣除结婚费用<br><br>
+    
+    <strong>复利公式：</strong><br>
+    <code>第N年财富 = 上年财富 × (1 + 收益率) + 当年结余</code><br><br>
+    
+    <strong>说明：</strong><br>
+    • 这是理想化模型，实际生活中还有很多意外支出<br>
+    • 没有考虑：买房、生病、失业、养娃等大额支出<br>
+    • 工资增长假设比较乐观，很多人可能涨不了这么多
+  `;
+}
+
+// 输入变化时自动重新计算
+document.querySelectorAll('input, select').forEach(el => {
+  el.addEventListener('change', () => {
+    if (document.getElementById('results').classList.contains('show')) {
+      calculate();
+    }
+  });
+});
+</script>
+</body>
+</html>

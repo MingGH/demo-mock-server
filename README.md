@@ -19,6 +19,7 @@
 - **[复利计算器](https://demo-mockserver.runnable.run/compound-interest-calculator.html)** - 可视化复利增长效果
 - **[基金定投模拟](https://demo-mockserver.runnable.run/fund-dca-simulator.html)** - 定投策略收益分析
 - **[财务自由计算器](https://demo-mockserver.runnable.run/financial-freedom-calculator.html)** - 计算达到财务自由所需时间
+- **[存100万有多难](https://demo-mockserver.runnable.run/save-million-calculator.html)** - 打工人攒钱真相计算器
 
 ### 🎲 概率统计
 - **[蒙提霍尔问题](https://demo-mockserver.runnable.run/monty-hall-simulator.html)** - 三门问题的概率验证

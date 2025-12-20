@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>忒修斯之船 - 你还是你吗？</title>
+  <script src="components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; }
+
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #64b5f6, #e1bee7, #64b5f6);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.6); margin-top: 12px; font-size: 15px; line-height: 1.8; }
+
+    /* 船的可视化区域 */
+    .ship-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    .ship-title {
+      text-align: center;
+      color: #64b5f6;
+      font-size: 18px;
+      margin-bottom: 25px;
+    }
+
+    .ships-container {
+      display: flex;
+      justify-content: space-around;
+      gap: 20px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .ship-box {
+      flex: 1;
+      min-width: 280px;
+      max-width: 400px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+      padding: 20px;
+      text-align: center;
+    }
+    .ship-box h3 {
+      color: #e1bee7;
+      font-size: 16px;
+      margin-bottom: 15px;
+    }
+    .ship-box .subtitle {
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-bottom: 15px;
+    }
+
+    /* 船的SVG */
+    .ship-visual {
+      width: 100%;
+      height: 120px;
+      margin-bottom: 15px;
+    }
+    .plank {
+      transition: fill 0.3s, opacity 0.3s;
+    }
+    .plank.original { fill: #8d6e63; }
+    .plank.new { fill: #64b5f6; }
+    .plank.removed { opacity: 0.2; }
+
+    .ship-stats {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      font-size: 13px;
+    }
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .stat-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+    .stat-dot.original { background: #8d6e63; }
+    .stat-dot.new { background: #64b5f6; }
+
+    /* 控制区域 */
+    .controls {
+      background: rgba(255,255,255,0.05);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .control-label {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .slider {
+      width: 200px;
+      height: 8px;
+      -webkit-appearance: none;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      outline: none;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, #64b5f6, #e1bee7);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .slider-value {
+      color: #64b5f6;
+      font-weight: 600;
+      min-width: 50px;
+    }
+
+    .btn {
+      padding: 12px 25px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #64b5f6, #e1bee7);
+      color: #0c1445;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover { transform: translateY(-2px); }
+
+    /* 问题区域 */
+    .question-section {
+      background: linear-gradient(135deg, rgba(100,181,246,0.1), rgba(225,190,231,0.1));
+      border-radius: 20px;
+      border: 1px solid rgba(100,181,246,0.2);
+      padding: 30px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    .question-title {
+      color: #e1bee7;
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+    .question-text {
+      color: rgba(255,255,255,0.8);
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    /* 解释区域 */
+    .explanation {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    .explanation h3 {
+      color: #64b5f6;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    .explanation p {
+      color: rgba(255,255,255,0.7);
+      line-height: 1.9;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+    .explanation .key-point {
+      background: rgba(100,181,246,0.1);
+      border-left: 3px solid #64b5f6;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .explanation .key-point strong { color: #64b5f6; }
+
+    .philosophy-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 25px 0;
+    }
+    .philosophy-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      border-left: 3px solid;
+    }
+    .philosophy-card.materialist { border-color: #64b5f6; }
+    .philosophy-card.functionalist { border-color: #e1bee7; }
+    .philosophy-card.essentialist { border-color: #ffb74d; }
+    .philosophy-card h4 {
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .philosophy-card.materialist h4 { color: #64b5f6; }
+    .philosophy-card.functionalist h4 { color: #e1bee7; }
+    .philosophy-card.essentialist h4 { color: #ffb74d; }
+    .philosophy-card p {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    /* 现实例子 */
+    .examples {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 30px;
+    }
+    .examples h3 {
+      color: #e1bee7;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    .example-list {
+      display: grid;
+      gap: 15px;
+    }
+    .example-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      gap: 15px;
+      align-items: flex-start;
+    }
+    .example-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+    .example-content h4 {
+      color: rgba(255,255,255,0.9);
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .example-content p {
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .ships-container { flex-direction: column; }
+      .ship-box { max-width: 100%; }
+      .slider { width: 150px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>⛵ 忒修斯之船</h1>
+    <p>如果一艘船的木板被逐渐替换，直到所有木板都是新的，<br>它还是原来那艘船吗？</p>
+  </div>
+
+  <!-- 船的可视化 -->
+  <div class="ship-section">
+    <div class="ship-title">🔧 拖动滑块，逐步替换船的木板</div>
+    
+    <div class="ships-container">
+      <div class="ship-box">
+        <h3>船 A：原来的船</h3>
+        <div class="subtitle">持续航行，木板逐渐被替换</div>
+        <svg class="ship-visual" viewBox="0 0 200 80" id="shipA">
+          <!-- 船体由20块木板组成 -->
+        </svg>
+        <div class="ship-stats">
+          <div class="stat-item"><div class="stat-dot original"></div><span id="shipA-original">20</span> 块原木板</div>
+          <div class="stat-item"><div class="stat-dot new"></div><span id="shipA-new">0</span> 块新木板</div>
+        </div>
+      </div>
+      
+      <div class="ship-box">
+        <h3>船 B：用旧木板重建</h3>
+        <div class="subtitle">用替换下来的旧木板组装</div>
+        <svg class="ship-visual" viewBox="0 0 200 80" id="shipB">
+          <!-- 船体由20块木板组成 -->
+        </svg>
+        <div class="ship-stats">
+          <div class="stat-item"><div class="stat-dot original"></div><span id="shipB-original">0</span> 块原木板</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-row">
+        <span class="control-label">已替换木板：</span>
+        <div class="slider-container">
+          <input type="range" class="slider" id="replaceSlider" min="0" max="20" value="0">
+          <span class="slider-value"><span id="replaceCount">0</span>/20</span>
+        </div>
+        <button class="btn btn-secondary" onclick="autoReplace()">▶ 自动演示</button>
+        <button class="btn btn-secondary" onclick="resetShips()">↺ 重置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 核心问题 -->
+  <div class="question-section">
+    <div class="question-title">🤔 当所有木板都被替换后...</div>
+    <div class="question-text" id="questionText">
+      哪一艘才是真正的「忒修斯之船」？
+    </div>
+  </div>
+
+  <!-- 哲学解释 -->
+  <div class="explanation">
+    <h3>📚 这个悖论在问什么？</h3>
+    
+    <p>忒修斯之船是古希腊哲学家普鲁塔克提出的思想实验。传说中，雅典人保存了忒修斯从克里特岛返航的船，随着时间推移，腐朽的木板被逐一替换。</p>
+    
+    <div class="key-point">
+      <strong>核心问题：</strong>一个事物的「同一性」（identity）究竟由什么决定？是物质组成？功能延续？还是某种抽象的「本质」？
+    </div>
+
+    <p>不同的哲学立场会给出不同的答案：</p>
+
+    <div class="philosophy-cards">
+      <div class="philosophy-card materialist">
+        <h4>🧱 物质主义</h4>
+        <p>事物由其物质组成定义。船 B 保留了原始木板，所以船 B 才是真正的忒修斯之船。</p>
+      </div>
+      <div class="philosophy-card functionalist">
+        <h4>⚙️ 功能主义</h4>
+        <p>事物由其功能和连续性定义。船 A 一直在航行、承载记忆，所以船 A 才是真正的忒修斯之船。</p>
+      </div>
+      <div class="philosophy-card essentialist">
+        <h4>✨ 本质主义</h4>
+        <p>事物有某种不可见的「本质」。如果本质无法被定义，那么这个问题本身可能就没有答案。</p>
+      </div>
+    </div>
+
+    <div class="key-point">
+      <strong>为什么这个问题重要？</strong><br>
+      因为它直接关系到「你是谁」这个问题。你身体里的细胞每7年几乎全部更新一次，那么7年后的你，还是原来的你吗？
+    </div>
+  </div>
+
+  <!-- 现实例子 -->
+  <div class="examples">
+    <h3>🌍 生活中的「忒修斯之船」</h3>
+    <div class="example-list">
+      <div class="example-item">
+        <div class="example-icon">🧬</div>
+        <div class="example-content">
+          <h4>人体细胞更新</h4>
+          <p>你的身体每天都在更新细胞，大部分细胞在7-10年内会完全替换。但你的记忆、性格、社会关系保持连续，所以你还是「你」。</p>
+        </div>
+      </div>
+      <div class="example-item">
+        <div class="example-icon">🎸</div>
+        <div class="example-content">
+          <h4>扫帚乐队的斧头</h4>
+          <p>英国喜剧《Only Fools and Horses》中的经典台词：「这把斧头在我们家传了150年，换过17个斧头和14个斧柄。」</p>
+        </div>
+      </div>
+      <div class="example-item">
+        <div class="example-icon">🏛️</div>
+        <div class="example-content">
+          <h4>伊势神宫</h4>
+          <p>日本伊势神宫每20年完全重建一次，使用全新的木材，但日本人认为它仍是同一座神宫，已有1300年历史。</p>
+        </div>
+      </div>
+      <div class="example-item">
+        <div class="example-icon">💻</div>
+        <div class="example-content">
+          <h4>代码重构</h4>
+          <p>一个软件项目经过多年维护，代码被逐行重写，架构被重新设计，但产品名称和用户群体不变。它还是同一个软件吗？</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOTAL_PLANKS = 20;
+let currentReplaced = 0;
+let autoInterval = null;
+
+// 投票数据已移除
+
+function vote(choice) {
+  // 功能已移除
+}
+
+function initShips() {
+  const shipA = document.getElementById('shipA');
+  const shipB = document.getElementById('shipB');
+  
+  // 清空
+  shipA.innerHTML = '';
+  shipB.innerHTML = '';
+  
+  // 船体形状 - 简化的船形
+  const shipPath = `
+    <path d="M20,50 L40,70 L160,70 L180,50 L170,30 L30,30 Z" 
+          fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+  `;
+  
+  shipA.innerHTML = shipPath;
+  shipB.innerHTML = shipPath;
+  
+  // 生成木板位置
+  const plankPositions = [];
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 5; col++) {
+      plankPositions.push({
+        x: 35 + col * 28,
+        y: 32 + row * 10,
+        width: 25,
+        height: 8
+      });
+    }
+  }
+  
+  // 为船A添加木板
+  plankPositions.forEach((pos, i) => {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', pos.x);
+    rect.setAttribute('y', pos.y);
+    rect.setAttribute('width', pos.width);
+    rect.setAttribute('height', pos.height);
+    rect.setAttribute('rx', '2');
+    rect.setAttribute('class', 'plank original');
+    rect.setAttribute('data-index', i);
+    shipA.appendChild(rect);
+  });
+  
+  // 为船B添加木板（初始不可见）
+  plankPositions.forEach((pos, i) => {
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', pos.x);
+    rect.setAttribute('y', pos.y);
+    rect.setAttribute('width', pos.width);
+    rect.setAttribute('height', pos.height);
+    rect.setAttribute('rx', '2');
+    rect.setAttribute('class', 'plank original removed');
+    rect.setAttribute('data-index', i);
+    shipB.appendChild(rect);
+  });
+}
+
+function updateShips(replaced) {
+  currentReplaced = replaced;
+  
+  const shipAPlanks = document.querySelectorAll('#shipA .plank');
+  const shipBPlanks = document.querySelectorAll('#shipB .plank');
+  
+  shipAPlanks.forEach((plank, i) => {
+    if (i < replaced) {
+      plank.classList.remove('original');
+      plank.classList.add('new');
+    } else {
+      plank.classList.add('original');
+      plank.classList.remove('new');
+    }
+  });
+  
+  shipBPlanks.forEach((plank, i) => {
+    if (i < replaced) {
+      plank.classList.remove('removed');
+    } else {
+      plank.classList.add('removed');
+    }
+  });
+  
+  // 更新统计
+  document.getElementById('shipA-original').textContent = TOTAL_PLANKS - replaced;
+  document.getElementById('shipA-new').textContent = replaced;
+  document.getElementById('shipB-original').textContent = replaced;
+  document.getElementById('replaceCount').textContent = replaced;
+  
+  // 更新问题文本
+  updateQuestion(replaced);
+}
+
+function updateQuestion(replaced) {
+  const questionText = document.getElementById('questionText');
+  if (replaced === 0) {
+    questionText.textContent = '拖动滑块开始替换木板...';
+  } else if (replaced < TOTAL_PLANKS) {
+    questionText.textContent = `已替换 ${replaced}/${TOTAL_PLANKS} 块木板。船 A 还是原来的船吗？`;
+  } else {
+    questionText.innerHTML = '所有木板都已替换完毕！<br><strong>哪一艘才是真正的「忒修斯之船」？</strong>';
+  }
+}
+
+function autoReplace() {
+  if (autoInterval) {
+    clearInterval(autoInterval);
+    autoInterval = null;
+    return;
+  }
+  
+  resetShips();
+  let count = 0;
+  autoInterval = setInterval(() => {
+    count++;
+    document.getElementById('replaceSlider').value = count;
+    updateShips(count);
+    if (count >= TOTAL_PLANKS) {
+      clearInterval(autoInterval);
+      autoInterval = null;
+    }
+  }, 300);
+}
+
+function resetShips() {
+  if (autoInterval) {
+    clearInterval(autoInterval);
+    autoInterval = null;
+  }
+  document.getElementById('replaceSlider').value = 0;
+  updateShips(0);
+}
+
+// 初始化
+document.getElementById('replaceSlider').addEventListener('input', (e) => {
+  updateShips(parseInt(e.target.value));
+});
+
+initShips();
+updateShips(0);
+</script>
+
+</body>
+</html>

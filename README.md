@@ -24,6 +24,9 @@
 ### 🎲 概率统计
 - **[蒙提霍尔问题](https://demo-mockserver.runnable.run/monty-hall-simulator.html)** - 三门问题的概率验证
 
+### 🧠 哲学悖论
+- **[忒修斯之船](https://demo-mockserver.runnable.run/ship-of-theseus.html)** - 身份认同的经典思想实验
+
 ### 🛠️ 实用工具
 - **[随机中文名生成](https://demo-mockserver.runnable.run/chinese-names.html)** - 批量生成测试用中文姓名
 - **[数据大小可视化](https://demo-mockserver.runnable.run/data-size-visualizer.html)** - 直观展示不同数据单位的大小关系

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>100面骰子模拟器 - 1.1%的概率有多低？</title>
+  <script src="components/header.js" defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -466,11 +467,8 @@ function rollDice() {
 }
 
 function batchRoll() {
-  console.log('batchRoll called');
   const selectEl = document.getElementById('batchCount');
-  console.log('selectEl:', selectEl);
   const count = parseInt(selectEl.value) || 1000;
-  console.log('count:', count);
   
   let batchSuccess = 0;
   for (let i = 0; i < count; i++) {

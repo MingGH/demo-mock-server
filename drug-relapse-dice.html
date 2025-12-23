@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>100面骰子模拟器 - 1.1%的概率有多低？</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #ff6b6b, #ffd700, #ff6b6b);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.6); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+
+    .card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+
+    /* 骰子区域 */
+    .dice-section {
+      text-align: center;
+    }
+    .dice-title {
+      color: #ffd700;
+      font-size: 18px;
+      margin-bottom: 25px;
+    }
+
+    .dice-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 30px 0;
+    }
+    .dice {
+      width: 180px;
+      height: 180px;
+      background: linear-gradient(145deg, #2a2a4a, #1a1a3a);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      font-weight: 700;
+      color: #ffd700;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.4), inset 0 2px 10px rgba(255,255,255,0.1);
+      transition: transform 0.1s;
+      border: 3px solid rgba(255,215,0,0.3);
+    }
+    .dice.rolling {
+      animation: shake 0.1s infinite;
+    }
+    @keyframes shake {
+      0%, 100% { transform: rotate(-3deg); }
+      50% { transform: rotate(3deg); }
+    }
+    .dice.win {
+      background: linear-gradient(145deg, #2a4a2a, #1a3a1a);
+      border-color: #4ade80;
+      color: #4ade80;
+      box-shadow: 0 0 40px rgba(74,222,128,0.3);
+    }
+    .dice.lose {
+      background: linear-gradient(145deg, #4a2a2a, #3a1a1a);
+      border-color: #f87171;
+      color: #f87171;
+    }
+
+    .result-text {
+      font-size: 20px;
+      margin: 20px 0;
+      min-height: 30px;
+    }
+    .result-text.win { color: #4ade80; }
+    .result-text.lose { color: #f87171; }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin: 25px 0;
+    }
+    .btn {
+      padding: 14px 30px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd700, #ff6b6b);
+      color: #1a1a2e;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 统计区域 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #ffd700;
+    }
+    .stat-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      margin-top: 5px;
+    }
+    .stat-box.success .stat-value { color: #4ade80; }
+    .stat-box.fail .stat-value { color: #f87171; }
+
+    /* 进度条 */
+    .progress-section { margin-top: 25px; }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.6);
+    }
+    .progress-bar {
+      height: 35px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 18px;
+      overflow: hidden;
+      display: flex;
+    }
+    .progress-success {
+      background: linear-gradient(90deg, #4ade80, #22d3ee);
+      height: 100%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 0;
+    }
+    .progress-fail {
+      background: linear-gradient(90deg, #f87171, #fb923c);
+      height: 100%;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* 100格可视化 */
+    .grid-section {
+      margin-top: 30px;
+    }
+    .grid-title {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .hundred-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 4px;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .grid-cell {
+      aspect-ratio: 1;
+      background: rgba(248,113,113,0.6);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+      transition: all 0.3s;
+    }
+    .grid-cell.success {
+      background: linear-gradient(135deg, #4ade80, #22d3ee);
+      color: #1a1a2e;
+      font-weight: 600;
+      box-shadow: 0 0 10px rgba(74,222,128,0.5);
+    }
+    .grid-cell.current {
+      transform: scale(1.2);
+      z-index: 1;
+      box-shadow: 0 0 15px rgba(255,215,0,0.8);
+    }
+
+    /* 解释区域 */
+    .explanation {
+      line-height: 1.8;
+    }
+    .explanation h3 {
+      color: #ffd700;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    .explanation p {
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+    .key-point {
+      background: rgba(255,215,0,0.1);
+      border-left: 3px solid #ffd700;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .key-point strong { color: #ffd700; }
+
+    .warning-box {
+      background: rgba(248,113,113,0.1);
+      border-left: 3px solid #f87171;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .warning-box strong { color: #f87171; }
+
+    /* 批量模拟 */
+    .batch-section {
+      background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(255,215,0,0.1));
+      border: 1px solid rgba(255,107,107,0.2);
+    }
+    .batch-title {
+      color: #ff6b6b;
+      font-size: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .batch-controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .batch-input {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .batch-input label { color: rgba(255,255,255,0.6); font-size: 14px; }
+    .batch-input select {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 10px 15px;
+      color: white;
+      font-size: 14px;
+    }
+    .batch-input select option { background: #1a1a2e; }
+
+    @media (max-width: 500px) {
+      .header h1 { font-size: 1.5rem; }
+      .dice { width: 140px; height: 140px; font-size: 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🎲 100面骰子：1.1%有多低？</h1>
+    <p>掷一个100面骰子，只有掷出1才算"成功"<br>来感受一下这个概率到底有多渺茫</p>
+  </div>
+
+  <!-- 骰子互动区 -->
+  <div class="card dice-section">
+    <div class="dice-title">🎯 掷骰子体验</div>
+    <div class="dice-container">
+      <div class="dice" id="dice">?</div>
+    </div>
+    <div class="result-text" id="resultText"></div>
+    <div class="controls">
+      <button class="btn btn-primary" id="rollBtn" onclick="rollDice()">🎲 掷骰子</button>
+      <button class="btn btn-secondary" onclick="resetStats()">🔄 重置统计</button>
+    </div>
+
+    <!-- 统计 -->
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-value" id="totalRolls">0</div>
+        <div class="stat-label">总次数</div>
+      </div>
+      <div class="stat-box success">
+        <div class="stat-value" id="successCount">0</div>
+        <div class="stat-label">成功次数（掷出1）</div>
+      </div>
+      <div class="stat-box fail">
+        <div class="stat-value" id="successRate">0%</div>
+        <div class="stat-label">成功率</div>
+      </div>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-section">
+      <div class="progress-label">
+        <span>成功（1.1%理论值）</span>
+        <span id="progressLabel">0% vs 100%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-success" id="progressSuccess" style="width: 0%;"></div>
+        <div class="progress-fail" id="progressFail">100%</div>
+      </div>
+    </div>
+
+    <!-- 100格可视化 -->
+    <div class="grid-section">
+      <div class="grid-title">👇 100个格子，只有1个是"成功"——你能掷中吗？</div>
+      <div class="hundred-grid" id="hundredGrid"></div>
+    </div>
+  </div>
+
+  <!-- 批量模拟 -->
+  <div class="card batch-section">
+    <div class="batch-title">🚀 不信？让电脑帮你掷</div>
+    <div class="batch-controls">
+      <div class="batch-input">
+        <label>模拟次数：</label>
+        <select id="batchCount">
+          <option value="100">100 次</option>
+          <option value="1000" selected>1000 次</option>
+          <option value="10000">10000 次</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="batchBtn">⚡ 开始模拟</button>
+    </div>
+  </div>
+
+  <!-- 解释 -->
+  <div class="card explanation">
+    <h3>🤔 这个模拟器想说明什么？</h3>
+    
+    <p>这是一个100面骰子。每次掷骰子，只有掷出"1"才算成功，概率是 <strong>1%</strong>。</p>
+    
+    <p>而根据数据，吸毒者的复吸率高达 <strong>98.9%</strong>，也就是说，真正能戒断的概率只有 <strong>1.1%</strong>——比这个骰子掷出1的概率还低一点点。</p>
+
+    <div class="key-point">
+      <strong>换个角度理解：</strong><br>
+      想象100个吸毒者站在你面前，统计意义上，只有1个人能真正戒断。<br>
+      你确定你能分辨出那1个人是谁吗？
+    </div>
+
+    <p>你可以试着掷100次骰子，看看能掷出几个1。大概率是0个或1个。这就是1%的概率——听起来"还有希望"，实际上几乎不可能。</p>
+
+    <div class="warning-box">
+      <strong>残酷的现实：</strong><br>
+      很多人会说"我相信ta能改"、"ta说这次是真的"。但概率不会因为你的相信而改变。<br>
+      98.9%的复吸率意味着：就算ta现在戒了，复吸几乎是必然的。
+    </div>
+
+    <p>这不是歧视，这是统计学。你愿意拿自己的人生去赌那1.1%吗？</p>
+  </div>
+</div>
+
+<script>
+let totalRolls = 0;
+let successCount = 0;
+
+// 初始化100格
+function initGrid() {
+  const grid = document.getElementById('hundredGrid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= 100; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'grid-cell' + (i === 1 ? ' success' : '');
+    cell.textContent = i;
+    cell.id = 'cell-' + i;
+    grid.appendChild(cell);
+  }
+}
+
+function rollDice() {
+  const dice = document.getElementById('dice');
+  const btn = document.getElementById('rollBtn');
+  
+  btn.disabled = true;
+  dice.classList.add('rolling');
+  dice.classList.remove('win', 'lose');
+  
+  // 动画效果
+  let count = 0;
+  const interval = setInterval(() => {
+    dice.textContent = Math.floor(Math.random() * 100) + 1;
+    count++;
+    if (count > 15) {
+      clearInterval(interval);
+      
+      // 最终结果
+      const result = Math.floor(Math.random() * 100) + 1;
+      dice.textContent = result;
+      dice.classList.remove('rolling');
+      
+      totalRolls++;
+      const isSuccess = result === 1;
+      if (isSuccess) successCount++;
+      
+      // 更新显示
+      if (isSuccess) {
+        dice.classList.add('win');
+        document.getElementById('resultText').textContent = '🎉 难以置信！你掷出了1！';
+        document.getElementById('resultText').className = 'result-text win';
+      } else {
+        dice.classList.add('lose');
+        document.getElementById('resultText').textContent = `掷出了 ${result}，不是1`;
+        document.getElementById('resultText').className = 'result-text lose';
+      }
+      
+      // 高亮格子
+      document.querySelectorAll('.grid-cell').forEach(c => c.classList.remove('current'));
+      document.getElementById('cell-' + result).classList.add('current');
+      
+      updateStats();
+      btn.disabled = false;
+    }
+  }, 50);
+}
+
+function batchRoll() {
+  console.log('batchRoll called');
+  const selectEl = document.getElementById('batchCount');
+  console.log('selectEl:', selectEl);
+  const count = parseInt(selectEl.value) || 1000;
+  console.log('count:', count);
+  
+  let batchSuccess = 0;
+  for (let i = 0; i < count; i++) {
+    const result = Math.floor(Math.random() * 100) + 1;
+    totalRolls++;
+    if (result === 1) {
+      successCount++;
+      batchSuccess++;
+    }
+  }
+  
+  const dice = document.getElementById('dice');
+  dice.textContent = '✓';
+  dice.classList.remove('win', 'lose');
+  
+  const rate = (successCount / totalRolls * 100).toFixed(2);
+  const batchRate = (batchSuccess / count * 100).toFixed(2);
+  document.getElementById('resultText').innerHTML = 
+    `模拟 <strong>${count}</strong> 次完成！本轮成功 <strong>${batchSuccess}</strong> 次 (${batchRate}%)<br>累计成功率: <strong>${rate}%</strong>`;
+  document.getElementById('resultText').className = 'result-text';
+  
+  updateStats();
+}
+
+function updateStats() {
+  document.getElementById('totalRolls').textContent = totalRolls;
+  document.getElementById('successCount').textContent = successCount;
+  
+  const rate = totalRolls > 0 ? (successCount / totalRolls * 100) : 0;
+  document.getElementById('successRate').textContent = rate.toFixed(2) + '%';
+  
+  // 进度条
+  const successPct = Math.min(rate, 100);
+  const failPct = 100 - successPct;
+  
+  document.getElementById('progressSuccess').style.width = successPct + '%';
+  document.getElementById('progressSuccess').textContent = successPct > 5 ? successPct.toFixed(1) + '%' : '';
+  document.getElementById('progressFail').textContent = failPct > 5 ? failPct.toFixed(1) + '%' : '';
+  document.getElementById('progressLabel').textContent = 
+    `${successPct.toFixed(1)}% vs ${failPct.toFixed(1)}%`;
+}
+
+function resetStats() {
+  totalRolls = 0;
+  successCount = 0;
+  document.getElementById('dice').textContent = '?';
+  document.getElementById('dice').classList.remove('win', 'lose');
+  document.getElementById('resultText').textContent = '';
+  document.getElementById('resultText').className = 'result-text';
+  document.querySelectorAll('.grid-cell').forEach(c => c.classList.remove('current'));
+  updateStats();
+}
+
+// 初始化
+initGrid();
+document.getElementById('batchBtn').addEventListener('click', batchRoll);
+</script>
+
+</body>
+</html>

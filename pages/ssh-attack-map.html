@@ -3,17 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SSH攻击IP统计 - 谁在扫你的服务器？</title>
+  <title>全球SSH攻击地图 - 谁在扫你的服务器？</title>
   <script src="../components/header.js" defer></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
-      background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+      background: #0a0a0f;
       min-height: 100vh;
       color: #e4e4e4;
     }
-    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
     
     .header { text-align: center; margin: 20px 0 30px; }
     .header h1 {
@@ -35,93 +37,135 @@
     /* 统计卡片 */
     .stats-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-      margin-bottom: 25px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
     }
     .stat-card {
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 12px;
-      padding: 25px;
+      padding: 20px;
       text-align: center;
-      transition: all 0.3s;
-    }
-    .stat-card:hover {
-      border-color: rgba(255,68,68,0.3);
-      transform: translateY(-2px);
     }
     .stat-card .value {
-      font-size: 2.5rem;
+      font-size: 2rem;
       font-weight: 700;
       color: #ff4444;
       font-family: 'Monaco', 'Consolas', monospace;
     }
     .stat-card .label {
       color: rgba(255,255,255,0.5);
-      font-size: 13px;
-      margin-top: 8px;
+      font-size: 12px;
+      margin-top: 5px;
     }
-    .stat-card.highlight { 
-      border-color: rgba(255,136,0,0.3);
-      background: rgba(255,136,0,0.05);
-    }
+    .stat-card.highlight { border-color: rgba(255,136,0,0.3); }
     .stat-card.highlight .value { color: #ff8800; }
 
-    /* 时间分布图 */
-    .chart-section {
+    /* 地图 */
+    .map-section {
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
-      padding: 25px;
-      margin-bottom: 25px;
-    }
-    .chart-title {
-      color: #ff8800;
-      font-size: 15px;
+      overflow: hidden;
       margin-bottom: 20px;
+    }
+    #map { height: 450px; background: #1a1a2e; }
+    .leaflet-container { background: #1a1a2e; }
+    .leaflet-popup-content-wrapper {
+      background: rgba(20,20,30,0.95);
+      color: #e4e4e4;
+      border-radius: 10px;
+      border: 1px solid rgba(255,68,68,0.3);
+    }
+    .leaflet-popup-tip { background: rgba(20,20,30,0.95); }
+    .leaflet-popup-content { margin: 12px 15px; font-size: 13px; }
+
+    /* 双栏布局 */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 900px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .card-title {
+      color: #ff8800;
+      font-size: 14px;
+      margin-bottom: 15px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
+
+    /* 时间分布图 */
     .time-chart {
       display: flex;
       align-items: flex-end;
-      height: 150px;
+      height: 120px;
       gap: 2px;
-      padding: 0 10px;
     }
     .time-bar {
       flex: 1;
       background: linear-gradient(180deg, #ff4444, #ff8800);
       border-radius: 2px 2px 0 0;
       min-height: 2px;
-      transition: height 0.5s ease;
-      position: relative;
+      transition: height 0.5s;
+      cursor: pointer;
     }
-    .time-bar:hover {
-      opacity: 0.8;
-    }
-    .time-bar:hover::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.9);
-      color: white;
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-size: 11px;
-      white-space: nowrap;
-      z-index: 10;
-    }
+    .time-bar:hover { opacity: 0.7; }
     .time-labels {
       display: flex;
       justify-content: space-between;
-      margin-top: 10px;
+      margin-top: 8px;
       font-size: 11px;
       color: rgba(255,255,255,0.4);
+    }
+
+    /* 国家排行 */
+    .country-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .country-item:last-child { border-bottom: none; }
+    .country-item .rank {
+      width: 20px;
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+    }
+    .country-item .name {
+      flex: 1;
+      font-size: 13px;
+    }
+    .country-item .bar-bg {
+      width: 100px;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .country-item .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #ff8800);
+      border-radius: 3px;
+    }
+    .country-item .count {
+      width: 50px;
+      text-align: right;
+      color: #ff8800;
+      font-size: 12px;
     }
 
     /* IP列表 */
@@ -129,25 +173,14 @@
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
-      padding: 25px;
-      margin-bottom: 25px;
+      padding: 20px;
+      margin-bottom: 20px;
     }
     .list-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
-    }
-    .list-title {
-      color: #ff8800;
-      font-size: 15px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .search-box {
-      display: flex;
-      gap: 10px;
+      margin-bottom: 15px;
     }
     .search-box input {
       background: rgba(0,0,0,0.3);
@@ -159,66 +192,39 @@
       width: 200px;
     }
     .search-box input::placeholder { color: rgba(255,255,255,0.3); }
-    .search-box input:focus {
-      outline: none;
-      border-color: rgba(255,68,68,0.5);
-    }
+    .search-box input:focus { outline: none; border-color: rgba(255,68,68,0.5); }
 
-    .ip-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+    .ip-table { width: 100%; border-collapse: collapse; }
     .ip-table th {
       text-align: left;
-      padding: 12px 15px;
+      padding: 10px 12px;
       background: rgba(0,0,0,0.2);
       color: rgba(255,255,255,0.6);
       font-size: 12px;
       font-weight: 500;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
     }
     .ip-table td {
-      padding: 12px 15px;
+      padding: 10px 12px;
       border-bottom: 1px solid rgba(255,255,255,0.03);
       font-size: 13px;
     }
-    .ip-table tr:hover td {
-      background: rgba(255,68,68,0.05);
-    }
-    .ip-table .ip {
-      font-family: 'Monaco', 'Consolas', monospace;
-      color: #ff4444;
-    }
-    .ip-table .count {
-      color: #ff8800;
-      font-weight: 600;
-    }
-    .ip-table .time {
-      color: rgba(255,255,255,0.4);
-    }
+    .ip-table tr:hover td { background: rgba(255,68,68,0.05); }
+    .ip-table .ip { font-family: 'Monaco', 'Consolas', monospace; color: #ff4444; }
+    .ip-table .count { color: #ff8800; font-weight: 600; }
+    .ip-table .country { color: rgba(255,255,255,0.6); }
+    .ip-table .time { color: rgba(255,255,255,0.4); }
     
-    .table-container {
-      max-height: 500px;
-      overflow-y: auto;
-    }
-    .table-container::-webkit-scrollbar {
-      width: 6px;
-    }
-    .table-container::-webkit-scrollbar-track {
-      background: rgba(255,255,255,0.05);
-      border-radius: 3px;
-    }
-    .table-container::-webkit-scrollbar-thumb {
-      background: rgba(255,68,68,0.3);
-      border-radius: 3px;
-    }
+    .table-container { max-height: 400px; overflow-y: auto; }
+    .table-container::-webkit-scrollbar { width: 6px; }
+    .table-container::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
+    .table-container::-webkit-scrollbar-thumb { background: rgba(255,68,68,0.3); border-radius: 3px; }
 
     .pagination {
       display: flex;
       justify-content: center;
       align-items: center;
       gap: 10px;
-      margin-top: 20px;
+      margin-top: 15px;
     }
     .pagination button {
       background: rgba(255,255,255,0.1);
@@ -228,22 +234,12 @@
       border-radius: 6px;
       cursor: pointer;
       font-size: 13px;
-      transition: all 0.2s;
     }
-    .pagination button:hover:not(:disabled) {
-      background: rgba(255,68,68,0.2);
-      border-color: rgba(255,68,68,0.3);
-    }
-    .pagination button:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-    .pagination .page-info {
-      color: rgba(255,255,255,0.5);
-      font-size: 13px;
-    }
+    .pagination button:hover:not(:disabled) { background: rgba(255,68,68,0.2); }
+    .pagination button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .pagination .page-info { color: rgba(255,255,255,0.5); font-size: 13px; }
 
-    /* 解释区域 */
+    /* 解释 */
     .explanation {
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.08);
@@ -251,21 +247,9 @@
       padding: 25px;
       line-height: 1.8;
     }
-    .explanation h3 {
-      color: #ff8800;
-      font-size: 16px;
-      margin-bottom: 15px;
-    }
-    .explanation p {
-      color: rgba(255,255,255,0.7);
-      margin-bottom: 12px;
-      font-size: 14px;
-    }
-    .explanation ul {
-      color: rgba(255,255,255,0.7);
-      margin: 10px 0 10px 20px;
-      font-size: 14px;
-    }
+    .explanation h3 { color: #ff8800; font-size: 16px; margin-bottom: 15px; }
+    .explanation p { color: rgba(255,255,255,0.7); margin-bottom: 12px; font-size: 14px; }
+    .explanation ul { color: rgba(255,255,255,0.7); margin: 10px 0 10px 20px; font-size: 14px; }
     .explanation li { margin-bottom: 8px; }
     .key-point {
       background: rgba(255,68,68,0.1);
@@ -283,15 +267,14 @@
       font-size: 13px;
       color: #4ade80;
       margin: 10px 0;
-      overflow-x: auto;
     }
 
     .loading {
       text-align: center;
-      padding: 50px;
+      padding: 40px;
       color: rgba(255,255,255,0.5);
     }
-    .loading .spinner {
+    .spinner {
       width: 40px;
       height: 40px;
       border: 3px solid rgba(255,68,68,0.2);
@@ -304,8 +287,9 @@
 
     @media (max-width: 600px) {
       .header h1 { font-size: 1.4rem; }
-      .stat-card .value { font-size: 1.8rem; }
+      .stat-card .value { font-size: 1.5rem; }
       .search-box { display: none; }
+      #map { height: 300px; }
     }
   </style>
 </head>
@@ -313,8 +297,8 @@
 
 <div class="container">
   <div class="header">
-    <h1>🔒 SSH攻击IP统计</h1>
-    <p>实时展示尝试暴力破解服务器的IP地址</p>
+    <h1>🌍 全球SSH攻击实时地图</h1>
+    <p>可视化展示正在扫描服务器的IP来源分布</p>
   </div>
 
   <!-- 统计卡片 -->
@@ -328,29 +312,46 @@
       <div class="label">总尝试次数</div>
     </div>
     <div class="stat-card">
+      <div class="value" id="countryCount">-</div>
+      <div class="label">来源国家</div>
+    </div>
+    <div class="stat-card">
       <div class="value" id="avgAttempts">-</div>
-      <div class="label">平均尝试次数/IP</div>
+      <div class="label">平均尝试/IP</div>
     </div>
     <div class="stat-card">
       <div class="value" id="todayCount">-</div>
-      <div class="label">今日新增IP</div>
+      <div class="label">今日新增</div>
     </div>
   </div>
 
-  <!-- 时间分布图 -->
-  <div class="chart-section">
-    <div class="chart-title">📈 最近30天攻击趋势</div>
-    <div class="time-chart" id="timeChart"></div>
-    <div class="time-labels">
-      <span id="chartStart">-</span>
-      <span id="chartEnd">今天</span>
+  <!-- 地图 -->
+  <div class="map-section">
+    <div id="map"></div>
+  </div>
+
+  <!-- 双栏：趋势图 + 国家排行 -->
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">📈 最近30天攻击趋势</div>
+      <div class="time-chart" id="timeChart"></div>
+      <div class="time-labels">
+        <span id="chartStart">-</span>
+        <span id="chartEnd">今天</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🏆 攻击来源国家 TOP 10</div>
+      <div id="countryRank">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
     </div>
   </div>
 
   <!-- IP列表 -->
   <div class="list-section">
     <div class="list-header">
-      <div class="list-title">🔥 攻击IP列表（按尝试次数排序）</div>
+      <div class="card-title" style="margin:0;">🔥 攻击IP列表</div>
       <div class="search-box">
         <input type="text" id="searchInput" placeholder="搜索IP地址...">
       </div>
@@ -360,20 +361,14 @@
         <thead>
           <tr>
             <th>IP地址</th>
+            <th>国家</th>
             <th>尝试次数</th>
             <th>首次发现</th>
             <th>最后活动</th>
           </tr>
         </thead>
         <tbody id="ipTableBody">
-          <tr>
-            <td colspan="4">
-              <div class="loading">
-                <div class="spinner"></div>
-                <div>加载中...</div>
-              </div>
-            </td>
-          </tr>
+          <tr><td colspan="5"><div class="loading"><div class="spinner"></div>加载中...</div></td></tr>
         </tbody>
       </table>
     </div>
@@ -387,174 +382,181 @@
   <!-- 解释 -->
   <div class="explanation">
     <h3>🤔 为什么你的服务器总被扫描？</h3>
-    
-    <p>简单来说：<strong>因为你的IP是公开的，而互联网上有无数自动化扫描程序在24小时不间断地扫描整个IPv4地址空间。</strong></p>
-    
+    <p><strong>因为你的IP是公开的，而互联网上有无数自动化扫描程序在24小时不间断地扫描整个IPv4地址空间。</strong></p>
     <div class="key-point">
       <strong>IPv4只有约43亿个地址</strong>，以现代网络速度，一台机器几小时就能扫完整个互联网的22端口。所以不是"为什么扫你"，而是"所有人都在被扫"。
     </div>
-
-    <p>这些扫描来自：</p>
-    <ul>
-      <li><strong>僵尸网络（Botnet）</strong>：被黑客控制的大量计算机，自动扫描寻找新的受害者</li>
-      <li><strong>自动化攻击脚本</strong>：使用常见弱密码字典尝试登录</li>
-      <li><strong>安全研究机构</strong>：如Shodan、Censys等在做互联网普查</li>
-      <li><strong>黑产团伙</strong>：寻找可以用来挖矿、发垃圾邮件、做跳板的服务器</li>
-    </ul>
-
     <h3>🛡️ 如何保护你的服务器？</h3>
-    
     <p><strong>1. 禁用密码登录，只用SSH密钥</strong></p>
-    <div class="code-block"># /etc/ssh/sshd_config
-PasswordAuthentication no
+    <div class="code-block">PasswordAuthentication no
 PubkeyAuthentication yes</div>
-
-    <p><strong>2. 修改默认端口</strong></p>
-    <div class="code-block">Port 22222  # 改成其他端口</div>
-    <p style="color: rgba(255,255,255,0.5); font-size: 13px;">治标不治本，但能减少90%的扫描日志。</p>
-
-    <p><strong>3. 安装fail2ban</strong></p>
+    <p><strong>2. 安装fail2ban自动封禁</strong></p>
     <div class="code-block">apt install fail2ban</div>
-    <p style="color: rgba(255,255,255,0.5); font-size: 13px;">自动封禁多次尝试失败的IP。</p>
-
-    <p><strong>4. 使用防火墙白名单</strong></p>
-    <p>只允许特定IP访问SSH端口。</p>
+    <p><strong>3. 修改默认端口</strong>（减少90%扫描日志）</p>
   </div>
 </div>
 
 <script>
-let allData = [];
+let map;
+let serverList = [];
 let filteredData = [];
 let currentPage = 1;
 const pageSize = 50;
 
+// 初始化地图
+function initMap() {
+  map = L.map('map', {
+    center: [25, 0],
+    zoom: 2,
+    minZoom: 2,
+    maxZoom: 8
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+    subdomains: 'abcd'
+  }).addTo(map);
+}
+
 // 加载数据
 async function loadData() {
   try {
-    // 使用后端代理接口（带缓存和预处理）
     const response = await fetch('https://demo-api-mockserver.runnable.run/blockip/stats');
     const data = await response.json();
     
-    // 直接使用后端预处理好的数据
-    updateStatsFromServer(data.stats);
-    updateChartFromServer(data.daily);
-    renderTableFromServer(data.list);
+    // 更新统计
+    document.getElementById('totalIPs').textContent = data.stats.totalIPs.toLocaleString();
+    document.getElementById('totalAttempts').textContent = data.stats.totalAttempts.toLocaleString();
+    document.getElementById('avgAttempts').textContent = data.stats.avgAttempts;
+    document.getElementById('todayCount').textContent = data.stats.todayCount;
+    document.getElementById('countryCount').textContent = data.stats.countryCount || '-';
+    
+    // 更新趋势图
+    renderChart(data.daily);
+    
+    // 更新国家排行
+    renderCountryRank(data.countryRank);
+    
+    // 更新地图标记
+    renderMapMarkers(data.markers);
+    
+    // 更新IP列表
+    serverList = data.list;
+    filteredData = [...serverList];
+    renderTable();
     
   } catch (error) {
     console.error('加载失败:', error);
     document.getElementById('ipTableBody').innerHTML = 
-      '<tr><td colspan="4" style="text-align:center;color:#ff4444;padding:30px;">数据加载失败，请稍后重试</td></tr>';
+      '<tr><td colspan="5" style="text-align:center;color:#ff4444;padding:30px;">数据加载失败</td></tr>';
   }
 }
 
-// 使用后端预处理的统计数据
-function updateStatsFromServer(stats) {
-  document.getElementById('totalIPs').textContent = stats.totalIPs.toLocaleString();
-  document.getElementById('totalAttempts').textContent = stats.totalAttempts.toLocaleString();
-  document.getElementById('avgAttempts').textContent = stats.avgAttempts;
-  document.getElementById('todayCount').textContent = stats.todayCount;
-}
-
-// 使用后端预处理的每日统计
-function updateChartFromServer(daily) {
+// 渲染趋势图
+function renderChart(daily) {
   const chart = document.getElementById('timeChart');
-  const maxCount = Math.max(...daily.map(d => d.count), 1);
+  if (!daily || daily.length === 0) return;
   
+  const maxCount = Math.max(...daily.map(d => d.count), 1);
   chart.innerHTML = daily.map(item => {
-    const height = (item.count / maxCount) * 140;
-    const shortDate = item.date.slice(5);
-    return `<div class="time-bar" style="height: ${Math.max(height, 2)}px" data-tooltip="${shortDate}: ${item.count}个IP"></div>`;
+    const height = (item.count / maxCount) * 110;
+    return `<div class="time-bar" style="height:${Math.max(height,2)}px" title="${item.date.slice(5)}: ${item.count}个"></div>`;
   }).join('');
   
-  if (daily.length > 0) {
-    document.getElementById('chartStart').textContent = daily[0].date.slice(5);
+  document.getElementById('chartStart').textContent = daily[0].date.slice(5);
+}
+
+// 渲染国家排行
+function renderCountryRank(countryRank) {
+  const container = document.getElementById('countryRank');
+  if (!countryRank || countryRank.length === 0) {
+    container.innerHTML = '<div style="color:rgba(255,255,255,0.4);text-align:center;">暂无数据</div>';
+    return;
   }
+  
+  const maxCount = countryRank[0].count;
+  container.innerHTML = countryRank.slice(0, 10).map((item, i) => `
+    <div class="country-item">
+      <span class="rank">${i + 1}</span>
+      <span class="name">${item.country}</span>
+      <div class="bar-bg"><div class="bar-fill" style="width:${item.count/maxCount*100}%"></div></div>
+      <span class="count">${item.count}</span>
+    </div>
+  `).join('');
 }
 
-// 使用后端预处理的列表数据
-let serverList = [];
-
-function renderTableFromServer(list) {
-  serverList = list;
-  filteredData = [...list];
-  renderTable();
-}
-
-// 更新统计（保留原有逻辑用于搜索过滤）
-function updateStats() {
-  // 统计已由后端处理，这里不需要重新计算
-}
-
-// 更新时间分布图
-function updateChart() {
-  // 图表已由后端处理
+// 渲染地图标记
+function renderMapMarkers(markers) {
+  if (!markers || markers.length === 0) return;
+  
+  const maxAttempts = Math.max(...markers.map(m => m.attempts), 1);
+  
+  markers.forEach(marker => {
+    if (marker.lat && marker.lng) {
+      const radius = Math.max(5, Math.min(25, (marker.attempts / maxAttempts) * 25 + 5));
+      
+      L.circleMarker([marker.lat, marker.lng], {
+        radius: radius,
+        fillColor: '#ff4444',
+        color: '#ff8800',
+        weight: 1,
+        opacity: 0.8,
+        fillOpacity: 0.5
+      })
+      .bindPopup(`
+        <div>
+          <strong style="color:#ff8800">${marker.country}</strong><br>
+          IP数量: ${marker.count}<br>
+          尝试次数: ${marker.attempts}
+        </div>
+      `)
+      .addTo(map);
+    }
+  });
 }
 
 // 渲染表格
 function renderTable() {
   const start = (currentPage - 1) * pageSize;
-  const end = start + pageSize;
-  const pageData = filteredData.slice(start, end);
+  const pageData = filteredData.slice(start, start + pageSize);
   
   const tbody = document.getElementById('ipTableBody');
-  
   if (pageData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.4);padding:30px;">没有找到匹配的IP</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.4);padding:30px;">没有匹配的IP</td></tr>';
     return;
   }
   
-  // 使用后端预处理的字段名
   tbody.innerHTML = pageData.map(item => `
     <tr>
       <td class="ip">${item.ip}</td>
+      <td class="country">${item.country || '-'}</td>
       <td class="count">${item.count}</td>
       <td class="time">${item.first}</td>
       <td class="time">${item.last}</td>
     </tr>
   `).join('');
   
-  // 更新分页
   const totalPages = Math.ceil(filteredData.length / pageSize);
   document.getElementById('pageInfo').textContent = `第 ${currentPage} / ${totalPages} 页`;
   document.getElementById('prevBtn').disabled = currentPage === 1;
   document.getElementById('nextBtn').disabled = currentPage >= totalPages;
 }
 
-// 格式化日期（保留用于兼容）
-function formatDate(isoString) {
-  if (!isoString) return '-';
-  return isoString;
-}
-
 // 搜索
 document.getElementById('searchInput').addEventListener('input', (e) => {
   const query = e.target.value.trim();
-  if (query) {
-    filteredData = serverList.filter(item => item.ip.includes(query));
-  } else {
-    filteredData = [...serverList];
-  }
+  filteredData = query ? serverList.filter(item => item.ip.includes(query)) : [...serverList];
   currentPage = 1;
   renderTable();
 });
 
 // 分页
-document.getElementById('prevBtn').addEventListener('click', () => {
-  if (currentPage > 1) {
-    currentPage--;
-    renderTable();
-  }
-});
-
+document.getElementById('prevBtn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderTable(); } });
 document.getElementById('nextBtn').addEventListener('click', () => {
-  const totalPages = Math.ceil(filteredData.length / pageSize);
-  if (currentPage < totalPages) {
-    currentPage++;
-    renderTable();
-  }
+  if (currentPage < Math.ceil(filteredData.length / pageSize)) { currentPage++; renderTable(); }
 });
 
 // 初始化
+initMap();
 loadData();
 </script>
 

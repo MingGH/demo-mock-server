@@ -1,22 +1,26 @@
 package com.example.demo_mock_server.handler;
 
+import com.maxmind.geoip2.DatabaseReader;
+import com.maxmind.geoip2.model.CityResponse;
+import com.maxmind.geoip2.record.Country;
+import com.maxmind.geoip2.record.Location;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 
+import java.io.InputStream;
+import java.net.InetAddress;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * BlockIP 代理处理器，带缓存和预处理统计
+ * BlockIP 代理处理器，带缓存、预处理统计和IP地理位置
  */
 public class BlockIpHandler implements Handler<RoutingContext> {
 
@@ -24,6 +28,7 @@ public class BlockIpHandler implements Handler<RoutingContext> {
     private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5分钟缓存
 
     private final WebClient webClient;
+    private DatabaseReader geoReader;
     
     // 缓存
     private volatile JsonObject cachedResponse = null;
@@ -35,6 +40,23 @@ public class BlockIpHandler implements Handler<RoutingContext> {
             .setConnectTimeout(30000)
             .setIdleTimeout(60);
         this.webClient = WebClient.create(vertx, options);
+        
+        // 初始化 GeoIP 数据库
+        initGeoDatabase();
+    }
+
+    private void initGeoDatabase() {
+        try {
+            InputStream dbStream = getClass().getResourceAsStream("/GeoLite2-City.mmdb");
+            if (dbStream != null) {
+                geoReader = new DatabaseReader.Builder(dbStream).build();
+                System.out.println("GeoIP database loaded successfully");
+            } else {
+                System.out.println("GeoIP database not found, geolocation will be disabled");
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to load GeoIP database: " + e.getMessage());
+        }
     }
 
     @Override
@@ -76,7 +98,6 @@ public class BlockIpHandler implements Handler<RoutingContext> {
             })
             .onFailure(err -> {
                 isLoading = false;
-                // 如果有旧缓存，返回旧数据
                 if (cachedResponse != null) {
                     sendResponse(ctx, cachedResponse);
                 } else {
@@ -86,7 +107,7 @@ public class BlockIpHandler implements Handler<RoutingContext> {
     }
 
     /**
-     * 预处理数据，生成统计信息
+     * 预处理数据，生成统计信息和地理位置
      */
     private JsonObject processData(JsonArray rawData) {
         int totalIPs = rawData.size();
@@ -102,36 +123,71 @@ public class BlockIpHandler implements Handler<RoutingContext> {
             dailyCounts.put(date, 0);
         }
         
-        // 按尝试次数排序的列表
+        // 国家统计
+        Map<String, Integer> countryCounts = new HashMap<>();
+        
+        // 地图标记点（聚合同一位置的IP）
+        Map<String, JsonObject> locationMap = new HashMap<>();
+        
+        // IP列表
         List<JsonObject> sortedList = new ArrayList<>();
         
         for (int i = 0; i < rawData.size(); i++) {
             JsonObject item = rawData.getJsonObject(i);
             
+            String ipAddress = item.getString("ipAddress");
             int attemptCount = item.getInteger("attemptCount", 1);
             totalAttempts += attemptCount;
             
             String createdAt = item.getString("createdAt", "");
             if (createdAt.length() >= 10) {
                 String dateKey = createdAt.substring(0, 10);
-                
-                // 今日统计
                 if (dateKey.equals(today)) {
                     todayCount++;
                 }
-                
-                // 每日统计
                 if (dailyCounts.containsKey(dateKey)) {
                     dailyCounts.put(dateKey, dailyCounts.get(dateKey) + 1);
                 }
             }
             
+            // 获取地理位置
+            JsonObject geoInfo = getGeoLocation(ipAddress);
+            String country = geoInfo.getString("country", "Unknown");
+            
+            // 国家统计
+            countryCounts.put(country, countryCounts.getOrDefault(country, 0) + 1);
+            
+            // 聚合地图标记
+            Double lat = geoInfo.getDouble("lat");
+            Double lng = geoInfo.getDouble("lng");
+            if (lat != null && lng != null) {
+                // 按经纬度四舍五入聚合（精度0.5度）
+                String locKey = String.format("%.1f,%.1f", 
+                    Math.round(lat * 2) / 2.0, 
+                    Math.round(lng * 2) / 2.0);
+                
+                if (locationMap.containsKey(locKey)) {
+                    JsonObject loc = locationMap.get(locKey);
+                    loc.put("count", loc.getInteger("count") + 1);
+                    loc.put("attempts", loc.getInteger("attempts") + attemptCount);
+                } else {
+                    locationMap.put(locKey, new JsonObject()
+                        .put("lat", lat)
+                        .put("lng", lng)
+                        .put("country", country)
+                        .put("count", 1)
+                        .put("attempts", attemptCount));
+                }
+            }
+            
             // 简化数据结构
             JsonObject simplified = new JsonObject()
-                .put("ip", item.getString("ipAddress"))
+                .put("ip", ipAddress)
                 .put("count", attemptCount)
                 .put("first", formatDateTime(item.getString("firstSeen")))
-                .put("last", formatDateTime(item.getString("lastSeen")));
+                .put("last", formatDateTime(item.getString("lastSeen")))
+                .put("country", country)
+                .put("countryCode", geoInfo.getString("countryCode", ""));
             
             sortedList.add(simplified);
         }
@@ -147,26 +203,81 @@ public class BlockIpHandler implements Handler<RoutingContext> {
                 .put("count", entry.getValue()));
         }
         
+        // 构建国家排行（前15）
+        JsonArray countryRank = new JsonArray();
+        countryCounts.entrySet().stream()
+            .sorted((a, b) -> b.getValue() - a.getValue())
+            .limit(15)
+            .forEach(e -> countryRank.add(new JsonObject()
+                .put("country", e.getKey())
+                .put("count", e.getValue())));
+        
+        // 构建地图标记数组
+        JsonArray mapMarkers = new JsonArray();
+        locationMap.values().forEach(mapMarkers::add);
+        
         // 构建响应
         return new JsonObject()
             .put("stats", new JsonObject()
                 .put("totalIPs", totalIPs)
                 .put("totalAttempts", totalAttempts)
                 .put("avgAttempts", totalIPs > 0 ? Math.round(totalAttempts * 10.0 / totalIPs) / 10.0 : 0)
-                .put("todayCount", todayCount))
+                .put("todayCount", todayCount)
+                .put("countryCount", countryCounts.size()))
             .put("daily", dailyStats)
+            .put("countryRank", countryRank)
+            .put("markers", mapMarkers)
             .put("list", new JsonArray(sortedList))
             .put("cacheTime", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     }
 
     /**
-     * 格式化日期时间
+     * 获取IP地理位置
      */
+    private JsonObject getGeoLocation(String ipAddress) {
+        JsonObject result = new JsonObject();
+        
+        if (geoReader == null) {
+            return result.put("country", "Unknown");
+        }
+        
+        try {
+            InetAddress ip = InetAddress.getByName(ipAddress);
+            CityResponse response = geoReader.city(ip);
+            
+            Country country = response.getCountry();
+            Location location = response.getLocation();
+            
+            if (country != null && country.getName() != null) {
+                result.put("country", country.getName());
+                result.put("countryCode", country.getIsoCode());
+            }
+            
+            if (location != null) {
+                if (location.getLatitude() != null) {
+                    result.put("lat", location.getLatitude());
+                }
+                if (location.getLongitude() != null) {
+                    result.put("lng", location.getLongitude());
+                }
+            }
+            
+            if (response.getCity() != null && response.getCity().getName() != null) {
+                result.put("city", response.getCity().getName());
+            }
+            
+        } catch (Exception e) {
+            // IP not found or invalid
+            result.put("country", "Unknown");
+        }
+        
+        return result;
+    }
+
     private String formatDateTime(String isoString) {
         if (isoString == null || isoString.length() < 16) {
             return "-";
         }
-        // 2025-09-16T14:00:02 -> 09-16 14:00
         return isoString.substring(5, 10) + " " + isoString.substring(11, 16);
     }
 

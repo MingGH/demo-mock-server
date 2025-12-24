@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>泊松分布可视化 - 为什么生活中处处是泊松？</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #4ade80, #22d3ee, #a78bfa);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.6); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+
+    .card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    .card-title {
+      color: #ffd700;
+      font-size: 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* 场景选择 */
+    .scenarios {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .scenario-btn {
+      background: rgba(0,0,0,0.2);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: left;
+    }
+    .scenario-btn:hover {
+      border-color: rgba(74,222,128,0.5);
+      background: rgba(74,222,128,0.1);
+    }
+    .scenario-btn.active {
+      border-color: #4ade80;
+      background: rgba(74,222,128,0.15);
+    }
+    .scenario-btn .icon { font-size: 24px; margin-bottom: 8px; }
+    .scenario-btn .name { color: white; font-weight: 600; font-size: 14px; }
+    .scenario-btn .desc { color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 5px; }
+
+    /* λ 滑块 */
+    .lambda-control {
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+    .lambda-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .lambda-label span { color: rgba(255,255,255,0.7); font-size: 14px; }
+    .lambda-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #4ade80;
+    }
+    .lambda-slider {
+      width: 100%;
+      height: 8px;
+      -webkit-appearance: none;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      outline: none;
+    }
+    .lambda-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 24px;
+      height: 24px;
+      background: linear-gradient(135deg, #4ade80, #22d3ee);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(74,222,128,0.5);
+    }
+    .lambda-meaning {
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    /* 图表区域 */
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin: 20px 0;
+    }
+    .chart {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      height: 250px;
+      gap: 4px;
+      padding: 0 10px;
+    }
+    .bar-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      max-width: 50px;
+    }
+    .bar {
+      width: 100%;
+      background: linear-gradient(180deg, #4ade80, #22d3ee);
+      border-radius: 4px 4px 0 0;
+      transition: height 0.5s ease;
+      min-height: 2px;
+    }
+    .bar-label {
+      color: rgba(255,255,255,0.6);
+      font-size: 11px;
+      margin-top: 8px;
+    }
+    .bar-prob {
+      color: rgba(255,255,255,0.4);
+      font-size: 10px;
+      margin-top: 2px;
+    }
+
+    /* 统计信息 */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .stat-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-item .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #22d3ee;
+    }
+    .stat-item .label {
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    /* 模拟区域 */
+    .sim-section {
+      background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(34,211,238,0.1));
+      border: 1px solid rgba(74,222,128,0.2);
+    }
+    .sim-controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .btn {
+      padding: 12px 25px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #4ade80, #22d3ee);
+      color: #1a1a2e;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover { transform: translateY(-2px); }
+
+    .sim-result {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      min-height: 60px;
+      padding: 15px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+    }
+    .event-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #4ade80;
+      animation: pop 0.3s ease;
+    }
+    @keyframes pop {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+    .sim-stats {
+      text-align: center;
+      margin-top: 15px;
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+
+    /* 公式区域 */
+    .formula-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin: 20px 0;
+      font-family: 'Times New Roman', serif;
+      font-size: 1.3rem;
+      color: #ffd700;
+    }
+
+    /* 解释区域 */
+    .explanation { line-height: 1.8; }
+    .explanation h3 {
+      color: #4ade80;
+      font-size: 16px;
+      margin: 25px 0 15px;
+    }
+    .explanation h3:first-child { margin-top: 0; }
+    .explanation p {
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .key-point {
+      background: rgba(74,222,128,0.1);
+      border-left: 3px solid #4ade80;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .key-point strong { color: #4ade80; }
+
+    .example-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin: 15px 0;
+    }
+    .example-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+    }
+    .example-item .icon { font-size: 20px; margin-bottom: 8px; }
+    .example-item .title { color: white; font-weight: 600; font-size: 13px; }
+    .example-item .detail { color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 5px; }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.5rem; }
+      .stats-row { grid-template-columns: 1fr; }
+      .chart { height: 200px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>📊 泊松分布：生活中的随机规律</h1>
+    <p>为什么排队、来电、车祸、打字错误...都服从同一个分布？</p>
+  </div>
+
+  <!-- 场景选择 -->
+  <div class="card">
+    <div class="card-title">🎯 选择一个生活场景</div>
+    <div class="scenarios" id="scenarios">
+      <div class="scenario-btn active" data-lambda="3" data-name="咖啡店顾客" data-unit="人/小时">
+        <div class="icon">☕</div>
+        <div class="name">咖啡店顾客</div>
+        <div class="desc">平均每小时3位顾客</div>
+      </div>
+      <div class="scenario-btn" data-lambda="5" data-name="客服来电" data-unit="通/小时">
+        <div class="icon">📞</div>
+        <div class="name">客服来电</div>
+        <div class="desc">平均每小时5通电话</div>
+      </div>
+      <div class="scenario-btn" data-lambda="2" data-name="网站Bug" data-unit="个/周">
+        <div class="icon">🐛</div>
+        <div class="name">网站Bug</div>
+        <div class="desc">平均每周2个Bug</div>
+      </div>
+      <div class="scenario-btn" data-lambda="4" data-name="地铁进站" data-unit="人/分钟">
+        <div class="icon">🚇</div>
+        <div class="name">地铁进站</div>
+        <div class="desc">平均每分钟4人进站</div>
+      </div>
+      <div class="scenario-btn" data-lambda="1" data-name="交通事故" data-unit="起/天">
+        <div class="icon">🚗</div>
+        <div class="name">路口事故</div>
+        <div class="desc">平均每天1起事故</div>
+      </div>
+      <div class="scenario-btn" data-lambda="7" data-name="打字错误" data-unit="个/页">
+        <div class="icon">⌨️</div>
+        <div class="name">打字错误</div>
+        <div class="desc">平均每页7个错字</div>
+      </div>
+    </div>
+
+    <!-- λ 控制 -->
+    <div class="lambda-control">
+      <div class="lambda-label">
+        <span>λ (lambda) = 平均发生次数</span>
+        <div class="lambda-value">λ = <span id="lambdaDisplay">3</span></div>
+      </div>
+      <input type="range" class="lambda-slider" id="lambdaSlider" min="0.5" max="15" step="0.5" value="3">
+      <div class="lambda-meaning" id="lambdaMeaning">平均每小时有 3 位顾客</div>
+    </div>
+
+    <!-- 概率分布图 -->
+    <div class="chart-container">
+      <div class="chart" id="chart"></div>
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="value" id="statMean">3.00</div>
+        <div class="label">期望值 E(X) = λ</div>
+      </div>
+      <div class="stat-item">
+        <div class="value" id="statVar">3.00</div>
+        <div class="label">方差 Var(X) = λ</div>
+      </div>
+      <div class="stat-item">
+        <div class="value" id="statMode">2-3</div>
+        <div class="label">最可能出现的值</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模拟区域 -->
+  <div class="card sim-section">
+    <div class="card-title">🎲 蒙特卡洛模拟</div>
+    <p style="color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 20px; text-align: center;">
+      模拟"这一小时来了多少顾客"，每个绿点代表一位顾客
+    </p>
+    <div class="sim-controls">
+      <button class="btn btn-primary" id="simOnce">模拟一次</button>
+      <button class="btn btn-secondary" id="sim100">模拟100次</button>
+      <button class="btn btn-secondary" id="sim1000">模拟1000次</button>
+      <button class="btn btn-secondary" id="resetSim">重置</button>
+    </div>
+    <div class="sim-result" id="simResult">
+      <span style="color: rgba(255,255,255,0.4);">点击上方按钮开始模拟</span>
+    </div>
+    <div class="sim-stats" id="simStats"></div>
+  </div>
+
+  <!-- 公式 -->
+  <div class="card">
+    <div class="card-title">📐 泊松分布公式</div>
+    <div class="formula-box">
+      P(X = k) = (λ<sup>k</sup> × e<sup>-λ</sup>) / k!
+    </div>
+    <p style="color: rgba(255,255,255,0.6); font-size: 13px; text-align: center;">
+      X = k 表示事件发生 k 次的概率，λ 是平均发生次数，e ≈ 2.718
+    </p>
+  </div>
+
+  <!-- 解释 -->
+  <div class="card explanation">
+    <h3>🤔 为什么这么多现象都服从泊松分布？</h3>
+    
+    <p>泊松分布描述的是：<strong>在固定时间/空间内，随机事件发生次数的概率分布</strong>。</p>
+    
+    <p>它有三个关键前提：</p>
+    <div class="key-point">
+      <strong>1. 独立性：</strong>每次事件的发生互不影响（这个顾客来不来，不影响下一个）<br>
+      <strong>2. 稳定性：</strong>平均发生率在观察期内保持稳定<br>
+      <strong>3. 稀疏性：</strong>在极短时间内，最多发生一次事件
+    </div>
+
+    <p>现实中大量现象满足这三个条件，所以泊松分布无处不在：</p>
+
+    <div class="example-list">
+      <div class="example-item">
+        <div class="icon">📞</div>
+        <div class="title">呼叫中心来电</div>
+        <div class="detail">每个人打电话是独立的，平均来电率稳定</div>
+      </div>
+      <div class="example-item">
+        <div class="icon">🚗</div>
+        <div class="title">交通事故</div>
+        <div class="detail">每起事故独立发生，同一瞬间不会有两起</div>
+      </div>
+      <div class="example-item">
+        <div class="icon">⚡</div>
+        <div class="title">服务器请求</div>
+        <div class="detail">用户请求相互独立，QPS相对稳定</div>
+      </div>
+      <div class="example-item">
+        <div class="icon">☢️</div>
+        <div class="title">放射性衰变</div>
+        <div class="detail">每个原子衰变独立，衰变率恒定</div>
+      </div>
+      <div class="example-item">
+        <div class="icon">🐛</div>
+        <div class="title">代码Bug数量</div>
+        <div class="detail">每个Bug独立产生，平均Bug率相对稳定</div>
+      </div>
+      <div class="example-item">
+        <div class="icon">⌨️</div>
+        <div class="title">打字错误</div>
+        <div class="detail">每个错误独立发生，错误率相对恒定</div>
+      </div>
+    </div>
+
+    <h3>💡 泊松分布的直觉理解</h3>
+    
+    <p>想象你在咖啡店工作，平均每小时来3个顾客（λ=3）。</p>
+    
+    <p>那么这一小时：</p>
+    <p>• 来0个人的概率 ≈ 5%（运气不好，一个都没有）</p>
+    <p>• 来3个人的概率 ≈ 22%（最可能的情况）</p>
+    <p>• 来10个人的概率 ≈ 0.08%（突然爆满，很罕见）</p>
+
+    <p>泊松分布告诉我们：<strong>即使平均值是3，实际值也会在0-7之间波动</strong>。这就是为什么有时候店里空无一人，有时候突然排起长队——这不是运气，是数学规律。</p>
+
+    <h3>🔗 泊松分布与二项分布的关系</h3>
+    
+    <p>泊松分布其实是二项分布的极限情况：</p>
+    
+    <div class="key-point">
+      当 n → ∞，p → 0，但 np = λ 保持不变时，<br>
+      二项分布 B(n, p) → 泊松分布 Poisson(λ)
+    </div>
+
+    <p>比如：一小时有3600秒，每秒有顾客进门的概率是 3/3600 = 0.083%。</p>
+    <p>这就是"大量独立小概率事件"的累积——泊松分布的本质。</p>
+
+    <h3>🛠️ 实际应用</h3>
+    
+    <p>• <strong>排队论：</strong>银行、医院、客服中心用泊松分布预测客流，决定开几个窗口</p>
+    <p>• <strong>保险精算：</strong>预测理赔次数，计算保费</p>
+    <p>• <strong>质量控制：</strong>预测产品缺陷数量</p>
+    <p>• <strong>网络工程：</strong>预测服务器负载，做容量规划</p>
+    <p>• <strong>流行病学：</strong>预测疾病发病数</p>
+  </div>
+</div>
+
+<script>
+let lambda = 3;
+let scenarioName = '咖啡店顾客';
+let scenarioUnit = '人/小时';
+let simHistory = [];
+
+// 计算泊松概率
+function poissonPMF(k, lambda) {
+  return Math.pow(lambda, k) * Math.exp(-lambda) / factorial(k);
+}
+
+function factorial(n) {
+  if (n <= 1) return 1;
+  let result = 1;
+  for (let i = 2; i <= n; i++) result *= i;
+  return result;
+}
+
+// 生成泊松随机数
+function poissonRandom(lambda) {
+  const L = Math.exp(-lambda);
+  let k = 0;
+  let p = 1;
+  do {
+    k++;
+    p *= Math.random();
+  } while (p > L);
+  return k - 1;
+}
+
+// 更新图表
+function updateChart() {
+  const chart = document.getElementById('chart');
+  chart.innerHTML = '';
+  
+  const maxK = Math.max(15, Math.ceil(lambda * 2.5));
+  let maxProb = 0;
+  
+  // 先找最大概率
+  for (let k = 0; k <= maxK; k++) {
+    const prob = poissonPMF(k, lambda);
+    if (prob > maxProb) maxProb = prob;
+  }
+  
+  // 绘制柱状图
+  for (let k = 0; k <= maxK; k++) {
+    const prob = poissonPMF(k, lambda);
+    const height = (prob / maxProb) * 220;
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'bar-wrapper';
+    
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = Math.max(2, height) + 'px';
+    
+    const label = document.createElement('div');
+    label.className = 'bar-label';
+    label.textContent = k;
+    
+    const probLabel = document.createElement('div');
+    probLabel.className = 'bar-prob';
+    probLabel.textContent = (prob * 100).toFixed(1) + '%';
+    
+    wrapper.appendChild(bar);
+    wrapper.appendChild(label);
+    wrapper.appendChild(probLabel);
+    chart.appendChild(wrapper);
+  }
+  
+  // 更新统计
+  document.getElementById('statMean').textContent = lambda.toFixed(2);
+  document.getElementById('statVar').textContent = lambda.toFixed(2);
+  
+  // 众数
+  const mode = lambda >= 1 ? Math.floor(lambda) : 0;
+  const modeText = lambda % 1 === 0 && lambda >= 1 ? `${mode-1}-${mode}` : mode.toString();
+  document.getElementById('statMode').textContent = modeText;
+}
+
+// 更新 λ 显示
+function updateLambdaDisplay() {
+  document.getElementById('lambdaDisplay').textContent = lambda;
+  document.getElementById('lambdaMeaning').textContent = 
+    `平均每${scenarioUnit.split('/')[1]}有 ${lambda} ${scenarioUnit.split('/')[0]}`;
+}
+
+// 场景选择
+document.getElementById('scenarios').addEventListener('click', (e) => {
+  const btn = e.target.closest('.scenario-btn');
+  if (!btn) return;
+  
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  
+  lambda = parseFloat(btn.dataset.lambda);
+  scenarioName = btn.dataset.name;
+  scenarioUnit = btn.dataset.unit;
+  
+  document.getElementById('lambdaSlider').value = lambda;
+  updateLambdaDisplay();
+  updateChart();
+  resetSimulation();
+});
+
+// λ 滑块
+document.getElementById('lambdaSlider').addEventListener('input', (e) => {
+  lambda = parseFloat(e.target.value);
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  updateLambdaDisplay();
+  updateChart();
+});
+
+// 模拟
+function simulate(count = 1) {
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    results.push(poissonRandom(lambda));
+  }
+  simHistory.push(...results);
+  
+  // 显示最后一次结果
+  const lastResult = results[results.length - 1];
+  const resultDiv = document.getElementById('simResult');
+  resultDiv.innerHTML = '';
+  
+  for (let i = 0; i < lastResult; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'event-dot';
+    dot.style.animationDelay = (i * 0.05) + 's';
+    resultDiv.appendChild(dot);
+  }
+  
+  if (lastResult === 0) {
+    resultDiv.innerHTML = '<span style="color: rgba(255,255,255,0.4);">这次一个都没有 😅</span>';
+  }
+  
+  // 更新统计
+  const avg = simHistory.reduce((a, b) => a + b, 0) / simHistory.length;
+  const variance = simHistory.reduce((sum, x) => sum + Math.pow(x - avg, 2), 0) / simHistory.length;
+  
+  document.getElementById('simStats').innerHTML = 
+    `共模拟 <strong>${simHistory.length}</strong> 次 | ` +
+    `本次: <strong>${lastResult}</strong> | ` +
+    `平均值: <strong>${avg.toFixed(2)}</strong> | ` +
+    `方差: <strong>${variance.toFixed(2)}</strong> ` +
+    `<span style="color: rgba(255,255,255,0.4)">(理论值: λ=${lambda})</span>`;
+}
+
+function resetSimulation() {
+  simHistory = [];
+  document.getElementById('simResult').innerHTML = 
+    '<span style="color: rgba(255,255,255,0.4);">点击上方按钮开始模拟</span>';
+  document.getElementById('simStats').innerHTML = '';
+}
+
+document.getElementById('simOnce').addEventListener('click', () => simulate(1));
+document.getElementById('sim100').addEventListener('click', () => simulate(100));
+document.getElementById('sim1000').addEventListener('click', () => simulate(1000));
+document.getElementById('resetSim').addEventListener('click', resetSimulation);
+
+// 初始化
+updateChart();
+updateLambdaDisplay();
+</script>
+
+</body>
+</html>

@@ -101,18 +101,20 @@
 
   // 获取当前页面
   const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+  const isInPages = window.location.pathname.includes('/pages/');
+  const prefix = isInPages ? '../' : '';
 
   // 创建 Header HTML
   const header = document.createElement('header');
   header.className = 'site-header';
   header.innerHTML = `
-    <a href="index.html" class="logo">
+    <a href="${prefix}index.html" class="logo">
       🚀 <span>Mock Server</span>
     </a>
     <nav>
-      <a href="index.html" class="${currentPage === 'index.html' ? 'active' : ''}">首页</a>
-      <a href="mock-data.html" class="${currentPage === 'mock-data.html' ? 'active' : ''}">数据分页</a>
-      <a href="chinese-names.html" class="${currentPage === 'chinese-names.html' ? 'active' : ''}">中文名生成</a>
+      <a href="${prefix}index.html" class="${currentPage === 'index.html' ? 'active' : ''}">首页</a>
+      <a href="${prefix}pages/mock-data.html" class="${currentPage === 'mock-data.html' ? 'active' : ''}">数据分页</a>
+      <a href="${prefix}pages/chinese-names.html" class="${currentPage === 'chinese-names.html' ? 'active' : ''}">中文名生成</a>
     </nav>
     <div class="external-links">
       <a href="https://github.com/MingGH/demo-mock-server" target="_blank">GitHub</a>

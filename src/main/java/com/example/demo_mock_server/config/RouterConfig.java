@@ -2,6 +2,7 @@ package com.example.demo_mock_server.config;
 
 import com.example.demo_mock_server.generator.ChineseNameGenerator;
 import com.example.demo_mock_server.generator.FakeDataGenerator;
+import com.example.demo_mock_server.handler.BlockIpHandler;
 import com.example.demo_mock_server.handler.ChineseNameHandler;
 import com.example.demo_mock_server.handler.MockHandler;
 import io.vertx.core.Vertx;
@@ -51,5 +52,9 @@ public class RouterConfig {
         ChineseNameGenerator nameGenerator = new ChineseNameGenerator();
         ChineseNameHandler nameHandler = new ChineseNameHandler(nameGenerator);
         router.get("/chinese-names").handler(nameHandler);
+
+        // BlockIP 代理接口（带缓存和预处理）
+        BlockIpHandler blockIpHandler = new BlockIpHandler(vertx);
+        router.get("/blockip/stats").handler(blockIpHandler);
     }
 }

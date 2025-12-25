@@ -1,8 +1,9 @@
 package com.example.demo_mock_server.handler;
 
 import com.maxmind.geoip2.DatabaseReader;
-import com.maxmind.geoip2.model.CountryResponse;
+import com.maxmind.geoip2.model.CityResponse;
 import com.maxmind.geoip2.record.Country;
+import com.maxmind.geoip2.record.Location;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
@@ -28,6 +29,7 @@ public class BlockIpHandler implements Handler<RoutingContext> {
 
     private final WebClient webClient;
     private DatabaseReader geoReader;
+    private boolean isCityDb = false;
     
     // 缓存
     private volatile JsonObject cachedResponse = null;
@@ -46,9 +48,20 @@ public class BlockIpHandler implements Handler<RoutingContext> {
 
     private void initGeoDatabase() {
         try {
-            InputStream dbStream = getClass().getResourceAsStream("/GeoLite2-Country.mmdb");
+            // 优先尝试 City 数据库
+            InputStream dbStream = getClass().getResourceAsStream("/GeoLite2-City.mmdb");
             if (dbStream != null) {
                 geoReader = new DatabaseReader.Builder(dbStream).build();
+                isCityDb = true;
+                System.out.println("GeoIP City database loaded successfully");
+                return;
+            }
+            
+            // 回退到 Country 数据库
+            dbStream = getClass().getResourceAsStream("/GeoLite2-Country.mmdb");
+            if (dbStream != null) {
+                geoReader = new DatabaseReader.Builder(dbStream).build();
+                isCityDb = false;
                 System.out.println("GeoIP Country database loaded successfully");
             } else {
                 System.out.println("GeoIP database not found, geolocation will be disabled");
@@ -125,6 +138,9 @@ public class BlockIpHandler implements Handler<RoutingContext> {
         // 国家统计
         Map<String, Integer> countryCounts = new HashMap<>();
         
+        // 地图标记点（聚合同一位置的IP）
+        Map<String, JsonObject> locationMap = new HashMap<>();
+        
         // IP列表
         List<JsonObject> sortedList = new ArrayList<>();
         
@@ -152,6 +168,27 @@ public class BlockIpHandler implements Handler<RoutingContext> {
             
             // 国家统计
             countryCounts.put(country, countryCounts.getOrDefault(country, 0) + 1);
+            
+            // 聚合地图标记（如果有经纬度）
+            Double lat = geoInfo.getDouble("lat");
+            Double lng = geoInfo.getDouble("lng");
+            if (lat != null && lng != null) {
+                // 按经纬度四舍五入聚合（精度1度）
+                String locKey = String.format("%.0f,%.0f", lat, lng);
+                
+                if (locationMap.containsKey(locKey)) {
+                    JsonObject loc = locationMap.get(locKey);
+                    loc.put("count", loc.getInteger("count") + 1);
+                    loc.put("attempts", loc.getInteger("attempts") + attemptCount);
+                } else {
+                    locationMap.put(locKey, new JsonObject()
+                        .put("lat", lat)
+                        .put("lng", lng)
+                        .put("country", country)
+                        .put("count", 1)
+                        .put("attempts", attemptCount));
+                }
+            }
             
             // 简化数据结构
             JsonObject simplified = new JsonObject()
@@ -185,6 +222,10 @@ public class BlockIpHandler implements Handler<RoutingContext> {
                 .put("country", e.getKey())
                 .put("count", e.getValue())));
         
+        // 构建地图标记数组
+        JsonArray mapMarkers = new JsonArray();
+        locationMap.values().forEach(mapMarkers::add);
+        
         // 构建响应
         return new JsonObject()
             .put("stats", new JsonObject()
@@ -195,12 +236,13 @@ public class BlockIpHandler implements Handler<RoutingContext> {
                 .put("countryCount", countryCounts.size()))
             .put("daily", dailyStats)
             .put("countryRank", countryRank)
+            .put("markers", mapMarkers)
             .put("list", new JsonArray(sortedList))
             .put("cacheTime", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     }
 
     /**
-     * 获取IP地理位置（仅国家级别）
+     * 获取IP地理位置
      */
     private JsonObject getGeoLocation(String ipAddress) {
         JsonObject result = new JsonObject();
@@ -211,19 +253,45 @@ public class BlockIpHandler implements Handler<RoutingContext> {
         
         try {
             InetAddress ip = InetAddress.getByName(ipAddress);
-            CountryResponse response = geoReader.country(ip);
             
-            Country country = response.getCountry();
-            
-            if (country != null && country.getName() != null) {
-                result.put("country", country.getName());
-                result.put("countryCode", country.getIsoCode());
+            if (isCityDb) {
+                // City 数据库，可以获取经纬度
+                CityResponse response = geoReader.city(ip);
+                
+                Country country = response.getCountry();
+                if (country != null && country.getName() != null) {
+                    result.put("country", country.getName());
+                    result.put("countryCode", country.getIsoCode());
+                }
+                
+                Location location = response.getLocation();
+                if (location != null) {
+                    if (location.getLatitude() != null) {
+                        result.put("lat", location.getLatitude());
+                    }
+                    if (location.getLongitude() != null) {
+                        result.put("lng", location.getLongitude());
+                    }
+                }
+                
+                if (response.getCity() != null && response.getCity().getName() != null) {
+                    result.put("city", response.getCity().getName());
+                }
             } else {
+                // Country 数据库，只有国家信息
+                com.maxmind.geoip2.model.CountryResponse response = geoReader.country(ip);
+                Country country = response.getCountry();
+                if (country != null && country.getName() != null) {
+                    result.put("country", country.getName());
+                    result.put("countryCode", country.getIsoCode());
+                }
+            }
+            
+            if (!result.containsKey("country")) {
                 result.put("country", "Unknown");
             }
             
         } catch (Exception e) {
-            // IP not found or invalid
             result.put("country", "Unknown");
         }
         

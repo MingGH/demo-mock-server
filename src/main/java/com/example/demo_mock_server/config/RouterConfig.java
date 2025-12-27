@@ -5,10 +5,12 @@ import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.BlockIpHandler;
 import com.example.demo_mock_server.handler.ChineseNameHandler;
 import com.example.demo_mock_server.handler.MockHandler;
+import com.example.demo_mock_server.handler.WordCloudHandler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.CorsHandler;
+import io.vertx.ext.web.handler.StaticHandler;
 
 /**
  * 路由配置
@@ -53,8 +55,17 @@ public class RouterConfig {
         ChineseNameHandler nameHandler = new ChineseNameHandler(nameGenerator);
         router.get("/chinese-names").handler(nameHandler);
 
+        // Word Cloud
+        WordCloudHandler wordCloudHandler = new WordCloudHandler();
+        router.get("/word-cloud").handler(wordCloudHandler);
+
         // BlockIP 代理接口（带缓存和预处理）
         BlockIpHandler blockIpHandler = new BlockIpHandler(vertx);
         router.get("/blockip/stats").handler(blockIpHandler);
+
+        // Static handler for pages and components
+        router.route("/pages/*").handler(StaticHandler.create("pages"));
+        router.route("/components/*").handler(StaticHandler.create("components"));
+        router.route("/*").handler(StaticHandler.create("pages")); // Fallback to pages for root access
     }
 }

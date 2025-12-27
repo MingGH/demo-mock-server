@@ -37,7 +37,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
             "它", "她们", "它们", "位", "部", "个", "只", "次", "件", "本", "些", "点", "块", "张", "条", "支", "架", "台", "份", "颗", "株", "头", "匹", "口", "间", "所", "座", "栋", "层",
             "级", "种", "类", "群", "对", "把", "被", "让", "给", "为", "以", "由", "从", "自", "向", "往", "在", "当", "朝", "按", "照", "凭", "据", "依", "靠", "沿", "顺", "趁", "随", "同",
             "跟", "与", "及", "或", "而", "且", "但", "虽", "然", "即", "便", "纵", "不", "过", "只", "要", "只", "有", "除", "非", "无", "论", "不", "管", "嗯", "哦", "哎", "呀", "哈",
-          "来说",""
+          "来说","一下","一些","这种","然后","觉得","这样","的话","一点"
         ));
     }
 
@@ -53,6 +53,24 @@ public class WordCloudHandler implements Handler<RoutingContext> {
 
         try {
             initData();
+            // Trigger cache warmup asynchronously
+            vertx.executeBlocking(promise -> {
+                 try {
+                     System.out.println("Warming up word cloud cache...");
+                     cache.get(CACHE_KEY, k -> {
+                        try {
+                            return generateWordCloud();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                    System.out.println("Word cloud cache warmup completed.");
+                    promise.complete();
+                 } catch (Exception e) {
+                     e.printStackTrace();
+                     promise.fail(e);
+                 }
+            });
         } catch (IOException e) {
             e.printStackTrace();
             System.err.println("Failed to initialize data: " + e.getMessage());

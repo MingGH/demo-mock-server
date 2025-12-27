@@ -56,7 +56,7 @@ public class RouterConfig {
         router.get("/chinese-names").handler(nameHandler);
 
         // Word Cloud
-        WordCloudHandler wordCloudHandler = new WordCloudHandler();
+        WordCloudHandler wordCloudHandler = new WordCloudHandler(vertx);
         router.get("/word-cloud").handler(wordCloudHandler);
 
         // BlockIP 代理接口（带缓存和预处理）

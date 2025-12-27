@@ -9,7 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    
+
     body {
       font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -89,7 +89,7 @@
 <div class="container">
   <div class="header">
     <h1>☁️ 户晨风直播词云分析</h1>
-    <p>基于 data/HuChenFeng 目录下的大量直播实录数据生成的词云图</p>
+    <p>基于直播实录数据生成的词云图</p>
   </div>
 
   <div class="chart-container" id="chart">
@@ -104,16 +104,28 @@
   async function initChart() {
     const chartDom = document.getElementById('chart');
     const myChart = echarts.init(chartDom);
-    
+
     // Resize handler
     window.addEventListener('resize', () => myChart.resize());
 
     try {
-      const response = await fetch('/word-cloud');
+      const response = await fetch('/word-cloud?t=' + Date.now());
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      const data = await response.json();
+      
+      let data;
+      try {
+        const text = await response.text();
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('Failed to parse JSON:', text.substring(0, 200));
+            throw new Error('Invalid JSON response: ' + text.substring(0, 50) + '...');
+        }
+      } catch (e) {
+        throw new Error('Failed to read response: ' + e.message);
+      }
 
       if (data.error) {
         throw new Error(data.error);
@@ -165,7 +177,7 @@
       };
 
       myChart.setOption(option);
-      
+
       // Remove loading
       const loading = document.querySelector('.loading');
       if (loading) loading.remove();

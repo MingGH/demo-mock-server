@@ -3,21 +3,26 @@ package com.example.demo_mock_server.handler;
 import com.huaban.analysis.jieba.JiebaSegmenter;
 import com.huaban.analysis.jieba.SegToken;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.*;
+import java.net.URL;
+import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class WordCloudHandler implements Handler<RoutingContext> {
 
+    private static final String DATA_URL = "https://fileshare.runnable.run/HuChenFeng/HuChenFeng.zip";
+    private static final String LOCAL_ZIP_PATH = "data/HuChenFeng.zip";
     private static final String DATA_DIR = "data/HuChenFeng";
+    
     // Expanded stop words list
     private static final Set<String> STOP_WORDS = new HashSet<>(Arrays.asList(
         "的", "了", "在", "是", "我", "有", "和", "就", "不", "人", "都", "一", "一个", "上", "也", "很", "到", "说", "要", "去", "你", "会", "着", "没有", "看", "好", "自己", "这",
@@ -27,63 +32,143 @@ public class WordCloudHandler implements Handler<RoutingContext> {
         "跟", "与", "及", "或", "而", "且", "但", "虽", "然", "即", "便", "纵", "不", "过", "只", "要", "只", "有", "除", "非", "无", "论", "不", "管", "嗯", "哦", "哎", "呀", "哈"
     ));
 
+    private final Vertx vertx;
+
+    public WordCloudHandler(Vertx vertx) {
+        this.vertx = vertx;
+    }
+
     @Override
     public void handle(RoutingContext ctx) {
-        try {
-            Map<String, Integer> wordCounts = new HashMap<>();
-            JiebaSegmenter segmenter = new JiebaSegmenter();
-
-            Path dataPath = Paths.get(DATA_DIR);
-            if (!Files.exists(dataPath)) {
-                 ctx.response()
-                    .setStatusCode(404)
-                    .end(new JsonObject().put("error", "Data directory not found: " + DATA_DIR).encode());
-                 return;
+        vertx.executeBlocking(promise -> {
+            try {
+                ensureDataExists();
+                JsonArray result = generateWordCloud();
+                promise.complete(result);
+            } catch (Exception e) {
+                e.printStackTrace();
+                promise.fail(e);
             }
-
-            try (Stream<Path> paths = Files.walk(dataPath)) {
-                paths.filter(Files::isRegularFile)
-                     .filter(p -> p.toString().endsWith(".md"))
-                     .forEach(path -> processFile(path, segmenter, wordCounts));
+        }, res -> {
+            if (res.succeeded()) {
+                ctx.response()
+                    .putHeader("Content-Type", "application/json; charset=utf-8")
+                    .end(((JsonArray) res.result()).encode());
+            } else {
+                ctx.response()
+                    .setStatusCode(500)
+                    .end(new JsonObject().put("error", res.cause().getMessage()).encode());
             }
+        });
+    }
 
-            List<Map.Entry<String, Integer>> sortedWords = wordCounts.entrySet().stream()
-                .filter(e -> e.getKey().length() > 1) // Filter single characters
-                .filter(e -> !STOP_WORDS.contains(e.getKey()))
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .limit(200) // Increase limit to get more data
-                .collect(Collectors.toList());
-
-            JsonArray result = new JsonArray();
-            for (Map.Entry<String, Integer> entry : sortedWords) {
-                result.add(new JsonObject()
-                    .put("name", entry.getKey())
-                    .put("value", entry.getValue()));
+    private void ensureDataExists() throws IOException {
+        Path dataPath = Paths.get(DATA_DIR);
+        // Check if directory exists and has files
+        if (Files.exists(dataPath) && Files.isDirectory(dataPath)) {
+            try (Stream<Path> entries = Files.list(dataPath)) {
+                if (entries.findFirst().isPresent()) {
+                    return; // Data exists, skip download
+                }
             }
-
-            ctx.response()
-                .putHeader("Content-Type", "application/json; charset=utf-8")
-                .end(result.encode());
-
-        } catch (IOException e) {
-            ctx.response()
-                .setStatusCode(500)
-                .end(new JsonObject().put("error", e.getMessage()).encode());
         }
+
+        // Create data directory if not exists
+        Files.createDirectories(Paths.get("data"));
+
+        // Download
+        System.out.println("Downloading data from " + DATA_URL + "...");
+        try (InputStream in = new URL(DATA_URL).openStream()) {
+            Files.copy(in, Paths.get(LOCAL_ZIP_PATH), StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        // Unzip
+        System.out.println("Unzipping data...");
+        unzip(LOCAL_ZIP_PATH, "data");
+        
+        // Clean up zip
+        Files.deleteIfExists(Paths.get(LOCAL_ZIP_PATH));
+    }
+
+    private void unzip(String zipFilePath, String destDir) throws IOException {
+        File dir = new File(destDir);
+        if (!dir.exists()) dir.mkdirs();
+        
+        byte[] buffer = new byte[1024];
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFilePath))) {
+            ZipEntry zipEntry = zis.getNextEntry();
+            while (zipEntry != null) {
+                File newFile = newFile(dir, zipEntry);
+                if (zipEntry.isDirectory()) {
+                    if (!newFile.isDirectory() && !newFile.mkdirs()) {
+                        throw new IOException("Failed to create directory " + newFile);
+                    }
+                } else {
+                    // fix for Windows-created archives
+                    File parent = newFile.getParentFile();
+                    if (!parent.isDirectory() && !parent.mkdirs()) {
+                        throw new IOException("Failed to create directory " + parent);
+                    }
+                    
+                    try (FileOutputStream fos = new FileOutputStream(newFile)) {
+                        int len;
+                        while ((len = zis.read(buffer)) > 0) {
+                            fos.write(buffer, 0, len);
+                        }
+                    }
+                }
+                zipEntry = zis.getNextEntry();
+            }
+            zis.closeEntry();
+        }
+    }
+    
+    private File newFile(File destinationDir, ZipEntry zipEntry) throws IOException {
+        File destFile = new File(destinationDir, zipEntry.getName());
+        String destDirPath = destinationDir.getCanonicalPath();
+        String destFilePath = destFile.getCanonicalPath();
+        if (!destFilePath.startsWith(destDirPath + File.separator)) {
+            throw new IOException("Entry is outside of the target dir: " + zipEntry.getName());
+        }
+        return destFile;
+    }
+
+    private JsonArray generateWordCloud() throws IOException {
+        Map<String, Integer> wordCounts = new HashMap<>();
+        JiebaSegmenter segmenter = new JiebaSegmenter();
+
+        Path dataPath = Paths.get(DATA_DIR);
+        try (Stream<Path> paths = Files.walk(dataPath)) {
+            paths.filter(Files::isRegularFile)
+                 .filter(p -> p.toString().endsWith(".md"))
+                 .forEach(path -> processFile(path, segmenter, wordCounts));
+        }
+
+        List<Map.Entry<String, Integer>> sortedWords = wordCounts.entrySet().stream()
+            .filter(e -> e.getKey().length() > 1) // Filter single characters
+            .filter(e -> !STOP_WORDS.contains(e.getKey()))
+            .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+            .limit(200)
+            .collect(Collectors.toList());
+
+        JsonArray result = new JsonArray();
+        for (Map.Entry<String, Integer> entry : sortedWords) {
+            result.add(new JsonObject()
+                .put("name", entry.getKey())
+                .put("value", entry.getValue()));
+        }
+        return result;
     }
 
     private void processFile(Path path, JiebaSegmenter segmenter, Map<String, Integer> wordCounts) {
         try {
             List<String> lines = Files.readAllLines(path);
             for (String line : lines) {
-                // Extract content after the arrow and speaker name if present
-                // Format example: " 1→户晨风：这个刚开..." or " 2→" (empty) or " 3→某网友：..."
                 int arrowIndex = line.indexOf("→");
                 if (arrowIndex != -1) {
                     String content = line.substring(arrowIndex + 1).trim();
-                    // Remove speaker name if present (e.g. "户晨风：" or "某网友：")
                     int colonIndex = content.indexOf("：");
-                    if (colonIndex != -1 && colonIndex < 10) { // Assume speaker name is short
+                    if (colonIndex != -1 && colonIndex < 10) { 
                         content = content.substring(colonIndex + 1).trim();
                     }
                     

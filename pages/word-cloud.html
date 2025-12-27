@@ -187,9 +187,9 @@
         if (data.count > 0) {
             resultDiv.innerHTML = `
                 <div class="result-item success">
-                    <span class="word">"${data.word}"</span> 出现了
+                    <span class="word">"${data.word}"</span> 出现了 
                     <span class="count">${data.count}</span> 次
-                    ${data.inTop200 ? '<span class="tag">🔥 热门词汇</span>' : ''}
+                    ${data.inTop300 ? '<span class="tag">🔥 热门词汇</span>' : ''}
                 </div>
             `;
         } else {

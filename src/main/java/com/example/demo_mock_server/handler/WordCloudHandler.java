@@ -37,12 +37,22 @@ public class WordCloudHandler implements Handler<RoutingContext> {
             "它", "她们", "它们", "位", "部", "个", "只", "次", "件", "本", "些", "点", "块", "张", "条", "支", "架", "台", "份", "颗", "株", "头", "匹", "口", "间", "所", "座", "栋", "层",
             "级", "种", "类", "群", "对", "把", "被", "让", "给", "为", "以", "由", "从", "自", "向", "往", "在", "当", "朝", "按", "照", "凭", "据", "依", "靠", "沿", "顺", "趁", "随", "同",
             "跟", "与", "及", "或", "而", "且", "但", "虽", "然", "即", "便", "纵", "不", "过", "只", "要", "只", "有", "除", "非", "无", "论", "不", "管", "嗯", "哦", "哎", "呀", "哈",
-          "来说","一下","一些","这种","然后","觉得","这样","的话","一点"
+          "来说","一下","一些","这种","然后","觉得","这样","的话","一点","xxxx"
         ));
     }
 
+    private static class WordCloudData {
+        final JsonArray top200;
+        final Map<String, Integer> fullCounts;
+
+        WordCloudData(JsonArray top200, Map<String, Integer> fullCounts) {
+            this.top200 = top200;
+            this.fullCounts = fullCounts;
+        }
+    }
+
     private final Vertx vertx;
-    private final Cache<String, JsonArray> cache;
+    private final Cache<String, WordCloudData> cache;
 
     public WordCloudHandler(Vertx vertx) {
         this.vertx = vertx;
@@ -79,11 +89,11 @@ public class WordCloudHandler implements Handler<RoutingContext> {
 
     @Override
     public void handle(RoutingContext ctx) {
-        JsonArray cached = cache.getIfPresent(CACHE_KEY);
+        String searchWord = ctx.queryParams().get("search");
+
+        WordCloudData cached = cache.getIfPresent(CACHE_KEY);
         if (cached != null) {
-            ctx.response()
-                .putHeader("Content-Type", "application/json; charset=utf-8")
-                .end(cached.encode());
+            handleResponse(ctx, cached, searchWord);
             return;
         }
 
@@ -93,7 +103,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
                 // or cache.get(key, k -> load(k)), but since load() throws IOException and is heavy,
                 // we want to do it in executeBlocking.
                 // Caffeine's get(key, mappingFunction) computes atomically.
-                JsonArray result = cache.get(CACHE_KEY, k -> {
+                WordCloudData result = cache.get(CACHE_KEY, k -> {
                     try {
                         return generateWordCloud();
                     } catch (IOException e) {
@@ -108,15 +118,39 @@ public class WordCloudHandler implements Handler<RoutingContext> {
             }
         }, res -> {
             if (res.succeeded()) {
-                ctx.response()
-                    .putHeader("Content-Type", "application/json; charset=utf-8")
-                    .end(((JsonArray) res.result()).encode());
+                handleResponse(ctx, (WordCloudData) res.result(), searchWord);
             } else {
                 ctx.response()
                     .setStatusCode(500)
                     .end(new JsonObject().put("error", res.cause().getMessage()).encode());
             }
         });
+    }
+
+    private void handleResponse(RoutingContext ctx, WordCloudData data, String searchWord) {
+        if (searchWord != null && !searchWord.trim().isEmpty()) {
+            String word = searchWord.trim();
+            Integer count = data.fullCounts.getOrDefault(word, 0);
+            boolean inTop200 = false;
+            for (int i = 0; i < data.top200.size(); i++) {
+                if (data.top200.getJsonObject(i).getString("name").equals(word)) {
+                    inTop200 = true;
+                    break;
+                }
+            }
+
+            ctx.response()
+                .putHeader("Content-Type", "application/json; charset=utf-8")
+                .end(new JsonObject()
+                    .put("word", word)
+                    .put("count", count)
+                    .put("inTop200", inTop200)
+                    .encode());
+        } else {
+            ctx.response()
+                .putHeader("Content-Type", "application/json; charset=utf-8")
+                .end(data.top200.encode());
+        }
     }
 
     private void initData() throws IOException {
@@ -190,7 +224,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
         return destFile;
     }
 
-    private JsonArray generateWordCloud() throws IOException {
+    private WordCloudData generateWordCloud() throws IOException {
         System.out.println("Generating word cloud data...");
         Map<String, Integer> wordCounts = new HashMap<>();
         JiebaSegmenter segmenter = new JiebaSegmenter();
@@ -198,7 +232,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
         Path dataPath = Paths.get(DATA_DIR);
         if (!Files.exists(dataPath)) {
              System.out.println("Data directory not found: " + dataPath.toAbsolutePath());
-             return new JsonArray();
+             return new WordCloudData(new JsonArray(), new HashMap<>());
         }
 
         try (Stream<Path> paths = Files.walk(dataPath)) {
@@ -224,7 +258,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
                 .put("name", entry.getKey())
                 .put("value", entry.getValue()));
         }
-        return result;
+        return new WordCloudData(result, wordCounts);
     }
 
     private void processFile(Path path, JiebaSegmenter segmenter, Map<String, Integer> wordCounts) {
@@ -234,13 +268,18 @@ public class WordCloudHandler implements Handler<RoutingContext> {
                 String content = line.trim();
                 if (content.isEmpty()) continue;
 
-                // Attempt to strip speaker name (e.g. "户晨风：")
+                // Filter: Only process lines starting with "户晨风：" or "户晨风:"
+                if (!content.startsWith("户晨风：") && !content.startsWith("户晨风:")) {
+                    continue;
+                }
+
+                // Strip speaker name
                 int colonIndex = content.indexOf("：");
                 if (colonIndex == -1) {
                     colonIndex = content.indexOf(":");
                 }
 
-                if (colonIndex != -1 && colonIndex < 20) {
+                if (colonIndex != -1) {
                      content = content.substring(colonIndex + 1).trim();
                 }
 

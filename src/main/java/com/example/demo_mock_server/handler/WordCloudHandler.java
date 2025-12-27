@@ -34,15 +34,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
         "它", "她们", "它们", "位", "部", "个", "只", "次", "件", "本", "些", "点", "块", "张", "条", "支", "架", "台", "份", "颗", "株", "头", "匹", "口", "间", "所", "座", "栋", "层",
         "级", "种", "类", "群", "对", "把", "被", "让", "给", "为", "以", "由", "从", "自", "向", "往", "在", "当", "朝", "按", "照", "凭", "据", "依", "靠", "沿", "顺", "趁", "随", "同",
         "跟", "与", "及", "或", "而", "且", "但", "虽", "然", "即", "便", "纵", "不", "过", "只", "要", "只", "有", "除", "非", "无", "论", "不", "管", "嗯", "哦", "哎", "呀", "哈",
-        "户晨风", "感谢", "不是", "现在", "一下", "可以", "知道", "然后", "xxxx", "问题", "为什么", "可能", "觉得", "哈哈哈", "这样", "这种", "是不是", "不能", "不要", "的话", "咱们", "应该", "时候",
-        "总说", "直接", "东西", "还有", "比如说", "多少", "就是说", "这些", "观点", "里面", "哎呀", "意思", "确实", "很多", "大家", "一点", "一些", "你好", "工作", "已经", "今天", "直播", "手机",
-        "稍微", "视频", "直播间", "之后", "需要", "真的", "一样", "这是", "有没有", "刚才", "告诉", "sc", "之前", "不会", "别人", "肯定", "比较", "学校", "当然", "非常", "说话", "户子", "苹果",
-        "不行", "...", "哪个", "开始", "地方", "中医", "一定", "喜欢", "回答", "公司", "出来", "看到", "大概", "来讲", "其他", "别急", "不了", "两个", "事情", "认为", "生活", "感觉", "人家",
-        "任何", "医院", "着急", "那种", "不用", "不好", "城市", "明白", "首先", "如果说", "时间", "清楚", "父母", "一个月", "就行了", "专业", "逻辑", "表达", "美国", "一直", "有人", "情况",
-        "个人", "办法", "pk", "有点", "话题", "那些", "敏感", "真是", "一年", "不到", "例子", "简单", "大学", "说实话", "包括", "别别", "社会", "干什么", "孩子", "私有化", "谢谢", "正常",
-        "收入", "最后", "了解", "哪里", "毕业", "房子", "学历", "马上", "关系", "不想", "ok", "怎么样", "当时", "这边", "干嘛", "日本", "晚上", "国家", "本身", "能力", "申请", "所有",
-        "另外", "对于", "怎么办", "学生", "高铁", "所谓", "换个", "基本上", "反正", "特别", "上麦", "拜拜", "几个", "网友", "成本", "只有", "好好", "小时", "特斯拉", "以后", "通过", "一天",
-        "起来", "救命", "或者说", "有些", "只能", "一种", "连麦", "理解", "文言文", "医生", "完全", "支持", "块钱", "必须", "再见", "英语", "主播", "存在", "只要", "尊重", "好像"
+        "户晨风", "感谢", "不是", "现在", "一下"
     ));
 
     private final Vertx vertx;
@@ -54,7 +46,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
             .expireAfterWrite(1, TimeUnit.HOURS)
             .maximumSize(1)
             .build();
-            
+
         try {
             initData();
         } catch (IOException e) {
@@ -86,7 +78,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
                         throw new RuntimeException(e);
                     }
                 });
-                
+
                 promise.complete(result);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -192,7 +184,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
                  .filter(p -> p.toString().endsWith(".md"))
                  .forEach(path -> processFile(path, segmenter, wordCounts));
         }
-        
+
         System.out.println("Total words found: " + wordCounts.size());
 
         List<Map.Entry<String, Integer>> sortedWords = wordCounts.entrySet().stream()
@@ -201,7 +193,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
             .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
             .limit(200)
             .collect(Collectors.toList());
-            
+
         System.out.println("Top words count: " + sortedWords.size());
 
         JsonArray result = new JsonArray();

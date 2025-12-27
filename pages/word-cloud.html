@@ -109,11 +109,11 @@
     window.addEventListener('resize', () => myChart.resize());
 
     try {
-      const response = await fetch('/word-cloud?t=' + Date.now());
+      const response = await fetch('https://demo-api-mockserver.runnable.run/word-cloud?t=' + Date.now());
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       let data;
       try {
         const text = await response.text();

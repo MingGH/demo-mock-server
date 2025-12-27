@@ -115,6 +115,7 @@
       <a href="${prefix}index.html" class="${currentPage === 'index.html' ? 'active' : ''}">首页</a>
       <a href="${prefix}pages/mock-data.html" class="${currentPage === 'mock-data.html' ? 'active' : ''}">数据分页</a>
       <a href="${prefix}pages/chinese-names.html" class="${currentPage === 'chinese-names.html' ? 'active' : ''}">中文名生成</a>
+      <a href="${prefix}pages/word-cloud.html" class="${currentPage === 'word-cloud.html' ? 'active' : ''}">词云分析</a>
     </nav>
     <div class="external-links">
       <a href="https://github.com/MingGH/demo-mock-server" target="_blank">GitHub</a>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>户晨风直播词云分析</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin: 30px 0 40px;
+    }
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00d4ff, #a855f7, #00d4ff);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradient 4s ease infinite;
+    }
+    @keyframes gradient {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .header p {
+      color: rgba(255,255,255,0.5);
+      margin-top: 10px;
+    }
+
+    .chart-container {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+      height: 700px;
+      position: relative;
+    }
+
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: rgba(255,255,255,0.5);
+    }
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #00d4ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-message {
+      color: #ff6b6b;
+      text-align: center;
+      padding: 20px;
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>☁️ 户晨风直播词云分析</h1>
+    <p>基于 data/HuChenFeng 目录下的大量直播实录数据生成的词云图</p>
+  </div>
+
+  <div class="chart-container" id="chart">
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      <p>正在分析海量数据，请稍候...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function initChart() {
+    const chartDom = document.getElementById('chart');
+    const myChart = echarts.init(chartDom);
+    
+    // Resize handler
+    window.addEventListener('resize', () => myChart.resize());
+
+    try {
+      const response = await fetch('/word-cloud');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+          show: true,
+          formatter: '{b}: {c}次'
+        },
+        series: [{
+          type: 'wordCloud',
+          shape: 'circle',
+          keepAspect: false,
+          left: 'center',
+          top: 'center',
+          width: '95%',
+          height: '95%',
+          right: null,
+          bottom: null,
+          sizeRange: [12, 100],
+          rotationRange: [-90, 90],
+          rotationStep: 45,
+          gridSize: 8,
+          drawOutOfBound: false,
+          layoutAnimation: true,
+          textStyle: {
+            fontFamily: 'sans-serif',
+            fontWeight: 'bold',
+            color: function () {
+              // Random color
+              return 'rgb(' + [
+                Math.round(Math.random() * 200 + 55),
+                Math.round(Math.random() * 200 + 55),
+                Math.round(Math.random() * 200 + 55)
+              ].join(',') + ')';
+            }
+          },
+          emphasis: {
+            focus: 'self',
+            textStyle: {
+              shadowBlur: 10,
+              shadowColor: '#333'
+            }
+          },
+          data: data
+        }]
+      };
+
+      myChart.setOption(option);
+      
+      // Remove loading
+      const loading = document.querySelector('.loading');
+      if (loading) loading.remove();
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      chartDom.innerHTML = `
+        <div class="loading">
+          <p class="error-message">❌ 加载失败: ${error.message}</p>
+        </div>
+      `;
+    }
+  }
+
+  window.onload = initChart;
+</script>
+</body>
+</html>

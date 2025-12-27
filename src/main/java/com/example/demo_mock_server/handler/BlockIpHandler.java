@@ -12,8 +12,15 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -26,6 +33,10 @@ public class BlockIpHandler implements Handler<RoutingContext> {
 
     private static final String API_URL = "https://api.996.ninja/blockip/list";
     private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5分钟缓存
+    
+    private static final String CITY_DB_URL = "https://fileshare.runnable.run/GeoLite2/GeoLite2-City.mmdb";
+    private static final String COUNTRY_DB_URL = "https://fileshare.runnable.run/GeoLite2/GeoLite2-Country.mmdb";
+    private static final String DATA_DIR = "data/GeoLite2";
 
     private final WebClient webClient;
     private DatabaseReader geoReader;
@@ -42,29 +53,62 @@ public class BlockIpHandler implements Handler<RoutingContext> {
             .setIdleTimeout(60);
         this.webClient = WebClient.create(vertx, options);
         
-        // 初始化 GeoIP 数据库
-        initGeoDatabase();
+        // 启动时异步下载并初始化数据库
+        vertx.executeBlocking(promise -> {
+            try {
+                ensureGeoDbExists();
+                promise.complete();
+            } catch (Exception e) {
+                promise.fail(e);
+            }
+        }, res -> {
+            if (res.succeeded()) {
+                initGeoDatabase();
+            } else {
+                System.err.println("Failed to download GeoIP databases: " + res.cause().getMessage());
+            }
+        });
+    }
+
+    private void ensureGeoDbExists() throws Exception {
+        Path dir = Paths.get(DATA_DIR);
+        if (!Files.exists(dir)) {
+            Files.createDirectories(dir);
+        }
+        
+        downloadIfMissing(dir.resolve("GeoLite2-City.mmdb"), CITY_DB_URL);
+        downloadIfMissing(dir.resolve("GeoLite2-Country.mmdb"), COUNTRY_DB_URL);
+    }
+
+    private void downloadIfMissing(Path path, String url) throws IOException {
+        if (!Files.exists(path)) {
+            System.out.println("Downloading " + path.getFileName() + " from " + url + "...");
+            try (InputStream in = new URL(url).openStream()) {
+                Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
+            }
+            System.out.println("Downloaded " + path.getFileName());
+        }
     }
 
     private void initGeoDatabase() {
         try {
             // 优先尝试 City 数据库
-            InputStream dbStream = getClass().getResourceAsStream("/GeoLite2-City.mmdb");
-            if (dbStream != null) {
-                geoReader = new DatabaseReader.Builder(dbStream).build();
+            File cityFile = new File(DATA_DIR, "GeoLite2-City.mmdb");
+            if (cityFile.exists()) {
+                geoReader = new DatabaseReader.Builder(cityFile).build();
                 isCityDb = true;
-                System.out.println("GeoIP City database loaded successfully");
+                System.out.println("GeoIP City database loaded from " + cityFile.getAbsolutePath());
                 return;
             }
             
             // 回退到 Country 数据库
-            dbStream = getClass().getResourceAsStream("/GeoLite2-Country.mmdb");
-            if (dbStream != null) {
-                geoReader = new DatabaseReader.Builder(dbStream).build();
+            File countryFile = new File(DATA_DIR, "GeoLite2-Country.mmdb");
+            if (countryFile.exists()) {
+                geoReader = new DatabaseReader.Builder(countryFile).build();
                 isCityDb = false;
-                System.out.println("GeoIP Country database loaded successfully");
+                System.out.println("GeoIP Country database loaded from " + countryFile.getAbsolutePath());
             } else {
-                System.out.println("GeoIP database not found, geolocation will be disabled");
+                System.out.println("GeoIP database not found in " + DATA_DIR + ", geolocation will be disabled");
             }
         } catch (Exception e) {
             System.err.println("Failed to load GeoIP database: " + e.getMessage());

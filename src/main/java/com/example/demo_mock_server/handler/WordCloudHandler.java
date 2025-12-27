@@ -42,11 +42,11 @@ public class WordCloudHandler implements Handler<RoutingContext> {
     }
 
     private static class WordCloudData {
-        final JsonArray top200;
+        final JsonArray top300;
         final Map<String, Integer> fullCounts;
 
-        WordCloudData(JsonArray top200, Map<String, Integer> fullCounts) {
-            this.top200 = top200;
+        WordCloudData(JsonArray top300, Map<String, Integer> fullCounts) {
+            this.top300 = top300;
             this.fullCounts = fullCounts;
         }
     }
@@ -131,10 +131,10 @@ public class WordCloudHandler implements Handler<RoutingContext> {
         if (searchWord != null && !searchWord.trim().isEmpty()) {
             String word = searchWord.trim();
             Integer count = data.fullCounts.getOrDefault(word, 0);
-            boolean inTop200 = false;
-            for (int i = 0; i < data.top200.size(); i++) {
-                if (data.top200.getJsonObject(i).getString("name").equals(word)) {
-                    inTop200 = true;
+            boolean inTop300 = false;
+            for (int i = 0; i < data.top300.size(); i++) {
+                if (data.top300.getJsonObject(i).getString("name").equals(word)) {
+                    inTop300 = true;
                     break;
                 }
             }
@@ -144,12 +144,12 @@ public class WordCloudHandler implements Handler<RoutingContext> {
                 .end(new JsonObject()
                     .put("word", word)
                     .put("count", count)
-                    .put("inTop200", inTop200)
+                    .put("inTop300", inTop300)
                     .encode());
         } else {
             ctx.response()
                 .putHeader("Content-Type", "application/json; charset=utf-8")
-                .end(data.top200.encode());
+                .end(data.top300.encode());
         }
     }
 
@@ -247,7 +247,7 @@ public class WordCloudHandler implements Handler<RoutingContext> {
             .filter(e -> e.getKey().length() > 1) // Filter single characters
             .filter(e -> !STOP_WORDS.contains(e.getKey()))
             .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-            .limit(200)
+            .limit(300)
             .collect(Collectors.toList());
 
         System.out.println("Top words count: " + sortedWords.size());

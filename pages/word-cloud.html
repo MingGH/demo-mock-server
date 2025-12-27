@@ -82,6 +82,72 @@
       padding: 20px;
     }
 
+    .search-box {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .search-box input {
+      padding: 12px 20px;
+      width: 300px;
+      border-radius: 30px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+      transition: all 0.3s;
+    }
+    .search-box input:focus {
+      border-color: #00d4ff;
+      background: rgba(255,255,255,0.15);
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+    }
+    .search-box button {
+      padding: 12px 30px;
+      margin-left: 10px;
+      border-radius: 30px;
+      border: none;
+      background: linear-gradient(90deg, #00d4ff, #005bea);
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .search-box button:hover {
+      transform: scale(1.05);
+    }
+    
+    .search-result {
+      text-align: center;
+      margin-bottom: 20px;
+      min-height: 20px;
+    }
+    .result-item {
+      display: inline-block;
+      padding: 10px 20px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+      animation: fadeIn 0.3s ease;
+    }
+    .result-item.success { border-left: 4px solid #00d4ff; }
+    .result-item.empty { border-left: 4px solid #ffaa00; }
+    .result-item.error { border-left: 4px solid #ff4444; }
+    
+    .result-item .word { color: #00d4ff; font-weight: bold; font-size: 1.2em; }
+    .result-item .count { color: #fff; font-weight: bold; font-size: 1.4em; margin: 0 5px; }
+    .result-item .tag { 
+        display: inline-block;
+        background: rgba(255, 100, 100, 0.2);
+        color: #ff6b6b;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        margin-left: 10px;
+        vertical-align: middle;
+    }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
   </style>
 </head>
 <body>
@@ -92,6 +158,12 @@
     <p>基于直播实录数据生成的词云图</p>
   </div>
 
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="输入关键词搜索...">
+    <button onclick="searchWord()">搜索</button>
+  </div>
+  <div id="searchResult" class="search-result"></div>
+
   <div class="chart-container" id="chart">
     <div class="loading">
       <div class="loading-spinner"></div>
@@ -101,6 +173,37 @@
 </div>
 
 <script>
+  async function searchWord() {
+    const input = document.getElementById('searchInput');
+    const resultDiv = document.getElementById('searchResult');
+    const word = input.value.trim();
+    
+    if (!word) return;
+    
+    try {
+        const response = await fetch('/word-cloud?search=' + encodeURIComponent(word));
+        const data = await response.json();
+        
+        if (data.count > 0) {
+            resultDiv.innerHTML = `
+                <div class="result-item success">
+                    <span class="word">"${data.word}"</span> 出现了 
+                    <span class="count">${data.count}</span> 次
+                    ${data.inTop200 ? '<span class="tag">🔥 热门词汇</span>' : ''}
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="result-item empty">
+                    未找到关键词 "${data.word}"
+                </div>
+            `;
+        }
+    } catch (e) {
+        resultDiv.innerHTML = `<div class="result-item error">搜索失败: ${e.message}</div>`;
+    }
+  }
+
   async function initChart() {
     const chartDom = document.getElementById('chart');
     const myChart = echarts.init(chartDom);

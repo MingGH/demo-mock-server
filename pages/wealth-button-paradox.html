@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>50%财富按钮悖论 - 该不该按？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #ff6b6b, #ffd700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .question-box {
+      background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,215,0,0.1));
+      border-left: 4px solid #ff6b6b;
+      padding: 15px 20px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+      font-size: 1.05rem;
+      line-height: 1.8;
+    }
+    .question-box strong { color: #ffd700; }
+    
+    /* 按钮区域 */
+    .button-area {
+      text-align: center;
+      padding: 30px;
+    }
+    .big-button {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(145deg, #ff6b6b, #ee5a5a);
+      box-shadow: 0 10px 40px rgba(255, 107, 107, 0.4),
+                  inset 0 -5px 20px rgba(0,0,0,0.2),
+                  inset 0 5px 20px rgba(255,255,255,0.2);
+      cursor: pointer;
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: white;
+      transition: all 0.15s;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .big-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 15px 50px rgba(255, 107, 107, 0.5),
+                  inset 0 -5px 20px rgba(0,0,0,0.2),
+                  inset 0 5px 20px rgba(255,255,255,0.2);
+    }
+    .big-button:active {
+      transform: scale(0.95);
+      box-shadow: 0 5px 20px rgba(255, 107, 107, 0.3),
+                  inset 0 5px 20px rgba(0,0,0,0.3);
+    }
+    .big-button:disabled {
+      background: #666;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+    
+    /* 资产显示 */
+    .wealth-display {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    .wealth-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 20px 30px;
+      text-align: center;
+      min-width: 200px;
+    }
+    .wealth-label {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+    }
+    .wealth-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #4ade80;
+      transition: all 0.3s;
+    }
+    .wealth-value.danger { color: #ff6b6b; }
+    .wealth-value.warning { color: #ffd700; }
+    
+    /* 历史记录 */
+    .history {
+      max-height: 150px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-size: 0.9rem;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item.win { color: #4ade80; }
+    .history-item.lose { color: #ff6b6b; }
+    
+    /* 统计 */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    @media (max-width: 600px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #ffd700;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 5px;
+    }
+    
+    /* 控制按钮 */
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+    
+    /* 输入区 */
+    .input-row {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .input-group label {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9rem;
+    }
+    .input-group input {
+      width: 120px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: white;
+      font-size: 1rem;
+    }
+    .input-group input:focus {
+      outline: none;
+      border-color: #ffd700;
+    }
+    
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin-top: 20px;
+    }
+    
+    /* 批量模拟 */
+    .batch-results {
+      display: none;
+      margin-top: 20px;
+    }
+    .batch-results.show { display: block; }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+    @media (max-width: 500px) {
+      .result-grid { grid-template-columns: 1fr; }
+    }
+    .result-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .result-card h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+    .result-card .big-num {
+      font-size: 2.5rem;
+      font-weight: bold;
+    }
+    .result-card .big-num.red { color: #ff6b6b; }
+    .result-card .big-num.green { color: #4ade80; }
+    .result-card .big-num.gold { color: #ffd700; }
+    
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .analysis h3 {
+      color: #ffd700;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .analysis p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.8;
+      margin-bottom: 12px;
+    }
+    .analysis .formula {
+      background: rgba(255,255,255,0.1);
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      margin: 12px 0;
+      overflow-x: auto;
+    }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+    
+    /* 结论卡片 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,215,0,0.1));
+      border: 2px solid #ff6b6b;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .conclusion h3 {
+      font-size: 1.5rem;
+      margin-bottom: 15px;
+      color: #ff6b6b;
+    }
+    .conclusion p {
+      color: rgba(255,255,255,0.9);
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>🔴 50%财富按钮悖论</h1>
+    <p class="subtitle">期望值为正，但你敢按吗？</p>
+    
+    <div class="card">
+      <div class="question-box">
+        <strong>问题：</strong>有一个按钮，按下后：<br>
+        • <strong>50%</strong> 概率：你的所有资产 <strong>×9</strong>（翻9倍）<br>
+        • <strong>50%</strong> 概率：你的所有资产 <strong>×0.1</strong>（只剩1/10）<br><br>
+        期望值 = 0.5×9 + 0.5×0.1 = <strong>4.55</strong>，是正的！<br>
+        理论上无限按下去，收益趋向正无穷。<br><br>
+        <strong>那么，这个按钮应该按吗？</strong>
+      </div>
+      
+      <div class="input-row">
+        <div class="input-group">
+          <label>初始资产：</label>
+          <input type="number" id="initialWealth" value="100000" min="1">
+          <span style="color: rgba(255,255,255,0.5);">元</span>
+        </div>
+      </div>
+      
+      <div class="button-area">
+        <button class="big-button" id="pressBtn" onclick="pressButton()">
+          按下按钮<br>🎰
+        </button>
+      </div>
+      
+      <div class="wealth-display">
+        <div class="wealth-box">
+          <div class="wealth-label">当前资产</div>
+          <div class="wealth-value" id="currentWealth">¥100,000</div>
+        </div>
+        <div class="wealth-box">
+          <div class="wealth-label">累计收益率</div>
+          <div class="wealth-value" id="totalReturn">0%</div>
+        </div>
+      </div>
+      
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-value" id="pressCount">0</div>
+          <div class="stat-label">按下次数</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="winCount">0</div>
+          <div class="stat-label">×9 次数</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="loseCount">0</div>
+          <div class="stat-label">×0.1 次数</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="winRate">-</div>
+          <div class="stat-label">实际胜率</div>
+        </div>
+      </div>
+      
+      <div class="history" id="history">
+        <div style="color: rgba(255,255,255,0.5); text-align: center;">按下按钮开始...</div>
+      </div>
+      
+      <div class="controls">
+        <button class="btn btn-secondary" onclick="pressMultiple(10)">连按 10 次</button>
+        <button class="btn btn-secondary" onclick="pressMultiple(50)">连按 50 次</button>
+        <button class="btn btn-secondary" onclick="resetGame()">🔄 重置</button>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="wealthChart"></canvas>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #ffd700;">🎲 蒙特卡洛模拟：1000个人各按100次</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+        让我们模拟1000个人，每人初始10万，各按100次按钮，看看最终结果分布
+      </p>
+      
+      <div class="controls">
+        <button class="btn btn-secondary" onclick="runBatchSimulation()" id="batchBtn">🚀 运行模拟</button>
+      </div>
+      
+      <div class="batch-results" id="batchResults">
+        <div class="result-grid">
+          <div class="result-card">
+            <h4>💀 破产率（资产<1元）</h4>
+            <div class="big-num red" id="bankruptRate">-</div>
+          </div>
+          <div class="result-card">
+            <h4>📈 盈利率（资产>初始）</h4>
+            <div class="big-num green" id="profitRate">-</div>
+          </div>
+          <div class="result-card">
+            <h4>💰 中位数资产</h4>
+            <div class="big-num gold" id="medianWealth">-</div>
+          </div>
+          <div class="result-card">
+            <h4>🎯 平均资产</h4>
+            <div class="big-num gold" id="avgWealth">-</div>
+          </div>
+        </div>
+        
+        <div class="chart-container" style="height: 200px; margin-top: 20px;">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card analysis">
+      <h3>📐 数学分析：为什么期望值骗了你</h3>
+      
+      <p><strong>1. 算术期望 vs 几何期望</strong></p>
+      <p>
+        算术期望（你算的那个）：E = 0.5×9 + 0.5×0.1 = <span class="safe">4.55</span><br>
+        看起来很美好，每按一次"平均"能赚3.55倍！
+      </p>
+      
+      <p><strong>2. 但财富是乘法累积的</strong></p>
+      <p>
+        按两次的可能结果：<br>
+        • 9×9 = 81（概率25%）<br>
+        • 9×0.1 = 0.9（概率25%）<br>
+        • 0.1×9 = 0.9（概率25%）<br>
+        • 0.1×0.1 = 0.01（概率25%）
+      </p>
+      <div class="formula">
+        几何期望 = (9 × 0.1)^0.5 = 0.9^0.5 ≈ <span class="highlight">0.949</span>
+      </div>
+      <p>
+        几何期望 < 1！这意味着<span class="highlight">每按一次，你的财富中位数都在缩水</span>。
+      </p>
+      
+      <p><strong>3. 凯利公式的判断</strong></p>
+      <p>凯利公式用于判断一个赌局是否值得下注：</p>
+      <div class="formula">
+        f* = (p × b - q) / b<br>
+        其中 p=0.5（赢的概率），b=8（净赔率，赢了赚8倍），q=0.5（输的概率）<br>
+        f* = (0.5 × 8 - 0.5) / 8 = 0.4375
+      </div>
+      <p>
+        凯利公式建议你只押 <span class="safe">43.75%</span> 的资产，而不是全部！<br>
+        但这个按钮强制你押上100%，这就是问题所在。
+      </p>
+      
+      <p><strong>4. 大数定律的陷阱</strong></p>
+      <p>
+        按 n 次后，期望赢 n/2 次，输 n/2 次。<br>
+        最终资产 = 初始 × 9^(n/2) × 0.1^(n/2) = 初始 × <span class="highlight">0.9^n</span>
+      </p>
+      <div class="formula">
+        按10次：0.9^10 ≈ 0.35（剩35%）<br>
+        按50次：0.9^50 ≈ 0.005（剩0.5%）<br>
+        按100次：0.9^100 ≈ 0.00003（几乎归零）
+      </div>
+    </div>
+    
+    <div class="card conclusion">
+      <h3>🎯 结论：不该按</h3>
+      <p>
+        这个按钮是一个经典的<strong>「期望值陷阱」</strong>。<br><br>
+        算术期望为正，但几何期望为负。<br>
+        少数人会暴富（连续×9），但<strong>绝大多数人会破产</strong>。<br><br>
+        平均值被极少数幸运儿拉高，但你大概率不是那个幸运儿。<br>
+        这就是为什么赌场永远赢——他们玩的是大数定律，而你只有一条命。<br><br>
+        <span style="color: #ffd700;">「期望值为正」≠「应该参与」</span><br>
+        <span style="color: rgba(255,255,255,0.6);">当赌注是你的全部时，中位数比平均数更重要。</span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    let wealth = 100000;
+    let initialWealth = 100000;
+    let pressCount = 0;
+    let winCount = 0;
+    let loseCount = 0;
+    let history = [];
+    let wealthHistory = [100000];
+    let chart = null;
+    let distributionChart = null;
+    
+    function formatMoney(num) {
+      if (num >= 1e12) return '¥' + (num/1e12).toFixed(2) + '万亿';
+      if (num >= 1e8) return '¥' + (num/1e8).toFixed(2) + '亿';
+      if (num >= 1e4) return '¥' + (num/1e4).toFixed(2) + '万';
+      if (num >= 1) return '¥' + num.toFixed(2);
+      if (num >= 0.01) return '¥' + num.toFixed(4);
+      return '¥' + num.toExponential(2);
+    }
+    
+    function updateDisplay() {
+      const wealthEl = document.getElementById('currentWealth');
+      wealthEl.textContent = formatMoney(wealth);
+      
+      // 颜色变化
+      wealthEl.classList.remove('danger', 'warning');
+      if (wealth < initialWealth * 0.1) {
+        wealthEl.classList.add('danger');
+      } else if (wealth < initialWealth) {
+        wealthEl.classList.add('warning');
+      }
+      
+      // 收益率
+      const returnRate = ((wealth / initialWealth - 1) * 100);
+      const returnEl = document.getElementById('totalReturn');
+      if (returnRate >= 0) {
+        returnEl.textContent = '+' + returnRate.toFixed(2) + '%';
+        returnEl.classList.remove('danger');
+      } else {
+        returnEl.textContent = returnRate.toFixed(2) + '%';
+        returnEl.classList.add('danger');
+      }
+      
+      document.getElementById('pressCount').textContent = pressCount;
+      document.getElementById('winCount').textContent = winCount;
+      document.getElementById('loseCount').textContent = loseCount;
+      document.getElementById('winRate').textContent = pressCount > 0 
+        ? (winCount / pressCount * 100).toFixed(1) + '%' 
+        : '-';
+      
+      updateChart();
+    }
+    
+    function pressButton() {
+      const win = Math.random() < 0.5;
+      const oldWealth = wealth;
+      
+      if (win) {
+        wealth *= 9;
+        winCount++;
+        history.unshift({ win: true, before: oldWealth, after: wealth, round: pressCount + 1 });
+      } else {
+        wealth *= 0.1;
+        loseCount++;
+        history.unshift({ win: false, before: oldWealth, after: wealth, round: pressCount + 1 });
+      }
+      
+      pressCount++;
+      wealthHistory.push(wealth);
+      
+      updateDisplay();
+      renderHistory();
+      
+      // 按钮动画
+      const btn = document.getElementById('pressBtn');
+      btn.style.background = win 
+        ? 'linear-gradient(145deg, #4ade80, #22c55e)' 
+        : 'linear-gradient(145deg, #ff6b6b, #ee5a5a)';
+      setTimeout(() => {
+        btn.style.background = 'linear-gradient(145deg, #ff6b6b, #ee5a5a)';
+      }, 300);
+    }
+    
+    function pressMultiple(times) {
+      for (let i = 0; i < times; i++) {
+        pressButton();
+      }
+    }
+    
+    function renderHistory() {
+      const container = document.getElementById('history');
+      if (history.length === 0) {
+        container.innerHTML = '<div style="color: rgba(255,255,255,0.5); text-align: center;">按下按钮开始...</div>';
+        return;
+      }
+      
+      container.innerHTML = history.slice(0, 20).map(h => `
+        <div class="history-item ${h.win ? 'win' : 'lose'}">
+          <span>第${h.round}次：${h.win ? '×9 🎉' : '×0.1 💀'}</span>
+          <span>${formatMoney(h.before)} → ${formatMoney(h.after)}</span>
+        </div>
+      `).join('');
+    }
+    
+    function updateChart() {
+      const ctx = document.getElementById('wealthChart').getContext('2d');
+      
+      if (chart) chart.destroy();
+      
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: wealthHistory.map((_, i) => i),
+          datasets: [{
+            label: '资产',
+            data: wealthHistory,
+            borderColor: '#ffd700',
+            backgroundColor: 'rgba(255, 215, 0, 0.1)',
+            fill: true,
+            tension: 0.1,
+            pointRadius: wealthHistory.length > 50 ? 0 : 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '按下次数', color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.4)' }
+            },
+            y: {
+              type: 'logarithmic',
+              title: { display: true, text: '资产（对数）', color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { 
+                color: 'rgba(255,255,255,0.4)',
+                callback: v => formatMoney(v)
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    function resetGame() {
+      initialWealth = parseFloat(document.getElementById('initialWealth').value) || 100000;
+      wealth = initialWealth;
+      pressCount = 0;
+      winCount = 0;
+      loseCount = 0;
+      history = [];
+      wealthHistory = [initialWealth];
+      updateDisplay();
+      renderHistory();
+    }
+    
+    function runBatchSimulation() {
+      const btn = document.getElementById('batchBtn');
+      btn.disabled = true;
+      btn.textContent = '模拟中...';
+      
+      setTimeout(() => {
+        const people = 1000;
+        const presses = 100;
+        const initial = 100000;
+        const results = [];
+        
+        for (let i = 0; i < people; i++) {
+          let w = initial;
+          for (let j = 0; j < presses; j++) {
+            w *= Math.random() < 0.5 ? 9 : 0.1;
+          }
+          results.push(w);
+        }
+        
+        results.sort((a, b) => a - b);
+        
+        const bankruptCount = results.filter(w => w < 1).length;
+        const profitCount = results.filter(w => w > initial).length;
+        const median = results[Math.floor(people / 2)];
+        const avg = results.reduce((a, b) => a + b, 0) / people;
+        
+        document.getElementById('bankruptRate').textContent = (bankruptCount / people * 100).toFixed(1) + '%';
+        document.getElementById('profitRate').textContent = (profitCount / people * 100).toFixed(1) + '%';
+        document.getElementById('medianWealth').textContent = formatMoney(median);
+        document.getElementById('avgWealth').textContent = formatMoney(avg);
+        
+        document.getElementById('batchResults').classList.add('show');
+        
+        // 绘制分布图
+        drawDistribution(results, initial);
+        
+        btn.disabled = false;
+        btn.textContent = '🚀 重新模拟';
+      }, 100);
+    }
+    
+    function drawDistribution(results, initial) {
+      const ctx = document.getElementById('distributionChart').getContext('2d');
+      
+      if (distributionChart) distributionChart.destroy();
+      
+      // 分桶统计
+      const buckets = {
+        '破产(<1)': 0,
+        '惨淡(1-1k)': 0,
+        '亏损(1k-10w)': 0,
+        '保本(10w-100w)': 0,
+        '小赚(100w-1kw)': 0,
+        '大赚(>1kw)': 0
+      };
+      
+      results.forEach(w => {
+        if (w < 1) buckets['破产(<1)']++;
+        else if (w < 1000) buckets['惨淡(1-1k)']++;
+        else if (w < 100000) buckets['亏损(1k-10w)']++;
+        else if (w < 1000000) buckets['保本(10w-100w)']++;
+        else if (w < 10000000) buckets['小赚(100w-1kw)']++;
+        else buckets['大赚(>1kw)']++;
+      });
+      
+      distributionChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(buckets),
+          datasets: [{
+            data: Object.values(buckets),
+            backgroundColor: [
+              '#ff6b6b',
+              '#ff8c8c',
+              '#ffd700',
+              '#90EE90',
+              '#4ade80',
+              '#22c55e'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.4)' }
+            }
+          }
+        }
+      });
+    }
+    
+    // 初始化
+    document.getElementById('initialWealth').addEventListener('change', resetGame);
+    updateDisplay();
+    renderHistory();
+  </script>
+</body>
+</html>

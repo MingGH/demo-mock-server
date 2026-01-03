@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>损失厌恶 - 你不是理性的，你是怕疼的</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    /* 测试区域 */
+    .test-section {
+      text-align: center;
+      padding: 20px 0;
+    }
+    .test-question {
+      font-size: 1.2rem;
+      margin-bottom: 25px;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.9);
+    }
+    .test-question strong { color: #ffd93d; }
+    .test-question .lose { color: #ff6b6b; }
+    .test-question .win { color: #4ade80; }
+    
+    .choice-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .choice-btn {
+      padding: 20px 40px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.3);
+      color: white;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-width: 200px;
+    }
+    .choice-btn:hover {
+      border-color: #ffd93d;
+      transform: translateY(-3px);
+    }
+    .choice-btn.selected {
+      border-color: #ffd93d;
+      background: rgba(255,217,61,0.2);
+    }
+    .choice-btn .label {
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .choice-btn .detail {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    .test-result {
+      margin-top: 25px;
+      padding: 20px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      display: none;
+    }
+    .test-result.show { display: block; }
+    .test-result h3 {
+      color: #ffd93d;
+      margin-bottom: 10px;
+    }
+    .test-result p {
+      color: rgba(255,255,255,0.8);
+      line-height: 1.7;
+    }
+    
+    /* 模拟游戏 */
+    .game-area {
+      text-align: center;
+      padding: 20px 0;
+    }
+    .game-info {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+    .info-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 15px 25px;
+      min-width: 140px;
+    }
+    .info-box .label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 5px;
+    }
+    .info-box .value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+    .info-box .value.money { color: #ffd93d; }
+    .info-box .value.round { color: #4ade80; }
+    .info-box .value.negative { color: #ff6b6b; }
+    
+    .game-prompt {
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,217,61,0.1));
+      border-radius: 10px;
+      line-height: 1.7;
+    }
+    .game-prompt .win { color: #4ade80; font-weight: bold; }
+    .game-prompt .lose { color: #ff6b6b; font-weight: bold; }
+    
+    .game-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .game-btn {
+      padding: 15px 35px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .game-btn.accept {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: white;
+    }
+    .game-btn.reject {
+      background: linear-gradient(135deg, #ff6b6b, #ef4444);
+      color: white;
+    }
+    .game-btn.reset {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .game-btn:hover {
+      transform: translateY(-2px);
+    }
+    .game-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .game-result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      display: none;
+    }
+    .game-result.show { display: block; }
+    .game-result.win {
+      background: rgba(74,222,128,0.2);
+      color: #4ade80;
+    }
+    .game-result.lose {
+      background: rgba(255,107,107,0.2);
+      color: #ff6b6b;
+    }
+    .game-result.skip {
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.7);
+    }
+    
+    /* 历史记录 */
+    .history-section {
+      margin-top: 20px;
+    }
+    .history-section h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    .history-list {
+      max-height: 150px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.9rem;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item.win { color: #4ade80; }
+    .history-item.lose { color: #ff6b6b; }
+    .history-item.skip { color: rgba(255,255,255,0.5); }
+    
+    /* 统计对比 */
+    .comparison {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 25px;
+    }
+    @media (max-width: 600px) {
+      .comparison { grid-template-columns: 1fr; }
+    }
+    .compare-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .compare-card h4 {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 15px;
+    }
+    .compare-card .big-num {
+      font-size: 2.2rem;
+      font-weight: bold;
+    }
+    .compare-card .big-num.positive { color: #4ade80; }
+    .compare-card .big-num.negative { color: #ff6b6b; }
+    .compare-card .big-num.neutral { color: #ffd93d; }
+    .compare-card .desc {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 8px;
+    }
+    
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin-top: 20px;
+    }
+    
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+    .analysis h3 {
+      color: #ffd93d;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .analysis p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.85;
+      margin-bottom: 14px;
+    }
+    .analysis .formula {
+      background: rgba(255,255,255,0.08);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      margin: 14px 0;
+      overflow-x: auto;
+    }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+    
+    /* 生活案例 */
+    .cases {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 550px) {
+      .cases { grid-template-columns: 1fr; }
+    }
+    .case-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 18px;
+      border-left: 3px solid #ff6b6b;
+    }
+    .case-card h4 {
+      color: #ffd93d;
+      font-size: 0.95rem;
+      margin-bottom: 10px;
+    }
+    .case-card p {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,217,61,0.1));
+      border: 2px solid #ffd93d;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .conclusion h3 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+      color: #ff6b6b;
+    }
+    .conclusion p {
+      color: rgba(255,255,255,0.9);
+      line-height: 1.85;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>😰 损失厌恶</h1>
+    <p class="subtitle">你不是理性的，你是怕疼的</p>
+    
+    <!-- 测试1 -->
+    <div class="card">
+      <h2 style="margin-bottom: 20px; color: #ffd93d;">🧪 测试一下你的损失厌恶</h2>
+      
+      <div class="test-section" id="test1">
+        <div class="test-question">
+          <strong>问题1：</strong>抛一枚硬币<br>
+          正面：你赢 <span class="win">100元</span><br>
+          反面：你输 <span class="lose">100元</span><br><br>
+          期望值 = 0，公平游戏。你玩吗？
+        </div>
+        <div class="choice-buttons">
+          <button class="choice-btn" onclick="answer1('yes')">
+            <div class="label">✅ 玩</div>
+            <div class="detail">公平游戏，为什么不？</div>
+          </button>
+          <button class="choice-btn" onclick="answer1('no')">
+            <div class="label">❌ 不玩</div>
+            <div class="detail">没必要冒险</div>
+          </button>
+        </div>
+        <div class="test-result" id="result1"></div>
+      </div>
+    </div>
+    
+    <!-- 测试2 -->
+    <div class="card">
+      <div class="test-section" id="test2">
+        <div class="test-question">
+          <strong>问题2：</strong>还是抛硬币<br>
+          正面：你赢 <span class="win">150元</span><br>
+          反面：你输 <span class="lose">100元</span><br><br>
+          期望值 = +25元，对你有利。你玩吗？
+        </div>
+        <div class="choice-buttons">
+          <button class="choice-btn" onclick="answer2('yes')">
+            <div class="label">✅ 玩</div>
+            <div class="detail">期望值为正，应该玩</div>
+          </button>
+          <button class="choice-btn" onclick="answer2('no')">
+            <div class="label">❌ 不玩</div>
+            <div class="detail">还是可能亏100</div>
+          </button>
+        </div>
+        <div class="test-result" id="result2"></div>
+      </div>
+    </div>
+    
+    <!-- 测试3 -->
+    <div class="card">
+      <div class="test-section" id="test3">
+        <div class="test-question">
+          <strong>问题3：</strong>赢多少你才愿意玩？<br>
+          反面固定输 <span class="lose">100元</span><br>
+          正面至少赢多少，你才愿意参与？
+        </div>
+        <div class="choice-buttons">
+          <button class="choice-btn" onclick="answer3(150)">
+            <div class="label">150元</div>
+            <div class="detail">1.5倍就够了</div>
+          </button>
+          <button class="choice-btn" onclick="answer3(200)">
+            <div class="label">200元</div>
+            <div class="detail">至少2倍</div>
+          </button>
+          <button class="choice-btn" onclick="answer3(250)">
+            <div class="label">250元</div>
+            <div class="detail">2.5倍才行</div>
+          </button>
+          <button class="choice-btn" onclick="answer3(300)">
+            <div class="label">300元+</div>
+            <div class="detail">3倍以上</div>
+          </button>
+        </div>
+        <div class="test-result" id="result3"></div>
+      </div>
+    </div>
+    
+    <!-- 模拟游戏 -->
+    <div class="card">
+      <h2 style="margin-bottom: 20px; color: #ffd93d;">🎮 损失厌恶模拟器</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+        你有10000元本金，共20轮机会。每轮都是一个"期望值为正"的赌局，但你可以选择跳过。<br>
+        看看你的损失厌恶会让你错过多少收益。
+      </p>
+      
+      <div class="game-area">
+        <div class="game-info">
+          <div class="info-box">
+            <div class="label">当前资金</div>
+            <div class="value money" id="currentMoney">¥10,000</div>
+          </div>
+          <div class="info-box">
+            <div class="label">轮次</div>
+            <div class="value round" id="currentRound">1/20</div>
+          </div>
+          <div class="info-box">
+            <div class="label">累计收益</div>
+            <div class="value money" id="totalProfit">¥0</div>
+          </div>
+        </div>
+        
+        <div class="game-prompt" id="gamePrompt">
+          本轮赌局：<br>
+          50% 赢 <span class="win" id="winAmount">+600元</span>，
+          50% 输 <span class="lose" id="loseAmount">-400元</span><br>
+          期望值：<span id="expectedValue">+100元</span>
+        </div>
+        
+        <div class="game-buttons">
+          <button class="game-btn accept" id="acceptBtn" onclick="playRound(true)">✅ 接受赌局</button>
+          <button class="game-btn reject" id="rejectBtn" onclick="playRound(false)">❌ 跳过</button>
+          <button class="game-btn reset" onclick="resetGame()">🔄 重新开始</button>
+        </div>
+        
+        <div class="game-result" id="gameResult"></div>
+        
+        <div class="comparison" id="comparison" style="display: none;">
+          <div class="compare-card">
+            <h4>😰 你的实际收益</h4>
+            <div class="big-num" id="yourProfit">-</div>
+            <div class="desc">跳过了 <span id="skipCount">0</span> 次</div>
+          </div>
+          <div class="compare-card">
+            <h4>🤖 理性人的收益</h4>
+            <div class="big-num positive" id="rationalProfit">-</div>
+            <div class="desc">全部接受的期望收益</div>
+          </div>
+        </div>
+        
+        <div class="history-section">
+          <h4>📜 历史记录</h4>
+          <div class="history-list" id="historyList">
+            <div class="history-item skip">等待开始...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 大规模模拟 -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #ffd93d;">📊 1000人模拟：损失厌恶的代价</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+        模拟1000人玩100轮"期望值+100"的游戏<br>
+        对比"全部接受"vs"损失厌恶者（输了就不玩了）"的结果
+      </p>
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <button class="game-btn accept" onclick="runMassSimulation()" id="massSimBtn">🚀 运行模拟</button>
+      </div>
+      
+      <div id="massResults" style="display: none;">
+        <div class="comparison">
+          <div class="compare-card">
+            <h4>🤖 理性组（全部接受）</h4>
+            <div class="big-num positive" id="massRational">-</div>
+            <div class="desc">人均最终收益</div>
+          </div>
+          <div class="compare-card">
+            <h4>😰 厌恶组（输了就跑）</h4>
+            <div class="big-num" id="massAverse">-</div>
+            <div class="desc">人均最终收益</div>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分析 -->
+    <div class="card analysis">
+      <h3>📐 损失厌恶的数学</h3>
+      
+      <p><strong>卡尼曼的发现</strong></p>
+      <p>
+        诺贝尔经济学奖得主丹尼尔·卡尼曼发现：<br>
+        <span class="highlight">失去100元的痛苦 ≈ 得到200-250元的快乐</span>
+      </p>
+      <div class="formula">
+        损失厌恶系数 λ ≈ 2.0 ~ 2.5<br>
+        即：Loss的心理权重是Gain的2倍以上
+      </div>
+      
+      <p><strong>这意味着什么？</strong></p>
+      <p>
+        一个期望值为正的赌局，比如"50%赢150，50%输100"：<br>
+        • 数学期望：0.5×150 - 0.5×100 = <span class="safe">+25元</span><br>
+        • 心理期望：0.5×150 - 0.5×100×2.25 = <span class="highlight">-37.5元</span>
+      </p>
+      <p>
+        理性上应该玩，但你的大脑告诉你"不划算"。
+      </p>
+      
+      <p><strong>进化的遗产</strong></p>
+      <p>
+        在原始社会，损失厌恶是救命的：<br>
+        • 多吃一顿饭 → 稍微舒服一点<br>
+        • 少吃一顿饭 → 可能饿死<br><br>
+        但在现代社会，这种本能让你<span class="highlight">过度保守</span>，错过很多机会。
+      </p>
+    </div>
+    
+    <!-- 生活案例 -->
+    <div class="card">
+      <h3 style="color: #ffd93d; margin-bottom: 20px;">🎯 损失厌恶如何影响你的人生</h3>
+      
+      <div class="cases">
+        <div class="case-card">
+          <h4>💼 不敢跳槽</h4>
+          <p>现在的工作稳定但没前途。新机会薪资高50%，但"万一不适应呢"？于是你选择留下，十年后还在原地。</p>
+        </div>
+        <div class="case-card">
+          <h4>📈 割肉太晚</h4>
+          <p>股票跌了20%，你不卖，因为"卖了就真亏了"。结果跌到50%才割肉。赢的时候反而早早落袋为安。</p>
+        </div>
+        <div class="case-card">
+          <h4>💑 不敢表白</h4>
+          <p>喜欢一个人，但"被拒绝太丢人了"。于是你选择不表白，错过可能的幸福，换来确定的遗憾。</p>
+        </div>
+        <div class="case-card">
+          <h4>🏠 不敢改变</h4>
+          <p>知道应该健身/学习/早起，但"改变太累了，失败了更难受"。于是你选择不变，一年后还是老样子。</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 结论 -->
+    <div class="card conclusion">
+      <h3>💡 纠偏：如何对抗损失厌恶</h3>
+      <p>
+        损失厌恶是刻在基因里的，你没法消除它，但可以<strong>意识到它</strong>。<br><br>
+        下次做决定时，问自己：<br>
+        <span style="color: #ffd93d;">「我是真的不该做，还是只是怕疼？」</span><br><br>
+        如果一件事的期望值是正的，但你不敢做——<br>
+        那不是理性，是<span style="color: #ff6b6b;">恐惧在替你做决定</span>。<br><br>
+        <span style="color: rgba(255,255,255,0.6);">
+          有时候，"不改变"才是最大的损失。<br>
+          你以为你在规避风险，其实你在规避人生。
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // 测试部分
+    function answer1(choice) {
+      const btns = document.querySelectorAll('#test1 .choice-btn');
+      btns.forEach(b => b.classList.remove('selected'));
+      event.target.closest('.choice-btn').classList.add('selected');
+      
+      const result = document.getElementById('result1');
+      result.classList.add('show');
+      
+      if (choice === 'no') {
+        result.innerHTML = `
+          <h3>😰 典型的损失厌恶</h3>
+          <p>期望值为0的公平游戏，大多数人选择不玩。<br>
+          因为"可能输100"的恐惧，大于"可能赢100"的期待。<br>
+          这就是损失厌恶——你不是在计算，你是在害怕。</p>
+        `;
+      } else {
+        result.innerHTML = `
+          <h3>🧠 理性选择</h3>
+          <p>期望值为0，玩不玩都行。<br>
+          但大多数人会选择不玩，因为损失的痛苦比收益的快乐更强烈。<br>
+          你能接受公平游戏，说明你的损失厌恶程度较低。</p>
+        `;
+      }
+    }
+    
+    function answer2(choice) {
+      const btns = document.querySelectorAll('#test2 .choice-btn');
+      btns.forEach(b => b.classList.remove('selected'));
+      event.target.closest('.choice-btn').classList.add('selected');
+      
+      const result = document.getElementById('result2');
+      result.classList.add('show');
+      
+      if (choice === 'no') {
+        result.innerHTML = `
+          <h3>😰 损失厌恶在作祟</h3>
+          <p>期望值+25元，长期玩下去稳赚。但你还是不敢。<br>
+          因为你的大脑把"输100"的权重放大了2倍以上。<br>
+          心理账本：0.5×150 - 0.5×100×2.25 = -37.5（亏的感觉）</p>
+        `;
+      } else {
+        result.innerHTML = `
+          <h3>🧠 正确！</h3>
+          <p>期望值为正的游戏，理性上应该参与。<br>
+          但研究显示，大多数人在"赢150输100"时仍然选择不玩。<br>
+          你能克服恐惧做出理性选择，很棒。</p>
+        `;
+      }
+    }
+    
+    function answer3(amount) {
+      const btns = document.querySelectorAll('#test3 .choice-btn');
+      btns.forEach(b => b.classList.remove('selected'));
+      event.target.closest('.choice-btn').classList.add('selected');
+      
+      const result = document.getElementById('result3');
+      result.classList.add('show');
+      
+      const ratio = amount / 100;
+      let analysis = '';
+      
+      if (ratio <= 1.5) {
+        analysis = `你的损失厌恶系数约为 <strong>1.5</strong>，低于平均水平。你相对理性，不太容易被恐惧左右。`;
+      } else if (ratio <= 2) {
+        analysis = `你的损失厌恶系数约为 <strong>2.0</strong>，接近人类平均水平。失去100元的痛苦，需要赢200元才能弥补。`;
+      } else if (ratio <= 2.5) {
+        analysis = `你的损失厌恶系数约为 <strong>2.5</strong>，略高于平均。你比较厌恶风险，可能会错过一些期望值为正的机会。`;
+      } else {
+        analysis = `你的损失厌恶系数约为 <strong>3.0+</strong>，明显高于平均。你非常厌恶损失，这可能让你过度保守。`;
+      }
+      
+      result.innerHTML = `
+        <h3>📊 你的损失厌恶系数</h3>
+        <p>${analysis}<br><br>
+        卡尼曼的研究显示，人类平均的损失厌恶系数在 2.0-2.5 之间。<br>
+        这意味着，要让普通人接受"50%输100"的赌局，赢的金额需要达到200-250元。</p>
+      `;
+    }
+    
+    // 游戏部分
+    let money = 10000;
+    let round = 1;
+    let totalRounds = 20;
+    let history = [];
+    let skipped = 0;
+    let totalExpected = 0;
+    let currentWin = 0;
+    let currentLose = 0;
+    
+    function generateRound() {
+      // 生成一个期望值为正的赌局
+      currentLose = 300 + Math.floor(Math.random() * 300); // 输300-600
+      currentWin = currentLose + 100 + Math.floor(Math.random() * 200); // 赢的比输的多100-300
+      
+      const ev = (currentWin - currentLose) / 2;
+      totalExpected += ev;
+      
+      document.getElementById('winAmount').textContent = '+' + currentWin + '元';
+      document.getElementById('loseAmount').textContent = '-' + currentLose + '元';
+      document.getElementById('expectedValue').textContent = '+' + ev.toFixed(0) + '元';
+    }
+    
+    function playRound(accept) {
+      const resultEl = document.getElementById('gameResult');
+      
+      if (accept) {
+        const win = Math.random() < 0.5;
+        if (win) {
+          money += currentWin;
+          history.unshift({ round, action: 'win', amount: currentWin });
+          resultEl.className = 'game-result show win';
+          resultEl.textContent = `🎉 第${round}轮：赢了 +${currentWin}元！`;
+        } else {
+          money -= currentLose;
+          history.unshift({ round, action: 'lose', amount: -currentLose });
+          resultEl.className = 'game-result show lose';
+          resultEl.textContent = `💀 第${round}轮：输了 -${currentLose}元`;
+        }
+      } else {
+        skipped++;
+        history.unshift({ round, action: 'skip', amount: 0 });
+        resultEl.className = 'game-result show skip';
+        resultEl.textContent = `⏭️ 第${round}轮：跳过（错过期望值 +${((currentWin - currentLose) / 2).toFixed(0)}元）`;
+      }
+      
+      round++;
+      updateGameUI();
+      
+      if (round > totalRounds) {
+        endGame();
+      } else {
+        generateRound();
+      }
+    }
+    
+    function updateGameUI() {
+      document.getElementById('currentMoney').textContent = '¥' + money.toLocaleString();
+      document.getElementById('currentRound').textContent = Math.min(round, totalRounds) + '/' + totalRounds;
+      
+      const profit = money - 10000;
+      const profitEl = document.getElementById('totalProfit');
+      profitEl.textContent = (profit >= 0 ? '+' : '') + '¥' + profit.toLocaleString();
+      profitEl.classList.toggle('negative', profit < 0);
+      
+      // 更新历史
+      const historyEl = document.getElementById('historyList');
+      historyEl.innerHTML = history.slice(0, 10).map(h => {
+        let text = '';
+        if (h.action === 'win') text = `第${h.round}轮：接受 → 赢了 +${h.amount}元`;
+        else if (h.action === 'lose') text = `第${h.round}轮：接受 → 输了 ${h.amount}元`;
+        else text = `第${h.round}轮：跳过`;
+        return `<div class="history-item ${h.action}">${text}</div>`;
+      }).join('');
+    }
+    
+    function endGame() {
+      document.getElementById('acceptBtn').disabled = true;
+      document.getElementById('rejectBtn').disabled = true;
+      
+      const profit = money - 10000;
+      const comparison = document.getElementById('comparison');
+      comparison.style.display = 'grid';
+      
+      const yourProfitEl = document.getElementById('yourProfit');
+      yourProfitEl.textContent = (profit >= 0 ? '+' : '') + '¥' + profit.toLocaleString();
+      yourProfitEl.className = 'big-num ' + (profit >= 0 ? 'positive' : 'negative');
+      
+      document.getElementById('skipCount').textContent = skipped;
+      document.getElementById('rationalProfit').textContent = '+¥' + totalExpected.toFixed(0);
+      
+      const resultEl = document.getElementById('gameResult');
+      resultEl.className = 'game-result show ' + (profit >= 0 ? 'win' : 'lose');
+      resultEl.textContent = `游戏结束！最终收益：${profit >= 0 ? '+' : ''}${profit}元。跳过了${skipped}次，错过了约${(totalExpected - profit).toFixed(0)}元期望收益。`;
+    }
+    
+    function resetGame() {
+      money = 10000;
+      round = 1;
+      history = [];
+      skipped = 0;
+      totalExpected = 0;
+      
+      document.getElementById('acceptBtn').disabled = false;
+      document.getElementById('rejectBtn').disabled = false;
+      document.getElementById('comparison').style.display = 'none';
+      document.getElementById('gameResult').classList.remove('show');
+      
+      generateRound();
+      updateGameUI();
+      document.getElementById('historyList').innerHTML = '<div class="history-item skip">等待开始...</div>';
+    }
+    
+    // 大规模模拟
+    let distributionChart = null;
+    
+    function runMassSimulation() {
+      const btn = document.getElementById('massSimBtn');
+      btn.disabled = true;
+      btn.textContent = '模拟中...';
+      
+      setTimeout(() => {
+        const people = 1000;
+        const rounds = 100;
+        
+        // 理性组：全部接受
+        const rationalResults = [];
+        for (let i = 0; i < people; i++) {
+          let m = 10000;
+          for (let r = 0; r < rounds; r++) {
+            const lose = 300 + Math.random() * 300;
+            const win = lose + 100 + Math.random() * 200;
+            m += Math.random() < 0.5 ? win : -lose;
+          }
+          rationalResults.push(m - 10000);
+        }
+        
+        // 厌恶组：输了就跑（连续输2次就不玩了）
+        const averseResults = [];
+        for (let i = 0; i < people; i++) {
+          let m = 10000;
+          let consecutiveLosses = 0;
+          let playing = true;
+          for (let r = 0; r < rounds; r++) {
+            if (!playing) continue;
+            
+            const lose = 300 + Math.random() * 300;
+            const win = lose + 100 + Math.random() * 200;
+            
+            if (Math.random() < 0.5) {
+              m += win;
+              consecutiveLosses = 0;
+            } else {
+              m -= lose;
+              consecutiveLosses++;
+              if (consecutiveLosses >= 2) {
+                playing = false; // 连输2次就不玩了
+              }
+            }
+          }
+          averseResults.push(m - 10000);
+        }
+        
+        const rationalAvg = rationalResults.reduce((a, b) => a + b, 0) / people;
+        const averseAvg = averseResults.reduce((a, b) => a + b, 0) / people;
+        
+        document.getElementById('massRational').textContent = '+¥' + rationalAvg.toFixed(0);
+        
+        const averseEl = document.getElementById('massAverse');
+        averseEl.textContent = (averseAvg >= 0 ? '+' : '') + '¥' + averseAvg.toFixed(0);
+        averseEl.className = 'big-num ' + (averseAvg >= 0 ? 'positive' : 'negative');
+        
+        document.getElementById('massResults').style.display = 'block';
+        
+        drawDistribution(rationalResults, averseResults);
+        
+        btn.disabled = false;
+        btn.textContent = '🚀 重新模拟';
+      }, 100);
+    }
+    
+    function drawDistribution(rational, averse) {
+      const ctx = document.getElementById('distributionChart').getContext('2d');
+      
+      if (distributionChart) distributionChart.destroy();
+      
+      // 分桶
+      const buckets = [-5000, 0, 5000, 10000, 15000, 20000, 30000];
+      const labels = ['<-5k', '-5k~0', '0~5k', '5k~10k', '10k~15k', '15k~20k', '>20k'];
+      
+      function countBuckets(data) {
+        const counts = new Array(labels.length).fill(0);
+        data.forEach(v => {
+          for (let i = 0; i < buckets.length; i++) {
+            if (v < buckets[i]) {
+              counts[i]++;
+              return;
+            }
+          }
+          counts[counts.length - 1]++;
+        });
+        return counts;
+      }
+      
+      distributionChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '理性组',
+              data: countBuckets(rational),
+              backgroundColor: 'rgba(74, 222, 128, 0.7)',
+              borderRadius: 4
+            },
+            {
+              label: '厌恶组',
+              data: countBuckets(averse),
+              backgroundColor: 'rgba(255, 107, 107, 0.7)',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: 'rgba(255,255,255,0.7)' }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: 'rgba(255,255,255,0.6)' }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' }
+            }
+          }
+        }
+      });
+    }
+    
+    // 初始化
+    generateRound();
+    updateGameUI();
+  </script>
+</body>
+</html>

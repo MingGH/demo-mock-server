@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>200万 vs 2亿 - 你怎么选？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .question-box {
+      background: linear-gradient(135deg, rgba(240,147,251,0.15), rgba(245,87,108,0.1));
+      border-left: 4px solid #f093fb;
+      padding: 18px 22px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 25px;
+      font-size: 1.05rem;
+      line-height: 1.9;
+    }
+    .question-box strong { color: #f5576c; }
+    .question-box .gold { color: #ffd700; }
+    
+    /* 选择区域 */
+    .choice-area {
+      display: grid;
+      grid-template-columns: 1fr 80px 1fr;
+      gap: 20px;
+      align-items: center;
+      margin: 30px 0;
+    }
+    @media (max-width: 650px) {
+      .choice-area {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+      .vs-circle { order: -1; }
+    }
+    .choice-card {
+      background: rgba(0,0,0,0.3);
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: 3px solid transparent;
+    }
+    .choice-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .choice-card.selected {
+      border-color: #ffd700;
+      box-shadow: 0 0 30px rgba(255,215,0,0.3);
+    }
+    .choice-card.a { background: linear-gradient(135deg, rgba(74,222,128,0.2), rgba(34,197,94,0.1)); }
+    .choice-card.b { background: linear-gradient(135deg, rgba(251,146,60,0.2), rgba(249,115,22,0.1)); }
+    .choice-card .prob {
+      font-size: 3rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .choice-card.a .prob { color: #4ade80; }
+    .choice-card.b .prob { color: #fb923c; }
+    .choice-card .amount {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #ffd700;
+      margin: 10px 0;
+    }
+    .choice-card .desc {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    .choice-card .ev {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+    }
+    .choice-card .ev span { color: #ffd700; font-weight: bold; }
+    
+    .vs-circle {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin: 0 auto;
+    }
+    
+    /* 模拟按钮 */
+    .sim-controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 25px 0;
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+      color: white;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(240,147,251,0.4);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    /* 结果展示 */
+    .result-display {
+      text-align: center;
+      padding: 30px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      margin: 20px 0;
+      display: none;
+    }
+    .result-display.show { display: block; }
+    .result-display .result-text {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+    .result-display .result-amount {
+      font-size: 3rem;
+      font-weight: bold;
+    }
+    .result-display .result-amount.win { color: #4ade80; }
+    .result-display .result-amount.lose { color: #ff6b6b; }
+    
+    /* 统计 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin: 25px 0;
+    }
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+    .stat-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .stat-card h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-row .label { color: rgba(255,255,255,0.7); }
+    .stat-row .value { font-weight: bold; }
+    .stat-row .value.green { color: #4ade80; }
+    .stat-row .value.orange { color: #fb923c; }
+    .stat-row .value.gold { color: #ffd700; }
+    
+    /* 投票结果 */
+    .vote-bar {
+      margin: 20px 0;
+    }
+    .vote-bar-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .vote-bar-track {
+      height: 40px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 20px;
+      overflow: hidden;
+      display: flex;
+    }
+    .vote-bar-a {
+      background: linear-gradient(90deg, #4ade80, #22c55e);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+      transition: width 0.5s;
+    }
+    .vote-bar-b {
+      background: linear-gradient(90deg, #fb923c, #f97316);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+      transition: width 0.5s;
+    }
+    
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 280px;
+      margin-top: 20px;
+    }
+    
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+    .analysis h3 {
+      color: #f093fb;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .analysis p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.85;
+      margin-bottom: 14px;
+    }
+    .analysis .formula {
+      background: rgba(255,255,255,0.08);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      margin: 14px 0;
+      overflow-x: auto;
+    }
+    .analysis .highlight { color: #f5576c; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+    
+    /* 场景分析 */
+    .scenario-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 550px) {
+      .scenario-cards { grid-template-columns: 1fr; }
+    }
+    .scenario-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .scenario-card h4 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+    .scenario-card.choose-a h4 { color: #4ade80; }
+    .scenario-card.choose-b h4 { color: #fb923c; }
+    .scenario-card ul {
+      list-style: none;
+      color: rgba(255,255,255,0.75);
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+    .scenario-card li::before {
+      content: "•";
+      margin-right: 8px;
+      opacity: 0.5;
+    }
+    
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(240,147,251,0.15), rgba(245,87,108,0.1));
+      border: 2px solid #f093fb;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .conclusion h3 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+      color: #f5576c;
+    }
+    .conclusion p {
+      color: rgba(255,255,255,0.9);
+      line-height: 1.85;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>💰 200万 vs 2亿</h1>
+    <p class="subtitle">确定的小钱 vs 几乎确定的大钱，你怎么选？</p>
+    
+    <div class="card">
+      <div class="question-box">
+        <strong>问题：</strong>给你两个选择：<br>
+        <span class="gold">选项A：</span><strong>100%</strong> 概率获得 <strong>200万</strong><br>
+        <span class="gold">选项B：</span><strong>99%</strong> 概率获得 <strong>2亿</strong>，1%概率什么都没有<br><br>
+        你选哪个？
+      </div>
+      
+      <div class="choice-area">
+        <div class="choice-card a" id="choiceA" onclick="selectChoice('A')">
+          <div class="prob">100%</div>
+          <div class="amount">200万</div>
+          <div class="desc">稳稳的幸福<br>足够改善生活</div>
+          <div class="ev">期望值：<span>200万</span></div>
+        </div>
+        
+        <div class="vs-circle">VS</div>
+        
+        <div class="choice-card b" id="choiceB" onclick="selectChoice('B')">
+          <div class="prob">99%</div>
+          <div class="amount">2亿</div>
+          <div class="desc">几乎确定的财务自由<br>但有1%空手而归</div>
+          <div class="ev">期望值：<span>1.98亿</span></div>
+        </div>
+      </div>
+      
+      <div class="result-display" id="resultDisplay">
+        <div class="result-text" id="resultText">-</div>
+        <div class="result-amount" id="resultAmount">-</div>
+      </div>
+      
+      <div class="sim-controls">
+        <button class="btn btn-primary" id="simBtn" onclick="simulate()">🎰 模拟一次（选B）</button>
+        <button class="btn btn-secondary" onclick="simulate100()">模拟100次</button>
+        <button class="btn btn-secondary" onclick="resetSim()">🔄 重置</button>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h4>📊 选A的结果（100次）</h4>
+          <div class="stat-row">
+            <span class="label">获得200万次数</span>
+            <span class="value green" id="aWinCount">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="label">总收益</span>
+            <span class="value gold" id="aTotalGain">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="label">人均收益</span>
+            <span class="value gold" id="aAvgGain">-</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <h4>📊 选B的结果（100次）</h4>
+          <div class="stat-row">
+            <span class="label">获得2亿次数</span>
+            <span class="value orange" id="bWinCount">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="label">空手而归次数</span>
+            <span class="value" style="color: #ff6b6b;" id="bLoseCount">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="label">总收益</span>
+            <span class="value gold" id="bTotalGain">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="label">人均收益</span>
+            <span class="value gold" id="bAvgGain">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #f093fb;">🎲 1000人模拟实验</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+        假设1000人选A，1000人选B，看看两组人的财富分布
+      </p>
+      
+      <div class="sim-controls">
+        <button class="btn btn-primary" onclick="runMassSimulation()" id="massSimBtn">🚀 运行模拟</button>
+      </div>
+      
+      <div id="massResults" style="display: none;">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h4>🟢 选A组（1000人）</h4>
+            <div class="stat-row">
+              <span class="label">每人都获得</span>
+              <span class="value green">200万</span>
+            </div>
+            <div class="stat-row">
+              <span class="label">最穷的人</span>
+              <span class="value green">200万</span>
+            </div>
+            <div class="stat-row">
+              <span class="label">最富的人</span>
+              <span class="value green">200万</span>
+            </div>
+            <div class="stat-row">
+              <span class="label">总财富</span>
+              <span class="value gold">20亿</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <h4>🟠 选B组（1000人）</h4>
+            <div class="stat-row">
+              <span class="label">获得2亿人数</span>
+              <span class="value orange" id="massB_win">-</span>
+            </div>
+            <div class="stat-row">
+              <span class="label">空手而归人数</span>
+              <span class="value" style="color:#ff6b6b" id="massB_lose">-</span>
+            </div>
+            <div class="stat-row">
+              <span class="label">总财富</span>
+              <span class="value gold" id="massB_total">-</span>
+            </div>
+            <div class="stat-row">
+              <span class="label">人均财富</span>
+              <span class="value gold" id="massB_avg">-</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="card analysis">
+      <h3>📐 数学分析：期望值 vs 效用</h3>
+      
+      <p><strong>1. 期望值计算</strong></p>
+      <div class="formula">
+        选A期望值 = 1.0 × 200万 = <span class="safe">200万</span><br>
+        选B期望值 = 0.99 × 2亿 + 0.01 × 0 = <span class="highlight">1.98亿</span>
+      </div>
+      <p>
+        从期望值看，B是A的<span class="highlight">99倍</span>！理性人应该选B，对吧？
+      </p>
+      
+      <p><strong>2. 但人不是期望值机器</strong></p>
+      <p>
+        经济学家早就发现，人对财富的感知是<strong>边际递减</strong>的：<br>
+        • 从0到200万，幸福感提升巨大（还清房贷、改善生活）<br>
+        • 从200万到2亿，幸福感提升有限（已经财务自由了，再多也就那样）
+      </p>
+      
+      <p><strong>3. 效用函数</strong></p>
+      <p>假设效用函数是对数形式 U(x) = ln(x)：</p>
+      <div class="formula">
+        选A效用 = ln(200万) = ln(2,000,000) ≈ <span class="safe">14.51</span><br>
+        选B效用 = 0.99 × ln(2亿) + 0.01 × ln(1) = 0.99 × 19.11 + 0 ≈ <span class="highlight">18.92</span>
+      </div>
+      <p>
+        用对数效用算，B的效用仍然更高。但如果你当前资产为0，那1%的"什么都没有"意味着<span class="highlight">效用负无穷</span>。
+      </p>
+      
+      <p><strong>4. 关键问题：你能承受那1%吗？</strong></p>
+      <p>
+        这不是数学问题，是<span class="highlight">你的人生只有一次</span>的问题。<br>
+        • 如果你已经有1000万身家，选B没问题，输了也不影响生活<br>
+        • 如果你负债累累，200万能救命，那1%的风险你承受不起
+      </p>
+    </div>
+    
+    <div class="card">
+      <h3 style="color: #f093fb; margin-bottom: 20px;">🎯 什么情况下选A/选B？</h3>
+      
+      <div class="scenario-cards">
+        <div class="scenario-card choose-a">
+          <h4>✅ 应该选A的人</h4>
+          <ul>
+            <li>背着房贷车贷，200万能解燃眉之急</li>
+            <li>风险厌恶型，睡不着觉比多赚钱重要</li>
+            <li>这是你唯一一次机会</li>
+            <li>200万已经能显著改变你的生活</li>
+            <li>你无法承受"什么都没有"的后果</li>
+          </ul>
+        </div>
+        <div class="scenario-card choose-b">
+          <h4>✅ 应该选B的人</h4>
+          <ul>
+            <li>已有足够资产，输了也不影响生活</li>
+            <li>200万对你来说只是"还行"</li>
+            <li>你有多次类似机会（可以分散风险）</li>
+            <li>你追求期望值最大化</li>
+            <li>你能坦然接受1%的失败</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card conclusion">
+      <h3>💡 结论：没有标准答案</h3>
+      <p>
+        这道题的精妙之处在于，<strong>两个选择都是理性的</strong>。<br><br>
+        选A的人不是傻，是<strong>风险厌恶</strong>——200万的确定性比1.98亿的期望值更有价值。<br>
+        选B的人不是贪，是<strong>期望值最大化</strong>——99%几乎等于100%，值得一搏。<br><br>
+        真正的问题是：<span style="color: #ffd700;">你是谁？你的处境是什么？你能承受什么？</span><br><br>
+        <span style="color: rgba(255,255,255,0.6);">
+          经济学告诉我们：理性不是追求期望值最大化，而是追求<strong>效用最大化</strong>。<br>
+          而效用，因人而异。
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    let selectedChoice = null;
+    let simCount = 0;
+    let aWins = 0;
+    let bWins = 0;
+    let bLoses = 0;
+    let distributionChart = null;
+    
+    function selectChoice(choice) {
+      selectedChoice = choice;
+      document.getElementById('choiceA').classList.toggle('selected', choice === 'A');
+      document.getElementById('choiceB').classList.toggle('selected', choice === 'B');
+    }
+    
+    function simulate() {
+      simCount++;
+      aWins++;
+      
+      const win = Math.random() < 0.99;
+      if (win) {
+        bWins++;
+      } else {
+        bLoses++;
+      }
+      
+      // 显示结果
+      const resultDisplay = document.getElementById('resultDisplay');
+      resultDisplay.classList.add('show');
+      
+      if (win) {
+        document.getElementById('resultText').textContent = '🎉 选B的结果：恭喜！';
+        document.getElementById('resultAmount').textContent = '获得 2亿！';
+        document.getElementById('resultAmount').className = 'result-amount win';
+      } else {
+        document.getElementById('resultText').textContent = '💀 选B的结果：很遗憾...';
+        document.getElementById('resultAmount').textContent = '什么都没有';
+        document.getElementById('resultAmount').className = 'result-amount lose';
+      }
+      
+      updateStats();
+    }
+    
+    function simulate100() {
+      for (let i = 0; i < 100; i++) {
+        simCount++;
+        aWins++;
+        if (Math.random() < 0.99) {
+          bWins++;
+        } else {
+          bLoses++;
+        }
+      }
+      
+      document.getElementById('resultDisplay').classList.add('show');
+      document.getElementById('resultText').textContent = '📊 100次模拟完成';
+      document.getElementById('resultAmount').textContent = `B组中奖${bWins}次，落空${bLoses}次`;
+      document.getElementById('resultAmount').className = 'result-amount';
+      document.getElementById('resultAmount').style.color = '#ffd700';
+      document.getElementById('resultAmount').style.fontSize = '1.5rem';
+      
+      updateStats();
+    }
+    
+    function updateStats() {
+      const aTotalGain = aWins * 200;
+      const bTotalGain = bWins * 20000;
+      
+      document.getElementById('aWinCount').textContent = aWins + '次';
+      document.getElementById('aTotalGain').textContent = formatMoney(aTotalGain * 10000);
+      document.getElementById('aAvgGain').textContent = aWins > 0 ? formatMoney(aTotalGain * 10000 / aWins) : '-';
+      
+      document.getElementById('bWinCount').textContent = bWins + '次';
+      document.getElementById('bLoseCount').textContent = bLoses + '次';
+      document.getElementById('bTotalGain').textContent = formatMoney(bTotalGain * 10000);
+      document.getElementById('bAvgGain').textContent = simCount > 0 ? formatMoney(bTotalGain * 10000 / simCount) : '-';
+    }
+    
+    function resetSim() {
+      simCount = 0;
+      aWins = 0;
+      bWins = 0;
+      bLoses = 0;
+      document.getElementById('resultDisplay').classList.remove('show');
+      updateStats();
+      document.getElementById('aWinCount').textContent = '-';
+      document.getElementById('aTotalGain').textContent = '-';
+      document.getElementById('aAvgGain').textContent = '-';
+      document.getElementById('bWinCount').textContent = '-';
+      document.getElementById('bLoseCount').textContent = '-';
+      document.getElementById('bTotalGain').textContent = '-';
+      document.getElementById('bAvgGain').textContent = '-';
+    }
+    
+    function formatMoney(num) {
+      if (num >= 1e8) return (num/1e8).toFixed(2) + '亿';
+      if (num >= 1e4) return (num/1e4).toFixed(0) + '万';
+      return num.toFixed(0) + '元';
+    }
+    
+    function runMassSimulation() {
+      const btn = document.getElementById('massSimBtn');
+      btn.disabled = true;
+      btn.textContent = '模拟中...';
+      
+      setTimeout(() => {
+        // 选B组的1000人
+        let bWinners = 0;
+        let bLosers = 0;
+        const bResults = [];
+        
+        for (let i = 0; i < 1000; i++) {
+          if (Math.random() < 0.99) {
+            bWinners++;
+            bResults.push(200000000); // 2亿
+          } else {
+            bLosers++;
+            bResults.push(0);
+          }
+        }
+        
+        const bTotal = bWinners * 200000000;
+        const bAvg = bTotal / 1000;
+        
+        document.getElementById('massB_win').textContent = bWinners + '人';
+        document.getElementById('massB_lose').textContent = bLosers + '人';
+        document.getElementById('massB_total').textContent = formatMoney(bTotal);
+        document.getElementById('massB_avg').textContent = formatMoney(bAvg);
+        
+        document.getElementById('massResults').style.display = 'block';
+        
+        // 绘制分布图
+        drawDistribution(bWinners, bLosers);
+        
+        btn.disabled = false;
+        btn.textContent = '🚀 重新模拟';
+      }, 100);
+    }
+    
+    function drawDistribution(bWinners, bLosers) {
+      const ctx = document.getElementById('distributionChart').getContext('2d');
+      
+      if (distributionChart) distributionChart.destroy();
+      
+      distributionChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['选A组\n(每人200万)', '选B组-中奖\n(每人2亿)', '选B组-落空\n(每人0元)'],
+          datasets: [{
+            data: [1000, bWinners, bLosers],
+            backgroundColor: ['#4ade80', '#fb923c', '#ff6b6b'],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ctx.raw + '人'
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { 
+                color: 'rgba(255,255,255,0.7)',
+                font: { size: 11 }
+              }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' },
+              title: {
+                display: true,
+                text: '人数',
+                color: 'rgba(255,255,255,0.5)'
+              }
+            }
+          }
+        }
+      });
+    }
+    
+  </script>
+</body>
+</html>

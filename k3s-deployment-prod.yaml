@@ -25,6 +25,12 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
+          env:
+            - name: NINJA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ninja-api-secret
+                  key: token
 ---
 apiVersion: v1
 kind: Service

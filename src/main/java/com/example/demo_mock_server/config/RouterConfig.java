@@ -5,6 +5,7 @@ import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.BlockIpHandler;
 import com.example.demo_mock_server.handler.ChineseNameHandler;
 import com.example.demo_mock_server.handler.MockHandler;
+import com.example.demo_mock_server.handler.StatsProxyHandler;
 import com.example.demo_mock_server.handler.WordCloudHandler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
@@ -62,6 +63,11 @@ public class RouterConfig {
         // BlockIP 代理接口（带缓存和预处理）
         BlockIpHandler blockIpHandler = new BlockIpHandler(vertx);
         router.get("/blockip/stats").handler(blockIpHandler);
+
+        // 统计代理接口
+        StatsProxyHandler statsProxyHandler = new StatsProxyHandler(vertx);
+        router.get("/stats").handler(statsProxyHandler);
+        router.post("/stats").handler(statsProxyHandler);
 
         // Static handler for pages and components
         router.route("/pages/*").handler(StaticHandler.create("pages"));

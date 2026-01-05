@@ -315,6 +315,148 @@
       color: rgba(255,255,255,0.9);
       line-height: 1.8;
     }
+    
+    /* 游戏结束弹窗 */
+    .game-over-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+    .game-over-modal.show {
+      display: flex;
+      animation: modalFadeIn 0.5s ease;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .game-over-content {
+      text-align: center;
+      padding: 40px;
+      max-width: 500px;
+    }
+    .game-over-skull {
+      font-size: 120px;
+      animation: skullBounce 0.6s ease infinite alternate;
+      filter: drop-shadow(0 0 30px rgba(255, 107, 107, 0.8));
+    }
+    @keyframes skullBounce {
+      from { transform: scale(1) rotate(-5deg); }
+      to { transform: scale(1.1) rotate(5deg); }
+    }
+    .game-over-title {
+      font-size: 3rem;
+      font-weight: bold;
+      background: linear-gradient(135deg, #ff6b6b, #ff8c8c, #ffd700);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradientShift 2s ease infinite;
+      margin: 20px 0;
+      text-shadow: 0 0 40px rgba(255, 107, 107, 0.5);
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .game-over-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 30px 0;
+    }
+    .game-over-stat {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 15px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .game-over-stat-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #ffd700;
+    }
+    .game-over-stat-value.negative { color: #ff6b6b; }
+    .game-over-stat-label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 5px;
+    }
+    .game-over-message {
+      color: rgba(255,255,255,0.7);
+      font-size: 1.1rem;
+      line-height: 1.8;
+      margin: 20px 0;
+    }
+    .game-over-message .highlight {
+      color: #ff6b6b;
+      font-weight: bold;
+    }
+    .game-over-btn {
+      background: linear-gradient(135deg, #ff6b6b, #ffd700);
+      border: none;
+      border-radius: 30px;
+      padding: 15px 40px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 20px;
+      box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
+    }
+    .game-over-btn:hover {
+      transform: translateY(-3px) scale(1.05);
+      box-shadow: 0 15px 40px rgba(255, 107, 107, 0.5);
+    }
+    .glitch-text {
+      position: relative;
+    }
+    .glitch-text::before,
+    .glitch-text::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .glitch-text::before {
+      animation: glitch-1 0.3s infinite linear alternate-reverse;
+      color: #ff6b6b;
+      z-index: -1;
+    }
+    .glitch-text::after {
+      animation: glitch-2 0.3s infinite linear alternate-reverse;
+      color: #00d4ff;
+      z-index: -2;
+    }
+    @keyframes glitch-1 {
+      0% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 0); }
+      20% { clip-path: inset(60% 0 20% 0); transform: translate(3px, 0); }
+      40% { clip-path: inset(40% 0 40% 0); transform: translate(-3px, 0); }
+      60% { clip-path: inset(80% 0 10% 0); transform: translate(3px, 0); }
+      80% { clip-path: inset(10% 0 80% 0); transform: translate(-3px, 0); }
+      100% { clip-path: inset(50% 0 30% 0); transform: translate(3px, 0); }
+    }
+    @keyframes glitch-2 {
+      0% { clip-path: inset(60% 0 20% 0); transform: translate(3px, 0); }
+      20% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 0); }
+      40% { clip-path: inset(80% 0 10% 0); transform: translate(3px, 0); }
+      60% { clip-path: inset(40% 0 40% 0); transform: translate(-3px, 0); }
+      80% { clip-path: inset(30% 0 50% 0); transform: translate(3px, 0); }
+      100% { clip-path: inset(10% 0 80% 0); transform: translate(-3px, 0); }
+    }
   </style>
 </head>
 <body>
@@ -326,8 +468,10 @@
     <div class="card">
       <div class="question-box">
         <strong>问题：</strong>有一个按钮，按下后：<br>
+        • 每次按下需支付 <strong>5元手续费</strong><br>
         • <strong>50%</strong> 概率：你的所有资产 <strong>×9</strong>（翻9倍）<br>
-        • <strong>50%</strong> 概率：你的所有资产 <strong>×0.1</strong>（只剩1/10）<br><br>
+        • <strong>50%</strong> 概率：你的所有资产 <strong>×0.1</strong>（只剩1/10）<br>
+        • 资产 <strong>小于1元</strong> 时游戏结束<br><br>
         期望值 = 0.5×9 + 0.5×0.1 = <strong>4.55</strong>，是正的！<br>
         理论上无限按下去，收益趋向正无穷。<br><br>
         <strong>那么，这个按钮应该按吗？</strong>
@@ -489,6 +633,38 @@
       </p>
     </div>
   </div>
+  
+  <!-- 游戏结束弹窗 -->
+  <div class="game-over-modal" id="gameOverModal">
+    <div class="game-over-content">
+      <div class="game-over-skull">💀</div>
+      <h2 class="game-over-title glitch-text" data-text="GAME OVER">GAME OVER</h2>
+      <div class="game-over-stats">
+        <div class="game-over-stat">
+          <div class="game-over-stat-value" id="finalWealth">-</div>
+          <div class="game-over-stat-label">最终资产</div>
+        </div>
+        <div class="game-over-stat">
+          <div class="game-over-stat-value negative" id="finalReturn">-</div>
+          <div class="game-over-stat-label">总收益率</div>
+        </div>
+        <div class="game-over-stat">
+          <div class="game-over-stat-value" id="finalPresses">-</div>
+          <div class="game-over-stat-label">按下次数</div>
+        </div>
+        <div class="game-over-stat">
+          <div class="game-over-stat-value" id="finalFees">-</div>
+          <div class="game-over-stat-label">累计手续费</div>
+        </div>
+      </div>
+      <p class="game-over-message">
+        你的资产已经 <span class="highlight">不足1元</span>，无法继续游戏。<br>
+        这就是期望值陷阱的残酷现实——<br>
+        <span class="highlight">大多数人都会走向破产</span>。
+      </p>
+      <button class="game-over-btn" onclick="closeGameOverAndReset()">🔄 东山再起</button>
+    </div>
+  </div>
 
   <script>
     let wealth = 100000;
@@ -543,18 +719,34 @@
       updateChart();
     }
     
+    const FEE = 5; // 每次按钮手续费
+    
     function pressButton() {
+      // 检查游戏是否已结束
+      if (wealth < 1) {
+        return false;
+      }
+      
+      // 检查是否有足够的钱支付手续费
+      if (wealth < FEE) {
+        endGame();
+        return false;
+      }
+      
+      // 先扣除手续费
+      wealth -= FEE;
+      
       const win = Math.random() < 0.5;
       const oldWealth = wealth;
       
       if (win) {
         wealth *= 9;
         winCount++;
-        history.unshift({ win: true, before: oldWealth, after: wealth, round: pressCount + 1 });
+        history.unshift({ win: true, before: oldWealth, after: wealth, round: pressCount + 1, fee: FEE });
       } else {
         wealth *= 0.1;
         loseCount++;
-        history.unshift({ win: false, before: oldWealth, after: wealth, round: pressCount + 1 });
+        history.unshift({ win: false, before: oldWealth, after: wealth, round: pressCount + 1, fee: FEE });
       }
       
       pressCount++;
@@ -571,11 +763,46 @@
       setTimeout(() => {
         btn.style.background = 'linear-gradient(145deg, #ff6b6b, #ee5a5a)';
       }, 300);
+      
+      // 检查游戏是否结束
+      if (wealth < 1) {
+        endGame();
+        return false;
+      }
+      
+      return true;
+    }
+    
+    function endGame() {
+      const btn = document.getElementById('pressBtn');
+      btn.disabled = true;
+      btn.innerHTML = '游戏结束<br>💀';
+      btn.style.background = '#666';
+      
+      // 显示炫酷弹窗
+      showGameOverModal();
+    }
+    
+    function showGameOverModal() {
+      const modal = document.getElementById('gameOverModal');
+      const returnRate = ((wealth / initialWealth - 1) * 100);
+      
+      document.getElementById('finalWealth').textContent = formatMoney(wealth);
+      document.getElementById('finalReturn').textContent = returnRate.toFixed(2) + '%';
+      document.getElementById('finalPresses').textContent = pressCount;
+      document.getElementById('finalFees').textContent = '¥' + (pressCount * FEE);
+      
+      modal.classList.add('show');
+    }
+    
+    function closeGameOverAndReset() {
+      document.getElementById('gameOverModal').classList.remove('show');
+      resetGame();
     }
     
     function pressMultiple(times) {
       for (let i = 0; i < times; i++) {
-        pressButton();
+        if (!pressButton()) break; // 游戏结束时停止
       }
     }
     
@@ -588,7 +815,7 @@
       
       container.innerHTML = history.slice(0, 20).map(h => `
         <div class="history-item ${h.win ? 'win' : 'lose'}">
-          <span>第${h.round}次：${h.win ? '×9 🎉' : '×0.1 💀'}</span>
+          <span>第${h.round}次：${h.win ? '×9 🎉' : '×0.1 💀'} <span style="color: #888; font-size: 0.8em;">(-¥5手续费)</span></span>
           <span>${formatMoney(h.before)} → ${formatMoney(h.after)}</span>
         </div>
       `).join('');
@@ -647,6 +874,13 @@
       loseCount = 0;
       history = [];
       wealthHistory = [initialWealth];
+      
+      // 恢复按钮状态
+      const btn = document.getElementById('pressBtn');
+      btn.disabled = false;
+      btn.innerHTML = '按下按钮<br>🎰';
+      btn.style.background = 'linear-gradient(145deg, #ff6b6b, #ee5a5a)';
+      
       updateDisplay();
       renderHistory();
     }

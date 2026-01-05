@@ -1099,17 +1099,44 @@
     let hasRecordedBankrupt = false; // 是否已记录破产
     let hasRecordedBillionaire = false; // 是否已记录过亿
     
+    // 当前显示的数值（用于动画）
+    let currentDisplayValues = { players: 0, bankrupt: 0, billionaire: 0 };
+    
     // 增加计数（fire-and-forget，不阻塞用户操作）
     function incrStat(key) {
-      // 使用 navigator.sendBeacon 或 fetch，完全不等待响应
       if (navigator.sendBeacon) {
         navigator.sendBeacon(`${API_BASE}/stats?action=incr&key=${key}`);
       } else {
         fetch(`${API_BASE}/stats?action=incr&key=${key}`, { 
           method: 'POST',
-          keepalive: true  // 即使页面关闭也会发送
-        }).catch(() => {}); // 静默忽略错误
+          keepalive: true
+        }).catch(() => {});
       }
+    }
+    
+    // 数字滚动动画
+    function animateNumber(element, from, to, duration = 800) {
+      if (from === to) return;
+      
+      const startTime = performance.now();
+      const diff = to - from;
+      
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // easeOutExpo 缓动函数
+        const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+        const currentValue = Math.round(from + diff * easeProgress);
+        
+        element.textContent = formatNumber(currentValue);
+        
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+      
+      requestAnimationFrame(update);
     }
     
     // 获取所有统计（后台加载，不影响交互）
@@ -1120,9 +1147,17 @@
           if (json.status === 200 && json.data) {
             const { players, bankrupt, billionaire } = json.data;
             
-            document.getElementById('globalPlayers').textContent = formatNumber(players);
-            document.getElementById('globalBankrupt').textContent = formatNumber(bankrupt);
-            document.getElementById('globalBillionaire').textContent = formatNumber(billionaire);
+            // 带动画更新数字
+            const playersEl = document.getElementById('globalPlayers');
+            const bankruptEl = document.getElementById('globalBankrupt');
+            const billionaireEl = document.getElementById('globalBillionaire');
+            
+            animateNumber(playersEl, currentDisplayValues.players, players);
+            animateNumber(bankruptEl, currentDisplayValues.bankrupt, bankrupt);
+            animateNumber(billionaireEl, currentDisplayValues.billionaire, billionaire);
+            
+            // 更新当前值
+            currentDisplayValues = { players, bankrupt, billionaire };
             
             // 计算比率
             if (players > 0) {
@@ -1133,7 +1168,7 @@
             }
           }
         })
-        .catch(() => {}); // 静默忽略错误
+        .catch(() => {});
     }
     
     function formatNumber(num) {
@@ -1172,6 +1207,9 @@
     updateDisplay();
     renderHistory();
     loadGlobalStats(); // 加载全球统计
+    
+    // 每2秒自动刷新统计
+    setInterval(loadGlobalStats, 2000);
   </script>
 </body>
 </html>

@@ -316,6 +316,69 @@
       line-height: 1.8;
     }
     
+    /* 全球统计 */
+    .global-stats-card {
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(168, 85, 247, 0.1));
+      border: 1px solid rgba(0, 212, 255, 0.2);
+    }
+    .global-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 600px) {
+      .global-stats { grid-template-columns: 1fr; }
+    }
+    .global-stat {
+      background: rgba(0,0,0,0.3);
+      border-radius: 16px;
+      padding: 25px 20px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s;
+    }
+    .global-stat:hover {
+      transform: translateY(-5px);
+    }
+    .global-stat::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #00d4ff, #a855f7);
+    }
+    .global-stat.bankrupt::before {
+      background: linear-gradient(90deg, #ff6b6b, #ff8c8c);
+    }
+    .global-stat.billionaire::before {
+      background: linear-gradient(90deg, #ffd700, #ffed4a);
+    }
+    .global-stat-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+    .global-stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #00d4ff;
+      font-family: 'Courier New', monospace;
+    }
+    .global-stat.bankrupt .global-stat-value { color: #ff6b6b; }
+    .global-stat.billionaire .global-stat-value { color: #ffd700; }
+    .global-stat-label {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+      margin-top: 8px;
+    }
+    .global-stat-rate {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.4);
+      margin-top: 5px;
+    }
+    
     /* 游戏结束弹窗 */
     .game-over-modal {
       display: none;
@@ -632,6 +695,33 @@
         <span style="color: rgba(255,255,255,0.6);">当赌注是你的全部时，中位数比平均数更重要。</span>
       </p>
     </div>
+    
+    <!-- 全球统计 -->
+    <div class="card global-stats-card">
+      <h2 style="margin-bottom: 20px; color: #00d4ff; text-align: center;">🌍 全球玩家统计</h2>
+      <div class="global-stats">
+        <div class="global-stat">
+          <div class="global-stat-icon">👥</div>
+          <div class="global-stat-value" id="globalPlayers">-</div>
+          <div class="global-stat-label">参与人数</div>
+        </div>
+        <div class="global-stat bankrupt">
+          <div class="global-stat-icon">💀</div>
+          <div class="global-stat-value" id="globalBankrupt">-</div>
+          <div class="global-stat-label">破产人数</div>
+          <div class="global-stat-rate" id="bankruptRate">-</div>
+        </div>
+        <div class="global-stat billionaire">
+          <div class="global-stat-icon">💎</div>
+          <div class="global-stat-value" id="globalBillionaire">-</div>
+          <div class="global-stat-label">资产过亿</div>
+          <div class="global-stat-rate" id="billionaireRate">-</div>
+        </div>
+      </div>
+      <p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 0.8rem; margin-top: 15px;">
+        数据实时统计，看看你是幸运儿还是大多数
+      </p>
+    </div>
   </div>
   
   <!-- 游戏结束弹窗 -->
@@ -733,6 +823,11 @@
         return false;
       }
       
+      // 首次点击记录为玩家
+      if (pressCount === 0) {
+        recordPlayer();
+      }
+      
       // 先扣除手续费
       wealth -= FEE;
       
@@ -754,6 +849,9 @@
       
       updateDisplay();
       renderHistory();
+      
+      // 检查是否过亿
+      recordBillionaire();
       
       // 按钮动画
       const btn = document.getElementById('pressBtn');
@@ -778,6 +876,9 @@
       btn.disabled = true;
       btn.innerHTML = '游戏结束<br>💀';
       btn.style.background = '#666';
+      
+      // 记录破产
+      recordBankrupt();
       
       // 显示炫酷弹窗
       showGameOverModal();
@@ -986,10 +1087,91 @@
       });
     }
     
+    // ========== 全球统计功能 ==========
+    const API_BASE = 'https://demo-api-mockserver.runnable.run';
+    const STATS_KEYS = {
+      players: 'wealth-btn-players',
+      bankrupt: 'wealth-btn-bankrupt',
+      billionaire: 'wealth-btn-billionaire'
+    };
+    
+    let hasRecordedPlayer = false;  // 是否已记录为玩家
+    let hasRecordedBankrupt = false; // 是否已记录破产
+    let hasRecordedBillionaire = false; // 是否已记录过亿
+    
+    // 增加计数（fire-and-forget，不阻塞用户操作）
+    function incrStat(key) {
+      // 使用 navigator.sendBeacon 或 fetch，完全不等待响应
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(`${API_BASE}/stats?action=incr&key=${key}`);
+      } else {
+        fetch(`${API_BASE}/stats?action=incr&key=${key}`, { 
+          method: 'POST',
+          keepalive: true  // 即使页面关闭也会发送
+        }).catch(() => {}); // 静默忽略错误
+      }
+    }
+    
+    // 获取所有统计（后台加载，不影响交互）
+    function loadGlobalStats() {
+      fetch(`${API_BASE}/stats?action=getAll`)
+        .then(res => res.json())
+        .then(json => {
+          if (json.status === 200 && json.data) {
+            const { players, bankrupt, billionaire } = json.data;
+            
+            document.getElementById('globalPlayers').textContent = formatNumber(players);
+            document.getElementById('globalBankrupt').textContent = formatNumber(bankrupt);
+            document.getElementById('globalBillionaire').textContent = formatNumber(billionaire);
+            
+            // 计算比率
+            if (players > 0) {
+              const bankruptRate = (bankrupt / players * 100).toFixed(1);
+              const billionaireRate = (billionaire / players * 100).toFixed(2);
+              document.getElementById('bankruptRate').textContent = `占比 ${bankruptRate}%`;
+              document.getElementById('billionaireRate').textContent = `占比 ${billionaireRate}%`;
+            }
+          }
+        })
+        .catch(() => {}); // 静默忽略错误
+    }
+    
+    function formatNumber(num) {
+      if (num >= 10000) return (num / 10000).toFixed(1) + '万';
+      return num.toLocaleString();
+    }
+    
+    // 记录玩家（首次点击按钮时）
+    function recordPlayer() {
+      if (!hasRecordedPlayer) {
+        hasRecordedPlayer = true;
+        incrStat(STATS_KEYS.players);
+      }
+    }
+    
+    // 记录破产
+    function recordBankrupt() {
+      if (!hasRecordedBankrupt) {
+        hasRecordedBankrupt = true;
+        incrStat(STATS_KEYS.bankrupt);
+        loadGlobalStats(); // 刷新统计
+      }
+    }
+    
+    // 记录过亿
+    function recordBillionaire() {
+      if (!hasRecordedBillionaire && wealth >= 1e8) {
+        hasRecordedBillionaire = true;
+        incrStat(STATS_KEYS.billionaire);
+        loadGlobalStats(); // 刷新统计
+      }
+    }
+    
     // 初始化
     document.getElementById('initialWealth').addEventListener('change', resetGame);
     updateDisplay();
     renderHistory();
+    loadGlobalStats(); // 加载全球统计
   </script>
 </body>
 </html>

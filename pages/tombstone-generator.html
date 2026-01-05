@@ -6,326 +6,585 @@
   <title>墓志铭生成器 - 如果只有三行，你想写什么？</title>
   <script src="../components/header.js" defer></script>
   <style>
+    :root {
+      --primary-color: #ffd700;
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0b1120 100%);
+      --panel-bg: rgba(255, 255, 255, 0.03);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    
     body {
       font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      background: var(--bg-gradient);
       min-height: 100vh;
-      color: #e4e4e4;
-      padding: 30px 20px;
+      color: var(--text-main);
+      padding: 40px 20px;
+      line-height: 1.6;
     }
+
     .container { max-width: 1200px; margin: 0 auto; }
     
     .header {
       text-align: center;
-      margin: 30px 0 40px;
+      margin-bottom: 50px;
+      animation: fadeInDown 0.8s ease-out;
     }
     .header h1 {
-      font-size: 2.2rem;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 10px;
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(to right, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 15px;
+      letter-spacing: -0.5px;
     }
     .header p {
-      color: rgba(255,255,255,0.5);
-      font-size: 1rem;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      font-weight: 300;
     }
     
     .main-content {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
+      grid-template-columns: 400px 1fr;
+      gap: 40px;
+      align-items: start;
     }
     @media (max-width: 900px) {
       .main-content { grid-template-columns: 1fr; }
     }
     
     .panel {
-      background: rgba(255,255,255,0.05);
-      border-radius: 16px;
-      padding: 25px;
-      border: 1px solid rgba(255,255,255,0.1);
+      background: var(--panel-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 24px;
+      padding: 30px;
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease;
     }
+    .panel:hover {
+      border-color: rgba(255,255,255,0.15);
+    }
+    
     .panel h2 {
       color: #fff;
-      font-size: 1.2rem;
-      margin-bottom: 20px;
+      font-size: 1.25rem;
+      margin-bottom: 25px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 15px;
     }
     
     /* 输入区 */
     .input-group {
       margin-bottom: 20px;
+      position: relative;
     }
     .input-group label {
       display: block;
-      color: rgba(255,255,255,0.7);
-      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
       margin-bottom: 8px;
+      font-weight: 500;
     }
     .input-group input, .input-group textarea {
       width: 100%;
-      padding: 12px 15px;
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 10px;
-      background: rgba(0,0,0,0.3);
+      padding: 14px 16px;
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.2);
       color: #fff;
       font-size: 1rem;
-      transition: all 0.3s;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .input-group input:focus, .input-group textarea:focus {
       outline: none;
-      border-color: rgba(255,255,255,0.4);
-      background: rgba(0,0,0,0.4);
-    }
-    .input-group textarea {
-      resize: none;
-      height: 80px;
-    }
-    .input-group .hint {
-      font-size: 0.75rem;
-      color: rgba(255,255,255,0.4);
-      margin-top: 5px;
+      border-color: var(--primary-color);
+      background: rgba(0,0,0,0.3);
+      box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
     }
     
     /* 样式选择 */
     .style-selector {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    @media (max-width: 500px) {
-      .style-selector { grid-template-columns: repeat(2, 1fr); }
+      gap: 12px;
+      margin-bottom: 30px;
     }
     .style-option {
-      padding: 15px 10px;
-      border: 2px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
-      background: rgba(0,0,0,0.2);
+      padding: 15px 5px;
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.02);
       cursor: pointer;
       text-align: center;
       transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
     }
     .style-option:hover {
-      border-color: rgba(255,255,255,0.3);
-      background: rgba(0,0,0,0.3);
+      background: rgba(255,255,255,0.05);
+      transform: translateY(-2px);
     }
     .style-option.active {
-      border-color: #ffd700;
-      background: rgba(255,215,0,0.1);
+      border-color: var(--primary-color);
+      background: rgba(255, 215, 0, 0.05);
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
     }
-    .style-option .icon { font-size: 28px; margin-bottom: 5px; }
-    .style-option .name { font-size: 0.8rem; color: rgba(255,255,255,0.7); }
+    .style-option .icon { font-size: 24px; margin-bottom: 8px; }
+    .style-option .name { font-size: 0.8rem; color: var(--text-muted); }
+    .style-option.active .name { color: var(--primary-color); font-weight: 600; }
     
     /* 预览区 */
     .preview-area {
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 500px;
-      background: rgba(0,0,0,0.2);
-      border-radius: 12px;
-      padding: 30px;
+      min-height: 600px;
+      background: radial-gradient(circle at center, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.2) 100%);
+      border-radius: 20px;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
     }
-    
-    /* 墓碑样式 */
+    /* 预览区背景装饰 */
+    .preview-area::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+
+    /* 通用墓碑样式 */
     .tombstone {
       position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: center; /* 垂直居中 */
       text-align: center;
       color: #2a2a2a;
+      transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5));
     }
     
-    /* 经典款 */
+    /* 纹理定义 - 使用 SVG data URI 模拟噪点 */
+    .texture-noise {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E");
+      opacity: 0.6;
+      pointer-events: none;
+      mix-blend-mode: overlay;
+      border-radius: inherit;
+    }
+
+    /* 经典款 - 升级版 */
     .tombstone.classic {
-      width: 280px;
-      height: 380px;
-      background: linear-gradient(180deg, #8b8b8b 0%, #6b6b6b 50%, #5a5a5a 100%);
-      border-radius: 140px 140px 10px 10px;
+      width: 300px;
+      height: 420px;
+      background: linear-gradient(135deg, #8e8e8e 0%, #636363 100%);
+      border-radius: 150px 150px 12px 12px;
       box-shadow: 
-        inset 0 2px 10px rgba(255,255,255,0.3),
-        inset 0 -5px 20px rgba(0,0,0,0.4),
-        0 20px 40px rgba(0,0,0,0.5);
-      padding: 60px 30px 40px;
+        inset 4px 4px 15px rgba(255,255,255,0.3),
+        inset -8px -8px 20px rgba(0,0,0,0.4),
+        0 30px 50px rgba(0,0,0,0.6);
+      padding: 80px 30px 40px;
+      border-bottom: 8px solid #4a4a4a;
     }
-    .tombstone.classic::before {
+    .tombstone.classic::after {
       content: '';
       position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      border: 3px solid rgba(0,0,0,0.2);
-      border-radius: 130px 130px 5px 5px;
+      inset: 15px;
+      border: 2px solid rgba(0,0,0,0.15);
+      border-radius: 140px 140px 6px 6px;
+      pointer-events: none;
+    }
+    .tombstone.classic .tombstone-content {
+      position: relative;
+      z-index: 2;
+      color: #2d2d2d;
+      text-shadow: 1px 1px 0 rgba(255,255,255,0.2);
     }
     
-    /* 简约款 */
+    /* 简约款 - 现代水泥风 */
     .tombstone.minimal {
-      width: 260px;
-      height: 360px;
-      background: linear-gradient(180deg, #f5f5f5 0%, #e0e0e0 100%);
-      border-radius: 10px;
-      box-shadow: 
-        inset 0 2px 10px rgba(255,255,255,0.8),
-        inset 0 -5px 15px rgba(0,0,0,0.1),
-        0 20px 40px rgba(0,0,0,0.4);
-      padding: 50px 25px 40px;
-    }
-    .tombstone.minimal::before {
-      content: '';
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      right: 15px;
-      bottom: 15px;
-      border: 1px solid rgba(0,0,0,0.1);
-      border-radius: 5px;
-    }
-    
-    /* 哥特款 */
-    .tombstone.gothic {
       width: 280px;
       height: 400px;
-      background: linear-gradient(180deg, #3a3a3a 0%, #1a1a1a 100%);
-      clip-path: polygon(50% 0%, 100% 15%, 100% 100%, 0% 100%, 0% 15%);
+      background: linear-gradient(to bottom right, #f3f4f6, #d1d5db);
+      border-radius: 4px;
       box-shadow: 
-        inset 0 2px 15px rgba(255,255,255,0.1),
-        inset 0 -5px 20px rgba(0,0,0,0.5),
-        0 20px 40px rgba(0,0,0,0.6);
-      padding: 80px 30px 40px;
-      color: #c0c0c0;
+        inset 0 0 0 1px rgba(255,255,255,0.5),
+        15px 15px 40px rgba(0,0,0,0.3);
+      padding: 60px 30px;
     }
-    .tombstone.gothic .epitaph-line {
-      color: #c0c0c0;
-      text-shadow: 0 0 10px rgba(255,255,255,0.3);
+    .tombstone.minimal .tombstone-content {
+      color: #374151;
+      font-family: 'Helvetica Neue', sans-serif;
+      letter-spacing: 1px;
     }
     
-    /* 中式款 */
+    /* 哥特款 - 暗黑风格 */
+    .tombstone.gothic {
+      width: 300px;
+      height: 440px;
+      background: linear-gradient(160deg, #2d2d2d 0%, #1a1a1a 100%);
+      clip-path: polygon(50% 0%, 85% 10%, 100% 20%, 100% 100%, 0% 100%, 0% 20%, 15% 10%);
+      padding: 100px 30px 50px;
+      color: #a3a3a3;
+      box-shadow: none; /* clip-path 裁剪了阴影，需要用 filter drop-shadow 在父级 */
+    }
+    /* 哥特款内部纹理 */
+    .tombstone.gothic::before {
+      content: '†';
+      position: absolute;
+      top: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 40px;
+      color: rgba(255,255,255,0.1);
+      font-family: serif;
+    }
+    .tombstone.gothic .tombstone-content {
+      font-family: 'Times New Roman', serif;
+      letter-spacing: 0.5px;
+      color: #d4d4d4;
+      text-shadow: 0 0 5px rgba(0,0,0,0.8);
+    }
+    
+    /* 中式款 - 碑林风格 */
     .tombstone.chinese {
-      width: 240px;
-      height: 380px;
-      background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
-      border-radius: 5px;
-      box-shadow: 
-        inset 0 2px 10px rgba(255,255,255,0.1),
-        inset 0 -5px 20px rgba(0,0,0,0.5),
-        0 20px 40px rgba(0,0,0,0.5);
-      padding: 40px 20px;
-      color: #d4af37;
+      width: 260px;
+      height: 420px;
+      background: #2c2c2c;
+      background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.2'%3E%3Cpath d='M0 0h20v20H0z'/%3E%3C/g%3E%3C/svg%3E");
+      border-radius: 8px 8px 0 0;
+      padding: 50px 20px;
+      border: 4px double #8e7345;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+      position: relative;
     }
     .tombstone.chinese::before {
       content: '';
       position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      border: 2px solid #d4af37;
-      border-radius: 3px;
+      top: -20px; left: 50%;
+      transform: translateX(-50%);
+      width: 140px; height: 30px;
+      background: #2c2c2c;
+      border: 4px double #8e7345;
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+    }
+    .tombstone.chinese .tombstone-content {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      margin: 0 auto;
+      height: 80%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      font-family: 'KaiTi', 'STKaiti', serif;
+      color: #d4af37;
+    }
+    .tombstone.chinese .tombstone-name {
+      font-size: 1.8rem;
+      border-left: 1px solid rgba(212, 175, 55, 0.3);
+      padding-left: 10px;
+      margin-left: 10px;
     }
     .tombstone.chinese .epitaph-line {
-      color: #d4af37;
-      font-family: 'STKaiti', 'KaiTi', serif;
+      font-size: 1rem;
     }
-    
-    /* 墓碑文字 */
-    .tombstone-name {
-      font-size: 1.4rem;
-      font-weight: bold;
-      margin-bottom: 8px;
+    .tombstone.chinese .tombstone-dates {
+      font-size: 0.8rem;
+      opacity: 0.8;
+      margin-bottom: 0;
+    }
+
+    /* 赛博朋克 - 霓虹科技 */
+    .tombstone.cyberpunk {
+      width: 320px;
+      height: 420px;
+      background: linear-gradient(135deg, #050a14 0%, #0f172a 100%);
+      clip-path: polygon(15% 0, 85% 0, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0 85%, 0 15%);
+      padding: 60px 30px;
+      color: #00f3ff;
+      border: 2px solid #00f3ff; /* clip-path 会裁剪 border，这里仅作 fallback 或需用其他方式模拟边框 */
+      position: relative;
+    }
+    /* 模拟边框和光效 */
+    .tombstone.cyberpunk::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: 
+        linear-gradient(45deg, transparent 48%, #00f3ff 49%, #00f3ff 51%, transparent 52%) no-repeat,
+        linear-gradient(-45deg, transparent 48%, #00f3ff 49%, #00f3ff 51%, transparent 52%) no-repeat;
+      background-size: 20px 20px;
+      background-position: 10px 10px;
+      opacity: 0.1;
+      pointer-events: none;
+      z-index: 0;
+    }
+    /* 真正的边框模拟 */
+    .tombstone.cyberpunk::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid #00f3ff;
+      clip-path: polygon(15% 0, 85% 0, 100% 15%, 100% 85%, 85% 100%, 15% 100%, 0 85%, 0 15%);
+      box-shadow: 0 0 15px #00f3ff, inset 0 0 20px rgba(0, 243, 255, 0.3);
+      z-index: 1;
+      pointer-events: none;
+    }
+    .tombstone.cyberpunk .tombstone-content {
+      position: relative;
+      z-index: 2;
+      font-family: 'Courier New', monospace;
+      text-transform: uppercase;
       letter-spacing: 2px;
     }
-    .tombstone-dates {
-      font-size: 0.85rem;
-      opacity: 0.7;
+    .tombstone.cyberpunk .tombstone-name {
+      font-size: 2rem;
+      text-shadow: 2px 2px 0 #ff0055, -1px -1px 0 #00f3ff;
+      margin-bottom: 15px;
+    }
+    .tombstone.cyberpunk .tombstone-dates {
+      color: #ff0055;
+      font-size: 1rem;
+    }
+    .tombstone.cyberpunk .epitaph-line {
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 0 5px rgba(0, 243, 255, 0.5);
+    }
+
+    /* 像素风 - 复古游戏 */
+    .tombstone.pixel {
+      width: 280px;
+      height: 380px;
+      background: #7c7c7c;
+      padding: 50px 20px;
+      position: relative;
+      box-shadow: 8px 8px 0 rgba(0,0,0,0.3);
+      image-rendering: pixelated;
+    }
+    /* 像素化边缘模拟 (Steps) */
+    .tombstone.pixel::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border: 4px solid #333;
+      clip-path: polygon(
+        4px 0, calc(100% - 4px) 0, 
+        100% 4px, 100% calc(100% - 4px), 
+        calc(100% - 4px) 100%, 4px 100%, 
+        0 calc(100% - 4px), 0 4px
+      );
+      pointer-events: none;
+    }
+    /* 高光和阴影 */
+    .tombstone.pixel::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      box-shadow: 
+        inset 4px 4px 0 rgba(255,255,255,0.4),
+        inset -4px -4px 0 rgba(0,0,0,0.4);
+      clip-path: polygon(
+        4px 0, calc(100% - 4px) 0, 
+        100% 4px, 100% calc(100% - 4px), 
+        calc(100% - 4px) 100%, 4px 100%, 
+        0 calc(100% - 4px), 0 4px
+      );
+      pointer-events: none;
+    }
+    .tombstone.pixel .tombstone-content {
+      font-family: 'Courier New', monospace;
+      color: #1a1a1a;
+    }
+    .tombstone.pixel .tombstone-name {
+      font-weight: 900;
+      letter-spacing: -1px;
+    }
+
+    /* 终端机 - 极客遗愿 */
+    .tombstone.terminal {
+      width: 320px;
+      height: 400px;
+      background: #0d1117;
+      border-radius: 12px;
+      padding: 0;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      border: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    /* 终端标题栏 */
+    .tombstone.terminal::before {
+      content: '● ● ●  bash — 80x24';
+      display: block;
+      height: 30px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      color: #8b949e;
+      font-size: 12px;
+      line-height: 30px;
+      padding-left: 60px; /* 留出三个点的空间 */
+      text-align: left;
+      width: 100%;
+      box-sizing: border-box;
+      font-family: -apple-system, sans-serif;
+    }
+    .tombstone.terminal .tombstone-content {
+      padding: 30px 20px;
+      font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+      color: #3fb950;
+      text-align: left;
+      width: 100%;
+    }
+    .tombstone.terminal .tombstone-name {
+      color: #58a6ff;
+      font-size: 1.4rem;
+      margin-bottom: 5px;
+    }
+    .tombstone.terminal .tombstone-name::before {
+      content: '$ echo ';
+      color: #8b949e;
+      font-size: 1rem;
+    }
+    .tombstone.terminal .tombstone-dates {
+      color: #8b949e;
+      font-size: 0.9rem;
       margin-bottom: 25px;
+      border-bottom: 1px dashed #30363d;
+      padding-bottom: 10px;
+    }
+    .tombstone.terminal .epitaph-line {
+      color: #c9d1d9;
+      font-size: 0.9rem;
+      font-style: normal;
+      margin-bottom: 5px;
+    }
+    .tombstone.terminal .epitaph-line::before {
+      content: '> ';
+      color: #3fb950;
+    }
+
+    /* 墓碑文字通用 */
+    .tombstone-name {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+    }
+    .tombstone-dates {
+      font-size: 0.9rem;
+      margin-bottom: 30px;
+      font-weight: 500;
+      opacity: 0.7;
     }
     .epitaph {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 15px;
     }
     .epitaph-line {
-      font-size: 0.95rem;
+      font-size: 1.05rem;
       line-height: 1.5;
       font-style: italic;
     }
-    
+
     /* 按钮 */
     .btn-group {
       display: flex;
-      gap: 10px;
-      margin-top: 20px;
+      gap: 15px;
+      margin-top: 30px;
     }
     .btn {
       flex: 1;
-      padding: 14px 20px;
+      padding: 16px 20px;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 1rem;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
       transition: all 0.3s;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 10px;
     }
     .btn-primary {
-      background: linear-gradient(135deg, #ffd700, #ffaa00);
-      color: #1a1a2e;
+      background: linear-gradient(135deg, #ffd700 0%, #f59e0b 100%);
+      color: #1e293b;
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
     }
     .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 10px 25px rgba(255,215,0,0.3);
+      box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4);
     }
     .btn-secondary {
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.08);
       color: #fff;
-      border: 1px solid rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.1);
     }
     .btn-secondary:hover {
-      background: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.15);
     }
-    
-    /* 预设文案 */
+
+    /* 预设标签 */
     .presets {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(255,255,255,0.1);
+      margin-top: 30px;
+      padding-top: 25px;
+      border-top: 1px solid var(--panel-border);
     }
     .presets h3 {
       font-size: 0.9rem;
-      color: rgba(255,255,255,0.6);
-      margin-bottom: 12px;
+      color: var(--text-muted);
+      margin-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
     .preset-tags {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
     }
     .preset-tag {
-      padding: 6px 12px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.1);
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--panel-border);
       border-radius: 20px;
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.7);
+      font-size: 0.85rem;
+      color: #cbd5e1;
       cursor: pointer;
       transition: all 0.2s;
     }
     .preset-tag:hover {
-      background: rgba(255,255,255,0.15);
-      border-color: rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.25);
+      color: #fff;
     }
     
-    /* 隐藏的canvas */
+    /* 动画 */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
     #exportCanvas { display: none; }
   </style>
 </head>
@@ -383,6 +642,18 @@
             <div class="icon">🏯</div>
             <div class="name">中式</div>
           </div>
+          <div class="style-option" data-style="cyberpunk">
+            <div class="icon">🤖</div>
+            <div class="name">赛博</div>
+          </div>
+          <div class="style-option" data-style="pixel">
+            <div class="icon">👾</div>
+            <div class="name">像素</div>
+          </div>
+          <div class="style-option" data-style="terminal">
+            <div class="icon">💻</div>
+            <div class="name">终端</div>
+          </div>
         </div>
         
         <div class="btn-group">
@@ -411,12 +682,15 @@
         <h2>👁️ 预览效果</h2>
         <div class="preview-area" id="previewArea">
           <div class="tombstone classic" id="tombstone">
-            <div class="tombstone-name" id="displayName">张三</div>
-            <div class="tombstone-dates" id="displayDates">1990 - 2090</div>
-            <div class="epitaph">
-              <div class="epitaph-line" id="displayLine1">来过，爱过，活过</div>
-              <div class="epitaph-line" id="displayLine2">不负此生，不负所爱</div>
-              <div class="epitaph-line" id="displayLine3">愿来世，还做有趣的人</div>
+            <div class="texture-noise"></div>
+            <div class="tombstone-content">
+              <div class="tombstone-name" id="displayName">张三</div>
+              <div class="tombstone-dates" id="displayDates">1990 - 2090</div>
+              <div class="epitaph">
+                <div class="epitaph-line" id="displayLine1">来过，爱过，活过</div>
+                <div class="epitaph-line" id="displayLine2">不负此生，不负所爱</div>
+                <div class="epitaph-line" id="displayLine3">愿来世，还做有趣的人</div>
+              </div>
             </div>
           </div>
         </div>
@@ -513,15 +787,15 @@
       
       // 背景
       const gradient = ctx.createLinearGradient(0, 0, 600, 800);
-      gradient.addColorStop(0, '#1a1a2e');
-      gradient.addColorStop(0.5, '#16213e');
-      gradient.addColorStop(1, '#0f3460');
+      gradient.addColorStop(0, '#0f172a');
+      gradient.addColorStop(0.5, '#1e293b');
+      gradient.addColorStop(1, '#0b1120');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 600, 800);
       
       // 绘制墓碑
       const centerX = 300;
-      const startY = 100;
+      const startY = 150;
       
       if (currentStyle === 'classic') {
         drawClassicTombstone(ctx, centerX, startY);
@@ -531,6 +805,12 @@
         drawGothicTombstone(ctx, centerX, startY);
       } else if (currentStyle === 'chinese') {
         drawChineseTombstone(ctx, centerX, startY);
+      } else if (currentStyle === 'cyberpunk') {
+        drawCyberpunkTombstone(ctx, centerX, startY);
+      } else if (currentStyle === 'pixel') {
+        drawPixelTombstone(ctx, centerX, startY);
+      } else if (currentStyle === 'terminal') {
+        drawTerminalTombstone(ctx, centerX, startY);
       }
       
       // 下载
@@ -541,80 +821,106 @@
     }
     
     function drawClassicTombstone(ctx, cx, sy) {
-      const w = 280, h = 380;
+      const w = 300, h = 420;
       const x = cx - w/2;
       
       // 墓碑形状（圆顶）
       ctx.beginPath();
       ctx.moveTo(x, sy + h);
-      ctx.lineTo(x, sy + 140);
-      ctx.arc(cx, sy + 140, w/2, Math.PI, 0);
+      ctx.lineTo(x, sy + 150);
+      ctx.arc(cx, sy + 150, w/2, Math.PI, 0);
       ctx.lineTo(x + w, sy + h);
       ctx.closePath();
       
-      const stoneGrad = ctx.createLinearGradient(x, sy, x, sy + h);
-      stoneGrad.addColorStop(0, '#8b8b8b');
-      stoneGrad.addColorStop(0.5, '#6b6b6b');
-      stoneGrad.addColorStop(1, '#5a5a5a');
+      const stoneGrad = ctx.createLinearGradient(x, sy, x + w, sy + h);
+      stoneGrad.addColorStop(0, '#8e8e8e');
+      stoneGrad.addColorStop(1, '#636363');
       ctx.fillStyle = stoneGrad;
       ctx.fill();
       
-      // 边框
-      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-      ctx.lineWidth = 3;
+      // 底部基座
+      ctx.fillStyle = '#4a4a4a';
+      ctx.fillRect(x, sy + h - 8, w, 8);
+      
+      // 内部轮廓
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 15, sy + h - 10);
+      ctx.lineTo(x + 15, sy + 150);
+      ctx.arc(cx, sy + 150, w/2 - 15, Math.PI, 0);
+      ctx.lineTo(x + w - 15, sy + h - 10);
       ctx.stroke();
       
       // 文字
-      drawTombstoneText(ctx, cx, sy + 120, '#2a2a2a');
+      drawTombstoneText(ctx, cx, sy + 160, '#2d2d2d');
     }
     
     function drawMinimalTombstone(ctx, cx, sy) {
-      const w = 260, h = 360;
-      const x = cx - w/2;
-      
-      ctx.beginPath();
-      ctx.roundRect(x, sy, w, h, 10);
-      
-      const stoneGrad = ctx.createLinearGradient(x, sy, x, sy + h);
-      stoneGrad.addColorStop(0, '#f5f5f5');
-      stoneGrad.addColorStop(1, '#e0e0e0');
-      ctx.fillStyle = stoneGrad;
-      ctx.fill();
-      
-      ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      
-      drawTombstoneText(ctx, cx, sy + 80, '#2a2a2a');
-    }
-    
-    function drawGothicTombstone(ctx, cx, sy) {
       const w = 280, h = 400;
       const x = cx - w/2;
       
       ctx.beginPath();
+      ctx.roundRect(x, sy, w, h, 4);
+      
+      const stoneGrad = ctx.createLinearGradient(x, sy, x + w, sy + h);
+      stoneGrad.addColorStop(0, '#f3f4f6');
+      stoneGrad.addColorStop(1, '#d1d5db');
+      ctx.fillStyle = stoneGrad;
+      ctx.fill();
+      
+      // 阴影
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.fillRect(x + w, sy + 20, 20, h - 40);
+      
+      drawTombstoneText(ctx, cx, sy + 100, '#374151', 'Helvetica Neue');
+    }
+    
+    function drawGothicTombstone(ctx, cx, sy) {
+      const w = 300, h = 440;
+      const x = cx - w/2;
+      
+      ctx.beginPath();
       ctx.moveTo(cx, sy);
-      ctx.lineTo(x + w, sy + 60);
+      ctx.lineTo(x + w * 0.85, sy + 44); // 85% 10% (440*0.1=44)
+      ctx.lineTo(x + w, sy + 88); // 100% 20%
       ctx.lineTo(x + w, sy + h);
       ctx.lineTo(x, sy + h);
-      ctx.lineTo(x, sy + 60);
+      ctx.lineTo(x, sy + 88);
+      ctx.lineTo(x + w * 0.15, sy + 44);
       ctx.closePath();
       
       const stoneGrad = ctx.createLinearGradient(x, sy, x, sy + h);
-      stoneGrad.addColorStop(0, '#3a3a3a');
+      stoneGrad.addColorStop(0, '#2d2d2d');
       stoneGrad.addColorStop(1, '#1a1a1a');
       ctx.fillStyle = stoneGrad;
       ctx.fill();
       
-      drawTombstoneText(ctx, cx, sy + 120, '#c0c0c0');
+      // 十字架装饰
+      ctx.font = '40px serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.1)';
+      ctx.textAlign = 'center';
+      ctx.fillText('†', cx, sy + 60);
+      
+      drawTombstoneText(ctx, cx, sy + 140, '#d4d4d4', 'Times New Roman');
     }
     
     function drawChineseTombstone(ctx, cx, sy) {
-      const w = 240, h = 380;
+      const w = 260, h = 420;
       const x = cx - w/2;
       
+      // 顶部装饰
+      ctx.fillStyle = '#2c2c2c';
       ctx.beginPath();
-      ctx.roundRect(x, sy, w, h, 5);
+      ctx.roundRect(cx - 70, sy - 20, 140, 30, [10, 10, 0, 0]);
+      ctx.fill();
+      ctx.strokeStyle = '#8e7345';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      
+      // 主体
+      ctx.beginPath();
+      ctx.roundRect(x, sy, w, h, [8, 8, 0, 0]);
       
       const stoneGrad = ctx.createLinearGradient(x, sy, x, sy + h);
       stoneGrad.addColorStop(0, '#4a4a4a');
@@ -623,29 +929,178 @@
       ctx.fill();
       
       // 金色边框
-      ctx.strokeStyle = '#d4af37';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x + 10, sy + 10, w - 20, h - 20);
+      ctx.strokeStyle = '#8e7345';
+      ctx.strokeRect(x, sy, w, h);
       
-      drawTombstoneText(ctx, cx, sy + 80, '#d4af37');
+      drawVerticalText(ctx, cx, sy + 60, '#d4af37');
     }
-    
-    function drawTombstoneText(ctx, cx, startY, color) {
-      ctx.fillStyle = color;
-      ctx.textAlign = 'center';
+
+    function drawCyberpunkTombstone(ctx, cx, sy) {
+      const w = 320, h = 420;
+      const x = cx - w/2;
       
-      // 姓名
-      ctx.font = 'bold 28px "PingFang SC", "Microsoft YaHei", sans-serif';
-      ctx.fillText(document.getElementById('inputName').value || '无名氏', cx, startY);
+      // 绘制多边形
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.15, sy);
+      ctx.lineTo(x + w * 0.85, sy);
+      ctx.lineTo(x + w, sy + w * 0.15);
+      ctx.lineTo(x + w, sy + h * 0.85);
+      ctx.lineTo(x + w * 0.85, sy + h);
+      ctx.lineTo(x + w * 0.15, sy + h);
+      ctx.lineTo(x, sy + h * 0.85);
+      ctx.lineTo(x, sy + w * 0.15);
+      ctx.closePath();
+      
+      // 背景
+      const grad = ctx.createLinearGradient(x, sy, x + w, sy + h);
+      grad.addColorStop(0, '#050a14');
+      grad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = grad;
+      ctx.fill();
+      
+      // 边框发光
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#00f3ff';
+      ctx.strokeStyle = '#00f3ff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      
+      // 内部网格线装饰
+      ctx.save();
+      ctx.clip();
+      ctx.strokeStyle = 'rgba(0, 243, 255, 0.1)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < h; i += 20) {
+        ctx.beginPath();
+        ctx.moveTo(x, sy + i);
+        ctx.lineTo(x + w, sy + i);
+        ctx.stroke();
+      }
+      for (let i = 0; i < w; i += 20) {
+        ctx.beginPath();
+        ctx.moveTo(x + i, sy);
+        ctx.lineTo(x + i, sy + h);
+        ctx.stroke();
+      }
+      ctx.restore();
+      
+      // 文字
+      drawTombstoneText(ctx, cx, sy + 100, '#00f3ff', 'Courier New');
+    }
+
+    function drawPixelTombstone(ctx, cx, sy) {
+      const w = 280, h = 380;
+      const x = cx - w/2;
+      
+      // 像素块状
+      ctx.fillStyle = '#7c7c7c';
+      ctx.fillRect(x + 4, sy, w - 8, h);
+      ctx.fillRect(x, sy + 4, w, h - 8);
+      
+      // 边缘描边 (模拟像素)
+      ctx.fillStyle = '#333';
+      const size = 4;
+      // 上边
+      ctx.fillRect(x + size, sy, w - size*2, size);
+      // 下边
+      ctx.fillRect(x + size, sy + h - size, w - size*2, size);
+      // 左边
+      ctx.fillRect(x, sy + size, size, h - size*2);
+      // 右边
+      ctx.fillRect(x + w - size, sy + size, size, h - size*2);
+      // 角落
+      ctx.fillRect(x + size, sy + size, size, size);
+      ctx.fillRect(x + w - size*2, sy + size, size, size);
+      ctx.fillRect(x + size, sy + h - size*2, size, size);
+      ctx.fillRect(x + w - size*2, sy + h - size*2, size, size);
+
+      // 高光阴影
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillRect(x + size*2, sy + size, w - size*4, size); // Top highlight
+      ctx.fillRect(x + size, sy + size*2, size, h - size*4); // Left highlight
+      
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(x + size*2, sy + h - size*2, w - size*4, size); // Bottom shadow
+      ctx.fillRect(x + w - size*2, sy + size*2, size, h - size*4); // Right shadow
+      
+      drawTombstoneText(ctx, cx, sy + 80, '#1a1a1a', 'Courier New');
+    }
+
+    function drawTerminalTombstone(ctx, cx, sy) {
+      const w = 320, h = 400;
+      const x = cx - w/2;
+      
+      // 窗口背景
+      ctx.fillStyle = '#0d1117';
+      ctx.beginPath();
+      ctx.roundRect(x, sy, w, h, 12);
+      ctx.fill();
+      
+      // 边框
+      ctx.strokeStyle = '#30363d';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      
+      // 标题栏
+      ctx.fillStyle = '#161b22';
+      ctx.beginPath();
+      ctx.roundRect(x, sy, w, 30, [12, 12, 0, 0]);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x, sy + 30);
+      ctx.lineTo(x + w, sy + 30);
+      ctx.stroke();
+      
+      // 按钮
+      ctx.fillStyle = '#8b949e';
+      ctx.beginPath();
+      ctx.arc(x + 20, sy + 15, 5, 0, Math.PI * 2);
+      ctx.arc(x + 40, sy + 15, 5, 0, Math.PI * 2);
+      ctx.arc(x + 60, sy + 15, 5, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 标题文字
+      ctx.fillStyle = '#8b949e';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('bash — 80x24', cx, sy + 19);
+      
+      // 内容区文字
+      const contentY = sy + 60;
+      const padding = 20;
+      const font = 'Menlo, Monaco, Courier New, monospace';
+      
+      ctx.textAlign = 'left';
+      
+      // 姓名: $ echo Name
+      ctx.font = `16px ${font}`;
+      ctx.fillStyle = '#8b949e';
+      ctx.fillText('$ echo ', x + padding, contentY);
+      const prefixWidth = ctx.measureText('$ echo ').width;
+      
+      ctx.fillStyle = '#58a6ff';
+      ctx.font = `bold 22px ${font}`;
+      const name = document.getElementById('inputName').value || '无名氏';
+      ctx.fillText(name, x + padding + prefixWidth, contentY);
       
       // 日期
-      ctx.font = '16px "PingFang SC", "Microsoft YaHei", sans-serif';
-      ctx.globalAlpha = 0.7;
-      ctx.fillText(document.getElementById('inputDates').value || '? - ?', cx, startY + 35);
-      ctx.globalAlpha = 1;
+      ctx.font = `14px ${font}`;
+      ctx.fillStyle = '#8b949e';
+      const dates = document.getElementById('inputDates').value || '? - ?';
+      ctx.fillText(dates, x + padding, contentY + 30);
+      
+      // 分隔线
+      ctx.strokeStyle = '#30363d';
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(x + padding, contentY + 45);
+      ctx.lineTo(x + w - padding, contentY + 45);
+      ctx.stroke();
+      ctx.setLineDash([]);
       
       // 墓志铭
-      ctx.font = 'italic 18px "PingFang SC", "Microsoft YaHei", sans-serif';
+      ctx.font = `14px ${font}`;
       const lines = [
         document.getElementById('line1').value || '...',
         document.getElementById('line2').value || '...',
@@ -653,7 +1108,98 @@
       ];
       
       lines.forEach((line, i) => {
-        ctx.fillText(line, cx, startY + 90 + i * 35);
+        const y = contentY + 70 + i * 25;
+        ctx.fillStyle = '#3fb950';
+        ctx.fillText('> ', x + padding, y);
+        ctx.fillStyle = '#c9d1d9';
+        ctx.fillText(line, x + padding + 15, y);
+      });
+    }
+    
+    function drawTombstoneText(ctx, cx, startY, color, font = '"PingFang SC", "Microsoft YaHei", sans-serif') {
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      
+      // 姓名
+      ctx.font = `bold 32px ${font}`;
+      ctx.fillText(document.getElementById('inputName').value || '无名氏', cx, startY);
+      
+      // 日期
+      ctx.font = `18px ${font}`;
+      ctx.globalAlpha = 0.7;
+      ctx.fillText(document.getElementById('inputDates').value || '? - ?', cx, startY + 40);
+      ctx.globalAlpha = 1;
+      
+      // 墓志铭
+      ctx.font = `italic 20px ${font}`;
+      const lines = [
+        document.getElementById('line1').value || '...',
+        document.getElementById('line2').value || '...',
+        document.getElementById('line3').value || '...'
+      ];
+      
+      lines.forEach((line, i) => {
+        ctx.fillText(line, cx, startY + 100 + i * 40);
+      });
+    }
+
+    function drawVerticalText(ctx, cx, startY, color) {
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      const font = '"KaiTi", "STKaiti", serif';
+      
+      // 姓名 (左侧竖排)
+      ctx.font = `bold 32px ${font}`;
+      const name = document.getElementById('inputName').value || '无名氏';
+      // 简单处理：画在左边
+      // 实际上 Canvas 竖排很难，这里模拟一下，或者我们就画横排但是用竖排字体风格
+      // 为了简化，我们还是画横排，但是换行？
+      // 不，为了效果好，我们逐字绘制
+      
+      // 重新计算布局 for Chinese
+      // 中间写姓名，两边写日期？或者上方写姓名？
+      // 参考 CSS： vertical-rl.
+      // 既然 CSS 是竖排，canvas 也应该竖排。
+      
+      // 布局：
+      // 右侧：日期
+      // 中间：姓名
+      // 左侧：墓志铭
+      
+      // 由于太复杂，我们简化为：姓名横排在顶，下面竖排墓志铭
+      
+      // 姓名
+      ctx.font = `bold 36px ${font}`;
+      ctx.fillText(name, cx, startY);
+      
+      // 日期
+      ctx.font = `16px ${font}`;
+      ctx.globalAlpha = 0.8;
+      ctx.fillText(document.getElementById('inputDates').value || '? - ?', cx, startY + 50);
+      ctx.globalAlpha = 1;
+      
+      // 墓志铭 (竖排)
+      ctx.font = `20px ${font}`;
+      const lines = [
+        document.getElementById('line1').value || '...',
+        document.getElementById('line2').value || '...',
+        document.getElementById('line3').value || '...'
+      ];
+      
+      // 画三列，从右到左? 还是从左到右?
+      // CSS 是 vertical-rl (从右到左)
+      
+      const lineHeight = 30;
+      const colWidth = 40;
+      const totalWidth = lines.length * colWidth;
+      const startX = cx + totalWidth / 2 - colWidth/2;
+      
+      lines.forEach((line, colIndex) => {
+        const x = startX - colIndex * colWidth;
+        for (let i = 0; i < line.length; i++) {
+           ctx.fillText(line[i], x, startY + 100 + i * lineHeight);
+        }
       });
     }
     

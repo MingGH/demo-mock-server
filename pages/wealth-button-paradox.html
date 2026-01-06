@@ -709,7 +709,7 @@
           <div class="global-stat-icon">💀</div>
           <div class="global-stat-value" id="globalBankrupt">-</div>
           <div class="global-stat-label">破产人数</div>
-          <div class="global-stat-rate" id="bankruptRate">-</div>
+          <div class="global-stat-rate" id="globalBankruptRate">-</div>
         </div>
         <div class="global-stat billionaire">
           <div class="global-stat-icon">💎</div>
@@ -1163,7 +1163,7 @@
             if (players > 0) {
               const bankruptRate = (bankrupt / players * 100).toFixed(1);
               const billionaireRate = (billionaire / players * 100).toFixed(2);
-              document.getElementById('bankruptRate').textContent = `占比 ${bankruptRate}%`;
+              document.getElementById('globalBankruptRate').textContent = `占比 ${bankruptRate}%`;
               document.getElementById('billionaireRate').textContent = `占比 ${billionaireRate}%`;
             }
           }

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>武器伤害对比：1~5 vs 2~4</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #ff6b6b, #ffd700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+</style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>⚔️ 武器伤害对比</h1>
+    <p class="subtitle">1~5 vs 2~4，哪把更强？</p>
+
+    <!-- 武器展示 -->
+    <div class="card">
+      <div class="weapons-display">
+        <div class="weapon weapon-a">
+          <div class="weapon-icon">🗡️</div>
+          <div class="weapon-name">武器A</div>
+          <div class="weapon-damage">1 ~ 5</div>
+          <div class="weapon-stats">
+            <span>期望: <strong>3.0</strong></span>
+            <span>方差: <strong>2.0</strong></span>
+          </div>
+        </div>
+        <div class="vs">VS</div>
+        <div class="weapon weapon-b">
+          <div class="weapon-icon">⚔️</div>
+          <div class="weapon-name">武器B</div>
+          <div class="weapon-damage">2 ~ 4</div>
+          <div class="weapon-stats">
+            <span>期望: <strong>3.0</strong></span>
+            <span>方差: <strong>0.67</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 单次攻击模拟 -->
+    <div class="card">
+      <h2 class="section-title">🎯 单次攻击模拟</h2>
+      <div class="attack-area">
+        <button class="attack-btn" onclick="singleAttack()">攻击！</button>
+        <div class="attack-results">
+          <div class="attack-result result-a">
+            <div class="result-label">武器A</div>
+            <div class="result-value" id="attackA">-</div>
+          </div>
+          <div class="attack-result result-b">
+            <div class="result-label">武器B</div>
+            <div class="result-value" id="attackB">-</div>
+          </div>
+        </div>
+        <div class="winner" id="winner"></div>
+      </div>
+      
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-value" id="totalRounds">0</div>
+          <div class="stat-label">总回合</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="aWins">0</div>
+          <div class="stat-label">A胜</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="bWins">0</div>
+          <div class="stat-label">B胜</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="draws">0</div>
+          <div class="stat-label">平局</div>
+        </div>
+      </div>
+      
+      <div class="controls">
+        <button class="btn" onclick="multiAttack(100)">模拟100次</button>
+        <button class="btn" onclick="multiAttack(1000)">模拟1000次</button>
+        <button class="btn" onclick="resetStats()">重置</button>
+      </div>
+    </div>
+
+    <!-- 击杀怪物模拟 -->
+    <div class="card">
+      <h2 class="section-title">👹 击杀怪物模拟</h2>
+      <p class="desc">设定怪物血量，看哪把武器更快击杀</p>
+      
+      <div class="input-row">
+        <label>怪物血量：</label>
+        <input type="number" id="monsterHp" value="20" min="1" max="1000">
+        <button class="btn" onclick="simulateKill()">开始模拟 (1000次)</button>
+      </div>
+      
+      <div class="kill-results" id="killResults" style="display:none;">
+        <div class="kill-stat">
+          <h4>🗡️ 武器A (1~5)</h4>
+          <div class="kill-value" id="killA">-</div>
+          <div class="kill-label">平均击杀回合</div>
+        </div>
+        <div class="kill-stat">
+          <h4>⚔️ 武器B (2~4)</h4>
+          <div class="kill-value" id="killB">-</div>
+          <div class="kill-label">平均击杀回合</div>
+        </div>
+      </div>
+      
+      <div class="chart-container" style="height: 250px;">
+        <canvas id="killChart"></canvas>
+      </div>
+    </div>
+
+    <!-- 概率分布 -->
+    <div class="card">
+      <h2 class="section-title">📊 伤害概率分布</h2>
+      <div class="prob-grid">
+        <div class="prob-weapon">
+          <h4>🗡️ 武器A (1~5)</h4>
+          <div class="prob-bars">
+            <div class="prob-row"><span>1</span><div class="prob-bar" style="width:20%">20%</div></div>
+            <div class="prob-row"><span>2</span><div class="prob-bar" style="width:20%">20%</div></div>
+            <div class="prob-row"><span>3</span><div class="prob-bar" style="width:20%">20%</div></div>
+            <div class="prob-row"><span>4</span><div class="prob-bar" style="width:20%">20%</div></div>
+            <div class="prob-row"><span>5</span><div class="prob-bar" style="width:20%">20%</div></div>
+          </div>
+        </div>
+        <div class="prob-weapon">
+          <h4>⚔️ 武器B (2~4)</h4>
+          <div class="prob-bars">
+            <div class="prob-row"><span>2</span><div class="prob-bar b" style="width:33.3%">33.3%</div></div>
+            <div class="prob-row"><span>3</span><div class="prob-bar b" style="width:33.3%">33.3%</div></div>
+            <div class="prob-row"><span>4</span><div class="prob-bar b" style="width:33.3%">33.3%</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分析结论 -->
+    <div class="card analysis">
+      <h2 class="section-title">🧮 数学分析</h2>
+      
+      <div class="analysis-block">
+        <h4>1. 期望值（平均伤害）</h4>
+        <p>武器A: (1+2+3+4+5)/5 = <strong>3.0</strong></p>
+        <p>武器B: (2+3+4)/3 = <strong>3.0</strong></p>
+        <p class="highlight">期望完全相同！长期来看，平均伤害一样。</p>
+      </div>
+      
+      <div class="analysis-block">
+        <h4>2. 方差（稳定性）</h4>
+        <p>武器A方差: 2.0（波动大）</p>
+        <p>武器B方差: 0.67（波动小）</p>
+        <p class="highlight">武器B更稳定，输出更可预测。</p>
+      </div>
+      
+      <div class="analysis-block">
+        <h4>3. 极值分析</h4>
+        <p>武器A: 有20%概率打出5点（最高），也有20%概率只打1点（最低）</p>
+        <p>武器B: 最高4点，最低2点，但更稳定</p>
+      </div>
+      
+      <div class="analysis-block">
+        <h4>4. 实战场景</h4>
+        <p>• <strong>需要稳定输出</strong>（如DPS职业）：选武器B</p>
+        <p>• <strong>需要爆发/赌一把</strong>（如一击必杀）：选武器A</p>
+        <p>• <strong>怪物残血1点</strong>：武器A可能浪费伤害，武器B最低也是2点</p>
+        <p>• <strong>怪物残血5点</strong>：武器A有20%概率一击带走，武器B做不到</p>
+      </div>
+    </div>
+
+    <!-- 结论 -->
+    <div class="card conclusion">
+      <h2>🎯 结论</h2>
+      <p><strong>数学上完全相等</strong>，期望值都是3.0。</p>
+      <p>但实际选择取决于你的需求：</p>
+      <ul>
+        <li>追求<span class="stable">稳定</span>→ 武器B</li>
+        <li>追求<span class="burst">爆发</span>→ 武器A</li>
+      </ul>
+      <p class="final">没有绝对的强弱，只有适合的场景。</p>
+    </div>
+  </div>
+
+  <script>
+    let totalRounds = 0, aWins = 0, bWins = 0, draws = 0;
+    let killChart = null;
+    
+    function rollA() { return Math.floor(Math.random() * 5) + 1; }
+    function rollB() { return Math.floor(Math.random() * 3) + 2; }
+    
+    function singleAttack() {
+      const a = rollA(), b = rollB();
+      document.getElementById('attackA').textContent = a;
+      document.getElementById('attackB').textContent = b;
+      
+      totalRounds++;
+      const winnerEl = document.getElementById('winner');
+      if (a > b) {
+        aWins++;
+        winnerEl.textContent = '🗡️ 武器A 胜！';
+        winnerEl.className = 'winner win-a';
+      } else if (b > a) {
+        bWins++;
+        winnerEl.textContent = '⚔️ 武器B 胜！';
+        winnerEl.className = 'winner win-b';
+      } else {
+        draws++;
+        winnerEl.textContent = '⚖️ 平局';
+        winnerEl.className = 'winner draw';
+      }
+      updateStats();
+    }
+    
+    function multiAttack(n) {
+      for (let i = 0; i < n; i++) {
+        const a = rollA(), b = rollB();
+        totalRounds++;
+        if (a > b) aWins++;
+        else if (b > a) bWins++;
+        else draws++;
+      }
+      document.getElementById('attackA').textContent = '-';
+      document.getElementById('attackB').textContent = '-';
+      document.getElementById('winner').textContent = `模拟${n}次完成`;
+      document.getElementById('winner').className = 'winner';
+      updateStats();
+    }
+    
+    function updateStats() {
+      document.getElementById('totalRounds').textContent = totalRounds;
+      document.getElementById('aWins').textContent = aWins + ` (${(aWins/totalRounds*100).toFixed(1)}%)`;
+      document.getElementById('bWins').textContent = bWins + ` (${(bWins/totalRounds*100).toFixed(1)}%)`;
+      document.getElementById('draws').textContent = draws + ` (${(draws/totalRounds*100).toFixed(1)}%)`;
+    }
+    
+    function resetStats() {
+      totalRounds = aWins = bWins = draws = 0;
+      document.getElementById('totalRounds').textContent = '0';
+      document.getElementById('aWins').textContent = '0';
+      document.getElementById('bWins').textContent = '0';
+      document.getElementById('draws').textContent = '0';
+      document.getElementById('attackA').textContent = '-';
+      document.getElementById('attackB').textContent = '-';
+      document.getElementById('winner').textContent = '';
+    }
+
+    function simulateKill() {
+      const hp = parseInt(document.getElementById('monsterHp').value) || 20;
+      const trials = 1000;
+      
+      let killsA = [], killsB = [];
+      
+      for (let i = 0; i < trials; i++) {
+        let hpA = hp, hpB = hp, roundsA = 0, roundsB = 0;
+        while (hpA > 0) { hpA -= rollA(); roundsA++; }
+        while (hpB > 0) { hpB -= rollB(); roundsB++; }
+        killsA.push(roundsA);
+        killsB.push(roundsB);
+      }
+      
+      const avgA = (killsA.reduce((a,b) => a+b, 0) / trials).toFixed(2);
+      const avgB = (killsB.reduce((a,b) => a+b, 0) / trials).toFixed(2);
+      
+      document.getElementById('killResults').style.display = 'flex';
+      document.getElementById('killA').textContent = avgA + ' 回合';
+      document.getElementById('killB').textContent = avgB + ' 回合';
+      
+      // 统计分布
+      const maxRound = Math.max(...killsA, ...killsB);
+      const distA = new Array(maxRound + 1).fill(0);
+      const distB = new Array(maxRound + 1).fill(0);
+      killsA.forEach(r => distA[r]++);
+      killsB.forEach(r => distB[r]++);
+      
+      drawKillChart(distA, distB);
+    }
+    
+    function drawKillChart(distA, distB) {
+      const ctx = document.getElementById('killChart').getContext('2d');
+      if (killChart) killChart.destroy();
+      
+      const labels = [];
+      for (let i = 0; i < Math.max(distA.length, distB.length); i++) {
+        if (distA[i] || distB[i]) labels.push(i);
+      }
+      
+      killChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: '武器A', data: labels.map(i => distA[i] || 0), backgroundColor: 'rgba(255, 107, 107, 0.7)' },
+            { label: '武器B', data: labels.map(i => distB[i] || 0), backgroundColor: 'rgba(74, 222, 128, 0.7)' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#fff' } } },
+          scales: {
+            x: { title: { display: true, text: '击杀回合数', color: '#888' }, ticks: { color: '#888' } },
+            y: { title: { display: true, text: '次数', color: '#888' }, ticks: { color: '#888' } }
+          }
+        }
+      });
+    }
+  </script>
+
+  <style>
+    .weapons-display {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+    .weapon {
+      background: rgba(0,0,0,0.3);
+      border-radius: 16px;
+      padding: 25px 35px;
+      text-align: center;
+      min-width: 180px;
+    }
+    .weapon-a { border: 2px solid #ff6b6b; }
+    .weapon-b { border: 2px solid #4ade80; }
+    .weapon-icon { font-size: 50px; margin-bottom: 10px; }
+    .weapon-name { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; }
+    .weapon-a .weapon-name { color: #ff6b6b; }
+    .weapon-b .weapon-name { color: #4ade80; }
+    .weapon-damage { font-size: 2rem; font-weight: bold; color: #ffd700; }
+    .weapon-stats { margin-top: 10px; font-size: 0.85rem; color: rgba(255,255,255,0.6); display: flex; flex-direction: column; gap: 3px; }
+    .vs { font-size: 2rem; font-weight: bold; color: #ffd700; }
+    
+    .section-title { color: #ffd700; margin-bottom: 15px; font-size: 1.2rem; }
+    .desc { color: rgba(255,255,255,0.6); margin-bottom: 15px; font-size: 0.9rem; }
+    
+    .attack-area { text-align: center; padding: 20px 0; }
+    .attack-btn {
+      background: linear-gradient(135deg, #ff6b6b, #ffd700);
+      border: none;
+      border-radius: 30px;
+      padding: 15px 50px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .attack-btn:hover { transform: scale(1.05); }
+    .attack-btn:active { transform: scale(0.95); }
+    
+    .attack-results { display: flex; justify-content: center; gap: 40px; margin: 20px 0; }
+    .attack-result { text-align: center; }
+    .result-label { font-size: 0.9rem; color: rgba(255,255,255,0.6); margin-bottom: 5px; }
+    .result-value { font-size: 3rem; font-weight: bold; }
+    .result-a .result-value { color: #ff6b6b; }
+    .result-b .result-value { color: #4ade80; }
+    
+    .winner { font-size: 1.2rem; font-weight: bold; min-height: 30px; }
+    .win-a { color: #ff6b6b; }
+    .win-b { color: #4ade80; }
+    .draw { color: #ffd700; }
+    
+    .stats-row { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin: 20px 0; }
+    .stat-item { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 15px 25px; text-align: center; min-width: 100px; }
+    .stat-value { font-size: 1.3rem; font-weight: bold; color: #ffd700; }
+    .stat-label { font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 5px; }
+    
+    .controls { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 10px 20px;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: rgba(255,255,255,0.2); }
+    
+    .input-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .input-row input {
+      width: 100px;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: white;
+      font-size: 1rem;
+    }
+    
+    .kill-results { display: flex; justify-content: center; gap: 30px; margin: 20px 0; }
+    .kill-stat { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 20px 30px; text-align: center; }
+    .kill-stat h4 { margin-bottom: 10px; }
+    .kill-value { font-size: 1.8rem; font-weight: bold; color: #ffd700; }
+    .kill-label { font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 5px; }
+    
+    .chart-container { margin-top: 20px; }
+    
+    .prob-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    @media (max-width: 600px) { .prob-grid { grid-template-columns: 1fr; } }
+    .prob-weapon { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 20px; }
+    .prob-weapon h4 { margin-bottom: 15px; text-align: center; }
+    .prob-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .prob-row span { width: 20px; text-align: right; color: rgba(255,255,255,0.6); }
+    .prob-bar { background: #ff6b6b; border-radius: 4px; padding: 5px 10px; font-size: 0.8rem; }
+    .prob-bar.b { background: #4ade80; }
+    
+    .analysis { background: rgba(0,0,0,0.2); }
+    .analysis-block { margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; }
+    .analysis-block h4 { color: #ffd700; margin-bottom: 10px; }
+    .analysis-block p { color: rgba(255,255,255,0.8); line-height: 1.6; margin-bottom: 5px; }
+    .analysis-block .highlight { color: #4ade80; font-weight: bold; margin-top: 10px; }
+    
+    .conclusion { background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,107,107,0.1)); border: 1px solid rgba(255,215,0,0.3); text-align: center; }
+    .conclusion h2 { color: #ffd700; margin-bottom: 15px; }
+    .conclusion p { color: rgba(255,255,255,0.9); line-height: 1.8; margin-bottom: 10px; }
+    .conclusion ul { list-style: none; margin: 15px 0; }
+    .conclusion li { margin: 8px 0; }
+    .stable { color: #4ade80; font-weight: bold; }
+    .burst { color: #ff6b6b; font-weight: bold; }
+    .final { color: #ffd700; font-weight: bold; margin-top: 15px; }
+  </style>
+</body>
+</html>

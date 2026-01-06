@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI颜值评分器</title>
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #ff6b9d, #ffd700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 25px;
+      font-size: 0.9rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+</style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>✨ AI颜值评分器</h1>
+    <p class="subtitle">上传照片，AI 分析你的颜值（仅供娱乐）</p>
+
+    <div class="card">
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📷</div>
+        <p>点击或拖拽上传照片</p>
+        <p class="upload-hint">支持 JPG、PNG 格式，建议正脸照片</p>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+      </div>
+      
+      <div class="preview-area" id="previewArea" style="display:none;">
+        <div class="image-container">
+          <img id="previewImg" src="" alt="预览">
+          <canvas id="faceCanvas"></canvas>
+        </div>
+        <button class="btn-reupload" onclick="resetUpload()">重新上传</button>
+      </div>
+      
+      <div class="loading" id="loading" style="display:none;">
+        <div class="spinner"></div>
+        <p>AI 正在分析中...</p>
+      </div>
+    </div>
+
+    <div class="card result-card" id="resultCard" style="display:none;">
+      <div class="score-display">
+        <div class="score-circle">
+          <svg viewBox="0 0 100 100">
+            <circle class="score-bg" cx="50" cy="50" r="45"/>
+            <circle class="score-progress" id="scoreCircle" cx="50" cy="50" r="45"/>
+          </svg>
+          <div class="score-value" id="scoreValue">0</div>
+        </div>
+        <div class="score-label" id="scoreLabel">分析中...</div>
+      </div>
+      
+      <div class="details">
+        <h3>📊 详细分析</h3>
+        <div class="detail-grid" id="detailGrid"></div>
+      </div>
+      
+      <div class="comment" id="comment"></div>
+      
+      <div class="disclaimer">
+        ⚠️ 本工具仅供娱乐，评分基于简单的面部特征分析，不代表真实审美标准。颜值是主观的，自信最重要！
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .upload-area {
+      border: 2px dashed rgba(255,255,255,0.3);
+      border-radius: 16px;
+      padding: 50px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .upload-area:hover {
+      border-color: #ff6b9d;
+      background: rgba(255,107,157,0.1);
+    }
+    .upload-area.dragover {
+      border-color: #ffd700;
+      background: rgba(255,215,0,0.1);
+    }
+    .upload-icon { font-size: 60px; margin-bottom: 15px; }
+    .upload-area p { color: rgba(255,255,255,0.8); margin-bottom: 8px; }
+    .upload-hint { font-size: 0.85rem; color: rgba(255,255,255,0.5) !important; }
+    
+    .preview-area { text-align: center; }
+    .image-container {
+      position: relative;
+      display: inline-block;
+      max-width: 100%;
+    }
+    #previewImg {
+      max-width: 100%;
+      max-height: 400px;
+      border-radius: 12px;
+    }
+    #faceCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    .btn-reupload {
+      margin-top: 15px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      padding: 10px 25px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-reupload:hover { background: rgba(255,255,255,0.2); }
+    
+    .loading { text-align: center; padding: 40px; }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: #ff6b9d;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .result-card { text-align: center; }
+    .score-display { margin-bottom: 30px; }
+    .score-circle {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      margin: 0 auto 15px;
+    }
+    .score-circle svg { transform: rotate(-90deg); }
+    .score-bg {
+      fill: none;
+      stroke: rgba(255,255,255,0.1);
+      stroke-width: 8;
+    }
+    .score-progress {
+      fill: none;
+      stroke: url(#scoreGradient);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 283;
+      stroke-dashoffset: 283;
+      transition: stroke-dashoffset 1.5s ease;
+    }
+    .score-value {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 3rem;
+      font-weight: bold;
+      color: #ffd700;
+    }
+    .score-label {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #ff6b9d;
+    }
+</style>
+
+  <style>
+    .details { text-align: left; margin: 25px 0; }
+    .details h3 { color: #ffd700; margin-bottom: 15px; }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 500px) {
+      .detail-grid { grid-template-columns: 1fr; }
+    }
+    .detail-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 12px 15px;
+    }
+    .detail-label {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 5px;
+    }
+    .detail-bar {
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .detail-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 1s ease;
+    }
+    .detail-value {
+      font-size: 0.9rem;
+      color: #ffd700;
+      margin-top: 5px;
+    }
+    
+    .comment {
+      background: linear-gradient(135deg, rgba(255,107,157,0.2), rgba(255,215,0,0.1));
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.9);
+    }
+    
+    .disclaimer {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.4);
+      padding: 15px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      line-height: 1.6;
+    }
+  </style>
+  
+  <svg style="position:absolute;width:0;height:0;">
+    <defs>
+      <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" style="stop-color:#ff6b9d"/>
+        <stop offset="100%" style="stop-color:#ffd700"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <script>
+    let modelsLoaded = false;
+    
+    // 加载 face-api 模型
+    async function loadModels() {
+      const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+        faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
+      ]);
+      modelsLoaded = true;
+    }
+    
+    // 页面加载时预加载模型
+    loadModels().catch(console.error);
+    
+    // 上传区域事件
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        handleFile(file);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+    
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('uploadArea').style.display = 'none';
+        document.getElementById('previewArea').style.display = 'block';
+        analyzeImage();
+      };
+      reader.readAsDataURL(file);
+    }
+    
+    function resetUpload() {
+      document.getElementById('uploadArea').style.display = 'block';
+      document.getElementById('previewArea').style.display = 'none';
+      document.getElementById('resultCard').style.display = 'none';
+      document.getElementById('loading').style.display = 'none';
+      fileInput.value = '';
+    }
+
+    async function analyzeImage() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('resultCard').style.display = 'none';
+      
+      // 等待模型加载
+      if (!modelsLoaded) {
+        await loadModels();
+      }
+      
+      const img = document.getElementById('previewImg');
+      await new Promise(resolve => {
+        if (img.complete) resolve();
+        else img.onload = resolve;
+      });
+      
+      // 设置 canvas
+      const canvas = document.getElementById('faceCanvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      
+      try {
+        // 检测人脸
+        const detection = await faceapi
+          .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks()
+          .withFaceExpressions()
+          .withAgeAndGender();
+        
+        if (!detection) {
+          alert('未检测到人脸，请上传清晰的正脸照片');
+          resetUpload();
+          return;
+        }
+        
+        // 绘制人脸框和特征点
+        const resized = faceapi.resizeResults(detection, { width: img.width, height: img.height });
+        faceapi.draw.drawDetections(canvas, resized);
+        faceapi.draw.drawFaceLandmarks(canvas, resized);
+        
+        // 分析并显示结果
+        const result = analyzeFeatures(detection);
+        showResult(result, detection);
+        
+      } catch (err) {
+        console.error(err);
+        alert('分析失败，请重试');
+        resetUpload();
+      }
+      
+      document.getElementById('loading').style.display = 'none';
+    }
+    
+    function analyzeFeatures(detection) {
+      const landmarks = detection.landmarks;
+      const positions = landmarks.positions;
+      
+      // 计算各种面部比例
+      const leftEye = landmarks.getLeftEye();
+      const rightEye = landmarks.getRightEye();
+      const nose = landmarks.getNose();
+      const mouth = landmarks.getMouth();
+      const jaw = landmarks.getJawOutline();
+      
+      // 眼间距比例
+      const eyeDistance = Math.abs(rightEye[0].x - leftEye[3].x);
+      const faceWidth = Math.abs(jaw[16].x - jaw[0].x);
+      const eyeRatio = eyeDistance / faceWidth;
+      
+      // 三庭比例（额头:鼻子:下巴）
+      const faceTop = Math.min(...positions.map(p => p.y));
+      const eyeY = (leftEye[0].y + rightEye[0].y) / 2;
+      const noseBottom = nose[6].y;
+      const chinBottom = jaw[8].y;
+      
+      // 五眼比例
+      const leftEyeWidth = Math.abs(leftEye[3].x - leftEye[0].x);
+      const rightEyeWidth = Math.abs(rightEye[3].x - rightEye[0].x);
+      const avgEyeWidth = (leftEyeWidth + rightEyeWidth) / 2;
+      const fiveEyeRatio = faceWidth / avgEyeWidth;
+      
+      // 嘴巴比例
+      const mouthWidth = Math.abs(mouth[6].x - mouth[0].x);
+      const mouthRatio = mouthWidth / faceWidth;
+      
+      // 对称性
+      const leftSide = positions.slice(0, 8);
+      const rightSide = positions.slice(9, 17).reverse();
+      let symmetryScore = 0;
+      const centerX = jaw[8].x;
+      for (let i = 0; i < Math.min(leftSide.length, rightSide.length); i++) {
+        const leftDist = Math.abs(leftSide[i].x - centerX);
+        const rightDist = Math.abs(rightSide[i].x - centerX);
+        symmetryScore += 1 - Math.abs(leftDist - rightDist) / faceWidth;
+      }
+      symmetryScore = symmetryScore / Math.min(leftSide.length, rightSide.length);
+      
+      // 表情分数
+      const expressions = detection.expressions;
+      const happyScore = expressions.happy || 0;
+      const neutralScore = expressions.neutral || 0;
+      
+      // 更严格的评分标准，增加区分度
+      // 眼间距理想值约0.28-0.32，偏离越多扣分越狠
+      const idealEyeRatio = 0.30;
+      const eyeScore = Math.max(0, 1 - Math.abs(eyeRatio - idealEyeRatio) / 0.15);
+      
+      // 五眼比例理想值5，偏离扣分
+      const fiveEyeScore = Math.max(0, 1 - Math.abs(fiveEyeRatio - 5) / 2);
+      
+      // 嘴宽比例理想值0.38-0.42
+      const idealMouthRatio = 0.40;
+      const mouthScore = Math.max(0, 1 - Math.abs(mouthRatio - idealMouthRatio) / 0.15);
+      
+      // 对称性更严格
+      const symmetryFinal = Math.pow(symmetryScore, 2); // 平方放大差异
+      
+      // 表情分数降低权重
+      const expressionScore = happyScore * 0.3 + neutralScore * 0.3;
+      
+      // 加入随机扰动，避免所有人分数一样（±5分）
+      const randomFactor = (Math.random() - 0.5) * 0.1;
+      
+      return {
+        eyeRatio: eyeScore,
+        fiveEyeRatio: fiveEyeScore,
+        mouthRatio: mouthScore,
+        symmetry: symmetryFinal,
+        expression: expressionScore,
+        random: randomFactor,
+        age: detection.age,
+        gender: detection.gender
+      };
+    }
+
+    function showResult(result, detection) {
+      // 计算总分，范围更大 (50-92)
+      const rawScore = (
+        result.eyeRatio * 0.2 +
+        result.fiveEyeRatio * 0.2 +
+        result.mouthRatio * 0.15 +
+        result.symmetry * 0.35 +
+        result.expression * 0.1 +
+        result.random
+      );
+      // 映射到 50-92 分，更有区分度
+      const score = Math.round(50 + Math.max(0, Math.min(1, rawScore)) * 42);
+      
+      // 显示分数动画
+      const scoreCircle = document.getElementById('scoreCircle');
+      const scoreValue = document.getElementById('scoreValue');
+      const scoreLabel = document.getElementById('scoreLabel');
+      
+      document.getElementById('resultCard').style.display = 'block';
+      
+      // 圆环动画
+      const circumference = 283;
+      const offset = circumference - (score / 100) * circumference;
+      setTimeout(() => {
+        scoreCircle.style.strokeDashoffset = offset;
+      }, 100);
+      
+      // 数字动画
+      let current = 0;
+      const interval = setInterval(() => {
+        current += 1;
+        scoreValue.textContent = current;
+        if (current >= score) clearInterval(interval);
+      }, 20);
+      
+      // 评级 - 调整阈值
+      let label = '';
+      if (score >= 88) label = '绝世容颜 ✨';
+      else if (score >= 82) label = '倾国倾城 💎';
+      else if (score >= 76) label = '英俊潇洒 🌟';
+      else if (score >= 70) label = '清秀可人 💫';
+      else if (score >= 64) label = '眉清目秀 ⭐';
+      else if (score >= 58) label = '朴实无华 🌱';
+      else label = '独特魅力 🎭';
+      scoreLabel.textContent = label;
+      
+      // 详细分析
+      const details = [
+        { label: '面部对称', value: result.symmetry, color: '#ff6b9d' },
+        { label: '眼间距比例', value: result.eyeRatio, color: '#ffd700' },
+        { label: '五眼比例', value: result.fiveEyeRatio, color: '#4ade80' },
+        { label: '嘴型比例', value: result.mouthRatio, color: '#00d4ff' },
+        { label: '表情亲和', value: result.expression, color: '#a855f7' },
+        { label: '综合气质', value: rawScore, color: '#ff6b6b' }
+      ];
+      
+      const detailGrid = document.getElementById('detailGrid');
+      detailGrid.innerHTML = details.map(d => `
+        <div class="detail-item">
+          <div class="detail-label">${d.label}</div>
+          <div class="detail-bar">
+            <div class="detail-fill" style="width:${d.value * 100}%;background:${d.color}"></div>
+          </div>
+          <div class="detail-value">${(d.value * 100).toFixed(0)}分</div>
+        </div>
+      `).join('');
+      
+      // 评语
+      const genderText = result.gender === 'male' ? '帅哥' : '美女';
+      const ageText = Math.round(result.age);
+      const comments = getComment(score, result.gender, ageText);
+      document.getElementById('comment').innerHTML = comments;
+    }
+    
+    function getComment(score, gender, age) {
+      const genderText = gender === 'male' ? '帅哥' : '美女';
+      
+      if (score >= 90) {
+        return `哇！AI 预估年龄 ${age} 岁的${genderText}，这颜值简直是老天爷追着喂饭吃！面部比例堪称黄金分割，对称度极高。走在街上回头率 200%，建议出道！`;
+      } else if (score >= 85) {
+        return `AI 预估年龄 ${age} 岁，${genderText}你这长相，放古代妥妥的"沉鱼落雁"级别。五官精致，比例协调，气质出众。颜值在线，自信加分！`;
+      } else if (score >= 80) {
+        return `${age} 岁的${genderText}，五官端正，比例协调，属于耐看型选手。第一眼可能不惊艳，但越看越顺眼，这种长相最抗老！`;
+      } else if (score >= 75) {
+        return `AI 看出你大约 ${age} 岁，${genderText}你的长相属于清秀挂的，虽然不是惊艳型，但胜在舒服耐看。笑起来应该很好看，多笑笑！`;
+      } else if (score >= 70) {
+        return `${age} 岁的${genderText}，长相普通但不平庸。记住：颜值不够，气质来凑！自信的人最有魅力，别被分数定义。`;
+      } else {
+        return `${genderText}，AI 觉得你大约 ${age} 岁。分数只是娱乐，真正的魅力来自内在。再说了，好看的皮囊千篇一律，有趣的灵魂万里挑一！`;
+      }
+    }
+  </script>
+</body>
+</html>

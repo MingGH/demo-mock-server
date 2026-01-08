@@ -389,6 +389,77 @@
     .game-over-btn:hover {
       transform: translateY(-3px) scale(1.05);
     }
+    
+    /* 分享按钮 */
+    .share-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin: 15px 0;
+    }
+    .share-btn {
+      padding: 10px 20px;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .share-btn:hover {
+      background: rgba(255,255,255,0.2);
+      transform: translateY(-2px);
+    }
+    .share-btn.wechat {
+      background: rgba(7, 193, 96, 0.3);
+      border-color: #07c160;
+    }
+    
+    /* 游戏结束统计 */
+    .game-over-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .game-over-stat {
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .game-over-stat-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #ffd93d;
+    }
+    .game-over-stat-value.negative { color: #ff6b6b; }
+    .game-over-stat-value.positive { color: #4ade80; }
+    .game-over-stat-label {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 3px;
+    }
+    
+    /* Toast 提示 */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 10000;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -593,6 +664,35 @@
       </p>
     </div>
     
+    <!-- 全球统计 -->
+    <div class="card" style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(168, 85, 247, 0.1)); border: 1px solid rgba(0, 212, 255, 0.2);">
+      <h2 style="margin-bottom: 20px; color: #00d4ff; text-align: center;">🌍 全球赌徒统计</h2>
+      <div class="result-grid">
+        <div class="result-card" style="border-top: 3px solid #00d4ff;">
+          <h4>👥 参与人数</h4>
+          <div class="big-num gold" id="globalPlayers">-</div>
+        </div>
+        <div class="result-card" style="border-top: 3px solid #ff6b6b;">
+          <h4>💀 破产人数</h4>
+          <div class="big-num red" id="globalBankrupt">-</div>
+          <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 5px;" id="bankruptRate">-</div>
+        </div>
+        <div class="result-card" style="border-top: 3px solid #4ade80;">
+          <h4>🎯 达成目标</h4>
+          <div class="big-num green" id="globalSuccess">-</div>
+          <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 5px;" id="successRate">-</div>
+        </div>
+        <div class="result-card" style="border-top: 3px solid #ffd93d;">
+          <h4>🏆 最长存活</h4>
+          <div class="big-num gold" id="globalMaxBets">-</div>
+          <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 5px;">下注次数</div>
+        </div>
+      </div>
+      <p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 0.8rem; margin-top: 15px;">
+        实时统计，看看你是幸运儿还是大多数
+      </p>
+    </div>
+
     <!-- 结论 -->
     <div class="card conclusion">
       <h3>💡 结论：50%概率 ≠ 公平游戏</h3>
@@ -614,12 +714,37 @@
     <div class="game-over-content">
       <div class="game-over-skull" id="gameOverIcon">💀</div>
       <h2 class="game-over-title" id="gameOverTitle">GAME OVER</h2>
+      <div class="game-over-stats">
+        <div class="game-over-stat">
+          <div class="game-over-stat-value" id="finalBets">-</div>
+          <div class="game-over-stat-label">下注次数</div>
+        </div>
+        <div class="game-over-stat">
+          <div class="game-over-stat-value" id="finalWinRate">-</div>
+          <div class="game-over-stat-label">实际胜率</div>
+        </div>
+        <div class="game-over-stat">
+          <div class="game-over-stat-value" id="finalPeakMoney">-</div>
+          <div class="game-over-stat-label">最高资金</div>
+        </div>
+        <div class="game-over-stat">
+          <div class="game-over-stat-value" id="finalResult">-</div>
+          <div class="game-over-stat-label">最终结果</div>
+        </div>
+      </div>
       <p class="game-over-message" id="gameOverMessage">
         你的资金已经归零，无法继续游戏。
       </p>
+      <div class="share-buttons">
+        <button class="share-btn" onclick="shareToWeibo()">📢 分享到微博</button>
+        <button class="share-btn wechat" onclick="copyShareText()">📋 复制战绩</button>
+      </div>
       <button class="game-over-btn" onclick="closeModalAndReset()">🔄 再来一局</button>
     </div>
   </div>
+  
+  <!-- 复制成功提示 -->
+  <div class="toast" id="toast">已复制到剪贴板！</div>
 
   <script>
     let money = 1000;
@@ -628,11 +753,82 @@
     let targetMoney = 2000;
     let betCount = 0;
     let winCount = 0;
+    let peakMoney = 1000;
     let history = [];
     let moneyHistory = [1000];
     let walkHistory = [];
     let chart = null;
     let distributionChart = null;
+    let hasRecordedPlayer = false;
+    
+    // 统计 API
+    const STATS_API = '/stats';
+    const STATS_KEYS = {
+      players: 'gambler-ruin-players',
+      bankrupt: 'gambler-ruin-bankrupt',
+      success: 'gambler-ruin-success',
+      maxBets: 'gambler-ruin-max-bets'
+    };
+    
+    // 加载全球统计
+    async function loadGlobalStats() {
+      try {
+        const results = await Promise.all([
+          fetch(`${STATS_API}?action=get&key=${STATS_KEYS.players}`).then(r => r.json()),
+          fetch(`${STATS_API}?action=get&key=${STATS_KEYS.bankrupt}`).then(r => r.json()),
+          fetch(`${STATS_API}?action=get&key=${STATS_KEYS.success}`).then(r => r.json()),
+          fetch(`${STATS_API}?action=get&key=${STATS_KEYS.maxBets}`).then(r => r.json())
+        ]);
+        
+        const players = results[0].data || 0;
+        const bankrupt = results[1].data || 0;
+        const success = results[2].data || 0;
+        const maxBets = results[3].data || 0;
+        
+        document.getElementById('globalPlayers').textContent = players.toLocaleString();
+        document.getElementById('globalBankrupt').textContent = bankrupt.toLocaleString();
+        document.getElementById('globalSuccess').textContent = success.toLocaleString();
+        document.getElementById('globalMaxBets').textContent = maxBets.toLocaleString();
+        
+        if (players > 0) {
+          document.getElementById('bankruptRate').textContent = `破产率 ${(bankrupt/players*100).toFixed(1)}%`;
+          document.getElementById('successRate').textContent = `成功率 ${(success/players*100).toFixed(1)}%`;
+        }
+      } catch (e) {
+        console.log('Stats load failed:', e);
+      }
+    }
+    
+    // 记录玩家
+    async function recordPlayer() {
+      if (hasRecordedPlayer) return;
+      hasRecordedPlayer = true;
+      try {
+        await fetch(`${STATS_API}?action=incr&key=${STATS_KEYS.players}`);
+        loadGlobalStats();
+      } catch (e) {}
+    }
+    
+    // 记录破产
+    async function recordBankrupt() {
+      try {
+        await fetch(`${STATS_API}?action=incr&key=${STATS_KEYS.bankrupt}`);
+        // 检查是否破纪录
+        const res = await fetch(`${STATS_API}?action=get&key=${STATS_KEYS.maxBets}`).then(r => r.json());
+        if (betCount > (res.data || 0)) {
+          await fetch(`${STATS_API}?action=incr&key=${STATS_KEYS.maxBets}&n=${betCount - (res.data || 0)}`);
+        }
+        loadGlobalStats();
+      } catch (e) {}
+    }
+    
+    // 记录成功
+    async function recordSuccess() {
+      try {
+        await fetch(`${STATS_API}?action=incr&key=${STATS_KEYS.success}`);
+        loadGlobalStats();
+      } catch (e) {}
+    }
     
     function formatMoney(num) {
       return '¥' + num.toLocaleString();
@@ -650,12 +846,20 @@
       
       document.getElementById('betBtn').textContent = `💰 下注 ${betAmount}元`;
       
+      // 更新峰值
+      if (money > peakMoney) peakMoney = money;
+      
       updateChart();
       updateWalkVisual();
     }
     
     function placeBet() {
       if (money <= 0 || money >= targetMoney) return false;
+      
+      // 首次下注记录玩家
+      if (betCount === 0) {
+        recordPlayer();
+      }
       
       const bet = Math.min(betAmount, money);
       const win = Math.random() < 0.5;
@@ -726,26 +930,35 @@
       const title = document.getElementById('gameOverTitle');
       const message = document.getElementById('gameOverMessage');
       
+      // 更新统计数据
+      document.getElementById('finalBets').textContent = betCount;
+      document.getElementById('finalWinRate').textContent = (winCount/betCount*100).toFixed(1) + '%';
+      document.getElementById('finalPeakMoney').textContent = formatMoney(peakMoney);
+      
       if (success) {
         icon.textContent = '🎉';
         title.textContent = '恭喜达成目标！';
         title.style.background = 'linear-gradient(135deg, #4ade80, #ffd93d)';
         title.style.webkitBackgroundClip = 'text';
+        document.getElementById('finalResult').textContent = '翻倍成功';
+        document.getElementById('finalResult').className = 'game-over-stat-value positive';
         message.innerHTML = `
           你成功从 ${formatMoney(initialMoney)} 赢到了 ${formatMoney(money)}！<br>
-          共下注 ${betCount} 次，胜率 ${(winCount/betCount*100).toFixed(1)}%<br><br>
           <span style="color: #ffd93d;">但记住：这只是运气。再来一次，结果可能完全不同。</span>
         `;
+        recordSuccess();
       } else {
         icon.textContent = '💀';
         title.textContent = '破产了！';
         title.style.background = 'linear-gradient(135deg, #ff6b6b, #ffd93d)';
         title.style.webkitBackgroundClip = 'text';
+        document.getElementById('finalResult').textContent = '破产';
+        document.getElementById('finalResult').className = 'game-over-stat-value negative';
         message.innerHTML = `
-          你的资金已经归零，游戏结束。<br>
-          共下注 ${betCount} 次，胜率 ${(winCount/betCount*100).toFixed(1)}%<br><br>
-          <span style="color: #ff6b6b;">即使胜率接近50%，你还是输光了。这就是「赌徒破产」。</span>
+          即使胜率接近50%，你还是输光了。<br>
+          <span style="color: #ff6b6b;">这就是「赌徒破产」定理的残酷现实。</span>
         `;
+        recordBankrupt();
       }
       
       modal.classList.add('show');
@@ -753,6 +966,40 @@
       document.getElementById('betBtn').disabled = true;
       document.getElementById('autoBtn').disabled = true;
       document.getElementById('autoUntilBtn').disabled = true;
+    }
+    
+    // 生成分享文案
+    function getShareText() {
+      const result = money >= targetMoney ? '翻倍成功 🎉' : '破产了 💀';
+      const winRateText = (winCount/betCount*100).toFixed(1);
+      return `【赌徒破产模拟器】
+我在50%概率的"公平"赌博中撑了 ${betCount} 局
+胜率 ${winRateText}%，最高资金 ${formatMoney(peakMoney)}
+最终结果：${result}
+
+即使胜率接近50%，久赌必输是数学定理。
+来试试你能撑几局？👉 `;
+    }
+    
+    // 分享到微博
+    function shareToWeibo() {
+      const text = encodeURIComponent(getShareText() + window.location.href);
+      window.open(`https://service.weibo.com/share/share.php?title=${text}`, '_blank');
+    }
+    
+    // 复制分享文案
+    function copyShareText() {
+      const text = getShareText() + window.location.href;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast();
+      });
+    }
+    
+    // 显示 toast
+    function showToast() {
+      const toast = document.getElementById('toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
     }
     
     function closeModalAndReset() {
@@ -863,9 +1110,11 @@
       money = initialMoney;
       betCount = 0;
       winCount = 0;
+      peakMoney = initialMoney;
       history = [];
       moneyHistory = [initialMoney];
       walkHistory = [];
+      hasRecordedPlayer = false;
       
       document.getElementById('betBtn').disabled = false;
       document.getElementById('autoBtn').disabled = false;
@@ -976,6 +1225,7 @@
     // 初始化
     updateDisplay();
     renderHistory();
+    loadGlobalStats();
     
     // 监听输入变化
     document.getElementById('initialMoney').addEventListener('change', resetGame);

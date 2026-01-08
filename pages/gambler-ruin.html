@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>赌徒破产悖论 - 50%概率为何必输</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .question-box {
+      background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,217,61,0.1));
+      border-left: 4px solid #ff6b6b;
+      padding: 15px 20px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+      font-size: 1.05rem;
+      line-height: 1.8;
+    }
+    .question-box strong { color: #ffd93d; }
+    
+    /* 游戏区域 */
+    .game-area {
+      text-align: center;
+      padding: 20px 0;
+    }
+    .game-info {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+    .info-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 15px 25px;
+      min-width: 120px;
+    }
+    .info-box .label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 5px;
+    }
+    .info-box .value {
+      font-size: 1.6rem;
+      font-weight: bold;
+    }
+    .info-box .value.money { color: #ffd93d; }
+    .info-box .value.round { color: #4ade80; }
+    .info-box .value.negative { color: #ff6b6b; }
+    
+    /* 赌桌 */
+    .betting-table {
+      background: linear-gradient(135deg, #1e5631 0%, #2d7a46 100%);
+      border-radius: 20px;
+      padding: 30px;
+      margin: 20px 0;
+      border: 8px solid #8b4513;
+      box-shadow: inset 0 0 50px rgba(0,0,0,0.3);
+    }
+    .coin-flip {
+      font-size: 80px;
+      margin: 20px 0;
+      transition: transform 0.5s;
+    }
+    .coin-flip.flipping {
+      animation: flip 0.5s ease-in-out;
+    }
+    @keyframes flip {
+      0% { transform: rotateY(0deg); }
+      100% { transform: rotateY(720deg); }
+    }
+    .result-text {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin: 15px 0;
+      min-height: 40px;
+    }
+    .result-text.win { color: #4ade80; }
+    .result-text.lose { color: #ff6b6b; }
+    
+    /* 按钮 */
+    .game-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .game-btn {
+      padding: 15px 30px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .game-btn.bet {
+      background: linear-gradient(135deg, #ffd93d, #f0c000);
+      color: #333;
+    }
+    .game-btn.auto {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: white;
+    }
+    .game-btn.reset {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .game-btn:hover {
+      transform: translateY(-2px);
+    }
+    .game-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    /* 输入区 */
+    .input-row {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .input-group label {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9rem;
+    }
+    .input-group input, .input-group select {
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: white;
+      font-size: 1rem;
+    }
+    .input-group input:focus, .input-group select:focus {
+      outline: none;
+      border-color: #ffd93d;
+    }
+    
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin-top: 20px;
+    }
+    
+    /* 历史记录 */
+    .history-section {
+      margin-top: 20px;
+    }
+    .history-section h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    .history-list {
+      max-height: 120px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.85rem;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item.win { color: #4ade80; }
+    .history-item.lose { color: #ff6b6b; }
+    
+    /* 批量模拟结果 */
+    .batch-results {
+      display: none;
+      margin-top: 20px;
+    }
+    .batch-results.show { display: block; }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+    @media (max-width: 500px) {
+      .result-grid { grid-template-columns: 1fr; }
+    }
+    .result-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .result-card h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+    .result-card .big-num {
+      font-size: 2.2rem;
+      font-weight: bold;
+    }
+    .result-card .big-num.red { color: #ff6b6b; }
+    .result-card .big-num.green { color: #4ade80; }
+    .result-card .big-num.gold { color: #ffd93d; }
+    
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+    .analysis h3 {
+      color: #ffd93d;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .analysis p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.85;
+      margin-bottom: 14px;
+    }
+    .analysis .formula {
+      background: rgba(255,255,255,0.08);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      margin: 14px 0;
+      overflow-x: auto;
+    }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+    
+    /* 随机游走可视化 */
+    .walk-visual {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      flex-wrap: wrap;
+      margin: 15px 0;
+      padding: 15px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+    }
+    .walk-step {
+      width: 8px;
+      height: 20px;
+      border-radius: 2px;
+      transition: all 0.1s;
+    }
+    .walk-step.up { background: #4ade80; }
+    .walk-step.down { background: #ff6b6b; }
+    
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,217,61,0.1));
+      border: 2px solid #ffd93d;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .conclusion h3 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+      color: #ff6b6b;
+    }
+    .conclusion p {
+      color: rgba(255,255,255,0.9);
+      line-height: 1.85;
+    }
+    
+    /* 游戏结束弹窗 */
+    .game-over-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+    .game-over-modal.show {
+      display: flex;
+      animation: modalFadeIn 0.5s ease;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .game-over-content {
+      text-align: center;
+      padding: 40px;
+      max-width: 500px;
+    }
+    .game-over-skull {
+      font-size: 100px;
+      animation: skullBounce 0.6s ease infinite alternate;
+    }
+    @keyframes skullBounce {
+      from { transform: scale(1) rotate(-5deg); }
+      to { transform: scale(1.1) rotate(5deg); }
+    }
+    .game-over-title {
+      font-size: 2.5rem;
+      font-weight: bold;
+      background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 20px 0;
+    }
+    .game-over-message {
+      color: rgba(255,255,255,0.7);
+      font-size: 1.1rem;
+      line-height: 1.8;
+      margin: 20px 0;
+    }
+    .game-over-btn {
+      background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+      border: none;
+      border-radius: 30px;
+      padding: 15px 40px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 20px;
+    }
+    .game-over-btn:hover {
+      transform: translateY(-3px) scale(1.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>🎰 赌徒破产悖论</h1>
+    <p class="subtitle">50%概率，为什么赌久必输？</p>
+    
+    <div class="card">
+      <div class="question-box">
+        <strong>问题：</strong>假设赌博输赢概率都是 <strong>50%</strong>，和抛硬币一样公平。<br>
+        抛硬币次数多了，正反面比率基本相同。<br>
+        那为什么长期赌博的人，最终往往是<strong>倾家荡产</strong>而不是收益均衡？
+      </div>
+      
+      <div class="input-row">
+        <div class="input-group">
+          <label>初始资金：</label>
+          <input type="number" id="initialMoney" value="1000" min="100">
+          <span style="color: rgba(255,255,255,0.5);">元</span>
+        </div>
+        <div class="input-group">
+          <label>每次下注：</label>
+          <input type="number" id="betAmount" value="100" min="10">
+          <span style="color: rgba(255,255,255,0.5);">元</span>
+        </div>
+        <div class="input-group">
+          <label>目标金额：</label>
+          <input type="number" id="targetMoney" value="2000" min="100">
+          <span style="color: rgba(255,255,255,0.5);">元</span>
+        </div>
+      </div>
+      
+      <div class="game-area">
+        <div class="game-info">
+          <div class="info-box">
+            <div class="label">当前资金</div>
+            <div class="value money" id="currentMoney">¥1,000</div>
+          </div>
+          <div class="info-box">
+            <div class="label">下注次数</div>
+            <div class="value round" id="betCount">0</div>
+          </div>
+          <div class="info-box">
+            <div class="label">胜率</div>
+            <div class="value" id="winRate" style="color: #4ade80;">-</div>
+          </div>
+        </div>
+        
+        <div class="betting-table">
+          <div class="coin-flip" id="coinFlip">🪙</div>
+          <div class="result-text" id="resultText">点击下注开始游戏</div>
+        </div>
+        
+        <div class="game-buttons">
+          <button class="game-btn bet" id="betBtn" onclick="placeBet()">💰 下注 100元</button>
+          <button class="game-btn auto" id="autoBtn" onclick="autoBet(100)">⚡ 自动100局</button>
+          <button class="game-btn auto" id="autoUntilBtn" onclick="autoBetUntilEnd()">🎯 赌到结束</button>
+          <button class="game-btn reset" onclick="resetGame()">🔄 重置</button>
+        </div>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="moneyChart"></canvas>
+      </div>
+      
+      <div class="history-section">
+        <h4>📜 最近记录</h4>
+        <div class="history-list" id="historyList">
+          <div style="color: rgba(255,255,255,0.5); text-align: center;">等待开始...</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 批量模拟 -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #ffd93d;">🎲 蒙特卡洛模拟：1000个赌徒的命运</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+        模拟1000个人，每人1000元本金，每次下注100元，50%概率赢/输。<br>
+        目标：翻倍到2000元。看看最终有多少人能达成目标？
+      </p>
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <button class="game-btn auto" onclick="runMassSimulation()" id="massSimBtn">🚀 运行模拟</button>
+      </div>
+      
+      <div class="batch-results" id="batchResults">
+        <div class="result-grid">
+          <div class="result-card">
+            <h4>💀 破产人数</h4>
+            <div class="big-num red" id="bankruptCount">-</div>
+            <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 5px;">资金归零</div>
+          </div>
+          <div class="result-card">
+            <h4>🎯 达成目标</h4>
+            <div class="big-num green" id="successCount">-</div>
+            <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 5px;">翻倍成功</div>
+          </div>
+          <div class="result-card">
+            <h4>📊 平均下注次数</h4>
+            <div class="big-num gold" id="avgBets">-</div>
+            <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 5px;">到达终点前</div>
+          </div>
+          <div class="result-card">
+            <h4>⏱️ 最长存活</h4>
+            <div class="big-num gold" id="maxBets">-</div>
+            <div style="color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 5px;">下注次数</div>
+          </div>
+        </div>
+        
+        <div class="chart-container" style="height: 200px; margin-top: 20px;">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 随机游走可视化 -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #ffd93d;">📈 随机游走：看看你的资金轨迹</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 15px;">
+        每一条竖线代表一次下注：<span style="color: #4ade80;">绿色=赢</span>，<span style="color: #ff6b6b;">红色=输</span>
+      </p>
+      <div class="walk-visual" id="walkVisual">
+        <div style="color: rgba(255,255,255,0.5);">开始下注后显示...</div>
+      </div>
+      <p style="color: rgba(255,255,255,0.5); font-size: 0.85rem; text-align: center;">
+        注意观察：即使赢输次数相近，资金也可能触及边界（0或目标）
+      </p>
+    </div>
+    
+    <!-- 数学分析 -->
+    <div class="card analysis">
+      <h3>📐 数学解释：为什么50%概率也会输光</h3>
+      
+      <p><strong>1. 这不是概率问题，是「边界吸收」问题</strong></p>
+      <p>
+        抛硬币确实是50%，但赌博有一个硬币没有的东西：<span class="highlight">边界</span>。<br>
+        你的钱可以无限增长，但不能低于0。一旦归零，游戏结束。
+      </p>
+      
+      <p><strong>2. 随机游走的必然归宿</strong></p>
+      <p>
+        数学上，这叫「带吸收壁的随机游走」。有一个定理：
+      </p>
+      <div class="formula">
+        在公平赌博（50%概率）中，从任意正整数出发的随机游走，<br>
+        <span class="highlight">最终必然会到达0</span>（概率为1）
+      </div>
+      <p>
+        换句话说：只要你一直赌下去，破产是<span class="highlight">数学上的必然</span>，不是运气问题。
+      </p>
+      
+      <p><strong>3. 「赌徒破产问题」的经典公式</strong></p>
+      <p>
+        假设你有 n 元，目标是赢到 N 元，每次下注 1 元，50%概率赢/输：
+      </p>
+      <div class="formula">
+        破产概率 = (N - n) / N<br>
+        成功概率 = n / N
+      </div>
+      <p>
+        例如：1000元想翻倍到2000元<br>
+        成功概率 = 1000/2000 = <span class="safe">50%</span><br>
+        破产概率 = 1000/2000 = <span class="highlight">50%</span>
+      </p>
+      <p>
+        看起来公平？但问题是：<span class="highlight">你会一直赌下去吗？</span>
+      </p>
+      
+      <p><strong>4. 真正的陷阱：无限游戏</strong></p>
+      <p>
+        如果你的目标是「赚到足够多就收手」，那确实有50%成功率。<br>
+        但大多数赌徒的心态是：「赢了还想赢，输了想回本」。<br>
+        这就变成了<span class="highlight">无限游戏</span>——而无限游戏的结局只有一个：
+      </p>
+      <div class="formula">
+        lim(n→∞) P(破产) = <span class="highlight">100%</span>
+      </div>
+    </div>
+    
+    <!-- 为什么抛硬币不会"破产" -->
+    <div class="card analysis">
+      <h3>🪙 为什么抛硬币不会"破产"？</h3>
+      
+      <p><strong>关键区别：抛硬币没有「终止条件」</strong></p>
+      <p>
+        抛硬币时，你只是在记录正反面次数，没有「归零就停止」的规则。<br>
+        所以你可以一直抛下去，大数定律保证正反面趋近50%。
+      </p>
+      
+      <p><strong>但赌博有「吸收态」</strong></p>
+      <p>
+        赌博中，「钱=0」是一个<span class="highlight">吸收态</span>——一旦进入，永远无法离开。<br>
+        这就像一个有黑洞的宇宙：你可以在里面随机游走很久，但只要碰到黑洞一次，游戏就结束了。
+      </p>
+      
+      <p><strong>类比：醉汉走路</strong></p>
+      <p>
+        想象一个醉汉在悬崖边随机走动，每一步50%向前、50%向后。<br>
+        问：他最终会掉下悬崖吗？<br>
+        答：<span class="highlight">一定会</span>。只是时间问题。
+      </p>
+    </div>
+    
+    <!-- 结论 -->
+    <div class="card conclusion">
+      <h3>💡 结论：50%概率 ≠ 公平游戏</h3>
+      <p>
+        赌博的「公平」是一个幻觉。<br><br>
+        即使每一局都是50%，但因为存在<strong>「归零即出局」</strong>的规则，<br>
+        长期来看，赌徒的命运只有一个：<span style="color: #ff6b6b;">破产</span>。<br><br>
+        这不是运气问题，是<strong>数学必然</strong>。<br><br>
+        <span style="color: #ffd93d;">「久赌必输」不是迷信，是定理。</span><br>
+        <span style="color: rgba(255,255,255,0.6);">
+          唯一的赢法是：不参与。
+        </span>
+      </p>
+    </div>
+  </div>
+  
+  <!-- 游戏结束弹窗 -->
+  <div class="game-over-modal" id="gameOverModal">
+    <div class="game-over-content">
+      <div class="game-over-skull" id="gameOverIcon">💀</div>
+      <h2 class="game-over-title" id="gameOverTitle">GAME OVER</h2>
+      <p class="game-over-message" id="gameOverMessage">
+        你的资金已经归零，无法继续游戏。
+      </p>
+      <button class="game-over-btn" onclick="closeModalAndReset()">🔄 再来一局</button>
+    </div>
+  </div>
+
+  <script>
+    let money = 1000;
+    let initialMoney = 1000;
+    let betAmount = 100;
+    let targetMoney = 2000;
+    let betCount = 0;
+    let winCount = 0;
+    let history = [];
+    let moneyHistory = [1000];
+    let walkHistory = [];
+    let chart = null;
+    let distributionChart = null;
+    
+    function formatMoney(num) {
+      return '¥' + num.toLocaleString();
+    }
+    
+    function updateDisplay() {
+      const moneyEl = document.getElementById('currentMoney');
+      moneyEl.textContent = formatMoney(money);
+      moneyEl.classList.toggle('negative', money < initialMoney);
+      
+      document.getElementById('betCount').textContent = betCount;
+      document.getElementById('winRate').textContent = betCount > 0 
+        ? (winCount / betCount * 100).toFixed(1) + '%' 
+        : '-';
+      
+      document.getElementById('betBtn').textContent = `💰 下注 ${betAmount}元`;
+      
+      updateChart();
+      updateWalkVisual();
+    }
+    
+    function placeBet() {
+      if (money <= 0 || money >= targetMoney) return false;
+      
+      const bet = Math.min(betAmount, money);
+      const win = Math.random() < 0.5;
+      const coinEl = document.getElementById('coinFlip');
+      const resultEl = document.getElementById('resultText');
+      
+      // 硬币动画
+      coinEl.classList.add('flipping');
+      setTimeout(() => coinEl.classList.remove('flipping'), 500);
+      
+      if (win) {
+        money += bet;
+        winCount++;
+        walkHistory.push(true);
+        history.unshift({ win: true, amount: bet, balance: money, round: betCount + 1 });
+        resultEl.textContent = `🎉 赢了 +${bet}元！`;
+        resultEl.className = 'result-text win';
+        coinEl.textContent = '🟡';
+      } else {
+        money -= bet;
+        walkHistory.push(false);
+        history.unshift({ win: false, amount: bet, balance: money, round: betCount + 1 });
+        resultEl.textContent = `💀 输了 -${bet}元`;
+        resultEl.className = 'result-text lose';
+        coinEl.textContent = '⚫';
+      }
+      
+      betCount++;
+      moneyHistory.push(money);
+      
+      updateDisplay();
+      renderHistory();
+      
+      // 检查游戏结束
+      if (money <= 0) {
+        showGameOver(false);
+        return false;
+      }
+      if (money >= targetMoney) {
+        showGameOver(true);
+        return false;
+      }
+      
+      return true;
+    }
+    
+    function autoBet(times) {
+      let count = 0;
+      const interval = setInterval(() => {
+        if (count >= times || !placeBet()) {
+          clearInterval(interval);
+        }
+        count++;
+      }, 30);
+    }
+    
+    function autoBetUntilEnd() {
+      const interval = setInterval(() => {
+        if (!placeBet()) {
+          clearInterval(interval);
+        }
+      }, 10);
+    }
+    
+    function showGameOver(success) {
+      const modal = document.getElementById('gameOverModal');
+      const icon = document.getElementById('gameOverIcon');
+      const title = document.getElementById('gameOverTitle');
+      const message = document.getElementById('gameOverMessage');
+      
+      if (success) {
+        icon.textContent = '🎉';
+        title.textContent = '恭喜达成目标！';
+        title.style.background = 'linear-gradient(135deg, #4ade80, #ffd93d)';
+        title.style.webkitBackgroundClip = 'text';
+        message.innerHTML = `
+          你成功从 ${formatMoney(initialMoney)} 赢到了 ${formatMoney(money)}！<br>
+          共下注 ${betCount} 次，胜率 ${(winCount/betCount*100).toFixed(1)}%<br><br>
+          <span style="color: #ffd93d;">但记住：这只是运气。再来一次，结果可能完全不同。</span>
+        `;
+      } else {
+        icon.textContent = '💀';
+        title.textContent = '破产了！';
+        title.style.background = 'linear-gradient(135deg, #ff6b6b, #ffd93d)';
+        title.style.webkitBackgroundClip = 'text';
+        message.innerHTML = `
+          你的资金已经归零，游戏结束。<br>
+          共下注 ${betCount} 次，胜率 ${(winCount/betCount*100).toFixed(1)}%<br><br>
+          <span style="color: #ff6b6b;">即使胜率接近50%，你还是输光了。这就是「赌徒破产」。</span>
+        `;
+      }
+      
+      modal.classList.add('show');
+      
+      document.getElementById('betBtn').disabled = true;
+      document.getElementById('autoBtn').disabled = true;
+      document.getElementById('autoUntilBtn').disabled = true;
+    }
+    
+    function closeModalAndReset() {
+      document.getElementById('gameOverModal').classList.remove('show');
+      resetGame();
+    }
+    
+    function renderHistory() {
+      const container = document.getElementById('historyList');
+      if (history.length === 0) {
+        container.innerHTML = '<div style="color: rgba(255,255,255,0.5); text-align: center;">等待开始...</div>';
+        return;
+      }
+      
+      container.innerHTML = history.slice(0, 15).map(h => `
+        <div class="history-item ${h.win ? 'win' : 'lose'}">
+          <span>第${h.round}次：${h.win ? '赢 +' : '输 -'}${h.amount}元</span>
+          <span>余额：${formatMoney(h.balance)}</span>
+        </div>
+      `).join('');
+    }
+    
+    function updateChart() {
+      const ctx = document.getElementById('moneyChart').getContext('2d');
+      
+      if (chart) chart.destroy();
+      
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: moneyHistory.map((_, i) => i),
+          datasets: [{
+            label: '资金',
+            data: moneyHistory,
+            borderColor: '#ffd93d',
+            backgroundColor: 'rgba(255, 217, 61, 0.1)',
+            fill: true,
+            tension: 0.1,
+            pointRadius: moneyHistory.length > 50 ? 0 : 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            annotation: {
+              annotations: {
+                targetLine: {
+                  type: 'line',
+                  yMin: targetMoney,
+                  yMax: targetMoney,
+                  borderColor: '#4ade80',
+                  borderWidth: 2,
+                  borderDash: [5, 5]
+                },
+                zeroLine: {
+                  type: 'line',
+                  yMin: 0,
+                  yMax: 0,
+                  borderColor: '#ff6b6b',
+                  borderWidth: 2,
+                  borderDash: [5, 5]
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '下注次数', color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.4)' }
+            },
+            y: {
+              title: { display: true, text: '资金', color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { 
+                color: 'rgba(255,255,255,0.4)',
+                callback: v => formatMoney(v)
+              },
+              min: 0,
+              max: Math.max(targetMoney, Math.max(...moneyHistory) * 1.1)
+            }
+          }
+        }
+      });
+    }
+    
+    function updateWalkVisual() {
+      const container = document.getElementById('walkVisual');
+      if (walkHistory.length === 0) {
+        container.innerHTML = '<div style="color: rgba(255,255,255,0.5);">开始下注后显示...</div>';
+        return;
+      }
+      
+      const maxShow = 200;
+      const toShow = walkHistory.slice(-maxShow);
+      container.innerHTML = toShow.map(win => 
+        `<div class="walk-step ${win ? 'up' : 'down'}"></div>`
+      ).join('');
+    }
+    
+    function resetGame() {
+      initialMoney = parseInt(document.getElementById('initialMoney').value) || 1000;
+      betAmount = parseInt(document.getElementById('betAmount').value) || 100;
+      targetMoney = parseInt(document.getElementById('targetMoney').value) || 2000;
+      
+      money = initialMoney;
+      betCount = 0;
+      winCount = 0;
+      history = [];
+      moneyHistory = [initialMoney];
+      walkHistory = [];
+      
+      document.getElementById('betBtn').disabled = false;
+      document.getElementById('autoBtn').disabled = false;
+      document.getElementById('autoUntilBtn').disabled = false;
+      document.getElementById('resultText').textContent = '点击下注开始游戏';
+      document.getElementById('resultText').className = 'result-text';
+      document.getElementById('coinFlip').textContent = '🪙';
+      
+      updateDisplay();
+      renderHistory();
+    }
+    
+    // 批量模拟
+    function runMassSimulation() {
+      const btn = document.getElementById('massSimBtn');
+      btn.disabled = true;
+      btn.textContent = '模拟中...';
+      
+      setTimeout(() => {
+        const people = 1000;
+        const initial = 1000;
+        const bet = 100;
+        const target = 2000;
+        
+        let bankruptCount = 0;
+        let successCount = 0;
+        let totalBets = 0;
+        let maxBets = 0;
+        const finalMoneys = [];
+        
+        for (let i = 0; i < people; i++) {
+          let m = initial;
+          let bets = 0;
+          
+          while (m > 0 && m < target) {
+            const b = Math.min(bet, m);
+            if (Math.random() < 0.5) {
+              m += b;
+            } else {
+              m -= b;
+            }
+            bets++;
+            
+            // 防止无限循环
+            if (bets > 100000) break;
+          }
+          
+          if (m <= 0) bankruptCount++;
+          if (m >= target) successCount++;
+          totalBets += bets;
+          maxBets = Math.max(maxBets, bets);
+          finalMoneys.push(m);
+        }
+        
+        document.getElementById('bankruptCount').textContent = bankruptCount + ' (' + (bankruptCount/10).toFixed(1) + '%)';
+        document.getElementById('successCount').textContent = successCount + ' (' + (successCount/10).toFixed(1) + '%)';
+        document.getElementById('avgBets').textContent = Math.round(totalBets / people);
+        document.getElementById('maxBets').textContent = maxBets;
+        
+        document.getElementById('batchResults').classList.add('show');
+        
+        drawDistribution(finalMoneys, target);
+        
+        btn.disabled = false;
+        btn.textContent = '🚀 重新模拟';
+      }, 100);
+    }
+    
+    function drawDistribution(moneys, target) {
+      const ctx = document.getElementById('distributionChart').getContext('2d');
+      
+      if (distributionChart) distributionChart.destroy();
+      
+      const bankruptCount = moneys.filter(m => m <= 0).length;
+      const successCount = moneys.filter(m => m >= target).length;
+      
+      distributionChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['破产 (¥0)', '达成目标 (¥' + target + ')'],
+          datasets: [{
+            data: [bankruptCount, successCount],
+            backgroundColor: ['rgba(255, 107, 107, 0.7)', 'rgba(74, 222, 128, 0.7)'],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: 'rgba(255,255,255,0.6)' }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' },
+              max: 600
+            }
+          }
+        }
+      });
+    }
+    
+    // 初始化
+    updateDisplay();
+    renderHistory();
+    
+    // 监听输入变化
+    document.getElementById('initialMoney').addEventListener('change', resetGame);
+    document.getElementById('betAmount').addEventListener('change', resetGame);
+    document.getElementById('targetMoney').addEventListener('change', resetGame);
+  </script>
+</body>
+</html>

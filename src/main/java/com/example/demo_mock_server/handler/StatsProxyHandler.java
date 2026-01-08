@@ -21,6 +21,14 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
     public static final String KEY_PLAYERS = KEY_PREFIX + "players";      // 参与人数
     public static final String KEY_BANKRUPT = KEY_PREFIX + "bankrupt";    // 破产人数
     public static final String KEY_BILLIONAIRE = KEY_PREFIX + "billionaire"; // 过亿人数
+    
+    // 赌徒破产模拟器统计 key
+    private static final String GAMBLER_PREFIX = "gambler-ruin-";
+    public static final String KEY_GAMBLER_PLAYERS = GAMBLER_PREFIX + "players";      // 参与人数
+    public static final String KEY_GAMBLER_BANKRUPT = GAMBLER_PREFIX + "bankrupt";    // 破产人数
+    public static final String KEY_GAMBLER_SUCCESS = GAMBLER_PREFIX + "success";      // 达成目标人数
+    public static final String KEY_GAMBLER_TOTAL_BETS = GAMBLER_PREFIX + "total-bets"; // 总下注次数
+    public static final String KEY_GAMBLER_MAX_BETS = GAMBLER_PREFIX + "max-bets";    // 最长存活次数
 
     public StatsProxyHandler(Vertx vertx) {
         WebClientOptions options = new WebClientOptions()
@@ -152,7 +160,12 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
         return key != null && (
             key.equals(KEY_PLAYERS) ||
             key.equals(KEY_BANKRUPT) ||
-            key.equals(KEY_BILLIONAIRE)
+            key.equals(KEY_BILLIONAIRE) ||
+            key.equals(KEY_GAMBLER_PLAYERS) ||
+            key.equals(KEY_GAMBLER_BANKRUPT) ||
+            key.equals(KEY_GAMBLER_SUCCESS) ||
+            key.equals(KEY_GAMBLER_TOTAL_BETS) ||
+            key.equals(KEY_GAMBLER_MAX_BETS)
         );
     }
 

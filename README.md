@@ -20,16 +20,33 @@
 - **[基金定投模拟](https://demo-mockserver.runnable.run/fund-dca-simulator.html)** - 定投策略收益分析
 - **[财务自由计算器](https://demo-mockserver.runnable.run/financial-freedom-calculator.html)** - 计算达到财务自由所需时间
 - **[存100万有多难](https://demo-mockserver.runnable.run/save-million-calculator.html)** - 打工人攒钱真相计算器
+- **[200万 vs 2亿](https://demo-mockserver.runnable.run/200w-vs-2yi.html)** - 期望值与风险偏好的博弈
 
 ### 🎲 概率统计
 - **[蒙提霍尔问题](https://demo-mockserver.runnable.run/monty-hall-simulator.html)** - 三门问题的概率验证
+- **[101 vs 100 硬币问题](https://demo-mockserver.runnable.run/coin-flip-probability.html)** - 对称性证明+蒙特卡洛模拟
+- **[泊松分布可视化](https://demo-mockserver.runnable.run/poisson-distribution.html)** - 交互式理解泊松分布的本质
+- **[50%财富按钮悖论](https://demo-mockserver.runnable.run/wealth-button-paradox.html)** - 期望值陷阱的模拟揭示
+- **[赌徒破产悖论](https://demo-mockserver.runnable.run/gambler-ruin.html)** - 随机游走的残酷真相
+- **[武器伤害对比](https://demo-mockserver.runnable.run/weapon-damage-compare.html)** - 期望相同但方差不同的取舍
+- **[100面骰子：1.1%有多低](https://demo-mockserver.runnable.run/drug-relapse-dice.html)** - 感受1%概率的渺茫
 
-### 🧠 哲学悖论
+### 🧠 心理学 & 哲学
 - **[忒修斯之船](https://demo-mockserver.runnable.run/ship-of-theseus.html)** - 身份认同的经典思想实验
+- **[损失厌恶测试](https://demo-mockserver.runnable.run/loss-aversion.html)** - 测测你的损失厌恶系数
 
-### 🛠️ 实用工具
+### �️ 实用工具
 - **[随机中文名生成](https://demo-mockserver.runnable.run/chinese-names.html)** - 批量生成测试用中文姓名
 - **[数据大小可视化](https://demo-mockserver.runnable.run/data-size-visualizer.html)** - 直观展示不同数据单位的大小关系
+- **[圣诞帽头像生成器](https://demo-mockserver.runnable.run/christmas-hat.html)** - 上传头像添加圣诞贴图
+- **[墓志铭生成器](https://demo-mockserver.runnable.run/tombstone-generator.html)** - 生成你的专属墓碑图片
+
+### � 安全 & 监控
+- **[全球SSH攻击地图](https://demo-mockserver.runnable.run/ssh-attack-map.html)** - 实时展示服务器被扫描的IP来源
+
+### 🎭 趣味 & 娱乐
+- **[AI颜值评分器](https://demo-mockserver.runnable.run/face-score.html)** - AI分析面部比例给出颜值分数
+- **[户晨风直播词云](https://demo-mockserver.runnable.run/word-cloud.html)** - 直播实录数据生成的词云图
 
 ## 🎯 项目目标
 
@@ -37,19 +54,41 @@
 
 ## 🔧 技术栈
 
-- **后端：** Java + Vert.x
+- **后端：** Java 17 + Vert.x 4.5
 - **前端：** 原生 HTML/CSS/JavaScript + Chart.js
-- **部署：** Cloudflare Pages + K3s
+- **数据：** MaxMind GeoIP2 (IP地理定位)、结巴分词
+- **部署：** Docker + K3s
+
+## 📁 项目结构
+
+```
+├── pages/                  # 前端演示页面
+├── components/             # 公共组件
+├── images/                 # 静态资源
+├── data/                   # 数据文件 (GeoLite2 等)
+├── src/main/java/          # 后端 Java 代码
+│   └── com/example/demo_mock_server/
+│       ├── handler/        # API 处理器
+│       ├── service/        # 业务服务
+│       ├── generator/      # 数据生成器
+│       └── config/         # 配置类
+├── Dockerfile              # Docker 构建文件
+├── k3s-deployment-prod.yaml # K3s 部署配置
+└── pom.xml                 # Maven 配置
+```
+
+## 🚀 本地运行
+
+```bash
+# 编译打包
+./mvnw clean package
+
+# 运行
+java -jar target/demo-mock-server-1.0.0-SNAPSHOT-fat.jar
+```
 
 ## 👤 作者
 
 **知乎：** [@Asher](https://www.zhihu.com/people/han-ming-45-96)
 
 欢迎关注我的知乎，查看更多技术问答和演示！
-
-
-
-
-
-
-

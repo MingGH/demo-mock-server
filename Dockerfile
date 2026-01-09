@@ -1,4 +1,4 @@
-FROM azul/zulu-openjdk:17.0.13
+FROM ibm-semeru-runtimes:open-17-jre
 
 ARG JAR_NAME
 ENV PROJECT_NAME ${JAR_NAME}

@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>量子大乐透 - 真随机号码生成器</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2rem;
+      background: linear-gradient(135deg, #ffd700, #ff6b6b, #ffd700);
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 30px;
+      font-size: 0.95rem;
+    }
+    .quantum-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(168,85,247,0.2));
+      border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      color: #00d4ff;
+      margin: 0 auto 20px;
+      width: fit-content;
+    }
+    .card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .card-title {
+      font-size: 1.1rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #ffd700;
+    }
+    
+    .lottery-display {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin: 30px 0;
+    }
+    .ball {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3), inset 0 -3px 10px rgba(0,0,0,0.2);
+      transition: all 0.3s;
+    }
+    .ball.red {
+      background: linear-gradient(135deg, #ff4757, #c0392b);
+    }
+    .ball.blue {
+      background: linear-gradient(135deg, #3498db, #2980b9);
+    }
+    .ball.empty {
+      background: rgba(255,255,255,0.1);
+      border: 2px dashed rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.3);
+    }
+    .ball.spinning {
+      animation: spin3d 0.5s ease-in-out;
+    }
+    @keyframes spin3d {
+      0% { transform: rotateY(0deg) scale(1); }
+      50% { transform: rotateY(180deg) scale(1.1); }
+      100% { transform: rotateY(360deg) scale(1); }
+    }
+    .ball-divider {
+      width: 2px;
+      height: 40px;
+      background: rgba(255,255,255,0.2);
+      margin: 0 10px;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .btn {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd700, #ff6b6b);
+      color: #1a1a2e;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(255,215,0,0.4);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #1a1a2e;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .history-section {
+      margin-top: 20px;
+    }
+    .history-title {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .history-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+    .history-item .index {
+      color: rgba(255,255,255,0.4);
+      font-size: 0.85rem;
+      width: 30px;
+    }
+    .history-item .balls {
+      display: flex;
+      gap: 6px;
+      flex: 1;
+    }
+    .history-item .mini-ball {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: white;
+    }
+    .history-item .mini-ball.red { background: linear-gradient(135deg, #ff4757, #c0392b); }
+    .history-item .mini-ball.blue { background: linear-gradient(135deg, #3498db, #2980b9); }
+    .history-item .time {
+      color: rgba(255,255,255,0.4);
+      font-size: 0.75rem;
+    }
+    
+    .stats-section {
+      margin-top: 20px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #ffd700;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 5px;
+    }
+    
+    .frequency-section {
+      margin-top: 20px;
+    }
+    .frequency-title {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 15px;
+    }
+    .frequency-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+    @media (max-width: 500px) {
+      .frequency-grid { grid-template-columns: repeat(5, 1fr); }
+    }
+    .freq-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 10px 5px;
+      text-align: center;
+      position: relative;
+    }
+    .freq-item.red { border-bottom: 3px solid #ff4757; }
+    .freq-item.blue { border-bottom: 3px solid #3498db; }
+    .freq-num {
+      font-size: 1rem;
+      font-weight: bold;
+    }
+    .freq-count {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 3px;
+    }
+    .freq-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-radius: 0 0 8px 8px;
+    }
+    .freq-item.red .freq-bar { background: #ff4757; }
+    .freq-item.blue .freq-bar { background: #3498db; }
+    
+    .explanation {
+      background: rgba(0,212,255,0.05);
+      border-left: 3px solid #00d4ff;
+      padding: 20px;
+      border-radius: 0 12px 12px 0;
+      margin-top: 20px;
+    }
+    .explanation h3 {
+      color: #00d4ff;
+      margin-bottom: 10px;
+      font-size: 1rem;
+    }
+    .explanation p {
+      color: rgba(255,255,255,0.7);
+      line-height: 1.8;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    .explanation a {
+      color: #00d4ff;
+      text-decoration: none;
+    }
+    .explanation a:hover { text-decoration: underline; }
+    
+    .global-stats {
+      background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,107,107,0.1));
+      border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .global-stats-title {
+      font-size: 0.9rem;
+      color: #ffd700;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .global-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+    @media (max-width: 500px) {
+      .global-stats-grid { grid-template-columns: 1fr; }
+    }
+    .global-stat {
+      text-align: center;
+    }
+    .global-stat-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: white;
+    }
+    .global-stat-label {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎰 量子大乐透</h1>
+    <p class="subtitle">用真正的量子随机数，生成你的幸运号码</p>
+    <div class="quantum-badge">⚛️ 数据来源：ANU 量子随机数生成器</div>
+    
+    <div class="card">
+      <div class="card-title">🎱 号码生成器</div>
+      
+      <div class="lottery-display" id="lotteryDisplay">
+        <div class="ball red empty">?</div>
+        <div class="ball red empty">?</div>
+        <div class="ball red empty">?</div>
+        <div class="ball red empty">?</div>
+        <div class="ball red empty">?</div>
+        <div class="ball-divider"></div>
+        <div class="ball blue empty">?</div>
+        <div class="ball blue empty">?</div>
+      </div>
+      
+      <div class="controls">
+        <button class="btn btn-primary" id="generateBtn" onclick="generateLottery()">
+          ⚛️ 量子摇号
+        </button>
+        <button class="btn btn-secondary" onclick="generateMultiple(5)">连续 5 注</button>
+        <button class="btn btn-secondary" onclick="clearHistory()">🔄 清空记录</button>
+      </div>
+      
+      <div class="global-stats" id="globalStats" style="display: none;">
+        <div class="global-stats-title">🌍 全站统计（所有用户）</div>
+        <div class="global-stats-grid">
+          <div class="global-stat">
+            <div class="global-stat-value" id="globalTotal">-</div>
+            <div class="global-stat-label">总生成次数</div>
+          </div>
+          <div class="global-stat">
+            <div class="global-stat-value" id="globalToday">-</div>
+            <div class="global-stat-label">今日生成</div>
+          </div>
+          <div class="global-stat">
+            <div class="global-stat-value" id="globalUsers">-</div>
+            <div class="global-stat-label">参与用户</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="history-section">
+        <div class="history-title">
+          <span>📜 生成记录</span>
+          <span id="historyCount">0 注</span>
+        </div>
+        <div class="history-list" id="historyList">
+          <div style="text-align: center; color: rgba(255,255,255,0.4); padding: 20px;">
+            点击「量子摇号」生成号码
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title">📊 号码频率统计</div>
+      
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-value" id="totalGenerated">0</div>
+          <div class="stat-label">本次生成</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="hotRed">-</div>
+          <div class="stat-label">最热红球</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="coldRed">-</div>
+          <div class="stat-label">最冷红球</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="hotBlue">-</div>
+          <div class="stat-label">最热蓝球</div>
+        </div>
+      </div>
+      
+      <div class="frequency-section">
+        <div class="frequency-title">🔴 红球出现频率（1-35）</div>
+        <div class="frequency-grid" id="redFrequency"></div>
+      </div>
+      
+      <div class="frequency-section" style="margin-top: 20px;">
+        <div class="frequency-title">🔵 蓝球出现频率（1-12）</div>
+        <div class="frequency-grid" id="blueFrequency"></div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="explanation">
+        <h3>⚛️ 为什么用量子随机数？</h3>
+        <p>
+          传统的随机数生成器（如 <code>Math.random()</code>）使用的是伪随机算法，本质上是确定性的。
+          给定相同的种子，会产生完全相同的序列。
+        </p>
+        <p>
+          本页面使用的量子随机数来自 <a href="https://qrng.anu.edu.au/" target="_blank">澳大利亚国立大学量子随机数生成器</a>，
+          通过测量真空的量子涨落实时生成。这是物理学意义上的「真随机」—— 即使拥有宇宙中所有的信息，也无法预测下一个数字。
+        </p>
+        <p>
+          当然，彩票中奖与否和随机数来源无关。这个工具只是让你体验一下「真随机」的感觉 😄
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://demo-api-mockserver.runnable.run';
+    
+    let history = [];
+    let redFreq = {};
+    let blueFreq = {};
+    
+    // 初始化频率统计
+    for (let i = 1; i <= 35; i++) redFreq[i] = 0;
+    for (let i = 1; i <= 12; i++) blueFreq[i] = 0;
+    
+    async function generateLottery() {
+      const btn = document.getElementById('generateBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span>量子摇号中...';
+      
+      try {
+        // 获取红球（5个，1-35）
+        const redResponse = await fetch(`${API_BASE}/quantum/numbers?count=5&min=1&max=35&unique=true`);
+        const redData = await redResponse.json();
+        
+        // 获取蓝球（2个，1-12）
+        const blueResponse = await fetch(`${API_BASE}/quantum/numbers?count=2&min=1&max=12&unique=true`);
+        const blueData = await blueResponse.json();
+        
+        if (redData.status !== 200 || blueData.status !== 200) {
+          throw new Error('获取量子随机数失败');
+        }
+        
+        const redBalls = redData.data.sort((a, b) => a - b);
+        const blueBalls = blueData.data.sort((a, b) => a - b);
+        
+        // 显示动画
+        await animateBalls(redBalls, blueBalls);
+        
+        // 记录历史
+        const record = {
+          red: redBalls,
+          blue: blueBalls,
+          time: new Date().toLocaleTimeString()
+        };
+        history.unshift(record);
+        
+        // 更新频率统计
+        redBalls.forEach(n => redFreq[n]++);
+        blueBalls.forEach(n => blueFreq[n]++);
+        
+        // 更新UI
+        updateHistory();
+        updateFrequency();
+        updateStats();
+        
+        // 上报统计
+        reportStats();
+        
+      } catch (error) {
+        console.error(error);
+        alert('获取量子随机数失败，请稍后重试');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '⚛️ 量子摇号';
+      }
+    }
+    
+    async function animateBalls(redBalls, blueBalls) {
+      const display = document.getElementById('lotteryDisplay');
+      const balls = display.querySelectorAll('.ball:not(.ball-divider)');
+      
+      // 依次显示每个球
+      for (let i = 0; i < 5; i++) {
+        balls[i].classList.add('spinning');
+        await sleep(100);
+        balls[i].textContent = redBalls[i];
+        balls[i].classList.remove('empty');
+        await sleep(200);
+        balls[i].classList.remove('spinning');
+      }
+      
+      for (let i = 0; i < 2; i++) {
+        balls[5 + i].classList.add('spinning');
+        await sleep(100);
+        balls[5 + i].textContent = blueBalls[i];
+        balls[5 + i].classList.remove('empty');
+        await sleep(200);
+        balls[5 + i].classList.remove('spinning');
+      }
+    }
+    
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    async function generateMultiple(count) {
+      for (let i = 0; i < count; i++) {
+        await generateLottery();
+        if (i < count - 1) await sleep(500);
+      }
+    }
+    
+    function updateHistory() {
+      const list = document.getElementById('historyList');
+      document.getElementById('historyCount').textContent = `${history.length} 注`;
+      
+      if (history.length === 0) {
+        list.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 20px;">点击「量子摇号」生成号码</div>';
+        return;
+      }
+      
+      list.innerHTML = history.map((item, index) => `
+        <div class="history-item">
+          <span class="index">#${history.length - index}</span>
+          <div class="balls">
+            ${item.red.map(n => `<span class="mini-ball red">${n}</span>`).join('')}
+            <span style="margin: 0 5px; color: rgba(255,255,255,0.3);">|</span>
+            ${item.blue.map(n => `<span class="mini-ball blue">${n}</span>`).join('')}
+          </div>
+          <span class="time">${item.time}</span>
+        </div>
+      `).join('');
+    }
+    
+    function updateFrequency() {
+      const redContainer = document.getElementById('redFrequency');
+      const blueContainer = document.getElementById('blueFrequency');
+      
+      const maxRed = Math.max(...Object.values(redFreq), 1);
+      const maxBlue = Math.max(...Object.values(blueFreq), 1);
+      
+      redContainer.innerHTML = Object.entries(redFreq).map(([num, count]) => `
+        <div class="freq-item red">
+          <div class="freq-num">${num}</div>
+          <div class="freq-count">${count}次</div>
+          <div class="freq-bar" style="opacity: ${count / maxRed}"></div>
+        </div>
+      `).join('');
+      
+      blueContainer.innerHTML = Object.entries(blueFreq).map(([num, count]) => `
+        <div class="freq-item blue">
+          <div class="freq-num">${num}</div>
+          <div class="freq-count">${count}次</div>
+          <div class="freq-bar" style="opacity: ${count / maxBlue}"></div>
+        </div>
+      `).join('');
+    }
+    
+    function updateStats() {
+      document.getElementById('totalGenerated').textContent = history.length;
+      
+      // 找最热最冷
+      const redEntries = Object.entries(redFreq).filter(([_, c]) => c > 0);
+      const blueEntries = Object.entries(blueFreq).filter(([_, c]) => c > 0);
+      
+      if (redEntries.length > 0) {
+        const hotRed = redEntries.reduce((a, b) => a[1] > b[1] ? a : b);
+        const coldRed = redEntries.reduce((a, b) => a[1] < b[1] ? a : b);
+        document.getElementById('hotRed').textContent = `${hotRed[0]}(${hotRed[1]})`;
+        document.getElementById('coldRed').textContent = `${coldRed[0]}(${coldRed[1]})`;
+      }
+      
+      if (blueEntries.length > 0) {
+        const hotBlue = blueEntries.reduce((a, b) => a[1] > b[1] ? a : b);
+        document.getElementById('hotBlue').textContent = `${hotBlue[0]}(${hotBlue[1]})`;
+      }
+    }
+    
+    function clearHistory() {
+      history = [];
+      for (let i = 1; i <= 35; i++) redFreq[i] = 0;
+      for (let i = 1; i <= 12; i++) blueFreq[i] = 0;
+      
+      // 重置显示
+      const display = document.getElementById('lotteryDisplay');
+      display.innerHTML = `
+        <div class="ball red empty">?</div>
+        <div class="ball red empty">?</div>
+        <div class="ball red empty">?</div>
+        <div class="ball red empty">?</div>
+        <div class="ball red empty">?</div>
+        <div class="ball-divider"></div>
+        <div class="ball blue empty">?</div>
+        <div class="ball blue empty">?</div>
+      `;
+      
+      updateHistory();
+      updateFrequency();
+      updateStats();
+      
+      document.getElementById('hotRed').textContent = '-';
+      document.getElementById('coldRed').textContent = '-';
+      document.getElementById('hotBlue').textContent = '-';
+    }
+    
+    async function reportStats() {
+      try {
+        await fetch(`${API_BASE}/stats?action=incr&key=quantum-lottery-total`);
+      } catch (e) {
+        // 静默失败
+      }
+    }
+    
+    async function loadGlobalStats() {
+      try {
+        const response = await fetch(`${API_BASE}/stats?action=get&key=quantum-lottery-total`);
+        const data = await response.json();
+        if (data.status === 200) {
+          document.getElementById('globalStats').style.display = 'block';
+          document.getElementById('globalTotal').textContent = data.data || 0;
+        }
+      } catch (e) {
+        // 静默失败
+      }
+    }
+    
+    // 初始化
+    updateFrequency();
+    loadGlobalStats();
+  </script>
+</body>
+</html>

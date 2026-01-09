@@ -49,8 +49,8 @@ public class QuantumRandomHandler implements Handler<RoutingContext> {
         boolean unique = "true".equalsIgnoreCase(ctx.request().getParam("unique"));
         
         // 参数校验
-        if (count < 1 || count > 1000) {
-            sendError(ctx, 400, "count must be between 1 and 1000");
+        if (count < 1 || count > 2000) {
+            sendError(ctx, 400, "count must be between 1 and 2000");
             return;
         }
         if (min >= max) {
@@ -68,7 +68,7 @@ public class QuantumRandomHandler implements Handler<RoutingContext> {
     
     private void fetchQuantumNumbers(RoutingContext ctx, int count, int min, int max, boolean unique) {
         // 如果需要唯一值，请求更多数字以确保有足够的唯一值
-        int requestCount = unique ? Math.min(count * 3, 1000) : count;
+        int requestCount = unique ? Math.min(count * 3, 2000) : count;
         
         webClient.get("/random/numbers")
             .addQueryParam("count", String.valueOf(requestCount))

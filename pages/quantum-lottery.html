@@ -351,7 +351,7 @@
   <div class="container">
     <h1>🎰 量子大乐透</h1>
     <p class="subtitle">用真正的量子随机数，生成你的幸运号码</p>
-    <div class="quantum-badge">⚛️ 数据来源：ANU 量子随机数生成器</div>
+    <div class="quantum-badge">⚛️ 数据来源：ANU 量子随机数生成器 | 可用量：<span id="availableCount">加载中...</span></div>
     
     <div class="card">
       <div class="card-title">🎱 号码生成器</div>
@@ -673,6 +673,26 @@
     // 初始化
     updateFrequency();
     loadGlobalStats();
+    loadAvailable();
+    
+    async function loadAvailable() {
+      try {
+        const response = await fetch(`${API_BASE}/quantum/available`);
+        const data = await response.json();
+        if (data.available !== undefined) {
+          document.getElementById('availableCount').textContent = data.available.toLocaleString();
+        }
+      } catch (e) {
+        document.getElementById('availableCount').textContent = '-';
+      }
+    }
+    
+    // 每次生成后刷新可用量
+    const originalGenerate = generateLottery;
+    generateLottery = async function() {
+      await originalGenerate();
+      loadAvailable();
+    };
   </script>
 </body>
 </html>

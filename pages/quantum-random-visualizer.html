@@ -490,9 +490,10 @@
     async function loadAvailable() {
       try {
         const response = await fetch(`${API_BASE}/quantum/available`);
-        const data = await response.json();
-        if (data.available !== undefined) {
-          document.getElementById('availableCount').textContent = data.available.toLocaleString();
+        const text = await response.text();
+        const available = parseInt(text);
+        if (!isNaN(available)) {
+          document.getElementById('availableCount').textContent = available.toLocaleString();
         }
       } catch (e) {
         document.getElementById('availableCount').textContent = '-';

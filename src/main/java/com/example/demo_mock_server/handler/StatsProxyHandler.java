@@ -29,6 +29,9 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
     public static final String KEY_GAMBLER_SUCCESS = GAMBLER_PREFIX + "success";      // 达成目标人数
     public static final String KEY_GAMBLER_TOTAL_BETS = GAMBLER_PREFIX + "total-bets"; // 总下注次数
     public static final String KEY_GAMBLER_MAX_BETS = GAMBLER_PREFIX + "max-bets";    // 最长存活次数
+    
+    // 量子大乐透统计 key
+    public static final String KEY_QUANTUM_LOTTERY_TOTAL = "quantum-lottery-total";   // 总生成次数
 
     public StatsProxyHandler(Vertx vertx) {
         WebClientOptions options = new WebClientOptions()
@@ -165,7 +168,8 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
             key.equals(KEY_GAMBLER_BANKRUPT) ||
             key.equals(KEY_GAMBLER_SUCCESS) ||
             key.equals(KEY_GAMBLER_TOTAL_BETS) ||
-            key.equals(KEY_GAMBLER_MAX_BETS)
+            key.equals(KEY_GAMBLER_MAX_BETS) ||
+            key.equals(KEY_QUANTUM_LOTTERY_TOTAL)
         );
     }
 

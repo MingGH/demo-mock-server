@@ -5,6 +5,7 @@ import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.BlockIpHandler;
 import com.example.demo_mock_server.handler.ChineseNameHandler;
 import com.example.demo_mock_server.handler.MockHandler;
+import com.example.demo_mock_server.handler.QuantumRandomHandler;
 import com.example.demo_mock_server.handler.StatsProxyHandler;
 import com.example.demo_mock_server.handler.WordCloudHandler;
 import io.vertx.core.Vertx;
@@ -68,6 +69,10 @@ public class RouterConfig {
         StatsProxyHandler statsProxyHandler = new StatsProxyHandler(vertx);
         router.get("/stats").handler(statsProxyHandler);
         router.post("/stats").handler(statsProxyHandler);
+
+        // 量子随机数接口
+        QuantumRandomHandler quantumRandomHandler = new QuantumRandomHandler(vertx);
+        router.get("/quantum/numbers").handler(quantumRandomHandler);
 
         // Static handler for pages and components
         router.route("/pages/*").handler(StaticHandler.create("pages"));

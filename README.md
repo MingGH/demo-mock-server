@@ -31,6 +31,10 @@
 - **[武器伤害对比](https://demo-mockserver.runnable.run/weapon-damage-compare.html)** - 期望相同但方差不同的取舍
 - **[100面骰子：1.1%有多低](https://demo-mockserver.runnable.run/drug-relapse-dice.html)** - 感受1%概率的渺茫
 
+### ⚛️ 量子物理
+- **[量子随机数可视化](https://demo-mockserver.runnable.run/quantum-random-visualizer.html)** - 真随机 vs 伪随机对比
+- **[量子大乐透](https://demo-mockserver.runnable.run/quantum-lottery.html)** - 用量子真随机数生成彩票号码
+
 ### 🧠 心理学 & 哲学
 - **[忒修斯之船](https://demo-mockserver.runnable.run/ship-of-theseus.html)** - 身份认同的经典思想实验
 - **[损失厌恶测试](https://demo-mockserver.runnable.run/loss-aversion.html)** - 测测你的损失厌恶系数

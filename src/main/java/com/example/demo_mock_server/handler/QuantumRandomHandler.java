@@ -22,6 +22,7 @@ import java.util.*;
 public class QuantumRandomHandler implements Handler<RoutingContext> {
 
     private final WebClient webClient;
+    private final String apiToken;
     
     public QuantumRandomHandler(Vertx vertx) {
         WebClientOptions options = new WebClientOptions()
@@ -31,6 +32,12 @@ public class QuantumRandomHandler implements Handler<RoutingContext> {
             .setTrustAll(true)
             .setConnectTimeout(10000);
         this.webClient = WebClient.create(vertx, options);
+        
+        // 从环境变量读取 API Token
+        this.apiToken = System.getenv("NINJA_API_TOKEN");
+        if (this.apiToken == null || this.apiToken.isEmpty()) {
+            System.err.println("Warning: NINJA_API_TOKEN environment variable not set!");
+        }
     }
 
     @Override
@@ -67,6 +74,7 @@ public class QuantumRandomHandler implements Handler<RoutingContext> {
             .addQueryParam("count", String.valueOf(requestCount))
             .addQueryParam("min", String.valueOf(min))
             .addQueryParam("max", String.valueOf(max))
+            .putHeader("X-Api-Token", apiToken)
             .send()
             .onSuccess(response -> {
                 try {

@@ -250,6 +250,9 @@
   <div class="container">
     <h1>⚛️ 量子随机数可视化</h1>
     <p class="subtitle">真随机 vs 伪随机 —— 用眼睛看见随机性的本质</p>
+    <div class="quantum-badge" style="text-align: center; margin-bottom: 20px;">
+      <span class="source-badge">⚛️ 量子池可用：<span id="availableCount">加载中...</span></span>
+    </div>
     
     <div class="card">
       <div class="card-title">
@@ -483,6 +486,28 @@
       document.getElementById('quantumStream').textContent = '等待生成...';
       document.getElementById('pseudoStream').textContent = '等待生成...';
     }
+    
+    async function loadAvailable() {
+      try {
+        const response = await fetch(`${API_BASE}/quantum/available`);
+        const data = await response.json();
+        if (data.available !== undefined) {
+          document.getElementById('availableCount').textContent = data.available.toLocaleString();
+        }
+      } catch (e) {
+        document.getElementById('availableCount').textContent = '-';
+      }
+    }
+    
+    // 初始化
+    loadAvailable();
+    
+    // 生成后刷新可用量
+    const originalGenerate = generateNumbers;
+    generateNumbers = async function() {
+      await originalGenerate();
+      loadAvailable();
+    };
   </script>
 </body>
 </html>

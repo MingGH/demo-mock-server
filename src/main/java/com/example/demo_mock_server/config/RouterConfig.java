@@ -5,6 +5,7 @@ import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.BlockIpHandler;
 import com.example.demo_mock_server.handler.ChineseNameHandler;
 import com.example.demo_mock_server.handler.MockHandler;
+import com.example.demo_mock_server.handler.QuantumAvailableHandler;
 import com.example.demo_mock_server.handler.QuantumRandomHandler;
 import com.example.demo_mock_server.handler.StatsProxyHandler;
 import com.example.demo_mock_server.handler.WordCloudHandler;
@@ -73,6 +74,10 @@ public class RouterConfig {
         // 量子随机数接口
         QuantumRandomHandler quantumRandomHandler = new QuantumRandomHandler(vertx);
         router.get("/quantum/numbers").handler(quantumRandomHandler);
+        
+        // 量子随机数可用量查询
+        QuantumAvailableHandler quantumAvailableHandler = new QuantumAvailableHandler(vertx);
+        router.get("/quantum/available").handler(quantumAvailableHandler);
 
         // Static handler for pages and components
         router.route("/pages/*").handler(StaticHandler.create("pages"));

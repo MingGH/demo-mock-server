@@ -32,6 +32,8 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
     
     // 量子大乐透统计 key
     public static final String KEY_QUANTUM_LOTTERY_TOTAL = "quantum-lottery-total";   // 总生成次数
+    public static final String KEY_QUANTUM_LOTTERY_TODAY_PREFIX = "quantum-lottery-today-";   // 今日生成前缀（后接日期）
+    public static final String KEY_QUANTUM_LOTTERY_USERS = "quantum-lottery-users";   // 参与用户数
 
     public StatsProxyHandler(Vertx vertx) {
         WebClientOptions options = new WebClientOptions()
@@ -169,7 +171,9 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
             key.equals(KEY_GAMBLER_SUCCESS) ||
             key.equals(KEY_GAMBLER_TOTAL_BETS) ||
             key.equals(KEY_GAMBLER_MAX_BETS) ||
-            key.equals(KEY_QUANTUM_LOTTERY_TOTAL)
+            key.equals(KEY_QUANTUM_LOTTERY_TOTAL) ||
+            key.startsWith(KEY_QUANTUM_LOTTERY_TODAY_PREFIX) ||
+            key.equals(KEY_QUANTUM_LOTTERY_USERS)
         );
     }
 

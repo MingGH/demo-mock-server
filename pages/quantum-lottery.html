@@ -388,7 +388,7 @@
           </div>
           <div class="global-stat">
             <div class="global-stat-value" id="globalUsers">-</div>
-            <div class="global-stat-label">参与用户</div>
+            <div class="global-stat-label">参与设备数</div>
           </div>
         </div>
       </div>
@@ -649,9 +649,25 @@
       document.getElementById('hotBlue').textContent = '-';
     }
     
+    function getTodayKey() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `quantum-lottery-today-${year}-${month}-${day}`;
+    }
+    
     async function reportStats() {
       try {
+        // 总生成次数 +1
         await fetch(`${API_BASE}/stats?action=incr&key=quantum-lottery-total`);
+        // 今日生成 +1（带日期的 key）
+        await fetch(`${API_BASE}/stats?action=incr&key=${getTodayKey()}`);
+        // 用户标记（用 localStorage 判断是否新用户）
+        if (!localStorage.getItem('quantum-lottery-user')) {
+          localStorage.setItem('quantum-lottery-user', '1');
+          await fetch(`${API_BASE}/stats?action=incr&key=quantum-lottery-users`);
+        }
       } catch (e) {
         // 静默失败
       }
@@ -659,11 +675,26 @@
     
     async function loadGlobalStats() {
       try {
-        const response = await fetch(`${API_BASE}/stats?action=get&key=quantum-lottery-total`);
-        const data = await response.json();
-        if (data.status === 200) {
+        // 获取总生成次数
+        const totalRes = await fetch(`${API_BASE}/stats?action=get&key=quantum-lottery-total`);
+        const totalData = await totalRes.json();
+        if (totalData.status === 200) {
           document.getElementById('globalStats').style.display = 'block';
-          document.getElementById('globalTotal').textContent = data.data || 0;
+          document.getElementById('globalTotal').textContent = (totalData.data || 0).toLocaleString();
+        }
+        
+        // 获取今日生成（带日期的 key）
+        const todayRes = await fetch(`${API_BASE}/stats?action=get&key=${getTodayKey()}`);
+        const todayData = await todayRes.json();
+        if (todayData.status === 200) {
+          document.getElementById('globalToday').textContent = (todayData.data || 0).toLocaleString();
+        }
+        
+        // 获取参与用户数
+        const usersRes = await fetch(`${API_BASE}/stats?action=get&key=quantum-lottery-users`);
+        const usersData = await usersRes.json();
+        if (usersData.status === 200) {
+          document.getElementById('globalUsers').textContent = (usersData.data || 0).toLocaleString();
         }
       } catch (e) {
         // 静默失败

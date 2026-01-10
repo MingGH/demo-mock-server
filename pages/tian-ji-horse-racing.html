@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>田忌赛马模拟器 - 这是破坏规则还是博弈智慧？</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .question-box {
+      background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,217,61,0.1));
+      border-left: 4px solid #ff6b6b;
+      padding: 15px 20px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+      font-size: 1.05rem;
+      line-height: 1.8;
+    }
+    .question-box strong { color: #ffd93d; }
+    
+    /* 模式切换 */
+    .mode-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .mode-tab {
+      flex: 1;
+      min-width: 120px;
+      padding: 12px 20px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      background: rgba(0,0,0,0.2);
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .mode-tab:hover { border-color: #ffd93d; }
+    .mode-tab.active {
+      border-color: #4ade80;
+      background: rgba(74,222,128,0.15);
+      color: #4ade80;
+    }
+    .mode-tab .icon { font-size: 1.5rem; display: block; margin-bottom: 5px; }
+    
+    /* 拖拽排兵 */
+    .drag-section {
+      margin: 20px 0;
+    }
+    .drag-title {
+      color: #ffd93d;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .drag-hint {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.85rem;
+      margin-bottom: 15px;
+    }
+    .horse-pool {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .draggable-horse {
+      width: 80px;
+      height: 100px;
+      background: rgba(0,0,0,0.3);
+      border: 2px dashed rgba(255,255,255,0.3);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .draggable-horse:hover {
+      border-color: #ffd93d;
+      transform: scale(1.05);
+    }
+    .draggable-horse.dragging {
+      opacity: 0.5;
+      cursor: grabbing;
+    }
+    .draggable-horse .horse-emoji { font-size: 2rem; }
+    .draggable-horse .horse-label {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-top: 5px;
+      font-weight: bold;
+    }
+    .slot-container {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .battle-slot {
+      width: 200px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+    }
+    .slot-title {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 10px;
+    }
+    .slot-vs {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .drop-zone {
+      width: 70px;
+      height: 90px;
+      border: 2px dashed rgba(74,222,128,0.5);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .drop-zone.drag-over {
+      border-color: #4ade80;
+      background: rgba(74,222,128,0.1);
+    }
+    .drop-zone.filled {
+      border-style: solid;
+      border-color: #4ade80;
+      background: rgba(74,222,128,0.15);
+    }
+    .drop-zone .placeholder {
+      color: rgba(255,255,255,0.3);
+      font-size: 0.75rem;
+    }
+    .qi-horse-display {
+      width: 70px;
+      height: 90px;
+      background: rgba(255,107,107,0.15);
+      border: 2px solid rgba(255,107,107,0.5);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .vs-icon {
+      font-size: 1.2rem;
+      color: #ff6b6b;
+      font-weight: bold;
+    }
+    
+    /* 赛马场 */
+    .race-track {
+      background: linear-gradient(180deg, #2d5016 0%, #1e3a0f 100%);
+      border-radius: 16px;
+      padding: 20px;
+      margin: 20px 0;
+      border: 4px solid #8b4513;
+      position: relative;
+      overflow: hidden;
+    }
+    .track-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      padding: 0 10px;
+    }
+    .track-header span {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.7);
+    }
+    .race-lanes {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .race-lane {
+      display: flex;
+      align-items: center;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 10px 15px;
+      position: relative;
+    }
+    .lane-label {
+      width: 80px;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+    }
+    .horses-battle {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      position: relative;
+    }
+    .race-progress {
+      position: absolute;
+      top: 50%;
+      left: 50px;
+      right: 50px;
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      transform: translateY(-50%);
+    }
+    .race-progress-bar {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.1s linear;
+    }
+    .race-progress-bar.tian { background: #4ade80; }
+    .race-progress-bar.qi { background: #ff6b6b; float: right; }
+    .horse-entry {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      z-index: 1;
+    }
+    .horse-icon {
+      font-size: 2.5rem;
+      transition: transform 0.3s;
+    }
+    .horse-icon.racing {
+      animation: horseRun 0.2s ease infinite;
+    }
+    .horse-icon.winner { animation: horseWin 0.5s ease infinite; }
+    @keyframes horseRun {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      25% { transform: translateX(3px) rotate(2deg); }
+      75% { transform: translateX(-3px) rotate(-2deg); }
+    }
+    @keyframes horseWin {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-8px) scale(1.1); }
+    }
+    .horse-grade {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+    .grade-top { background: #ffd93d; color: #333; }
+    .grade-mid { background: #c0c0c0; color: #333; }
+    .grade-low { background: #cd7f32; color: #333; }
+    .vs-text {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #ff6b6b;
+      z-index: 1;
+    }
+    .result-badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+    .result-win { background: #4ade80; color: #000; }
+    .result-lose { background: #ff6b6b; color: #fff; }
+    
+    /* 比分板 */
+    .scoreboard {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin: 20px 0;
+    }
+    .score-item { text-align: center; }
+    .score-name { font-size: 1.1rem; margin-bottom: 5px; }
+    .score-name.tian { color: #4ade80; }
+    .score-name.qi { color: #ff6b6b; }
+    .score-value { font-size: 3rem; font-weight: bold; }
+    .score-value.tian { color: #4ade80; }
+    .score-value.qi { color: #ff6b6b; }
+    
+    /* 按钮 */
+    .game-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .game-btn {
+      padding: 15px 30px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .game-btn.primary {
+      background: linear-gradient(135deg, #ffd93d, #f0c000);
+      color: #333;
+    }
+    .game-btn.secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .game-btn.danger {
+      background: linear-gradient(135deg, #ff6b6b, #e05555);
+      color: white;
+    }
+    .game-btn:hover { transform: translateY(-2px); }
+    .game-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    
+    /* 战绩统计 */
+    .stats-panel {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) {
+      .stats-panel { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-box .label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 5px;
+    }
+    .stat-box .value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+    .stat-box .value.green { color: #4ade80; }
+    .stat-box .value.red { color: #ff6b6b; }
+    .stat-box .value.gold { color: #ffd93d; }
+    
+    /* 齐王AI设置 */
+    .ai-settings {
+      background: rgba(255,107,107,0.1);
+      border: 1px solid rgba(255,107,107,0.3);
+      border-radius: 12px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    .ai-settings h4 {
+      color: #ff6b6b;
+      margin-bottom: 10px;
+      font-size: 0.95rem;
+    }
+    .ai-options {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .ai-option {
+      padding: 8px 16px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      background: rgba(0,0,0,0.2);
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .ai-option:hover { border-color: #ff6b6b; }
+    .ai-option.active {
+      border-color: #ff6b6b;
+      background: rgba(255,107,107,0.2);
+      color: #ff6b6b;
+    }
+    
+    /* 历史记录 */
+    .history-section {
+      margin-top: 20px;
+    }
+    .history-title {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    .history-list {
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.85rem;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item .round { color: rgba(255,255,255,0.4); }
+    .history-item .strategy { color: rgba(255,255,255,0.7); }
+    .history-item .result { font-weight: bold; }
+    .history-item .result.win { color: #4ade80; }
+    .history-item .result.lose { color: #ff6b6b; }
+    
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+    .analysis h3 {
+      color: #ffd93d;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .analysis p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.85;
+      margin-bottom: 14px;
+    }
+    .analysis .formula {
+      background: rgba(255,255,255,0.08);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      margin: 14px 0;
+      overflow-x: auto;
+    }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+    
+    /* 排列组合表 */
+    .combo-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 0.9rem;
+    }
+    .combo-table th, .combo-table td {
+      padding: 12px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .combo-table th {
+      background: rgba(255,217,61,0.2);
+      color: #ffd93d;
+    }
+    .combo-table tr:hover { background: rgba(255,255,255,0.05); }
+    .combo-table tr.clickable { cursor: pointer; }
+    .combo-table tr.clickable:hover { background: rgba(74,222,128,0.1); }
+    .combo-table tr.selected { background: rgba(74,222,128,0.2); }
+    
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(74,222,128,0.15), rgba(255,217,61,0.1));
+      border: 2px solid #4ade80;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .conclusion h3 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+      color: #4ade80;
+    }
+    .conclusion p {
+      color: rgba(255,255,255,0.9);
+      line-height: 1.85;
+    }
+    
+    /* 蒙特卡洛模拟 */
+    .sim-results {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+    }
+    @media (max-width: 500px) {
+      .sim-results { grid-template-columns: 1fr; }
+    }
+    .sim-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .sim-card h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+    .sim-card .big-num {
+      font-size: 2.2rem;
+      font-weight: bold;
+    }
+    .sim-card .big-num.green { color: #4ade80; }
+    .sim-card .big-num.red { color: #ff6b6b; }
+    .sim-card .big-num.gold { color: #ffd93d; }
+    
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 10000;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .toast.success { background: rgba(74,222,128,0.9); }
+    .toast.error { background: rgba(255,107,107,0.9); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>🏇 田忌赛马模拟器</h1>
+    <p class="subtitle">这是破坏规则，还是博弈智慧？</p>
+    
+    <div class="card">
+      <div class="question-box">
+        <strong>知乎热议：</strong>我老师说田忌赛马的胜利是一种破坏规则的做法。<br>
+        大家把各自的马分为三等分别比赛，结果田忌隐瞒事实取巧获胜？<br>
+        <strong>这到底是作弊，还是智慧？</strong>
+      </div>
+      
+      <!-- 模式切换 -->
+      <div class="mode-tabs">
+        <div class="mode-tab active" onclick="switchMode('classic')">
+          <span class="icon">📋</span>
+          经典模式
+        </div>
+        <div class="mode-tab" onclick="switchMode('drag')">
+          <span class="icon">🎯</span>
+          自由排兵
+        </div>
+        <div class="mode-tab" onclick="switchMode('ai')">
+          <span class="icon">🤖</span>
+          智能齐王
+        </div>
+      </div>
+      
+      <!-- 战绩统计 -->
+      <div class="stats-panel">
+        <div class="stat-box">
+          <div class="label">总场次</div>
+          <div class="value gold" id="totalGames">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">田忌胜</div>
+          <div class="value green" id="tianWins">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">齐王胜</div>
+          <div class="value red" id="qiWins">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">胜率</div>
+          <div class="value gold" id="winRate">-</div>
+        </div>
+      </div>
+      
+      <!-- 经典模式 -->
+      <div id="classicMode">
+        <div class="strategy-section">
+          <h3 class="strategy-title">🎯 选择田忌的出战策略</h3>
+          <div class="strategy-options">
+            <button class="strategy-btn" id="strategyNormal" onclick="selectStrategy('normal')">
+              <h4>📋 常规对阵（上对上）</h4>
+              <p>上等马 vs 上等马<br>中等马 vs 中等马<br>下等马 vs 下等马</p>
+            </button>
+            <button class="strategy-btn active" id="strategySmart" onclick="selectStrategy('smart')">
+              <h4>🧠 孙膑策略（错位对阵）</h4>
+              <p>下等马 vs 上等马<br>上等马 vs 中等马<br>中等马 vs 下等马</p>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 自由排兵模式 -->
+      <div id="dragMode" style="display: none;">
+        <div class="drag-section">
+          <h3 class="drag-title">🎯 拖拽你的马匹到对应位置</h3>
+          <p class="drag-hint">把田忌的马拖到左侧空位，与齐王的马对阵</p>
+          
+          <div class="horse-pool" id="horsePool">
+            <div class="draggable-horse" draggable="true" data-grade="top">
+              <span class="horse-emoji">🐎</span>
+              <span class="horse-label grade-top">上等</span>
+            </div>
+            <div class="draggable-horse" draggable="true" data-grade="mid">
+              <span class="horse-emoji">🐎</span>
+              <span class="horse-label grade-mid">中等</span>
+            </div>
+            <div class="draggable-horse" draggable="true" data-grade="low">
+              <span class="horse-emoji">🐎</span>
+              <span class="horse-label grade-low">下等</span>
+            </div>
+          </div>
+          
+          <div class="slot-container">
+            <div class="battle-slot">
+              <div class="slot-title">第一场</div>
+              <div class="slot-vs">
+                <div class="drop-zone" data-slot="0">
+                  <span class="placeholder">拖到这里</span>
+                </div>
+                <span class="vs-icon">VS</span>
+                <div class="qi-horse-display">
+                  <span class="horse-emoji">🐴</span>
+                  <span class="horse-label grade-top">上等</span>
+                </div>
+              </div>
+            </div>
+            <div class="battle-slot">
+              <div class="slot-title">第二场</div>
+              <div class="slot-vs">
+                <div class="drop-zone" data-slot="1">
+                  <span class="placeholder">拖到这里</span>
+                </div>
+                <span class="vs-icon">VS</span>
+                <div class="qi-horse-display">
+                  <span class="horse-emoji">🐴</span>
+                  <span class="horse-label grade-mid">中等</span>
+                </div>
+              </div>
+            </div>
+            <div class="battle-slot">
+              <div class="slot-title">第三场</div>
+              <div class="slot-vs">
+                <div class="drop-zone" data-slot="2">
+                  <span class="placeholder">拖到这里</span>
+                </div>
+                <span class="vs-icon">VS</span>
+                <div class="qi-horse-display">
+                  <span class="horse-emoji">🐴</span>
+                  <span class="horse-label grade-low">下等</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 智能齐王模式 -->
+      <div id="aiMode" style="display: none;">
+        <div class="ai-settings">
+          <h4>🤖 齐王AI难度</h4>
+          <div class="ai-options">
+            <div class="ai-option active" data-ai="dumb" onclick="setAI('dumb')">
+              😴 傲慢齐王<br><small>固定上中下</small>
+            </div>
+            <div class="ai-option" data-ai="random" onclick="setAI('random')">
+              🎲 随机齐王<br><small>随机出战</small>
+            </div>
+            <div class="ai-option" data-ai="smart" onclick="setAI('smart')">
+              🧠 聪明齐王<br><small>会反制</small>
+            </div>
+            <div class="ai-option" data-ai="optimal" onclick="setAI('optimal')">
+              👑 最优齐王<br><small>博弈论最优</small>
+            </div>
+          </div>
+        </div>
+        <div class="drag-section">
+          <h3 class="drag-title">🎯 排兵布阵对抗AI</h3>
+          <div class="horse-pool" id="aiHorsePool">
+            <!-- 动态生成 -->
+          </div>
+          <div class="slot-container" id="aiSlots">
+            <!-- 动态生成 -->
+          </div>
+        </div>
+      </div>
+      
+      <!-- 赛马场 -->
+      <div class="race-track">
+        <div class="track-header">
+          <span>🟢 田忌</span>
+          <span>🔴 齐王</span>
+        </div>
+        <div class="race-lanes" id="raceLanes">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+      
+      <!-- 比分板 -->
+      <div class="scoreboard">
+        <div class="score-item">
+          <div class="score-name tian">田忌</div>
+          <div class="score-value tian" id="tianScore">0</div>
+        </div>
+        <div class="score-item">
+          <div class="score-name" style="color: rgba(255,255,255,0.5);">:</div>
+          <div class="score-value" style="color: rgba(255,255,255,0.3);">-</div>
+        </div>
+        <div class="score-item">
+          <div class="score-name qi">齐王</div>
+          <div class="score-value qi" id="qiScore">0</div>
+        </div>
+      </div>
+      
+      <div class="game-buttons">
+        <button class="game-btn primary" id="raceBtn" onclick="startRace()">🏁 开始比赛</button>
+        <button class="game-btn secondary" onclick="resetRace()">🔄 重置</button>
+        <button class="game-btn secondary" onclick="clearStats()">🗑️ 清除战绩</button>
+      </div>
+      
+      <!-- 历史记录 -->
+      <div class="history-section">
+        <h4 class="history-title">📜 比赛记录</h4>
+        <div class="history-list" id="historyList">
+          <div style="color: rgba(255,255,255,0.4); text-align: center; padding: 20px;">暂无记录</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 所有排列组合 -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #ffd93d;">📊 穷举所有可能：6种排列组合</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 15px;">
+        田忌的三匹马有 3! = 6 种出战顺序，点击任意一行可以直接使用该策略：
+      </p>
+      
+      <table class="combo-table" id="comboTable">
+        <thead>
+          <tr>
+            <th>策略</th>
+            <th>第一场</th>
+            <th>第二场</th>
+            <th>第三场</th>
+            <th>结果</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="clickable" onclick="useStrategy(['top','mid','low'])">
+            <td>上-中-下</td>
+            <td>上vs上 ❌</td>
+            <td>中vs中 ❌</td>
+            <td>下vs下 ❌</td>
+            <td style="color: #ff6b6b;">0:3 惨败</td>
+          </tr>
+          <tr class="clickable" onclick="useStrategy(['top','low','mid'])">
+            <td>上-下-中</td>
+            <td>上vs上 ❌</td>
+            <td>下vs中 ❌</td>
+            <td>中vs下 ✅</td>
+            <td style="color: #ff6b6b;">1:2 输</td>
+          </tr>
+          <tr class="clickable" onclick="useStrategy(['mid','top','low'])">
+            <td>中-上-下</td>
+            <td>中vs上 ❌</td>
+            <td>上vs中 ✅</td>
+            <td>下vs下 ❌</td>
+            <td style="color: #ff6b6b;">1:2 输</td>
+          </tr>
+          <tr class="clickable" onclick="useStrategy(['mid','low','top'])">
+            <td>中-下-上</td>
+            <td>中vs上 ❌</td>
+            <td>下vs中 ❌</td>
+            <td>上vs下 ✅</td>
+            <td style="color: #ff6b6b;">1:2 输</td>
+          </tr>
+          <tr class="clickable" onclick="useStrategy(['low','top','mid'])">
+            <td>下-上-中</td>
+            <td>下vs上 ❌</td>
+            <td>上vs中 ✅</td>
+            <td>中vs下 ✅</td>
+            <td style="color: #4ade80;">2:1 赢！</td>
+          </tr>
+          <tr class="clickable" onclick="useStrategy(['low','mid','top'])">
+            <td>下-中-上</td>
+            <td>下vs上 ❌</td>
+            <td>中vs中 ❌</td>
+            <td>上vs下 ✅</td>
+            <td style="color: #ff6b6b;">1:2 输</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- 蒙特卡洛模拟 -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #ffd93d;">🎲 蒙特卡洛模拟</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 15px;">
+        如果双方都随机出战，或者一方使用最优策略，结果会怎样？
+      </p>
+      
+      <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 15px;">
+        <button class="game-btn primary" onclick="runSimulation('random')">🎲 双方随机</button>
+        <button class="game-btn secondary" onclick="runSimulation('tianSmart')">🧠 田忌最优</button>
+        <button class="game-btn danger" onclick="runSimulation('qiSmart')">👑 齐王最优</button>
+      </div>
+      
+      <div class="sim-results" id="simResults" style="display: none;">
+        <div class="sim-card">
+          <h4>🏆 田忌获胜</h4>
+          <div class="big-num green" id="simWin">-</div>
+        </div>
+        <div class="sim-card">
+          <h4>💀 齐王获胜</h4>
+          <div class="big-num red" id="simLose">-</div>
+        </div>
+        <div class="sim-card">
+          <h4>📊 田忌胜率</h4>
+          <div class="big-num gold" id="simRate">-</div>
+        </div>
+        <div class="sim-card">
+          <h4>📈 模拟场景</h4>
+          <div class="big-num" style="font-size: 1rem; color: rgba(255,255,255,0.7);" id="simScenario">-</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 核心分析 -->
+    <div class="card analysis">
+      <h3>🤔 这是破坏规则吗？让我们逐条分析</h3>
+      
+      <p><strong>1. 规则到底是什么？</strong></p>
+      <p>
+        原文记载的规则是：<span class="highlight">「以千金为注，三局两胜」</span>。<br>
+        规则只规定了：① 各出三匹马 ② 比三场 ③ 赢两场算赢。<br>
+        <span class="safe">规则从未规定「必须按等级对应出战」</span>。
+      </p>
+      
+      <p><strong>2. 齐王为什么按等级出战？</strong></p>
+      <p>
+        因为齐王的马<span class="highlight">每个等级都比田忌强</span>，按等级对阵他稳赢3:0。<br>
+        这不是「规则」，而是齐王的<span class="highlight">最优策略</span>——在他看来没必要变。
+      </p>
+      
+      <p><strong>3. 田忌做了什么？</strong></p>
+      <p>
+        田忌只是<span class="safe">改变了自己的出战顺序</span>，这完全在规则允许范围内。<br>
+        他没有：换马、作弊、贿赂裁判、给马吃兴奋剂……
+      </p>
+      
+      <div class="formula">
+        类比：下棋时，你的车比我强，我就不能用马去吃你的车吗？<br>
+        足球比赛，对方前锋厉害，我就不能派后卫盯防吗？
+      </div>
+      
+      <p><strong>4. 博弈论视角</strong></p>
+      <p>
+        这是一个典型的<span class="highlight">「信息不对称博弈」</span>：<br>
+        齐王假设田忌会按常规出战（因为他自大），田忌利用了这个假设。<br>
+        如果齐王也改变策略呢？那就变成了「猜拳」——但齐王的傲慢让他没这么做。
+      </p>
+    </div>
+    
+    <!-- 结论 -->
+    <div class="card conclusion">
+      <h3>💡 结论：这不是破坏规则，是博弈智慧</h3>
+      <p>
+        田忌赛马的精髓在于：<br><br>
+        <strong>在规则允许的范围内，找到最优解。</strong><br><br>
+        齐王输在傲慢——他以为自己稳赢，所以没有思考对策。<br>
+        田忌赢在智慧——他在劣势中找到了唯一的获胜路径。<br><br>
+        <span style="color: #ffd93d;">这个故事教我们的不是「如何作弊」，<br>
+        而是「如何在不利条件下，通过策略逆转局面」。</span>
+      </p>
+    </div>
+  </div>
+  
+  <div class="toast" id="toast"></div>
+
+
+  <script>
+    // 马匹数据
+    const horses = {
+      qi: { top: 100, mid: 90, low: 80 },
+      tian: { top: 95, mid: 85, low: 75 }
+    };
+    
+    // 游戏状态
+    let currentMode = 'classic';
+    let currentStrategy = 'smart';
+    let currentAI = 'dumb';
+    let raceInProgress = false;
+    let draggedHorse = null;
+    let customTianOrder = [null, null, null];
+    let customQiOrder = ['top', 'mid', 'low'];
+    
+    // 统计数据
+    let stats = {
+      total: 0,
+      tianWins: 0,
+      qiWins: 0,
+      history: []
+    };
+    
+    // 从localStorage加载统计
+    function loadStats() {
+      const saved = localStorage.getItem('tianji-stats');
+      if (saved) {
+        stats = JSON.parse(saved);
+        updateStatsDisplay();
+        renderHistory();
+      }
+    }
+    
+    function saveStats() {
+      localStorage.setItem('tianji-stats', JSON.stringify(stats));
+    }
+    
+    function updateStatsDisplay() {
+      document.getElementById('totalGames').textContent = stats.total;
+      document.getElementById('tianWins').textContent = stats.tianWins;
+      document.getElementById('qiWins').textContent = stats.qiWins;
+      document.getElementById('winRate').textContent = stats.total > 0 
+        ? (stats.tianWins / stats.total * 100).toFixed(1) + '%' 
+        : '-';
+    }
+    
+    function clearStats() {
+      if (confirm('确定要清除所有战绩吗？')) {
+        stats = { total: 0, tianWins: 0, qiWins: 0, history: [] };
+        saveStats();
+        updateStatsDisplay();
+        renderHistory();
+        showToast('战绩已清除', 'success');
+      }
+    }
+    
+    // 策略定义
+    const strategies = {
+      normal: ['top', 'mid', 'low'],
+      smart: ['low', 'top', 'mid']
+    };
+    
+    const allStrategies = [
+      ['top', 'mid', 'low'],
+      ['top', 'low', 'mid'],
+      ['mid', 'top', 'low'],
+      ['mid', 'low', 'top'],
+      ['low', 'top', 'mid'],
+      ['low', 'mid', 'top']
+    ];
+    
+    // 模式切换
+    function switchMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelector(`.mode-tab[onclick="switchMode('${mode}')"]`).classList.add('active');
+      
+      document.getElementById('classicMode').style.display = mode === 'classic' ? 'block' : 'none';
+      document.getElementById('dragMode').style.display = mode === 'drag' ? 'block' : 'none';
+      document.getElementById('aiMode').style.display = mode === 'ai' ? 'block' : 'none';
+      
+      if (mode === 'drag') {
+        initDragMode();
+      } else if (mode === 'ai') {
+        initAIMode();
+      }
+      
+      resetRace();
+    }
+    
+    // 经典模式
+    function selectStrategy(strategy) {
+      currentStrategy = strategy;
+      document.querySelectorAll('.strategy-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(strategy === 'normal' ? 'strategyNormal' : 'strategySmart').classList.add('active');
+      resetRace();
+    }
+    
+    function useStrategy(order) {
+      customTianOrder = [...order];
+      switchMode('drag');
+      
+      // 填充拖拽槽位
+      setTimeout(() => {
+        const dropZones = document.querySelectorAll('#dragMode .drop-zone');
+        dropZones.forEach((zone, i) => {
+          const grade = order[i];
+          zone.innerHTML = `
+            <span class="horse-emoji">🐎</span>
+            <span class="horse-label ${getGradeClass(grade)}">${getGradeLabel(grade)}</span>
+          `;
+          zone.classList.add('filled');
+          zone.dataset.horse = grade;
+        });
+        
+        // 隐藏已使用的马
+        document.querySelectorAll('#horsePool .draggable-horse').forEach(horse => {
+          horse.style.display = 'none';
+        });
+        
+        showToast('已应用策略，点击开始比赛', 'success');
+      }, 100);
+    }
+    
+    // 拖拽模式
+    function initDragMode() {
+      customTianOrder = [null, null, null];
+      
+      const pool = document.getElementById('horsePool');
+      pool.innerHTML = `
+        <div class="draggable-horse" draggable="true" data-grade="top">
+          <span class="horse-emoji">🐎</span>
+          <span class="horse-label grade-top">上等</span>
+        </div>
+        <div class="draggable-horse" draggable="true" data-grade="mid">
+          <span class="horse-emoji">🐎</span>
+          <span class="horse-label grade-mid">中等</span>
+        </div>
+        <div class="draggable-horse" draggable="true" data-grade="low">
+          <span class="horse-emoji">🐎</span>
+          <span class="horse-label grade-low">下等</span>
+        </div>
+      `;
+      
+      // 重置drop zones
+      document.querySelectorAll('#dragMode .drop-zone').forEach(zone => {
+        zone.innerHTML = '<span class="placeholder">拖到这里</span>';
+        zone.classList.remove('filled');
+        delete zone.dataset.horse;
+      });
+      
+      setupDragListeners();
+    }
+    
+    function setupDragListeners() {
+      document.querySelectorAll('.draggable-horse').forEach(horse => {
+        horse.addEventListener('dragstart', handleDragStart);
+        horse.addEventListener('dragend', handleDragEnd);
+      });
+      
+      document.querySelectorAll('.drop-zone').forEach(zone => {
+        zone.addEventListener('dragover', handleDragOver);
+        zone.addEventListener('dragleave', handleDragLeave);
+        zone.addEventListener('drop', handleDrop);
+      });
+    }
+    
+    function handleDragStart(e) {
+      draggedHorse = e.target;
+      e.target.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    }
+    
+    function handleDragEnd(e) {
+      e.target.classList.remove('dragging');
+      draggedHorse = null;
+    }
+    
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.currentTarget.classList.add('drag-over');
+    }
+    
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+    
+    function handleDrop(e) {
+      e.preventDefault();
+      const zone = e.currentTarget;
+      zone.classList.remove('drag-over');
+      
+      if (!draggedHorse) return;
+      
+      const grade = draggedHorse.dataset.grade;
+      const slot = parseInt(zone.dataset.slot);
+      
+      // 如果槽位已有马，先放回
+      if (zone.dataset.horse) {
+        const oldGrade = zone.dataset.horse;
+        returnHorseToPool(oldGrade);
+      }
+      
+      // 放入新马
+      zone.innerHTML = `
+        <span class="horse-emoji">🐎</span>
+        <span class="horse-label ${getGradeClass(grade)}">${getGradeLabel(grade)}</span>
+      `;
+      zone.classList.add('filled');
+      zone.dataset.horse = grade;
+      customTianOrder[slot] = grade;
+      
+      // 隐藏已使用的马
+      draggedHorse.style.display = 'none';
+      
+      // 点击已放置的马可以取回
+      zone.onclick = () => {
+        if (zone.dataset.horse) {
+          returnHorseToPool(zone.dataset.horse);
+          zone.innerHTML = '<span class="placeholder">拖到这里</span>';
+          zone.classList.remove('filled');
+          customTianOrder[slot] = null;
+          delete zone.dataset.horse;
+          zone.onclick = null;
+        }
+      };
+    }
+    
+    function returnHorseToPool(grade) {
+      const pool = document.getElementById('horsePool') || document.getElementById('aiHorsePool');
+      const horse = pool.querySelector(`[data-grade="${grade}"]`);
+      if (horse) horse.style.display = 'flex';
+    }
+    
+    // AI模式
+    function initAIMode() {
+      customTianOrder = [null, null, null];
+      
+      const pool = document.getElementById('aiHorsePool');
+      pool.innerHTML = `
+        <div class="draggable-horse" draggable="true" data-grade="top">
+          <span class="horse-emoji">🐎</span>
+          <span class="horse-label grade-top">上等</span>
+        </div>
+        <div class="draggable-horse" draggable="true" data-grade="mid">
+          <span class="horse-emoji">🐎</span>
+          <span class="horse-label grade-mid">中等</span>
+        </div>
+        <div class="draggable-horse" draggable="true" data-grade="low">
+          <span class="horse-emoji">🐎</span>
+          <span class="horse-label grade-low">下等</span>
+        </div>
+      `;
+      
+      const slots = document.getElementById('aiSlots');
+      slots.innerHTML = `
+        <div class="battle-slot">
+          <div class="slot-title">第一场</div>
+          <div class="slot-vs">
+            <div class="drop-zone" data-slot="0"><span class="placeholder">拖到这里</span></div>
+            <span class="vs-icon">VS</span>
+            <div class="qi-horse-display"><span class="horse-emoji">🐴</span><span class="horse-label">?</span></div>
+          </div>
+        </div>
+        <div class="battle-slot">
+          <div class="slot-title">第二场</div>
+          <div class="slot-vs">
+            <div class="drop-zone" data-slot="1"><span class="placeholder">拖到这里</span></div>
+            <span class="vs-icon">VS</span>
+            <div class="qi-horse-display"><span class="horse-emoji">🐴</span><span class="horse-label">?</span></div>
+          </div>
+        </div>
+        <div class="battle-slot">
+          <div class="slot-title">第三场</div>
+          <div class="slot-vs">
+            <div class="drop-zone" data-slot="2"><span class="placeholder">拖到这里</span></div>
+            <span class="vs-icon">VS</span>
+            <div class="qi-horse-display"><span class="horse-emoji">🐴</span><span class="horse-label">?</span></div>
+          </div>
+        </div>
+      `;
+      
+      setupDragListeners();
+    }
+    
+    function setAI(ai) {
+      currentAI = ai;
+      document.querySelectorAll('.ai-option').forEach(opt => opt.classList.remove('active'));
+      document.querySelector(`[data-ai="${ai}"]`).classList.add('active');
+    }
+    
+    function getAIStrategy(tianOrder) {
+      switch (currentAI) {
+        case 'dumb':
+          return ['top', 'mid', 'low'];
+        case 'random':
+          return allStrategies[Math.floor(Math.random() * 6)];
+        case 'smart':
+          // 简单反制：如果知道田忌的策略，选择能赢的
+          return findCounterStrategy(tianOrder);
+        case 'optimal':
+          // 混合策略纳什均衡
+          return getOptimalMixedStrategy();
+        default:
+          return ['top', 'mid', 'low'];
+      }
+    }
+    
+    function findCounterStrategy(tianOrder) {
+      // 齐王的马更强，找一个能赢的策略
+      let bestStrategy = ['top', 'mid', 'low'];
+      let bestScore = -3;
+      
+      for (const qiOrder of allStrategies) {
+        let score = 0;
+        for (let i = 0; i < 3; i++) {
+          const qiPower = horses.qi[qiOrder[i]];
+          const tianPower = horses.tian[tianOrder[i]];
+          if (qiPower > tianPower) score++;
+          else score--;
+        }
+        if (score > bestScore) {
+          bestScore = score;
+          bestStrategy = qiOrder;
+        }
+      }
+      return bestStrategy;
+    }
+    
+    function getOptimalMixedStrategy() {
+      // 纳什均衡混合策略（简化版）
+      const weights = [0.2, 0.15, 0.15, 0.15, 0.2, 0.15];
+      const r = Math.random();
+      let cumulative = 0;
+      for (let i = 0; i < weights.length; i++) {
+        cumulative += weights[i];
+        if (r < cumulative) return allStrategies[i];
+      }
+      return allStrategies[0];
+    }
+    
+    // 工具函数
+    function getGradeLabel(grade) {
+      return { top: '上等', mid: '中等', low: '下等' }[grade];
+    }
+    
+    function getGradeClass(grade) {
+      return { top: 'grade-top', mid: 'grade-mid', low: 'grade-low' }[grade];
+    }
+    
+    function getStrategyName(order) {
+      const names = { top: '上', mid: '中', low: '下' };
+      return order.map(g => names[g]).join('-');
+    }
+    
+    function showToast(message, type = '') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast show ' + type;
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    
+    // 渲染赛道
+    function renderRaceLanes(tianOrder, qiOrder) {
+      const lanes = document.getElementById('raceLanes');
+      lanes.innerHTML = '';
+      
+      for (let i = 0; i < 3; i++) {
+        const tianGrade = tianOrder[i];
+        const qiGrade = qiOrder[i];
+        
+        const lane = document.createElement('div');
+        lane.className = 'race-lane';
+        lane.id = `lane${i}`;
+        lane.innerHTML = `
+          <div class="lane-label">第${i + 1}场</div>
+          <div class="horses-battle">
+            <div class="horse-entry">
+              <div class="horse-icon" id="tianHorse${i}">🐎</div>
+              <span class="horse-grade ${getGradeClass(tianGrade)}">${getGradeLabel(tianGrade)}</span>
+            </div>
+            <div class="race-progress">
+              <div class="race-progress-bar tian" id="tianProgress${i}" style="width: 0%"></div>
+              <div class="race-progress-bar qi" id="qiProgress${i}" style="width: 0%"></div>
+            </div>
+            <div class="vs-text">VS</div>
+            <div class="horse-entry">
+              <div class="horse-icon" id="qiHorse${i}">🐴</div>
+              <span class="horse-grade ${getGradeClass(qiGrade)}">${getGradeLabel(qiGrade)}</span>
+            </div>
+          </div>
+          <div class="result-badge" id="result${i}" style="visibility: hidden;">-</div>
+        `;
+        lanes.appendChild(lane);
+      }
+    }
+    
+    // 获取当前出战顺序
+    function getCurrentOrders() {
+      let tianOrder, qiOrder;
+      
+      if (currentMode === 'classic') {
+        tianOrder = strategies[currentStrategy];
+        qiOrder = ['top', 'mid', 'low'];
+      } else if (currentMode === 'drag') {
+        if (customTianOrder.includes(null)) {
+          showToast('请先完成排兵布阵！', 'error');
+          return null;
+        }
+        tianOrder = customTianOrder;
+        qiOrder = ['top', 'mid', 'low'];
+      } else if (currentMode === 'ai') {
+        if (customTianOrder.includes(null)) {
+          showToast('请先完成排兵布阵！', 'error');
+          return null;
+        }
+        tianOrder = customTianOrder;
+        qiOrder = getAIStrategy(tianOrder);
+      } else {
+        tianOrder = strategies[currentStrategy];
+        qiOrder = ['top', 'mid', 'low'];
+      }
+      
+      return { tianOrder, qiOrder };
+    }
+    
+    // 开始比赛
+    async function startRace() {
+      if (raceInProgress) return;
+      
+      const orders = getCurrentOrders();
+      if (!orders) return;
+      
+      const { tianOrder, qiOrder } = orders;
+      
+      raceInProgress = true;
+      document.getElementById('raceBtn').disabled = true;
+      
+      renderRaceLanes(tianOrder, qiOrder);
+      
+      let tianScore = 0;
+      let qiScore = 0;
+      
+      for (let i = 0; i < 3; i++) {
+        const tianGrade = tianOrder[i];
+        const qiGrade = qiOrder[i];
+        const tianPower = horses.tian[tianGrade];
+        const qiPower = horses.qi[qiGrade];
+        
+        const tianHorse = document.getElementById(`tianHorse${i}`);
+        const qiHorse = document.getElementById(`qiHorse${i}`);
+        const tianProgress = document.getElementById(`tianProgress${i}`);
+        const qiProgress = document.getElementById(`qiProgress${i}`);
+        
+        // 赛跑动画
+        tianHorse.classList.add('racing');
+        qiHorse.classList.add('racing');
+        
+        const totalTime = 1000;
+        const steps = 20;
+        const stepTime = totalTime / steps;
+        
+        for (let step = 1; step <= steps; step++) {
+          await new Promise(resolve => setTimeout(resolve, stepTime));
+          const tianPercent = (tianPower / (tianPower + qiPower)) * (step / steps) * 100;
+          const qiPercent = (qiPower / (tianPower + qiPower)) * (step / steps) * 100;
+          tianProgress.style.width = tianPercent + '%';
+          qiProgress.style.width = qiPercent + '%';
+        }
+        
+        tianHorse.classList.remove('racing');
+        qiHorse.classList.remove('racing');
+        
+        // 判断胜负
+        const resultBadge = document.getElementById(`result${i}`);
+        resultBadge.style.visibility = 'visible';
+        
+        if (tianPower > qiPower) {
+          tianScore++;
+          resultBadge.textContent = '田忌胜';
+          resultBadge.className = 'result-badge result-win';
+          tianHorse.classList.add('winner');
+        } else {
+          qiScore++;
+          resultBadge.textContent = '齐王胜';
+          resultBadge.className = 'result-badge result-lose';
+          qiHorse.classList.add('winner');
+        }
+        
+        document.getElementById('tianScore').textContent = tianScore;
+        document.getElementById('qiScore').textContent = qiScore;
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
+      // 记录结果
+      const tianWon = tianScore > qiScore;
+      stats.total++;
+      if (tianWon) stats.tianWins++;
+      else stats.qiWins++;
+      
+      stats.history.unshift({
+        round: stats.total,
+        tianStrategy: getStrategyName(tianOrder),
+        qiStrategy: getStrategyName(qiOrder),
+        result: tianWon ? 'win' : 'lose',
+        score: `${tianScore}:${qiScore}`
+      });
+      
+      if (stats.history.length > 20) stats.history.pop();
+      
+      saveStats();
+      updateStatsDisplay();
+      renderHistory();
+      
+      // 显示结果
+      if (tianWon) {
+        showToast('🎉 田忌获胜！', 'success');
+      } else {
+        showToast('💀 齐王获胜', 'error');
+      }
+      
+      raceInProgress = false;
+      document.getElementById('raceBtn').disabled = false;
+    }
+    
+    function resetRace() {
+      document.getElementById('tianScore').textContent = '0';
+      document.getElementById('qiScore').textContent = '0';
+      
+      const orders = getCurrentOrders();
+      if (orders) {
+        renderRaceLanes(orders.tianOrder, orders.qiOrder);
+      } else if (currentMode === 'classic') {
+        renderRaceLanes(strategies[currentStrategy], ['top', 'mid', 'low']);
+      }
+    }
+    
+    function renderHistory() {
+      const list = document.getElementById('historyList');
+      if (stats.history.length === 0) {
+        list.innerHTML = '<div style="color: rgba(255,255,255,0.4); text-align: center; padding: 20px;">暂无记录</div>';
+        return;
+      }
+      
+      list.innerHTML = stats.history.map(h => `
+        <div class="history-item">
+          <span class="round">#${h.round}</span>
+          <span class="strategy">田忌[${h.tianStrategy}] vs 齐王[${h.qiStrategy}]</span>
+          <span class="result ${h.result}">${h.score} ${h.result === 'win' ? '胜' : '负'}</span>
+        </div>
+      `).join('');
+    }
+    
+    // 蒙特卡洛模拟
+    function runSimulation(scenario) {
+      const simCount = 10000;
+      let tianWins = 0;
+      
+      for (let i = 0; i < simCount; i++) {
+        let tianOrder, qiOrder;
+        
+        if (scenario === 'random') {
+          tianOrder = allStrategies[Math.floor(Math.random() * 6)];
+          qiOrder = allStrategies[Math.floor(Math.random() * 6)];
+        } else if (scenario === 'tianSmart') {
+          tianOrder = ['low', 'top', 'mid']; // 孙膑策略
+          qiOrder = allStrategies[Math.floor(Math.random() * 6)];
+        } else if (scenario === 'qiSmart') {
+          tianOrder = allStrategies[Math.floor(Math.random() * 6)];
+          qiOrder = findCounterStrategy(tianOrder);
+        }
+        
+        let tianScore = 0;
+        for (let j = 0; j < 3; j++) {
+          if (horses.tian[tianOrder[j]] > horses.qi[qiOrder[j]]) {
+            tianScore++;
+          }
+        }
+        if (tianScore >= 2) tianWins++;
+      }
+      
+      const scenarioNames = {
+        random: '双方随机出战',
+        tianSmart: '田忌用孙膑策略，齐王随机',
+        qiSmart: '田忌随机，齐王反制'
+      };
+      
+      document.getElementById('simResults').style.display = 'grid';
+      document.getElementById('simWin').textContent = tianWins.toLocaleString();
+      document.getElementById('simLose').textContent = (simCount - tianWins).toLocaleString();
+      document.getElementById('simRate').textContent = (tianWins / simCount * 100).toFixed(1) + '%';
+      document.getElementById('simScenario').textContent = scenarioNames[scenario];
+    }
+    
+    // 初始化
+    loadStats();
+    renderRaceLanes(strategies.smart, ['top', 'mid', 'low']);
+  </script>
+</body>
+</html>

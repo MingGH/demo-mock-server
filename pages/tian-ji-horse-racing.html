@@ -851,8 +851,9 @@
       
       <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 15px;">
         <button class="game-btn primary" onclick="runSimulation('random')">🎲 双方随机</button>
-        <button class="game-btn secondary" onclick="runSimulation('tianSmart')">🧠 田忌最优</button>
-        <button class="game-btn danger" onclick="runSimulation('qiSmart')">👑 齐王最优</button>
+        <button class="game-btn secondary" onclick="runSimulation('tianSmart')">🧠 孙膑策略 vs 傲慢齐王</button>
+        <button class="game-btn secondary" onclick="runSimulation('tianSmartRandom')">🎯 孙膑策略 vs 随机齐王</button>
+        <button class="game-btn danger" onclick="runSimulation('qiSmart')">👑 齐王反制</button>
       </div>
       
       <div class="sim-results" id="simResults" style="display: none;">
@@ -1493,12 +1494,19 @@
         let tianOrder, qiOrder;
         
         if (scenario === 'random') {
+          // 双方都随机
           tianOrder = allStrategies[Math.floor(Math.random() * 6)];
           qiOrder = allStrategies[Math.floor(Math.random() * 6)];
         } else if (scenario === 'tianSmart') {
-          tianOrder = ['low', 'top', 'mid']; // 孙膑策略
+          // 孙膑策略 vs 傲慢齐王（历史真实情况）
+          tianOrder = ['low', 'top', 'mid'];
+          qiOrder = ['top', 'mid', 'low']; // 齐王固定
+        } else if (scenario === 'tianSmartRandom') {
+          // 孙膑策略 vs 随机齐王
+          tianOrder = ['low', 'top', 'mid'];
           qiOrder = allStrategies[Math.floor(Math.random() * 6)];
         } else if (scenario === 'qiSmart') {
+          // 田忌随机，齐王反制
           tianOrder = allStrategies[Math.floor(Math.random() * 6)];
           qiOrder = findCounterStrategy(tianOrder);
         }
@@ -1514,7 +1522,8 @@
       
       const scenarioNames = {
         random: '双方随机出战',
-        tianSmart: '田忌用孙膑策略，齐王随机',
+        tianSmart: '孙膑策略 vs 傲慢齐王',
+        tianSmartRandom: '孙膑策略 vs 随机齐王',
         qiSmart: '田忌随机，齐王反制'
       };
       

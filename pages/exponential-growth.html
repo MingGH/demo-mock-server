@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>指数增长有多恐怖 - 折纸到月球</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+    }
+    .card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    /* 折纸模拟器 */
+    .fold-simulator {
+      text-align: center;
+      padding: 30px;
+    }
+    .fold-counter {
+      font-size: 5rem;
+      font-weight: bold;
+      color: #ffd93d;
+      text-shadow: 0 0 50px rgba(255,217,61,0.5);
+      margin-bottom: 10px;
+    }
+    .fold-label {
+      font-size: 1.2rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 20px;
+    }
+    .thickness-display {
+      background: rgba(0,0,0,0.3);
+      border-radius: 16px;
+      padding: 25px;
+      margin: 20px 0;
+    }
+    .thickness-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #4ade80;
+      margin-bottom: 10px;
+    }
+    .thickness-compare {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.8);
+      line-height: 1.8;
+    }
+    .thickness-compare .highlight {
+      color: #ff6b6b;
+      font-weight: bold;
+    }
+    
+    /* 按钮 */
+    .btn-group {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .btn {
+      padding: 15px 35px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover { transform: translateY(-3px); }
+    .btn:active { transform: scale(0.98); }
+    .btn-fold {
+      background: linear-gradient(135deg, #ffd93d, #f0c000);
+      color: #333;
+      font-size: 1.3rem;
+      padding: 20px 50px;
+    }
+    .btn-fold:hover {
+      box-shadow: 0 10px 40px rgba(255,217,61,0.4);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-auto {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: #000;
+    }
+    
+    /* 进度条 */
+    .progress-section {
+      margin: 25px 0;
+    }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+    }
+    .progress-bar {
+      height: 30px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 15px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 15px;
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: bold;
+    }
+    .progress-fill.earth { background: linear-gradient(90deg, #4ade80, #22d3ee); color: #000; }
+    .progress-fill.moon { background: linear-gradient(90deg, #ffd93d, #f59e0b); color: #000; }
+    .progress-fill.sun { background: linear-gradient(90deg, #ff6b6b, #f43f5e); color: #fff; }
+    
+    /* 里程碑 */
+    .milestones {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 25px 0;
+    }
+    .milestone {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      border: 2px solid transparent;
+      transition: all 0.3s;
+    }
+    .milestone.reached {
+      border-color: #4ade80;
+      background: rgba(74,222,128,0.1);
+    }
+    .milestone .icon { font-size: 2rem; margin-bottom: 8px; }
+    .milestone .name { font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 5px; }
+    .milestone .folds { font-size: 1.2rem; font-weight: bold; color: #ffd93d; }
+    .milestone .distance { font-size: 0.75rem; color: rgba(255,255,255,0.5); }
+    
+    /* 可视化对比 */
+    .visual-compare {
+      margin: 25px 0;
+    }
+    .compare-row {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
+    .compare-icon { font-size: 2rem; width: 50px; text-align: center; }
+    .compare-bar-container { flex: 1; }
+    .compare-name { font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 5px; }
+    .compare-bar {
+      height: 20px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .compare-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4ade80, #22d3ee);
+      border-radius: 10px;
+      transition: width 0.5s ease;
+      min-width: 2px;
+    }
+    .compare-value {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: #ffd93d;
+      width: 120px;
+      text-align: right;
+    }
+    
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin: 20px 0;
+    }
+    
+    /* 故事卡片 */
+    .story-card {
+      background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,217,61,0.1));
+      border-left: 4px solid #ff6b6b;
+      border-radius: 0 12px 12px 0;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .story-card h4 {
+      color: #ffd93d;
+      margin-bottom: 10px;
+    }
+    .story-card p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.8;
+    }
+    
+    /* 数据表格 */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.9rem;
+    }
+    .data-table th, .data-table td {
+      padding: 12px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .data-table th {
+      background: rgba(255,217,61,0.2);
+      color: #ffd93d;
+    }
+    .data-table tr:hover { background: rgba(255,255,255,0.05); }
+    .data-table .highlight { color: #ff6b6b; font-weight: bold; }
+    
+    /* 动画 */
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .pulse { animation: pulse 0.3s ease; }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    .shake { animation: shake 0.3s ease; }
+    
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,217,61,0.1));
+      border: 2px solid #ff6b6b;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+    }
+    .conclusion h3 { color: #ff6b6b; margin-bottom: 15px; }
+    .conclusion p { color: rgba(255,255,255,0.9); line-height: 1.85; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>📄 指数增长有多恐怖</h1>
+    <p class="subtitle">一张纸对折42次，厚度超过地月距离</p>
+    
+    <!-- 折纸模拟器 -->
+    <div class="card">
+      <div class="fold-simulator">
+        <div class="fold-counter" id="foldCount">0</div>
+        <div class="fold-label">次对折</div>
+        
+        <div class="btn-group">
+          <button class="btn btn-fold" onclick="fold()">📄 对折一次</button>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-auto" onclick="autoFold(10)">⚡ 快速折10次</button>
+          <button class="btn btn-auto" onclick="autoFold(42)">🚀 直接折到月球</button>
+          <button class="btn btn-secondary" onclick="reset()">🔄 重置</button>
+        </div>
+      </div>
+      
+      <!-- 厚度显示 -->
+      <div class="thickness-display">
+        <div class="thickness-value" id="thickness">0.1 毫米</div>
+        <div class="thickness-compare" id="thicknessCompare">
+          一张普通A4纸的厚度约为 0.1 毫米
+        </div>
+      </div>
+      
+      <!-- 进度条 -->
+      <div class="progress-section">
+        <div class="progress-label">
+          <span>🌍 到达地球直径 (12,742 km)</span>
+          <span id="earthProgress">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill earth" id="earthBar" style="width: 0%"></div>
+        </div>
+      </div>
+      
+      <div class="progress-section">
+        <div class="progress-label">
+          <span>🌙 到达月球 (384,400 km)</span>
+          <span id="moonProgress">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill moon" id="moonBar" style="width: 0%"></div>
+        </div>
+      </div>
+      
+      <div class="progress-section">
+        <div class="progress-label">
+          <span>☀️ 到达太阳 (1.5亿 km)</span>
+          <span id="sunProgress">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill sun" id="sunBar" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 里程碑 -->
+    <div class="card">
+      <h2 style="color: #ffd93d; margin-bottom: 20px;">🏆 里程碑</h2>
+      <div class="milestones" id="milestones">
+        <!-- 动态生成 -->
+      </div>
+    </div>
+    
+    <!-- 可视化对比 -->
+    <div class="card">
+      <h2 style="color: #ffd93d; margin-bottom: 20px;">📊 厚度对比（对数刻度）</h2>
+      <div class="visual-compare" id="visualCompare">
+        <!-- 动态生成 -->
+      </div>
+    </div>
+    
+    <!-- 图表 -->
+    <div class="card">
+      <h2 style="color: #ffd93d; margin-bottom: 20px;">📈 增长曲线（线性坐标）</h2>
+      <p style="color: rgba(255,255,255,0.6); margin-bottom: 15px;">
+        这才是指数增长的真实面貌——前期几乎看不见，后期直接爆炸
+      </p>
+      <div class="chart-container">
+        <canvas id="linearChart"></canvas>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2 style="color: #ffd93d; margin-bottom: 20px;">📊 增长曲线（对数坐标）</h2>
+      <p style="color: rgba(255,255,255,0.6); margin-bottom: 15px;">
+        对数坐标下指数增长变成直线，方便看清早期数据
+      </p>
+      <div class="chart-container">
+        <canvas id="logChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- 数据表格 -->
+    <div class="card">
+      <h2 style="color: #ffd93d; margin-bottom: 20px;">📋 每次对折的厚度</h2>
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>对折次数</th>
+              <th>厚度</th>
+              <th>相当于</th>
+            </tr>
+          </thead>
+          <tbody id="dataTable">
+            <!-- 动态生成 -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    
+    <!-- 经典故事 -->
+    <div class="card">
+      <h2 style="color: #ffd93d; margin-bottom: 20px;">📖 经典故事：国王与棋盘</h2>
+      
+      <div class="story-card">
+        <h4>🏰 印度国王的赏赐</h4>
+        <p>
+          传说国际象棋的发明者向国王要赏赐：<br>
+          "请在棋盘的第一格放1粒米，第二格放2粒，第三格放4粒……每格翻倍。"<br><br>
+          国王觉得这要求太简单了，欣然答应。<br><br>
+          结果呢？<br>
+          <span class="highlight">64格棋盘需要的米粒总数：18,446,744,073,709,551,615 粒</span><br>
+          约等于 <span class="highlight">4600亿吨大米</span>，是全球年产量的 <span class="highlight">800多倍</span>。
+        </p>
+      </div>
+      
+      <div class="story-card">
+        <h4>🦠 病毒传播</h4>
+        <p>
+          假设一个病毒每天感染人数翻倍：<br>
+          第1天：1人 → 第10天：1,024人 → 第20天：100万人 → 第30天：<span class="highlight">10亿人</span><br><br>
+          这就是为什么疫情初期的防控如此重要——<br>
+          <span class="highlight">指数增长的早期看起来很慢，但一旦起势就无法控制。</span>
+        </p>
+      </div>
+      
+      <div class="story-card">
+        <h4>💰 复利的威力</h4>
+        <p>
+          1万元，年化10%，不取出：<br>
+          10年后：2.6万 → 20年后：6.7万 → 30年后：17.4万 → 50年后：<span class="highlight">117万</span><br><br>
+          爱因斯坦说："复利是世界第八大奇迹。"<br>
+          <span class="highlight">理解复利的人赚取它，不理解的人支付它。</span>
+        </p>
+      </div>
+    </div>
+    
+    <!-- 为什么难以理解 -->
+    <div class="card">
+      <h2 style="color: #ffd93d; margin-bottom: 20px;">🧠 为什么人类难以理解指数增长？</h2>
+      
+      <p style="color: rgba(255,255,255,0.85); line-height: 1.85; margin-bottom: 15px;">
+        <strong style="color: #4ade80;">1. 我们的大脑是为线性思维设计的</strong><br>
+        原始人需要判断"猎物还有多远"、"食物够吃几天"，这些都是线性问题。<br>
+        指数增长在自然界很少见，所以我们没有进化出理解它的直觉。
+      </p>
+      
+      <p style="color: rgba(255,255,255,0.85); line-height: 1.85; margin-bottom: 15px;">
+        <strong style="color: #4ade80;">2. 早期增长太慢，容易被忽视</strong><br>
+        折纸10次才1024层（约10厘米），看起来没什么。<br>
+        但从第40次到第42次，厚度从11万公里暴增到44万公里——增加了33万公里！
+      </p>
+      
+      <p style="color: rgba(255,255,255,0.85); line-height: 1.85;">
+        <strong style="color: #4ade80;">3. 数字太大，失去意义</strong><br>
+        2^64 = 18,446,744,073,709,551,616<br>
+        这个数字你能感受到它有多大吗？不能。<br>
+        <span style="color: #ff6b6b;">所以我们需要类比：它等于全球800年的大米产量。</span>
+      </p>
+    </div>
+    
+    <!-- 结论 -->
+    <div class="card conclusion">
+      <h3>💡 指数增长的恐怖之处</h3>
+      <p>
+        不是它最终有多大，而是<strong style="color: #ffd93d;">它来得有多快</strong>。<br><br>
+        当你意识到问题严重时，往往已经来不及了。<br><br>
+        折纸41次才到月球一半，但再折1次就超过了。<br>
+        病毒感染100万人时，离10亿只差10天。<br>
+        债务滚到你还不起时，可能只是几年的事。<br><br>
+        <span style="color: rgba(255,255,255,0.6);">
+          理解指数增长，是现代人最重要的数学直觉之一。
+        </span>
+      </p>
+    </div>
+  </div>
+
+
+  <script>
+    // 常量
+    const PAPER_THICKNESS = 0.1; // 毫米
+    const EARTH_DIAMETER = 12742 * 1000 * 1000; // 毫米
+    const MOON_DISTANCE = 384400 * 1000 * 1000; // 毫米
+    const SUN_DISTANCE = 150000000 * 1000 * 1000; // 毫米
+    
+    // 里程碑数据
+    const milestones = [
+      { name: '一本书', icon: '📚', folds: 10, distance: '10 厘米' },
+      { name: '一个人高', icon: '🧍', folds: 14, distance: '1.6 米' },
+      { name: '埃菲尔铁塔', icon: '🗼', folds: 18, distance: '330 米' },
+      { name: '珠穆朗玛峰', icon: '🏔️', folds: 23, distance: '8.8 公里' },
+      { name: '飞机巡航高度', icon: '✈️', folds: 20, distance: '10 公里' },
+      { name: '国际空间站', icon: '🛸', folds: 27, distance: '400 公里' },
+      { name: '地球直径', icon: '🌍', folds: 37, distance: '1.27万公里' },
+      { name: '地月距离', icon: '🌙', folds: 42, distance: '38.4万公里' },
+      { name: '地日距离', icon: '☀️', folds: 51, distance: '1.5亿公里' },
+    ];
+    
+    // 对比数据
+    const comparisons = [
+      { name: '一张纸', icon: '📄', mm: 0.1 },
+      { name: '信用卡', icon: '💳', mm: 0.76 },
+      { name: '手机厚度', icon: '📱', mm: 8 },
+      { name: '一本书', icon: '📚', mm: 20 },
+      { name: '一个人高', icon: '🧍', mm: 1700 },
+      { name: '足球场长', icon: '⚽', mm: 105000 },
+      { name: '珠峰高度', icon: '🏔️', mm: 8848000 },
+      { name: '地球直径', icon: '🌍', mm: EARTH_DIAMETER },
+      { name: '地月距离', icon: '🌙', mm: MOON_DISTANCE },
+    ];
+    
+    let foldCount = 0;
+    let linearChart = null;
+    let logChart = null;
+    
+    function getThickness(folds) {
+      return PAPER_THICKNESS * Math.pow(2, folds);
+    }
+    
+    function formatDistance(mm) {
+      if (mm < 1) return mm.toFixed(2) + ' 毫米';
+      if (mm < 10) return mm.toFixed(1) + ' 毫米';
+      if (mm < 1000) return Math.round(mm) + ' 毫米';
+      if (mm < 100000) return (mm / 10).toFixed(1) + ' 厘米';
+      if (mm < 1000000) return (mm / 1000).toFixed(2) + ' 米';
+      if (mm < 1000000000) return (mm / 1000000).toFixed(2) + ' 公里';
+      if (mm < 1000000000000) return (mm / 1000000000).toFixed(0) + ' 千公里';
+      return (mm / 1000000000000).toFixed(2) + ' 百万公里';
+    }
+    
+    function getComparison(mm) {
+      if (mm < 1) return '比头发丝还细';
+      if (mm < 10) return '约等于 ' + (mm / 0.1).toFixed(0) + ' 张纸叠在一起';
+      if (mm < 100) return '约等于一枚硬币的厚度';
+      if (mm < 1000) return '约等于一本书的厚度';
+      if (mm < 10000) return '约等于一张桌子的高度';
+      if (mm < 100000) return '约等于一栋楼的高度';
+      if (mm < 1000000) return '约等于几个足球场的长度';
+      if (mm < 10000000) return '可以覆盖一座城市';
+      if (mm < 100000000) return '超过了珠穆朗玛峰的高度';
+      if (mm < EARTH_DIAMETER) return '可以绕地球 ' + (mm / (40075 * 1000000)).toFixed(1) + ' 圈';
+      if (mm < MOON_DISTANCE) return '已经超过地球直径！正在飞向月球...';
+      if (mm < SUN_DISTANCE) return '🎉 已经超过地月距离！正在飞向太阳...';
+      return '🚀 已经超过地日距离！飞向宇宙深处...';
+    }
+    
+    function updateDisplay() {
+      const thickness = getThickness(foldCount);
+      
+      // 更新计数器
+      const counter = document.getElementById('foldCount');
+      counter.textContent = foldCount;
+      counter.classList.add('pulse');
+      setTimeout(() => counter.classList.remove('pulse'), 300);
+      
+      // 更新厚度
+      document.getElementById('thickness').textContent = formatDistance(thickness);
+      document.getElementById('thicknessCompare').innerHTML = getComparison(thickness);
+      
+      // 更新进度条
+      const earthPercent = Math.min(100, (thickness / EARTH_DIAMETER) * 100);
+      const moonPercent = Math.min(100, (thickness / MOON_DISTANCE) * 100);
+      const sunPercent = Math.min(100, (thickness / SUN_DISTANCE) * 100);
+      
+      document.getElementById('earthBar').style.width = earthPercent + '%';
+      document.getElementById('earthProgress').textContent = earthPercent.toFixed(earthPercent < 1 ? 4 : 1) + '%';
+      
+      document.getElementById('moonBar').style.width = moonPercent + '%';
+      document.getElementById('moonProgress').textContent = moonPercent.toFixed(moonPercent < 1 ? 4 : 1) + '%';
+      
+      document.getElementById('sunBar').style.width = sunPercent + '%';
+      document.getElementById('sunProgress').textContent = sunPercent.toFixed(sunPercent < 1 ? 6 : 1) + '%';
+      
+      // 更新里程碑
+      renderMilestones();
+      
+      // 更新对比
+      renderComparisons(thickness);
+      
+      // 更新图表
+      updateChart();
+    }
+    
+    function renderMilestones() {
+      const container = document.getElementById('milestones');
+      container.innerHTML = milestones.map(m => `
+        <div class="milestone ${foldCount >= m.folds ? 'reached' : ''}">
+          <div class="icon">${m.icon}</div>
+          <div class="name">${m.name}</div>
+          <div class="folds">${m.folds} 次</div>
+          <div class="distance">${m.distance}</div>
+        </div>
+      `).join('');
+    }
+    
+    function renderComparisons(currentThickness) {
+      const container = document.getElementById('visualCompare');
+      const maxLog = Math.log10(Math.max(currentThickness, MOON_DISTANCE));
+      
+      container.innerHTML = comparisons.map(c => {
+        const logValue = Math.log10(c.mm);
+        const percent = (logValue / maxLog) * 100;
+        const isCurrent = currentThickness >= c.mm * 0.5 && currentThickness < c.mm * 5;
+        
+        return `
+          <div class="compare-row" style="${isCurrent ? 'background: rgba(74,222,128,0.2);' : ''}">
+            <div class="compare-icon">${c.icon}</div>
+            <div class="compare-bar-container">
+              <div class="compare-name">${c.name}</div>
+              <div class="compare-bar">
+                <div class="compare-bar-fill" style="width: ${percent}%"></div>
+              </div>
+            </div>
+            <div class="compare-value">${formatDistance(c.mm)}</div>
+          </div>
+        `;
+      }).join('');
+      
+      // 添加当前厚度
+      if (currentThickness > 0.1) {
+        const logValue = Math.log10(currentThickness);
+        const percent = (logValue / maxLog) * 100;
+        container.innerHTML += `
+          <div class="compare-row" style="background: rgba(255,217,61,0.2); border: 2px solid #ffd93d;">
+            <div class="compare-icon">📄</div>
+            <div class="compare-bar-container">
+              <div class="compare-name" style="color: #ffd93d;">当前纸张厚度 (${foldCount}次对折)</div>
+              <div class="compare-bar">
+                <div class="compare-bar-fill" style="width: ${percent}%; background: linear-gradient(90deg, #ffd93d, #f59e0b);"></div>
+              </div>
+            </div>
+            <div class="compare-value" style="color: #ffd93d;">${formatDistance(currentThickness)}</div>
+          </div>
+        `;
+      }
+    }
+    
+    function updateChart() {
+      const labels = [];
+      const data = [];
+      const maxFolds = Math.max(foldCount, 20);
+      
+      for (let i = 0; i <= maxFolds; i++) {
+        labels.push(i);
+        data.push(getThickness(i) / 1000000); // 转换为米
+      }
+      
+      // 线性坐标图表 - 展示真正的指数爆炸
+      const ctxLinear = document.getElementById('linearChart').getContext('2d');
+      if (linearChart) linearChart.destroy();
+      
+      linearChart = new Chart(ctxLinear, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '厚度（米）',
+            data: data,
+            borderColor: '#ff6b6b',
+            backgroundColor: 'rgba(255, 107, 107, 0.2)',
+            fill: true,
+            tension: 0.1,
+            pointRadius: (ctx) => ctx.dataIndex === foldCount ? 8 : 2,
+            pointBackgroundColor: (ctx) => ctx.dataIndex === foldCount ? '#ffd93d' : '#ff6b6b',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              title: { display: true, text: '对折次数', color: 'rgba(255,255,255,0.6)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y: {
+              title: { display: true, text: '厚度（米）', color: 'rgba(255,255,255,0.6)' },
+              ticks: { 
+                color: 'rgba(255,255,255,0.5)',
+                callback: function(value) {
+                  if (value >= 1000000000) return (value / 1000000000).toFixed(0) + '百万km';
+                  if (value >= 1000000) return (value / 1000000).toFixed(0) + '千km';
+                  if (value >= 1000) return (value / 1000).toFixed(0) + 'km';
+                  return value.toFixed(0) + 'm';
+                }
+              },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: 'rgba(255,255,255,0.8)' } }
+          }
+        }
+      });
+      
+      // 对数坐标图表
+      const ctxLog = document.getElementById('logChart').getContext('2d');
+      if (logChart) logChart.destroy();
+      
+      logChart = new Chart(ctxLog, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '厚度（米，对数刻度）',
+            data: data,
+            borderColor: '#4ade80',
+            backgroundColor: 'rgba(74, 222, 128, 0.1)',
+            fill: true,
+            tension: 0.1,
+            pointRadius: (ctx) => ctx.dataIndex === foldCount ? 8 : 2,
+            pointBackgroundColor: (ctx) => ctx.dataIndex === foldCount ? '#ffd93d' : '#4ade80',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              title: { display: true, text: '对折次数', color: 'rgba(255,255,255,0.6)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y: {
+              type: 'logarithmic',
+              title: { display: true, text: '厚度（米，对数刻度）', color: 'rgba(255,255,255,0.6)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: 'rgba(255,255,255,0.8)' } }
+          }
+        }
+      });
+    }
+    
+    function renderDataTable() {
+      const tbody = document.getElementById('dataTable');
+      const keyFolds = [0, 1, 2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 42, 45, 50, 51];
+      
+      tbody.innerHTML = keyFolds.map(f => {
+        const thickness = getThickness(f);
+        let compare = '';
+        if (f === 0) compare = '一张纸';
+        else if (f === 10) compare = '约10厘米（一本书）';
+        else if (f === 20) compare = '约100米（30层楼）';
+        else if (f === 30) compare = '约100公里（大气层边缘）';
+        else if (f === 37) compare = '超过地球直径';
+        else if (f === 42) compare = '<span class="highlight">超过地月距离！</span>';
+        else if (f === 51) compare = '<span class="highlight">超过地日距离！</span>';
+        else compare = formatDistance(thickness);
+        
+        return `
+          <tr>
+            <td>${f}</td>
+            <td>${formatDistance(thickness)}</td>
+            <td>${compare}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    function fold() {
+      if (foldCount >= 100) return; // 防止数字溢出
+      foldCount++;
+      updateDisplay();
+    }
+    
+    function autoFold(target) {
+      const targetFolds = Math.min(target, 100);
+      const interval = setInterval(() => {
+        if (foldCount >= targetFolds) {
+          clearInterval(interval);
+          return;
+        }
+        fold();
+      }, 100);
+    }
+    
+    function reset() {
+      foldCount = 0;
+      updateDisplay();
+    }
+    
+    // 初始化
+    updateDisplay();
+    renderDataTable();
+  </script>
+</body>
+</html>

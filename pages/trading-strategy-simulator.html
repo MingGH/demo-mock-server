@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>交易策略模拟器 - 高胜率 vs 高盈亏比</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #4ade80, #22d3ee);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+    }
+    .card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .question-box {
+      background: linear-gradient(135deg, rgba(74,222,128,0.15), rgba(34,211,238,0.1));
+      border-left: 4px solid #4ade80;
+      padding: 15px 20px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+      line-height: 1.8;
+    }
+    
+    /* 策略对比 */
+    .strategy-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 20px 0;
+    }
+    @media (max-width: 700px) {
+      .strategy-compare { grid-template-columns: 1fr; }
+    }
+    .strategy-card {
+      background: rgba(0,0,0,0.3);
+      border-radius: 16px;
+      padding: 20px;
+      border: 2px solid transparent;
+      transition: all 0.3s;
+    }
+    .strategy-card.high-winrate { border-color: rgba(74,222,128,0.3); }
+    .strategy-card.high-rr { border-color: rgba(251,191,36,0.3); }
+    .strategy-card h3 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .strategy-card.high-winrate h3 { color: #4ade80; }
+    .strategy-card.high-rr h3 { color: #fbbf24; }
+    .strategy-icon { font-size: 1.5rem; }
+    
+    .param-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .param-row:last-child { border-bottom: none; }
+    .param-label { color: rgba(255,255,255,0.6); font-size: 0.9rem; }
+    .param-value { font-weight: bold; font-size: 1.1rem; }
+    .param-value.green { color: #4ade80; }
+    .param-value.yellow { color: #fbbf24; }
+    .param-value.red { color: #f87171; }
+    
+    /* 滑块 */
+    .slider-group {
+      margin: 15px 0;
+    }
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .slider-label span:first-child { color: rgba(255,255,255,0.6); }
+    .slider-label span:last-child { color: #4ade80; font-weight: bold; }
+    input[type="range"] {
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.1);
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #4ade80;
+      cursor: pointer;
+    }
+    .slider-group.yellow input[type="range"]::-webkit-slider-thumb {
+      background: #fbbf24;
+    }
+    
+    /* 结果面板 */
+    .results-panel {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) {
+      .results-panel { grid-template-columns: 1fr; }
+    }
+    .result-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .result-box .label {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 8px;
+    }
+    .result-box .value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+    .result-box .value.green { color: #4ade80; }
+    .result-box .value.yellow { color: #fbbf24; }
+    .result-box .value.red { color: #f87171; }
+    .result-box .sub {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.4);
+      margin-top: 5px;
+    }
+    
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 350px;
+      margin: 20px 0;
+    }
+    
+    /* 按钮 */
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: #000;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-yellow {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: #000;
+    }
+    
+    /* 期望值公式 */
+    .formula-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      font-family: 'Courier New', monospace;
+    }
+    .formula-box h4 {
+      color: #22d3ee;
+      margin-bottom: 15px;
+    }
+    .formula {
+      font-size: 1.1rem;
+      line-height: 2;
+      color: rgba(255,255,255,0.9);
+    }
+    .formula .highlight { color: #4ade80; }
+    .formula .yellow { color: #fbbf24; }
+    
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+    .analysis h3 {
+      color: #22d3ee;
+      margin-bottom: 15px;
+    }
+    .analysis p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.85;
+      margin-bottom: 14px;
+    }
+    .analysis .key { color: #4ade80; font-weight: bold; }
+    .analysis .warn { color: #fbbf24; font-weight: bold; }
+    
+    /* 对比表格 */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    .compare-table th, .compare-table td {
+      padding: 12px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .compare-table th {
+      background: rgba(34,211,238,0.2);
+      color: #22d3ee;
+    }
+    .compare-table .green { color: #4ade80; }
+    .compare-table .yellow { color: #fbbf24; }
+    
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(34,211,238,0.15), rgba(74,222,128,0.1));
+      border: 2px solid #22d3ee;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+    }
+    .conclusion h3 { color: #22d3ee; margin-bottom: 15px; }
+    .conclusion p { color: rgba(255,255,255,0.9); line-height: 1.85; }
+    
+    /* 历史记录 */
+    .trade-history {
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 15px;
+    }
+    .trade-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.85rem;
+    }
+    .trade-item:last-child { border-bottom: none; }
+    .trade-item.win { color: #4ade80; }
+    .trade-item.lose { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>📈 交易策略模拟器</h1>
+    <p class="subtitle">高胜率 vs 高盈亏比，谁才是王道？</p>
+    
+    <div class="card">
+      <div class="question-box">
+        <strong>知乎热议：</strong>为什么高盈亏比的人看不起高胜率的人？<br>
+        有大V说"交易做到最后胜率都是50%"，高胜率长期必定低于50%？<br>
+        <strong>这种说法对吗？让数据说话。</strong>
+      </div>
+      
+      <!-- 核心公式 -->
+      <div class="formula-box">
+        <h4>📐 交易的核心公式：期望值</h4>
+        <div class="formula">
+          期望值 = <span class="highlight">胜率</span> × <span class="highlight">平均盈利</span> - <span class="yellow">(1-胜率)</span> × <span class="yellow">平均亏损</span><br><br>
+          或者写成：E = P × W - (1-P) × L<br><br>
+          其中盈亏比 R = W / L<br><br>
+          <strong>只要 E > 0，长期就能盈利。</strong>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 策略对比 -->
+    <div class="card">
+      <h2 style="color: #22d3ee; margin-bottom: 20px;">⚔️ 两种策略对决</h2>
+      
+      <div class="strategy-compare">
+        <!-- 高胜率策略 -->
+        <div class="strategy-card high-winrate">
+          <h3><span class="strategy-icon">🎯</span> 高胜率策略</h3>
+          
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>胜率</span>
+              <span id="winrateValue1">70%</span>
+            </div>
+            <input type="range" id="winrate1" min="10" max="95" value="70" oninput="updateStrategy()">
+          </div>
+          
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>盈亏比</span>
+              <span id="rrValue1">0.8:1</span>
+            </div>
+            <input type="range" id="rr1" min="20" max="150" value="80" oninput="updateStrategy()">
+          </div>
+          
+          <div class="param-row">
+            <span class="param-label">期望值</span>
+            <span class="param-value green" id="ev1">+0.26</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label">100次交易预期</span>
+            <span class="param-value" id="profit1">+26%</span>
+          </div>
+        </div>
+        
+        <!-- 高盈亏比策略 -->
+        <div class="strategy-card high-rr">
+          <h3><span class="strategy-icon">🚀</span> 高盈亏比策略</h3>
+          
+          <div class="slider-group yellow">
+            <div class="slider-label">
+              <span>胜率</span>
+              <span id="winrateValue2">35%</span>
+            </div>
+            <input type="range" id="winrate2" min="10" max="95" value="35" oninput="updateStrategy()">
+          </div>
+          
+          <div class="slider-group yellow">
+            <div class="slider-label">
+              <span>盈亏比</span>
+              <span id="rrValue2">3:1</span>
+            </div>
+            <input type="range" id="rr2" min="20" max="500" value="300" oninput="updateStrategy()">
+          </div>
+          
+          <div class="param-row">
+            <span class="param-label">期望值</span>
+            <span class="param-value yellow" id="ev2">+0.40</span>
+          </div>
+          <div class="param-row">
+            <span class="param-label">100次交易预期</span>
+            <span class="param-value" id="profit2">+40%</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 模拟按钮 -->
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="runSimulation(100)">🎲 模拟100次交易</button>
+        <button class="btn btn-yellow" onclick="runSimulation(1000)">⚡ 模拟1000次</button>
+        <button class="btn btn-secondary" onclick="runBattle()">⚔️ 1000场对决</button>
+      </div>
+      
+      <!-- 结果面板 -->
+      <div class="results-panel" id="resultsPanel" style="display: none;">
+        <div class="result-box">
+          <div class="label">🎯 高胜率最终收益</div>
+          <div class="value green" id="result1">-</div>
+          <div class="sub" id="actualWinrate1">实际胜率: -</div>
+        </div>
+        <div class="result-box">
+          <div class="label">🚀 高盈亏比最终收益</div>
+          <div class="value yellow" id="result2">-</div>
+          <div class="sub" id="actualWinrate2">实际胜率: -</div>
+        </div>
+        <div class="result-box">
+          <div class="label">🏆 本轮胜者</div>
+          <div class="value" id="winner">-</div>
+          <div class="sub" id="winnerSub">-</div>
+        </div>
+      </div>
+      
+      <!-- 图表 -->
+      <div class="chart-container">
+        <canvas id="equityChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- 对决统计 -->
+    <div class="card" id="battleCard" style="display: none;">
+      <h2 style="color: #22d3ee; margin-bottom: 20px;">📊 1000场对决统计</h2>
+      <div class="results-panel">
+        <div class="result-box">
+          <div class="label">🎯 高胜率获胜</div>
+          <div class="value green" id="battleWin1">-</div>
+        </div>
+        <div class="result-box">
+          <div class="label">🚀 高盈亏比获胜</div>
+          <div class="value yellow" id="battleWin2">-</div>
+        </div>
+        <div class="result-box">
+          <div class="label">📈 平均收益差</div>
+          <div class="value" id="avgDiff">-</div>
+        </div>
+      </div>
+      <p style="color: rgba(255,255,255,0.6); text-align: center; margin-top: 15px;" id="battleConclusion"></p>
+    </div>
+    
+    <!-- 盈亏平衡表 -->
+    <div class="card">
+      <h2 style="color: #22d3ee; margin-bottom: 20px;">📋 盈亏平衡表：多少胜率才能保本？</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 15px;">
+        不同盈亏比下，需要多少胜率才能期望值为0（不亏不赚）：
+      </p>
+      
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>盈亏比</th>
+            <th>保本胜率</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="yellow">0.5:1</td>
+            <td class="green">66.7%</td>
+            <td>赚1亏2，需要很高胜率</td>
+          </tr>
+          <tr>
+            <td class="yellow">1:1</td>
+            <td class="green">50%</td>
+            <td>赚1亏1，抛硬币水平</td>
+          </tr>
+          <tr>
+            <td class="yellow">2:1</td>
+            <td class="green">33.3%</td>
+            <td>赚2亏1，3次对1次</td>
+          </tr>
+          <tr>
+            <td class="yellow">3:1</td>
+            <td class="green">25%</td>
+            <td>赚3亏1，4次对1次</td>
+          </tr>
+          <tr>
+            <td class="yellow">5:1</td>
+            <td class="green">16.7%</td>
+            <td>赚5亏1，6次对1次</td>
+          </tr>
+          <tr>
+            <td class="yellow">10:1</td>
+            <td class="green">9.1%</td>
+            <td>赚10亏1，11次对1次</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <p style="color: rgba(255,255,255,0.7); margin-top: 15px;">
+        <span style="color: #4ade80;">公式：</span>保本胜率 = 1 / (1 + 盈亏比)
+      </p>
+    </div>
+    
+    <!-- 核心分析 -->
+    <div class="card analysis">
+      <h3>🤔 为什么高盈亏比的人"看不起"高胜率？</h3>
+      
+      <p><strong>1. 他们说的有一定道理</strong></p>
+      <p>
+        高胜率策略通常意味着<span class="warn">小赚大亏</span>——赚的时候赚一点，亏的时候亏很多。<br>
+        比如：胜率80%，但盈亏比0.3:1，期望值 = 0.8×0.3 - 0.2×1 = <span class="warn">0.04</span>（勉强正）<br>
+        一旦胜率下滑到70%，期望值 = 0.7×0.3 - 0.3×1 = <span style="color: #f87171;">-0.09</span>（亏损）
+      </p>
+      
+      <p><strong>2. 但他们的说法也有问题</strong></p>
+      <p>
+        "胜率长期必定低于50%"这个说法<span class="key">没有数学依据</span>。<br>
+        胜率取决于策略本身，不是什么宇宙法则。<br>
+        有些策略天然高胜率（比如卖期权），有些天然低胜率（比如趋势跟踪）。
+      </p>
+      
+      <p><strong>3. 真正重要的是期望值</strong></p>
+      <p>
+        <span class="key">期望值 = 胜率 × 盈利 - (1-胜率) × 亏损</span><br>
+        只要期望值为正，无论高胜率还是高盈亏比，长期都能盈利。<br>
+        两种策略没有高下之分，只有<span class="key">适合不适合</span>。
+      </p>
+      
+      <p><strong>4. 为什么会有鄙视链？</strong></p>
+      <p>
+        高盈亏比策略需要<span class="warn">承受连续亏损</span>，心理压力大，能坚持下来的人少。<br>
+        他们觉得自己"修炼"过了，所以看不起"走捷径"的高胜率派。<br>
+        但这是<span class="key">幸存者偏差</span>——死在连亏路上的高盈亏比选手，你看不到。
+      </p>
+    </div>
+    
+    <!-- 两种策略的优缺点 -->
+    <div class="card">
+      <h2 style="color: #22d3ee; margin-bottom: 20px;">⚖️ 两种策略的真实对比</h2>
+      
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>维度</th>
+            <th class="green">高胜率策略</th>
+            <th class="yellow">高盈亏比策略</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>心理舒适度</td>
+            <td class="green">高（经常赢）</td>
+            <td class="yellow">低（经常输）</td>
+          </tr>
+          <tr>
+            <td>最大回撤</td>
+            <td class="yellow">可能很大（一次大亏）</td>
+            <td class="green">相对可控</td>
+          </tr>
+          <tr>
+            <td>连亏承受</td>
+            <td class="green">少（胜率高）</td>
+            <td class="yellow">多（可能连亏10+次）</td>
+          </tr>
+          <tr>
+            <td>资金曲线</td>
+            <td class="green">平滑上升+偶尔大跌</td>
+            <td class="yellow">锯齿形+偶尔大涨</td>
+          </tr>
+          <tr>
+            <td>适合人群</td>
+            <td>厌恶亏损、需要正反馈</td>
+            <td>能承受连亏、有耐心</td>
+          </tr>
+          <tr>
+            <td>典型策略</td>
+            <td>卖期权、均值回归</td>
+            <td>趋势跟踪、突破交易</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- 结论 -->
+    <div class="card conclusion">
+      <h3>💡 结论：没有最好的策略，只有最适合的策略</h3>
+      <p>
+        高盈亏比的人看不起高胜率，本质上是<strong>路径依赖</strong>。<br><br>
+        他们走通了高盈亏比这条路，就觉得这是"正道"。<br>
+        但数学告诉我们：<strong style="color: #4ade80;">只要期望值为正，两条路都能到达终点。</strong><br><br>
+        真正的问题不是"哪种策略更好"，而是：<br>
+        <strong style="color: #fbbf24;">你能不能坚持执行你的策略？</strong><br><br>
+        高胜率的人受不了一次大亏，高盈亏比的人受不了连续小亏。<br>
+        <span style="color: rgba(255,255,255,0.6);">选择适合自己性格的策略，比选择"更优"的策略重要得多。</span>
+      </p>
+    </div>
+  </div>
+
+
+  <script>
+    let chart = null;
+    
+    function updateStrategy() {
+      const winrate1 = parseInt(document.getElementById('winrate1').value);
+      const rr1 = parseInt(document.getElementById('rr1').value) / 100;
+      const winrate2 = parseInt(document.getElementById('winrate2').value);
+      const rr2 = parseInt(document.getElementById('rr2').value) / 100;
+      
+      document.getElementById('winrateValue1').textContent = winrate1 + '%';
+      document.getElementById('rrValue1').textContent = rr1.toFixed(1) + ':1';
+      document.getElementById('winrateValue2').textContent = winrate2 + '%';
+      document.getElementById('rrValue2').textContent = rr2.toFixed(1) + ':1';
+      
+      // 计算期望值
+      const ev1 = (winrate1/100) * rr1 - (1 - winrate1/100) * 1;
+      const ev2 = (winrate2/100) * rr2 - (1 - winrate2/100) * 1;
+      
+      document.getElementById('ev1').textContent = (ev1 >= 0 ? '+' : '') + ev1.toFixed(3);
+      document.getElementById('ev1').className = 'param-value ' + (ev1 >= 0 ? 'green' : 'red');
+      
+      document.getElementById('ev2').textContent = (ev2 >= 0 ? '+' : '') + ev2.toFixed(3);
+      document.getElementById('ev2').className = 'param-value ' + (ev2 >= 0 ? 'yellow' : 'red');
+      
+      // 100次交易预期
+      const profit1 = ev1 * 100;
+      const profit2 = ev2 * 100;
+      
+      document.getElementById('profit1').textContent = (profit1 >= 0 ? '+' : '') + profit1.toFixed(0) + '%';
+      document.getElementById('profit1').className = 'param-value ' + (profit1 >= 0 ? 'green' : 'red');
+      
+      document.getElementById('profit2').textContent = (profit2 >= 0 ? '+' : '') + profit2.toFixed(0) + '%';
+      document.getElementById('profit2').className = 'param-value ' + (profit2 >= 0 ? 'yellow' : 'red');
+    }
+    
+    function simulateTrades(winrate, rr, count) {
+      const equity = [100];
+      let wins = 0;
+      const riskPerTrade = 1; // 每次风险1%
+      
+      for (let i = 0; i < count; i++) {
+        const win = Math.random() < winrate / 100;
+        const currentEquity = equity[equity.length - 1];
+        
+        if (win) {
+          wins++;
+          equity.push(currentEquity * (1 + riskPerTrade * rr / 100));
+        } else {
+          equity.push(currentEquity * (1 - riskPerTrade / 100));
+        }
+      }
+      
+      return {
+        equity,
+        finalReturn: ((equity[equity.length - 1] - 100) / 100 * 100).toFixed(1),
+        actualWinrate: (wins / count * 100).toFixed(1)
+      };
+    }
+    
+    function runSimulation(count) {
+      const winrate1 = parseInt(document.getElementById('winrate1').value);
+      const rr1 = parseInt(document.getElementById('rr1').value) / 100;
+      const winrate2 = parseInt(document.getElementById('winrate2').value);
+      const rr2 = parseInt(document.getElementById('rr2').value) / 100;
+      
+      const result1 = simulateTrades(winrate1, rr1, count);
+      const result2 = simulateTrades(winrate2, rr2, count);
+      
+      // 显示结果
+      document.getElementById('resultsPanel').style.display = 'grid';
+      
+      document.getElementById('result1').textContent = result1.finalReturn + '%';
+      document.getElementById('result1').className = 'value ' + (parseFloat(result1.finalReturn) >= 0 ? 'green' : 'red');
+      document.getElementById('actualWinrate1').textContent = '实际胜率: ' + result1.actualWinrate + '%';
+      
+      document.getElementById('result2').textContent = result2.finalReturn + '%';
+      document.getElementById('result2').className = 'value ' + (parseFloat(result2.finalReturn) >= 0 ? 'yellow' : 'red');
+      document.getElementById('actualWinrate2').textContent = '实际胜率: ' + result2.actualWinrate + '%';
+      
+      // 判断胜者
+      const winner = parseFloat(result1.finalReturn) > parseFloat(result2.finalReturn) ? 1 : 2;
+      document.getElementById('winner').textContent = winner === 1 ? '🎯 高胜率' : '🚀 高盈亏比';
+      document.getElementById('winner').className = 'value ' + (winner === 1 ? 'green' : 'yellow');
+      document.getElementById('winnerSub').textContent = '领先 ' + Math.abs(parseFloat(result1.finalReturn) - parseFloat(result2.finalReturn)).toFixed(1) + '%';
+      
+      // 绘制图表
+      drawChart(result1.equity, result2.equity);
+    }
+    
+    function runBattle() {
+      const winrate1 = parseInt(document.getElementById('winrate1').value);
+      const rr1 = parseInt(document.getElementById('rr1').value) / 100;
+      const winrate2 = parseInt(document.getElementById('winrate2').value);
+      const rr2 = parseInt(document.getElementById('rr2').value) / 100;
+      
+      let wins1 = 0, wins2 = 0;
+      let totalDiff = 0;
+      
+      for (let i = 0; i < 1000; i++) {
+        const result1 = simulateTrades(winrate1, rr1, 100);
+        const result2 = simulateTrades(winrate2, rr2, 100);
+        
+        const r1 = parseFloat(result1.finalReturn);
+        const r2 = parseFloat(result2.finalReturn);
+        
+        if (r1 > r2) wins1++;
+        else wins2++;
+        
+        totalDiff += r1 - r2;
+      }
+      
+      // 显示结果面板
+      document.getElementById('resultsPanel').style.display = 'grid';
+      
+      // 更新单次模拟结果为对决统计
+      document.getElementById('result1').textContent = wins1 + ' 胜';
+      document.getElementById('result1').className = 'value ' + (wins1 > wins2 ? 'green' : 'red');
+      document.getElementById('actualWinrate1').textContent = '胜率: ' + (wins1/10).toFixed(1) + '%';
+      
+      document.getElementById('result2').textContent = wins2 + ' 胜';
+      document.getElementById('result2').className = 'value ' + (wins2 > wins1 ? 'yellow' : 'red');
+      document.getElementById('actualWinrate2').textContent = '胜率: ' + (wins2/10).toFixed(1) + '%';
+      
+      // 判断胜者
+      const avgDiff = totalDiff / 1000;
+      const winner = wins1 > wins2 ? 1 : 2;
+      document.getElementById('winner').textContent = winner === 1 ? '🎯 高胜率' : '🚀 高盈亏比';
+      document.getElementById('winner').className = 'value ' + (winner === 1 ? 'green' : 'yellow');
+      document.getElementById('winnerSub').textContent = '平均收益差: ' + (avgDiff >= 0 ? '+' : '') + avgDiff.toFixed(1) + '%';
+      
+      // 也显示下方的详细卡片
+      document.getElementById('battleCard').style.display = 'block';
+      document.getElementById('battleWin1').textContent = wins1 + ' 次';
+      document.getElementById('battleWin2').textContent = wins2 + ' 次';
+      
+      document.getElementById('avgDiff').textContent = (avgDiff >= 0 ? '+' : '') + avgDiff.toFixed(1) + '%';
+      document.getElementById('avgDiff').className = 'value ' + (avgDiff >= 0 ? 'green' : 'yellow');
+      
+      const ev1 = (winrate1/100) * rr1 - (1 - winrate1/100) * 1;
+      const ev2 = (winrate2/100) * rr2 - (1 - winrate2/100) * 1;
+      
+      let conclusion = '';
+      if (Math.abs(ev1 - ev2) < 0.05) {
+        conclusion = '两种策略期望值接近，胜负主要取决于运气波动。';
+      } else if (ev1 > ev2) {
+        conclusion = '高胜率策略期望值更高，长期来看更有优势。';
+      } else {
+        conclusion = '高盈亏比策略期望值更高，长期来看更有优势。';
+      }
+      document.getElementById('battleConclusion').textContent = conclusion;
+      
+      // 滚动到结果位置
+      document.getElementById('resultsPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    function drawChart(equity1, equity2) {
+      const ctx = document.getElementById('equityChart').getContext('2d');
+      
+      if (chart) chart.destroy();
+      
+      const labels = equity1.map((_, i) => i);
+      
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '🎯 高胜率',
+              data: equity1,
+              borderColor: '#4ade80',
+              backgroundColor: 'rgba(74, 222, 128, 0.1)',
+              fill: true,
+              tension: 0.1,
+              pointRadius: 0
+            },
+            {
+              label: '🚀 高盈亏比',
+              data: equity2,
+              borderColor: '#fbbf24',
+              backgroundColor: 'rgba(251, 191, 36, 0.1)',
+              fill: true,
+              tension: 0.1,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: 'rgba(255,255,255,0.8)' }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '交易次数', color: 'rgba(255,255,255,0.6)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y: {
+              title: { display: true, text: '资金曲线', color: 'rgba(255,255,255,0.6)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            }
+          }
+        }
+      });
+    }
+    
+    // 初始化
+    updateStrategy();
+  </script>
+</body>
+</html>

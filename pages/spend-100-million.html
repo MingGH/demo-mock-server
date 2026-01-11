@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>一个亿花钱模拟器 - 拥有一个亿有多痛苦？</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #ffd93d, #ff6b6b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    /* 余额显示 */
+    .balance-display {
+      text-align: center;
+      padding: 30px;
+      background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,107,107,0.1));
+      border-radius: 20px;
+      margin-bottom: 25px;
+    }
+    .balance-label {
+      font-size: 1rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 10px;
+    }
+    .balance-value {
+      font-size: 3.5rem;
+      font-weight: bold;
+      color: #ffd93d;
+      font-family: 'Courier New', monospace;
+      text-shadow: 0 0 30px rgba(255,217,61,0.5);
+    }
+    .balance-value.low { color: #4ade80; }
+    .balance-value.empty { color: #ff6b6b; }
+    .spent-info {
+      margin-top: 15px;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.5);
+    }
+    .spent-info span { color: #ff6b6b; }
+    
+    /* 进度条 */
+    .progress-section {
+      margin: 20px 0;
+    }
+    .progress-bar {
+      height: 30px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 15px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff6b6b, #ffd93d);
+      border-radius: 15px;
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 10px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #333;
+    }
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+    }
+    
+    /* 商品分类 */
+    .category-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .category-tab {
+      padding: 10px 20px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      background: rgba(0,0,0,0.2);
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.9rem;
+    }
+    .category-tab:hover { border-color: #ffd93d; }
+    .category-tab.active {
+      border-color: #ffd93d;
+      background: rgba(255,217,61,0.2);
+      color: #ffd93d;
+    }
+    
+    /* 商品网格 */
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+    }
+    .item-card {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .item-card:hover {
+      border-color: #ffd93d;
+      transform: translateY(-3px);
+    }
+    .item-card.bought {
+      border-color: #4ade80;
+      background: rgba(74,222,128,0.1);
+    }
+    .item-card.cant-afford {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .item-icon { font-size: 3rem; margin-bottom: 10px; }
+    .item-name {
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.9);
+    }
+    .item-price {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #ffd93d;
+    }
+    .item-count {
+      font-size: 0.8rem;
+      color: #4ade80;
+      margin-top: 5px;
+    }
+    
+    /* 购物车 */
+    .cart-section {
+      margin-top: 20px;
+    }
+    .cart-title {
+      color: #ffd93d;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .cart-list {
+      max-height: 300px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .cart-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .cart-item:last-child { border-bottom: none; }
+    .cart-item-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .cart-item-icon { font-size: 1.5rem; }
+    .cart-item-name { color: rgba(255,255,255,0.8); }
+    .cart-item-qty { color: rgba(255,255,255,0.5); font-size: 0.85rem; }
+    .cart-item-total { color: #ffd93d; font-weight: bold; }
+    
+    /* 统计面板 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 700px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-box .label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 5px;
+    }
+    .stat-box .value {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    .stat-box .value.gold { color: #ffd93d; }
+    .stat-box .value.green { color: #4ade80; }
+    .stat-box .value.red { color: #ff6b6b; }
+    
+    /* 按钮 */
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd93d, #f0c000);
+      color: #333;
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #ff6b6b, #e05555);
+      color: white;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    /* 痛苦指数 */
+    .pain-meter {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .pain-label {
+      font-size: 1rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 10px;
+    }
+    .pain-bar {
+      height: 20px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .pain-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4ade80, #ffd93d, #ff6b6b);
+      transition: width 0.3s;
+    }
+    .pain-text {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    
+    /* 对比卡片 */
+    .compare-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .compare-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .compare-card h4 {
+      color: #ffd93d;
+      margin-bottom: 10px;
+    }
+    .compare-card .big-num {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #4ade80;
+    }
+    .compare-card p {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      margin-top: 10px;
+    }
+    
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.9);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 10000;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>💰 一个亿花钱模拟器</h1>
+    <p class="subtitle">拥有一个亿有多痛苦？来试试把它花光</p>
+    
+    <div class="card">
+      <!-- 余额显示 -->
+      <div class="balance-display">
+        <div class="balance-label">💳 你的余额</div>
+        <div class="balance-value" id="balance">¥100,000,000</div>
+        <div class="spent-info">
+          已花费：<span id="totalSpent">¥0</span> | 
+          购买了 <span id="itemCount">0</span> 件商品
+        </div>
+      </div>
+      
+      <!-- 进度条 -->
+      <div class="progress-section">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width: 100%;">100%</div>
+        </div>
+        <div class="progress-labels">
+          <span>破产 💀</span>
+          <span>一个亿 🤑</span>
+        </div>
+      </div>
+      
+      <!-- 痛苦指数 -->
+      <div class="pain-meter">
+        <div class="pain-label">😫 花钱痛苦指数</div>
+        <div class="pain-bar">
+          <div class="pain-fill" id="painFill" style="width: 0%"></div>
+        </div>
+        <div class="pain-text" id="painText">还没开始花呢，快点！</div>
+      </div>
+      
+      <!-- 统计 -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="label">相当于月薪1万</div>
+          <div class="value gold" id="monthSalary">833年</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">每天花1万</div>
+          <div class="value green" id="dailySpend">27年</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">存银行年利息</div>
+          <div class="value gold" id="bankInterest">¥200万</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">买茅台能喝</div>
+          <div class="value red" id="maotaiYears">55年</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 商品区 -->
+    <div class="card">
+      <h2 style="color: #ffd93d; margin-bottom: 20px;">🛒 开始挥霍吧！</h2>
+      
+      <div class="category-tabs">
+        <div class="category-tab active" onclick="filterCategory('all')">全部</div>
+        <div class="category-tab" onclick="filterCategory('daily')">🍜 日常</div>
+        <div class="category-tab" onclick="filterCategory('luxury')">💎 奢侈品</div>
+        <div class="category-tab" onclick="filterCategory('car')">🚗 座驾</div>
+        <div class="category-tab" onclick="filterCategory('house')">🏠 房产</div>
+        <div class="category-tab" onclick="filterCategory('crazy')">🚀 疯狂</div>
+      </div>
+      
+      <div class="items-grid" id="itemsGrid">
+        <!-- 动态生成 -->
+      </div>
+      
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="buyAll()">🛒 全部买一遍</button>
+        <button class="btn btn-danger" onclick="resetGame()">🔄 重新开始</button>
+      </div>
+    </div>
+    
+    <!-- 购物车 -->
+    <div class="card cart-section">
+      <h3 class="cart-title">🧾 购物清单</h3>
+      <div class="cart-list" id="cartList">
+        <div style="color: rgba(255,255,255,0.4); text-align: center; padding: 20px;">
+          还没买任何东西，快去挥霍！
+        </div>
+      </div>
+    </div>
+    
+    <!-- 对比 -->
+    <div class="card">
+      <h2 style="color: #ffd93d; margin-bottom: 20px;">📊 一个亿到底有多少？</h2>
+      <div class="compare-cards">
+        <div class="compare-card">
+          <h4>💵 100元钞票</h4>
+          <div class="big-num">1吨重</div>
+          <p>100万张百元大钞，堆起来有100米高</p>
+        </div>
+        <div class="compare-card">
+          <h4>🍚 吃饭</h4>
+          <div class="big-num">274年</div>
+          <p>每天吃1000元，可以吃274年</p>
+        </div>
+        <div class="compare-card">
+          <h4>✈️ 环球旅行</h4>
+          <div class="big-num">1000次</div>
+          <p>每次10万的豪华环球游</p>
+        </div>
+        <div class="compare-card">
+          <h4>🏠 北京房子</h4>
+          <div class="big-num">10套</div>
+          <p>四环内100平的房子</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 结论 -->
+    <div class="card" style="text-align: center; background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,217,61,0.1)); border: 2px solid #ffd93d;">
+      <h2 style="color: #ffd93d; margin-bottom: 15px;">💡 所以，拥有一个亿有多痛苦？</h2>
+      <p style="color: rgba(255,255,255,0.9); line-height: 2; font-size: 1.05rem;">
+        痛苦在于：<strong style="color: #ff6b6b;">你根本花不完。</strong><br><br>
+        即使你每天花1万，也要花27年。<br>
+        即使你买了豪车、豪宅、游艇、私人飞机……<br>
+        你会发现，钱还是花不完。<br><br>
+        更痛苦的是：<strong style="color: #ffd93d;">你得想办法让它不贬值。</strong><br>
+        存银行？每年200万利息，但通胀会吃掉它。<br>
+        投资？得操心股市、房市、汇率……<br><br>
+        <span style="color: rgba(255,255,255,0.6);">
+          所以有钱人的痛苦是真实的——<br>
+          只是和我们的痛苦不在一个维度。
+        </span>
+      </p>
+    </div>
+  </div>
+  
+  <div class="toast" id="toast"></div>
+
+
+  <script>
+    // 商品数据
+    const items = [
+      // 日常
+      { id: 1, name: '一碗兰州拉面', price: 15, icon: '🍜', category: 'daily' },
+      { id: 2, name: '星巴克咖啡', price: 40, icon: '☕', category: 'daily' },
+      { id: 3, name: '电影票', price: 50, icon: '🎬', category: 'daily' },
+      { id: 4, name: '外卖全家桶', price: 100, icon: '🍗', category: 'daily' },
+      { id: 5, name: '一顿火锅', price: 300, icon: '🍲', category: 'daily' },
+      { id: 6, name: 'iPhone 16 Pro Max', price: 13999, icon: '📱', category: 'daily' },
+      { id: 7, name: 'MacBook Pro M4', price: 24999, icon: '💻', category: 'daily' },
+      { id: 8, name: '戴森吸尘器', price: 5990, icon: '🧹', category: 'daily' },
+      { id: 9, name: '索尼PS5', price: 3899, icon: '🎮', category: 'daily' },
+      { id: 10, name: '一年健身卡', price: 8000, icon: '💪', category: 'daily' },
+      
+      // 奢侈品
+      { id: 11, name: '爱马仕铂金包', price: 150000, icon: '👜', category: 'luxury' },
+      { id: 12, name: '劳力士绿水鬼', price: 95000, icon: '⌚', category: 'luxury' },
+      { id: 13, name: '百达翡丽鹦鹉螺', price: 800000, icon: '⌚', category: 'luxury' },
+      { id: 14, name: 'LV行李箱套装', price: 120000, icon: '🧳', category: 'luxury' },
+      { id: 15, name: '卡地亚钻戒', price: 500000, icon: '💍', category: 'luxury' },
+      { id: 16, name: '茅台飞天一箱', price: 18000, icon: '🍾', category: 'luxury' },
+      { id: 17, name: '82年拉菲', price: 50000, icon: '🍷', category: 'luxury' },
+      
+      // 座驾
+      { id: 18, name: '特斯拉Model 3', price: 231900, icon: '🚗', category: 'car' },
+      { id: 19, name: '保时捷911', price: 1500000, icon: '🏎️', category: 'car' },
+      { id: 20, name: '法拉利F8', price: 3500000, icon: '🏎️', category: 'car' },
+      { id: 21, name: '兰博基尼Urus', price: 2900000, icon: '🚙', category: 'car' },
+      { id: 22, name: '劳斯莱斯幻影', price: 9200000, icon: '🚘', category: 'car' },
+      { id: 23, name: '布加迪Chiron', price: 25000000, icon: '🏎️', category: 'car' },
+      { id: 24, name: '游艇(50英尺)', price: 8000000, icon: '🛥️', category: 'car' },
+      { id: 25, name: '私人直升机', price: 30000000, icon: '🚁', category: 'car' },
+      
+      // 房产
+      { id: 26, name: '三线城市100平', price: 800000, icon: '🏠', category: 'house' },
+      { id: 27, name: '二线城市100平', price: 2000000, icon: '🏠', category: 'house' },
+      { id: 28, name: '上海内环100平', price: 15000000, icon: '🏢', category: 'house' },
+      { id: 29, name: '北京四环100平', price: 10000000, icon: '🏢', category: 'house' },
+      { id: 30, name: '深圳湾豪宅', price: 50000000, icon: '🏰', category: 'house' },
+      { id: 31, name: '三亚海景别墅', price: 20000000, icon: '🏖️', category: 'house' },
+      
+      // 疯狂
+      { id: 32, name: '私人飞机(湾流G650)', price: 450000000, icon: '✈️', category: 'crazy', cantBuy: true },
+      { id: 33, name: '太空旅行(维珍银河)', price: 3500000, icon: '🚀', category: 'crazy' },
+      { id: 34, name: '买座小岛', price: 80000000, icon: '🏝️', category: 'crazy' },
+      { id: 35, name: '投资一部电影', price: 50000000, icon: '🎬', category: 'crazy' },
+      { id: 36, name: '开一家米其林餐厅', price: 30000000, icon: '🍽️', category: 'crazy' },
+      { id: 37, name: '买一支足球队', price: 100000000, icon: '⚽', category: 'crazy' },
+      { id: 38, name: '捐建一所希望小学', price: 1000000, icon: '🏫', category: 'crazy' },
+      { id: 39, name: '给全村通自来水', price: 500000, icon: '💧', category: 'crazy' },
+    ];
+    
+    let balance = 100000000;
+    let cart = {}; // { itemId: count }
+    let currentCategory = 'all';
+    
+    function formatMoney(num) {
+      if (num >= 100000000) return (num / 100000000).toFixed(2) + '亿';
+      if (num >= 10000) return (num / 10000).toFixed(1) + '万';
+      return '¥' + num.toLocaleString();
+    }
+    
+    function updateDisplay() {
+      const balanceEl = document.getElementById('balance');
+      balanceEl.textContent = '¥' + balance.toLocaleString();
+      
+      if (balance <= 0) {
+        balanceEl.classList.add('empty');
+        balanceEl.classList.remove('low');
+      } else if (balance < 10000000) {
+        balanceEl.classList.add('low');
+        balanceEl.classList.remove('empty');
+      } else {
+        balanceEl.classList.remove('low', 'empty');
+      }
+      
+      const spent = 100000000 - balance;
+      document.getElementById('totalSpent').textContent = formatMoney(spent);
+      
+      const itemCount = Object.values(cart).reduce((a, b) => a + b, 0);
+      document.getElementById('itemCount').textContent = itemCount;
+      
+      // 进度条
+      const percent = (balance / 100000000) * 100;
+      const progressFill = document.getElementById('progressFill');
+      progressFill.style.width = percent + '%';
+      progressFill.textContent = percent.toFixed(1) + '%';
+      
+      // 痛苦指数
+      const painPercent = ((100000000 - balance) / 100000000) * 100;
+      document.getElementById('painFill').style.width = painPercent + '%';
+      
+      let painText = '';
+      if (painPercent === 0) painText = '还没开始花呢，快点！';
+      else if (painPercent < 10) painText = '😌 才花了这么点？毛毛雨啦';
+      else if (painPercent < 30) painText = '🙂 还行，继续努力';
+      else if (painPercent < 50) painText = '😅 有点感觉了，但还是很多';
+      else if (painPercent < 70) painText = '😰 花了一半了！但还是花不完...';
+      else if (painPercent < 90) painText = '😫 快了快了！再加把劲！';
+      else if (painPercent < 100) painText = '🤯 就差一点点了！！！';
+      else painText = '🎉 恭喜你！终于花光了！';
+      document.getElementById('painText').textContent = painText;
+      
+      // 更新统计
+      const years = balance / 10000 / 12;
+      document.getElementById('monthSalary').textContent = years.toFixed(0) + '年';
+      document.getElementById('dailySpend').textContent = (balance / 10000 / 365).toFixed(1) + '年';
+      document.getElementById('bankInterest').textContent = formatMoney(balance * 0.02);
+      document.getElementById('maotaiYears').textContent = (balance / 3000 / 365).toFixed(0) + '年';
+      
+      renderItems();
+      renderCart();
+    }
+    
+    function renderItems() {
+      const grid = document.getElementById('itemsGrid');
+      const filtered = currentCategory === 'all' 
+        ? items 
+        : items.filter(i => i.category === currentCategory);
+      
+      grid.innerHTML = filtered.map(item => {
+        const count = cart[item.id] || 0;
+        const cantAfford = item.price > balance || item.cantBuy;
+        
+        return `
+          <div class="item-card ${count > 0 ? 'bought' : ''} ${cantAfford ? 'cant-afford' : ''}"
+               onclick="${cantAfford ? '' : `buyItem(${item.id})`}">
+            <div class="item-icon">${item.icon}</div>
+            <div class="item-name">${item.name}</div>
+            <div class="item-price">${formatMoney(item.price)}</div>
+            ${count > 0 ? `<div class="item-count">已购 ×${count}</div>` : ''}
+            ${item.cantBuy ? `<div class="item-count" style="color: #ff6b6b;">买不起！</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function renderCart() {
+      const list = document.getElementById('cartList');
+      const cartItems = Object.entries(cart)
+        .filter(([_, count]) => count > 0)
+        .map(([id, count]) => {
+          const item = items.find(i => i.id === parseInt(id));
+          return { ...item, count, total: item.price * count };
+        })
+        .sort((a, b) => b.total - a.total);
+      
+      if (cartItems.length === 0) {
+        list.innerHTML = '<div style="color: rgba(255,255,255,0.4); text-align: center; padding: 20px;">还没买任何东西，快去挥霍！</div>';
+        return;
+      }
+      
+      list.innerHTML = cartItems.map(item => `
+        <div class="cart-item">
+          <div class="cart-item-info">
+            <span class="cart-item-icon">${item.icon}</span>
+            <span class="cart-item-name">${item.name}</span>
+            <span class="cart-item-qty">×${item.count}</span>
+          </div>
+          <span class="cart-item-total">${formatMoney(item.total)}</span>
+        </div>
+      `).join('');
+    }
+    
+    function buyItem(id) {
+      const item = items.find(i => i.id === id);
+      if (!item || item.price > balance) return;
+      
+      balance -= item.price;
+      cart[id] = (cart[id] || 0) + 1;
+      
+      showToast(`买了 ${item.icon} ${item.name}！`);
+      updateDisplay();
+      
+      if (balance <= 0) {
+        setTimeout(() => {
+          showToast('🎉 恭喜！你终于把一个亿花光了！');
+        }, 500);
+      }
+    }
+    
+    function buyAll() {
+      items.forEach(item => {
+        if (!item.cantBuy && item.price <= balance) {
+          balance -= item.price;
+          cart[item.id] = (cart[item.id] || 0) + 1;
+        }
+      });
+      showToast('每样都买了一个！');
+      updateDisplay();
+    }
+    
+    function filterCategory(category) {
+      currentCategory = category;
+      document.querySelectorAll('.category-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelector(`.category-tab[onclick="filterCategory('${category}')"]`).classList.add('active');
+      renderItems();
+    }
+    
+    function resetGame() {
+      balance = 100000000;
+      cart = {};
+      updateDisplay();
+      showToast('重新获得一个亿！');
+    }
+    
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+    
+    // 初始化
+    updateDisplay();
+  </script>
+</body>
+</html>

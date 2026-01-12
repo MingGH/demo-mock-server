@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>赢家诅咒 - 为什么赢了竞拍反而亏钱</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #ffd700, #ff6b6b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .question-box {
+      background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,107,107,0.1));
+      border-left: 4px solid #ffd700;
+      padding: 15px 20px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+      font-size: 1.05rem;
+      line-height: 1.8;
+    }
+    .question-box strong { color: #ffd700; }
+    
+    /* 拍卖区域 */
+    .auction-area {
+      text-align: center;
+      padding: 20px 0;
+    }
+    .mystery-item {
+      font-size: 100px;
+      margin: 20px 0;
+      filter: drop-shadow(0 0 30px rgba(255,215,0,0.5));
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .item-hint {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.95rem;
+      margin-bottom: 20px;
+    }
+    
+    /* 出价区 */
+    .bid-section {
+      background: rgba(0,0,0,0.3);
+      border-radius: 16px;
+      padding: 25px;
+      margin: 20px 0;
+    }
+    .bid-row {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .bid-input-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .bid-input-group label {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.95rem;
+    }
+    .bid-input {
+      width: 150px;
+      padding: 12px 15px;
+      border: 2px solid rgba(255,215,0,0.3);
+      border-radius: 10px;
+      background: rgba(0,0,0,0.3);
+      color: #ffd700;
+      font-size: 1.2rem;
+      font-weight: bold;
+      text-align: center;
+    }
+    .bid-input:focus {
+      outline: none;
+      border-color: #ffd700;
+      box-shadow: 0 0 20px rgba(255,215,0,0.3);
+    }
+    .bid-btn {
+      padding: 15px 40px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: linear-gradient(135deg, #ffd700, #f0c000);
+      color: #1a1a2e;
+    }
+    .bid-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(255,215,0,0.4);
+    }
+    .bid-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    /* 结果展示 */
+    .result-panel {
+      display: none;
+      margin-top: 25px;
+    }
+    .result-panel.show { display: block; }
+    .result-header {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+      padding: 15px;
+      border-radius: 12px;
+    }
+    .result-header.win {
+      background: linear-gradient(135deg, rgba(74,222,128,0.2), rgba(34,197,94,0.1));
+      color: #4ade80;
+    }
+    .result-header.lose {
+      background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(239,68,68,0.1));
+      color: #ff6b6b;
+    }
+    .result-header.not-win {
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.7);
+    }
+    
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) {
+      .result-grid { grid-template-columns: 1fr; }
+    }
+    .result-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .result-card h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+    .result-card .value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+    .result-card .value.gold { color: #ffd700; }
+    .result-card .value.green { color: #4ade80; }
+    .result-card .value.red { color: #ff6b6b; }
+    
+    /* 竞拍者列表 */
+    .bidders-section {
+      margin-top: 20px;
+    }
+    .bidders-section h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+    }
+    .bidders-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .bidder-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+      border: 2px solid transparent;
+      transition: all 0.3s;
+    }
+    .bidder-card.winner {
+      border-color: #ffd700;
+      background: rgba(255,215,0,0.1);
+    }
+    .bidder-card.you {
+      border-color: #4ade80;
+    }
+    .bidder-card .name {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 5px;
+    }
+    .bidder-card .bid {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #ffd700;
+    }
+    .bidder-card .estimate {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.4);
+      margin-top: 3px;
+    }
+    
+    /* 统计区 */
+    .stats-section {
+      margin-top: 25px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+    }
+    @media (max-width: 700px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+    }
+    .stat-box .value {
+      font-size: 1.6rem;
+      font-weight: bold;
+      color: #ffd700;
+    }
+    .stat-box .label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 5px;
+    }
+    
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin: 20px 0;
+    }
+    
+    /* 控制按钮 */
+    .controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+    .btn-primary {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: #000;
+    }
+    .btn-primary:hover { transform: translateY(-2px); }
+    
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+    .analysis h3 {
+      color: #ffd700;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .analysis p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.85;
+      margin-bottom: 14px;
+    }
+    .analysis .formula {
+      background: rgba(255,255,255,0.08);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      margin: 14px 0;
+      overflow-x: auto;
+    }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+    
+    /* 案例卡片 */
+    .cases {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 550px) {
+      .cases { grid-template-columns: 1fr; }
+    }
+    .case-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 18px;
+      border-left: 3px solid #ffd700;
+    }
+    .case-card h4 {
+      color: #ffd700;
+      font-size: 0.95rem;
+      margin-bottom: 10px;
+    }
+    .case-card p {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,107,107,0.1));
+      border: 2px solid #ffd700;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .conclusion h3 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+      color: #ff6b6b;
+    }
+    .conclusion p {
+      color: rgba(255,255,255,0.9);
+      line-height: 1.85;
+    }
+    
+    /* 历史记录 */
+    .history-section {
+      margin-top: 20px;
+    }
+    .history-section h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    .history-list {
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.9rem;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item.win { color: #4ade80; }
+    .history-item.lose { color: #ff6b6b; }
+    .history-item.not-win { color: rgba(255,255,255,0.5); }
+    
+    /* 批量模拟 */
+    .batch-results {
+      display: none;
+      margin-top: 20px;
+    }
+    .batch-results.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>🏆 赢家诅咒</h1>
+    <p class="subtitle">为什么赢了竞拍反而亏钱？</p>
+    
+    <div class="card">
+      <div class="question-box">
+        <strong>赢家诅咒（Winner's Curse）：</strong><br>
+        在竞拍中，赢家往往是对物品估价<strong>最高</strong>的人。<br>
+        但"估价最高"通常意味着<strong>高估了真实价值</strong>。<br>
+        所以赢家虽然赢得了拍卖，却往往<strong>付出了超过实际价值的价格</strong>。<br><br>
+        <span style="color: rgba(255,255,255,0.6);">来亲自体验一下这个诅咒吧 👇</span>
+      </div>
+      
+      <div class="auction-area">
+        <div class="mystery-item" id="mysteryItem">📦</div>
+        <div class="item-hint">
+          神秘物品 · 真实价值在 <strong>500~1500元</strong> 之间
+        </div>
+        
+        <div class="bid-section">
+          <div class="bid-row">
+            <div class="bid-input-group">
+              <label>你的出价：</label>
+              <input type="number" class="bid-input" id="userBid" placeholder="输入金额" min="0" max="3000">
+              <span style="color: rgba(255,255,255,0.5);">元</span>
+            </div>
+            <button class="bid-btn" id="bidBtn" onclick="submitBid()">🔨 出价竞拍</button>
+          </div>
+          <p style="color: rgba(255,255,255,0.5); font-size: 0.85rem;">
+            提示：你将与 9 位其他竞拍者竞争，出价最高者获得物品
+          </p>
+        </div>
+        
+        <div class="result-panel" id="resultPanel">
+          <div class="result-header" id="resultHeader"></div>
+          
+          <div class="result-grid">
+            <div class="result-card">
+              <h4>📦 真实价值</h4>
+              <div class="value gold" id="trueValue">-</div>
+            </div>
+            <div class="result-card">
+              <h4>🏆 中标价格</h4>
+              <div class="value" id="winningBid">-</div>
+            </div>
+            <div class="result-card">
+              <h4>💰 本轮盈亏</h4>
+              <div class="value" id="roundProfit">-</div>
+            </div>
+          </div>
+          
+          <div class="bidders-section">
+            <h4>👥 所有竞拍者出价</h4>
+            <div class="bidders-list" id="biddersList"></div>
+          </div>
+        </div>
+        
+        <div class="controls">
+          <button class="btn btn-secondary" onclick="nextRound()">🔄 下一轮</button>
+          <button class="btn btn-secondary" onclick="autoPlay(10)">⚡ 自动10轮</button>
+          <button class="btn btn-secondary" onclick="resetAll()">🗑️ 重置统计</button>
+        </div>
+      </div>
+      
+      <!-- 统计区 -->
+      <div class="stats-section">
+        <h3 style="color: #ffd700; margin-bottom: 15px;">📊 你的竞拍统计</h3>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="value" id="totalRounds">0</div>
+            <div class="label">参与轮数</div>
+          </div>
+          <div class="stat-box">
+            <div class="value" id="winCount">0</div>
+            <div class="label">中标次数</div>
+          </div>
+          <div class="stat-box">
+            <div class="value" id="winRate">-</div>
+            <div class="label">中标率</div>
+          </div>
+          <div class="stat-box">
+            <div class="value" id="totalProfit">¥0</div>
+            <div class="label">累计盈亏</div>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <canvas id="profitChart"></canvas>
+        </div>
+      </div>
+      
+      <!-- 历史记录 -->
+      <div class="history-section">
+        <h4>📜 竞拍历史</h4>
+        <div class="history-list" id="historyList">
+          <div style="color: rgba(255,255,255,0.5); text-align: center; padding: 20px;">
+            还没有竞拍记录，开始出价吧！
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 蒙特卡洛模拟 -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #ffd700;">🎲 蒙特卡洛模拟：1000场拍卖</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+        模拟1000场拍卖，每场10人竞拍，看看赢家的平均收益是多少
+      </p>
+      
+      <div class="controls">
+        <button class="btn btn-primary" onclick="runSimulation()" id="simBtn">🚀 运行模拟</button>
+      </div>
+      
+      <div class="batch-results" id="batchResults">
+        <div class="result-grid">
+          <div class="result-card">
+            <h4>🏆 赢家平均盈亏</h4>
+            <div class="value red" id="simWinnerProfit">-</div>
+          </div>
+          <div class="result-card">
+            <h4>📊 赢家亏损比例</h4>
+            <div class="value red" id="simLossRate">-</div>
+          </div>
+          <div class="result-card">
+            <h4>💡 平均高估幅度</h4>
+            <div class="value gold" id="simOverpay">-</div>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 数学分析 -->
+    <div class="card analysis">
+      <h3>📐 为什么会有赢家诅咒？</h3>
+      
+      <p><strong>1. 信息不对称下的估价分布</strong></p>
+      <p>
+        假设物品真实价值是 V，每个竞拍者的估价是：<br>
+        估价 = V + 误差（误差可正可负，均值为0）
+      </p>
+      <div class="formula">
+        竞拍者估价 = 真实价值 ± 随机误差
+      </div>
+      <p>
+        如果有10个人竞拍，他们的估价会围绕真实价值分布。<br>
+        有人高估，有人低估，平均下来接近真实价值。
+      </p>
+      
+      <p><strong>2. 赢家是谁？</strong></p>
+      <p>
+        出价最高的人赢得拍卖。<br>
+        而出价最高的人，往往是<span class="highlight">估价最高的人</span>。<br>
+        估价最高 = 高估得最厉害 = <span class="highlight">付出的价格超过真实价值</span>
+      </p>
+      
+      <p><strong>3. 数学期望</strong></p>
+      <div class="formula">
+        E[最高估价] > E[平均估价] = 真实价值<br>
+        ∴ E[赢家支付] > 真实价值<br>
+        ∴ E[赢家收益] < 0
+      </div>
+      <p>
+        竞拍人数越多，最高估价偏离真实价值越远，赢家诅咒越严重。
+      </p>
+      
+      <p><strong>4. 理性的应对策略</strong></p>
+      <p>
+        如果你知道赢家诅咒的存在，应该怎么出价？
+      </p>
+      <div class="formula">
+        最优出价 = 你的估价 × 折扣系数<br>
+        折扣系数 ≈ (n-1)/n （n为竞拍人数）<br>
+        例如10人竞拍：出价 = 估价 × 0.9
+      </div>
+      <p>
+        但问题是：<span class="highlight">大多数人不会这么做</span>。<br>
+        他们会按自己的估价出价，甚至为了"赢"而加价。
+      </p>
+    </div>
+    
+    <!-- 生活案例 -->
+    <div class="card">
+      <h3 style="color: #ffd700; margin-bottom: 20px;">🎯 生活中的赢家诅咒</h3>
+      
+      <div class="cases">
+        <div class="case-card">
+          <h4>🏠 抢房大战</h4>
+          <p>热门房源多人竞价，最终成交价往往高于市场价。买到的人"赢了"，但可能买贵了。几年后房价没涨，才发现自己是"赢家诅咒"的受害者。</p>
+        </div>
+        <div class="case-card">
+          <h4>💼 公司收购</h4>
+          <p>多家公司竞购同一目标，出价最高者胜出。研究显示，收购方平均会高估目标公司价值20-30%。这就是为什么很多收购案最终被证明"买贵了"。</p>
+        </div>
+        <div class="case-card">
+          <h4>⚽ 球员转会</h4>
+          <p>天价转会费的球员，表现往往不及预期。因为愿意出最高价的俱乐部，通常是对球员能力最乐观（高估）的那个。</p>
+        </div>
+        <div class="case-card">
+          <h4>📱 限量抢购</h4>
+          <p>黄牛高价收购限量商品，以为能转手赚钱。但愿意出最高价的黄牛，往往高估了市场需求，最后砸在手里。</p>
+        </div>
+        <div class="case-card">
+          <h4>💎 艺术品拍卖</h4>
+          <p>拍卖会上的天价成交，买家真的捡到宝了吗？很多艺术品在二次出售时价格大跌，因为第一次的买家就是"被诅咒的赢家"。</p>
+        </div>
+        <div class="case-card">
+          <h4>🛢️ 石油开采权</h4>
+          <p>赢家诅咒最早就是在石油开采权拍卖中被发现的。中标的公司往往高估了油田储量，最终收益远低于预期。</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 结论 -->
+    <div class="card conclusion">
+      <h3>💡 如何避免赢家诅咒？</h3>
+      <p>
+        <strong>1. 意识到它的存在</strong><br>
+        当你"赢了"竞争时，问问自己：我是不是出价最高的那个傻瓜？<br><br>
+        
+        <strong>2. 主动打折</strong><br>
+        你的估价不是你应该出的价。竞争者越多，折扣应该越大。<br><br>
+        
+        <strong>3. 警惕"赢"的冲动</strong><br>
+        很多人为了"赢"而加价，忘了赢本身不是目的，<span style="color: #ffd700;">赚钱才是</span>。<br><br>
+        
+        <strong>4. 有时候，输了才是赢了</strong><br>
+        <span style="color: rgba(255,255,255,0.6);">
+          没买到那套房、没抢到那个标、没追到那个人……<br>
+          也许不是你的损失，而是你躲过了一个诅咒。
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // 游戏状态
+    let trueValue = 0;
+    let totalRounds = 0;
+    let winCount = 0;
+    let totalProfit = 0;
+    let history = [];
+    let profitHistory = [0];
+    let chart = null;
+    let distributionChart = null;
+    
+    // 生成真实价值
+    function generateTrueValue() {
+      return Math.floor(500 + Math.random() * 1000); // 500-1500
+    }
+    
+    // 生成AI竞拍者
+    function generateBidders(trueValue, count = 9) {
+      const bidders = [];
+      for (let i = 0; i < count; i++) {
+        // 估价误差：正态分布，标准差约为真实价值的15%
+        const errorRate = (Math.random() + Math.random() + Math.random() - 1.5) * 0.3;
+        const estimate = Math.round(trueValue * (1 + errorRate));
+        // 出价策略：估价的85%-105%
+        const bidRate = 0.85 + Math.random() * 0.2;
+        const bid = Math.round(estimate * bidRate);
+        bidders.push({
+          name: `竞拍者${i + 1}`,
+          estimate: estimate,
+          bid: Math.max(0, bid)
+        });
+      }
+      return bidders;
+    }
+    
+    // 提交出价
+    function submitBid() {
+      const userBidInput = document.getElementById('userBid');
+      const userBid = parseInt(userBidInput.value);
+      
+      if (isNaN(userBid) || userBid <= 0) {
+        alert('请输入有效的出价金额！');
+        return;
+      }
+      
+      // 生成本轮数据
+      trueValue = generateTrueValue();
+      const bidders = generateBidders(trueValue);
+      
+      // 加入用户
+      bidders.push({
+        name: '你',
+        estimate: userBid, // 假设用户出价=估价
+        bid: userBid,
+        isUser: true
+      });
+      
+      // 按出价排序
+      bidders.sort((a, b) => b.bid - a.bid);
+      
+      // 找出赢家
+      const winner = bidders[0];
+      const isUserWinner = winner.isUser;
+      const profit = isUserWinner ? (trueValue - userBid) : 0;
+      
+      // 更新统计
+      totalRounds++;
+      if (isUserWinner) {
+        winCount++;
+        totalProfit += profit;
+      }
+      profitHistory.push(totalProfit);
+      
+      // 记录历史
+      history.unshift({
+        round: totalRounds,
+        trueValue: trueValue,
+        userBid: userBid,
+        winningBid: winner.bid,
+        isWinner: isUserWinner,
+        profit: profit
+      });
+      
+      // 显示结果
+      showResult(trueValue, winner, bidders, isUserWinner, profit);
+      updateStats();
+      updateChart();
+      renderHistory();
+      
+      // 禁用出价按钮
+      document.getElementById('bidBtn').disabled = true;
+    }
+    
+    // 显示结果
+    function showResult(trueValue, winner, bidders, isUserWinner, profit) {
+      const panel = document.getElementById('resultPanel');
+      const header = document.getElementById('resultHeader');
+      
+      panel.classList.add('show');
+      
+      // 结果标题
+      if (isUserWinner) {
+        if (profit >= 0) {
+          header.className = 'result-header win';
+          header.innerHTML = `🎉 恭喜中标！你赚了 ¥${profit}`;
+        } else {
+          header.className = 'result-header lose';
+          header.innerHTML = `😱 中标了，但你亏了 ¥${Math.abs(profit)}！这就是赢家诅咒`;
+        }
+      } else {
+        header.className = 'result-header not-win';
+        header.innerHTML = `😌 未中标 · 赢家出价 ¥${winner.bid}，${winner.bid > trueValue ? '亏了 ¥' + (winner.bid - trueValue) : '赚了 ¥' + (trueValue - winner.bid)}`;
+      }
+      
+      // 数值显示
+      document.getElementById('trueValue').textContent = `¥${trueValue}`;
+      
+      const winningBidEl = document.getElementById('winningBid');
+      winningBidEl.textContent = `¥${winner.bid}`;
+      winningBidEl.className = 'value ' + (winner.bid > trueValue ? 'red' : 'green');
+      
+      const profitEl = document.getElementById('roundProfit');
+      if (isUserWinner) {
+        profitEl.textContent = (profit >= 0 ? '+' : '') + `¥${profit}`;
+        profitEl.className = 'value ' + (profit >= 0 ? 'green' : 'red');
+      } else {
+        profitEl.textContent = '¥0';
+        profitEl.className = 'value';
+      }
+      
+      // 竞拍者列表
+      const list = document.getElementById('biddersList');
+      list.innerHTML = bidders.map((b, i) => `
+        <div class="bidder-card ${i === 0 ? 'winner' : ''} ${b.isUser ? 'you' : ''}">
+          <div class="name">${b.name} ${i === 0 ? '👑' : ''}</div>
+          <div class="bid">¥${b.bid}</div>
+          <div class="estimate">估价 ¥${b.estimate}</div>
+        </div>
+      `).join('');
+    }
+    
+    // 下一轮
+    function nextRound() {
+      document.getElementById('resultPanel').classList.remove('show');
+      document.getElementById('userBid').value = '';
+      document.getElementById('bidBtn').disabled = false;
+      
+      // 更换物品图标
+      const items = ['📦', '💎', '🏺', '🎨', '⌚', '💍', '🏆', '🎸', '📿', '🗿'];
+      document.getElementById('mysteryItem').textContent = items[Math.floor(Math.random() * items.length)];
+    }
+    
+    // 自动游戏
+    function autoPlay(rounds) {
+      let count = 0;
+      const interval = setInterval(() => {
+        if (count >= rounds) {
+          clearInterval(interval);
+          return;
+        }
+        
+        // 随机出价策略：真实价值的80%-120%
+        const fakeTrue = generateTrueValue();
+        const userBid = Math.round(fakeTrue * (0.8 + Math.random() * 0.4));
+        document.getElementById('userBid').value = userBid;
+        submitBid();
+        count++;
+        
+        if (count < rounds) {
+          setTimeout(nextRound, 100);
+        }
+      }, 200);
+    }
+    
+    // 重置
+    function resetAll() {
+      totalRounds = 0;
+      winCount = 0;
+      totalProfit = 0;
+      history = [];
+      profitHistory = [0];
+      
+      updateStats();
+      updateChart();
+      renderHistory();
+      nextRound();
+    }
+    
+    // 更新统计
+    function updateStats() {
+      document.getElementById('totalRounds').textContent = totalRounds;
+      document.getElementById('winCount').textContent = winCount;
+      document.getElementById('winRate').textContent = totalRounds > 0 
+        ? (winCount / totalRounds * 100).toFixed(1) + '%' 
+        : '-';
+      
+      const profitEl = document.getElementById('totalProfit');
+      profitEl.textContent = (totalProfit >= 0 ? '+' : '') + `¥${totalProfit}`;
+      profitEl.style.color = totalProfit >= 0 ? '#4ade80' : '#ff6b6b';
+    }
+    
+    // 更新图表
+    function updateChart() {
+      const ctx = document.getElementById('profitChart').getContext('2d');
+      
+      if (chart) chart.destroy();
+      
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: profitHistory.map((_, i) => i),
+          datasets: [{
+            label: '累计盈亏',
+            data: profitHistory,
+            borderColor: totalProfit >= 0 ? '#4ade80' : '#ff6b6b',
+            backgroundColor: totalProfit >= 0 ? 'rgba(74,222,128,0.1)' : 'rgba(255,107,107,0.1)',
+            fill: true,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '轮次', color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.4)' }
+            },
+            y: {
+              title: { display: true, text: '累计盈亏 (元)', color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.4)' }
+            }
+          }
+        }
+      });
+    }
+    
+    // 渲染历史
+    function renderHistory() {
+      const list = document.getElementById('historyList');
+      
+      if (history.length === 0) {
+        list.innerHTML = '<div style="color: rgba(255,255,255,0.5); text-align: center; padding: 20px;">还没有竞拍记录，开始出价吧！</div>';
+        return;
+      }
+      
+      list.innerHTML = history.slice(0, 20).map(h => {
+        let className = 'history-item ';
+        let text = '';
+        
+        if (h.isWinner) {
+          className += h.profit >= 0 ? 'win' : 'lose';
+          text = `第${h.round}轮：出价¥${h.userBid} 中标 · 真实价值¥${h.trueValue} · ${h.profit >= 0 ? '赚' : '亏'}¥${Math.abs(h.profit)}`;
+        } else {
+          className += 'not-win';
+          text = `第${h.round}轮：出价¥${h.userBid} 未中标 · 中标价¥${h.winningBid}`;
+        }
+        
+        return `<div class="${className}">${text}</div>`;
+      }).join('');
+    }
+    
+    // 蒙特卡洛模拟
+    function runSimulation() {
+      const btn = document.getElementById('simBtn');
+      btn.disabled = true;
+      btn.textContent = '模拟中...';
+      
+      setTimeout(() => {
+        const auctions = 1000;
+        const bidderCount = 10;
+        const winnerProfits = [];
+        let lossCount = 0;
+        let totalOverpay = 0;
+        
+        for (let i = 0; i < auctions; i++) {
+          const trueVal = 500 + Math.random() * 1000;
+          
+          // 生成所有竞拍者
+          const bids = [];
+          for (let j = 0; j < bidderCount; j++) {
+            const errorRate = (Math.random() + Math.random() + Math.random() - 1.5) * 0.3;
+            const estimate = trueVal * (1 + errorRate);
+            const bid = estimate * (0.85 + Math.random() * 0.2);
+            bids.push({ estimate, bid });
+          }
+          
+          // 找出最高出价
+          const winner = bids.reduce((max, b) => b.bid > max.bid ? b : max);
+          const profit = trueVal - winner.bid;
+          
+          winnerProfits.push(profit);
+          if (profit < 0) {
+            lossCount++;
+            totalOverpay += Math.abs(profit);
+          }
+        }
+        
+        // 计算统计
+        const avgProfit = winnerProfits.reduce((a, b) => a + b, 0) / auctions;
+        const lossRate = (lossCount / auctions * 100).toFixed(1);
+        const avgOverpay = lossCount > 0 ? (totalOverpay / lossCount).toFixed(0) : 0;
+        
+        // 显示结果
+        document.getElementById('simWinnerProfit').textContent = `¥${avgProfit.toFixed(0)}`;
+        document.getElementById('simWinnerProfit').className = 'value ' + (avgProfit >= 0 ? 'green' : 'red');
+        document.getElementById('simLossRate').textContent = `${lossRate}%`;
+        document.getElementById('simOverpay').textContent = `¥${avgOverpay}`;
+        
+        document.getElementById('batchResults').classList.add('show');
+        
+        // 绘制分布图
+        drawDistribution(winnerProfits);
+        
+        btn.disabled = false;
+        btn.textContent = '🚀 重新模拟';
+      }, 100);
+    }
+    
+    // 绘制分布图
+    function drawDistribution(profits) {
+      const ctx = document.getElementById('distributionChart').getContext('2d');
+      
+      if (distributionChart) distributionChart.destroy();
+      
+      // 分桶
+      const buckets = {};
+      const step = 50;
+      profits.forEach(p => {
+        const bucket = Math.floor(p / step) * step;
+        buckets[bucket] = (buckets[bucket] || 0) + 1;
+      });
+      
+      const labels = Object.keys(buckets).map(Number).sort((a, b) => a - b);
+      const data = labels.map(l => buckets[l]);
+      
+      distributionChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels.map(l => `${l}`),
+          datasets: [{
+            label: '频次',
+            data: data,
+            backgroundColor: labels.map(l => l >= 0 ? 'rgba(74,222,128,0.7)' : 'rgba(255,107,107,0.7)'),
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            title: {
+              display: true,
+              text: '赢家盈亏分布（元）',
+              color: 'rgba(255,255,255,0.7)'
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: 'rgba(255,255,255,0.5)', maxRotation: 45 }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' }
+            }
+          }
+        }
+      });
+    }
+    
+    // 初始化
+    updateChart();
+  </script>
+</body>
+</html>

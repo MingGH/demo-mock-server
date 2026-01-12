@@ -65,12 +65,108 @@
       color: white;
       margin: 0 10px;
     }
+    
+    /* 搜索区域 */
+    .search-section {
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 30px;
+    }
+    .search-box {
+      position: relative;
+      width: 100%;
+    }
+    .search-input {
+      width: 100%;
+      padding: 16px 50px 16px 20px;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      background: rgba(255,255,255,0.95);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      outline: none;
+      transition: all 0.3s;
+    }
+    .search-input:focus {
+      box-shadow: 0 15px 50px rgba(0,0,0,0.3);
+      transform: translateY(-2px);
+    }
+    .search-input::placeholder {
+      color: #999;
+    }
+    .search-icon {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.3rem;
+      color: #667eea;
+    }
+    .search-stats {
+      text-align: center;
+      color: rgba(255,255,255,0.8);
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+    .search-stats span {
+      background: rgba(255,255,255,0.2);
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-left: 8px;
+    }
+    
+    /* 隐藏不匹配的卡片 */
+    .card.hidden {
+      display: none;
+    }
+    
+    /* 无结果提示 */
+    .no-results {
+      display: none;
+      text-align: center;
+      color: white;
+      padding: 60px 20px;
+      width: 100%;
+    }
+    .no-results.show {
+      display: block;
+    }
+    .no-results .icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+    }
+    .no-results h3 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+    .no-results p {
+      color: rgba(255,255,255,0.7);
+    }
   </style>
 </head>
 <body>
   <h1>🚀 Mock Server Demo</h1>
   
-  <div class="cards">
+  <!-- 搜索区域 -->
+  <div class="search-section">
+    <div class="search-box">
+      <input type="text" class="search-input" id="searchInput" placeholder="搜索演示... 试试「概率」「模拟」「计算器」" oninput="filterCards()">
+      <span class="search-icon">🔍</span>
+    </div>
+    <div class="search-stats">
+      共 <span id="totalCount">31</span> 个演示
+      <span id="matchCount" style="display: none;">找到 0 个</span>
+    </div>
+  </div>
+  
+  <!-- 无结果提示 -->
+  <div class="no-results" id="noResults">
+    <div class="icon">🔍</div>
+    <h3>没有找到相关演示</h3>
+    <p>试试其他关键词，如「赌博」「投资」「概率」「心理」</p>
+  </div>
+  
+  <div class="cards" id="cardsContainer">
     <a href="pages/mock-data.html" class="card">
       <div class="card-icon">📊</div>
       <h2>IndexedDB 缓存分页</h2>
@@ -250,6 +346,12 @@
       <h2>指数增长有多恐怖</h2>
       <p>一张纸对折42次，厚度超过地月距离。点击对折，亲眼见证指数增长的恐怖。</p>
     </a>
+    
+    <a href="pages/winners-curse.html" class="card">
+      <div class="card-icon">🏆</div>
+      <h2>赢家诅咒模拟器</h2>
+      <p>为什么赢了竞拍反而亏钱？亲自参与拍卖，体验"赢家诅咒"的残酷真相。</p>
+    </a>
   </div>
   
   <div class="footer">
@@ -258,5 +360,65 @@
     <span>| 欢迎关注我的知乎</span>
   </div>
 
+  <script>
+    // 搜索过滤
+    function filterCards() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      const cards = document.querySelectorAll('.card');
+      const noResults = document.getElementById('noResults');
+      const matchCountEl = document.getElementById('matchCount');
+      
+      let visibleCount = 0;
+      
+      cards.forEach(card => {
+        const title = card.querySelector('h2').textContent.toLowerCase();
+        const desc = card.querySelector('p').textContent.toLowerCase();
+        const icon = card.querySelector('.card-icon').textContent;
+        const searchText = title + ' ' + desc + ' ' + icon;
+        
+        if (query === '' || searchText.includes(query)) {
+          card.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+      
+      // 显示/隐藏无结果提示
+      if (visibleCount === 0 && query !== '') {
+        noResults.classList.add('show');
+      } else {
+        noResults.classList.remove('show');
+      }
+      
+      // 更新计数
+      if (query !== '') {
+        matchCountEl.style.display = 'inline';
+        matchCountEl.textContent = `找到 ${visibleCount} 个`;
+      } else {
+        matchCountEl.style.display = 'none';
+      }
+    }
+    
+    // 初始化总数
+    document.addEventListener('DOMContentLoaded', () => {
+      const total = document.querySelectorAll('.card').length;
+      document.getElementById('totalCount').textContent = total;
+    });
+    
+    // 支持快捷键
+    document.addEventListener('keydown', (e) => {
+      // Ctrl/Cmd + K 聚焦搜索框
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('searchInput').focus();
+      }
+      // ESC 清空搜索
+      if (e.key === 'Escape') {
+        document.getElementById('searchInput').value = '';
+        filterCards();
+      }
+    });
+  </script>
 </body>
 </html>

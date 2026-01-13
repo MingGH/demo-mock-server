@@ -312,7 +312,7 @@
           <span>😇 好人比例</span>
           <span id="goodRatioValue">40%</span>
         </div>
-        <input type="range" id="goodRatio" min="0" max="100" value="40" oninput="updateRatios()">
+        <input type="range" id="goodRatio" min="0" max="100" value="40" oninput="updateRatios('good')">
       </div>
       
       <div class="slider-group">
@@ -320,7 +320,7 @@
           <span>😈 坏人比例</span>
           <span id="badRatioValue">30%</span>
         </div>
-        <input type="range" id="badRatio" min="0" max="100" value="30" oninput="updateRatios()">
+        <input type="range" id="badRatio" min="0" max="100" value="30" oninput="updateRatios('bad')">
       </div>
       
       <div class="slider-group">
@@ -328,7 +328,7 @@
           <span>🤔 聪明人比例</span>
           <span id="smartRatioValue">30%</span>
         </div>
-        <input type="range" id="smartRatio" min="0" max="100" value="30" disabled>
+        <input type="range" id="smartRatio" min="0" max="100" value="30" oninput="updateRatios('smart')">
       </div>
       
       <div class="stats-panel">
@@ -506,20 +506,27 @@
     // 初始化
     function init() {
       updateRatios();
+      initChart();  // 先初始化图表
       resetSimulation();
-      initChart();
     }
     
-    function updateRatios() {
-      const good = parseInt(document.getElementById('goodRatio').value);
-      const bad = parseInt(document.getElementById('badRatio').value);
-      let smart = 100 - good - bad;
+    function updateRatios(changed) {
+      let good = parseInt(document.getElementById('goodRatio').value);
+      let bad = parseInt(document.getElementById('badRatio').value);
+      let smart = parseInt(document.getElementById('smartRatio').value);
       
-      if (smart < 0) {
-        smart = 0;
-        const total = good + bad;
-        document.getElementById('goodRatio').value = Math.round(good / total * 100);
-        document.getElementById('badRatio').value = Math.round(bad / total * 100);
+      const total = good + bad + smart;
+      
+      if (total !== 100 && total > 0) {
+        // 归一化到100%
+        good = Math.round(good / total * 100);
+        bad = Math.round(bad / total * 100);
+        smart = 100 - good - bad;
+        
+        // 更新滑杆值
+        document.getElementById('goodRatio').value = good;
+        document.getElementById('badRatio').value = bad;
+        document.getElementById('smartRatio').value = smart;
       }
       
       document.getElementById('goodRatioValue').textContent = good + '%';
@@ -664,11 +671,20 @@
         if (!isRunning) return;
         runGeneration();
         
-        // 检查是否有一方灭绝
+        // 检查是否结束（只有当原本存在的类型灭绝时才停止）
         const counts = { good: 0, bad: 0, smart: 0 };
         population.forEach(p => counts[p.type]++);
         
-        if (counts.good === 0 || counts.bad === 0 || counts.smart === 0 || generation >= 100) {
+        // 获取初始比例，判断哪些类型原本就存在
+        const initGood = parseInt(document.getElementById('goodRatio').value);
+        const initBad = parseInt(document.getElementById('badRatio').value);
+        const initSmart = parseInt(document.getElementById('smartRatio').value);
+        
+        const extinct = (initGood > 0 && counts.good === 0) || 
+                       (initBad > 0 && counts.bad === 0) || 
+                       (initSmart > 0 && counts.smart === 0);
+        
+        if (extinct || generation >= 100) {
           isRunning = false;
           document.getElementById('startBtn').textContent = '▶️ 重新开始';
           return;
@@ -763,6 +779,7 @@
     }
     
     function updateChart() {
+      if (!chart) return;
       chart.data.labels = Array.from({ length: historyData.good.length }, (_, i) => i);
       chart.data.datasets[0].data = historyData.good;
       chart.data.datasets[1].data = historyData.bad;

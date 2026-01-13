@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>好人没好报？- 用模拟揭示善良的数学真相</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #4ade80, #ffd93d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .question-box {
+      background: linear-gradient(135deg, rgba(74,222,128,0.2), rgba(255,217,61,0.1));
+      border-left: 4px solid #4ade80;
+      padding: 15px 20px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+      font-size: 1rem;
+      line-height: 1.8;
+    }
+    .question-box strong { color: #ffd93d; }
+    
+    /* 社会模拟区域 */
+    .society-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 4px;
+      margin: 20px 0;
+      padding: 15px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+    }
+    .person {
+      aspect-ratio: 1;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    .person.good { background: rgba(74,222,128,0.6); }
+    .person.bad { background: rgba(255,107,107,0.6); }
+    .person.neutral { background: rgba(255,217,61,0.6); }
+    .person.dead { background: rgba(100,100,100,0.3); opacity: 0.3; }
+    .person:hover { transform: scale(1.2); z-index: 10; }
+    
+    /* 统计面板 */
+    .stats-panel {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 500px) {
+      .stats-panel { grid-template-columns: 1fr; }
+      .society-grid { grid-template-columns: repeat(8, 1fr); }
+    }
+    .stat-card {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-card .label {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 8px;
+    }
+    .stat-card .value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+    .stat-card .value.good { color: #4ade80; }
+    .stat-card .value.bad { color: #ff6b6b; }
+    .stat-card .value.neutral { color: #ffd93d; }
+    
+    /* 控制按钮 */
+    .controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .ctrl-btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .ctrl-btn.primary {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: white;
+    }
+    .ctrl-btn.danger {
+      background: linear-gradient(135deg, #ff6b6b, #ef4444);
+      color: white;
+    }
+    .ctrl-btn.secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .ctrl-btn:hover { transform: translateY(-2px); }
+    .ctrl-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    
+    /* 滑块控制 */
+    .slider-group {
+      margin: 15px 0;
+    }
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.7);
+    }
+    .slider-label span:last-child { color: #ffd93d; font-weight: bold; }
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.1);
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffd93d;
+      cursor: pointer;
+    }
+    
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 280px;
+      margin-top: 20px;
+    }
+    
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+    .analysis h3 {
+      color: #ffd93d;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .analysis p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.85;
+      margin-bottom: 14px;
+    }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+    .analysis .formula {
+      background: rgba(255,255,255,0.08);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      margin: 14px 0;
+      overflow-x: auto;
+    }
+    
+    /* 场景卡片 */
+    .scenario-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 550px) {
+      .scenario-cards { grid-template-columns: 1fr; }
+    }
+    .scenario-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .scenario-card:hover { background: rgba(0,0,0,0.3); }
+    .scenario-card.selected { border-color: #4ade80; background: rgba(74,222,128,0.1); }
+    .scenario-card h4 {
+      color: #ffd93d;
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+    .scenario-card p {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(74,222,128,0.15), rgba(255,217,61,0.1));
+      border: 2px solid #4ade80;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .conclusion h3 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+      color: #4ade80;
+    }
+    .conclusion p {
+      color: rgba(255,255,255,0.9);
+      line-height: 1.85;
+    }
+    
+    /* 生成日志 */
+    .log-section {
+      margin-top: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.85rem;
+    }
+    .log-item {
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.6);
+    }
+    .log-item:last-child { border-bottom: none; }
+    .log-item.good { color: #4ade80; }
+    .log-item.bad { color: #ff6b6b; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>😇 好人没好报？</h1>
+    <p class="subtitle">用模拟揭示善良的数学真相</p>
+    
+    <div class="card">
+      <div class="question-box">
+        <strong>灵魂拷问：</strong>为什么好人总是吃亏？<br>
+        老实人被欺负、善良的人被利用、诚实的人被骗...<br>
+        难道「好人没好报」是真的吗？<br><br>
+        <span style="color: #ffd93d;">让我们用模拟来看看，善良到底是不是一种「劣势」。</span>
+      </div>
+    </div>
+    
+    <!-- 社会模拟器 -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #ffd93d;">🌍 社会生存模拟器</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+        100个人组成一个小社会，每轮随机配对互动。<br>
+        <span style="color: #4ade80;">😇 好人</span>：总是合作，帮助他人<br>
+        <span style="color: #ff6b6b;">😈 坏人</span>：总是背叛，占别人便宜<br>
+        <span style="color: #ffd93d;">🤔 聪明人</span>：以牙还牙，你对我好我对你好
+      </p>
+      
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>😇 好人比例</span>
+          <span id="goodRatioValue">40%</span>
+        </div>
+        <input type="range" id="goodRatio" min="0" max="100" value="40" oninput="updateRatios()">
+      </div>
+      
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>😈 坏人比例</span>
+          <span id="badRatioValue">30%</span>
+        </div>
+        <input type="range" id="badRatio" min="0" max="100" value="30" oninput="updateRatios()">
+      </div>
+      
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>🤔 聪明人比例</span>
+          <span id="smartRatioValue">30%</span>
+        </div>
+        <input type="range" id="smartRatio" min="0" max="100" value="30" disabled>
+      </div>
+      
+      <div class="stats-panel">
+        <div class="stat-card">
+          <div class="label">😇 好人存活</div>
+          <div class="value good" id="goodCount">40</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">😈 坏人存活</div>
+          <div class="value bad" id="badCount">30</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">🤔 聪明人存活</div>
+          <div class="value neutral" id="smartCount">30</div>
+        </div>
+      </div>
+      
+      <div class="society-grid" id="societyGrid"></div>
+      
+      <div class="controls">
+        <button class="ctrl-btn primary" id="startBtn" onclick="startSimulation()">▶️ 开始模拟</button>
+        <button class="ctrl-btn secondary" onclick="stepSimulation()">⏭️ 单步</button>
+        <button class="ctrl-btn danger" onclick="resetSimulation()">🔄 重置</button>
+      </div>
+      
+      <div style="text-align: center; color: rgba(255,255,255,0.5); font-size: 0.9rem;">
+        第 <span id="generation">0</span> 代 | 总互动 <span id="totalInteractions">0</span> 次
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="populationChart"></canvas>
+      </div>
+    </div>
+    
+    <!-- 场景选择 -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #ffd93d;">🎭 不同环境下的结果</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+        选择一个预设场景，看看不同社会环境下，好人的命运如何。
+      </p>
+      
+      <div class="scenario-cards">
+        <div class="scenario-card" onclick="loadScenario('jungle')">
+          <h4>🌴 丛林社会</h4>
+          <p>80%坏人，10%好人，10%聪明人。弱肉强食，好人能活下来吗？</p>
+        </div>
+        <div class="scenario-card" onclick="loadScenario('utopia')">
+          <h4>🌈 理想社会</h4>
+          <p>80%好人，10%坏人，10%聪明人。坏人会被同化还是会扩张？</p>
+        </div>
+        <div class="scenario-card" onclick="loadScenario('balanced')">
+          <h4>⚖️ 均衡社会</h4>
+          <p>各占1/3。最接近现实，看看谁能笑到最后。</p>
+        </div>
+        <div class="scenario-card" onclick="loadScenario('smart')">
+          <h4>🧠 聪明人社会</h4>
+          <p>80%聪明人，10%好人，10%坏人。以牙还牙策略会主导吗？</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 数学分析 -->
+    <div class="card analysis">
+      <h3>📐 为什么好人「看起来」吃亏？</h3>
+      
+      <p><strong>1. 短期 vs 长期</strong></p>
+      <p>
+        在<span class="highlight">单次博弈</span>中，好人确实吃亏：<br>
+        好人遇到坏人 → 好人被占便宜<br>
+        好人遇到好人 → 双方都好<br>
+        坏人遇到好人 → 坏人占便宜
+      </p>
+      <div class="formula">
+        单次收益：坏人 > 好人（如果对方是好人）
+      </div>
+      <p>
+        但在<span class="safe">重复博弈</span>中，情况完全不同：<br>
+        坏人会被识别、被孤立、被报复。<br>
+        好人会建立信任、获得合作、形成联盟。
+      </p>
+      
+      <p><strong>2. 环境决定命运</strong></p>
+      <p>
+        好人在<span class="highlight">坏人多的环境</span>里确实难以生存——这不是好人的问题，是环境的问题。<br>
+        但在<span class="safe">正常社会</span>里，好人往往能获得更多长期收益。
+      </p>
+      <p>
+        关键变量：<br>
+        • 互动是否重复？（一次性 vs 长期关系）<br>
+        • 背叛是否有代价？（声誉、惩罚机制）<br>
+        • 好人能否识别坏人？（信息透明度）
+      </p>
+      
+      <p><strong>3. 「聪明的好人」才是最优解</strong></p>
+      <p>
+        纯粹的好人（永远合作）容易被利用。<br>
+        纯粹的坏人（永远背叛）会被孤立。<br>
+        <span class="safe">「以牙还牙」</span>策略结合了两者的优点：
+      </p>
+      <div class="formula">
+        以牙还牙 = 善良（先合作）+ 可激怒（被背叛就报复）+ 宽容（对方改过就原谅）
+      </div>
+      <p>
+        这就是为什么模拟中「聪明人」往往能笑到最后。
+      </p>
+    </div>
+    
+    <!-- 现实案例 -->
+    <div class="card analysis">
+      <h3>🌍 现实中的「好人困境」</h3>
+      
+      <p><strong>1. 职场老实人</strong></p>
+      <p>
+        老实人总是被安排更多工作，不会拒绝，不会邀功。<br>
+        短期看：老实人吃亏，会来事的人升职。<br>
+        长期看：老实人建立了可靠的口碑，关键时刻被信任。<br>
+        <span class="safe">但前提是：环境要能识别和奖励可靠性。</span>
+      </p>
+      
+      <p><strong>2. 商业诚信</strong></p>
+      <p>
+        骗子短期能赚快钱，但会被市场淘汰。<br>
+        诚信商家短期可能吃亏，但能建立品牌和回头客。<br>
+        <span class="highlight">关键：市场信息是否透明，骗子是否会被曝光。</span>
+      </p>
+      
+      <p><strong>3. 社交关系</strong></p>
+      <p>
+        总是付出的人容易被当成「工具人」。<br>
+        但真正的好人会吸引同样善良的人，形成高质量社交圈。<br>
+        <span class="safe">关键：学会识别和远离「吸血鬼」。</span>
+      </p>
+    </div>
+    
+    <!-- 结论 -->
+    <div class="card conclusion">
+      <h3>💡 好人没好报？不，是「傻好人」没好报</h3>
+      <p>
+        「好人没好报」是一种<span style="color: #ff6b6b;">幸存者偏差</span>——<br>
+        我们只记住了好人吃亏的案例，忘记了好人成功的案例。<br><br>
+        
+        真相是：<br>
+        <span style="color: #ffd93d;">善良是一种长期策略，不是短期策略。</span><br><br>
+        
+        纯粹的「傻好人」确实容易被利用。<br>
+        但<span style="color: #4ade80;">「聪明的好人」</span>——善良但有底线、信任但会验证、<br>
+        帮助但不被利用——才是真正的赢家。<br><br>
+        
+        <span style="color: rgba(255,255,255,0.6);">
+          不是好人没好报，<br>
+          是你需要在对的环境里，做一个聪明的好人。
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // 全局变量
+    let population = [];
+    let generation = 0;
+    let totalInteractions = 0;
+    let isRunning = false;
+    let animationId = null;
+    let chart = null;
+    let historyData = { good: [40], bad: [30], smart: [30] };
+    
+    // 收益矩阵
+    const PAYOFF = {
+      'cooperate-cooperate': [3, 3],
+      'cooperate-defect': [0, 5],
+      'defect-cooperate': [5, 0],
+      'defect-defect': [1, 1]
+    };
+    
+    // 初始化
+    function init() {
+      updateRatios();
+      resetSimulation();
+      initChart();
+    }
+    
+    function updateRatios() {
+      const good = parseInt(document.getElementById('goodRatio').value);
+      const bad = parseInt(document.getElementById('badRatio').value);
+      let smart = 100 - good - bad;
+      
+      if (smart < 0) {
+        smart = 0;
+        const total = good + bad;
+        document.getElementById('goodRatio').value = Math.round(good / total * 100);
+        document.getElementById('badRatio').value = Math.round(bad / total * 100);
+      }
+      
+      document.getElementById('goodRatioValue').textContent = good + '%';
+      document.getElementById('badRatioValue').textContent = bad + '%';
+      document.getElementById('smartRatioValue').textContent = smart + '%';
+    }
+    
+    function resetSimulation() {
+      isRunning = false;
+      if (animationId) cancelAnimationFrame(animationId);
+      document.getElementById('startBtn').textContent = '▶️ 开始模拟';
+      
+      const good = parseInt(document.getElementById('goodRatio').value);
+      const bad = parseInt(document.getElementById('badRatio').value);
+      const smart = 100 - good - bad;
+      
+      population = [];
+      for (let i = 0; i < good; i++) population.push({ type: 'good', score: 0, memory: {} });
+      for (let i = 0; i < bad; i++) population.push({ type: 'bad', score: 0, memory: {} });
+      for (let i = 0; i < smart; i++) population.push({ type: 'smart', score: 0, memory: {} });
+      
+      // 打乱顺序
+      population.sort(() => Math.random() - 0.5);
+      
+      generation = 0;
+      totalInteractions = 0;
+      historyData = { good: [good], bad: [bad], smart: [smart] };
+      
+      updateDisplay();
+      updateChart();
+    }
+    
+    function updateDisplay() {
+      const grid = document.getElementById('societyGrid');
+      grid.innerHTML = '';
+      
+      let goodCount = 0, badCount = 0, smartCount = 0;
+      
+      population.forEach((person, i) => {
+        const div = document.createElement('div');
+        div.className = `person ${person.type}`;
+        div.title = `${person.type === 'good' ? '好人' : person.type === 'bad' ? '坏人' : '聪明人'}\n积分: ${person.score}`;
+        
+        if (person.type === 'good') { div.textContent = '😇'; goodCount++; }
+        else if (person.type === 'bad') { div.textContent = '😈'; badCount++; }
+        else { div.textContent = '🤔'; smartCount++; }
+        
+        grid.appendChild(div);
+      });
+      
+      document.getElementById('goodCount').textContent = goodCount;
+      document.getElementById('badCount').textContent = badCount;
+      document.getElementById('smartCount').textContent = smartCount;
+      document.getElementById('generation').textContent = generation;
+      document.getElementById('totalInteractions').textContent = totalInteractions;
+    }
+    
+    function getAction(person, opponentId) {
+      if (person.type === 'good') return 'cooperate';
+      if (person.type === 'bad') return 'defect';
+      // 聪明人：以牙还牙
+      if (person.memory[opponentId] === undefined) return 'cooperate';
+      return person.memory[opponentId];
+    }
+    
+    function interact(p1, p2, id1, id2) {
+      const action1 = getAction(p1, id2);
+      const action2 = getAction(p2, id1);
+      
+      const key = `${action1}-${action2}`;
+      const [score1, score2] = PAYOFF[key];
+      
+      p1.score += score1;
+      p2.score += score2;
+      
+      // 记忆对方的行为
+      p1.memory[id2] = action2;
+      p2.memory[id1] = action1;
+      
+      totalInteractions++;
+    }
+    
+    function runGeneration() {
+      // 每个人随机配对互动5次
+      for (let round = 0; round < 5; round++) {
+        const shuffled = [...population.keys()].sort(() => Math.random() - 0.5);
+        for (let i = 0; i < shuffled.length - 1; i += 2) {
+          const id1 = shuffled[i];
+          const id2 = shuffled[i + 1];
+          interact(population[id1], population[id2], id1, id2);
+        }
+      }
+      
+      // 自然选择：淘汰最低分的10%，复制最高分的10%
+      population.sort((a, b) => a.score - b.score);
+      
+      const eliminateCount = Math.floor(population.length * 0.1);
+      const topPerformers = population.slice(-eliminateCount);
+      
+      // 移除最低分的
+      population = population.slice(eliminateCount);
+      
+      // 复制最高分的
+      topPerformers.forEach(p => {
+        population.push({
+          type: p.type,
+          score: 0,
+          memory: {}
+        });
+      });
+      
+      // 重置分数
+      population.forEach(p => { p.score = 0; p.memory = {}; });
+      
+      // 打乱顺序
+      population.sort(() => Math.random() - 0.5);
+      
+      generation++;
+      
+      // 记录历史
+      const counts = { good: 0, bad: 0, smart: 0 };
+      population.forEach(p => counts[p.type]++);
+      historyData.good.push(counts.good);
+      historyData.bad.push(counts.bad);
+      historyData.smart.push(counts.smart);
+      
+      updateDisplay();
+      updateChart();
+    }
+    
+    function startSimulation() {
+      if (isRunning) {
+        isRunning = false;
+        document.getElementById('startBtn').textContent = '▶️ 继续模拟';
+        return;
+      }
+      
+      isRunning = true;
+      document.getElementById('startBtn').textContent = '⏸️ 暂停';
+      
+      function loop() {
+        if (!isRunning) return;
+        runGeneration();
+        
+        // 检查是否有一方灭绝
+        const counts = { good: 0, bad: 0, smart: 0 };
+        population.forEach(p => counts[p.type]++);
+        
+        if (counts.good === 0 || counts.bad === 0 || counts.smart === 0 || generation >= 100) {
+          isRunning = false;
+          document.getElementById('startBtn').textContent = '▶️ 重新开始';
+          return;
+        }
+        
+        animationId = setTimeout(loop, 200);
+      }
+      
+      loop();
+    }
+    
+    function stepSimulation() {
+      if (isRunning) return;
+      runGeneration();
+    }
+    
+    function loadScenario(type) {
+      document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+      event.target.closest('.scenario-card').classList.add('selected');
+      
+      let good, bad;
+      switch(type) {
+        case 'jungle': good = 10; bad = 80; break;
+        case 'utopia': good = 80; bad = 10; break;
+        case 'balanced': good = 33; bad = 33; break;
+        case 'smart': good = 10; bad = 10; break;
+      }
+      
+      document.getElementById('goodRatio').value = good;
+      document.getElementById('badRatio').value = bad;
+      updateRatios();
+      resetSimulation();
+    }
+    
+    function initChart() {
+      const ctx = document.getElementById('populationChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [0],
+          datasets: [
+            {
+              label: '😇 好人',
+              data: historyData.good,
+              borderColor: '#4ade80',
+              backgroundColor: 'rgba(74, 222, 128, 0.1)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: '😈 坏人',
+              data: historyData.bad,
+              borderColor: '#ff6b6b',
+              backgroundColor: 'rgba(255, 107, 107, 0.1)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: '🤔 聪明人',
+              data: historyData.smart,
+              borderColor: '#ffd93d',
+              backgroundColor: 'rgba(255, 217, 61, 0.1)',
+              fill: true,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: 'rgba(255,255,255,0.7)' }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '代数', color: 'rgba(255,255,255,0.5)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y: {
+              title: { display: true, text: '人数', color: 'rgba(255,255,255,0.5)' },
+              ticks: { color: 'rgba(255,255,255,0.5)' },
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              min: 0,
+              max: 100
+            }
+          }
+        }
+      });
+    }
+    
+    function updateChart() {
+      chart.data.labels = Array.from({ length: historyData.good.length }, (_, i) => i);
+      chart.data.datasets[0].data = historyData.good;
+      chart.data.datasets[1].data = historyData.bad;
+      chart.data.datasets[2].data = historyData.smart;
+      chart.update('none');
+    }
+    
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

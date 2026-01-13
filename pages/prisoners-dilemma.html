@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>囚徒困境 - 为什么理性导致双输</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #ff6b6b, #4ade80);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .question-box {
+      background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(74,222,128,0.1));
+      border-left: 4px solid #ff6b6b;
+      padding: 15px 20px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+      font-size: 1rem;
+      line-height: 1.8;
+    }
+    .question-box strong { color: #ffd93d; }
+    
+    /* 收益矩阵 */
+    .matrix-container {
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+    .payoff-matrix {
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+    .payoff-matrix th, .payoff-matrix td {
+      padding: 15px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .payoff-matrix th {
+      background: rgba(255,255,255,0.1);
+      color: #ffd93d;
+    }
+    .payoff-matrix .corner {
+      background: transparent;
+      border: none;
+    }
+    .payoff-matrix .header-row th {
+      background: rgba(74,222,128,0.2);
+    }
+    .payoff-matrix .header-col {
+      background: rgba(255,107,107,0.2);
+      color: #ff6b6b;
+    }
+    .payoff-matrix td {
+      background: rgba(0,0,0,0.2);
+    }
+    .payoff-matrix .nash {
+      background: rgba(255,107,107,0.3);
+      border: 2px solid #ff6b6b;
+    }
+    .payoff-matrix .optimal {
+      background: rgba(74,222,128,0.2);
+    }
+    .payoff {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+    .payoff .a { color: #ff6b6b; }
+    .payoff .b { color: #4ade80; }
+    
+    /* 游戏区域 */
+    .game-area {
+      text-align: center;
+      padding: 20px 0;
+    }
+    .prisoners {
+      display: flex;
+      justify-content: center;
+      gap: 60px;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+    .prisoner {
+      text-align: center;
+    }
+    .prisoner-icon {
+      font-size: 80px;
+      margin-bottom: 10px;
+      transition: transform 0.3s;
+    }
+    .prisoner.betrayed .prisoner-icon {
+      filter: grayscale(1);
+    }
+    .prisoner-name {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .prisoner-name.you { color: #ff6b6b; }
+    .prisoner-name.opponent { color: #4ade80; }
+    .prisoner-sentence {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    /* 选择按钮 */
+    .choice-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+    .choice-btn {
+      padding: 20px 40px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-width: 160px;
+    }
+    .choice-btn.cooperate {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: white;
+    }
+    .choice-btn.betray {
+      background: linear-gradient(135deg, #ff6b6b, #ef4444);
+      color: white;
+    }
+    .choice-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .choice-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    /* 结果显示 */
+    .result-display {
+      display: none;
+      margin: 30px 0;
+      padding: 25px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 16px;
+    }
+    .result-display.show { display: block; }
+    .result-title {
+      font-size: 1.5rem;
+      margin-bottom: 15px;
+    }
+    .result-title.win { color: #4ade80; }
+    .result-title.lose { color: #ff6b6b; }
+    .result-title.draw { color: #ffd93d; }
+    .result-detail {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 20px 0;
+    }
+    .result-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+    }
+    .result-card h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+    }
+    .result-card .value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+    .result-card .value.you { color: #ff6b6b; }
+    .result-card .value.opponent { color: #4ade80; }
+    
+    /* 统计 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-box .label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 5px;
+    }
+    .stat-box .value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #ffd93d;
+    }
+    
+    /* 策略选择 */
+    .strategy-section {
+      margin: 20px 0;
+    }
+    .strategy-section h3 {
+      color: #ffd93d;
+      margin-bottom: 15px;
+    }
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 500px) {
+      .strategy-grid { grid-template-columns: 1fr; }
+    }
+    .strategy-option {
+      background: rgba(255,255,255,0.05);
+      border: 2px solid transparent;
+      border-radius: 10px;
+      padding: 12px 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+    .strategy-option:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    .strategy-option.selected {
+      border-color: #4ade80;
+      background: rgba(74,222,128,0.1);
+    }
+    .strategy-option .name {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .strategy-option .desc {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    /* 游戏按钮 */
+    .game-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .game-btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .game-btn.primary {
+      background: linear-gradient(135deg, #ffd93d, #f0c000);
+      color: #333;
+    }
+    .game-btn.secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .game-btn:hover {
+      transform: translateY(-2px);
+    }
+    
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin-top: 20px;
+    }
+    
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+    .analysis h3 {
+      color: #ffd93d;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .analysis p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.85;
+      margin-bottom: 14px;
+    }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+    .analysis .formula {
+      background: rgba(255,255,255,0.08);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      margin: 14px 0;
+      overflow-x: auto;
+    }
+    
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(74,222,128,0.1));
+      border: 2px solid #ffd93d;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .conclusion h3 {
+      font-size: 1.4rem;
+      margin-bottom: 15px;
+      color: #ffd93d;
+    }
+    .conclusion p {
+      color: rgba(255,255,255,0.9);
+      line-height: 1.85;
+    }
+    
+    /* 历史记录 */
+    .history-section {
+      margin-top: 20px;
+    }
+    .history-section h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    .history-list {
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.85rem;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-choices {
+      display: flex;
+      gap: 15px;
+    }
+    .history-choice {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    .history-choice.cooperate { background: rgba(74,222,128,0.3); color: #4ade80; }
+    .history-choice.betray { background: rgba(255,107,107,0.3); color: #ff6b6b; }
+    .history-result {
+      font-weight: bold;
+    }
+    .history-result.win { color: #4ade80; }
+    .history-result.lose { color: #ff6b6b; }
+    .history-result.draw { color: #ffd93d; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>🔒 囚徒困境</h1>
+    <p class="subtitle">为什么「理性」的选择，反而导致双输？</p>
+    
+    <div class="card">
+      <div class="question-box">
+        <strong>经典场景：</strong>你和同伙被警察抓了，分开审讯。<br>
+        如果你们都<strong>沉默</strong>（合作），各判1年；<br>
+        如果你<strong>揭发</strong>对方而他沉默，你无罪释放，他判10年；<br>
+        如果你们都<strong>揭发</strong>对方，各判5年。<br><br>
+        <span style="color: #ffd93d;">问题：你会怎么选？</span>
+      </div>
+      
+      <!-- 收益矩阵 -->
+      <div class="matrix-container">
+        <table class="payoff-matrix">
+          <tr>
+            <th class="corner"></th>
+            <th class="corner"></th>
+            <th colspan="2" style="background: rgba(74,222,128,0.2); color: #4ade80;">对方的选择</th>
+          </tr>
+          <tr class="header-row">
+            <th class="corner"></th>
+            <th class="corner"></th>
+            <th>沉默（合作）</th>
+            <th>揭发（背叛）</th>
+          </tr>
+          <tr>
+            <th rowspan="2" class="header-col" style="writing-mode: vertical-lr; transform: rotate(180deg);">你的选择</th>
+            <th class="header-col">沉默（合作）</th>
+            <td class="optimal">
+              <div class="payoff"><span class="a">-1年</span> / <span class="b">-1年</span></div>
+              <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 5px;">双赢</div>
+            </td>
+            <td>
+              <div class="payoff"><span class="a">-10年</span> / <span class="b">0年</span></div>
+              <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 5px;">你被坑</div>
+            </td>
+          </tr>
+          <tr>
+            <th class="header-col">揭发（背叛）</th>
+            <td>
+              <div class="payoff"><span class="a">0年</span> / <span class="b">-10年</span></div>
+              <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 5px;">你坑他</div>
+            </td>
+            <td class="nash">
+              <div class="payoff"><span class="a">-5年</span> / <span class="b">-5年</span></div>
+              <div style="font-size: 0.75rem; color: #ff6b6b; margin-top: 5px;">纳什均衡 ⚠️</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <p style="text-align: center; color: rgba(255,255,255,0.5); font-size: 0.85rem;">
+        <span style="color: #ff6b6b;">红色</span> = 你的刑期 | <span style="color: #4ade80;">绿色</span> = 对方刑期
+      </p>
+    </div>
+    
+    <!-- 单局游戏 -->
+    <div class="card">
+      <h2 style="margin-bottom: 20px; color: #ffd93d;">🎮 单局博弈：你会怎么选？</h2>
+      
+      <div class="game-area">
+        <div class="prisoners">
+          <div class="prisoner" id="playerPrisoner">
+            <div class="prisoner-icon">👤</div>
+            <div class="prisoner-name you">你</div>
+            <div class="prisoner-sentence" id="playerSentence">等待选择...</div>
+          </div>
+          <div class="prisoner" id="opponentPrisoner">
+            <div class="prisoner-icon">🤖</div>
+            <div class="prisoner-name opponent">对方</div>
+            <div class="prisoner-sentence" id="opponentSentence">等待选择...</div>
+          </div>
+        </div>
+        
+        <div class="choice-buttons">
+          <button class="choice-btn cooperate" id="cooperateBtn" onclick="makeChoice('cooperate')">
+            🤝 沉默（合作）
+          </button>
+          <button class="choice-btn betray" id="betrayBtn" onclick="makeChoice('betray')">
+            🗣️ 揭发（背叛）
+          </button>
+        </div>
+        
+        <div class="result-display" id="resultDisplay">
+          <div class="result-title" id="resultTitle">结果</div>
+          <div class="result-detail">
+            <div class="result-card">
+              <h4>你的选择</h4>
+              <div class="value you" id="yourChoice">-</div>
+            </div>
+            <div class="result-card">
+              <h4>对方选择</h4>
+              <div class="value opponent" id="opponentChoice">-</div>
+            </div>
+          </div>
+          <p id="resultExplanation" style="text-align: center; color: rgba(255,255,255,0.7); margin-top: 15px;"></p>
+        </div>
+        
+        <div class="game-buttons">
+          <button class="game-btn secondary" onclick="resetSingleGame()">🔄 再来一局</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 重复博弈 -->
+    <div class="card">
+      <h2 style="margin-bottom: 15px; color: #ffd93d;">🔄 重复博弈：策略对决</h2>
+      <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+        如果这个游戏要玩很多轮呢？选择一个策略，和电脑对战100轮，看看谁的总刑期更短。
+      </p>
+      
+      <div class="strategy-section">
+        <h3>选择你的策略</h3>
+        <div class="strategy-grid">
+          <div class="strategy-option selected" data-strategy="tit-for-tat" onclick="selectStrategy(this)">
+            <div class="name">👁️ 以牙还牙 (Tit for Tat)</div>
+            <div class="desc">第一轮合作，之后模仿对方上一轮的选择</div>
+          </div>
+          <div class="strategy-option" data-strategy="always-cooperate" onclick="selectStrategy(this)">
+            <div class="name">😇 永远合作</div>
+            <div class="desc">无论对方怎么选，我都选择合作</div>
+          </div>
+          <div class="strategy-option" data-strategy="always-betray" onclick="selectStrategy(this)">
+            <div class="name">😈 永远背叛</div>
+            <div class="desc">无论对方怎么选，我都选择背叛</div>
+          </div>
+          <div class="strategy-option" data-strategy="random" onclick="selectStrategy(this)">
+            <div class="name">🎲 随机选择</div>
+            <div class="desc">50%概率合作，50%概率背叛</div>
+          </div>
+          <div class="strategy-option" data-strategy="grudger" onclick="selectStrategy(this)">
+            <div class="name">😤 记仇者</div>
+            <div class="desc">一开始合作，一旦被背叛就永远背叛</div>
+          </div>
+          <div class="strategy-option" data-strategy="pavlov" onclick="selectStrategy(this)">
+            <div class="name">🐕 巴甫洛夫</div>
+            <div class="desc">上轮结果好就重复，结果差就改变</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="strategy-section">
+        <h3>对手策略</h3>
+        <div class="strategy-grid">
+          <div class="strategy-option selected" data-opponent="tit-for-tat" onclick="selectOpponent(this)">
+            <div class="name">👁️ 以牙还牙</div>
+            <div class="desc">经典策略</div>
+          </div>
+          <div class="strategy-option" data-opponent="always-betray" onclick="selectOpponent(this)">
+            <div class="name">😈 永远背叛</div>
+            <div class="desc">最自私的对手</div>
+          </div>
+          <div class="strategy-option" data-opponent="random" onclick="selectOpponent(this)">
+            <div class="name">🎲 随机选择</div>
+            <div class="desc">不可预测</div>
+          </div>
+          <div class="strategy-option" data-opponent="grudger" onclick="selectOpponent(this)">
+            <div class="name">😤 记仇者</div>
+            <div class="desc">别惹他</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="game-buttons">
+        <button class="game-btn primary" onclick="runTournament()">🚀 开始100轮对决</button>
+        <button class="game-btn secondary" onclick="resetTournament()">🔄 重置</button>
+      </div>
+      
+      <div class="stats-grid" id="tournamentStats" style="display: none;">
+        <div class="stat-box">
+          <div class="label">你的总刑期</div>
+          <div class="value" id="yourTotal">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">对方总刑期</div>
+          <div class="value" id="opponentTotal">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">你的合作率</div>
+          <div class="value" id="yourCoopRate">0%</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">对方合作率</div>
+          <div class="value" id="opponentCoopRate">0%</div>
+        </div>
+      </div>
+      
+      <div class="chart-container" id="chartContainer" style="display: none;">
+        <canvas id="tournamentChart"></canvas>
+      </div>
+      
+      <div class="history-section" id="historySection" style="display: none;">
+        <h4>📜 对局记录（最近20轮）</h4>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </div>
+
+    <!-- 数学分析 -->
+    <div class="card analysis">
+      <h3>📐 为什么「理性」导致双输？</h3>
+      
+      <p><strong>1. 占优策略分析</strong></p>
+      <p>
+        不管对方怎么选，「背叛」对你来说都是更好的选择：
+      </p>
+      <div class="formula">
+        如果对方合作：背叛得0年 > 合作得1年<br>
+        如果对方背叛：背叛得5年 > 合作得10年
+      </div>
+      <p>
+        所以「背叛」是你的<span class="highlight">占优策略</span>。<br>
+        问题是：对方也会这么想。于是你们都选择背叛，各判5年。
+      </p>
+      
+      <p><strong>2. 纳什均衡 ≠ 最优解</strong></p>
+      <p>
+        「双方都背叛」是<span class="highlight">纳什均衡</span>——没有人能通过单方面改变策略获益。<br>
+        但这不是<span class="safe">帕累托最优</span>——明明双方都合作只需各判1年。
+      </p>
+      <p>
+        这就是囚徒困境的核心矛盾：<br>
+        <span class="highlight">个体理性 → 集体非理性</span>
+      </p>
+      
+      <p><strong>3. 重复博弈改变一切</strong></p>
+      <p>
+        如果只玩一次，背叛是理性选择。<br>
+        但如果要玩很多次，情况就不同了——你的选择会影响对方未来的行为。
+      </p>
+      <p>
+        1984年，政治学家 Robert Axelrod 举办了一场计算机锦标赛，<br>
+        让各种策略互相对战。结果最简单的策略「以牙还牙」赢了：
+      </p>
+      <div class="formula">
+        以牙还牙 (Tit for Tat)：<br>
+        第一轮合作，之后模仿对方上一轮的选择
+      </div>
+      <p>
+        这个策略有四个特点：<span class="safe">善良</span>（先合作）、<span class="safe">可激怒</span>（被背叛就报复）、<span class="safe">宽容</span>（对方改过就原谅）、<span class="safe">简单</span>（对方能理解你的逻辑）。
+      </p>
+    </div>
+    
+    <!-- 现实案例 -->
+    <div class="card analysis">
+      <h3>🌍 现实中的囚徒困境</h3>
+      
+      <p><strong>1. 军备竞赛</strong></p>
+      <p>
+        两个国家都知道裁军对双方都好（省钱、更安全）。<br>
+        但每个国家都担心：如果我裁军，对方不裁，我就危险了。<br>
+        结果：双方都疯狂扩军，陷入<span class="highlight">安全困境</span>。
+      </p>
+      
+      <p><strong>2. 价格战</strong></p>
+      <p>
+        两家公司都知道维持高价对双方都有利。<br>
+        但每家都想：如果我降价抢市场，对方不降，我就赢了。<br>
+        结果：双方都降价，利润都下降。
+      </p>
+      
+      <p><strong>3. 公地悲剧</strong></p>
+      <p>
+        每个牧民都知道过度放牧会毁掉草地。<br>
+        但每个人都想：如果我不多放，别人多放，我就亏了。<br>
+        结果：草地被毁，所有人都受损。
+      </p>
+      
+      <p><strong>4. 气候变化</strong></p>
+      <p>
+        每个国家都知道减排对全球有利。<br>
+        但每个国家都想：如果我减排，别人不减，我就吃亏了。<br>
+        结果：全球变暖加剧。
+      </p>
+    </div>
+    
+    <!-- 结论 -->
+    <div class="card conclusion">
+      <h3>💡 囚徒困境的启示</h3>
+      <p>
+        囚徒困境揭示了一个残酷的真相：<br>
+        <span style="color: #ff6b6b;">个体的「理性」选择，可能导致集体的「非理性」结果。</span><br><br>
+        
+        但它也告诉我们解决之道：<br>
+        <span style="color: #4ade80;">建立信任、重复博弈、制度约束。</span><br><br>
+        
+        当博弈从「一次性」变成「重复」，<br>
+        当「背叛」会被记住和惩罚，<br>
+        合作就变得可能。<br><br>
+        
+        <span style="color: #ffd93d;">
+          这就是为什么社会需要法律、契约、声誉系统——<br>
+          它们把「一次性博弈」变成「重复博弈」，让合作成为理性选择。
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // 收益矩阵：[你的刑期, 对方刑期]
+    const PAYOFFS = {
+      'cooperate-cooperate': [-1, -1],
+      'cooperate-betray': [-10, 0],
+      'betray-cooperate': [0, -10],
+      'betray-betray': [-5, -5]
+    };
+    
+    let selectedStrategy = 'tit-for-tat';
+    let selectedOpponent = 'tit-for-tat';
+    let tournamentChart = null;
+    
+    // 单局游戏
+    function makeChoice(choice) {
+      const opponentChoice = Math.random() < 0.5 ? 'cooperate' : 'betray';
+      const key = `${choice}-${opponentChoice}`;
+      const [yourPenalty, opponentPenalty] = PAYOFFS[key];
+      
+      // 禁用按钮
+      document.getElementById('cooperateBtn').disabled = true;
+      document.getElementById('betrayBtn').disabled = true;
+      
+      // 更新显示
+      document.getElementById('playerSentence').textContent = `${yourPenalty}年`;
+      document.getElementById('opponentSentence').textContent = `${opponentPenalty}年`;
+      
+      // 显示结果
+      const resultDisplay = document.getElementById('resultDisplay');
+      const resultTitle = document.getElementById('resultTitle');
+      
+      document.getElementById('yourChoice').textContent = choice === 'cooperate' ? '沉默' : '揭发';
+      document.getElementById('opponentChoice').textContent = opponentChoice === 'cooperate' ? '沉默' : '揭发';
+      
+      let explanation = '';
+      if (choice === 'cooperate' && opponentChoice === 'cooperate') {
+        resultTitle.textContent = '🤝 双赢！';
+        resultTitle.className = 'result-title win';
+        explanation = '你们都选择了信任对方，各判1年。这是最好的集体结果。';
+      } else if (choice === 'betray' && opponentChoice === 'betray') {
+        resultTitle.textContent = '💀 双输！';
+        resultTitle.className = 'result-title lose';
+        explanation = '你们都选择了背叛，各判5年。这就是「纳什均衡」的陷阱。';
+      } else if (choice === 'cooperate') {
+        resultTitle.textContent = '😢 你被坑了';
+        resultTitle.className = 'result-title lose';
+        explanation = '你选择信任，对方却背叛了你。你判10年，对方无罪释放。';
+      } else {
+        resultTitle.textContent = '😈 你赢了';
+        resultTitle.className = 'result-title win';
+        explanation = '你背叛了信任你的人。你无罪释放，对方判10年。但这真的是「赢」吗？';
+      }
+      
+      document.getElementById('resultExplanation').textContent = explanation;
+      resultDisplay.classList.add('show');
+    }
+    
+    function resetSingleGame() {
+      document.getElementById('cooperateBtn').disabled = false;
+      document.getElementById('betrayBtn').disabled = false;
+      document.getElementById('playerSentence').textContent = '等待选择...';
+      document.getElementById('opponentSentence').textContent = '等待选择...';
+      document.getElementById('resultDisplay').classList.remove('show');
+    }
+    
+    // 策略选择
+    function selectStrategy(el) {
+      document.querySelectorAll('.strategy-option[data-strategy]').forEach(opt => {
+        opt.classList.remove('selected');
+      });
+      el.classList.add('selected');
+      selectedStrategy = el.dataset.strategy;
+    }
+    
+    function selectOpponent(el) {
+      document.querySelectorAll('.strategy-option[data-opponent]').forEach(opt => {
+        opt.classList.remove('selected');
+      });
+      el.classList.add('selected');
+      selectedOpponent = el.dataset.opponent;
+    }
+    
+    // 策略实现
+    function getStrategyChoice(strategy, history, isPlayer) {
+      const myHistory = isPlayer ? history.map(h => h.player) : history.map(h => h.opponent);
+      const theirHistory = isPlayer ? history.map(h => h.opponent) : history.map(h => h.player);
+      
+      switch (strategy) {
+        case 'always-cooperate':
+          return 'cooperate';
+        case 'always-betray':
+          return 'betray';
+        case 'random':
+          return Math.random() < 0.5 ? 'cooperate' : 'betray';
+        case 'tit-for-tat':
+          if (theirHistory.length === 0) return 'cooperate';
+          return theirHistory[theirHistory.length - 1];
+        case 'grudger':
+          if (theirHistory.includes('betray')) return 'betray';
+          return 'cooperate';
+        case 'pavlov':
+          if (history.length === 0) return 'cooperate';
+          const lastRound = history[history.length - 1];
+          const myLast = isPlayer ? lastRound.player : lastRound.opponent;
+          const theirLast = isPlayer ? lastRound.opponent : lastRound.player;
+          // 如果上轮结果好（双方合作或我背叛他合作），重复；否则改变
+          if ((myLast === 'cooperate' && theirLast === 'cooperate') || 
+              (myLast === 'betray' && theirLast === 'cooperate')) {
+            return myLast;
+          }
+          return myLast === 'cooperate' ? 'betray' : 'cooperate';
+        default:
+          return 'cooperate';
+      }
+    }
+    
+    // 运行锦标赛
+    function runTournament() {
+      const rounds = 100;
+      const history = [];
+      let yourTotal = 0;
+      let opponentTotal = 0;
+      let yourCoops = 0;
+      let opponentCoops = 0;
+      
+      const yourScores = [0];
+      const opponentScores = [0];
+      
+      for (let i = 0; i < rounds; i++) {
+        const yourChoice = getStrategyChoice(selectedStrategy, history, true);
+        const opponentChoice = getStrategyChoice(selectedOpponent, history, false);
+        
+        const key = `${yourChoice}-${opponentChoice}`;
+        const [yourPenalty, opponentPenalty] = PAYOFFS[key];
+        
+        yourTotal += yourPenalty;
+        opponentTotal += opponentPenalty;
+        
+        if (yourChoice === 'cooperate') yourCoops++;
+        if (opponentChoice === 'cooperate') opponentCoops++;
+        
+        history.push({ player: yourChoice, opponent: opponentChoice, yourPenalty, opponentPenalty });
+        
+        yourScores.push(yourTotal);
+        opponentScores.push(opponentTotal);
+      }
+      
+      // 显示统计
+      document.getElementById('tournamentStats').style.display = 'grid';
+      document.getElementById('yourTotal').textContent = yourTotal + '年';
+      document.getElementById('opponentTotal').textContent = opponentTotal + '年';
+      document.getElementById('yourCoopRate').textContent = (yourCoops / rounds * 100).toFixed(0) + '%';
+      document.getElementById('opponentCoopRate').textContent = (opponentCoops / rounds * 100).toFixed(0) + '%';
+      
+      // 显示图表
+      document.getElementById('chartContainer').style.display = 'block';
+      renderChart(yourScores, opponentScores);
+      
+      // 显示历史
+      document.getElementById('historySection').style.display = 'block';
+      renderHistory(history.slice(-20).reverse());
+    }
+    
+    function renderChart(yourScores, opponentScores) {
+      const ctx = document.getElementById('tournamentChart').getContext('2d');
+      
+      if (tournamentChart) {
+        tournamentChart.destroy();
+      }
+      
+      tournamentChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: Array.from({ length: yourScores.length }, (_, i) => i),
+          datasets: [
+            {
+              label: '你的累计刑期',
+              data: yourScores,
+              borderColor: '#ff6b6b',
+              backgroundColor: 'rgba(255, 107, 107, 0.1)',
+              fill: true,
+              tension: 0.1
+            },
+            {
+              label: '对方累计刑期',
+              data: opponentScores,
+              borderColor: '#4ade80',
+              backgroundColor: 'rgba(74, 222, 128, 0.1)',
+              fill: true,
+              tension: 0.1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: 'rgba(255,255,255,0.8)' }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '轮次', color: 'rgba(255,255,255,0.6)' },
+              ticks: { color: 'rgba(255,255,255,0.6)' },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            },
+            y: {
+              title: { display: true, text: '累计刑期（年）', color: 'rgba(255,255,255,0.6)' },
+              ticks: { color: 'rgba(255,255,255,0.6)' },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            }
+          }
+        }
+      });
+    }
+    
+    function renderHistory(history) {
+      const container = document.getElementById('historyList');
+      container.innerHTML = history.map((h, i) => {
+        const round = history.length - i;
+        let resultClass = 'draw';
+        let resultText = '平';
+        if (h.yourPenalty > h.opponentPenalty) {
+          resultClass = 'lose';
+          resultText = '输';
+        } else if (h.yourPenalty < h.opponentPenalty) {
+          resultClass = 'win';
+          resultText = '赢';
+        }
+        
+        return `
+          <div class="history-item">
+            <span>第${round}轮</span>
+            <div class="history-choices">
+              <span class="history-choice ${h.player}">你: ${h.player === 'cooperate' ? '合作' : '背叛'}</span>
+              <span class="history-choice ${h.opponent}">对方: ${h.opponent === 'cooperate' ? '合作' : '背叛'}</span>
+            </div>
+            <span class="history-result ${resultClass}">${h.yourPenalty}/${h.opponentPenalty}</span>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function resetTournament() {
+      document.getElementById('tournamentStats').style.display = 'none';
+      document.getElementById('chartContainer').style.display = 'none';
+      document.getElementById('historySection').style.display = 'none';
+      if (tournamentChart) {
+        tournamentChart.destroy();
+        tournamentChart = null;
+      }
+    }
+  </script>
+</body>
+</html>

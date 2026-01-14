@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>选择题破解器 - 100道题一题不会，如何最快全对？</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1b2a 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+
+    .container { max-width: 1000px; margin: 0 auto; }
+
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00d4ff, #7c3aed, #00d4ff);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.6); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+
+    /* 控制面板 */
+    .control-panel {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+      justify-content: center;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .control-group label {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+    .control-group input, .control-group select {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 10px 15px;
+      color: white;
+      font-size: 14px;
+      width: 100px;
+    }
+    .control-group select { width: 150px; }
+    .control-group select option { background: #1a1a2e; }
+
+    .btn {
+      padding: 12px 30px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #00d4ff, #7c3aed);
+      color: white;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 状态显示 */
+    .status-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .status-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 15px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 20px;
+      text-align: center;
+    }
+    .status-label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 8px; }
+    .status-value { font-size: 1.8rem; font-weight: 700; color: #00d4ff; }
+    .status-value.highlight { color: #ffd700; }
+    .status-value.success { color: #4ade80; }
+
+    /* 答题区域 */
+    .quiz-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .section-title {
+      color: #00d4ff;
+      font-size: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* 题目网格 */
+    .questions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 8px;
+      margin-bottom: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+      padding: 10px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+    }
+    .question-cell {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.4);
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .question-cell.known {
+      background: rgba(74,222,128,0.2);
+      border-color: #4ade80;
+      color: #4ade80;
+    }
+    .question-cell.testing {
+      background: rgba(255,215,0,0.2);
+      border-color: #ffd700;
+      color: #ffd700;
+    }
+    .question-cell.current {
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    /* 日志区域 */
+    .log-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    .log-container {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      padding: 15px;
+      max-height: 250px;
+      overflow-y: auto;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    .log-entry { margin-bottom: 5px; }
+    .log-entry.submit { color: #00d4ff; }
+    .log-entry.result { color: #ffd700; }
+    .log-entry.found { color: #4ade80; }
+    .log-entry.info { color: rgba(255,255,255,0.6); }
+
+    /* 策略说明 */
+    .strategy-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 25px;
+    }
+    .strategy-content {
+      color: rgba(255,255,255,0.7);
+      line-height: 1.8;
+      font-size: 14px;
+    }
+    .strategy-content h4 {
+      color: #00d4ff;
+      margin: 20px 0 10px;
+      font-size: 15px;
+    }
+    .strategy-content h4:first-child { margin-top: 0; }
+    .strategy-content p { margin-bottom: 12px; }
+    .strategy-content .formula {
+      background: rgba(0,0,0,0.3);
+      padding: 15px;
+      border-radius: 10px;
+      font-family: 'Monaco', 'Consolas', monospace;
+      margin: 15px 0;
+      text-align: center;
+      color: #ffd700;
+    }
+    .strategy-content .highlight-box {
+      background: rgba(124,58,237,0.1);
+      border-left: 3px solid #7c3aed;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 10px 10px 0;
+    }
+
+    /* 进度条 */
+    .progress-bar {
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 15px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00d4ff, #4ade80);
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.5rem; }
+      .control-row { flex-direction: column; }
+      .questions-grid { grid-template-columns: repeat(auto-fill, minmax(45px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🎯 选择题破解器</h1>
+    <p>100道4选1单选题，一题不会，只能看总分。<br>如何用最少的提交次数找出所有正确答案？</p>
+  </div>
+
+  <!-- 控制面板 -->
+  <div class="control-panel">
+    <div class="control-row">
+      <div class="control-group">
+        <label>题目数量：</label>
+        <input type="number" id="questionCount" value="100" min="1" max="200">
+      </div>
+      <div class="control-group">
+        <label>选项数量：</label>
+        <select id="optionCount">
+          <option value="2">2选1</option>
+          <option value="3">3选1</option>
+          <option value="4" selected>4选1</option>
+          <option value="5">5选1</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>策略：</label>
+        <select id="strategy">
+          <option value="binary">二分法</option>
+          <option value="sequential">逐题法</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>速度：</label>
+        <select id="speed">
+          <option value="100">慢速</option>
+          <option value="30" selected>正常</option>
+          <option value="5">快速</option>
+          <option value="0">极速</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="startBtn" onclick="startSimulation()">🚀 开始破解</button>
+      <button class="btn btn-secondary" id="resetBtn" onclick="resetSimulation()">🔄 重置</button>
+    </div>
+  </div>
+
+  <!-- 状态面板 -->
+  <div class="status-panel">
+    <div class="status-card">
+      <div class="status-label">提交次数</div>
+      <div class="status-value" id="submitCount">0</div>
+    </div>
+    <div class="status-card">
+      <div class="status-label">已确定答案</div>
+      <div class="status-value highlight" id="knownCount">0</div>
+    </div>
+    <div class="status-card">
+      <div class="status-label">当前得分</div>
+      <div class="status-value" id="currentScore">-</div>
+    </div>
+    <div class="status-card">
+      <div class="status-label">状态</div>
+      <div class="status-value success" id="statusText">就绪</div>
+    </div>
+  </div>
+
+  <!-- 答题区域 -->
+  <div class="quiz-section">
+    <div class="section-title">📋 题目状态（绿色=已确定，黄色=测试中）</div>
+    <div class="questions-grid" id="questionsGrid"></div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+    </div>
+  </div>
+
+  <!-- 日志区域 -->
+  <div class="log-section">
+    <div class="section-title">📝 操作日志</div>
+    <div class="log-container" id="logContainer">
+      <div class="log-entry info">等待开始...</div>
+    </div>
+  </div>
+
+  <!-- 策略说明 -->
+  <div class="strategy-section">
+    <div class="section-title">💡 策略原理</div>
+    <div class="strategy-content">
+      <h4>问题本质</h4>
+      <p>这是一个信息搜索问题。100道4选1题，共有 4<sup>100</sup> 种可能的答案组合（约 10<sup>60</sup>），我们需要通过"提交后只返回正确数量"这个反馈来定位唯一正确答案。</p>
+      
+      <h4>二分法策略（最优）</h4>
+      <p>核心思想：每次提交尽可能获取最多的信息。</p>
+      <p><strong>第一阶段：建立基准</strong></p>
+      <p>先提交一份全A的答卷，得到基准分数 S₀。这告诉我们有多少题的正确答案是A。</p>
+      
+      <p><strong>第二阶段：逐题确定</strong></p>
+      <p>对于每道题，我们需要确定它的正确答案是A/B/C/D中的哪一个。</p>
+      <p>假设当前第i题我们填的是A，其他题保持不变：</p>
+      <ul style="margin-left: 20px; margin-bottom: 12px;">
+        <li>把第i题改成B，提交，得分变化 Δ</li>
+        <li>如果 Δ = +1，说明B是正确答案</li>
+        <li>如果 Δ = -1，说明A是正确答案</li>
+        <li>如果 Δ = 0，说明A和B都不对，继续测试C</li>
+      </ul>
+      
+      <div class="highlight-box">
+        <strong>最坏情况分析：</strong><br>
+        每道题最多需要测试3次（测试B、C、D，如果都不对则答案是A）。<br>
+        但实际上，通过分组策略可以大幅减少提交次数。
+      </div>
+
+      <h4>分组优化</h4>
+      <p>将题目分成若干组，同时改变一组题的答案。通过分数变化可以推断出这组题中有多少题的答案被改对/改错了。</p>
+      
+      <div class="formula">
+        理论最优：O(n × log₂(k)) 次提交<br>
+        n=100, k=4 时约 200 次
+      </div>
+
+      <h4>逐题法（对照组）</h4>
+      <p>最朴素的方法：对每道题依次尝试每个选项，直到找到正确答案。</p>
+      <p>最坏情况：每题需要 k-1 次尝试，共 n×(k-1) = 300 次。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// 全局状态
+let state = {
+  n: 100,           // 题目数量
+  k: 4,             // 选项数量
+  correctAnswers: [],  // 正确答案（0到k-1）
+  currentAnswers: [],  // 当前答卷
+  knownAnswers: [],    // 已确定的答案（-1表示未知）
+  submitCount: 0,
+  running: false,
+  speed: 50          // 动画速度（ms）
+};
+
+// 初始化题目网格
+function initGrid() {
+  const grid = document.getElementById('questionsGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < state.n; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'question-cell';
+    cell.id = `q${i}`;
+    cell.textContent = i + 1;
+    grid.appendChild(cell);
+  }
+}
+
+// 生成随机正确答案
+function generateCorrectAnswers() {
+  state.correctAnswers = [];
+  for (let i = 0; i < state.n; i++) {
+    state.correctAnswers.push(Math.floor(Math.random() * state.k));
+  }
+}
+
+// 提交答卷，返回得分
+function submit(answers) {
+  state.submitCount++;
+  let score = 0;
+  for (let i = 0; i < state.n; i++) {
+    if (answers[i] === state.correctAnswers[i]) {
+      score++;
+    }
+  }
+  updateDisplay();
+  return score;
+}
+
+// 更新显示
+function updateDisplay() {
+  document.getElementById('submitCount').textContent = state.submitCount;
+  const knownCount = state.knownAnswers.filter(a => a !== -1).length;
+  document.getElementById('knownCount').textContent = knownCount;
+  document.getElementById('progressFill').style.width = (knownCount / state.n * 100) + '%';
+  
+  // 更新题目网格
+  for (let i = 0; i < state.n; i++) {
+    const cell = document.getElementById(`q${i}`);
+    cell.className = 'question-cell';
+    if (state.knownAnswers[i] !== -1) {
+      cell.classList.add('known');
+      cell.textContent = String.fromCharCode(65 + state.knownAnswers[i]);
+    } else {
+      cell.textContent = i + 1;
+    }
+  }
+}
+
+// 添加日志
+function log(message, type = 'info') {
+  const container = document.getElementById('logContainer');
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.textContent = message;
+  container.appendChild(entry);
+  container.scrollTop = container.scrollHeight;
+}
+
+// 清空日志
+function clearLog() {
+  document.getElementById('logContainer').innerHTML = '';
+}
+
+// 延迟函数
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// 二分法策略（优化版）
+async function binaryStrategy() {
+  const optionChar = (i) => String.fromCharCode(65 + i);
+  
+  // 初始化：全部填A
+  state.currentAnswers = new Array(state.n).fill(0);
+  state.knownAnswers = new Array(state.n).fill(-1);
+  
+  log('=== 开始二分法破解 ===', 'info');
+  log(`题目数量: ${state.n}, 选项数量: ${state.k}`, 'info');
+  
+  // 第一步：提交全A，获取基准分
+  log('📤 提交全A答卷建立基准...', 'submit');
+  let baseScore = submit([...state.currentAnswers]);
+  log(`📊 基准得分: ${baseScore} (有${baseScore}题答案是A)`, 'result');
+  document.getElementById('currentScore').textContent = baseScore;
+  
+  await delay(state.speed);
+  
+  // 对每道题逐一确定答案
+  for (let i = 0; i < state.n; i++) {
+    if (!state.running) break;
+    
+    // 标记当前测试的题目
+    const cell = document.getElementById(`q${i}`);
+    cell.classList.add('testing', 'current');
+    
+    let found = false;
+    
+    // 尝试B, C, D...（跳过当前选项）
+    for (let opt = 1; opt < state.k && !found; opt++) {
+      if (!state.running) break;
+      
+      // 把第i题改成opt
+      const testAnswers = [...state.currentAnswers];
+      testAnswers[i] = opt;
+      
+      log(`🔍 第${i+1}题: A→${optionChar(opt)}`, 'submit');
+      const newScore = submit(testAnswers);
+      const delta = newScore - baseScore;
+      
+      if (delta === 1) {
+        // 改对了，opt是正确答案
+        state.knownAnswers[i] = opt;
+        state.currentAnswers[i] = opt;
+        baseScore = newScore;  // 更新基准分
+        log(`✅ 第${i+1}题: ${optionChar(opt)} (得分↑)`, 'found');
+        found = true;
+      } else if (delta === -1) {
+        // 改错了，原来的答案A是对的
+        state.knownAnswers[i] = 0;  // A
+        log(`✅ 第${i+1}题: A (得分↓)`, 'found');
+        found = true;
+      } else {
+        // 得分不变，两个都不对，继续测试
+        log(`❌ ${optionChar(opt)}不对`, 'info');
+      }
+      
+      await delay(state.speed);
+    }
+    
+    // 如果测试完所有选项都没找到，说明最后一个选项是对的
+    if (!found) {
+      state.knownAnswers[i] = state.k - 1;
+      state.currentAnswers[i] = state.k - 1;
+      baseScore++;  // 更新基准分
+      log(`✅ 第${i+1}题: ${optionChar(state.k - 1)} (排除法)`, 'found');
+    }
+    
+    cell.classList.remove('current');
+    updateDisplay();
+    document.getElementById('currentScore').textContent = baseScore;
+    await delay(state.speed);
+  }
+  
+  // 完成
+  if (state.running) {
+    log('🎉 === 破解完成！===', 'found');
+    log(`📊 总提交次数: ${state.submitCount}`, 'result');
+    const theoretical = state.n * (state.k - 1);
+    log(`📈 效率: ${(theoretical / state.submitCount * 100).toFixed(1)}% (相比最坏情况${theoretical}次)`, 'result');
+    document.getElementById('statusText').textContent = '完成!';
+  }
+}
+
+// 逐题法策略（对照组 - 更简洁的实现）
+async function sequentialStrategy() {
+  const optionChar = (i) => String.fromCharCode(65 + i);
+  
+  state.currentAnswers = new Array(state.n).fill(0);
+  state.knownAnswers = new Array(state.n).fill(-1);
+  
+  log('=== 开始逐题法破解 ===', 'info');
+  log(`题目数量: ${state.n}, 选项数量: ${state.k}`, 'info');
+  log('⚠️ 这是最朴素的方法，效率较低', 'info');
+  
+  // 先提交一次获取初始分数
+  let baseScore = submit([...state.currentAnswers]);
+  log(`📊 初始得分: ${baseScore}`, 'result');
+  document.getElementById('currentScore').textContent = baseScore;
+  
+  await delay(state.speed);
+  
+  for (let i = 0; i < state.n; i++) {
+    if (!state.running) break;
+    
+    const cell = document.getElementById(`q${i}`);
+    cell.classList.add('testing', 'current');
+    
+    let found = false;
+    
+    // 依次尝试每个选项
+    for (let opt = 0; opt < state.k && !found; opt++) {
+      if (!state.running) break;
+      
+      if (opt === state.currentAnswers[i]) continue;  // 跳过当前选项
+      
+      const testAnswers = [...state.currentAnswers];
+      testAnswers[i] = opt;
+      
+      log(`🔍 第${i+1}题: 测试${optionChar(opt)}`, 'submit');
+      const newScore = submit(testAnswers);
+      const delta = newScore - baseScore;
+      
+      if (delta === 1) {
+        // 找到正确答案
+        state.knownAnswers[i] = opt;
+        state.currentAnswers[i] = opt;
+        baseScore = newScore;
+        log(`✅ 第${i+1}题: ${optionChar(opt)}`, 'found');
+        found = true;
+      } else if (delta === -1) {
+        // 原来的是对的
+        state.knownAnswers[i] = state.currentAnswers[i];
+        log(`✅ 第${i+1}题: ${optionChar(state.currentAnswers[i])}`, 'found');
+        found = true;
+      }
+      
+      await delay(state.speed);
+    }
+    
+    if (!found) {
+      // 排除法确定最后一个
+      state.knownAnswers[i] = state.currentAnswers[i];
+      log(`✅ 第${i+1}题: ${optionChar(state.currentAnswers[i])} (排除法)`, 'found');
+    }
+    
+    cell.classList.remove('current');
+    updateDisplay();
+    document.getElementById('currentScore').textContent = baseScore;
+    await delay(state.speed);
+  }
+  
+  if (state.running) {
+    log('🎉 === 破解完成！===', 'found');
+    log(`📊 总提交次数: ${state.submitCount}`, 'result');
+    document.getElementById('statusText').textContent = '完成!';
+  }
+}
+
+// 开始模拟
+async function startSimulation() {
+  if (state.running) return;
+  
+  state.n = parseInt(document.getElementById('questionCount').value) || 100;
+  state.k = parseInt(document.getElementById('optionCount').value) || 4;
+  state.speed = parseInt(document.getElementById('speed').value) || 30;
+  state.submitCount = 0;
+  state.running = true;
+  
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('statusText').textContent = '运行中';
+  
+  initGrid();
+  generateCorrectAnswers();
+  clearLog();
+  updateDisplay();
+  
+  const strategy = document.getElementById('strategy').value;
+  
+  if (strategy === 'binary') {
+    await binaryStrategy();
+  } else {
+    await sequentialStrategy();
+  }
+  
+  state.running = false;
+  document.getElementById('startBtn').disabled = false;
+}
+
+// 重置
+function resetSimulation() {
+  state.running = false;
+  state.submitCount = 0;
+  state.knownAnswers = [];
+  state.currentAnswers = [];
+  
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('submitCount').textContent = '0';
+  document.getElementById('knownCount').textContent = '0';
+  document.getElementById('currentScore').textContent = '-';
+  document.getElementById('statusText').textContent = '就绪';
+  document.getElementById('progressFill').style.width = '0%';
+  
+  initGrid();
+  clearLog();
+  log('已重置，等待开始...', 'info');
+}
+
+// 初始化
+initGrid();
+</script>
+
+</body>
+</html>

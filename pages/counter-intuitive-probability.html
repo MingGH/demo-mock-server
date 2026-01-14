@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>反直觉概率论 - 那些让人觉得不可思议的结论</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2rem;
+      background: linear-gradient(135deg, #f093fb, #f5576c, #4facfe);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradientShift 3s ease infinite;
+    }
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 30px;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+    
+    /* 导航标签 */
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 25px;
+    }
+    .nav-tab {
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 25px;
+      color: rgba(255,255,255,0.8);
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 0.9rem;
+    }
+    .nav-tab:hover, .nav-tab.active {
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+      border-color: transparent;
+      color: white;
+      transform: translateY(-2px);
+    }
+    
+    /* 卡片 */
+    .card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 25px;
+      border: 1px solid rgba(255,255,255,0.1);
+      display: none;
+    }
+    .card.active { display: block; }
+    
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .card-icon {
+      font-size: 2.5rem;
+    }
+    .card-title {
+      font-size: 1.5rem;
+      background: linear-gradient(135deg, #f5af19, #f12711);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .card-subtitle {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+    
+    .question-box {
+      background: linear-gradient(135deg, rgba(245,175,25,0.15), rgba(241,39,17,0.1));
+      border-left: 4px solid #f5af19;
+      padding: 20px;
+      border-radius: 0 15px 15px 0;
+      margin-bottom: 25px;
+      line-height: 1.8;
+    }
+    .question-box strong { color: #f5af19; }
+    
+    /* 交互区域 */
+    .interactive-area {
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+      padding: 25px;
+      margin: 20px 0;
+    }
+    
+    /* 按钮 */
+    .btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 25px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 500;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+      color: white;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(240,147,251,0.3);
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    
+    /* 统计显示 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #f5af19;
+    }
+    .stat-value.green { color: #4ade80; }
+    .stat-value.red { color: #f87171; }
+    .stat-value.blue { color: #60a5fa; }
+    .stat-label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 5px;
+    }
+    
+    /* 进度条 */
+    .progress-container {
+      margin: 20px 0;
+    }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .progress-bar {
+      height: 25px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 12px;
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+    .progress-fill.green { background: linear-gradient(90deg, #4ade80, #22d3ee); }
+    .progress-fill.red { background: linear-gradient(90deg, #f87171, #fb923c); }
+    .progress-fill.blue { background: linear-gradient(90deg, #60a5fa, #a78bfa); }
+    
+    /* 解释区域 */
+    .explanation {
+      background: rgba(255,255,255,0.03);
+      border-radius: 15px;
+      padding: 25px;
+      margin-top: 25px;
+    }
+    .explanation h3 {
+      color: #f5af19;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .explanation p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.9;
+      margin-bottom: 12px;
+    }
+    .formula {
+      background: rgba(255,255,255,0.08);
+      padding: 15px 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      margin: 15px 0;
+      overflow-x: auto;
+      border-left: 3px solid #f5af19;
+    }
+    .highlight { color: #f87171; font-weight: bold; }
+    .success { color: #4ade80; font-weight: bold; }
+    
+    /* 生日问题特殊样式 */
+    .people-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin: 20px 0;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .person {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: all 0.3s;
+    }
+    .person.match {
+      background: linear-gradient(135deg, #f87171, #fb923c);
+      animation: pulse 0.5s ease;
+      transform: scale(1.2);
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1.2); }
+      50% { transform: scale(1.4); }
+    }
+    
+    /* 信封问题样式 */
+    .envelopes {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      margin: 25px 0;
+    }
+    .envelope {
+      width: 120px;
+      height: 80px;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      border-radius: 5px;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: #78350f;
+      font-weight: bold;
+    }
+    .envelope::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(135deg, #fcd34d, #fbbf24);
+      clip-path: polygon(0 0, 50% 100%, 100% 0);
+    }
+    .envelope:hover:not(.disabled) {
+      transform: translateY(-5px) scale(1.05);
+    }
+    .envelope.selected {
+      box-shadow: 0 0 30px rgba(251,191,36,0.5);
+    }
+    .envelope.disabled { opacity: 0.6; cursor: not-allowed; }
+    .envelope .amount {
+      position: absolute;
+      bottom: 10px;
+      font-size: 0.9rem;
+    }
+    
+    /* 圣彼得堡悖论 */
+    .coin-flip-area {
+      text-align: center;
+      padding: 20px;
+    }
+    .big-coin {
+      font-size: 5rem;
+      margin: 20px 0;
+      transition: transform 0.5s;
+    }
+    .big-coin.flipping {
+      animation: coinFlip 0.5s ease;
+    }
+    @keyframes coinFlip {
+      0% { transform: rotateY(0deg); }
+      100% { transform: rotateY(720deg); }
+    }
+    .flip-result {
+      font-size: 1.3rem;
+      min-height: 40px;
+      margin: 15px 0;
+    }
+    .flip-result.win { color: #4ade80; }
+    .flip-result.lose { color: #f87171; }
+    
+    /* 贝特朗悖论 */
+    .chord-visual {
+      width: 250px;
+      height: 250px;
+      margin: 20px auto;
+      position: relative;
+    }
+    .chord-visual svg {
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* 辛普森悖论表格 */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.9rem;
+    }
+    .data-table th, .data-table td {
+      padding: 12px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .data-table th {
+      background: rgba(245,175,25,0.2);
+      color: #f5af19;
+    }
+    .data-table tr:nth-child(even) {
+      background: rgba(0,0,0,0.1);
+    }
+    .data-table .highlight-cell {
+      background: rgba(74,222,128,0.2);
+      color: #4ade80;
+      font-weight: bold;
+    }
+    .data-table .warning-cell {
+      background: rgba(248,113,113,0.2);
+      color: #f87171;
+      font-weight: bold;
+    }
+    
+    /* 结论框 */
+    .conclusion-box {
+      background: linear-gradient(135deg, rgba(240,147,251,0.15), rgba(245,87,108,0.1));
+      border: 2px solid rgba(240,147,251,0.3);
+      border-radius: 15px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 25px;
+    }
+    .conclusion-box h3 {
+      color: #f093fb;
+      margin-bottom: 15px;
+    }
+    .conclusion-box p {
+      color: rgba(255,255,255,0.9);
+      line-height: 1.8;
+    }
+    
+    /* 响应式 */
+    @media (max-width: 600px) {
+      .card { padding: 20px; }
+      .card-title { font-size: 1.2rem; }
+      .envelopes { flex-direction: column; align-items: center; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>🎲 反直觉概率论</h1>
+    <p class="subtitle">那些让数学家都曾困惑的概率悖论<br>每一个都配有交互式模拟，眼见为实</p>
+    
+    <div class="nav-tabs">
+      <div class="nav-tab active" data-tab="birthday">🎂 生日悖论</div>
+      <div class="nav-tab" data-tab="stpetersburg">💰 圣彼得堡悖论</div>
+      <div class="nav-tab" data-tab="envelope">✉️ 两信封悖论</div>
+      <div class="nav-tab" data-tab="simpson">📊 辛普森悖论</div>
+      <div class="nav-tab" data-tab="bertrand">📐 贝特朗悖论</div>
+      <div class="nav-tab" data-tab="waitingtime">⏱️ 等待时间悖论</div>
+    </div>
+
+    <!-- 1. 生日悖论 -->
+    <div class="card active" id="birthday">
+      <div class="card-header">
+        <div class="card-icon">🎂</div>
+        <div>
+          <div class="card-title">生日悖论</div>
+          <div class="card-subtitle">23人中有两人同生日的概率超过50%</div>
+        </div>
+      </div>
+      
+      <div class="question-box">
+        <strong>问题：</strong>一个房间里需要多少人，才能使至少两人生日相同的概率超过 <strong>50%</strong>？<br><br>
+        <strong>直觉答案：</strong>一年365天，应该要180多人吧？<br>
+        <strong>真实答案：</strong>只需要 <strong class="success">23人</strong>！
+      </div>
+      
+      <div class="interactive-area">
+        <div style="text-align: center; margin-bottom: 15px;">
+          <label style="color: rgba(255,255,255,0.7);">房间人数：</label>
+          <input type="range" id="peopleCount" min="2" max="70" value="23" style="width: 200px; vertical-align: middle;">
+          <span id="peopleCountDisplay" style="font-size: 1.5rem; font-weight: bold; color: #f5af19; margin-left: 10px;">23</span>
+        </div>
+        
+        <div class="people-grid" id="peopleGrid"></div>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value blue" id="theoreticalProb">50.7%</div>
+            <div class="stat-label">理论概率</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value green" id="simulatedProb">-</div>
+            <div class="stat-label">模拟概率</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="matchFound">-</div>
+            <div class="stat-label">本次结果</div>
+          </div>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="simulateBirthday()">🎲 模拟一次</button>
+          <button class="btn btn-secondary" onclick="simulateBirthdayMany(1000)">⚡ 模拟1000次</button>
+          <button class="btn btn-secondary" onclick="resetBirthday()">🔄 重置</button>
+        </div>
+      </div>
+      
+      <div class="explanation">
+        <h3>🤔 为什么这么反直觉？</h3>
+        <p>人们容易犯的错误是：把「某人和我同生日」与「任意两人同生日」混淆。</p>
+        <p>23人中，可能的配对数是：</p>
+        <div class="formula">C(23,2) = 23 × 22 / 2 = <span class="success">253 对</span></div>
+        <p>每一对不同生日的概率是 364/365，253对都不同的概率是：</p>
+        <div class="formula">(364/365)^253 ≈ 0.4995 → 至少有一对相同 ≈ <span class="success">50.05%</span></div>
+        <p><strong>关键洞察：</strong>配对数随人数平方增长，而不是线性增长！</p>
+      </div>
+    </div>
+    
+    <!-- 2. 圣彼得堡悖论 -->
+    <div class="card" id="stpetersburg">
+      <div class="card-header">
+        <div class="card-icon">💰</div>
+        <div>
+          <div class="card-title">圣彼得堡悖论</div>
+          <div class="card-subtitle">期望值无穷大的游戏，你愿意花多少钱玩？</div>
+        </div>
+      </div>
+      
+      <div class="question-box">
+        <strong>游戏规则：</strong>抛硬币，第一次正面得2元，第二次才正面得4元，第三次才正面得8元...第n次才正面得 2^n 元。<br><br>
+        <strong>期望收益：</strong>E = 1/2×2 + 1/4×4 + 1/8×8 + ... = 1 + 1 + 1 + ... = <strong class="highlight">∞</strong><br><br>
+        <strong>悖论：</strong>期望值无穷大，但你愿意花100元玩一次吗？
+      </div>
+      
+      <div class="interactive-area">
+        <div class="coin-flip-area">
+          <div class="big-coin" id="stpCoin">🪙</div>
+          <div class="flip-result" id="stpResult">点击开始游戏</div>
+          <div style="font-size: 0.9rem; color: rgba(255,255,255,0.6);" id="stpFlipCount">已抛: 0 次</div>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="stpGames">0</div>
+            <div class="stat-label">游戏次数</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value green" id="stpTotalWin">¥0</div>
+            <div class="stat-label">总收益</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value blue" id="stpAvgWin">¥0</div>
+            <div class="stat-label">平均收益</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="stpMaxWin">¥0</div>
+            <div class="stat-label">最大单次</div>
+          </div>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="playStPetersburg()">🎲 玩一局</button>
+          <button class="btn btn-secondary" onclick="playStPetersburgMany(100)">⚡ 玩100局</button>
+          <button class="btn btn-secondary" onclick="playStPetersburgMany(1000)">⚡ 玩1000局</button>
+          <button class="btn btn-secondary" onclick="resetStPetersburg()">🔄 重置</button>
+        </div>
+      </div>
+      
+      <div class="explanation">
+        <h3>🤔 为什么期望值无穷大却没人愿意花大钱玩？</h3>
+        <p><strong>1. 边际效用递减：</strong>赢100万和赢200万的快乐差距，远小于赢0和赢100万。</p>
+        <p><strong>2. 大数需要真的大：</strong>期望值收敛极慢，需要玩 2^n 次才能稳定获得 n 元/次。</p>
+        <div class="formula">
+          玩 1000 次，平均收益约 10 元/次<br>
+          玩 100万 次，平均收益约 20 元/次<br>
+          玩 10亿 次，平均收益约 30 元/次
+        </div>
+        <p><strong>3. 现实约束：</strong>没有赌场有无限资金支付 2^100 元的奖金。</p>
+        <p>这个悖论促使伯努利提出了<span class="success">「效用函数」</span>的概念，奠定了现代决策理论的基础。</p>
+      </div>
+    </div>
+    
+    <!-- 3. 两信封悖论 -->
+    <div class="card" id="envelope">
+      <div class="card-header">
+        <div class="card-icon">✉️</div>
+        <div>
+          <div class="card-title">两信封悖论</div>
+          <div class="card-subtitle">换还是不换？逻辑告诉你永远要换</div>
+        </div>
+      </div>
+      
+      <div class="question-box">
+        <strong>问题：</strong>两个信封，一个装的钱是另一个的两倍。你随机选了一个，打开看到 <strong>100元</strong>。<br><br>
+        <strong>换的期望：</strong>另一个要么是50元(概率1/2)，要么是200元(概率1/2)<br>
+        期望 = 0.5×50 + 0.5×200 = <strong class="success">125元</strong> > 100元<br><br>
+        <strong>悖论：</strong>按这个逻辑，无论看到多少钱都应该换。但如果不打开呢？换来换去有意义吗？
+      </div>
+      
+      <div class="interactive-area">
+        <div class="envelopes">
+          <div class="envelope" id="env1" onclick="selectEnvelope(1)">
+            <span>A</span>
+            <div class="amount" id="env1Amount"></div>
+          </div>
+          <div class="envelope" id="env2" onclick="selectEnvelope(2)">
+            <span>B</span>
+            <div class="amount" id="env2Amount"></div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; min-height: 60px;" id="envMessage">
+          点击选择一个信封
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="envGames">0</div>
+            <div class="stat-label">游戏次数</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value green" id="envSwitchAvg">-</div>
+            <div class="stat-label">换的平均收益</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value blue" id="envStayAvg">-</div>
+            <div class="stat-label">不换平均收益</div>
+          </div>
+        </div>
+        
+        <div class="btn-group" id="envButtons">
+          <button class="btn btn-primary" onclick="initEnvelope()">🎲 新游戏</button>
+          <button class="btn btn-secondary" onclick="simulateEnvelopeMany(1000)">⚡ 模拟1000次</button>
+        </div>
+      </div>
+      
+      <div class="explanation">
+        <h3>🤔 悖论在哪里？</h3>
+        <p><strong>错误的假设：</strong>「另一个信封是50或200的概率各50%」是错的！</p>
+        <p>如果小信封是X，大信封是2X，那么：</p>
+        <div class="formula">
+          看到100元时：<br>
+          - 如果你拿的是小信封(X=100)，另一个是200<br>
+          - 如果你拿的是大信封(2X=100)，另一个是50<br>
+          这两种情况的概率<span class="highlight">不一定相等</span>！
+        </div>
+        <p>关键在于：X的分布是什么？如果X均匀分布在[1,100]，看到100元更可能是大信封。</p>
+        <p><strong>正确结论：</strong>在没有先验信息时，换与不换的期望收益相同。</p>
+      </div>
+    </div>
+
+    <!-- 4. 辛普森悖论 -->
+    <div class="card" id="simpson">
+      <div class="card-header">
+        <div class="card-icon">📊</div>
+        <div>
+          <div class="card-title">辛普森悖论</div>
+          <div class="card-subtitle">分组都赢，合并却输？</div>
+        </div>
+      </div>
+      
+      <div class="question-box">
+        <strong>真实案例：</strong>1973年伯克利大学招生被控性别歧视。<br><br>
+        <strong>总体数据：</strong>男性录取率 44%，女性录取率 35% → 歧视女性？<br>
+        <strong>分系数据：</strong>大多数系女性录取率<span class="success">更高</span>！<br><br>
+        <strong>悖论：</strong>每个子群体中A都比B好，但合并后B却比A好。
+      </div>
+      
+      <div class="interactive-area">
+        <h4 style="text-align: center; margin-bottom: 15px; color: rgba(255,255,255,0.8);">🏥 模拟：两种药物的疗效对比</h4>
+        
+        <table class="data-table" id="simpsonTable">
+          <tr>
+            <th>患者类型</th>
+            <th>药物A治愈率</th>
+            <th>药物B治愈率</th>
+            <th>更优</th>
+          </tr>
+          <tr>
+            <td>轻症患者</td>
+            <td class="highlight-cell">93% (93/100)</td>
+            <td>87% (87/100)</td>
+            <td style="color: #4ade80;">A</td>
+          </tr>
+          <tr>
+            <td>重症患者</td>
+            <td class="highlight-cell">73% (73/100)</td>
+            <td>69% (69/100)</td>
+            <td style="color: #4ade80;">A</td>
+          </tr>
+          <tr style="background: rgba(248,113,113,0.1);">
+            <td><strong>总体</strong></td>
+            <td class="warning-cell">78% (156/200)</td>
+            <td class="highlight-cell">83% (166/200)</td>
+            <td style="color: #f87171;"><strong>B !</strong></td>
+          </tr>
+        </table>
+        
+        <div style="text-align: center; margin: 20px 0;">
+          <button class="btn btn-primary" onclick="generateSimpsonData()">🎲 生成新数据</button>
+          <button class="btn btn-secondary" onclick="showSimpsonExplanation()">💡 揭秘原因</button>
+        </div>
+        
+        <div id="simpsonExplanation" style="display: none; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 15px; margin-top: 15px;">
+          <p style="color: rgba(255,255,255,0.9); line-height: 1.8;">
+            <strong style="color: #f5af19;">关键：</strong>分组比例不同！<br><br>
+            药物A：轻症100人 + 重症100人 = 200人<br>
+            药物B：轻症<span class="highlight">20人</span> + 重症<span class="highlight">180人</span> = 200人<br><br>
+            药物B主要用于重症患者（基数大），而重症本身治愈率低，拉低了总体数据。<br>
+            这就是<span class="success">「混杂变量」</span>的威力！
+          </p>
+        </div>
+      </div>
+      
+      <div class="explanation">
+        <h3>🤔 为什么会这样？</h3>
+        <p>辛普森悖论的本质是<strong>混杂变量</strong>（Confounding Variable）的影响。</p>
+        <p>在上面的例子中，「病情严重程度」是混杂变量：</p>
+        <div class="formula">
+          1. 病情影响治愈率（重症更难治）<br>
+          2. 病情影响药物选择（重症更多用B）<br>
+          → 导致总体数据产生误导
+        </div>
+        <p><strong>现实启示：</strong></p>
+        <p>• 看到「XX产品用户满意度更高」时，要问：用户群体一样吗？</p>
+        <p>• 看到「XX学校升学率更高」时，要问：生源质量一样吗？</p>
+        <p>• <span class="highlight">相关性 ≠ 因果性</span>，数据会骗人！</p>
+      </div>
+    </div>
+    
+    <!-- 5. 贝特朗悖论 -->
+    <div class="card" id="bertrand">
+      <div class="card-header">
+        <div class="card-icon">📐</div>
+        <div>
+          <div class="card-title">贝特朗悖论</div>
+          <div class="card-subtitle">同一个问题，三种「正确」答案</div>
+        </div>
+      </div>
+      
+      <div class="question-box">
+        <strong>问题：</strong>在圆内随机画一条弦，弦长超过内接等边三角形边长的概率是多少？<br><br>
+        <strong>答案1：</strong>1/3（随机选两点）<br>
+        <strong>答案2：</strong>1/2（随机选半径上的点）<br>
+        <strong>答案3：</strong>1/4（随机选圆内的点作为弦中点）<br><br>
+        <strong>悖论：</strong>三个答案都「正确」，取决于「随机」的定义！
+      </div>
+      
+      <div class="interactive-area">
+        <div style="text-align: center; margin-bottom: 15px;">
+          <label style="color: rgba(255,255,255,0.7);">选择随机方法：</label>
+          <select id="bertrandMethod" style="padding: 8px 15px; border-radius: 8px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2);">
+            <option value="1">方法1: 随机选圆周上两点</option>
+            <option value="2">方法2: 随机选半径上一点</option>
+            <option value="3">方法3: 随机选圆内一点作为弦中点</option>
+          </select>
+        </div>
+        
+        <div class="chord-visual">
+          <svg id="bertrandSvg" viewBox="0 0 250 250">
+            <circle cx="125" cy="125" r="100" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+            <!-- 内接等边三角形 -->
+            <polygon points="125,25 38,175 212,175" fill="none" stroke="rgba(245,175,25,0.5)" stroke-width="1" stroke-dasharray="5,5"/>
+            <!-- 弦 -->
+            <line id="bertrandChord" x1="125" y1="25" x2="212" y2="175" stroke="#f093fb" stroke-width="2"/>
+          </svg>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="bertrandTotal">0</div>
+            <div class="stat-label">总弦数</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value green" id="bertrandLong">0</div>
+            <div class="stat-label">长弦数</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value blue" id="bertrandProb">-</div>
+            <div class="stat-label">长弦概率</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="bertrandTheory">1/3</div>
+            <div class="stat-label">理论值</div>
+          </div>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="drawBertrandChord()">🎲 画一条弦</button>
+          <button class="btn btn-secondary" onclick="drawBertrandMany(500)">⚡ 画500条</button>
+          <button class="btn btn-secondary" onclick="resetBertrand()">🔄 重置</button>
+        </div>
+      </div>
+      
+      <div class="explanation">
+        <h3>🤔 为什么会有三个答案？</h3>
+        <p>这个悖论揭示了一个深刻的问题：<strong>「随机」本身需要定义</strong>。</p>
+        <div class="formula">
+          方法1: 在圆周上均匀选点 → P = 1/3<br>
+          方法2: 在半径上均匀选点 → P = 1/2<br>
+          方法3: 在圆面上均匀选点 → P = 1/4
+        </div>
+        <p>三种方法对应三种不同的「均匀分布」，都是合理的。</p>
+        <p><strong>启示：</strong>在概率问题中，必须明确定义样本空间和概率测度。「随机」不是一个自明的概念！</p>
+      </div>
+    </div>
+    
+    <!-- 6. 等待时间悖论 -->
+    <div class="card" id="waitingtime">
+      <div class="card-header">
+        <div class="card-icon">⏱️</div>
+        <div>
+          <div class="card-title">等待时间悖论（检验悖论）</div>
+          <div class="card-subtitle">公交车平均10分钟一班，你平均要等多久？</div>
+        </div>
+      </div>
+      
+      <div class="question-box">
+        <strong>问题：</strong>公交车平均每10分钟一班。你随机到达车站，平均要等多久？<br><br>
+        <strong>直觉答案：</strong>5分钟（10分钟的一半）<br>
+        <strong>真实答案：</strong>如果发车间隔有波动，平均等待时间 <strong class="highlight">> 5分钟</strong>！<br><br>
+        <strong>极端情况：</strong>如果间隔服从指数分布，平均等待时间 = <strong class="highlight">10分钟</strong>！
+      </div>
+      
+      <div class="interactive-area">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <label style="color: rgba(255,255,255,0.7);">发车间隔分布：</label>
+          <select id="busDistribution" style="padding: 8px 15px; border-radius: 8px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2);" onchange="updateBusTheory()">
+            <option value="fixed">固定间隔（每10分钟一班）</option>
+            <option value="uniform">均匀分布（5-15分钟）</option>
+            <option value="exponential">指数分布（平均10分钟）</option>
+          </select>
+        </div>
+        
+        <div class="progress-container">
+          <div class="progress-label">
+            <span>等待时间分布</span>
+            <span id="waitTimeDisplay">模拟中...</span>
+          </div>
+          <div class="progress-bar" style="height: 40px;">
+            <div class="progress-fill blue" id="waitProgress" style="width: 0%;"></div>
+          </div>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="busSimCount">0</div>
+            <div class="stat-label">模拟次数</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value blue" id="busAvgWait">-</div>
+            <div class="stat-label">平均等待</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value green" id="busTheoryWait">5分钟</div>
+            <div class="stat-label">理论值</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="busMaxWait">-</div>
+            <div class="stat-label">最长等待</div>
+          </div>
+        </div>
+        
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="simulateBusWait()">🚌 模拟一次</button>
+          <button class="btn btn-secondary" onclick="simulateBusWaitMany(1000)">⚡ 模拟1000次</button>
+          <button class="btn btn-secondary" onclick="resetBusWait()">🔄 重置</button>
+        </div>
+      </div>
+      
+      <div class="explanation">
+        <h3>🤔 为什么等待时间会超过一半？</h3>
+        <p>这叫做<strong>「检验悖论」</strong>或<strong>「长度偏差抽样」</strong>。</p>
+        <p>关键洞察：你更可能落在<span class="highlight">较长的间隔</span>中！</p>
+        <div class="formula">
+          假设有两种间隔：5分钟和15分钟各占一半<br>
+          平均间隔 = (5+15)/2 = 10分钟<br><br>
+          但你落在15分钟间隔的概率是 15/(5+15) = 75%<br>
+          落在5分钟间隔的概率只有 25%<br><br>
+          平均等待 = 0.25×2.5 + 0.75×7.5 = <span class="highlight">6.25分钟</span> > 5分钟
+        </div>
+        <p><strong>数学公式：</strong></p>
+        <div class="formula">
+          E[等待时间] = E[间隔]/2 + Var[间隔]/(2×E[间隔])
+        </div>
+        <p>只有当方差为0（固定间隔）时，等待时间才等于间隔的一半。</p>
+      </div>
+    </div>
+    
+    <!-- 总结 -->
+    <div class="conclusion-box">
+      <h3>💡 概率论的反直觉本质</h3>
+      <p>
+        这些悖论告诉我们：<br><br>
+        1. <strong>直觉是不可靠的</strong> — 人脑不擅长处理概率<br>
+        2. <strong>定义很重要</strong> — 「随机」「公平」需要精确定义<br>
+        3. <strong>数据会骗人</strong> — 相关性≠因果性，要警惕混杂变量<br>
+        4. <strong>期望值不是一切</strong> — 还要考虑方差、效用、现实约束<br><br>
+        <span style="color: #f5af19;">概率论的魅力，正在于它不断挑战我们的直觉。</span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // ========== 标签切换 ==========
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+    
+    // ========== 1. 生日悖论 ==========
+    let birthdayStats = { total: 0, matches: 0 };
+    
+    function calculateBirthdayProbability(n) {
+      let prob = 1;
+      for (let i = 0; i < n; i++) {
+        prob *= (365 - i) / 365;
+      }
+      return 1 - prob;
+    }
+    
+    document.getElementById('peopleCount').addEventListener('input', function() {
+      const n = parseInt(this.value);
+      document.getElementById('peopleCountDisplay').textContent = n;
+      document.getElementById('theoreticalProb').textContent = (calculateBirthdayProbability(n) * 100).toFixed(1) + '%';
+      renderPeopleGrid(n);
+    });
+    
+    function renderPeopleGrid(n, birthdays = null, matchIndices = []) {
+      const grid = document.getElementById('peopleGrid');
+      grid.innerHTML = '';
+      for (let i = 0; i < n; i++) {
+        const person = document.createElement('div');
+        person.className = 'person' + (matchIndices.includes(i) ? ' match' : '');
+        person.textContent = '👤';
+        if (birthdays) {
+          person.title = `生日: ${birthdays[i] + 1}`;
+        }
+        grid.appendChild(person);
+      }
+    }
+    
+    function simulateBirthday() {
+      const n = parseInt(document.getElementById('peopleCount').value);
+      const birthdays = [];
+      const seen = new Set();
+      let matchIndices = [];
+      let hasMatch = false;
+      
+      for (let i = 0; i < n; i++) {
+        const birthday = Math.floor(Math.random() * 365);
+        birthdays.push(birthday);
+        if (seen.has(birthday)) {
+          hasMatch = true;
+          matchIndices.push(i);
+          // 找到之前相同生日的人
+          for (let j = 0; j < i; j++) {
+            if (birthdays[j] === birthday) matchIndices.push(j);
+          }
+        }
+        seen.add(birthday);
+      }
+      
+      birthdayStats.total++;
+      if (hasMatch) birthdayStats.matches++;
+      
+      renderPeopleGrid(n, birthdays, matchIndices);
+      document.getElementById('matchFound').textContent = hasMatch ? '有重复!' : '无重复';
+      document.getElementById('matchFound').className = 'stat-value ' + (hasMatch ? 'green' : 'red');
+      document.getElementById('simulatedProb').textContent = (birthdayStats.matches / birthdayStats.total * 100).toFixed(1) + '%';
+    }
+    
+    function simulateBirthdayMany(times) {
+      const n = parseInt(document.getElementById('peopleCount').value);
+      for (let t = 0; t < times; t++) {
+        const birthdays = [];
+        const seen = new Set();
+        let hasMatch = false;
+        
+        for (let i = 0; i < n; i++) {
+          const birthday = Math.floor(Math.random() * 365);
+          birthdays.push(birthday);
+          if (seen.has(birthday)) hasMatch = true;
+          seen.add(birthday);
+        }
+        
+        birthdayStats.total++;
+        if (hasMatch) birthdayStats.matches++;
+      }
+      
+      document.getElementById('simulatedProb').textContent = (birthdayStats.matches / birthdayStats.total * 100).toFixed(1) + '%';
+      document.getElementById('matchFound').textContent = `已模拟${birthdayStats.total}次`;
+    }
+    
+    function resetBirthday() {
+      birthdayStats = { total: 0, matches: 0 };
+      const n = parseInt(document.getElementById('peopleCount').value);
+      renderPeopleGrid(n);
+      document.getElementById('simulatedProb').textContent = '-';
+      document.getElementById('matchFound').textContent = '-';
+    }
+    
+    // 初始化
+    renderPeopleGrid(23);
+    
+    // ========== 2. 圣彼得堡悖论 ==========
+    let stpStats = { games: 0, totalWin: 0, maxWin: 0 };
+    
+    function playStPetersburg(animate = true) {
+      let flips = 0;
+      let prize = 1;
+      
+      const coin = document.getElementById('stpCoin');
+      const result = document.getElementById('stpResult');
+      const flipCount = document.getElementById('stpFlipCount');
+      
+      if (animate) {
+        coin.classList.add('flipping');
+        setTimeout(() => coin.classList.remove('flipping'), 500);
+      }
+      
+      // 模拟抛硬币
+      while (Math.random() < 0.5) {
+        flips++;
+        prize *= 2;
+      }
+      flips++;
+      prize *= 2;
+      
+      stpStats.games++;
+      stpStats.totalWin += prize;
+      if (prize > stpStats.maxWin) stpStats.maxWin = prize;
+      
+      if (animate) {
+        result.textContent = `🎉 第${flips}次正面，赢得 ¥${prize}`;
+        result.className = 'flip-result win';
+        flipCount.textContent = `抛了 ${flips} 次`;
+        coin.textContent = flips > 10 ? '💰' : '🪙';
+      }
+      
+      updateStPetersburgStats();
+      return prize;
+    }
+    
+    function playStPetersburgMany(times) {
+      for (let i = 0; i < times; i++) {
+        playStPetersburg(false);
+      }
+      document.getElementById('stpResult').textContent = `已完成 ${times} 局模拟`;
+      document.getElementById('stpResult').className = 'flip-result';
+    }
+    
+    function updateStPetersburgStats() {
+      document.getElementById('stpGames').textContent = stpStats.games;
+      document.getElementById('stpTotalWin').textContent = '¥' + stpStats.totalWin.toLocaleString();
+      document.getElementById('stpAvgWin').textContent = '¥' + (stpStats.totalWin / stpStats.games).toFixed(2);
+      document.getElementById('stpMaxWin').textContent = '¥' + stpStats.maxWin.toLocaleString();
+    }
+    
+    function resetStPetersburg() {
+      stpStats = { games: 0, totalWin: 0, maxWin: 0 };
+      document.getElementById('stpGames').textContent = '0';
+      document.getElementById('stpTotalWin').textContent = '¥0';
+      document.getElementById('stpAvgWin').textContent = '¥0';
+      document.getElementById('stpMaxWin').textContent = '¥0';
+      document.getElementById('stpResult').textContent = '点击开始游戏';
+      document.getElementById('stpResult').className = 'flip-result';
+      document.getElementById('stpFlipCount').textContent = '已抛: 0 次';
+      document.getElementById('stpCoin').textContent = '🪙';
+    }
+    
+    // ========== 3. 两信封悖论 ==========
+    let envStats = { games: 0, switchTotal: 0, stayTotal: 0 };
+    let envState = { small: 0, large: 0, selected: 0, phase: 'init' };
+    
+    function initEnvelope() {
+      const base = Math.floor(Math.random() * 100) + 10;
+      envState.small = base;
+      envState.large = base * 2;
+      envState.selected = 0;
+      envState.phase = 'select';
+      
+      document.getElementById('env1').classList.remove('selected', 'disabled');
+      document.getElementById('env2').classList.remove('selected', 'disabled');
+      document.getElementById('env1Amount').textContent = '';
+      document.getElementById('env2Amount').textContent = '';
+      document.getElementById('envMessage').innerHTML = '点击选择一个信封';
+    }
+    
+    function selectEnvelope(num) {
+      if (envState.phase !== 'select') return;
+      
+      envState.selected = num;
+      envState.phase = 'decide';
+      
+      // 随机分配金额
+      const amounts = Math.random() < 0.5 ? [envState.small, envState.large] : [envState.large, envState.small];
+      envState.amounts = amounts;
+      
+      document.getElementById(`env${num}`).classList.add('selected');
+      document.getElementById(`env${num}Amount`).textContent = `¥${amounts[num-1]}`;
+      
+      document.getElementById('envMessage').innerHTML = `
+        你选择了信封${num === 1 ? 'A' : 'B'}，里面有 <strong style="color: #f5af19;">¥${amounts[num-1]}</strong><br>
+        <button class="btn btn-primary" onclick="decideEnvelope(true)" style="margin: 10px 5px;">🔄 换</button>
+        <button class="btn btn-secondary" onclick="decideEnvelope(false)" style="margin: 10px 5px;">✋ 不换</button>
+      `;
+    }
+    
+    function decideEnvelope(switchEnv) {
+      if (envState.phase !== 'decide') return;
+      envState.phase = 'done';
+      
+      const other = envState.selected === 1 ? 2 : 1;
+      const myAmount = envState.amounts[envState.selected - 1];
+      const otherAmount = envState.amounts[other - 1];
+      const finalAmount = switchEnv ? otherAmount : myAmount;
+      
+      envStats.games++;
+      if (switchEnv) {
+        envStats.switchTotal += finalAmount;
+      } else {
+        envStats.stayTotal += finalAmount;
+      }
+      
+      // 显示两个信封的金额
+      document.getElementById('env1Amount').textContent = `¥${envState.amounts[0]}`;
+      document.getElementById('env2Amount').textContent = `¥${envState.amounts[1]}`;
+      document.getElementById('env1').classList.add('disabled');
+      document.getElementById('env2').classList.add('disabled');
+      
+      const won = finalAmount === envState.large;
+      document.getElementById('envMessage').innerHTML = `
+        ${switchEnv ? '换了！' : '没换！'} 你得到 <strong style="color: ${won ? '#4ade80' : '#f87171'};">¥${finalAmount}</strong>
+        ${won ? '（拿到了大的！）' : '（拿到了小的）'}
+      `;
+      
+      updateEnvelopeStats();
+    }
+    
+    function simulateEnvelopeMany(times) {
+      for (let i = 0; i < times; i++) {
+        const base = Math.floor(Math.random() * 100) + 10;
+        const small = base, large = base * 2;
+        const amounts = Math.random() < 0.5 ? [small, large] : [large, small];
+        const selected = Math.random() < 0.5 ? 0 : 1;
+        const other = 1 - selected;
+        
+        envStats.games++;
+        envStats.switchTotal += amounts[other];
+        envStats.stayTotal += amounts[selected];
+      }
+      updateEnvelopeStats();
+      document.getElementById('envMessage').innerHTML = `已模拟 ${times} 次`;
+    }
+    
+    function updateEnvelopeStats() {
+      document.getElementById('envGames').textContent = envStats.games;
+      if (envStats.games > 0) {
+        const switchCount = envStats.games;
+        const stayCount = envStats.games;
+        document.getElementById('envSwitchAvg').textContent = '¥' + (envStats.switchTotal / switchCount).toFixed(1);
+        document.getElementById('envStayAvg').textContent = '¥' + (envStats.stayTotal / stayCount).toFixed(1);
+      }
+    }
+    
+    initEnvelope();
+
+    // ========== 4. 辛普森悖论 ==========
+    function generateSimpsonData() {
+      // 生成能产生辛普森悖论的数据
+      // 药物A: 轻症多，重症少
+      // 药物B: 轻症少，重症多
+      const aLight = 100, aHeavy = 100;
+      const bLight = 20, bHeavy = 180;
+      
+      // 轻症治愈率高，重症治愈率低
+      // 但A在两组都略高
+      const aLightRate = 0.90 + Math.random() * 0.08;
+      const aHeavyRate = 0.70 + Math.random() * 0.08;
+      const bLightRate = aLightRate - 0.03 - Math.random() * 0.05;
+      const bHeavyRate = aHeavyRate - 0.02 - Math.random() * 0.05;
+      
+      const aLightCure = Math.round(aLight * aLightRate);
+      const aHeavyCure = Math.round(aHeavy * aHeavyRate);
+      const bLightCure = Math.round(bLight * bLightRate);
+      const bHeavyCure = Math.round(bHeavy * bHeavyRate);
+      
+      const aTotal = aLight + aHeavy;
+      const bTotal = bLight + bHeavy;
+      const aTotalCure = aLightCure + aHeavyCure;
+      const bTotalCure = bLightCure + bHeavyCure;
+      
+      const table = document.getElementById('simpsonTable');
+      table.innerHTML = `
+        <tr>
+          <th>患者类型</th>
+          <th>药物A治愈率</th>
+          <th>药物B治愈率</th>
+          <th>更优</th>
+        </tr>
+        <tr>
+          <td>轻症患者</td>
+          <td class="highlight-cell">${(aLightCure/aLight*100).toFixed(0)}% (${aLightCure}/${aLight})</td>
+          <td>${(bLightCure/bLight*100).toFixed(0)}% (${bLightCure}/${bLight})</td>
+          <td style="color: #4ade80;">A</td>
+        </tr>
+        <tr>
+          <td>重症患者</td>
+          <td class="highlight-cell">${(aHeavyCure/aHeavy*100).toFixed(0)}% (${aHeavyCure}/${aHeavy})</td>
+          <td>${(bHeavyCure/bHeavy*100).toFixed(0)}% (${bHeavyCure}/${bHeavy})</td>
+          <td style="color: #4ade80;">A</td>
+        </tr>
+        <tr style="background: rgba(248,113,113,0.1);">
+          <td><strong>总体</strong></td>
+          <td class="warning-cell">${(aTotalCure/aTotal*100).toFixed(0)}% (${aTotalCure}/${aTotal})</td>
+          <td class="highlight-cell">${(bTotalCure/bTotal*100).toFixed(0)}% (${bTotalCure}/${bTotal})</td>
+          <td style="color: #f87171;"><strong>B !</strong></td>
+        </tr>
+      `;
+    }
+    
+    function showSimpsonExplanation() {
+      const el = document.getElementById('simpsonExplanation');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+    
+    // ========== 5. 贝特朗悖论 ==========
+    let bertrandStats = { total: 0, long: 0 };
+    const triangleSide = Math.sqrt(3) * 100; // 内接等边三角形边长
+    
+    function drawBertrandChord(animate = true) {
+      const method = document.getElementById('bertrandMethod').value;
+      const svg = document.getElementById('bertrandSvg');
+      const chord = document.getElementById('bertrandChord');
+      
+      let x1, y1, x2, y2, chordLength;
+      const cx = 125, cy = 125, r = 100;
+      
+      if (method === '1') {
+        // 方法1: 随机选圆周上两点
+        const angle1 = Math.random() * 2 * Math.PI;
+        const angle2 = Math.random() * 2 * Math.PI;
+        x1 = cx + r * Math.cos(angle1);
+        y1 = cy + r * Math.sin(angle1);
+        x2 = cx + r * Math.cos(angle2);
+        y2 = cy + r * Math.sin(angle2);
+      } else if (method === '2') {
+        // 方法2: 随机选半径上一点作为弦中点
+        const angle = Math.random() * 2 * Math.PI;
+        const dist = Math.random() * r;
+        const midX = cx + dist * Math.cos(angle);
+        const midY = cy + dist * Math.sin(angle);
+        // 弦垂直于半径
+        const halfLen = Math.sqrt(r*r - dist*dist);
+        const perpAngle = angle + Math.PI/2;
+        x1 = midX + halfLen * Math.cos(perpAngle);
+        y1 = midY + halfLen * Math.sin(perpAngle);
+        x2 = midX - halfLen * Math.cos(perpAngle);
+        y2 = midY - halfLen * Math.sin(perpAngle);
+      } else {
+        // 方法3: 随机选圆内一点作为弦中点
+        let px, py;
+        do {
+          px = (Math.random() - 0.5) * 2 * r;
+          py = (Math.random() - 0.5) * 2 * r;
+        } while (px*px + py*py > r*r);
+        
+        const midX = cx + px;
+        const midY = cy + py;
+        const dist = Math.sqrt(px*px + py*py);
+        
+        if (dist < 0.01) {
+          // 中点在圆心，弦是直径
+          const angle = Math.random() * Math.PI;
+          x1 = cx + r * Math.cos(angle);
+          y1 = cy + r * Math.sin(angle);
+          x2 = cx - r * Math.cos(angle);
+          y2 = cy - r * Math.sin(angle);
+        } else {
+          const halfLen = Math.sqrt(r*r - dist*dist);
+          const perpAngle = Math.atan2(py, px) + Math.PI/2;
+          x1 = midX + halfLen * Math.cos(perpAngle);
+          y1 = midY + halfLen * Math.sin(perpAngle);
+          x2 = midX - halfLen * Math.cos(perpAngle);
+          y2 = midY - halfLen * Math.sin(perpAngle);
+        }
+      }
+      
+      chordLength = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+      const isLong = chordLength > triangleSide;
+      
+      bertrandStats.total++;
+      if (isLong) bertrandStats.long++;
+      
+      if (animate) {
+        chord.setAttribute('x1', x1);
+        chord.setAttribute('y1', y1);
+        chord.setAttribute('x2', x2);
+        chord.setAttribute('y2', y2);
+        chord.setAttribute('stroke', isLong ? '#4ade80' : '#f87171');
+      }
+      
+      updateBertrandStats();
+    }
+    
+    function drawBertrandMany(times) {
+      for (let i = 0; i < times; i++) {
+        drawBertrandChord(false);
+      }
+      // 最后画一条显示
+      drawBertrandChord(true);
+    }
+    
+    function updateBertrandStats() {
+      document.getElementById('bertrandTotal').textContent = bertrandStats.total;
+      document.getElementById('bertrandLong').textContent = bertrandStats.long;
+      if (bertrandStats.total > 0) {
+        document.getElementById('bertrandProb').textContent = (bertrandStats.long / bertrandStats.total * 100).toFixed(1) + '%';
+      }
+      
+      const method = document.getElementById('bertrandMethod').value;
+      const theories = { '1': '1/3', '2': '1/2', '3': '1/4' };
+      document.getElementById('bertrandTheory').textContent = theories[method];
+    }
+    
+    function resetBertrand() {
+      bertrandStats = { total: 0, long: 0 };
+      document.getElementById('bertrandTotal').textContent = '0';
+      document.getElementById('bertrandLong').textContent = '0';
+      document.getElementById('bertrandProb').textContent = '-';
+      const chord = document.getElementById('bertrandChord');
+      chord.setAttribute('x1', 125);
+      chord.setAttribute('y1', 25);
+      chord.setAttribute('x2', 212);
+      chord.setAttribute('y2', 175);
+      chord.setAttribute('stroke', '#f093fb');
+    }
+    
+    document.getElementById('bertrandMethod').addEventListener('change', resetBertrand);
+    
+    // ========== 6. 等待时间悖论 ==========
+    let busStats = { total: 0, waitSum: 0, maxWait: 0 };
+    
+    function generateBusInterval() {
+      const dist = document.getElementById('busDistribution').value;
+      if (dist === 'fixed') {
+        return 10;
+      } else if (dist === 'uniform') {
+        return 5 + Math.random() * 10;
+      } else {
+        // 指数分布，平均10分钟
+        return -10 * Math.log(Math.random());
+      }
+    }
+    
+    function simulateBusWait(animate = true) {
+      // 生成一天的公交时刻表（24小时 = 1440分钟）
+      const intervals = [];
+      let time = 0;
+      while (time < 1440) {
+        const interval = generateBusInterval();
+        intervals.push(interval);
+        time += interval;
+      }
+      
+      // 随机到达时间
+      const arrivalTime = Math.random() * 1440;
+      
+      // 计算等待时间
+      let cumTime = 0;
+      let waitTime = 0;
+      for (const interval of intervals) {
+        if (cumTime + interval > arrivalTime) {
+          waitTime = cumTime + interval - arrivalTime;
+          break;
+        }
+        cumTime += interval;
+      }
+      
+      busStats.total++;
+      busStats.waitSum += waitTime;
+      if (waitTime > busStats.maxWait) busStats.maxWait = waitTime;
+      
+      if (animate) {
+        document.getElementById('waitTimeDisplay').textContent = `本次等待: ${waitTime.toFixed(1)} 分钟`;
+        const progress = Math.min(waitTime / 20 * 100, 100);
+        document.getElementById('waitProgress').style.width = progress + '%';
+      }
+      
+      updateBusStats();
+    }
+    
+    function simulateBusWaitMany(times) {
+      for (let i = 0; i < times; i++) {
+        simulateBusWait(false);
+      }
+      document.getElementById('waitTimeDisplay').textContent = `已模拟 ${times} 次`;
+    }
+    
+    function updateBusStats() {
+      document.getElementById('busSimCount').textContent = busStats.total;
+      if (busStats.total > 0) {
+        document.getElementById('busAvgWait').textContent = (busStats.waitSum / busStats.total).toFixed(1) + '分钟';
+      }
+      document.getElementById('busMaxWait').textContent = busStats.maxWait.toFixed(1) + '分钟';
+    }
+    
+    function updateBusTheory() {
+      const dist = document.getElementById('busDistribution').value;
+      const theories = {
+        'fixed': '5分钟',
+        'uniform': '5.83分钟',
+        'exponential': '10分钟'
+      };
+      document.getElementById('busTheoryWait').textContent = theories[dist];
+      resetBusWait();
+    }
+    
+    function resetBusWait() {
+      busStats = { total: 0, waitSum: 0, maxWait: 0 };
+      document.getElementById('busSimCount').textContent = '0';
+      document.getElementById('busAvgWait').textContent = '-';
+      document.getElementById('busMaxWait').textContent = '-';
+      document.getElementById('waitProgress').style.width = '0%';
+      document.getElementById('waitTimeDisplay').textContent = '模拟中...';
+    }
+  </script>
+</body>
+</html>

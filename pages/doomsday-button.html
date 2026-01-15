@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>十亿元按钮 - 你会按吗？</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; min-height: 100vh; color: #fff; overflow-x: hidden; }
+    .container { max-width: 800px; margin: 0 auto; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    h1 { text-align: center; font-size: 2rem; margin-bottom: 10px; color: #ff4444; text-shadow: 0 0 30px rgba(255,68,68,0.5); }
+    .subtitle { text-align: center; color: rgba(255,255,255,0.6); margin-bottom: 40px; font-size: 0.95rem; line-height: 1.6; }
+    .warning-box { background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3); border-radius: 12px; padding: 20px; margin-bottom: 40px; text-align: center; max-width: 500px; }
+    .warning-box p { color: rgba(255,255,255,0.8); line-height: 1.8; font-size: 0.95rem; }
+    .warning-box strong { color: #ffd700; }
+    .warning-box .red { color: #ff4444; }
+    .button-container { position: relative; margin: 40px 0; }
+    .doom-button { width: 250px; height: 250px; border-radius: 50%; border: none; background: linear-gradient(145deg, #ff4444, #cc0000); box-shadow: 0 0 60px rgba(255,68,68,0.4), 0 20px 60px rgba(0,0,0,0.5), inset 0 -10px 30px rgba(0,0,0,0.3), inset 0 10px 30px rgba(255,255,255,0.1); cursor: pointer; font-size: 1.5rem; font-weight: bold; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5); transition: all 0.15s; position: relative; z-index: 10; }
+    .doom-button:hover { transform: scale(1.05); box-shadow: 0 0 80px rgba(255,68,68,0.6), 0 20px 60px rgba(0,0,0,0.5), inset 0 -10px 30px rgba(0,0,0,0.3), inset 0 10px 30px rgba(255,255,255,0.1); }
+    .doom-button:active { transform: scale(0.95); }
+    .doom-button.pressed { animation: shake 0.5s ease; }
+    .doom-button.disabled { background: linear-gradient(145deg, #444, #333); box-shadow: 0 0 20px rgba(100,100,100,0.2); cursor: not-allowed; }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
+    .glow-ring { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; border-radius: 50%; border: 2px solid rgba(255,68,68,0.3); animation: pulse 2s ease-in-out infinite; pointer-events: none; }
+    @keyframes pulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; } 50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.2; } }
+    .stats { display: flex; gap: 20px; margin-top: 40px; flex-wrap: wrap; justify-content: center; }
+    .stat-box { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px 25px; text-align: center; min-width: 140px; }
+    .stat-num { font-size: 1.8rem; font-weight: bold; color: #ffd700; font-family: 'Courier New', monospace; }
+    .stat-num.red { color: #ff4444; }
+    .stat-label { color: rgba(255,255,255,0.5); font-size: 0.75rem; margin-top: 5px; }
+    .my-stats { margin-top: 20px; color: rgba(255,255,255,0.4); font-size: 0.85rem; }
+    .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal.show { display: flex; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal-content { text-align: center; padding: 40px; max-width: 500px; background: rgba(20,20,30,0.9); border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    .modal-icon { font-size: 80px; margin-bottom: 20px; animation: bounce 0.5s ease; }
+    @keyframes bounce { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+    .modal-title { font-size: 1.8rem; margin-bottom: 15px; }
+    .modal-text { color: rgba(255,255,255,0.7); line-height: 1.8; margin-bottom: 25px; font-size: 0.95rem; }
+    .modal-btn { padding: 12px 35px; border: none; border-radius: 25px; font-size: 1rem; cursor: pointer; background: linear-gradient(90deg, #ffd700, #ffaa00); color: #000; font-weight: bold; transition: all 0.2s; }
+    .modal-btn:hover { transform: scale(1.05); }
+    .modal-sub { margin-top: 15px; color: rgba(255,255,255,0.3); font-size: 0.8rem; }
+    .result-money .modal-title { color: #ffd700; }
+    .result-nothing .modal-title { color: #888; }
+    .result-moral .modal-title { color: #4ade80; }
+    .result-bug .modal-title { color: #ff6b6b; }
+    .result-secret .modal-title { color: #a855f7; }
+    .result-meta .modal-title { color: #00d4ff; }
+    .footer-note { margin-top: 30px; color: rgba(255,255,255,0.2); font-size: 0.75rem; text-align: center; max-width: 400px; }
+    .press-hint { margin-top: 15px; color: rgba(255,255,255,0.3); font-size: 0.8rem; }
+    .countdown { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 15rem; font-weight: bold; color: #ff4444; text-shadow: 0 0 100px rgba(255,68,68,0.8); z-index: 2000; display: none; animation: countPulse 1s ease; }
+    @keyframes countPulse { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 50% { transform: translate(-50%, -50%) scale(1.2); } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+    .screen-flash { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 1999; display: none; animation: flash 0.5s ease; }
+    @keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💀 十亿元按钮</h1>
+    <p class="subtitle">按下去获得十亿元，但500年后人类毁灭</p>
+    <div class="warning-box">
+      <p>
+        <strong>规则：</strong><br>
+        1. 这个按钮只有你知道，只有你能按<br>
+        2. 按下后获得 <strong>10亿元</strong><br>
+        3. 但 <span class="red">500年后人类毁灭</span><br>
+        4. 只能按一次<br><br>
+        你会按吗？
+      </p>
+    </div>
+    <div class="button-container">
+      <div class="glow-ring"></div>
+      <button class="doom-button" id="doomBtn" onclick="pressButton()">按下获得<br>💰 10亿元</button>
+    </div>
+    <p class="press-hint" id="pressHint">你还没按过这个按钮</p>
+    <div class="stats">
+      <div class="stat-box">
+        <div class="stat-num" id="totalPress">-</div>
+        <div class="stat-label">全球按下次数</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="totalUsers">-</div>
+        <div class="stat-label">参与人数</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num red" id="doomYear">2525</div>
+        <div class="stat-label">人类毁灭年份</div>
+      </div>
+    </div>
+    <p class="my-stats" id="myStats"></p>
+    <p class="footer-note">* 本按钮为虚拟按钮，按下后不会真的获得10亿元，人类也不会毁灭（大概）<br>* 统计数据为全球真实用户数据</p>
+  </div>
+  <div class="countdown" id="countdown"></div>
+  <div class="screen-flash" id="screenFlash"></div>
+  <div class="modal" id="resultModal"><div class="modal-content" id="modalContent"></div></div>
+
+  <script>
+    const API_BASE = 'https://demo-api-mockserver.runnable.run';
+    let myPressCount = parseInt(localStorage.getItem('doomMyPress') || '0');
+    let hasEverPressed = localStorage.getItem('doomEverPressed') === 'true';
+    let isProcessing = false;
+    
+    // 彩蛋结果池
+    const results = [
+      { type: 'nothing', icon: '🤷', title: '什么都没发生', text: '你按下了按钮...<br><br>然后什么都没发生。<br><br>你以为会有10亿？醒醒，这只是个网页。' },
+      { type: 'money', icon: '💸', title: '恭喜获得10亿元！', text: '开玩笑的。<br><br>你真的以为按个网页按钮就能拿10亿？<br><br>不过你的勇气值得表扬，毕竟你愿意为了钱毁灭500年后的人类。' },
+      { type: 'moral', icon: '😇', title: '道德测试通过', text: '其实这是个道德测试...<br><br>开玩笑的，这就是个普通按钮。<br><br>但说真的，你按之前有犹豫吗？' },
+      { type: 'bug', icon: '🐛', title: 'Error: 余额不足', text: '系统提示：发放10亿元失败<br><br>原因：服务器余额不足<br>建议：请联系管理员充值<br><br>（管理员已跑路）' },
+      { type: 'nothing', icon: '⏰', title: '500年后见', text: '按钮已生效！<br><br>请于500年后查收人类毁灭通知。<br><br>sincerely,<br>毁灭人类委员会<br><br>（10亿元？那个我们忘了）' },
+      { type: 'money', icon: '🏦', title: '转账处理中', text: '正在向您的账户转入10亿元...<br><br>预计到账时间：500年后<br><br>届时人类已毁灭，sincerely' },
+      { type: 'secret', icon: '👀', title: '有人在看着你', text: '你以为没人知道？<br><br>我们记录了每一次按下。<br><br>500年后的人类会知道是谁毁灭了他们。<br><br>（开玩笑的，我们只记录次数）' },
+      { type: 'meta', icon: '🤔', title: '你在想什么？', text: '你明知道这是个假按钮，<br>还是按了。<br><br>这说明什么？<br><br>说明你和其他 <span id="otherUsers">???</span> 个人一样，<br>都想试试看会发生什么。' },
+      { type: 'bug', icon: '💀', title: '人类已毁灭', text: '糟糕，按钮坏了，<br>人类提前毁灭了。<br><br>...<br><br>开玩笑的，刷新页面就好了。' },
+      { type: 'secret', icon: '🎰', title: '隐藏彩蛋', text: '恭喜你触发了隐藏彩蛋！<br><br>奖励：无<br><br>但你可以截图发朋友圈炫耀一下。' },
+      { type: 'nothing', icon: '📞', title: '来电提醒', text: '【未来来电】<br><br>"喂？我是500年后的人类代表。<br>我们查到是你按的按钮。<br>你有什么想说的吗？"<br><br>（对方已挂断）' },
+      { type: 'moral', icon: '⚖️', title: '道德法庭', text: '【审判结果】<br><br>被告：你<br>罪名：为10亿元毁灭人类<br>判决：无罪<br><br>理由：反正是500年后的事，<br>而且这只是个网页按钮。' },
+      { type: 'money', icon: '📊', title: '收益分析', text: '10亿元 ÷ 500年 = 200万/年<br><br>考虑到通货膨胀，<br>500年后的10亿可能只值现在的1块钱。<br><br>所以你其实是用1块钱毁灭了人类。<br><br>血亏。' },
+      { type: 'secret', icon: '🔮', title: '预言', text: '我看到了你的未来...<br><br>你会继续按这个按钮，<br>直到看完所有彩蛋。<br><br>然后你会把这个页面分享给朋友，<br>看他们会不会按。' },
+      { type: 'meta', icon: '🖥️', title: '第四面墙', text: '你好，我是这个按钮的开发者。<br><br>我做这个页面花了1小时，<br>你按这个按钮花了0.1秒。<br><br>我们都在浪费生命，<br>但至少你笑了（吧？）' }
+    ];
+    
+    // 特殊彩蛋（根据按下次数触发）
+    const specialResults = {
+      1: { type: 'nothing', icon: '🎉', title: '第一次！', text: '这是你第一次按下毁灭按钮。<br><br>记住这个时刻，<br>你正式成为了"愿意为10亿毁灭人类"的人之一。<br><br>欢迎加入。' },
+      5: { type: 'secret', icon: '🔄', title: '你还在按？', text: '这已经是你第5次按了。<br><br>你知道这个按钮什么都不会发生的，对吧？<br><br>...对吧？' },
+      10: { type: 'meta', icon: '🏆', title: '十连抽达成', text: '恭喜！你已经按了10次！<br><br>如果每次都能拿10亿，<br>你现在已经有100亿了。<br><br>可惜你一分钱都没有。' },
+      20: { type: 'secret', icon: '😅', title: '认真的？', text: '20次了...<br><br>你是在找什么彩蛋吗？<br><br>好吧，这就是彩蛋。<br>你找到了。<br>满意了吗？' },
+      50: { type: 'secret', icon: '👑', title: '毁灭之王', text: '50次！<br><br>如果这个按钮是真的，<br>你已经毁灭人类50次了。<br><br>授予你"人类公敌"称号。<br><br>（荣誉称号，不含奖金）' },
+      100: { type: 'meta', icon: '🎊', title: '百次成就', text: '100次！！！<br><br>我真的没想到有人会按100次。<br><br>你赢了。<br>这个页面没有更多彩蛋了。<br><br>...或者有？' }
+    };
+
+    // 初始化
+    updateMyStats();
+    loadGlobalStats();
+    
+    function updateMyStats() {
+      const hint = document.getElementById('pressHint');
+      const stats = document.getElementById('myStats');
+      if (myPressCount === 0) {
+        hint.textContent = '你还没按过这个按钮';
+        stats.textContent = '';
+      } else {
+        hint.textContent = `你已经按了 ${myPressCount} 次`;
+        stats.textContent = myPressCount >= 10 ? '（你是认真的吗...）' : '';
+      }
+    }
+    
+    async function loadGlobalStats() {
+      try {
+        // 获取按下次数
+        const pressRes = await fetch(`${API_BASE}/stats?action=get&key=doomsday-btn-press`);
+        const pressData = await pressRes.json();
+        const pressCount = pressData.data || 0;
+        document.getElementById('totalPress').textContent = pressCount.toLocaleString();
+        
+        // 获取用户数
+        const usersRes = await fetch(`${API_BASE}/stats?action=get&key=doomsday-btn-users`);
+        const usersData = await usersRes.json();
+        const usersCount = usersData.data || 0;
+        document.getElementById('totalUsers').textContent = usersCount.toLocaleString();
+        
+        // 计算毁灭年份（每1000次减1年，纯搞笑）
+        const baseYear = 2525;
+        const reduction = Math.floor(pressCount / 1000);
+        document.getElementById('doomYear').textContent = Math.max(2030, baseYear - reduction);
+      } catch (e) {
+        console.log('Stats load failed:', e);
+      }
+    }
+    
+    async function recordPress() {
+      try {
+        // 记录按下次数
+        await fetch(`${API_BASE}/stats?action=incr&key=doomsday-btn-press`);
+        
+        // 首次按下记录用户
+        if (!hasEverPressed) {
+          await fetch(`${API_BASE}/stats?action=incr&key=doomsday-btn-users`);
+          hasEverPressed = true;
+          localStorage.setItem('doomEverPressed', 'true');
+        }
+        
+        // 刷新统计
+        loadGlobalStats();
+      } catch (e) {
+        console.log('Record failed:', e);
+      }
+    }
+    
+    function pressButton() {
+      if (isProcessing) return;
+      isProcessing = true;
+      
+      const btn = document.getElementById('doomBtn');
+      btn.classList.add('pressed');
+      
+      // 更新本地计数
+      myPressCount++;
+      localStorage.setItem('doomMyPress', myPressCount);
+      updateMyStats();
+      
+      // 记录到服务器
+      recordPress();
+      
+      // 随机决定是否播放特效
+      const playEffect = Math.random() > 0.7;
+      
+      if (playEffect && myPressCount <= 3) {
+        // 前几次有概率播放倒计时特效
+        playCountdown(() => {
+          showResult(getResult());
+          isProcessing = false;
+        });
+      } else {
+        setTimeout(() => {
+          btn.classList.remove('pressed');
+          showResult(getResult());
+          isProcessing = false;
+        }, 500);
+      }
+    }
+    
+    function getResult() {
+      // 检查特殊彩蛋
+      if (specialResults[myPressCount]) {
+        return specialResults[myPressCount];
+      }
+      // 随机彩蛋
+      return results[Math.floor(Math.random() * results.length)];
+    }
+    
+    function playCountdown(callback) {
+      const countdown = document.getElementById('countdown');
+      const flash = document.getElementById('screenFlash');
+      let count = 3;
+      
+      countdown.style.display = 'block';
+      countdown.textContent = count;
+      
+      const interval = setInterval(() => {
+        count--;
+        if (count > 0) {
+          countdown.textContent = count;
+          countdown.style.animation = 'none';
+          countdown.offsetHeight; // 触发重绘
+          countdown.style.animation = 'countPulse 1s ease';
+        } else {
+          clearInterval(interval);
+          countdown.style.display = 'none';
+          flash.style.display = 'block';
+          setTimeout(() => {
+            flash.style.display = 'none';
+            callback();
+          }, 500);
+        }
+      }, 1000);
+    }
+    
+    function showResult(result) {
+      const modal = document.getElementById('resultModal');
+      const content = document.getElementById('modalContent');
+      
+      // 替换动态内容
+      let text = result.text;
+      const totalUsers = document.getElementById('totalUsers').textContent;
+      text = text.replace('<span id="otherUsers">???</span>', `<span style="color:#ffd700">${totalUsers}</span>`);
+      
+      content.className = 'modal-content result-' + result.type;
+      content.innerHTML = `
+        <div class="modal-icon">${result.icon}</div>
+        <h2 class="modal-title">${result.title}</h2>
+        <p class="modal-text">${text}</p>
+        <button class="modal-btn" onclick="closeModal()">好吧...</button>
+        <p class="modal-sub">你已按下 ${myPressCount} 次</p>
+      `;
+      
+      modal.classList.add('show');
+    }
+    
+    function closeModal() {
+      document.getElementById('resultModal').classList.remove('show');
+      document.getElementById('doomBtn').classList.remove('pressed');
+    }
+    
+    document.getElementById('resultModal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+    
+    // ESC关闭
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>

@@ -34,6 +34,11 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
     public static final String KEY_QUANTUM_LOTTERY_TOTAL = "quantum-lottery-total";   // 总生成次数
     public static final String KEY_QUANTUM_LOTTERY_TODAY_PREFIX = "quantum-lottery-today-";   // 今日生成前缀（后接日期）
     public static final String KEY_QUANTUM_LOTTERY_USERS = "quantum-lottery-users";   // 参与用户数
+    
+    // 十亿元按钮统计 key
+    private static final String DOOMSDAY_PREFIX = "doomsday-btn-";
+    public static final String KEY_DOOMSDAY_PRESS = DOOMSDAY_PREFIX + "press";        // 总按下次数
+    public static final String KEY_DOOMSDAY_USERS = DOOMSDAY_PREFIX + "users";        // 参与人数
 
     public StatsProxyHandler(Vertx vertx) {
         WebClientOptions options = new WebClientOptions()
@@ -173,7 +178,9 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
             key.equals(KEY_GAMBLER_MAX_BETS) ||
             key.equals(KEY_QUANTUM_LOTTERY_TOTAL) ||
             key.startsWith(KEY_QUANTUM_LOTTERY_TODAY_PREFIX) ||
-            key.equals(KEY_QUANTUM_LOTTERY_USERS)
+            key.equals(KEY_QUANTUM_LOTTERY_USERS) ||
+            key.equals(KEY_DOOMSDAY_PRESS) ||
+            key.equals(KEY_DOOMSDAY_USERS)
         );
     }
 

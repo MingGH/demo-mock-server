@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>安慰剂按钮 - 那些什么都没做的按钮</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; padding: 20px; color: #fff; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { display: inline-block; color: rgba(255,255,255,0.8); text-decoration: none; margin-bottom: 15px; font-size: 0.9rem; }
+    .back-link:hover { text-decoration: underline; }
+    h1 { text-align: center; margin-bottom: 10px; font-size: 1.8rem; background: linear-gradient(135deg, #00d4ff, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .subtitle { text-align: center; color: rgba(255,255,255,0.7); margin-bottom: 25px; font-size: 0.95rem; }
+    .card { background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border-radius: 16px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    .card h2 { color: #00d4ff; margin-bottom: 15px; font-size: 1.2rem; }
+    .card p { color: rgba(255,255,255,0.7); line-height: 1.7; margin-bottom: 15px; }
+    .question-box { background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(168,85,247,0.1)); border-left: 4px solid #00d4ff; padding: 15px 20px; border-radius: 0 12px 12px 0; margin-bottom: 20px; font-size: 1rem; line-height: 1.8; }
+    .question-box strong { color: #a855f7; }
+    .demo-area { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 30px; margin: 20px 0; text-align: center; }
+    .demo-title { color: #ffd700; font-size: 1rem; margin-bottom: 20px; }
+    .reveal-btn { margin-top: 20px; padding: 10px 20px; background: rgba(168,85,247,0.3); border: 1px solid #a855f7; border-radius: 8px; color: white; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+    .reveal-btn:hover { background: rgba(168,85,247,0.5); }
+    .truth-box { margin-top: 15px; padding: 15px; background: rgba(255,107,107,0.15); border: 1px solid rgba(255,107,107,0.3); border-radius: 8px; color: #ff6b6b; display: none; text-align: left; font-size: 0.9rem; line-height: 1.7; }
+    .truth-box.show { display: block; }
+    .truth-box code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; font-family: monospace; display: block; margin: 10px 0; white-space: pre-wrap; }
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      background: linear-gradient(135deg, #00d4ff, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 25px;
+      font-size: 0.95rem;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .card h2 { color: #00d4ff; margin-bottom: 15px; font-size: 1.2rem; }
+    .card p { color: rgba(255,255,255,0.7); line-height: 1.7; margin-bottom: 15px; }
+    .question-box {
+      background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(168,85,247,0.1));
+      border-left: 4px solid #00d4ff;
+      padding: 15px 20px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+      font-size: 1rem;
+      line-height: 1.8;
+    }
+    .question-box strong { color: #a855f7; }
+    .demo-area {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 30px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .demo-title { color: #ffd700; font-size: 1rem; margin-bottom: 20px; }
+    .reveal-btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: rgba(168,85,247,0.3);
+      border: 1px solid #a855f7;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .reveal-btn:hover { background: rgba(168,85,247,0.5); }
+    .truth-box {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(255,107,107,0.15);
+      border: 1px solid rgba(255,107,107,0.3);
+      border-radius: 8px;
+      color: #ff6b6b;
+      display: none;
+      text-align: left;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+    .truth-box.show { display: block; }
+    .truth-box code {
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    /* Demo 1: 电梯关门按钮 */
+    .elevator-panel {
+      background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+      border-radius: 20px;
+      padding: 30px;
+      display: inline-block;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+    .elevator-display {
+      background: #000;
+      color: #4ade80;
+      font-family: 'Courier New', monospace;
+      font-size: 2.5rem;
+      padding: 15px 30px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px #4ade80;
+    }
+    .elevator-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+    .elevator-btn {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      border: 3px solid #666;
+      background: linear-gradient(145deg, #3a3a3a, #2a2a2a);
+      color: #ccc;
+      font-size: 1.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .elevator-btn:hover { border-color: #888; }
+    .elevator-btn:active {
+      transform: scale(0.95);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .elevator-btn.pressed {
+      background: linear-gradient(145deg, #ffd700, #ffaa00);
+      color: #000;
+      border-color: #ffd700;
+      box-shadow: 0 0 20px rgba(255,215,0,0.5);
+    }
+    .elevator-status {
+      margin-top: 15px;
+      color: rgba(255,255,255,0.5);
+      font-size: 0.85rem;
+    }
+
+    /* Demo 2: 人行道按钮 */
+    .crosswalk-scene {
+      position: relative;
+      background: linear-gradient(180deg, #87ceeb 0%, #87ceeb 60%, #555 60%, #555 100%);
+      border-radius: 12px;
+      padding: 30px;
+      min-height: 300px;
+    }
+    .traffic-light {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      background: #222;
+      border-radius: 10px;
+      padding: 15px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .light {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #333;
+      transition: all 0.3s;
+    }
+    .light.red.active { background: #ff4444; box-shadow: 0 0 20px #ff4444; }
+    .light.yellow.active { background: #ffcc00; box-shadow: 0 0 20px #ffcc00; }
+    .light.green.active { background: #44ff44; box-shadow: 0 0 20px #44ff44; }
+    .crosswalk-pole {
+      position: absolute;
+      left: 30px;
+      bottom: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .crosswalk-btn-box {
+      background: #ffcc00;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+    }
+    .crosswalk-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: 4px solid #333;
+      background: linear-gradient(145deg, #ff6b6b, #ee5a5a);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .crosswalk-btn:active { transform: scale(0.95); }
+    .crosswalk-btn.pressed { background: linear-gradient(145deg, #4ade80, #22c55e); }
+    .pole { width: 8px; height: 80px; background: #666; }
+    .crosswalk-timer {
+      position: absolute;
+      bottom: 20px;
+      right: 30px;
+      background: rgba(0,0,0,0.7);
+      color: #ff4444;
+      font-family: 'Courier New', monospace;
+      font-size: 2rem;
+      padding: 10px 20px;
+      border-radius: 8px;
+    }
+
+    /* Demo 3: 办公室温控 */
+    .thermostat {
+      background: linear-gradient(145deg, #f5f5f5, #e0e0e0);
+      border-radius: 20px;
+      padding: 30px;
+      display: inline-block;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      color: #333;
+    }
+    .thermo-display {
+      background: #1a1a2e;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .thermo-temp {
+      font-size: 3rem;
+      font-weight: bold;
+      color: #00d4ff;
+      font-family: 'Courier New', monospace;
+    }
+    .thermo-label { color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 5px; }
+    .thermo-controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      align-items: center;
+    }
+    .thermo-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(145deg, #00d4ff, #0099cc);
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(0,212,255,0.3);
+    }
+    .thermo-btn:hover { transform: scale(1.1); }
+    .thermo-btn:active { transform: scale(0.95); }
+    .thermo-btn.down { background: linear-gradient(145deg, #a855f7, #8b5cf6); }
+    .thermo-set {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #333;
+      min-width: 80px;
+    }
+    .thermo-status {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(0,0,0,0.05);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    /* Demo 4: 进度条 */
+    .progress-demo {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 25px;
+    }
+    .progress-bar-container {
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      height: 30px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #00d4ff, #a855f7);
+      border-radius: 10px;
+      transition: width 0.3s;
+      position: relative;
+    }
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9rem;
+    }
+    .progress-percent { color: #00d4ff; font-weight: bold; }
+    .file-list {
+      margin-top: 20px;
+      text-align: left;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .file-item {
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      margin-bottom: 5px;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+      display: flex;
+      justify-content: space-between;
+    }
+    .file-item.current { background: rgba(0,212,255,0.2); color: #00d4ff; }
+    .file-item .status { color: #4ade80; }
+
+    /* Demo 5: 加载动画 */
+    .loading-demo {
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid rgba(255,255,255,0.1);
+      border-top-color: #00d4ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-text {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.95rem;
+    }
+    .loading-dots::after {
+      content: '';
+      animation: dots 1.5s infinite;
+    }
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+    .loading-tip {
+      color: rgba(255,255,255,0.4);
+      font-size: 0.8rem;
+      max-width: 300px;
+    }
+
+    /* Demo 6: 音量按钮 */
+    .volume-demo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .volume-icon {
+      font-size: 2rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .volume-icon:hover { transform: scale(1.1); }
+    .volume-slider {
+      width: 200px;
+      height: 8px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+    }
+    .volume-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00d4ff, #a855f7);
+      border-radius: 4px;
+      transition: width 0.1s;
+    }
+    .volume-handle {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      cursor: grab;
+    }
+    .volume-value {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #00d4ff;
+      min-width: 50px;
+    }
+
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+    .analysis h3 { color: #ffd700; margin-bottom: 15px; font-size: 1.1rem; }
+    .analysis p { color: rgba(255,255,255,0.85); line-height: 1.85; margin-bottom: 14px; }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+
+    /* 案例列表 */
+    .cases {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) { .cases { grid-template-columns: 1fr; } }
+    .case-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 18px;
+      border-left: 3px solid #00d4ff;
+    }
+    .case-card h4 { color: #ffd700; font-size: 0.95rem; margin-bottom: 10px; }
+    .case-card p { color: rgba(255,255,255,0.7); font-size: 0.9rem; line-height: 1.6; margin: 0; }
+
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(168,85,247,0.1));
+      border: 2px solid #00d4ff;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .conclusion h3 { font-size: 1.4rem; margin-bottom: 15px; color: #00d4ff; }
+    .conclusion p { color: rgba(255,255,255,0.9); line-height: 1.85; }
+
+    /* 统计 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr; } }
+    .stat-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-card .num { font-size: 2.5rem; font-weight: bold; color: #ffd700; }
+    .stat-card .label { color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link">← 返回首页</a>
+    <h1>🔘 安慰剂按钮</h1>
+    <p class="subtitle">那些看起来有用，实际什么都没做的按钮</p>
+
+    <div class="card">
+      <div class="question-box">
+        <strong>安慰剂按钮（Placebo Button）</strong>：一种看起来能产生效果，但实际上什么都不做（或效果与用户预期不符）的按钮。<br><br>
+        它们存在的目的不是功能性的，而是<strong>心理性的</strong>——给用户一种"我在控制局面"的错觉，从而减少焦虑、提升满意度。
+      </div>
+    </div>
+
+    <!-- Demo 1: 电梯关门按钮 -->
+    <div class="card">
+      <h2>🛗 电梯关门按钮</h2>
+      <p>你有没有疯狂按过电梯的"关门"按钮？感觉门关得更快了？</p>
+      
+      <div class="demo-area">
+        <div class="demo-title">🎮 试试看：疯狂按关门键</div>
+        <div class="elevator-panel">
+          <div class="elevator-display" id="elevatorFloor">1</div>
+          <div class="elevator-buttons">
+            <button class="elevator-btn" id="openBtn" onclick="elevatorOpen()">◁▷</button>
+            <button class="elevator-btn" id="closeBtn" onclick="elevatorClose()">▷◁</button>
+          </div>
+          <div class="elevator-status" id="elevatorStatus">电梯门将在 3 秒后关闭</div>
+        </div>
+        <button class="reveal-btn" onclick="revealTruth('elevator')">🔍 揭示真相</button>
+        <div class="truth-box" id="elevatorTruth">
+          <strong>真相：</strong>大多数电梯的"关门"按钮是<strong>安慰剂</strong>。<br><br>
+          根据《美国残疾人法案》(ADA)，电梯门必须保持开启足够长的时间让残障人士通过。关门按钮通常只在消防员或维修人员使用钥匙激活"独立服务模式"时才真正起作用。<br><br>
+          <code>// 伪代码：电梯关门逻辑<br>
+          function onCloseButtonPress() {<br>
+          &nbsp;&nbsp;if (isIndependentServiceMode) {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;closeDoor();<br>
+          &nbsp;&nbsp;} else {<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;// 什么都不做，等待定时器<br>
+          &nbsp;&nbsp;}<br>
+          }</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo 2: 人行道按钮 -->
+    <div class="card">
+      <h2>🚦 人行道过街按钮</h2>
+      <p>按下按钮，等待绿灯。你觉得按了之后绿灯来得更快吗？</p>
+      
+      <div class="demo-area">
+        <div class="demo-title">🎮 按下按钮请求过街</div>
+        <div class="crosswalk-scene">
+          <div class="traffic-light">
+            <div class="light red active" id="redLight"></div>
+            <div class="light yellow" id="yellowLight"></div>
+            <div class="light green" id="greenLight"></div>
+          </div>
+          <div class="crosswalk-pole">
+            <div class="crosswalk-btn-box">
+              <button class="crosswalk-btn" id="crosswalkBtn" onclick="pressCrosswalk()">按下<br>过街</button>
+            </div>
+            <div class="pole"></div>
+          </div>
+          <div class="crosswalk-timer" id="crosswalkTimer">30</div>
+        </div>
+        <button class="reveal-btn" onclick="revealTruth('crosswalk')">🔍 揭示真相</button>
+        <div class="truth-box" id="crosswalkTruth">
+          <strong>真相：</strong>在很多城市，人行道按钮是<strong>完全无效的</strong>。<br><br>
+          纽约市曾承认，全市超过 <strong>75%</strong> 的人行道按钮已经失效，但他们没有移除它们——因为人们按了按钮后会更耐心地等待。<br><br>
+          现代交通系统使用<strong>自适应信号控制</strong>，根据车流量自动调整，行人按钮的输入早已被忽略。但按钮给了你"我做了点什么"的感觉，让等待变得不那么难熬。
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo 3: 办公室温控 -->
+    <div class="card">
+      <h2>🌡️ 办公室温控器</h2>
+      <p>办公室太冷了？调高温度！感觉暖和多了？</p>
+      
+      <div class="demo-area">
+        <div class="demo-title">🎮 调节你的"舒适温度"</div>
+        <div class="thermostat">
+          <div class="thermo-display">
+            <div class="thermo-temp" id="thermoTemp">22°C</div>
+            <div class="thermo-label">当前室温</div>
+          </div>
+          <div class="thermo-controls">
+            <button class="thermo-btn down" onclick="adjustTemp(-1)">−</button>
+            <div class="thermo-set">设定: <span id="thermoSet">22</span>°C</div>
+            <button class="thermo-btn" onclick="adjustTemp(1)">+</button>
+          </div>
+          <div class="thermo-status" id="thermoStatus">系统运行中...</div>
+        </div>
+        <button class="reveal-btn" onclick="revealTruth('thermo')">🔍 揭示真相</button>
+        <div class="truth-box" id="thermoTruth">
+          <strong>真相：</strong>很多办公室的温控器是<strong>假的</strong>。<br><br>
+          HVAC（暖通空调）行业有个公开的秘密：为了减少员工投诉，很多公司会安装"安慰剂温控器"——它们看起来能调温度，但实际上没有连接到任何系统。<br><br>
+          一项调查显示，美国有 <strong>2%-50%</strong> 的办公室温控器是假的。真正的温度由中央系统统一控制，但给员工一个"能调"的按钮，投诉率下降了 <strong>30%</strong>。
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo 4: 进度条 -->
+    <div class="card">
+      <h2>📊 软件安装进度条</h2>
+      <p>看着进度条一点点前进，感觉安装快完成了？</p>
+      
+      <div class="demo-area">
+        <div class="demo-title">🎮 观察这个"真实"的安装过程</div>
+        <div class="progress-demo">
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+          </div>
+          <div class="progress-text">
+            <span>正在安装: <span id="currentFile">准备中...</span></span>
+            <span class="progress-percent" id="progressPercent">0%</span>
+          </div>
+          <div class="file-list" id="fileList"></div>
+        </div>
+        <div style="margin-top: 15px;">
+          <button class="reveal-btn" style="background: rgba(0,212,255,0.3); border-color: #00d4ff;" onclick="startFakeInstall()">▶️ 开始安装</button>
+          <button class="reveal-btn" onclick="revealTruth('progress')">🔍 揭示真相</button>
+        </div>
+        <div class="truth-box" id="progressTruth">
+          <strong>真相：</strong>大多数进度条是<strong>假的</strong>。<br><br>
+          软件开发者很难准确预测安装时间，所以他们使用"心理进度条"：<br>
+          • 前 90% 快速推进（让你觉得很快）<br>
+          • 最后 10% 慢慢爬（实际工作在这里）<br>
+          • 有时候进度条会<strong>倒退</strong>或<strong>卡住</strong>，因为它根本不反映真实进度<br><br>
+          Windows 的文件复制进度条曾经臭名昭著——它会在 99% 卡住几分钟，因为它在最后才做真正的写入操作。
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo 5: 加载动画 -->
+    <div class="card">
+      <h2>⏳ 加载动画</h2>
+      <p>看到转圈圈，你知道系统在"努力工作"...真的吗？</p>
+      
+      <div class="demo-area">
+        <div class="demo-title">🎮 等待加载完成</div>
+        <div class="loading-demo" id="loadingDemo">
+          <div class="spinner"></div>
+          <div class="loading-text">正在加载<span class="loading-dots"></span></div>
+          <div class="loading-tip" id="loadingTip">正在优化您的体验...</div>
+        </div>
+        <button class="reveal-btn" onclick="revealTruth('loading')">🔍 揭示真相</button>
+        <div class="truth-box" id="loadingTruth">
+          <strong>真相：</strong>很多加载动画是<strong>故意延长的</strong>。<br><br>
+          研究发现，如果操作太快完成，用户反而会<strong>不信任</strong>结果。所以设计师会故意添加"假加载"：<br><br>
+          • 银行转账：实际 0.1 秒完成，但显示 2-3 秒的"处理中"<br>
+          • AI 生成：结果早就有了，但逐字显示让你觉得"它在思考"<br>
+          • 安全扫描：扫描 0.5 秒完成，但动画播放 5 秒让你觉得"很彻底"<br><br>
+          <code>// 真实代码<br>
+          await actualWork(); // 0.1秒<br>
+          await fakeDelay(2000); // 假装在忙</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Demo 6: 音量按钮 -->
+    <div class="card">
+      <h2>🔊 音量调节</h2>
+      <p>把音量从 50 调到 51，听起来更大声了？</p>
+      
+      <div class="demo-area">
+        <div class="demo-title">🎮 调节音量，感受变化</div>
+        <div class="volume-demo">
+          <span class="volume-icon" onclick="toggleMute()">🔊</span>
+          <div class="volume-slider" id="volumeSlider" onclick="setVolume(event)">
+            <div class="volume-fill" id="volumeFill" style="width: 70%"></div>
+            <div class="volume-handle" id="volumeHandle" style="left: 70%"></div>
+          </div>
+          <span class="volume-value" id="volumeValue">70</span>
+        </div>
+        <button class="reveal-btn" onclick="revealTruth('volume')">🔍 揭示真相</button>
+        <div class="truth-box" id="volumeTruth">
+          <strong>真相：</strong>音量数字是<strong>非线性的心理游戏</strong>。<br><br>
+          人耳对声音的感知是<strong>对数的</strong>，但音量条是线性的。这意味着：<br>
+          • 从 0 到 50：音量增加了大约 90%<br>
+          • 从 50 到 100：音量只增加了约 10%<br><br>
+          很多设备的音量 1-30 几乎听不到，30-70 是主要使用区间，70-100 差别很小。<br><br>
+          更有趣的是，有些设备的音量<strong>根本不是 100 级</strong>——它们可能只有 16 级或 32 级，但显示 0-100 让你觉得控制更精细。
+        </div>
+      </div>
+    </div>
+
+    <!-- 更多案例 -->
+    <div class="card">
+      <h2>📋 更多安慰剂按钮案例</h2>
+      <div class="cases">
+        <div class="case-card">
+          <h4>🚗 汽车"运动模式"</h4>
+          <p>很多经济型轿车的"运动模式"只是改变了油门响应曲线和仪表盘颜色，发动机输出完全一样。但你踩油门时感觉更"有劲"了。</p>
+        </div>
+        <div class="case-card">
+          <h4>📱 手机"省电模式"</h4>
+          <p>部分省电模式只是降低屏幕亮度和限制后台刷新，但会显示一个绿色电池图标，让你觉得"在省电"。实际省电效果可能只有 5%。</p>
+        </div>
+        <div class="case-card">
+          <h4>🎮 游戏"连点加速"</h4>
+          <p>很多游戏的加载界面让你"按任意键加速"，但加载时间是固定的。按键只是让你有事可做，减少等待焦虑。</p>
+        </div>
+        <div class="case-card">
+          <h4>🔒 "记住密码"复选框</h4>
+          <p>有些网站的"记住我"选项是假的——出于安全考虑，它们总是会在一定时间后让你重新登录，但给你一个选项让你觉得有控制权。</p>
+        </div>
+        <div class="case-card">
+          <h4>📧 "取消订阅"按钮</h4>
+          <p>点击后显示"已取消"，但你还是会收到邮件。有些公司只是把你移到另一个列表，或者"处理需要 10 个工作日"。</p>
+        </div>
+        <div class="case-card">
+          <h4>🛒 "库存紧张"提示</h4>
+          <p>"仅剩 3 件！"——这个数字可能是随机生成的，或者永远显示"3"。它不是告诉你库存，而是制造紧迫感。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 心理学分析 -->
+    <div class="card analysis">
+      <h3>🧠 为什么安慰剂按钮有效？</h3>
+      
+      <p><strong>1. 控制感幻觉（Illusion of Control）</strong></p>
+      <p>
+        人类天生需要<span class="highlight">控制感</span>。即使按钮什么都不做，按下它的动作本身就能减少焦虑。<br>
+        心理学实验表明，当人们相信自己能控制某事时，即使实际上不能，他们的压力水平也会显著降低。
+      </p>
+      
+      <p><strong>2. 操作性条件反射</strong></p>
+      <p>
+        按按钮 → 门关了（虽然是定时器关的）→ 大脑建立因果联系<br>
+        下次你还会按，因为"上次有效"。这就是<span class="safe">强化学习</span>的陷阱。
+      </p>
+      
+      <p><strong>3. 等待时间感知</strong></p>
+      <p>
+        研究表明，<span class="highlight">有事可做的等待</span>比<span class="highlight">无所事事的等待</span>感觉短 36%。<br>
+        安慰剂按钮给了你"做点什么"的机会，让等待变得可以忍受。
+      </p>
+      
+      <p><strong>4. 责任转移</strong></p>
+      <p>
+        "我按了按钮，门还没关，是电梯的问题，不是我的问题。"<br>
+        安慰剂按钮让你觉得自己<span class="safe">尽力了</span>，即使结果不如意，也不会那么沮丧。
+      </p>
+    </div>
+
+    <!-- 前端设计启示 -->
+    <div class="card">
+      <h3 style="color: #ffd700; margin-bottom: 20px;">💡 前端设计启示：何时使用"善意的欺骗"</h3>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="num">36%</div>
+          <div class="label">有事做时，等待感知时间缩短</div>
+        </div>
+        <div class="stat-card">
+          <div class="num">30%</div>
+          <div class="label">假温控器减少的投诉率</div>
+        </div>
+        <div class="stat-card">
+          <div class="num">2-3秒</div>
+          <div class="label">用户信任操作的最佳延迟</div>
+        </div>
+      </div>
+      
+      <div class="analysis" style="margin-top: 0;">
+        <p><strong>✅ 合理使用场景：</strong></p>
+        <p>
+          • <span class="safe">骨架屏</span>：页面加载时显示占位符，让用户知道内容即将出现<br>
+          • <span class="safe">乐观更新</span>：点赞后立即显示+1，后台异步处理<br>
+          • <span class="safe">进度反馈</span>：即使不知道确切进度，也显示"正在处理"<br>
+          • <span class="safe">适度延迟</span>：重要操作（如支付）添加短暂延迟增加信任感
+        </p>
+        
+        <p><strong>❌ 不应使用的场景：</strong></p>
+        <p>
+          • <span class="highlight">欺骗用户</span>：假装功能存在但实际没有<br>
+          • <span class="highlight">隐藏错误</span>：操作失败但显示成功<br>
+          • <span class="highlight">虚假紧迫</span>：制造不存在的库存压力<br>
+          • <span class="highlight">暗黑模式</span>：让用户以为取消了订阅但实际没有
+        </p>
+      </div>
+    </div>
+
+    <!-- 结论 -->
+    <div class="card conclusion">
+      <h3>🎯 结论：安慰剂按钮是一种设计哲学</h3>
+      <p>
+        安慰剂按钮不是"欺骗"，而是一种<strong>用户体验设计</strong>。<br><br>
+        它们存在的意义不是功能性的，而是<strong>心理性的</strong>——<br>
+        给用户控制感、减少等待焦虑、提升满意度。<br><br>
+        下次当你疯狂按电梯关门键时，你可以微笑着想：<br>
+        <span style="color: #ffd700;">「我知道它没用，但按一下让我感觉好多了。」</span><br><br>
+        <span style="color: rgba(255,255,255,0.6);">
+          这就是安慰剂按钮的魔力——<br>
+          它不改变现实，但改变了你对现实的感受。
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // 揭示真相
+    function revealTruth(id) {
+      const box = document.getElementById(id + 'Truth');
+      box.classList.toggle('show');
+    }
+
+    // Demo 1: 电梯
+    let elevatorTimer = null;
+    let elevatorCountdown = 3;
+    
+    function startElevatorTimer() {
+      elevatorCountdown = 3;
+      updateElevatorStatus();
+      if (elevatorTimer) clearInterval(elevatorTimer);
+      elevatorTimer = setInterval(() => {
+        elevatorCountdown--;
+        if (elevatorCountdown <= 0) {
+          clearInterval(elevatorTimer);
+          document.getElementById('elevatorStatus').textContent = '电梯门已关闭 ✓';
+          document.getElementById('closeBtn').classList.remove('pressed');
+        } else {
+          updateElevatorStatus();
+        }
+      }, 1000);
+    }
+    
+    function updateElevatorStatus() {
+      document.getElementById('elevatorStatus').textContent = 
+        `电梯门将在 ${elevatorCountdown} 秒后关闭`;
+    }
+    
+    function elevatorClose() {
+      const btn = document.getElementById('closeBtn');
+      btn.classList.add('pressed');
+      // 安慰剂：按钮亮了，但不会加速关门
+      setTimeout(() => btn.classList.remove('pressed'), 200);
+    }
+    
+    function elevatorOpen() {
+      const btn = document.getElementById('openBtn');
+      btn.classList.add('pressed');
+      setTimeout(() => btn.classList.remove('pressed'), 200);
+      // 开门按钮通常是真的
+      elevatorCountdown = 5;
+      startElevatorTimer();
+    }
+    
+    startElevatorTimer();
+
+    // Demo 2: 人行道按钮
+    let crosswalkTimer = null;
+    let crosswalkTime = 30;
+    let crosswalkPressed = false;
+    
+    function startCrosswalkTimer() {
+      crosswalkTime = 30;
+      crosswalkPressed = false;
+      document.getElementById('crosswalkBtn').classList.remove('pressed');
+      setLight('red');
+      updateCrosswalkTimer();
+      
+      if (crosswalkTimer) clearInterval(crosswalkTimer);
+      crosswalkTimer = setInterval(() => {
+        crosswalkTime--;
+        updateCrosswalkTimer();
+        
+        if (crosswalkTime === 5) {
+          setLight('yellow');
+        } else if (crosswalkTime === 0) {
+          setLight('green');
+          clearInterval(crosswalkTimer);
+          setTimeout(() => startCrosswalkTimer(), 5000);
+        }
+      }, 1000);
+    }
+    
+    function updateCrosswalkTimer() {
+      document.getElementById('crosswalkTimer').textContent = crosswalkTime;
+    }
+    
+    function setLight(color) {
+      document.querySelectorAll('.light').forEach(l => l.classList.remove('active'));
+      document.getElementById(color + 'Light').classList.add('active');
+      document.getElementById('crosswalkTimer').style.color = 
+        color === 'green' ? '#44ff44' : (color === 'yellow' ? '#ffcc00' : '#ff4444');
+    }
+    
+    function pressCrosswalk() {
+      const btn = document.getElementById('crosswalkBtn');
+      btn.classList.add('pressed');
+      crosswalkPressed = true;
+      // 安慰剂：按钮变色了，但不会加速变绿灯
+    }
+    
+    startCrosswalkTimer();
+
+    // Demo 3: 温控器
+    let currentTemp = 22;
+    let setTemp = 22;
+    
+    function adjustTemp(delta) {
+      setTemp += delta;
+      setTemp = Math.max(16, Math.min(30, setTemp));
+      document.getElementById('thermoSet').textContent = setTemp;
+      
+      // 安慰剂：显示"正在调节"，但实际温度不变
+      const status = document.getElementById('thermoStatus');
+      if (setTemp > currentTemp) {
+        status.textContent = '🔥 正在加热...';
+      } else if (setTemp < currentTemp) {
+        status.textContent = '❄️ 正在制冷...';
+      } else {
+        status.textContent = '✓ 已达到设定温度';
+      }
+      
+      // 假装在调节，但温度永远不变
+      setTimeout(() => {
+        status.textContent = '系统运行中...';
+      }, 3000);
+    }
+
+    // Demo 4: 假进度条
+    const fakeFiles = [
+      'system32.dll', 'config.xml', 'user_data.db', 'cache.tmp',
+      'preferences.json', 'license.key', 'runtime.exe', 'assets.pak',
+      'localization.dat', 'plugins.dll', 'network.cfg', 'security.cert'
+    ];
+    
+    function startFakeInstall() {
+      let progress = 0;
+      let fileIndex = 0;
+      const progressBar = document.getElementById('progressBar');
+      const progressPercent = document.getElementById('progressPercent');
+      const currentFile = document.getElementById('currentFile');
+      const fileList = document.getElementById('fileList');
+      
+      fileList.innerHTML = '';
+      
+      const interval = setInterval(() => {
+        // 非线性进度：前90%快，后10%慢
+        if (progress < 90) {
+          progress += Math.random() * 8 + 2;
+        } else {
+          progress += Math.random() * 2 + 0.5;
+        }
+        
+        if (progress > 100) progress = 100;
+        
+        progressBar.style.width = progress + '%';
+        progressPercent.textContent = Math.floor(progress) + '%';
+        
+        // 随机切换文件
+        if (Math.random() > 0.7 && fileIndex < fakeFiles.length) {
+          const file = fakeFiles[fileIndex];
+          currentFile.textContent = file;
+          fileList.innerHTML = `<div class="file-item current">📄 ${file} <span class="status">安装中...</span></div>` + fileList.innerHTML;
+          fileIndex++;
+        }
+        
+        // 偶尔"卡住"
+        if (progress > 85 && progress < 95 && Math.random() > 0.8) {
+          progress -= 2; // 进度倒退！
+        }
+        
+        if (progress >= 100) {
+          clearInterval(interval);
+          currentFile.textContent = '安装完成！';
+          fileList.innerHTML = `<div class="file-item" style="color: #4ade80;">✓ 所有文件安装完成</div>` + fileList.innerHTML;
+        }
+      }, 200);
+    }
+
+    // Demo 5: 加载动画
+    const loadingTips = [
+      '正在优化您的体验...',
+      '正在连接服务器...',
+      '正在加载资源...',
+      '正在初始化组件...',
+      '正在验证数据...',
+      '马上就好...',
+      '请稍候...',
+      '正在处理中...'
+    ];
+    
+    setInterval(() => {
+      const tip = loadingTips[Math.floor(Math.random() * loadingTips.length)];
+      document.getElementById('loadingTip').textContent = tip;
+    }, 2000);
+
+    // Demo 6: 音量
+    let volume = 70;
+    let muted = false;
+    
+    function setVolume(e) {
+      const slider = document.getElementById('volumeSlider');
+      const rect = slider.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      volume = Math.round((x / rect.width) * 100);
+      volume = Math.max(0, Math.min(100, volume));
+      updateVolume();
+    }
+    
+    function updateVolume() {
+      document.getElementById('volumeFill').style.width = volume + '%';
+      document.getElementById('volumeHandle').style.left = volume + '%';
+      document.getElementById('volumeValue').textContent = volume;
+      
+      const icon = document.querySelector('.volume-icon');
+      if (muted || volume === 0) {
+        icon.textContent = '🔇';
+      } else if (volume < 30) {
+        icon.textContent = '🔈';
+      } else if (volume < 70) {
+        icon.textContent = '🔉';
+      } else {
+        icon.textContent = '🔊';
+      }
+    }
+    
+    function toggleMute() {
+      muted = !muted;
+      if (muted) {
+        document.getElementById('volumeFill').style.width = '0%';
+        document.getElementById('volumeHandle').style.left = '0%';
+        document.getElementById('volumeValue').textContent = '0';
+        document.querySelector('.volume-icon').textContent = '🔇';
+      } else {
+        updateVolume();
+      }
+    }
+    
+    // 拖拽音量
+    let isDragging = false;
+    const handle = document.getElementById('volumeHandle');
+    const slider = document.getElementById('volumeSlider');
+    
+    handle.addEventListener('mousedown', () => isDragging = true);
+    document.addEventListener('mouseup', () => isDragging = false);
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const rect = slider.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      volume = Math.round((x / rect.width) * 100);
+      volume = Math.max(0, Math.min(100, volume));
+      muted = false;
+      updateVolume();
+    });
+  </script>
+</body>
+</html>

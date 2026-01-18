@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>复赌概率模拟器 - 戒赌一年有多难？</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    .header { text-align: center; margin: 20px 0 30px; }
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #ff6b6b, #feca57, #ff6b6b);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.6); margin-top: 10px; font-size: 14px; }
+
+    .card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 20px;
+    }
+
+    /* 核心数据展示 */
+    .core-stat {
+      text-align: center;
+      padding: 30px 20px;
+      background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(254,202,87,0.05));
+      border: 1px solid rgba(255,107,107,0.2);
+    }
+    .big-number {
+      font-size: 5rem;
+      font-weight: 800;
+      color: #ff6b6b;
+      line-height: 1;
+      text-shadow: 0 0 40px rgba(255,107,107,0.3);
+    }
+    .big-number span { font-size: 3rem; }
+    .stat-desc {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.8);
+      margin-top: 15px;
+    }
+    .stat-source {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 10px;
+    }
+    .stat-source a { color: rgba(255,255,255,0.5); }
+
+    /* 模拟区域 */
+    .sim-title {
+      color: #feca57;
+      font-size: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    /* 100人可视化 */
+    .people-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+      max-width: 500px;
+      margin: 0 auto 25px;
+    }
+    .person {
+      aspect-ratio: 1;
+      background: rgba(74,222,128,0.7);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: all 0.3s;
+      cursor: default;
+    }
+    .person.relapsed {
+      background: rgba(255,107,107,0.8);
+      transform: scale(0.85);
+    }
+    .person.current {
+      box-shadow: 0 0 15px rgba(254,202,87,0.8);
+      transform: scale(1.1);
+      z-index: 1;
+    }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .legend-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+    .legend-dot.green { background: rgba(74,222,128,0.7); }
+    .legend-dot.red { background: rgba(255,107,107,0.8); }
+
+    /* 时间轴 */
+    .timeline {
+      margin: 25px 0;
+    }
+    .timeline-bar {
+      height: 40px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+    }
+    .timeline-progress {
+      height: 100%;
+      background: linear-gradient(90deg, #4ade80, #feca57, #ff6b6b);
+      border-radius: 20px;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 15px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #1a1a2e;
+    }
+    .timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* 统计面板 */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 500px) {
+      .stats-row { grid-template-columns: 1fr; }
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+    }
+    .stat-value.green { color: #4ade80; }
+    .stat-value.red { color: #ff6b6b; }
+    .stat-value.gold { color: #feca57; }
+    .stat-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    /* 按钮 */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 12px 25px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #feca57, #ff6b6b);
+      color: #1a1a2e;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 解释区 */
+    .explanation h3 {
+      color: #feca57;
+      font-size: 15px;
+      margin-bottom: 15px;
+    }
+    .explanation p {
+      color: rgba(255,255,255,0.75);
+      line-height: 1.8;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    .highlight-box {
+      background: rgba(255,107,107,0.1);
+      border-left: 3px solid #ff6b6b;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .highlight-box.warning {
+      background: rgba(254,202,87,0.1);
+      border-left-color: #feca57;
+    }
+
+    /* 每日挑战 */
+    .daily-challenge {
+      background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(254,202,87,0.05));
+      border: 1px solid rgba(74,222,128,0.2);
+    }
+    .challenge-title {
+      color: #4ade80;
+      font-size: 16px;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .day-counter {
+      text-align: center;
+      margin: 20px 0;
+    }
+    .day-number {
+      font-size: 4rem;
+      font-weight: 800;
+      color: #4ade80;
+    }
+    .day-label {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+    }
+    .temptation-bar {
+      margin: 20px 0;
+    }
+    .temptation-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.6);
+    }
+    .temptation-track {
+      height: 20px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .temptation-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4ade80, #feca57, #ff6b6b);
+      transition: width 0.3s;
+    }
+
+    /* 结果弹窗 */
+    .result-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.9);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .result-modal.show { display: flex; }
+    .result-content {
+      text-align: center;
+      padding: 40px;
+      max-width: 400px;
+    }
+    .result-icon { font-size: 80px; margin-bottom: 20px; }
+    .result-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+    }
+    .result-title.fail { color: #ff6b6b; }
+    .result-title.success { color: #4ade80; }
+    .result-message {
+      color: rgba(255,255,255,0.7);
+      line-height: 1.7;
+      margin-bottom: 25px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🎰 复赌概率模拟器</h1>
+    <p>戒赌一年，到底有多难？用数据告诉你</p>
+  </div>
+
+  <!-- 核心数据 -->
+  <div class="card core-stat">
+    <div class="big-number">92<span>%</span></div>
+    <div class="stat-desc">的赌博成瘾者在戒赌后一年内复赌</div>
+    <div class="stat-source">
+      数据来源：Hodgins & el-Guebaly (2004) 前瞻性研究，101名病理性赌博者12个月随访<br>
+      <a href="https://www.researchgate.net/publication/8891010" target="_blank">查看原始论文 →</a>
+    </div>
+  </div>
+
+  <!-- 100人模拟 -->
+  <div class="card">
+    <div class="sim-title">🧪 模拟实验：100个戒赌者，一年后还剩几个？</div>
+    
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot green"></div>
+        <span>坚持戒赌</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot red"></div>
+        <span>已复赌</span>
+      </div>
+    </div>
+
+    <div class="people-grid" id="peopleGrid"></div>
+
+    <div class="timeline">
+      <div class="timeline-bar">
+        <div class="timeline-progress" id="timelineProgress" style="width: 0%"></div>
+      </div>
+      <div class="timeline-labels">
+        <span>第1天</span>
+        <span>第90天</span>
+        <span>第180天</span>
+        <span>第270天</span>
+        <span>第365天</span>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-value green" id="survivorCount">100</div>
+        <div class="stat-label">仍在坚持</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value red" id="relapsedCount">0</div>
+        <div class="stat-label">已复赌</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value gold" id="currentDay">0</div>
+        <div class="stat-label">当前天数</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="startBtn" onclick="startSimulation()">▶️ 开始模拟一年</button>
+      <button class="btn btn-secondary" onclick="resetSimulation()">🔄 重置</button>
+    </div>
+  </div>
+
+  <!-- 个人挑战 -->
+  <div class="card daily-challenge">
+    <div class="challenge-title">🎯 换你试试：能坚持多少天？</div>
+    <p style="text-align: center; color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 15px;">
+      每天有0.7%的复赌概率（对应92%年复赌率），点击"又过了一天"看你能撑多久
+    </p>
+
+    <div class="day-counter">
+      <div class="day-number" id="yourDay">0</div>
+      <div class="day-label">天</div>
+    </div>
+
+    <div class="temptation-bar">
+      <div class="temptation-label">
+        <span>累计复赌风险</span>
+        <span id="riskPercent">0%</span>
+      </div>
+      <div class="temptation-track">
+        <div class="temptation-fill" id="riskFill" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="nextDayBtn" onclick="nextDay()">☀️ 又过了一天</button>
+      <button class="btn btn-secondary" onclick="fastForward()">⚡ 快进30天</button>
+      <button class="btn btn-secondary" onclick="resetChallenge()">🔄 重来</button>
+    </div>
+  </div>
+
+  <!-- 解释 -->
+  <div class="card explanation">
+    <h3>📊 这个数据意味着什么？</h3>
+    
+    <p>2004年，加拿大卡尔加里大学的 Hodgins 和 el-Guebaly 做了一项前瞻性研究，追踪了101名刚开始戒赌的病理性赌博者。</p>
+    
+    <p>结果令人震惊：<strong>12个月后，只有8%的人完全没有赌博</strong>。</p>
+
+    <div class="highlight-box">
+      <strong>换句话说：</strong><br>
+      如果100个人今天发誓戒赌，一年后大约只有8个人能真正做到。<br>
+      剩下92个人，都会在这一年里的某个时刻复赌。
+    </div>
+
+    <h3>🧠 为什么复赌率这么高？</h3>
+    
+    <p>2013年，美国精神病学会在DSM-5中做了一个历史性的决定：把「赌博障碍」从「冲动控制障碍」移到了「物质相关及成瘾障碍」章节。</p>
+    
+    <p>这意味着：<strong>赌博成瘾在医学上被正式认定为一种「行为成瘾」</strong>，和酒精、毒品成瘾属于同一类。</p>
+
+    <div class="highlight-box warning">
+      <strong>神经科学发现：</strong><br>
+      赌博和吸毒激活的是大脑同一套奖励系统。Nature发表的神经影像学综述显示，赌博障碍患者的多巴胺通路与物质成瘾者高度相似。<br><br>
+      这就是为什么「意志力」往往不够用——你对抗的不是一个坏习惯，而是被劫持的大脑奖励回路。
+    </div>
+
+    <h3>💡 研究还发现了什么？</h3>
+    
+    <p>复赌最常发生在：</p>
+    <ul style="color: rgba(255,255,255,0.75); margin-left: 20px; line-height: 2;">
+      <li>晚上</li>
+      <li>独处的时候</li>
+      <li>想到钱的问题的时候</li>
+    </ul>
+    
+    <p style="margin-top: 15px;">而且，复赌前的情绪<strong>正面和负面的概率差不多</strong>——不只是心情不好会复赌，心情好的时候也会。</p>
+    
+    <p>最常见的复赌理由是：「想着能赢钱」「觉得需要赚点钱」。</p>
+  </div>
+
+  <!-- 参考文献 -->
+  <div class="card" style="font-size: 13px; color: rgba(255,255,255,0.5);">
+    <h3 style="color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 12px;">📚 参考文献</h3>
+    <p style="margin-bottom: 8px;">1. Hodgins, D. C., & el-Guebaly, N. (2004). Retrospective and prospective reports of precipitants to relapse in pathological gambling. <em>Journal of Consulting and Clinical Psychology</em>, 72(1), 72-80.</p>
+    <p style="margin-bottom: 8px;">2. American Psychiatric Association. (2013). <em>Diagnostic and Statistical Manual of Mental Disorders</em> (5th ed.). DSM-5.</p>
+    <p>3. Clark, L., et al. (2019). Neuroimaging of reward mechanisms in Gambling disorder: an integrative review. <em>Molecular Psychiatry</em>, 24, 674-693.</p>
+  </div>
+</div>
+
+<!-- 结果弹窗 -->
+<div class="result-modal" id="resultModal">
+  <div class="result-content">
+    <div class="result-icon" id="resultIcon">💀</div>
+    <div class="result-title fail" id="resultTitle">复赌了</div>
+    <div class="result-message" id="resultMessage"></div>
+    <button class="btn btn-primary" onclick="closeModal()">我知道了</button>
+  </div>
+</div>
+
+<script>
+// 100人模拟
+let people = [];
+let simRunning = false;
+let simDay = 0;
+
+// 每日复赌概率，使得一年后约92%复赌
+// (1 - p)^365 = 0.08 => p ≈ 0.00693
+const DAILY_RELAPSE_RATE = 0.00693;
+
+function initPeopleGrid() {
+  const grid = document.getElementById('peopleGrid');
+  grid.innerHTML = '';
+  people = [];
+  
+  for (let i = 0; i < 100; i++) {
+    const person = document.createElement('div');
+    person.className = 'person';
+    person.textContent = '😐';
+    person.id = 'person-' + i;
+    grid.appendChild(person);
+    people.push({ relapsed: false, relapseDay: null });
+  }
+}
+
+function startSimulation() {
+  if (simRunning) return;
+  simRunning = true;
+  document.getElementById('startBtn').disabled = true;
+  
+  simDay = 0;
+  initPeopleGrid();
+  
+  const interval = setInterval(() => {
+    simDay++;
+    
+    // 每个未复赌的人有概率复赌
+    people.forEach((p, i) => {
+      if (!p.relapsed && Math.random() < DAILY_RELAPSE_RATE) {
+        p.relapsed = true;
+        p.relapseDay = simDay;
+        const el = document.getElementById('person-' + i);
+        el.classList.add('relapsed');
+        el.textContent = '😵';
+      }
+    });
+    
+    updateSimStats();
+    
+    if (simDay >= 365) {
+      clearInterval(interval);
+      simRunning = false;
+      document.getElementById('startBtn').disabled = false;
+    }
+  }, 20);
+}
+
+function updateSimStats() {
+  const survivors = people.filter(p => !p.relapsed).length;
+  const relapsed = 100 - survivors;
+  
+  document.getElementById('survivorCount').textContent = survivors;
+  document.getElementById('relapsedCount').textContent = relapsed;
+  document.getElementById('currentDay').textContent = simDay;
+  
+  const progress = document.getElementById('timelineProgress');
+  progress.style.width = (simDay / 365 * 100) + '%';
+  progress.textContent = simDay > 30 ? `第${simDay}天` : '';
+}
+
+function resetSimulation() {
+  simRunning = false;
+  simDay = 0;
+  initPeopleGrid();
+  updateSimStats();
+  document.getElementById('startBtn').disabled = false;
+}
+
+// 个人挑战
+let yourDay = 0;
+
+function nextDay() {
+  yourDay++;
+  
+  // 检查是否复赌
+  if (Math.random() < DAILY_RELAPSE_RATE) {
+    showResult(false, yourDay);
+    return;
+  }
+  
+  // 检查是否成功一年
+  if (yourDay >= 365) {
+    showResult(true, yourDay);
+    return;
+  }
+  
+  updateChallengeStats();
+}
+
+function fastForward() {
+  for (let i = 0; i < 30; i++) {
+    yourDay++;
+    
+    if (Math.random() < DAILY_RELAPSE_RATE) {
+      showResult(false, yourDay);
+      return;
+    }
+    
+    if (yourDay >= 365) {
+      showResult(true, yourDay);
+      return;
+    }
+  }
+  
+  updateChallengeStats();
+}
+
+function updateChallengeStats() {
+  document.getElementById('yourDay').textContent = yourDay;
+  
+  // 累计风险 = 1 - (1-p)^n
+  const risk = 1 - Math.pow(1 - DAILY_RELAPSE_RATE, yourDay);
+  document.getElementById('riskPercent').textContent = (risk * 100).toFixed(1) + '%';
+  document.getElementById('riskFill').style.width = (risk * 100) + '%';
+}
+
+function resetChallenge() {
+  yourDay = 0;
+  updateChallengeStats();
+}
+
+function showResult(success, day) {
+  const modal = document.getElementById('resultModal');
+  const icon = document.getElementById('resultIcon');
+  const title = document.getElementById('resultTitle');
+  const message = document.getElementById('resultMessage');
+  
+  if (success) {
+    icon.textContent = '🎉';
+    title.textContent = '恭喜！';
+    title.className = 'result-title success';
+    message.innerHTML = `你坚持了整整 <strong>365天</strong>！<br><br>
+      你是那 <strong>8%</strong> 的幸运儿。<br>
+      但记住：这只是模拟。现实中，每一天都是真实的煎熬。`;
+  } else {
+    icon.textContent = '💀';
+    title.textContent = '复赌了';
+    title.className = 'result-title fail';
+    message.innerHTML = `你在第 <strong>${day}</strong> 天复赌了。<br><br>
+      这就是92%的人的命运。<br>
+      不是意志力不够，是大脑的奖励系统被劫持了。`;
+  }
+  
+  modal.classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('resultModal').classList.remove('show');
+  resetChallenge();
+}
+
+// 初始化
+initPeopleGrid();
+</script>
+
+</body>
+</html>

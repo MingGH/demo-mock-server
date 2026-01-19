@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>jQuery 20周年纪念 - 用4.0写一个怀旧Demo</title>
+  <script src="https://code.jquery.com/jquery-4.0.0.min.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a2e;
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    .header { text-align: center; margin: 20px 0 30px; }
+    .header h1 {
+      font-size: 2rem;
+      color: #0769ad;
+      margin-bottom: 10px;
+    }
+    .header .version {
+      display: inline-block;
+      background: #0769ad;
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+    .header p { color: rgba(255,255,255,0.6); font-size: 14px; }
+
+    .card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 25px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      color: #0769ad;
+      font-size: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card h2::before {
+      content: '$';
+      background: #0769ad;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    /* 经典选择器演示 */
+    .selector-demo {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .demo-box {
+      width: 60px;
+      height: 60px;
+      background: #333;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    .demo-box.highlight {
+      background: #0769ad;
+      transform: scale(1.1);
+      box-shadow: 0 0 20px rgba(7,105,173,0.5);
+    }
+    .demo-box.special { border: 2px dashed #ffd700; }
+    
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #0769ad;
+      color: white;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover { transform: translateY(-2px); }
+
+    /* 代码展示 */
+    .code-block {
+      background: #0d0d0d;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .code-block .comment { color: #6a9955; }
+    .code-block .keyword { color: #569cd6; }
+    .code-block .string { color: #ce9178; }
+    .code-block .function { color: #dcdcaa; }
+    .code-block .jquery { color: #0769ad; font-weight: bold; }
+
+    /* 动画演示 */
+    .animation-stage {
+      height: 150px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      position: relative;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+    .animate-target {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #0769ad, #00a8e8);
+      border-radius: 12px;
+      position: absolute;
+      top: 50%;
+      left: 20px;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    /* Ajax演示 */
+    .ajax-result {
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 15px;
+      min-height: 100px;
+      margin: 15px 0;
+      font-size: 13px;
+    }
+    .ajax-result.loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.5);
+    }
+    .ajax-result pre {
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* 链式调用演示 */
+    .chain-demo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .chain-box {
+      padding: 15px 25px;
+      background: #333;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    .chain-arrow {
+      color: #0769ad;
+      font-size: 20px;
+    }
+
+    /* 事件演示 */
+    .event-area {
+      height: 150px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 15px 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+    }
+    .event-area:hover {
+      background: rgba(7,105,173,0.2);
+    }
+    .event-log {
+      background: #0d0d0d;
+      border-radius: 8px;
+      padding: 10px 15px;
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 12px;
+    }
+    .event-log div {
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .event-log .time { color: #6a9955; }
+    .event-log .event-name { color: #0769ad; }
+
+    /* 对比表格 */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 13px;
+    }
+    .compare-table th, .compare-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .compare-table th {
+      background: rgba(7,105,173,0.2);
+      color: #0769ad;
+    }
+    .compare-table code {
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* 时间线 */
+    .timeline {
+      position: relative;
+      padding-left: 30px;
+      margin: 20px 0;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 8px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #0769ad;
+    }
+    .timeline-item {
+      position: relative;
+      padding-bottom: 20px;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -26px;
+      top: 5px;
+      width: 12px;
+      height: 12px;
+      background: #0769ad;
+      border-radius: 50%;
+    }
+    .timeline-item.current::before {
+      background: #ffd700;
+      box-shadow: 0 0 10px #ffd700;
+    }
+    .timeline-year {
+      color: #0769ad;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .timeline-item.current .timeline-year { color: #ffd700; }
+    .timeline-desc {
+      color: rgba(255,255,255,0.7);
+      font-size: 13px;
+    }
+
+    /* 统计 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+    .stat-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #0769ad;
+    }
+    .stat-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .footer-note {
+      text-align: center;
+      color: rgba(255,255,255,0.4);
+      font-size: 13px;
+      margin-top: 30px;
+      padding: 20px;
+    }
+    .footer-note a { color: #0769ad; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>$ jQuery</h1>
+    <div class="version">v4.0.0 · 20周年</div>
+    <p>2006 - 2026 · Write Less, Do More</p>
+  </div>
+
+  <!-- 版本历史 -->
+  <div class="card">
+    <h2>版本历史</h2>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-year">2006 · v1.0</div>
+        <div class="timeline-desc">John Resig 发布 jQuery，解决浏览器兼容性噩梦</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2013 · v2.0</div>
+        <div class="timeline-desc">放弃 IE 6/7/8 支持，体积大幅减小</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2016 · v3.0</div>
+        <div class="timeline-desc">Promise/A+ 兼容，支持 requestAnimationFrame</div>
+      </div>
+      <div class="timeline-item current">
+        <div class="timeline-year">2024 · v4.0</div>
+        <div class="timeline-desc">彻底放弃 IE，拥抱现代浏览器，FormData 原生支持</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-value">77%</div>
+        <div class="stat-label">全球网站使用率</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">20</div>
+        <div class="stat-label">年</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="jquerySize">--</div>
+        <div class="stat-label">min.js 体积 (KB)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 选择器演示 -->
+  <div class="card">
+    <h2>经典选择器</h2>
+    <div class="selector-demo" id="selectorDemo">
+      <div class="demo-box" data-index="1">#1</div>
+      <div class="demo-box" data-index="2">#2</div>
+      <div class="demo-box special" data-index="3">#3</div>
+      <div class="demo-box" data-index="4">#4</div>
+      <div class="demo-box special" data-index="5">#5</div>
+      <div class="demo-box" data-index="6">#6</div>
+      <div class="demo-box" data-index="7">#7</div>
+      <div class="demo-box special" data-index="8">#8</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="selectAll">$('.demo-box')</button>
+      <button class="btn btn-primary" id="selectSpecial">$('.special')</button>
+      <button class="btn btn-primary" id="selectFirst">$('.demo-box:first')</button>
+      <button class="btn btn-primary" id="selectOdd">$('.demo-box:odd')</button>
+      <button class="btn btn-secondary" id="selectReset">重置</button>
+    </div>
+    <div class="code-block">
+      <span class="comment">// jQuery 选择器 - 比原生简洁太多</span><br>
+      <span class="jquery">$</span>(<span class="string">'.demo-box'</span>).<span class="function">addClass</span>(<span class="string">'highlight'</span>);<br>
+      <span class="jquery">$</span>(<span class="string">'.special'</span>).<span class="function">css</span>(<span class="string">'background'</span>, <span class="string">'#ffd700'</span>);
+    </div>
+  </div>
+
+  <!-- 链式调用 -->
+  <div class="card">
+    <h2>链式调用 · jQuery的灵魂</h2>
+    <div class="chain-demo">
+      <div class="chain-box" id="chainTarget">点我</div>
+      <span class="chain-arrow">→</span>
+      <div class="chain-box" id="chainResult" style="opacity: 0.3;">等待链式操作...</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="chainBtn">执行链式调用</button>
+      <button class="btn btn-secondary" id="chainReset">重置</button>
+    </div>
+    <div class="code-block">
+      <span class="jquery">$</span>(<span class="string">'#chainTarget'</span>)<br>
+      &nbsp;&nbsp;.<span class="function">css</span>(<span class="string">'background'</span>, <span class="string">'#0769ad'</span>)<br>
+      &nbsp;&nbsp;.<span class="function">animate</span>({ paddingLeft: <span class="string">'50px'</span>, paddingRight: <span class="string">'50px'</span> }, 300)<br>
+      &nbsp;&nbsp;.<span class="function">text</span>(<span class="string">'链式调用!'</span>)<br>
+      &nbsp;&nbsp;.<span class="function">fadeOut</span>(500)<br>
+      &nbsp;&nbsp;.<span class="function">fadeIn</span>(500);
+    </div>
+  </div>
+
+  <!-- 动画演示 -->
+  <div class="card">
+    <h2>动画系统</h2>
+    <div class="animation-stage">
+      <div class="animate-target" id="animateTarget">$</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="animateSlide">slideUp/Down</button>
+      <button class="btn btn-primary" id="animateFade">fadeIn/Out</button>
+      <button class="btn btn-primary" id="animateCustom">animate()</button>
+      <button class="btn btn-secondary" id="animateReset">重置</button>
+    </div>
+    <div class="code-block">
+      <span class="comment">// jQuery 4.0 动画使用 requestAnimationFrame</span><br>
+      <span class="jquery">$</span>(<span class="string">'#target'</span>).<span class="function">animate</span>({<br>
+      &nbsp;&nbsp;left: <span class="string">'300px'</span>,<br>
+      &nbsp;&nbsp;opacity: 0.5<br>
+      }, 1000);
+    </div>
+  </div>
+
+  <!-- 事件处理 -->
+  <div class="card">
+    <h2>事件处理</h2>
+    <div class="event-area" id="eventArea">
+      在这里点击、双击、移动鼠标试试
+    </div>
+    <div class="event-log" id="eventLog">
+      <div><span class="time">[等待]</span> 事件日志将显示在这里...</div>
+    </div>
+    <div class="code-block">
+      <span class="jquery">$</span>(<span class="string">'#eventArea'</span>).<span class="function">on</span>(<span class="string">'click dblclick mouseenter mouseleave'</span>, <span class="keyword">function</span>(e) {<br>
+      &nbsp;&nbsp;console.<span class="function">log</span>(e.type);<br>
+      });
+    </div>
+  </div>
+
+  <!-- Ajax演示 -->
+  <div class="card">
+    <h2>Ajax · 4.0 支持原生 Promise</h2>
+    <div class="ajax-result" id="ajaxResult">
+      <pre>点击按钮发起请求...</pre>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-primary" id="ajaxGet">$.get() 获取数据</button>
+      <button class="btn btn-primary" id="ajaxPromise">Promise 链式调用</button>
+    </div>
+    <div class="code-block">
+      <span class="comment">// jQuery 4.0 的 Deferred 完全兼容 Promise/A+</span><br>
+      <span class="jquery">$</span>.<span class="function">get</span>(<span class="string">'/api/data'</span>)<br>
+      &nbsp;&nbsp;.<span class="function">then</span>(data => console.<span class="function">log</span>(data))<br>
+      &nbsp;&nbsp;.<span class="function">catch</span>(err => console.<span class="function">error</span>(err));
+    </div>
+  </div>
+
+  <!-- jQuery vs 原生对比 -->
+  <div class="card">
+    <h2>jQuery vs 原生 · 2024年还需要jQuery吗？</h2>
+    <table class="compare-table">
+      <tr>
+        <th>功能</th>
+        <th>jQuery</th>
+        <th>原生 (现代浏览器)</th>
+      </tr>
+      <tr>
+        <td>选择元素</td>
+        <td><code>$('.class')</code></td>
+        <td><code>document.querySelectorAll('.class')</code></td>
+      </tr>
+      <tr>
+        <td>添加类名</td>
+        <td><code>$(el).addClass('x')</code></td>
+        <td><code>el.classList.add('x')</code></td>
+      </tr>
+      <tr>
+        <td>Ajax请求</td>
+        <td><code>$.get(url)</code></td>
+        <td><code>fetch(url)</code></td>
+      </tr>
+      <tr>
+        <td>事件绑定</td>
+        <td><code>$(el).on('click', fn)</code></td>
+        <td><code>el.addEventListener('click', fn)</code></td>
+      </tr>
+      <tr>
+        <td>动画</td>
+        <td><code>$(el).fadeIn()</code></td>
+        <td><code>el.animate() / CSS transition</code></td>
+      </tr>
+    </table>
+    <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 15px;">
+      结论：新项目不需要jQuery了，但老项目升级到4.0是值得的。
+    </p>
+  </div>
+
+  <div class="footer-note">
+    本页面使用 <a href="https://jquery.com/" target="_blank">jQuery 4.0.0</a> 构建<br>
+    Write Less, Do More · 2006-2026
+  </div>
+</div>
+
+<script>
+$(function() {
+  // 显示jQuery版本和大小
+  $('#jquerySize').text('~28');
+  
+  // 选择器演示
+  $('#selectAll').on('click', function() {
+    $('.demo-box').removeClass('highlight');
+    $('.demo-box').addClass('highlight');
+  });
+  
+  $('#selectSpecial').on('click', function() {
+    $('.demo-box').removeClass('highlight');
+    $('.special').addClass('highlight');
+  });
+  
+  $('#selectFirst').on('click', function() {
+    $('.demo-box').removeClass('highlight');
+    $('.demo-box:first').addClass('highlight');
+  });
+  
+  $('#selectOdd').on('click', function() {
+    $('.demo-box').removeClass('highlight');
+    $('.demo-box:odd').addClass('highlight');
+  });
+  
+  $('#selectReset').on('click', function() {
+    $('.demo-box').removeClass('highlight');
+  });
+  
+  // 链式调用演示
+  $('#chainBtn').on('click', function() {
+    $('#chainTarget')
+      .css('background', '#0769ad')
+      .css('color', 'white')
+      .animate({ paddingLeft: '40px', paddingRight: '40px' }, 300)
+      .text('链式调用!')
+      .fadeOut(400)
+      .fadeIn(400)
+      .queue(function(next) {
+        $('#chainResult')
+          .css('opacity', '1')
+          .css('background', '#0769ad')
+          .css('color', 'white')
+          .text('完成!');
+        next();
+      });
+  });
+  
+  $('#chainReset').on('click', function() {
+    $('#chainTarget')
+      .stop(true)
+      .css({ background: '#333', color: '#e4e4e4', paddingLeft: '25px', paddingRight: '25px' })
+      .text('点我')
+      .show();
+    $('#chainResult')
+      .css({ opacity: '0.3', background: '#333', color: '#e4e4e4' })
+      .text('等待链式操作...');
+  });
+  
+  // 动画演示
+  $('#animateSlide').on('click', function() {
+    $('#animateTarget').slideUp(300).slideDown(300);
+  });
+  
+  $('#animateFade').on('click', function() {
+    $('#animateTarget').fadeOut(300).fadeIn(300);
+  });
+  
+  $('#animateCustom').on('click', function() {
+    $('#animateTarget').animate({
+      left: '+=200px'
+    }, 500, function() {
+      $(this).animate({ left: '20px' }, 500);
+    });
+  });
+  
+  $('#animateReset').on('click', function() {
+    $('#animateTarget').stop(true).css({ left: '20px', top: '50%', opacity: 1 }).show();
+  });
+  
+  // 事件演示
+  let eventCount = 0;
+  const maxEvents = 10;
+  
+  $('#eventArea').on('click dblclick mouseenter mouseleave', function(e) {
+    eventCount++;
+    const time = new Date().toLocaleTimeString();
+    const eventNames = {
+      click: '单击',
+      dblclick: '双击',
+      mouseenter: '鼠标进入',
+      mouseleave: '鼠标离开'
+    };
+    
+    const log = $('<div>')
+      .html(`<span class="time">[${time}]</span> <span class="event-name">${e.type}</span> - ${eventNames[e.type] || e.type}`);
+    
+    $('#eventLog').prepend(log);
+    
+    // 保持最多10条记录
+    if ($('#eventLog div').length > maxEvents) {
+      $('#eventLog div:last').remove();
+    }
+  });
+  
+  // Ajax演示
+  $('#ajaxGet').on('click', function() {
+    $('#ajaxResult').html('<pre>加载中...</pre>');
+    
+    // 使用公开API演示
+    $.get('https://api.github.com/repos/jquery/jquery')
+      .then(function(data) {
+        $('#ajaxResult').html(`<pre>{
+  "name": "${data.name}",
+  "stars": ${data.stargazers_count},
+  "forks": ${data.forks_count},
+  "description": "${data.description}"
+}</pre>`);
+      })
+      .catch(function(err) {
+        $('#ajaxResult').html(`<pre style="color: #ff6b6b;">请求失败: ${err.statusText || '网络错误'}</pre>`);
+      });
+  });
+  
+  $('#ajaxPromise').on('click', function() {
+    $('#ajaxResult').html('<pre>Promise 链式调用中...</pre>');
+    
+    $.get('https://api.github.com/repos/jquery/jquery')
+      .then(function(data) {
+        // 第一个then：处理数据
+        return {
+          name: data.name,
+          stars: data.stargazers_count,
+          message: `${data.name} 有 ${data.stargazers_count.toLocaleString()} 个 star`
+        };
+      })
+      .then(function(processed) {
+        // 第二个then：显示结果
+        $('#ajaxResult').html(`<pre>// Promise 链式处理结果
+{
+  "name": "${processed.name}",
+  "stars": ${processed.stars},
+  "message": "${processed.message}"
+}
+
+// jQuery 4.0 的 Deferred 完全兼容 Promise/A+
+// 可以和 async/await 无缝配合</pre>`);
+      })
+      .catch(function(err) {
+        $('#ajaxResult').html(`<pre style="color: #ff6b6b;">Promise 捕获错误: ${err.statusText || '网络错误'}</pre>`);
+      });
+  });
+});
+</script>
+
+</body>
+</html>

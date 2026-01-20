@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>为什么赌博十赌九输 - 数学不会骗人</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    .header { text-align: center; margin: 20px 0 30px; }
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #ff6b6b, #feca57, #ff6b6b);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.6); margin-top: 10px; font-size: 14px; }
+
+    .card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 20px;
+    }
+
+    /* 核心数据 */
+    .core-stat {
+      text-align: center;
+      padding: 30px 20px;
+      background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(254,202,87,0.05));
+      border: 1px solid rgba(255,107,107,0.2);
+    }
+    .big-number {
+      font-size: 4rem;
+      font-weight: 800;
+      color: #ff6b6b;
+      line-height: 1;
+      text-shadow: 0 0 40px rgba(255,107,107,0.3);
+    }
+    .stat-desc {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.8);
+      margin-top: 15px;
+    }
+
+    /* 三大原因 */
+    .reasons {
+      display: grid;
+      gap: 20px;
+    }
+    .reason-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      border-left: 4px solid #feca57;
+    }
+    .reason-card h3 {
+      color: #feca57;
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .reason-card p {
+      color: rgba(255,255,255,0.75);
+      line-height: 1.8;
+      font-size: 14px;
+    }
+    .reason-card .highlight {
+      color: #ff6b6b;
+      font-weight: 600;
+    }
+
+    /* 模拟器 */
+    .sim-title {
+      color: #feca57;
+      font-size: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    .game-setup {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 600px) {
+      .game-setup { grid-template-columns: 1fr; }
+    }
+    .setup-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+    .setup-item label {
+      display: block;
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .setup-item input, .setup-item select {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px;
+      color: white;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .btn {
+      padding: 12px 25px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #feca57, #ff6b6b);
+      color: #1a1a2e;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 统计面板 */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .stat-value.green { color: #4ade80; }
+    .stat-value.red { color: #ff6b6b; }
+    .stat-value.gold { color: #feca57; }
+    .stat-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 11px;
+      margin-top: 5px;
+    }
+
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 250px;
+      margin: 20px 0;
+    }
+
+    /* 100人可视化 */
+    .people-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 5px;
+      max-width: 450px;
+      margin: 20px auto;
+    }
+    .person {
+      aspect-ratio: 1;
+      background: rgba(74,222,128,0.6);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+    .person.bankrupt {
+      background: rgba(255,107,107,0.7);
+      transform: scale(0.85);
+    }
+    .person.rich {
+      background: rgba(254,202,87,0.8);
+      transform: scale(1.1);
+    }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 25px;
+      margin: 15px 0;
+      font-size: 13px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+    }
+    .legend-dot.green { background: rgba(74,222,128,0.6); }
+    .legend-dot.red { background: rgba(255,107,107,0.7); }
+    .legend-dot.gold { background: rgba(254,202,87,0.8); }
+
+    /* 抽水解释 */
+    .rake-demo {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .rake-visual {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    .rake-box {
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 15px 25px;
+      text-align: center;
+    }
+    .rake-box .amount {
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+    .rake-box .label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 5px;
+    }
+    .rake-arrow {
+      font-size: 24px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* 心理陷阱 */
+    .trap-card {
+      background: rgba(255,107,107,0.1);
+      border-left: 3px solid #ff6b6b;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .trap-card h4 {
+      color: #ff6b6b;
+      margin-bottom: 8px;
+    }
+    .trap-card p {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(254,202,87,0.1));
+      border: 2px solid #feca57;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+    }
+    .conclusion h3 {
+      color: #ff6b6b;
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+    }
+    .conclusion p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.8;
+      font-size: 14px;
+    }
+    .conclusion .key-point {
+      color: #feca57;
+      font-weight: 600;
+    }
+
+    /* 求助信息 */
+    .help-info {
+      background: rgba(74,222,128,0.1);
+      border: 1px solid rgba(74,222,128,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .help-info h4 {
+      color: #4ade80;
+      margin-bottom: 10px;
+    }
+    .help-info p {
+      color: rgba(255,255,255,0.7);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .help-info a {
+      color: #4ade80;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🎰 为什么赌博十赌九输？</h1>
+    <p>用数学和模拟告诉你，这不是运气问题</p>
+  </div>
+
+  <!-- 核心数据 -->
+  <div class="card core-stat">
+    <div class="big-number">-5%</div>
+    <div class="stat-desc">这是赌场的「抽水」，也是你必输的数学根源</div>
+  </div>
+
+  <!-- 三大原因 -->
+  <div class="card">
+    <h2 style="color: #feca57; margin-bottom: 20px; text-align: center;">📊 十赌九输的三大数学原因</h2>
+    
+    <div class="reasons">
+      <div class="reason-card">
+        <h3>🏦 原因一：庄家抽水</h3>
+        <p>
+          无论是赌场、棋牌室还是网络赌博，庄家都会抽取 <span class="highlight">3%~10%</span> 的抽水。<br><br>
+          这意味着：就算你和对手水平相当，<span class="highlight">每玩100块，你平均要亏5块</span>。<br>
+          玩得越多，亏得越多。这是数学必然，不是运气问题。
+        </p>
+      </div>
+      
+      <div class="reason-card">
+        <h3>📉 原因二：赌徒破产定理</h3>
+        <p>
+          假设赌博是公平的（50%概率），你有1000块，想赢到2000块。<br><br>
+          数学上可以证明：<span class="highlight">只要你一直赌下去，最终100%会输光</span>。<br>
+          因为你的钱是有限的，但赌场的钱是无限的。一旦你输光，游戏就结束了。
+        </p>
+      </div>
+      
+      <div class="reason-card">
+        <h3>🧠 原因三：心理陷阱</h3>
+        <p>
+          「输了想回本」「赢了还想赢」「差一点就中了」...<br><br>
+          这些心理让你 <span class="highlight">无法在该停的时候停下来</span>。<br>
+          赌场设计的每一个细节，都是为了让你继续赌下去。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 抽水演示 -->
+  <div class="card">
+    <h2 style="color: #feca57; margin-bottom: 20px; text-align: center;">💸 抽水是怎么让你必输的？</h2>
+    
+    <div class="rake-demo">
+      <p style="text-align: center; color: rgba(255,255,255,0.7); margin-bottom: 15px;">
+        假设你和朋友各押100元，50%概率赢，庄家抽5%
+      </p>
+      
+      <div class="rake-visual">
+        <div class="rake-box">
+          <div class="amount" style="color: #4ade80;">+95元</div>
+          <div class="label">你赢的时候拿到</div>
+        </div>
+        <div class="rake-arrow">vs</div>
+        <div class="rake-box">
+          <div class="amount" style="color: #ff6b6b;">-100元</div>
+          <div class="label">你输的时候失去</div>
+        </div>
+      </div>
+      
+      <p style="text-align: center; color: rgba(255,255,255,0.6); font-size: 13px;">
+        期望值 = 50% × 95 + 50% × (-100) = <span style="color: #ff6b6b; font-weight: bold;">-2.5元/局</span><br>
+        每玩一局，你平均亏2.5元。玩100局，平均亏250元。
+      </p>
+    </div>
+    
+    <div style="text-align: center;">
+      <p style="color: rgba(255,255,255,0.5); font-size: 13px;">
+        常见赌博的抽水比例：<br>
+        老虎机 5%~15% | 百家乐 1%~5% | 德州扑克 2.5%~5% | 网络赌博 5%~20%
+      </p>
+    </div>
+  </div>
+
+  <!-- 100人模拟 -->
+  <div class="card">
+    <div class="sim-title">🧪 模拟实验：100个赌徒的命运</div>
+    <p style="text-align: center; color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 20px;">
+      100人各带1000元，每人每局独立和庄家对赌100元，庄家抽5%，看看最后谁还有钱
+    </p>
+
+    <div class="game-setup">
+      <div class="setup-item">
+        <label>每人本金</label>
+        <input type="number" id="initialMoney" value="1000" min="100" step="100">
+      </div>
+      <div class="setup-item">
+        <label>每局押注</label>
+        <input type="number" id="betAmount" value="100" min="10" step="10">
+      </div>
+      <div class="setup-item">
+        <label>庄家抽水</label>
+        <select id="rakePercent">
+          <option value="0">0%（公平游戏）</option>
+          <option value="3">3%</option>
+          <option value="5" selected>5%</option>
+          <option value="10">10%</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot green"></div>
+        <span>还有钱</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot red"></div>
+        <span>破产了</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot gold"></div>
+        <span>翻倍了</span>
+      </div>
+    </div>
+
+    <div class="people-grid" id="peopleGrid"></div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-value gold" id="roundCount">0</div>
+        <div class="stat-label">已进行局数</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value green" id="aliveCount">100</div>
+        <div class="stat-label">还有钱的人</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value red" id="bankruptCount">0</div>
+        <div class="stat-label">破产人数</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value gold" id="richCount">0</div>
+        <div class="stat-label">翻倍人数</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" id="playBtn" onclick="playRounds(10)">▶️ 玩10局</button>
+      <button class="btn btn-secondary" onclick="playRounds(100)">⚡ 玩100局</button>
+      <button class="btn btn-secondary" onclick="playUntilEnd()">🎯 玩到结束</button>
+      <button class="btn btn-secondary" onclick="resetSim()">🔄 重置</button>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="moneyChart"></canvas>
+    </div>
+  </div>
+
+  <!-- 心理陷阱 -->
+  <div class="card">
+    <h2 style="color: #feca57; margin-bottom: 20px; text-align: center;">🧠 让你停不下来的心理陷阱</h2>
+    
+    <div class="trap-card">
+      <h4>💀 输了想回本</h4>
+      <p>输了500块，想着「再赢回来就不玩了」。结果越输越多，因为你在用负期望值的游戏试图回本。</p>
+    </div>
+    
+    <div class="trap-card">
+      <h4>🎯 差一点就中了</h4>
+      <p>老虎机差一个图案就中大奖，让你觉得「下一把一定能中」。但每一把都是独立的，之前差多少和下一把没有任何关系。</p>
+    </div>
+    
+    <div class="trap-card">
+      <h4>📈 赢了还想赢</h4>
+      <p>赢了1000块，觉得「今天手气好，再赢一点」。结果把赢的全输回去，还倒贴。</p>
+    </div>
+    
+    <div class="trap-card">
+      <h4>🎲 赌徒谬误</h4>
+      <p>连输5把，觉得「该轮到我赢了」。但硬币没有记忆，每一把都是50%，不会因为你之前输了就更容易赢。</p>
+    </div>
+  </div>
+
+  <!-- 结论 -->
+  <div class="card conclusion">
+    <h3>💡 结论：这不是运气，是数学</h3>
+    <p>
+      赌博不是「运气好就能赢」的游戏。<br><br>
+      庄家抽水让你的期望值永远是负的，<br>
+      赌徒破产定理让你赌得越久输得越惨，<br>
+      心理陷阱让你无法在该停的时候停下来。<br><br>
+      <span class="key-point">「十赌九输」不是迷信，是数学定理。</span><br>
+      <span class="key-point">唯一稳赢的方法是：不赌。</span>
+    </p>
+  </div>
+
+  <!-- 求助信息 -->
+  <div class="card help-info">
+    <h4>🆘 如果你或家人正在被赌博困扰</h4>
+    <p>
+      赌博成瘾是一种被医学认可的「行为成瘾」，和酒精、毒品成瘾属于同一类。<br>
+      这不是意志力的问题，而是大脑奖励系统被劫持了。<br><br>
+      建议寻求专业帮助：心理咨询、戒赌互助小组、家庭干预<br>
+      全国心理援助热线：<strong>400-161-9995</strong>
+    </p>
+  </div>
+</div>
+
+<script>
+// 100人模拟 - 每个人独立和庄家对赌
+let people = [];
+let roundCount = 0;
+let chart = null;
+let avgMoneyHistory = [];
+
+function initPeople() {
+  const initial = parseInt(document.getElementById('initialMoney').value) || 1000;
+  people = [];
+  for (let i = 0; i < 100; i++) {
+    people.push({ money: initial, history: [initial] });
+  }
+  roundCount = 0;
+  avgMoneyHistory = [initial];
+  renderPeople();
+  updateStats();
+  initChart();
+}
+
+function renderPeople() {
+  const grid = document.getElementById('peopleGrid');
+  const initial = parseInt(document.getElementById('initialMoney').value) || 1000;
+  const bet = parseInt(document.getElementById('betAmount').value) || 100;
+  
+  grid.innerHTML = '';
+  people.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'person';
+    if (p.money < bet) {
+      // 不能继续赌了（包括破产和钱不够）
+      div.classList.add('bankrupt');
+      div.textContent = '💀';
+    } else if (p.money >= initial * 2) {
+      div.classList.add('rich');
+      div.textContent = '🤑';
+    } else {
+      div.textContent = '😐';
+    }
+    grid.appendChild(div);
+  });
+}
+
+function playRounds(n) {
+  const bet = parseInt(document.getElementById('betAmount').value) || 100;
+  const rake = parseInt(document.getElementById('rakePercent').value) / 100;
+  const initial = parseInt(document.getElementById('initialMoney').value) || 1000;
+  
+  for (let r = 0; r < n; r++) {
+    // 每个还有钱的人独立和庄家对赌
+    let anyonePlayed = false;
+    
+    people.forEach(p => {
+      // 钱不够下注就跳过
+      if (p.money < bet) return;
+      
+      anyonePlayed = true;
+      
+      // 50%概率赢/输
+      if (Math.random() < 0.5) {
+        // 赢了：拿回本金 + 赢的钱（扣除抽水）
+        // 赢的金额 = bet * (1 - rake)
+        p.money += bet * (1 - rake);
+      } else {
+        // 输了：失去全部押注
+        p.money -= bet;
+      }
+    });
+    
+    if (!anyonePlayed) break;
+    
+    roundCount++;
+    
+    // 记录平均资金
+    const avgMoney = people.reduce((sum, p) => sum + Math.max(0, p.money), 0) / 100;
+    avgMoneyHistory.push(avgMoney);
+  }
+  
+  renderPeople();
+  updateStats();
+  updateChart();
+}
+
+function playUntilEnd() {
+  const bet = parseInt(document.getElementById('betAmount').value) || 100;
+  const interval = setInterval(() => {
+    const alive = people.filter(p => p.money >= bet);
+    if (alive.length === 0) {
+      clearInterval(interval);
+      return;
+    }
+    playRounds(10);
+  }, 50);
+}
+
+function updateStats() {
+  const initial = parseInt(document.getElementById('initialMoney').value) || 1000;
+  const bet = parseInt(document.getElementById('betAmount').value) || 100;
+  
+  // 还能继续赌的人（资金 >= 押注）
+  const alive = people.filter(p => p.money >= bet).length;
+  // 真正破产的人（资金 <= 0）
+  const bankrupt = people.filter(p => p.money <= 0).length;
+  // 不能继续赌但还有钱的人
+  const cantPlay = people.filter(p => p.money > 0 && p.money < bet).length;
+  // 翻倍的人
+  const rich = people.filter(p => p.money >= initial * 2).length;
+  
+  document.getElementById('roundCount').textContent = roundCount;
+  document.getElementById('aliveCount').textContent = alive;
+  // 破产人数 = 真正破产 + 不能继续赌的（都算出局）
+  document.getElementById('bankruptCount').textContent = bankrupt + cantPlay;
+  document.getElementById('richCount').textContent = rich;
+}
+
+function initChart() {
+  const ctx = document.getElementById('moneyChart').getContext('2d');
+  
+  if (chart) chart.destroy();
+  
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [0],
+      datasets: [{
+        label: '100人平均资金',
+        data: avgMoneyHistory,
+        borderColor: '#feca57',
+        backgroundColor: 'rgba(254, 202, 87, 0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          display: true,
+          title: { display: true, text: '局数', color: 'rgba(255,255,255,0.5)' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' }
+        },
+        y: {
+          display: true,
+          title: { display: true, text: '平均资金', color: 'rgba(255,255,255,0.5)' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' }
+        }
+      }
+    }
+  });
+}
+
+function updateChart() {
+  if (!chart) return;
+  
+  chart.data.labels = avgMoneyHistory.map((_, i) => i);
+  chart.data.datasets[0].data = avgMoneyHistory;
+  chart.update('none');
+}
+
+function resetSim() {
+  initPeople();
+}
+
+// 初始化
+initPeople();
+</script>
+
+</body>
+</html>

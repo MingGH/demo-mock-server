@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>赌博模拟器 - 单元测试</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a2e; color: #fff; }
+    .pass { color: #4ade80; }
+    .fail { color: #ff6b6b; }
+    .test-group { margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; }
+    .test-group h3 { margin-bottom: 10px; color: #feca57; }
+    .test-result { padding: 5px 0; }
+    .summary { margin-top: 20px; padding: 15px; border-radius: 8px; font-size: 1.2em; }
+    .summary.all-pass { background: rgba(74,222,128,0.2); border: 1px solid #4ade80; }
+    .summary.has-fail { background: rgba(255,107,107,0.2); border: 1px solid #ff6b6b; }
+  </style>
+</head>
+<body>
+  <h1>🧪 赌博模拟器单元测试</h1>
+  <div id="results"></div>
+  <div id="summary"></div>
+
+<script>
+// ========== 核心逻辑（从主文件抽取） ==========
+
+/**
+ * 模拟单次赌博
+ * @param {number} currentMoney - 当前资金
+ * @param {number} bet - 押注金额
+ * @param {number} rake - 抽水比例 (0-1)
+ * @param {boolean} win - 是否赢（用于测试，实际使用时随机）
+ * @returns {number} 赌博后的资金
+ */
+function simulateBet(currentMoney, bet, rake, win) {
+  if (currentMoney < bet) {
+    return currentMoney; // 钱不够，不能赌
+  }
+  
+  if (win) {
+    // 赢了：获得 bet * (1 - rake)
+    return currentMoney + bet * (1 - rake);
+  } else {
+    // 输了：失去 bet
+    return currentMoney - bet;
+  }
+}
+
+/**
+ * 计算单次赌博的期望值
+ * @param {number} bet - 押注金额
+ * @param {number} rake - 抽水比例 (0-1)
+ * @param {number} winProb - 赢的概率 (0-1)
+ * @returns {number} 期望值
+ */
+function calculateExpectedValue(bet, rake, winProb = 0.5) {
+  const winAmount = bet * (1 - rake);
+  const loseAmount = bet;
+  return winProb * winAmount - (1 - winProb) * loseAmount;
+}
+
+/**
+ * 模拟多轮赌博
+ * @param {number} initialMoney - 初始资金
+ * @param {number} bet - 每局押注
+ * @param {number} rake - 抽水比例
+ * @param {number} rounds - 轮数
+ * @param {function} randomFn - 随机函数，返回 true/false
+ * @returns {object} { finalMoney, roundsPlayed, history }
+ */
+function simulateMultipleRounds(initialMoney, bet, rake, rounds, randomFn = () => Math.random() < 0.5) {
+  let money = initialMoney;
+  const history = [money];
+  let roundsPlayed = 0;
+  
+  for (let i = 0; i < rounds; i++) {
+    if (money < bet) break; // 破产
+    
+    const win = randomFn();
+    money = simulateBet(money, bet, rake, win);
+    history.push(money);
+    roundsPlayed++;
+  }
+  
+  return { finalMoney: money, roundsPlayed, history };
+}
+
+// ========== 测试框架 ==========
+
+let passCount = 0;
+let failCount = 0;
+const results = [];
+
+function test(name, fn) {
+  try {
+    fn();
+    passCount++;
+    results.push({ name, pass: true });
+  } catch (e) {
+    failCount++;
+    results.push({ name, pass: false, error: e.message });
+  }
+}
+
+function assertEqual(actual, expected, message = '') {
+  if (actual !== expected) {
+    throw new Error(`${message} Expected ${expected}, got ${actual}`);
+  }
+}
+
+function assertApprox(actual, expected, tolerance = 0.01, message = '') {
+  if (Math.abs(actual - expected) > tolerance) {
+    throw new Error(`${message} Expected ~${expected}, got ${actual}`);
+  }
+}
+
+function assertTrue(condition, message = '') {
+  if (!condition) {
+    throw new Error(message || 'Expected true');
+  }
+}
+
+// ========== 测试用例 ==========
+
+// 测试组1：单次赌博逻辑
+test('赢了应该获得 bet*(1-rake)', () => {
+  const result = simulateBet(1000, 100, 0.05, true);
+  assertEqual(result, 1095, '1000 + 100*0.95 = 1095');
+});
+
+test('输了应该失去 bet', () => {
+  const result = simulateBet(1000, 100, 0.05, false);
+  assertEqual(result, 900, '1000 - 100 = 900');
+});
+
+test('钱不够时不能赌', () => {
+  const result = simulateBet(50, 100, 0.05, true);
+  assertEqual(result, 50, '钱不够，应该保持不变');
+});
+
+test('0%抽水时赢了应该获得全额', () => {
+  const result = simulateBet(1000, 100, 0, true);
+  assertEqual(result, 1100, '无抽水时 1000 + 100 = 1100');
+});
+
+test('10%抽水时赢了应该获得90%', () => {
+  const result = simulateBet(1000, 100, 0.1, true);
+  assertEqual(result, 1090, '10%抽水时 1000 + 90 = 1090');
+});
+
+// 测试组2：期望值计算
+test('5%抽水时期望值应该是负的', () => {
+  const ev = calculateExpectedValue(100, 0.05, 0.5);
+  assertApprox(ev, -2.5, 0.01, '期望值应该是 -2.5');
+});
+
+test('0%抽水时期望值应该是0', () => {
+  const ev = calculateExpectedValue(100, 0, 0.5);
+  assertApprox(ev, 0, 0.01, '公平游戏期望值应该是 0');
+});
+
+test('10%抽水时期望值应该是-5', () => {
+  const ev = calculateExpectedValue(100, 0.1, 0.5);
+  assertApprox(ev, -5, 0.01, '期望值应该是 -5');
+});
+
+test('期望值公式验证：EV = 0.5*win - 0.5*lose', () => {
+  // bet=100, rake=5%
+  // win = 100 * 0.95 = 95
+  // lose = 100
+  // EV = 0.5 * 95 - 0.5 * 100 = 47.5 - 50 = -2.5
+  const ev = calculateExpectedValue(100, 0.05, 0.5);
+  const manual = 0.5 * 95 - 0.5 * 100;
+  assertApprox(ev, manual, 0.01);
+});
+
+// 测试组3：多轮模拟
+test('全赢时资金应该持续增长', () => {
+  const result = simulateMultipleRounds(1000, 100, 0.05, 10, () => true);
+  assertEqual(result.roundsPlayed, 10, '应该玩满10轮');
+  assertTrue(result.finalMoney > 1000, '全赢时资金应该增长');
+  // 每轮赢 95，10轮赢 950
+  assertEqual(result.finalMoney, 1950, '1000 + 10*95 = 1950');
+});
+
+test('全输时应该破产', () => {
+  const result = simulateMultipleRounds(1000, 100, 0.05, 20, () => false);
+  assertEqual(result.roundsPlayed, 10, '1000/100=10轮后破产');
+  assertEqual(result.finalMoney, 0, '应该输光');
+});
+
+test('破产后不能继续赌', () => {
+  const result = simulateMultipleRounds(100, 100, 0.05, 10, () => false);
+  assertEqual(result.roundsPlayed, 1, '只能玩1轮');
+  assertEqual(result.finalMoney, 0, '输光了');
+});
+
+test('历史记录长度正确', () => {
+  const result = simulateMultipleRounds(1000, 100, 0, 5, () => true);
+  assertEqual(result.history.length, 6, '初始+5轮=6个记录');
+  assertEqual(result.history[0], 1000, '初始资金');
+  assertEqual(result.history[5], 1500, '最终资金');
+});
+
+// 测试组4：大数定律验证
+test('大量模拟后平均收益应该接近期望值', () => {
+  const trials = 10000;
+  let totalProfit = 0;
+  
+  for (let i = 0; i < trials; i++) {
+    const result = simulateMultipleRounds(10000, 100, 0.05, 1, () => Math.random() < 0.5);
+    totalProfit += result.finalMoney - 10000;
+  }
+  
+  const avgProfit = totalProfit / trials;
+  const expectedEV = -2.5; // 每局期望亏损
+  
+  // 允许一定误差（统计波动）
+  assertApprox(avgProfit, expectedEV, 1, `平均收益 ${avgProfit.toFixed(2)} 应该接近 ${expectedEV}`);
+});
+
+test('长期赌博破产率应该很高', () => {
+  const trials = 1000;
+  let bankruptCount = 0;
+  
+  for (let i = 0; i < trials; i++) {
+    const result = simulateMultipleRounds(1000, 100, 0.05, 1000);
+    if (result.finalMoney < 100) bankruptCount++;
+  }
+  
+  const bankruptRate = bankruptCount / trials;
+  assertTrue(bankruptRate > 0.8, `破产率 ${(bankruptRate*100).toFixed(1)}% 应该大于 80%`);
+});
+
+// 测试组5：边界条件
+test('押注金额等于本金时', () => {
+  const result = simulateBet(100, 100, 0.05, true);
+  assertEqual(result, 195, '100 + 95 = 195');
+});
+
+test('押注金额等于本金输了', () => {
+  const result = simulateBet(100, 100, 0.05, false);
+  assertEqual(result, 0, '100 - 100 = 0');
+});
+
+test('极高抽水(50%)时期望值', () => {
+  const ev = calculateExpectedValue(100, 0.5, 0.5);
+  assertApprox(ev, -25, 0.01, '50%抽水时期望值是 -25');
+});
+
+// ========== 输出结果 ==========
+
+function renderResults() {
+  const container = document.getElementById('results');
+  
+  // 按测试组分组
+  const groups = {
+    '单次赌博逻辑': results.filter(r => r.name.includes('赢了') || r.name.includes('输了') || r.name.includes('钱不够') || r.name.includes('抽水时')),
+    '期望值计算': results.filter(r => r.name.includes('期望值')),
+    '多轮模拟': results.filter(r => r.name.includes('全赢') || r.name.includes('全输') || r.name.includes('破产') || r.name.includes('历史')),
+    '大数定律验证': results.filter(r => r.name.includes('大量') || r.name.includes('长期')),
+    '边界条件': results.filter(r => r.name.includes('押注金额') || r.name.includes('极高'))
+  };
+  
+  let html = '';
+  for (const [groupName, tests] of Object.entries(groups)) {
+    if (tests.length === 0) continue;
+    html += `<div class="test-group"><h3>${groupName}</h3>`;
+    for (const t of tests) {
+      const icon = t.pass ? '✅' : '❌';
+      const cls = t.pass ? 'pass' : 'fail';
+      html += `<div class="test-result ${cls}">${icon} ${t.name}`;
+      if (!t.pass) html += ` - ${t.error}`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  
+  container.innerHTML = html;
+  
+  // 总结
+  const summary = document.getElementById('summary');
+  const allPass = failCount === 0;
+  summary.className = `summary ${allPass ? 'all-pass' : 'has-fail'}`;
+  summary.innerHTML = `
+    <strong>${allPass ? '🎉 全部通过！' : '⚠️ 有测试失败'}</strong><br>
+    通过: ${passCount} | 失败: ${failCount} | 总计: ${passCount + failCount}
+  `;
+}
+
+renderResults();
+</script>
+</body>
+</html>

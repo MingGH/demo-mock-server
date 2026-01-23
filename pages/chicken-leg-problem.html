@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>百万只鸡砍腿问题 - 概率论的优雅解答</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #ffd700, #ff6b6b, #ffd700);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.6); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+
+    /* 鸡场可视化 */
+    .farm-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    .farm-title {
+      text-align: center;
+      color: #ffd700;
+      font-size: 18px;
+      margin-bottom: 25px;
+    }
+    .chicken-farm {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+    .chicken-group {
+      text-align: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+      min-width: 150px;
+    }
+    .chicken-icon { font-size: 48px; margin-bottom: 10px; }
+    .chicken-count { font-size: 2rem; font-weight: 700; margin-bottom: 5px; }
+    .chicken-label { font-size: 13px; color: rgba(255,255,255,0.5); }
+    .chicken-group.healthy .chicken-count { color: #4ade80; }
+    .chicken-group.one-leg .chicken-count { color: #fbbf24; }
+    .chicken-group.no-leg .chicken-count { color: #f87171; }
+
+    /* 控制面板 */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .control-group label { color: rgba(255,255,255,0.6); font-size: 14px; }
+    .control-group input, .control-group select {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 10px 15px;
+      color: white;
+      font-size: 14px;
+      width: 150px;
+    }
+    .btn {
+      padding: 12px 30px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd700, #ff6b6b);
+      color: #1a1a2e;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 进度条 */
+    .progress-section {
+      margin: 20px 0;
+    }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.6);
+    }
+    .progress-bar {
+      height: 20px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4ade80, #22d3ee);
+      border-radius: 10px;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+    /* 动画鸡 */
+    .animation-area {
+      height: 120px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+      position: relative;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+    .flying-chicken {
+      position: absolute;
+      font-size: 30px;
+      animation: flyAcross 2s linear;
+      opacity: 0;
+    }
+    @keyframes flyAcross {
+      0% { left: -50px; opacity: 1; transform: rotate(0deg); }
+      50% { opacity: 1; transform: rotate(10deg); }
+      100% { left: 100%; opacity: 0; transform: rotate(-10deg); }
+    }
+
+    /* 统计区域 */
+    .stats-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    .stats-title {
+      text-align: center;
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      margin-bottom: 25px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+    .stat-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+      padding: 25px;
+      text-align: center;
+    }
+    .stat-label { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 10px; }
+    .stat-value { font-size: 2rem; font-weight: 700; margin-bottom: 5px; }
+    .stat-detail { font-size: 13px; color: rgba(255,255,255,0.4); }
+    .stat-card.theory .stat-value { color: #a78bfa; }
+    .stat-card.simulation .stat-value { color: #4ade80; }
+    .stat-card.error .stat-value { color: #fbbf24; }
+
+    /* 数学推导 */
+    .math-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    .math-section h3 {
+      color: #ffd700;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    .math-section p {
+      color: rgba(255,255,255,0.7);
+      line-height: 1.8;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+    .formula {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+      font-family: 'Times New Roman', serif;
+      font-size: 18px;
+      color: #4ade80;
+      overflow-x: auto;
+    }
+    .key-point {
+      background: rgba(255,215,0,0.1);
+      border-left: 3px solid #ffd700;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 0 10px 10px 0;
+    }
+    .key-point strong { color: #ffd700; }
+    /* 图表 */
+    .chart-container {
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    #distributionChart { width: 100%; height: 300px; }
+
+    /* 知乎回答样式 */
+    .zhihu-section {
+      background: linear-gradient(135deg, rgba(0,132,255,0.1), rgba(0,132,255,0.05));
+      border-radius: 20px;
+      border: 1px solid rgba(0,132,255,0.2);
+      padding: 30px;
+      margin-bottom: 30px;
+    }
+    .zhihu-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .zhihu-logo { font-size: 24px; }
+    .zhihu-title { color: #0084ff; font-size: 16px; }
+    .zhihu-content {
+      color: rgba(255,255,255,0.8);
+      line-height: 2;
+      font-size: 15px;
+    }
+    .zhihu-content p { margin-bottom: 15px; }
+    .zhihu-content .highlight { 
+      color: #ffd700; 
+      font-weight: 600;
+      background: rgba(255,215,0,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .copy-btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #0084ff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .copy-btn:hover { background: #006acc; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🐔 百万只鸡砍腿问题</h1>
+    <p>100万只鸡，每次从有腿的鸡中随机抽一只砍掉一条腿，重复100万次<br>最后期望还有多少只完好的鸡？</p>
+  </div>
+
+  <!-- 可视化模拟 -->
+  <div class="farm-section">
+    <div class="farm-title">🎮 鸡场实时状态</div>
+    <div class="chicken-farm">
+      <div class="chicken-group healthy">
+        <div class="chicken-icon">🐔</div>
+        <div class="chicken-count" id="healthyCount">1,000,000</div>
+        <div class="chicken-label">完好的鸡 (2条腿)</div>
+      </div>
+      <div class="chicken-group one-leg">
+        <div class="chicken-icon">🦵🐔</div>
+        <div class="chicken-count" id="oneLegCount">0</div>
+        <div class="chicken-label">独腿鸡 (1条腿)</div>
+      </div>
+      <div class="chicken-group no-leg">
+        <div class="chicken-icon">🪹</div>
+        <div class="chicken-count" id="noLegCount">0</div>
+        <div class="chicken-label">无腿鸡 (0条腿)</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>鸡的数量 N:</label>
+        <input type="number" id="chickenCount" value="1000000" min="100" max="10000000">
+      </div>
+      <div class="control-group">
+        <label>模拟速度:</label>
+        <select id="simSpeed">
+          <option value="instant">瞬间完成</option>
+          <option value="fast">快速动画</option>
+          <option value="slow">慢速演示</option>
+        </select>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn btn-primary" id="startBtn" onclick="startSimulation()">🚀 开始模拟</button>
+      <button class="btn btn-secondary" onclick="resetSimulation()">🔄 重置</button>
+    </div>
+    
+    <div class="progress-section">
+      <div class="progress-label">
+        <span>砍腿进度</span>
+        <span id="progressText">0 / 1,000,000</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+    </div>
+    
+    <div class="animation-area" id="animationArea"></div>
+  </div>
+
+  <!-- 统计结果 -->
+  <div class="stats-section">
+    <div class="stats-title">📊 模拟结果 vs 理论值</div>
+    <div class="stats-grid">
+      <div class="stat-card theory">
+        <div class="stat-label">理论期望值</div>
+        <div class="stat-value" id="theoryValue">-</div>
+        <div class="stat-detail">N × 0.3178 ≈ 31.78%</div>
+      </div>
+      <div class="stat-card simulation">
+        <div class="stat-label">模拟结果</div>
+        <div class="stat-value" id="simValue">-</div>
+        <div class="stat-detail" id="simDetail">等待模拟...</div>
+      </div>
+      <div class="stat-card error">
+        <div class="stat-label">相对误差</div>
+        <div class="stat-value" id="errorValue">-</div>
+        <div class="stat-detail">|模拟 - 理论| / 理论</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分布图表 -->
+  <div class="stats-section">
+    <div class="stats-title">📈 多次模拟分布</div>
+    <div class="controls">
+      <button class="btn btn-secondary" onclick="runMultipleSimulations(100)">运行100次模拟</button>
+      <button class="btn btn-secondary" onclick="runMultipleSimulations(1000)">运行1000次模拟</button>
+    </div>
+    <div class="chart-container">
+      <canvas id="distributionChart"></canvas>
+    </div>
+    <div id="multiSimStats" style="text-align: center; color: rgba(255,255,255,0.6); font-size: 14px;"></div>
+  </div>
+
+  <!-- 数学推导 -->
+  <div class="math-section">
+    <h3>🧮 数学推导：答案约为 N × 31.78%</h3>
+    
+    <p>设 N = 100万，我们要砍 N 次腿。</p>
+    
+    <p><strong>核心思路：</strong>考虑某一只特定的鸡，它保持完好的概率是多少？</p>
+    
+    <div class="key-point">
+      <strong>关键洞察：</strong>一只鸡完好 = 它从未被选中
+    </div>
+    
+    <p>设在第 k 次砍腿前：</p>
+    <ul style="color: rgba(255,255,255,0.7); margin-left: 20px; line-height: 2;">
+      <li>H<sub>k</sub> = 完好的鸡数量（2条腿）</li>
+      <li>O<sub>k</sub> = 独腿鸡数量（1条腿）</li>
+      <li>有腿的鸡总数 = H<sub>k</sub> + O<sub>k</sub></li>
+    </ul>
+    
+    <p>每次砍腿时，从有腿的鸡中随机选一只：</p>
+    <ul style="color: rgba(255,255,255,0.7); margin-left: 20px; line-height: 2;">
+      <li>选中完好鸡的概率 = H / (H + O)</li>
+      <li>选中独腿鸡的概率 = O / (H + O)</li>
+    </ul>
+    
+    <div class="formula">
+      E[H<sub>k+1</sub>] = H<sub>k</sub> - H<sub>k</sub>/(H<sub>k</sub> + O<sub>k</sub>)
+    </div>
+    
+    <p>这个递推关系可以用微分方程近似求解。当 N → ∞ 时：</p>
+    
+    <div class="formula">
+      完好鸡的比例 → <span style="color:#ffd700">0.31784...</span> ≈ 31.78%
+    </div>
+    
+    <p>因此，完好的鸡的期望数量：</p>
+    
+    <div class="formula">
+      E[完好的鸡] = 1,000,000 × 0.3178 ≈ <span style="color:#ffd700">317,844</span>
+    </div>
+  </div>
+
+  <!-- 有趣的发现 -->
+  <div class="math-section">
+    <h3>🎯 有趣的发现</h3>
+    
+    <p>这个常数 0.31784... 非常接近 1/π ≈ 0.31831，但并不完全相等！</p>
+    
+    <div class="key-point">
+      <strong>数学之美：</strong>这个问题没有简单的闭式解，但通过递推或微分方程可以精确计算。<br><br>
+      直觉理解：一只鸡保持完好 = 它从未被选中。每次被选中的概率约为 1/(有腿鸡数)，但有腿鸡数会随着独腿鸡变成无腿鸡而减少，这使得分析变得复杂。
+    </div>
+    
+    <p>如果题目改成"从所有腿中随机选一条砍掉"，那答案就是 N/e² ≈ 13.53%。但原题是"从有腿的鸡中选一只"，所以答案是 31.78%。</p>
+  </div>
+
+  <!-- 知乎回答 -->
+  <div class="zhihu-section">
+    <div class="zhihu-header">
+      <span class="zhihu-logo">📝</span>
+      <span class="zhihu-title">知乎风格回答（可复制）</span>
+    </div>
+    <div class="zhihu-content" id="zhihuAnswer">
+      <p>这道题乍一看很复杂，但答案出奇地优雅：<span class="highlight">约 317,844 只</span>，也就是 <span class="highlight">≈ 31.78%</span>。</p>
+      
+      <p>让我用最直观的方式解释。</p>
+      
+      <p><strong>【理解题意】</strong></p>
+      
+      <p>"从有腿的鸡中抽取一只砍掉一条腿" = 从完好鸡和独腿鸡中随机选一只，砍它一条腿。</p>
+      
+      <p>注意：无腿鸡退出抽选池，不会被选中。</p>
+      
+      <p><strong>【换个角度想】</strong></p>
+      
+      <p>与其追踪整个鸡群的状态变化，不如问：<strong>某一只特定的鸡，它保持完好的概率是多少？</strong></p>
+      
+      <p>一只鸡完好 = 它从未被选中。</p>
+      
+      <p><strong>【递推分析】</strong></p>
+      
+      <p>设 H = 完好鸡数，O = 独腿鸡数。每次砍腿：</p>
+      <p>• 选中完好鸡的概率 = H / (H + O)</p>
+      <p>• 选中独腿鸡的概率 = O / (H + O)</p>
+      
+      <p>这形成一个递推关系，可以用期望值迭代或微分方程求解。</p>
+      
+      <p><strong>【最终答案】</strong></p>
+      
+      <p>当 N → ∞ 时，完好鸡的比例收敛到约 <span class="highlight">0.31784</span>（有趣的是，这非常接近 1/π ≈ 0.31831，但不完全相等）。</p>
+      
+      <p>所以：完好的鸡的期望数量 = 100万 × 0.3178 ≈ <span class="highlight">317,844 只</span></p>
+      
+      <p><strong>【验证】</strong></p>
+      
+      <p>不信？上面有模拟器，点一下就知道了。跑个几百万次，结果稳稳地落在 31.78% 附近。</p>
+      
+      <p>——</p>
+      <p style="color: rgba(255,255,255,0.5); font-size: 13px;">这道题的本质是一个马尔可夫过程，没有简单的闭式解，但可以通过数值方法精确计算。</p>
+    </div>
+    <button class="copy-btn" onclick="copyZhihuAnswer()">📋 复制回答</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ============ 核心计算函数（可测试）============
+// 理论比例常数（通过数值方法计算得到的极限值）
+const THEORY_RATIO = 0.31784443;
+
+const ChickenLegSimulator = {
+  // 理论值计算
+  calculateTheory: function(n) {
+    // 对于有限的 N，用期望值递推计算精确理论值
+    if (n <= 10000) {
+      return this.calculateExactTheory(n);
+    }
+    // 对于大 N，使用极限比例
+    return n * THEORY_RATIO;
+  },
+  
+  // 精确理论值（期望值递推）
+  calculateExactTheory: function(n) {
+    let H = n;
+    let O = 0;
+    
+    for (let k = 0; k < n; k++) {
+      const total = H + O;
+      if (total < 1e-10) break;
+      
+      const probHealthy = H / total;
+      const newH = H - probHealthy;
+      const newO = O + probHealthy - (O / total);
+      
+      H = newH;
+      O = newO;
+    }
+    
+    return H;
+  },
+  
+  // 单次模拟 - 从有腿的鸡中选一只，砍一条腿
+  simulate: function(n) {
+    let healthy = n;      // 2条腿的鸡
+    let oneLeg = 0;       // 1条腿的鸡
+    let noLeg = 0;        // 0条腿的鸡（退出抽选池）
+    
+    for (let i = 0; i < n; i++) {
+      // 有腿的鸡总数
+      const chickensWithLegs = healthy + oneLeg;
+      if (chickensWithLegs === 0) break;
+      
+      // 从有腿的鸡中随机选一只
+      const rand = Math.random() * chickensWithLegs;
+      
+      if (rand < healthy) {
+        // 选中了完好的鸡，砍一条腿，变成独腿鸡
+        healthy--;
+        oneLeg++;
+      } else {
+        // 选中了独腿鸡，砍掉唯一的腿，变成无腿鸡
+        oneLeg--;
+        noLeg++;
+      }
+    }
+    
+    return { healthy, oneLeg, noLeg };
+  },
+  
+  // 批量模拟
+  simulateMultiple: function(n, times) {
+    const results = [];
+    for (let i = 0; i < times; i++) {
+      results.push(this.simulate(n).healthy);
+    }
+    return results;
+  },
+  
+  // 计算统计量
+  calculateStats: function(results) {
+    const n = results.length;
+    const mean = results.reduce((a, b) => a + b, 0) / n;
+    const variance = results.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
+    const stdDev = Math.sqrt(variance);
+    const min = Math.min(...results);
+    const max = Math.max(...results);
+    return { mean, stdDev, min, max };
+  }
+};
+
+// 导出供测试使用
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ChickenLegSimulator;
+}
+
+// ============ UI 交互 ============
+let simulationRunning = false;
+let chart = null;
+
+function formatNumber(num) {
+  return Math.round(num).toLocaleString();
+}
+
+function updateDisplay(healthy, oneLeg, noLeg, progress, total) {
+  document.getElementById('healthyCount').textContent = formatNumber(healthy);
+  document.getElementById('oneLegCount').textContent = formatNumber(oneLeg);
+  document.getElementById('noLegCount').textContent = formatNumber(noLeg);
+  
+  const pct = (progress / total * 100).toFixed(1);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${formatNumber(progress)} / ${formatNumber(total)}`;
+}
+
+function updateStats(n, simHealthy) {
+  const theory = ChickenLegSimulator.calculateTheory(n);
+  const error = Math.abs(simHealthy - theory) / theory * 100;
+  
+  document.getElementById('theoryValue').textContent = formatNumber(theory);
+  document.getElementById('simValue').textContent = formatNumber(simHealthy);
+  document.getElementById('simDetail').textContent = `占比 ${(simHealthy / n * 100).toFixed(2)}%`;
+  document.getElementById('errorValue').textContent = error.toFixed(2) + '%';
+}
+
+async function startSimulation() {
+  if (simulationRunning) return;
+  simulationRunning = true;
+  
+  const n = parseInt(document.getElementById('chickenCount').value) || 1000000;
+  const speed = document.getElementById('simSpeed').value;
+  
+  document.getElementById('startBtn').disabled = true;
+  
+  if (speed === 'instant') {
+    // 瞬间完成
+    const result = ChickenLegSimulator.simulate(n);
+    updateDisplay(result.healthy, result.oneLeg, result.noLeg, n, n);
+    updateStats(n, result.healthy);
+  } else {
+    // 动画模式
+    const batchSize = speed === 'fast' ? Math.ceil(n / 100) : Math.ceil(n / 500);
+    let healthy = n, oneLeg = 0, noLeg = 0;
+    
+    for (let i = 0; i < n; i += batchSize) {
+      const actualBatch = Math.min(batchSize, n - i);
+      
+      for (let j = 0; j < actualBatch; j++) {
+        const chickensWithLegs = healthy + oneLeg;
+        if (chickensWithLegs === 0) break;
+        
+        const rand = Math.random() * chickensWithLegs;
+        if (rand < healthy) {
+          healthy--;
+          oneLeg++;
+        } else {
+          oneLeg--;
+          noLeg++;
+        }
+      }
+      
+      updateDisplay(healthy, oneLeg, noLeg, i + actualBatch, n);
+      
+      // 添加动画鸡
+      if (Math.random() < 0.3) {
+        addFlyingChicken();
+      }
+      
+      await new Promise(r => setTimeout(r, speed === 'fast' ? 20 : 50));
+    }
+    
+    updateStats(n, healthy);
+  }
+  
+  document.getElementById('startBtn').disabled = false;
+  simulationRunning = false;
+}
+
+function resetSimulation() {
+  const n = parseInt(document.getElementById('chickenCount').value) || 1000000;
+  updateDisplay(n, 0, 0, 0, n);
+  document.getElementById('theoryValue').textContent = '-';
+  document.getElementById('simValue').textContent = '-';
+  document.getElementById('simDetail').textContent = '等待模拟...';
+  document.getElementById('errorValue').textContent = '-';
+}
+
+function addFlyingChicken() {
+  const area = document.getElementById('animationArea');
+  const chicken = document.createElement('div');
+  chicken.className = 'flying-chicken';
+  chicken.textContent = ['🐔', '🦵', '🍗'][Math.floor(Math.random() * 3)];
+  chicken.style.top = Math.random() * 80 + 'px';
+  area.appendChild(chicken);
+  
+  setTimeout(() => chicken.remove(), 2000);
+}
+
+function runMultipleSimulations(times) {
+  const n = parseInt(document.getElementById('chickenCount').value) || 1000000;
+  const smallN = Math.min(n, 10000); // 为了速度，用较小的N
+  
+  const results = ChickenLegSimulator.simulateMultiple(smallN, times);
+  const stats = ChickenLegSimulator.calculateStats(results);
+  const theory = ChickenLegSimulator.calculateTheory(smallN);
+  
+  // 更新统计信息
+  document.getElementById('multiSimStats').innerHTML = 
+    `N=${smallN.toLocaleString()} 模拟${times}次 | ` +
+    `均值: ${stats.mean.toFixed(1)} | ` +
+    `标准差: ${stats.stdDev.toFixed(1)} | ` +
+    `理论值: ${theory.toFixed(1)} | ` +
+    `范围: [${stats.min}, ${stats.max}]`;
+  
+  // 绘制直方图
+  drawHistogram(results, theory);
+}
+
+function drawHistogram(results, theory) {
+  const ctx = document.getElementById('distributionChart').getContext('2d');
+  
+  // 计算直方图数据
+  const min = Math.min(...results);
+  const max = Math.max(...results);
+  const binCount = 30;
+  const binWidth = (max - min) / binCount || 1;
+  
+  const bins = new Array(binCount).fill(0);
+  results.forEach(v => {
+    const idx = Math.min(Math.floor((v - min) / binWidth), binCount - 1);
+    bins[idx]++;
+  });
+  
+  const labels = bins.map((_, i) => Math.round(min + i * binWidth));
+  
+  if (chart) chart.destroy();
+  
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '频次',
+        data: bins,
+        backgroundColor: 'rgba(74, 222, 128, 0.6)',
+        borderColor: 'rgba(74, 222, 128, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        annotation: {
+          annotations: {
+            line1: {
+              type: 'line',
+              xMin: theory,
+              xMax: theory,
+              borderColor: '#ffd700',
+              borderWidth: 2,
+              label: {
+                content: '理论值',
+                enabled: true
+              }
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: '完好的鸡数量', color: 'rgba(255,255,255,0.6)' },
+          ticks: { color: 'rgba(255,255,255,0.6)' },
+          grid: { color: 'rgba(255,255,255,0.1)' }
+        },
+        y: {
+          title: { display: true, text: '频次', color: 'rgba(255,255,255,0.6)' },
+          ticks: { color: 'rgba(255,255,255,0.6)' },
+          grid: { color: 'rgba(255,255,255,0.1)' }
+        }
+      }
+    }
+  });
+}
+
+function copyZhihuAnswer() {
+  const answer = `这道题乍一看很复杂，但答案出奇地优雅：约 317,844 只，也就是 ≈ 31.78%。
+
+让我用最直观的方式解释。
+
+【理解题意】
+
+"从有腿的鸡中抽取一只砍掉一条腿" = 从完好鸡和独腿鸡中随机选一只，砍它一条腿。
+
+注意：无腿鸡退出抽选池，不会被选中。
+
+【换个角度想】
+
+与其追踪整个鸡群的状态变化，不如问：某一只特定的鸡，它保持完好的概率是多少？
+
+一只鸡完好 = 它从未被选中。
+
+【递推分析】
+
+设 H = 完好鸡数，O = 独腿鸡数。每次砍腿：
+• 选中完好鸡的概率 = H / (H + O)
+• 选中独腿鸡的概率 = O / (H + O)
+
+这形成一个递推关系，可以用期望值迭代或微分方程求解。
+
+【最终答案】
+
+当 N → ∞ 时，完好鸡的比例收敛到约 0.31784（有趣的是，这非常接近 1/π ≈ 0.31831，但不完全相等）。
+
+所以：完好的鸡的期望数量 = 100万 × 0.3178 ≈ 317,844 只
+
+【验证】
+
+不信？我写了个模拟器：https://mock.runnable.run/pages/chicken-leg-problem.html
+跑个几百万次，结果稳稳地落在 31.78% 附近。
+
+——
+这道题的本质是一个马尔可夫过程，没有简单的闭式解，但可以通过数值方法精确计算。`;
+
+  navigator.clipboard.writeText(answer).then(() => {
+    alert('回答已复制到剪贴板！');
+  });
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+  resetSimulation();
+});
+</script>
+</body>
+</html>

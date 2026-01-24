@@ -438,52 +438,7 @@
     <p>如果题目改成"从所有腿中随机选一条砍掉"，那答案就是 N/e² ≈ 13.53%。但原题是"从有腿的鸡中选一只"，所以答案是 31.78%。</p>
   </div>
 
-  <!-- 知乎回答 -->
-  <div class="zhihu-section">
-    <div class="zhihu-header">
-      <span class="zhihu-logo">📝</span>
-      <span class="zhihu-title">知乎风格回答（可复制）</span>
-    </div>
-    <div class="zhihu-content" id="zhihuAnswer">
-      <p>这道题乍一看很复杂，但答案出奇地优雅：<span class="highlight">约 317,844 只</span>，也就是 <span class="highlight">≈ 31.78%</span>。</p>
-      
-      <p>让我用最直观的方式解释。</p>
-      
-      <p><strong>【理解题意】</strong></p>
-      
-      <p>"从有腿的鸡中抽取一只砍掉一条腿" = 从完好鸡和独腿鸡中随机选一只，砍它一条腿。</p>
-      
-      <p>注意：无腿鸡退出抽选池，不会被选中。</p>
-      
-      <p><strong>【换个角度想】</strong></p>
-      
-      <p>与其追踪整个鸡群的状态变化，不如问：<strong>某一只特定的鸡，它保持完好的概率是多少？</strong></p>
-      
-      <p>一只鸡完好 = 它从未被选中。</p>
-      
-      <p><strong>【递推分析】</strong></p>
-      
-      <p>设 H = 完好鸡数，O = 独腿鸡数。每次砍腿：</p>
-      <p>• 选中完好鸡的概率 = H / (H + O)</p>
-      <p>• 选中独腿鸡的概率 = O / (H + O)</p>
-      
-      <p>这形成一个递推关系，可以用期望值迭代或微分方程求解。</p>
-      
-      <p><strong>【最终答案】</strong></p>
-      
-      <p>当 N → ∞ 时，完好鸡的比例收敛到约 <span class="highlight">0.31784</span>（有趣的是，这非常接近 1/π ≈ 0.31831，但不完全相等）。</p>
-      
-      <p>所以：完好的鸡的期望数量 = 100万 × 0.3178 ≈ <span class="highlight">317,844 只</span></p>
-      
-      <p><strong>【验证】</strong></p>
-      
-      <p>不信？上面有模拟器，点一下就知道了。跑个几百万次，结果稳稳地落在 31.78% 附近。</p>
-      
-      <p>——</p>
-      <p style="color: rgba(255,255,255,0.5); font-size: 13px;">这道题的本质是一个马尔可夫过程，没有简单的闭式解，但可以通过数值方法精确计算。</p>
-    </div>
-    <button class="copy-btn" onclick="copyZhihuAnswer()">📋 复制回答</button>
-  </div>
+  
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

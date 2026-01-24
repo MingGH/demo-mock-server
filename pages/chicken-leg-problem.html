@@ -243,37 +243,7 @@
     }
     #distributionChart { width: 100%; height: 300px; }
 
-    /* 知乎回答样式 */
-    .zhihu-section {
-      background: linear-gradient(135deg, rgba(0,132,255,0.1), rgba(0,132,255,0.05));
-      border-radius: 20px;
-      border: 1px solid rgba(0,132,255,0.2);
-      padding: 30px;
-      margin-bottom: 30px;
-    }
-    .zhihu-header {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      margin-bottom: 20px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-    .zhihu-logo { font-size: 24px; }
-    .zhihu-title { color: #0084ff; font-size: 16px; }
-    .zhihu-content {
-      color: rgba(255,255,255,0.8);
-      line-height: 2;
-      font-size: 15px;
-    }
-    .zhihu-content p { margin-bottom: 15px; }
-    .zhihu-content .highlight { 
-      color: #ffd700; 
-      font-weight: 600;
-      background: rgba(255,215,0,0.1);
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
+    
     .copy-btn {
       margin-top: 20px;
       padding: 10px 20px;
@@ -721,49 +691,7 @@ function drawHistogram(results, theory) {
   });
 }
 
-function copyZhihuAnswer() {
-  const answer = `这道题乍一看很复杂，但答案出奇地优雅：约 317,844 只，也就是 ≈ 31.78%。
 
-让我用最直观的方式解释。
-
-【理解题意】
-
-"从有腿的鸡中抽取一只砍掉一条腿" = 从完好鸡和独腿鸡中随机选一只，砍它一条腿。
-
-注意：无腿鸡退出抽选池，不会被选中。
-
-【换个角度想】
-
-与其追踪整个鸡群的状态变化，不如问：某一只特定的鸡，它保持完好的概率是多少？
-
-一只鸡完好 = 它从未被选中。
-
-【递推分析】
-
-设 H = 完好鸡数，O = 独腿鸡数。每次砍腿：
-• 选中完好鸡的概率 = H / (H + O)
-• 选中独腿鸡的概率 = O / (H + O)
-
-这形成一个递推关系，可以用期望值迭代或微分方程求解。
-
-【最终答案】
-
-当 N → ∞ 时，完好鸡的比例收敛到约 0.31784（有趣的是，这非常接近 1/π ≈ 0.31831，但不完全相等）。
-
-所以：完好的鸡的期望数量 = 100万 × 0.3178 ≈ 317,844 只
-
-【验证】
-
-不信？我写了个模拟器：https://mock.runnable.run/pages/chicken-leg-problem.html
-跑个几百万次，结果稳稳地落在 31.78% 附近。
-
-——
-这道题的本质是一个马尔可夫过程，没有简单的闭式解，但可以通过数值方法精确计算。`;
-
-  navigator.clipboard.writeText(answer).then(() => {
-    alert('回答已复制到剪贴板！');
-  });
-}
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {

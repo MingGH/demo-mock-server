@@ -39,6 +39,12 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
     private static final String DOOMSDAY_PREFIX = "doomsday-btn-";
     public static final String KEY_DOOMSDAY_PRESS = DOOMSDAY_PREFIX + "press";        // 总按下次数
     public static final String KEY_DOOMSDAY_USERS = DOOMSDAY_PREFIX + "users";        // 参与人数
+    
+    // 凯利公式统计 key
+    private static final String KELLY_PREFIX = "kelly-criterion-";
+    public static final String KEY_KELLY_SIMS = KELLY_PREFIX + "sims";                // 总模拟次数
+    public static final String KEY_KELLY_USERS = KELLY_PREFIX + "users";              // 参与用户数
+    public static final String KEY_KELLY_BATCH_SIMS = KELLY_PREFIX + "batch-sims";    // 批量模拟次数
 
     public StatsProxyHandler(Vertx vertx) {
         WebClientOptions options = new WebClientOptions()
@@ -180,7 +186,10 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
             key.startsWith(KEY_QUANTUM_LOTTERY_TODAY_PREFIX) ||
             key.equals(KEY_QUANTUM_LOTTERY_USERS) ||
             key.equals(KEY_DOOMSDAY_PRESS) ||
-            key.equals(KEY_DOOMSDAY_USERS)
+            key.equals(KEY_DOOMSDAY_USERS) ||
+            key.equals(KEY_KELLY_SIMS) ||
+            key.equals(KEY_KELLY_USERS) ||
+            key.equals(KEY_KELLY_BATCH_SIMS)
         );
     }
 

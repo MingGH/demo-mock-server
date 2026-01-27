@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>凯利公式：51%胜率下多少最优？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    
+    .header { text-align: center; margin: 20px 0 30px; }
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #4ade80, #feca57, #4ade80);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.6); margin-top: 10px; font-size: 14px; }
+
+    .card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 20px;
+    }
+
+    .question-box {
+      background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(254,202,87,0.05));
+      border-left: 4px solid #4ade80;
+      padding: 20px;
+      border-radius: 0 12px 12px 0;
+      margin-bottom: 20px;
+      line-height: 1.9;
+    }
+    .question-box strong { color: #feca57; }
+
+    /* 核心答案 */
+    .answer-box {
+      text-align: center;
+      padding: 30px 20px;
+      background: linear-gradient(135deg, rgba(74,222,128,0.15), rgba(254,202,87,0.1));
+      border: 2px solid #4ade80;
+      border-radius: 16px;
+      margin: 20px 0;
+    }
+    .big-answer {
+      font-size: 4rem;
+      font-weight: 800;
+      color: #4ade80;
+      line-height: 1;
+      text-shadow: 0 0 40px rgba(74,222,128,0.3);
+    }
+    .answer-desc {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.8);
+      margin-top: 15px;
+    }
+
+    /* 设置面板 */
+    .setup-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) {
+      .setup-grid { grid-template-columns: 1fr; }
+    }
+    .setup-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+    .setup-item label {
+      display: block;
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .setup-item input, .setup-item select {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px;
+      color: white;
+      font-size: 16px;
+      text-align: center;
+    }
+    .setup-item input:focus { outline: none; border-color: #4ade80; }
+
+    /* 按钮 */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .btn {
+      padding: 12px 25px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #4ade80, #22c55e);
+      color: #1a1a2e;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #feca57, #f0b429);
+      color: #1a1a2e;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 统计面板 */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .stat-value.green { color: #4ade80; }
+    .stat-value.red { color: #ff6b6b; }
+    .stat-value.gold { color: #feca57; }
+    .stat-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 11px;
+      margin-top: 5px;
+    }
+
+    /* 图表 */
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin: 20px 0;
+    }
+
+    /* 策略对比 */
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    @media (max-width: 700px) {
+      .strategy-grid { grid-template-columns: 1fr; }
+    }
+    .strategy-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      border: 2px solid transparent;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    .strategy-card:hover { border-color: rgba(255,255,255,0.2); }
+    .strategy-card.active { border-color: #4ade80; background: rgba(74,222,128,0.1); }
+    .strategy-card.optimal { border-color: #feca57; }
+    .strategy-card h4 {
+      color: #feca57;
+      margin-bottom: 10px;
+    }
+    .strategy-card .pct {
+      font-size: 2rem;
+      font-weight: 700;
+      color: white;
+    }
+    .strategy-card .desc {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 8px;
+    }
+
+    /* 公式展示 */
+    .formula-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .formula {
+      font-family: 'Times New Roman', serif;
+      font-size: 1.4rem;
+      color: #feca57;
+      margin: 15px 0;
+    }
+    .formula-desc {
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    /* 分析区 */
+    .analysis {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 22px;
+      margin-top: 20px;
+    }
+    .analysis h3 {
+      color: #feca57;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .analysis p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.85;
+      margin-bottom: 14px;
+      font-size: 14px;
+    }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+
+    /* 结论 */
+    .conclusion {
+      background: linear-gradient(135deg, rgba(74,222,128,0.15), rgba(254,202,87,0.1));
+      border: 2px solid #feca57;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+    }
+    .conclusion h3 {
+      color: #4ade80;
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+    }
+    .conclusion p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.8;
+      font-size: 14px;
+    }
+    .conclusion .key-point {
+      color: #feca57;
+      font-weight: 600;
+    }
+
+    /* 批量模拟结果 */
+    .batch-results {
+      margin-top: 20px;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+    @media (max-width: 500px) {
+      .result-grid { grid-template-columns: 1fr; }
+    }
+    .result-card {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .result-card h4 {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+    .result-card .big-num {
+      font-size: 2rem;
+      font-weight: bold;
+    }
+    .result-card .big-num.red { color: #ff6b6b; }
+    .result-card .big-num.green { color: #4ade80; }
+    .result-card .big-num.gold { color: #feca57; }
+
+    /* 复制按钮 */
+    .copy-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      background: rgba(74,222,128,0.9);
+      color: #1a1a2e;
+      border: none;
+      border-radius: 25px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(74,222,128,0.3);
+      transition: all 0.2s;
+    }
+    .copy-btn:hover { transform: translateY(-2px); }
+
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 14px;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1000;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* 全局统计面板 */
+    .global-stats {
+      background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(254,202,87,0.05));
+      border: 1px solid rgba(74,222,128,0.2);
+      border-radius: 12px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .global-stat {
+      text-align: center;
+    }
+    .global-stat .num {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #4ade80;
+    }
+    .global-stat .label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 3px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🎯 凯利公式：51%胜率下多少最优？</h1>
+    <p>51%概率赢一倍，49%概率输全部，每次该下注多少？</p>
+  </div>
+
+  <!-- 全局统计 -->
+  <div class="global-stats">
+    <div class="global-stat">
+      <div class="num" id="globalSims">-</div>
+      <div class="label">总模拟次数</div>
+    </div>
+    <div class="global-stat">
+      <div class="num" id="globalUsers">-</div>
+      <div class="label">参与用户</div>
+    </div>
+    <div class="global-stat">
+      <div class="num" id="globalBatchSims">-</div>
+      <div class="label">批量模拟</div>
+    </div>
+  </div>
+
+  <!-- 问题描述 -->
+  <div class="card">
+    <div class="question-box">
+      <strong>问题：</strong>假设有一种赌博游戏：<br>
+      • 每次下注，<strong>51%</strong> 概率赢，赢了拿回 <strong>2倍</strong>（本金+等额奖金）<br>
+      • <strong>49%</strong> 概率输，输了失去 <strong>全部下注</strong><br>
+      • 对手筹码无限，永不破产<br>
+      • 你初始有 <strong>10000元</strong>，不能再买，不能欠账<br><br>
+      问：每次下注多少比例，才能让资金增长最快、同时不容易破产？
+    </div>
+
+    <!-- 核心答案 -->
+    <div class="answer-box">
+      <div class="big-answer">2%</div>
+      <div class="answer-desc">凯利公式的最优解：每次下注总资金的 2%</div>
+    </div>
+  </div>
+
+  <!-- 凯利公式 -->
+  <div class="card">
+    <h2 style="color: #feca57; margin-bottom: 15px; text-align: center;">📐 凯利公式</h2>
+    
+    <div class="formula-box">
+      <div class="formula">f* = p - q/b = p - (1-p)/b</div>
+      <div class="formula-desc">
+        f* = 最优下注比例<br>
+        p = 获胜概率 = 51% = 0.51<br>
+        q = 失败概率 = 49% = 0.49<br>
+        b = 赔率（赢了赚多少倍）= 1（赢1倍）
+      </div>
+    </div>
+
+    <div class="formula-box">
+      <div class="formula">f* = 0.51 - 0.49/1 = 0.02 = <span style="color: #4ade80;">2%</span></div>
+      <div class="formula-desc">
+        代入数值：最优下注比例 = 2%<br>
+        即：每次下注当前总资金的 2%
+      </div>
+    </div>
+  </div>
+
+  <!-- 策略对比模拟 -->
+  <div class="card">
+    <h2 style="color: #feca57; margin-bottom: 15px; text-align: center;">🎮 策略对比模拟器</h2>
+    <p style="text-align: center; color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 20px;">
+      选择不同的下注比例，看看长期结果有什么区别
+    </p>
+
+    <div class="setup-grid">
+      <div class="setup-item">
+        <label>初始资金</label>
+        <input type="number" id="initialMoney" value="10000" min="1000" step="1000">
+      </div>
+      <div class="setup-item">
+        <label>胜率</label>
+        <input type="number" id="winProb" value="51" min="1" max="99" step="1">
+        <span style="color: rgba(255,255,255,0.4); font-size: 12px;">%</span>
+      </div>
+      <div class="setup-item">
+        <label>赔率（赢了赚几倍）</label>
+        <input type="number" id="odds" value="1" min="0.1" max="10" step="0.1">
+      </div>
+    </div>
+
+    <div style="text-align: center; margin: 15px 0;">
+      <span style="color: rgba(255,255,255,0.6); font-size: 13px;">
+        当前凯利最优比例：<span id="kellyOptimal" style="color: #4ade80; font-weight: bold;">2%</span>
+      </span>
+    </div>
+
+    <div class="strategy-grid">
+      <div class="strategy-card" data-pct="1" onclick="selectStrategy(1)">
+        <h4>保守策略</h4>
+        <div class="pct">1%</div>
+        <div class="desc">低于凯利值，增长慢但稳</div>
+      </div>
+      <div class="strategy-card optimal active" data-pct="2" onclick="selectStrategy(2)">
+        <h4>⭐ 凯利最优</h4>
+        <div class="pct">2%</div>
+        <div class="desc">数学最优，长期增长最快</div>
+      </div>
+      <div class="strategy-card" data-pct="5" onclick="selectStrategy(5)">
+        <h4>激进策略</h4>
+        <div class="pct">5%</div>
+        <div class="desc">高于凯利值，波动大</div>
+      </div>
+    </div>
+
+    <div class="setup-grid" style="grid-template-columns: 1fr;">
+      <div class="setup-item">
+        <label>自定义下注比例 (%)</label>
+        <input type="range" id="betPct" value="2" min="0.5" max="20" step="0.5" 
+               oninput="updateBetPctDisplay()" style="width: 100%;">
+        <div style="margin-top: 8px; color: #feca57; font-size: 1.2rem;" id="betPctDisplay">2%</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" onclick="runSingleSim()">▶️ 模拟1000局</button>
+      <button class="btn btn-gold" onclick="runComparison()">📊 三策略对比</button>
+      <button class="btn btn-secondary" onclick="resetSim()">🔄 重置</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-value gold" id="roundCount">0</div>
+        <div class="stat-label">已进行局数</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value green" id="currentMoney">¥10,000</div>
+        <div class="stat-label">当前资金</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="winRate" style="color: #4ade80;">-</div>
+        <div class="stat-label">实际胜率</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value gold" id="peakMoney">¥10,000</div>
+        <div class="stat-label">历史最高</div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="moneyChart"></canvas>
+    </div>
+  </div>
+
+  <!-- 批量模拟 -->
+  <div class="card">
+    <h2 style="color: #feca57; margin-bottom: 15px; text-align: center;">🧪 蒙特卡洛模拟：1000个玩家的命运</h2>
+    <p style="text-align: center; color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 20px;">
+      模拟1000个人，各用不同策略玩1000局，看看最终结果分布
+    </p>
+
+    <div class="controls">
+      <button class="btn btn-primary" onclick="runMassSimulation()">🚀 运行批量模拟</button>
+    </div>
+
+    <div class="batch-results" id="batchResults" style="display: none;">
+      <h3 style="color: #feca57; text-align: center; margin-bottom: 15px;">📊 1000人 × 1000局 结果</h3>
+      
+      <div class="result-grid">
+        <div class="result-card">
+          <h4>💀 破产人数（2%策略）</h4>
+          <div class="big-num green" id="kelly2Bankrupt">-</div>
+        </div>
+        <div class="result-card">
+          <h4>💀 破产人数（10%策略）</h4>
+          <div class="big-num red" id="kelly10Bankrupt">-</div>
+        </div>
+        <div class="result-card">
+          <h4>📈 中位数资金（2%策略）</h4>
+          <div class="big-num green" id="kelly2Median">-</div>
+        </div>
+        <div class="result-card">
+          <h4>📈 中位数资金（10%策略）</h4>
+          <div class="big-num gold" id="kelly10Median">-</div>
+        </div>
+      </div>
+
+      <div class="chart-container" style="height: 250px; margin-top: 20px;">
+        <canvas id="distributionChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 为什么是2% -->
+  <div class="card analysis">
+    <h3>🤔 为什么是2%？直觉解释</h3>
+    
+    <p><strong>1. 期望值是正的，但波动很大</strong></p>
+    <p>
+      51%胜率、1倍赔率，期望值 = 0.51 × 1 - 0.49 × 1 = <span class="safe">+2%</span><br>
+      每局平均能赚2%，听起来不错。但问题是：<span class="highlight">输了会失去全部下注</span>。
+    </p>
+
+    <p><strong>2. 下注太多 = 破产风险</strong></p>
+    <p>
+      如果每次下注50%，连输两次就只剩25%。连输5次（概率约2.8%）就只剩3%。<br>
+      <span class="highlight">高下注比例会让你在运气不好时迅速破产</span>，即使长期期望是正的。
+    </p>
+
+    <p><strong>3. 下注太少 = 增长太慢</strong></p>
+    <p>
+      如果每次只下注0.1%，虽然几乎不可能破产，但资金增长极其缓慢。<br>
+      1000局后可能只增长了20%，浪费了正期望值的优势。
+    </p>
+
+    <p><strong>4. 凯利公式 = 最优平衡点</strong></p>
+    <p>
+      凯利公式找到的是<span class="safe">长期几何增长率最大化</span>的下注比例。<br>
+      2%既能充分利用正期望值，又不会因为短期波动而破产。
+    </p>
+  </div>
+
+  <!-- 实战建议 -->
+  <div class="card analysis">
+    <h3>💡 实战建议</h3>
+    
+    <p><strong>1. 实际操作中，用「半凯利」更安全</strong></p>
+    <p>
+      凯利公式假设你知道精确的胜率和赔率。现实中往往有误差。<br>
+      很多职业投资者使用<span class="safe">半凯利（1%）</span>，牺牲一点增长速度换取更低的破产风险。
+    </p>
+
+    <p><strong>2. 永远不要超过凯利值</strong></p>
+    <p>
+      下注比例超过凯利值，<span class="highlight">长期期望收益反而会下降</span>。<br>
+      这是反直觉的：下注越多不一定赚越多，过度下注会因为波动而亏损。
+    </p>
+
+    <p><strong>3. 这个游戏值得玩吗？</strong></p>
+    <p>
+      51%胜率、1倍赔率，凯利值只有2%。这意味着<span class="highlight">优势非常微弱</span>。<br>
+      需要大量重复才能体现优势，短期内运气成分很大。<br>
+      如果有手续费、时间成本，这个游戏可能不值得玩。
+    </p>
+  </div>
+
+  <!-- 结论 -->
+  <div class="card conclusion">
+    <h3>📌 结论</h3>
+    <p>
+      51%胜率、1倍赔率的游戏，<span class="key-point">最优下注比例是2%</span>。<br><br>
+      下注太多会因为波动破产，下注太少会浪费正期望值。<br>
+      凯利公式给出的是<span class="key-point">长期财富增长最快</span>的数学最优解。<br><br>
+      但记住：这只是数学模型。现实中还要考虑<br>
+      胜率估计误差、心理承受能力、资金流动性等因素。<br><br>
+      <span style="color: rgba(255,255,255,0.6);">
+        「知道最优解」和「能执行最优解」是两回事。
+      </span>
+    </p>
+  </div>
+</div>
+
+<button class="copy-btn" onclick="copyShareText()">📋 复制分享</button>
+<div class="toast" id="toast">已复制到剪贴板！</div>
+
+<script>
+// 全局变量
+let money = 10000;
+let initialMoney = 10000;
+let roundCount = 0;
+let winCount = 0;
+let peakMoney = 10000;
+let moneyHistory = [10000];
+let chart = null;
+let distributionChart = null;
+let userTracked = false;
+
+// 统计 API
+const StatsAPI = {
+  baseUrl: '/stats',
+  keys: {
+    sims: 'kelly-criterion-sims',
+    users: 'kelly-criterion-users',
+    batchSims: 'kelly-criterion-batch-sims'
+  },
+  
+  async incr(key) {
+    try {
+      const res = await fetch(`${this.baseUrl}?action=incr&key=${key}`);
+      const data = await res.json();
+      return data.data || 0;
+    } catch (e) {
+      console.warn('Stats incr failed:', e);
+      return 0;
+    }
+  },
+  
+  async get(key) {
+    try {
+      const res = await fetch(`${this.baseUrl}?action=get&key=${key}`);
+      const data = await res.json();
+      return data.data || 0;
+    } catch (e) {
+      console.warn('Stats get failed:', e);
+      return 0;
+    }
+  },
+  
+  async loadAll() {
+    const [sims, users, batchSims] = await Promise.all([
+      this.get(this.keys.sims),
+      this.get(this.keys.users),
+      this.get(this.keys.batchSims)
+    ]);
+    return { sims, users, batchSims };
+  },
+  
+  async trackUser() {
+    if (userTracked) return;
+    userTracked = true;
+    await this.incr(this.keys.users);
+  },
+  
+  async trackSim() {
+    await this.incr(this.keys.sims);
+  },
+  
+  async trackBatchSim() {
+    await this.incr(this.keys.batchSims);
+  }
+};
+
+// 更新全局统计显示
+async function updateGlobalStats() {
+  const stats = await StatsAPI.loadAll();
+  document.getElementById('globalSims').textContent = stats.sims.toLocaleString();
+  document.getElementById('globalUsers').textContent = stats.users.toLocaleString();
+  document.getElementById('globalBatchSims').textContent = stats.batchSims.toLocaleString();
+}
+
+// 计算凯利最优比例
+function calcKelly() {
+  const p = parseFloat(document.getElementById('winProb').value) / 100;
+  const b = parseFloat(document.getElementById('odds').value);
+  const kelly = p - (1 - p) / b;
+  return Math.max(0, kelly);
+}
+
+// 更新凯利显示
+function updateKellyDisplay() {
+  const kelly = calcKelly();
+  document.getElementById('kellyOptimal').textContent = (kelly * 100).toFixed(1) + '%';
+  
+  // 更新策略卡片
+  const cards = document.querySelectorAll('.strategy-card');
+  cards.forEach(card => {
+    if (card.classList.contains('optimal')) {
+      card.querySelector('.pct').textContent = (kelly * 100).toFixed(1) + '%';
+      card.dataset.pct = (kelly * 100).toFixed(1);
+    }
+  });
+}
+
+// 选择策略
+function selectStrategy(pct) {
+  document.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('active'));
+  document.querySelector(`[data-pct="${pct}"]`)?.classList.add('active');
+  document.getElementById('betPct').value = pct;
+  updateBetPctDisplay();
+}
+
+// 更新下注比例显示
+function updateBetPctDisplay() {
+  const pct = document.getElementById('betPct').value;
+  document.getElementById('betPctDisplay').textContent = pct + '%';
+  
+  // 更新策略卡片选中状态
+  document.querySelectorAll('.strategy-card').forEach(c => {
+    c.classList.remove('active');
+    if (parseFloat(c.dataset.pct) === parseFloat(pct)) {
+      c.classList.add('active');
+    }
+  });
+}
+
+// 格式化金额
+function formatMoney(num) {
+  if (num >= 1e9) return '¥' + (num / 1e9).toFixed(2) + 'B';
+  if (num >= 1e6) return '¥' + (num / 1e6).toFixed(2) + 'M';
+  if (num >= 1e3) return '¥' + (num / 1e3).toFixed(1) + 'K';
+  return '¥' + num.toFixed(0);
+}
+
+// 更新显示
+function updateDisplay() {
+  document.getElementById('roundCount').textContent = roundCount;
+  document.getElementById('currentMoney').textContent = formatMoney(money);
+  document.getElementById('currentMoney').className = 'stat-value ' + (money >= initialMoney ? 'green' : 'red');
+  document.getElementById('winRate').textContent = roundCount > 0 ? (winCount / roundCount * 100).toFixed(1) + '%' : '-';
+  document.getElementById('peakMoney').textContent = formatMoney(peakMoney);
+}
+
+// 初始化图表
+function initChart() {
+  const ctx = document.getElementById('moneyChart').getContext('2d');
+  if (chart) chart.destroy();
+  
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [0],
+      datasets: [{
+        label: '资金',
+        data: [initialMoney],
+        borderColor: '#4ade80',
+        backgroundColor: 'rgba(74, 222, 128, 0.1)',
+        fill: true,
+        tension: 0.1,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          display: true,
+          title: { display: true, text: '局数', color: 'rgba(255,255,255,0.5)' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 10 }
+        },
+        y: {
+          display: true,
+          title: { display: true, text: '资金', color: 'rgba(255,255,255,0.5)' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { 
+            color: 'rgba(255,255,255,0.4)',
+            callback: v => formatMoney(v)
+          },
+          type: 'logarithmic'
+        }
+      }
+    }
+  });
+}
+
+// 更新图表
+function updateChart() {
+  if (!chart) return;
+  chart.data.labels = moneyHistory.map((_, i) => i);
+  chart.data.datasets[0].data = moneyHistory;
+  chart.update('none');
+}
+
+// 单次模拟
+async function runSingleSim() {
+  const p = parseFloat(document.getElementById('winProb').value) / 100;
+  const betPct = parseFloat(document.getElementById('betPct').value) / 100;
+  
+  // 统计
+  StatsAPI.trackUser();
+  StatsAPI.trackSim();
+  
+  for (let i = 0; i < 1000; i++) {
+    if (money < 1) break; // 破产
+    
+    const bet = money * betPct;
+    if (Math.random() < p) {
+      money += bet;
+      winCount++;
+    } else {
+      money -= bet;
+    }
+    
+    roundCount++;
+    if (money > peakMoney) peakMoney = money;
+    
+    // 每10局记录一次
+    if (roundCount % 10 === 0) {
+      moneyHistory.push(money);
+    }
+  }
+  
+  updateDisplay();
+  updateChart();
+  updateGlobalStats();
+}
+
+// 三策略对比
+async function runComparison() {
+  const p = parseFloat(document.getElementById('winProb').value) / 100;
+  const kelly = calcKelly();
+  
+  // 统计
+  StatsAPI.trackUser();
+  StatsAPI.trackSim();
+  
+  const strategies = [
+    { name: '保守(1%)', pct: 0.01, color: '#60a5fa', data: [initialMoney] },
+    { name: '凯利(' + (kelly*100).toFixed(1) + '%)', pct: kelly, color: '#4ade80', data: [initialMoney] },
+    { name: '激进(10%)', pct: 0.10, color: '#ff6b6b', data: [initialMoney] }
+  ];
+  
+  // 生成相同的随机序列
+  const results = [];
+  for (let i = 0; i < 1000; i++) {
+    results.push(Math.random() < p);
+  }
+  
+  // 对每个策略应用相同的结果
+  strategies.forEach(s => {
+    let m = initialMoney;
+    for (let i = 0; i < 1000; i++) {
+      if (m < 1) {
+        s.data.push(0);
+        continue;
+      }
+      const bet = m * s.pct;
+      m = results[i] ? m + bet : m - bet;
+      if (i % 10 === 9) s.data.push(m);
+    }
+  });
+  
+  // 更新图表
+  const ctx = document.getElementById('moneyChart').getContext('2d');
+  if (chart) chart.destroy();
+  
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: strategies[0].data.map((_, i) => i * 10),
+      datasets: strategies.map(s => ({
+        label: s.name,
+        data: s.data,
+        borderColor: s.color,
+        backgroundColor: 'transparent',
+        tension: 0.1,
+        pointRadius: 0
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: 'rgba(255,255,255,0.7)' }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          title: { display: true, text: '局数', color: 'rgba(255,255,255,0.5)' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' }
+        },
+        y: {
+          display: true,
+          title: { display: true, text: '资金', color: 'rgba(255,255,255,0.5)' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { 
+            color: 'rgba(255,255,255,0.4)',
+            callback: v => formatMoney(v)
+          },
+          type: 'logarithmic'
+        }
+      }
+    }
+  });
+  
+  updateGlobalStats();
+}
+
+// 批量模拟
+async function runMassSimulation() {
+  const p = parseFloat(document.getElementById('winProb').value) / 100;
+  const initial = parseFloat(document.getElementById('initialMoney').value);
+  
+  // 统计
+  StatsAPI.trackUser();
+  StatsAPI.trackBatchSim();
+  
+  const results2 = [];
+  const results10 = [];
+  
+  // 模拟1000个玩家
+  for (let player = 0; player < 1000; player++) {
+    let m2 = initial, m10 = initial;
+    
+    for (let round = 0; round < 1000; round++) {
+      const win = Math.random() < p;
+      
+      // 2%策略
+      if (m2 >= 1) {
+        const bet2 = m2 * 0.02;
+        m2 = win ? m2 + bet2 : m2 - bet2;
+      }
+      
+      // 10%策略
+      if (m10 >= 1) {
+        const bet10 = m10 * 0.10;
+        m10 = win ? m10 + bet10 : m10 - bet10;
+      }
+    }
+    
+    results2.push(m2);
+    results10.push(m10);
+  }
+  
+  // 统计
+  const bankrupt2 = results2.filter(m => m < 1).length;
+  const bankrupt10 = results10.filter(m => m < 1).length;
+  
+  results2.sort((a, b) => a - b);
+  results10.sort((a, b) => a - b);
+  const median2 = results2[500];
+  const median10 = results10[500];
+  
+  // 显示结果
+  document.getElementById('batchResults').style.display = 'block';
+  document.getElementById('kelly2Bankrupt').textContent = bankrupt2;
+  document.getElementById('kelly10Bankrupt').textContent = bankrupt10;
+  document.getElementById('kelly2Median').textContent = formatMoney(median2);
+  document.getElementById('kelly10Median').textContent = formatMoney(median10);
+  
+  // 分布图
+  drawDistributionChart(results2, results10);
+  updateGlobalStats();
+}
+
+// 分布图
+function drawDistributionChart(results2, results10) {
+  const ctx = document.getElementById('distributionChart').getContext('2d');
+  if (distributionChart) distributionChart.destroy();
+  
+  // 创建分布桶
+  const buckets2 = new Array(20).fill(0);
+  const buckets10 = new Array(20).fill(0);
+  
+  results2.forEach(m => {
+    const idx = Math.min(19, Math.floor(Math.log10(Math.max(1, m)) * 2));
+    buckets2[idx]++;
+  });
+  
+  results10.forEach(m => {
+    const idx = Math.min(19, Math.floor(Math.log10(Math.max(1, m)) * 2));
+    buckets10[idx]++;
+  });
+  
+  const labels = [];
+  for (let i = 0; i < 20; i++) {
+    labels.push(formatMoney(Math.pow(10, i / 2)));
+  }
+  
+  distributionChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: '2%策略',
+          data: buckets2,
+          backgroundColor: 'rgba(74, 222, 128, 0.6)'
+        },
+        {
+          label: '10%策略',
+          data: buckets10,
+          backgroundColor: 'rgba(255, 107, 107, 0.6)'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          labels: { color: 'rgba(255,255,255,0.7)' }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)', maxRotation: 45 }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' }
+        }
+      }
+    }
+  });
+}
+
+// 重置
+function resetSim() {
+  initialMoney = parseFloat(document.getElementById('initialMoney').value) || 10000;
+  money = initialMoney;
+  roundCount = 0;
+  winCount = 0;
+  peakMoney = initialMoney;
+  moneyHistory = [initialMoney];
+  
+  updateDisplay();
+  initChart();
+  updateKellyDisplay();
+}
+
+// 复制分享
+function copyShareText() {
+  const kelly = calcKelly();
+  const text = `【凯利公式计算器】
+51%胜率、1倍赔率的游戏，最优下注比例是多少？
+
+答案：${(kelly * 100).toFixed(1)}%
+
+下注太多会因为波动破产，下注太少会浪费正期望值。
+凯利公式给出的是长期财富增长最快的数学最优解。
+
+来试试不同策略的模拟效果 👉 `;
+  
+  navigator.clipboard.writeText(text + window.location.href).then(() => {
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  });
+}
+
+// 监听参数变化
+document.getElementById('winProb').addEventListener('change', updateKellyDisplay);
+document.getElementById('odds').addEventListener('change', updateKellyDisplay);
+
+// 初始化
+resetSim();
+updateGlobalStats();
+</script>
+
+</body>
+</html>

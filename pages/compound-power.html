@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>复利的威力 - 为什么越早开始越好？</title>
+  <script src="../components/header.js" defer></script>
+  <script src="./compound-power-logic.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+
+    .container { max-width: 1000px; margin: 0 auto; }
+
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    /* 控制面板 */
+    .controls-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      margin-bottom: 25px;
+    }
+    
+    .mode-switch {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 25px;
+      background: rgba(0,0,0,0.3);
+      padding: 5px;
+      border-radius: 30px;
+      width: fit-content;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .mode-btn {
+      padding: 8px 25px;
+      border-radius: 25px;
+      border: none;
+      background: transparent;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+    .mode-btn.active {
+      background: #fbbf24;
+      color: #1a1a2e;
+      font-weight: 600;
+    }
+
+    .input-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+    .input-item label {
+      display: block;
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .input-wrapper {
+      position: relative;
+    }
+    .input-wrapper input {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 12px 15px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      transition: border-color 0.3s;
+    }
+    .input-wrapper input:focus {
+      outline: none;
+      border-color: #fbbf24;
+    }
+    .input-wrapper .unit {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(255,255,255,0.3);
+      font-size: 12px;
+    }
+
+    /* 图表区域 */
+    .chart-container {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 20px;
+      height: 400px;
+      margin-bottom: 25px;
+    }
+
+    /* 结论卡片 */
+    .insights {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .insight-card {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 16px;
+      padding: 25px;
+    }
+    .insight-card.highlight {
+      background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(5,150,105,0.05));
+      border-color: rgba(16,185,129,0.2);
+    }
+    .insight-title {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .insight-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #fbbf24;
+      margin-bottom: 5px;
+    }
+    .insight-card.highlight .insight-value { color: #4ade80; }
+    .insight-desc {
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .insight-desc strong { color: white; }
+
+    /* 滑块样式 */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      margin-top: 10px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: #fbbf24;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(251,191,36,0.5);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🚀 复利的威力可视化</h1>
+    <p>人类第八大奇迹？让数据告诉你真相</p>
+  </div>
+
+  <div class="controls-card">
+    <div class="mode-switch">
+      <button class="mode-btn active" onclick="switchMode('simple-vs-compound')">单利 vs 复利</button>
+      <button class="mode-btn" onclick="switchMode('early-vs-late')">早投 vs 晚投</button>
+    </div>
+
+    <!-- 模式1：单利 vs 复利 -->
+    <div id="controls-mode1" class="input-grid">
+      <div class="input-item">
+        <label>初始本金</label>
+        <div class="input-wrapper">
+          <input type="number" id="p1-principal" value="100000" oninput="updateChart()">
+          <span class="unit">元</span>
+        </div>
+      </div>
+      <div class="input-item">
+        <label>年化收益率 <span id="p1-rate-val" style="color:#fbbf24">10%</span></label>
+        <input type="range" id="p1-rate" min="1" max="30" value="10" step="0.5" oninput="updateChart()">
+      </div>
+      <div class="input-item">
+        <label>投资年限 <span id="p1-years-val" style="color:#fbbf24">30年</span></label>
+        <input type="range" id="p1-years" min="5" max="50" value="30" oninput="updateChart()">
+      </div>
+    </div>
+
+    <!-- 模式2：早投 vs 晚投 -->
+    <div id="controls-mode2" class="input-grid" style="display:none">
+      <div class="input-item">
+        <label>每年定投金额</label>
+        <div class="input-wrapper">
+          <input type="number" id="p2-amount" value="50000" oninput="updateChart()">
+          <span class="unit">元/年</span>
+        </div>
+      </div>
+      <div class="input-item">
+        <label>年化收益率 <span id="p2-rate-val" style="color:#fbbf24">8%</span></label>
+        <input type="range" id="p2-rate" min="1" max="20" value="8" step="0.5" oninput="updateChart()">
+      </div>
+      <div class="input-item">
+        <label>早投者(A)提前几年? <span id="p2-gap-val" style="color:#fbbf24">10年</span></label>
+        <input type="range" id="p2-gap" min="1" max="20" value="10" oninput="updateChart()">
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-container" id="mainChart"></div>
+
+  <div class="insights" id="insights">
+    <!-- 动态生成 -->
+  </div>
+</div>
+
+<script>
+  let myChart = echarts.init(document.getElementById('mainChart'));
+  let currentMode = 'simple-vs-compound';
+
+  // 格式化金额
+  const formatMoney = (num) => {
+    if (num >= 100000000) return (num / 100000000).toFixed(2) + ' 亿';
+    if (num >= 10000) return (num / 10000).toFixed(1) + ' 万';
+    return Math.round(num).toLocaleString();
+  };
+
+  function switchMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    document.getElementById('controls-mode1').style.display = mode === 'simple-vs-compound' ? 'grid' : 'none';
+    document.getElementById('controls-mode2').style.display = mode === 'early-vs-late' ? 'grid' : 'none';
+    
+    updateChart();
+  }
+
+  function updateChart() {
+    if (currentMode === 'simple-vs-compound') {
+      calculateMode1();
+    } else {
+      calculateMode2();
+    }
+  }
+
+  function calculateMode1() {
+    const principal = Number(document.getElementById('p1-principal').value);
+    const rate = Number(document.getElementById('p1-rate').value) / 100;
+    const years = Number(document.getElementById('p1-years').value);
+
+    // 更新滑块显示
+    document.getElementById('p1-rate-val').innerText = (rate * 100).toFixed(1) + '%';
+    document.getElementById('p1-years-val').innerText = years + '年';
+
+    const result = CompoundLogic.calculateSimpleVsCompound(principal, rate, years);
+    const { simpleData, compoundData, yearsLabel } = result;
+
+    const finalSimple = simpleData[years];
+    const finalCompound = compoundData[years];
+    const diff = finalCompound - finalSimple;
+    const multiple = (finalCompound / finalSimple).toFixed(1);
+
+    // 更新图表
+    const option = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        borderColor: '#fbbf24',
+        textStyle: { color: '#fff' },
+        formatter: function(params) {
+          let res = params[0].name + '<br/>';
+          params.forEach(param => {
+            res += param.marker + param.seriesName + ': ' + formatMoney(param.value) + '<br/>';
+          });
+          return res;
+        }
+      },
+      legend: {
+        data: ['单利增长', '复利增长'],
+        textStyle: { color: '#ccc' },
+        bottom: 0
+      },
+      grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: yearsLabel,
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+        axisLabel: { color: 'rgba(255,255,255,0.5)' }
+      },
+      yAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+        axisLabel: { color: 'rgba(255,255,255,0.5)', formatter: (v) => formatMoney(v) }
+      },
+      series: [
+        {
+          name: '单利增长',
+          type: 'line',
+          data: simpleData,
+          lineStyle: { color: '#94a3b8', width: 2, type: 'dashed' },
+          itemStyle: { color: '#94a3b8' },
+          symbol: 'none'
+        },
+        {
+          name: '复利增长',
+          type: 'line',
+          data: compoundData,
+          lineStyle: { color: '#fbbf24', width: 4 },
+          itemStyle: { color: '#fbbf24' },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(251,191,36,0.3)' },
+              { offset: 1, color: 'rgba(251,191,36,0)' }
+            ])
+          },
+          symbol: 'none'
+        }
+      ]
+    };
+    myChart.setOption(option);
+
+    // 更新结论
+    document.getElementById('insights').innerHTML = `
+      <div class="insight-card">
+        <div class="insight-title">📏 单利终值</div>
+        <div class="insight-value">${formatMoney(finalSimple)}</div>
+        <div class="insight-desc">如果收益不复投，你的财富线性增长</div>
+      </div>
+      <div class="insight-card highlight">
+        <div class="insight-title">🚀 复利终值</div>
+        <div class="insight-value">${formatMoney(finalCompound)}</div>
+        <div class="insight-desc">是单利的 <strong>${multiple}倍</strong>！差距为 <strong>${formatMoney(diff)}</strong></div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-title">💡 关键洞察</div>
+        <div class="insight-desc">在前1/3的时间里，两者差距不大。但一旦跨过<strong>拐点</strong>，复利曲线将呈现指数级爆发。这就是为什么要“长期主义”。</div>
+      </div>
+    `;
+  }
+
+  function calculateMode2() {
+    const annualAmount = Number(document.getElementById('p2-amount').value);
+    const rate = Number(document.getElementById('p2-rate').value) / 100;
+    const gapYears = Number(document.getElementById('p2-gap').value);
+    const totalYears = 40; // 假设对比40年周期
+
+    // 更新滑块
+    document.getElementById('p2-rate-val').innerText = (rate * 100).toFixed(1) + '%';
+    document.getElementById('p2-gap-val').innerText = gapYears + '年';
+
+    const result = CompoundLogic.calculateEarlyVsLate(annualAmount, rate, gapYears, totalYears);
+    const { earlyData, lateData, yearsLabel, investedA, investedB } = result;
+
+    const finalA = earlyData[totalYears];
+    const finalB = lateData[totalYears];
+
+    const option = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        borderColor: '#fbbf24',
+        textStyle: { color: '#fff' },
+        formatter: function(params) {
+          let res = '第 ' + params[0].name + '<br/>';
+          params.forEach(param => {
+            res += param.marker + param.seriesName + ': ' + formatMoney(param.value) + '<br/>';
+          });
+          return res;
+        }
+      },
+      legend: {
+        data: ['早鸟A (只投前'+gapYears+'年)', '晚鸟B (一直投)'],
+        textStyle: { color: '#ccc' },
+        bottom: 0
+      },
+      grid: { left: '3%', right: '4%', bottom: '10%', containLabel: true },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: yearsLabel,
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+        axisLabel: { color: 'rgba(255,255,255,0.5)' }
+      },
+      yAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+        axisLabel: { color: 'rgba(255,255,255,0.5)', formatter: (v) => formatMoney(v) }
+      },
+      series: [
+        {
+          name: '早鸟A (只投前'+gapYears+'年)',
+          type: 'line',
+          data: earlyData,
+          lineStyle: { color: '#fbbf24', width: 4 },
+          itemStyle: { color: '#fbbf24' },
+          symbol: 'none'
+        },
+        {
+          name: '晚鸟B (一直投)',
+          type: 'line',
+          data: lateData,
+          lineStyle: { color: '#3b82f6', width: 3 },
+          itemStyle: { color: '#3b82f6' },
+          symbol: 'none'
+        }
+      ]
+    };
+    myChart.setOption(option);
+
+    // 结论
+    let winnerText = '';
+    if (finalA > finalB) {
+      winnerText = `早鸟 A 赢了！尽管他本金只投了 ${formatMoney(investedA)}，而晚鸟 B 投了 ${formatMoney(investedB)}。`;
+    } else {
+      winnerText = `晚鸟 B 终于追上了，但他多投入了 ${formatMoney(investedB - investedA)} 的本金才勉强赶上。`;
+    }
+
+    document.getElementById('insights').innerHTML = `
+      <div class="insight-card highlight">
+        <div class="insight-title">🦅 早鸟 A (躺平流)</div>
+        <div class="insight-value">${formatMoney(finalA)}</div>
+        <div class="insight-desc">只辛苦了 ${gapYears} 年，本金投入 <strong>${formatMoney(investedA)}</strong></div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-title">🐢 晚鸟 B (奋斗流)</div>
+        <div class="insight-value">${formatMoney(finalB)}</div>
+        <div class="insight-desc">辛苦了 ${totalYears - gapYears} 年，本金投入 <strong>${formatMoney(investedB)}</strong></div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-title">💡 震撼结论</div>
+        <div class="insight-desc">${winnerText} <br><strong>时间</strong>比努力更重要。</div>
+      </div>
+    `;
+  }
+
+  // 初始化
+  updateChart();
+  
+  // 响应式
+  window.addEventListener('resize', function() {
+    myChart.resize();
+  });
+</script>
+</body>
+</html>

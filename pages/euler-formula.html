@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>欧拉公式 - 数学中最美丽的公式</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0f2847 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+      overflow-x: hidden;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 50px; }
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #ffd700, #ffaa00, #ffd700);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 15px; font-size: 16px; }
+
+    /* 核心公式展示 */
+    .formula-hero {
+      background: radial-gradient(ellipse at center, rgba(255,215,0,0.1) 0%, transparent 70%);
+      border-radius: 30px;
+      padding: 60px 40px;
+      text-align: center;
+      margin-bottom: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .formula-hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(from 0deg, transparent, rgba(255,215,0,0.03), transparent 30%);
+      animation: rotate 20s linear infinite;
+    }
+    @keyframes rotate {
+      100% { transform: rotate(360deg); }
+    }
+    .main-formula {
+      font-size: 4rem;
+      font-weight: 300;
+      color: #ffd700;
+      text-shadow: 0 0 30px rgba(255,215,0,0.5);
+      position: relative;
+      z-index: 1;
+      font-family: 'Times New Roman', serif;
+      letter-spacing: 8px;
+    }
+    .formula-subtitle {
+      color: rgba(255,255,255,0.6);
+      margin-top: 20px;
+      font-size: 18px;
+      position: relative;
+      z-index: 1;
+    }
+    .formula-quote {
+      color: rgba(255,255,255,0.4);
+      font-style: italic;
+      margin-top: 15px;
+      font-size: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 五大常数卡片 */
+    .constants-section {
+      margin-bottom: 40px;
+    }
+    .section-title {
+      color: #ffd700;
+      font-size: 20px;
+      margin-bottom: 25px;
+      padding-left: 15px;
+      border-left: 4px solid #ffd700;
+    }
+    .constants-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 15px;
+    }
+    .constant-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px 15px;
+      text-align: center;
+      transition: all 0.4s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .constant-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(255,215,0,0.3);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+    .constant-card.active {
+      border-color: #ffd700;
+      background: rgba(255,215,0,0.1);
+    }
+    .constant-symbol {
+      font-size: 3rem;
+      font-family: 'Times New Roman', serif;
+      font-style: italic;
+      margin-bottom: 10px;
+    }
+    .constant-card:nth-child(1) .constant-symbol { color: #4fc3f7; }
+    .constant-card:nth-child(2) .constant-symbol { color: #ba68c8; }
+    .constant-card:nth-child(3) .constant-symbol { color: #81c784; }
+    .constant-card:nth-child(4) .constant-symbol { color: #ffb74d; }
+    .constant-card:nth-child(5) .constant-symbol { color: #ef5350; }
+    .constant-name { color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 5px; }
+    .constant-value { color: rgba(255,255,255,0.5); font-size: 12px; font-family: monospace; }
+
+    /* 复平面可视化 */
+    .visualization-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+      margin-bottom: 40px;
+    }
+    .viz-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+    }
+    .viz-card h3 {
+      color: #ffd700;
+      font-size: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* 控制面板 */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .control-group {
+      flex: 1;
+      min-width: 120px;
+    }
+    .control-group label {
+      display: block;
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .control-group input[type="range"] {
+      width: 100%;
+      height: 6px;
+      -webkit-appearance: none;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      outline: none;
+    }
+    .control-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #ffd700;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .control-value {
+      color: #ffd700;
+      font-size: 14px;
+      font-family: monospace;
+      margin-top: 5px;
+    }
+
+    /* 动画按钮 */
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      color: #1a1a2e;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(255,215,0,0.3);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.15);
+    }
+    
+    /* 公式推导 */
+    .derivation-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 30px;
+      margin-bottom: 40px;
+    }
+    .derivation-step {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      border-left: 3px solid #ffd700;
+      opacity: 0;
+      transform: translateX(-20px);
+      transition: all 0.5s;
+    }
+    .derivation-step.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .step-number {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      background: #ffd700;
+      color: #1a1a2e;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 28px;
+      font-weight: 700;
+      font-size: 14px;
+      margin-right: 12px;
+    }
+    .step-title {
+      color: #ffd700;
+      font-size: 16px;
+      display: inline;
+    }
+    .step-content {
+      color: rgba(255,255,255,0.7);
+      margin-top: 12px;
+      padding-left: 40px;
+      line-height: 1.8;
+    }
+    .step-formula {
+      font-family: 'Times New Roman', serif;
+      font-size: 1.3rem;
+      color: #4fc3f7;
+      margin: 10px 0;
+    }
+
+    /* 美学解读 */
+    .beauty-section {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    .beauty-card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 25px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    .beauty-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(255,215,0,0.3);
+    }
+    .beauty-icon {
+      font-size: 3rem;
+      margin-bottom: 15px;
+    }
+    .beauty-title {
+      color: #ffd700;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .beauty-desc {
+      color: rgba(255,255,255,0.6);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    /* 实时计算器 */
+    .calculator-section {
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 30px;
+      margin-bottom: 40px;
+    }
+    .calc-input-group {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .calc-label {
+      color: rgba(255,255,255,0.7);
+      font-size: 18px;
+      font-family: 'Times New Roman', serif;
+    }
+    .calc-input {
+      width: 100px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 10px 15px;
+      color: #ffd700;
+      font-size: 18px;
+      font-family: monospace;
+      text-align: center;
+    }
+    .calc-input:focus {
+      outline: none;
+      border-color: #ffd700;
+    }
+    .calc-result {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .calc-result-formula {
+      font-family: 'Times New Roman', serif;
+      font-size: 1.5rem;
+      color: #4fc3f7;
+      margin-bottom: 10px;
+    }
+    .calc-result-value {
+      font-size: 1.2rem;
+      color: #ffd700;
+      font-family: monospace;
+    }
+
+    /* 历史时间线 */
+    .timeline-section {
+      position: relative;
+      padding-left: 30px;
+      margin-bottom: 40px;
+    }
+    .timeline-section::before {
+      content: '';
+      position: absolute;
+      left: 8px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, #ffd700, rgba(255,215,0,0.2));
+    }
+    .timeline-item {
+      position: relative;
+      margin-bottom: 25px;
+      padding-left: 25px;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -26px;
+      top: 5px;
+      width: 12px;
+      height: 12px;
+      background: #ffd700;
+      border-radius: 50%;
+      box-shadow: 0 0 15px rgba(255,215,0,0.5);
+    }
+    .timeline-year {
+      color: #ffd700;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .timeline-content {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    /* 响应式 */
+    @media (max-width: 900px) {
+      .visualization-section { grid-template-columns: 1fr; }
+      .beauty-section { grid-template-columns: 1fr; }
+      .constants-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.8rem; }
+      .main-formula { font-size: 2.5rem; letter-spacing: 4px; }
+      .constants-grid { grid-template-columns: repeat(2, 1fr); }
+      .constant-symbol { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>✨ 欧拉公式：数学中最美丽的公式</h1>
+    <p>五个最重要的数学常数，一个等式，无限的美</p>
+  </div>
+
+  <!-- 核心公式展示 -->
+  <div class="formula-hero">
+    <div class="main-formula" id="mainFormula">e<sup>iπ</sup> + 1 = 0</div>
+    <div class="formula-subtitle">欧拉恒等式 · Euler's Identity</div>
+    <div class="formula-quote">"这是数学中最非凡的公式" —— 理查德·费曼</div>
+  </div>
+
+  <!-- 五大常数 -->
+  <div class="constants-section">
+    <h2 class="section-title">🔮 五大数学常数的相遇</h2>
+    <div class="constants-grid">
+      <div class="constant-card" data-constant="e" onclick="highlightConstant(this)">
+        <div class="constant-symbol">e</div>
+        <div class="constant-name">自然常数</div>
+        <div class="constant-value">2.71828...</div>
+      </div>
+      <div class="constant-card" data-constant="i" onclick="highlightConstant(this)">
+        <div class="constant-symbol">i</div>
+        <div class="constant-name">虚数单位</div>
+        <div class="constant-value">√(-1)</div>
+      </div>
+      <div class="constant-card" data-constant="pi" onclick="highlightConstant(this)">
+        <div class="constant-symbol">π</div>
+        <div class="constant-name">圆周率</div>
+        <div class="constant-value">3.14159...</div>
+      </div>
+      <div class="constant-card" data-constant="1" onclick="highlightConstant(this)">
+        <div class="constant-symbol">1</div>
+        <div class="constant-name">乘法单位元</div>
+        <div class="constant-value">自然数起点</div>
+      </div>
+      <div class="constant-card" data-constant="0" onclick="highlightConstant(this)">
+        <div class="constant-symbol">0</div>
+        <div class="constant-name">加法单位元</div>
+        <div class="constant-value">虚无与存在</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 可视化区域 -->
+  <div class="visualization-section">
+    <div class="viz-card">
+      <h3>🌀 复平面上的旋转</h3>
+      <div class="canvas-container">
+        <canvas id="complexPlane"></canvas>
+      </div>
+      <div class="controls">
+        <div class="control-group">
+          <label>角度 θ</label>
+          <input type="range" id="thetaSlider" min="0" max="6.283" step="0.01" value="3.14159">
+          <div class="control-value" id="thetaValue">θ = π</div>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="animateRotation()">▶ 播放旋转动画</button>
+        <button class="btn btn-secondary" onclick="resetToPI()">重置到 π</button>
+      </div>
+    </div>
+    
+    <div class="viz-card">
+      <h3>📈 e^(iθ) 的轨迹</h3>
+      <div class="canvas-container">
+        <canvas id="spiralCanvas"></canvas>
+      </div>
+      <div class="controls">
+        <div class="control-group">
+          <label>实部系数</label>
+          <input type="range" id="realCoef" min="-1" max="1" step="0.1" value="0">
+          <div class="control-value" id="realValue">a = 0</div>
+        </div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="drawSpiral()">绘制螺旋</button>
+        <button class="btn btn-secondary" onclick="resetSpiral()">重置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 实时计算器 -->
+  <div class="calculator-section">
+    <h2 class="section-title">🧮 欧拉公式计算器</h2>
+    <div class="calc-input-group">
+      <span class="calc-label">e<sup>i</sup></span>
+      <input type="number" class="calc-input" id="calcTheta" value="3.14159" step="0.1">
+      <span class="calc-label">= cos(θ) + i·sin(θ)</span>
+    </div>
+    <div class="calc-result">
+      <div class="calc-result-formula" id="calcFormula">e<sup>iπ</sup> = cos(π) + i·sin(π)</div>
+      <div class="calc-result-value" id="calcValue">= -1 + 0i = -1</div>
+    </div>
+  </div>
+
+  <!-- 美学解读 -->
+  <div class="beauty-section">
+    <div class="beauty-card">
+      <div class="beauty-icon">🎭</div>
+      <div class="beauty-title">简洁之美</div>
+      <div class="beauty-desc">仅用7个符号（e, i, π, +, 1, =, 0），连接了数学五大领域：分析、代数、几何、算术、逻辑</div>
+    </div>
+    <div class="beauty-card">
+      <div class="beauty-icon">🔗</div>
+      <div class="beauty-title">统一之美</div>
+      <div class="beauty-desc">指数函数与三角函数的桥梁，实数与虚数的统一，离散与连续的交汇</div>
+    </div>
+    <div class="beauty-card">
+      <div class="beauty-icon">♾️</div>
+      <div class="beauty-title">意外之美</div>
+      <div class="beauty-desc">无理数e的无理数次幂，结果竟是最简单的整数-1，这种"意外"令人惊叹</div>
+    </div>
+  </div>
+
+  <!-- 公式推导 -->
+  <div class="derivation-section">
+    <h2 class="section-title">📐 从泰勒展开到欧拉公式</h2>
+    <div class="derivation-step" id="step1">
+      <span class="step-number">1</span>
+      <span class="step-title">e^x 的泰勒展开</span>
+      <div class="step-content">
+        <div class="step-formula">e<sup>x</sup> = 1 + x + x²/2! + x³/3! + x⁴/4! + ...</div>
+        这是自然指数函数在 x=0 处的泰勒级数展开
+      </div>
+    </div>
+    <div class="derivation-step" id="step2">
+      <span class="step-number">2</span>
+      <span class="step-title">将 x 替换为 ix</span>
+      <div class="step-content">
+        <div class="step-formula">e<sup>ix</sup> = 1 + ix + (ix)²/2! + (ix)³/3! + (ix)⁴/4! + ...</div>
+        利用 i² = -1, i³ = -i, i⁴ = 1 的周期性
+      </div>
+    </div>
+    <div class="derivation-step" id="step3">
+      <span class="step-number">3</span>
+      <span class="step-title">分离实部与虚部</span>
+      <div class="step-content">
+        <div class="step-formula">e<sup>ix</sup> = (1 - x²/2! + x⁴/4! - ...) + i(x - x³/3! + x⁵/5! - ...)</div>
+        实部恰好是 cos(x) 的展开，虚部恰好是 sin(x) 的展开
+      </div>
+    </div>
+    <div class="derivation-step" id="step4">
+      <span class="step-number">4</span>
+      <span class="step-title">得到欧拉公式</span>
+      <div class="step-content">
+        <div class="step-formula">e<sup>ix</sup> = cos(x) + i·sin(x)</div>
+        当 x = π 时：e<sup>iπ</sup> = cos(π) + i·sin(π) = -1 + 0 = -1
+      </div>
+    </div>
+    <div class="derivation-step" id="step5">
+      <span class="step-number">5</span>
+      <span class="step-title">欧拉恒等式</span>
+      <div class="step-content">
+        <div class="step-formula" style="color: #ffd700; font-size: 1.5rem;">e<sup>iπ</sup> + 1 = 0</div>
+        五个最重要的数学常数，通过最基本的运算，完美地联系在一起
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="animateDerivation()" style="margin-top: 20px;">▶ 播放推导动画</button>
+  </div>
+
+  <!-- 历史时间线 -->
+  <div class="derivation-section">
+    <h2 class="section-title">📜 历史足迹</h2>
+    <div class="timeline-section">
+      <div class="timeline-item">
+        <div class="timeline-year">1714年</div>
+        <div class="timeline-content">罗杰·科茨首次发现了类似的关系式，但未能完全理解其意义</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">1748年</div>
+        <div class="timeline-content">莱昂哈德·欧拉在《无穷分析引论》中正式发表 e<sup>ix</sup> = cos(x) + i·sin(x)</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">1988年</div>
+        <div class="timeline-content">《数学智力》杂志读者投票，欧拉恒等式被评为"最美丽的数学公式"</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">2004年</div>
+        <div class="timeline-content">《物理世界》杂志调查，欧拉恒等式再次被评为"史上最伟大的方程"</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 分享区域 -->
+  <div class="calculator-section" style="text-align: center;">
+    <h2 class="section-title">💫 分享这份数学之美</h2>
+    <p style="color: rgba(255,255,255,0.6); margin-bottom: 20px;">
+      如果你也被欧拉公式的美所打动，不妨分享给更多人
+    </p>
+    <button class="btn btn-primary" onclick="copyShareText()" style="padding: 15px 40px;">
+      📋 复制分享文案
+    </button>
+    <div id="copyToast" style="display: none; margin-top: 15px; color: #4ade80;">✓ 已复制到剪贴板</div>
+  </div>
+</div>
+
+<script>
+// ========== 复平面可视化 ==========
+const complexCanvas = document.getElementById('complexPlane');
+const complexCtx = complexCanvas.getContext('2d');
+let animationId = null;
+let currentTheta = Math.PI;
+
+function initCanvas(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { width: rect.width, height: rect.height };
+}
+
+function drawComplexPlane(theta) {
+  const { width, height } = initCanvas(complexCanvas);
+  const ctx = complexCtx;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const radius = Math.min(width, height) * 0.35;
+  
+  // 清空画布
+  ctx.clearRect(0, 0, width, height);
+  
+  // 绘制网格
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+  ctx.lineWidth = 1;
+  for (let i = -5; i <= 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(centerX + i * radius / 2, 0);
+    ctx.lineTo(centerX + i * radius / 2, height);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, centerY + i * radius / 2);
+    ctx.lineTo(width, centerY + i * radius / 2);
+    ctx.stroke();
+  }
+  
+  // 绘制坐标轴
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, centerY);
+  ctx.lineTo(width, centerY);
+  ctx.moveTo(centerX, 0);
+  ctx.lineTo(centerX, height);
+  ctx.stroke();
+  
+  // 轴标签
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '14px serif';
+  ctx.fillText('Re', width - 25, centerY - 10);
+  ctx.fillText('Im', centerX + 10, 20);
+  ctx.fillText('1', centerX + radius + 5, centerY + 15);
+  ctx.fillText('-1', centerX - radius - 15, centerY + 15);
+  ctx.fillText('i', centerX + 5, centerY - radius - 5);
+  ctx.fillText('-i', centerX + 5, centerY + radius + 15);
+
+  // 绘制单位圆
+  ctx.strokeStyle = 'rgba(255,215,0,0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // 绘制角度弧
+  ctx.strokeStyle = 'rgba(79,195,247,0.5)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius * 0.3, 0, -theta, true);
+  ctx.stroke();
+  
+  // 绘制从原点到点的线
+  const x = Math.cos(theta);
+  const y = Math.sin(theta);
+  const pointX = centerX + x * radius;
+  const pointY = centerY - y * radius;
+  
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY);
+  ctx.lineTo(pointX, pointY);
+  ctx.stroke();
+  
+  // 绘制虚线投影
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(pointX, pointY);
+  ctx.lineTo(pointX, centerY);
+  ctx.moveTo(pointX, pointY);
+  ctx.lineTo(centerX, pointY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  
+  // 绘制点
+  ctx.fillStyle = '#ffd700';
+  ctx.beginPath();
+  ctx.arc(pointX, pointY, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a1a2e';
+  ctx.beginPath();
+  ctx.arc(pointX, pointY, 4, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // 显示坐标
+  ctx.fillStyle = '#ffd700';
+  ctx.font = 'bold 14px monospace';
+  const coordText = `(${x.toFixed(3)}, ${y.toFixed(3)}i)`;
+  ctx.fillText(coordText, pointX + 15, pointY - 15);
+  
+  // 显示 e^(iθ)
+  ctx.fillStyle = '#4fc3f7';
+  ctx.font = 'italic 16px serif';
+  ctx.fillText(`e^(i·${(theta/Math.PI).toFixed(2)}π)`, 15, 30);
+}
+
+// ========== 螺旋画布 ==========
+const spiralCanvas = document.getElementById('spiralCanvas');
+const spiralCtx = spiralCanvas.getContext('2d');
+
+function drawSpiralCanvas(realCoef = 0) {
+  const { width, height } = initCanvas(spiralCanvas);
+  const ctx = spiralCtx;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const scale = Math.min(width, height) * 0.15;
+  
+  ctx.clearRect(0, 0, width, height);
+  
+  // 绘制坐标轴
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, centerY);
+  ctx.lineTo(width, centerY);
+  ctx.moveTo(centerX, 0);
+  ctx.lineTo(centerX, height);
+  ctx.stroke();
+  
+  // 绘制 e^((a+i)θ) 的轨迹
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  
+  let first = true;
+  for (let t = 0; t <= Math.PI * 6; t += 0.02) {
+    const r = Math.exp(realCoef * t);
+    const x = r * Math.cos(t);
+    const y = r * Math.sin(t);
+    const px = centerX + x * scale;
+    const py = centerY - y * scale;
+    
+    if (first) {
+      ctx.moveTo(px, py);
+      first = false;
+    } else {
+      ctx.lineTo(px, py);
+    }
+  }
+  ctx.stroke();
+  
+  // 标注特殊点
+  const specialPoints = [
+    { t: 0, label: 'θ=0' },
+    { t: Math.PI, label: 'θ=π' },
+    { t: Math.PI * 2, label: 'θ=2π' }
+  ];
+  
+  ctx.fillStyle = '#4fc3f7';
+  ctx.font = '12px monospace';
+  specialPoints.forEach(p => {
+    const r = Math.exp(realCoef * p.t);
+    const x = r * Math.cos(p.t);
+    const y = r * Math.sin(p.t);
+    const px = centerX + x * scale;
+    const py = centerY - y * scale;
+    
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillText(p.label, px + 8, py - 8);
+  });
+  
+  // 显示公式
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = 'italic 14px serif';
+  if (realCoef === 0) {
+    ctx.fillText('e^(iθ) - 单位圆', 15, 25);
+  } else {
+    ctx.fillText(`e^((${realCoef.toFixed(1)}+i)θ) - 对数螺旋`, 15, 25);
+  }
+}
+
+// ========== 交互控制 ==========
+const thetaSlider = document.getElementById('thetaSlider');
+const thetaValue = document.getElementById('thetaValue');
+const realCoefSlider = document.getElementById('realCoef');
+const realValue = document.getElementById('realValue');
+
+thetaSlider.addEventListener('input', function() {
+  currentTheta = parseFloat(this.value);
+  updateThetaDisplay();
+  drawComplexPlane(currentTheta);
+});
+
+realCoefSlider.addEventListener('input', function() {
+  const val = parseFloat(this.value);
+  realValue.textContent = `a = ${val.toFixed(1)}`;
+  drawSpiralCanvas(val);
+});
+
+function updateThetaDisplay() {
+  const piMultiple = currentTheta / Math.PI;
+  if (Math.abs(piMultiple - Math.round(piMultiple)) < 0.01) {
+    const n = Math.round(piMultiple);
+    if (n === 0) thetaValue.textContent = 'θ = 0';
+    else if (n === 1) thetaValue.textContent = 'θ = π';
+    else if (n === -1) thetaValue.textContent = 'θ = -π';
+    else thetaValue.textContent = `θ = ${n}π`;
+  } else {
+    thetaValue.textContent = `θ = ${piMultiple.toFixed(2)}π`;
+  }
+}
+
+function animateRotation() {
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+    return;
+  }
+  
+  let startTheta = 0;
+  const duration = 4000;
+  const startTime = performance.now();
+  
+  function animate(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    currentTheta = startTheta + progress * Math.PI * 2;
+    
+    thetaSlider.value = currentTheta;
+    updateThetaDisplay();
+    drawComplexPlane(currentTheta);
+    
+    if (progress < 1) {
+      animationId = requestAnimationFrame(animate);
+    } else {
+      animationId = null;
+    }
+  }
+  
+  animationId = requestAnimationFrame(animate);
+}
+
+function resetToPI() {
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+  currentTheta = Math.PI;
+  thetaSlider.value = Math.PI;
+  updateThetaDisplay();
+  drawComplexPlane(currentTheta);
+}
+
+function drawSpiral() {
+  const val = parseFloat(realCoefSlider.value);
+  // 添加动画效果：先清空再重绘
+  const { width, height } = initCanvas(spiralCanvas);
+  spiralCtx.clearRect(0, 0, width, height);
+  
+  // 动画绘制螺旋
+  animateSpiralDraw(val);
+}
+
+function animateSpiralDraw(realCoef) {
+  const { width, height } = initCanvas(spiralCanvas);
+  const ctx = spiralCtx;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const scale = Math.min(width, height) * 0.15;
+  const maxTheta = Math.PI * 6;
+  const duration = 1500;
+  const startTime = performance.now();
+  
+  function animate(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const currentMaxTheta = progress * maxTheta;
+    
+    ctx.clearRect(0, 0, width, height);
+    
+    // 绘制坐标轴
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, centerY);
+    ctx.lineTo(width, centerY);
+    ctx.moveTo(centerX, 0);
+    ctx.lineTo(centerX, height);
+    ctx.stroke();
+    
+    // 绘制螺旋
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    let first = true;
+    for (let t = 0; t <= currentMaxTheta; t += 0.02) {
+      const r = Math.exp(realCoef * t);
+      const x = r * Math.cos(t);
+      const y = r * Math.sin(t);
+      const px = centerX + x * scale;
+      const py = centerY - y * scale;
+      
+      if (first) {
+        ctx.moveTo(px, py);
+        first = false;
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+    
+    // 显示公式
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = 'italic 14px serif';
+    if (realCoef === 0) {
+      ctx.fillText('e^(iθ) - 单位圆', 15, 25);
+    } else {
+      ctx.fillText(`e^((${realCoef.toFixed(1)}+i)θ) - 对数螺旋`, 15, 25);
+    }
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // 绘制完成后添加特殊点标注
+      const specialPoints = [
+        { t: 0, label: 'θ=0' },
+        { t: Math.PI, label: 'θ=π' },
+        { t: Math.PI * 2, label: 'θ=2π' }
+      ];
+      
+      ctx.fillStyle = '#4fc3f7';
+      ctx.font = '12px monospace';
+      specialPoints.forEach(p => {
+        const r = Math.exp(realCoef * p.t);
+        const x = r * Math.cos(p.t);
+        const y = r * Math.sin(p.t);
+        const px = centerX + x * scale;
+        const py = centerY - y * scale;
+        
+        ctx.beginPath();
+        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillText(p.label, px + 8, py - 8);
+      });
+    }
+  }
+  
+  requestAnimationFrame(animate);
+}
+
+function resetSpiral() {
+  realCoefSlider.value = 0;
+  realValue.textContent = 'a = 0';
+  drawSpiralCanvas(0);
+}
+
+// ========== 计算器 ==========
+const calcTheta = document.getElementById('calcTheta');
+const calcFormula = document.getElementById('calcFormula');
+const calcValue = document.getElementById('calcValue');
+
+calcTheta.addEventListener('input', updateCalculator);
+
+function updateCalculator() {
+  const theta = parseFloat(calcTheta.value) || 0;
+  const cosVal = Math.cos(theta);
+  const sinVal = Math.sin(theta);
+  
+  // 格式化显示
+  const thetaStr = formatTheta(theta);
+  calcFormula.innerHTML = `e<sup>i·${thetaStr}</sup> = cos(${thetaStr}) + i·sin(${thetaStr})`;
+  
+  // 计算结果
+  const realPart = cosVal.toFixed(6);
+  const imagPart = sinVal.toFixed(6);
+  
+  let result = '';
+  if (Math.abs(sinVal) < 0.0001) {
+    result = `= ${realPart}`;
+  } else if (Math.abs(cosVal) < 0.0001) {
+    result = `= ${imagPart}i`;
+  } else {
+    const sign = sinVal >= 0 ? '+' : '-';
+    result = `= ${realPart} ${sign} ${Math.abs(sinVal).toFixed(6)}i`;
+  }
+  
+  calcValue.textContent = result;
+}
+
+function formatTheta(theta) {
+  const piMultiple = theta / Math.PI;
+  if (Math.abs(piMultiple - Math.round(piMultiple * 4) / 4) < 0.01) {
+    const n = Math.round(piMultiple * 4) / 4;
+    if (n === 0) return '0';
+    if (n === 1) return 'π';
+    if (n === -1) return '-π';
+    if (n === 0.5) return 'π/2';
+    if (n === -0.5) return '-π/2';
+    if (n === 0.25) return 'π/4';
+    return `${n}π`;
+  }
+  return theta.toFixed(3);
+}
+
+// ========== 推导动画 ==========
+function animateDerivation() {
+  const steps = document.querySelectorAll('.derivation-step');
+  steps.forEach(step => step.classList.remove('visible'));
+  
+  steps.forEach((step, index) => {
+    setTimeout(() => {
+      step.classList.add('visible');
+    }, index * 800);
+  });
+}
+
+// ========== 常数高亮 ==========
+function highlightConstant(card) {
+  document.querySelectorAll('.constant-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+  
+  const constant = card.dataset.constant;
+  const descriptions = {
+    'e': '自然常数 e ≈ 2.71828... 是自然对数的底数，描述连续增长的极限。它出现在复利计算、概率论、微积分等众多领域。',
+    'i': '虚数单位 i = √(-1)，打开了复数的大门。它让我们能够解决 x² + 1 = 0 这样在实数范围内无解的方程。',
+    'pi': '圆周率 π ≈ 3.14159... 是圆的周长与直径之比，是几何学中最重要的常数，也出现在概率、物理等领域。',
+    '1': '1 是乘法的单位元，是自然数的起点，代表"存在"和"统一"。任何数乘以1都等于它本身。',
+    '0': '0 是加法的单位元，代表"虚无"。它是人类数学史上最伟大的发明之一，让位值记数法成为可能。'
+  };
+  
+  // 可以添加一个描述区域显示详细信息
+  console.log(descriptions[constant]);
+}
+
+// ========== 分享功能 ==========
+function copyShareText() {
+  const shareText = `🌟 欧拉公式 e^(iπ) + 1 = 0
+
+被费曼称为"数学的珠宝"，这个公式用7个符号连接了数学五大领域：
+• e - 自然常数（分析学）
+• i - 虚数单位（代数学）  
+• π - 圆周率（几何学）
+• 1 - 乘法单位元（算术）
+• 0 - 加法单位元（逻辑）
+
+来这个交互式演示亲眼看看它的美 👇
+${window.location.href}`;
+
+  navigator.clipboard.writeText(shareText).then(() => {
+    const toast = document.getElementById('copyToast');
+    toast.style.display = 'block';
+    setTimeout(() => {
+      toast.style.display = 'none';
+    }, 2000);
+  });
+}
+
+// ========== 初始化 ==========
+window.addEventListener('load', () => {
+  drawComplexPlane(Math.PI);
+  drawSpiralCanvas(0);
+  updateCalculator();
+  
+  // 延迟显示推导步骤
+  setTimeout(() => {
+    document.querySelectorAll('.derivation-step').forEach(step => {
+      step.classList.add('visible');
+    });
+  }, 500);
+});
+
+// 窗口大小改变时重绘
+window.addEventListener('resize', () => {
+  drawComplexPlane(currentTheta);
+  drawSpiralCanvas(parseFloat(realCoefSlider.value));
+});
+</script>
+</body>
+</html>

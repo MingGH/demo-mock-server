@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>工资 vs 成长 - 老板的话是洗脑还是真理？</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 35px; }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 10px; font-size: 15px; }
+
+    /* 场景选择 */
+    .scenario-tabs {
+      display: flex; justify-content: center; gap: 10px;
+      margin-bottom: 30px; flex-wrap: wrap;
+    }
+    .scenario-tab {
+      padding: 10px 22px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7);
+      cursor: pointer; transition: all 0.3s; font-size: 14px;
+    }
+    .scenario-tab:hover { border-color: rgba(251,191,36,0.5); color: white; }
+    .scenario-tab.active {
+      background: rgba(251,191,36,0.15); border-color: #fbbf24;
+      color: #fbbf24; font-weight: 600;
+    }
+
+    /* 控制面板 */
+    .controls-card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .controls-title {
+      color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 18px;
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    .input-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;
+    }
+    .input-item label {
+      display: block; color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 8px;
+    }
+    .input-wrapper { position: relative; }
+    .input-wrapper input[type="number"] {
+      width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 12px 50px 12px 15px; color: white;
+      font-size: 16px; font-weight: 600; transition: border-color 0.3s;
+    }
+    .input-wrapper input[type="number"]:focus { outline: none; border-color: #fbbf24; }
+    .input-wrapper .unit {
+      position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+      color: rgba(255,255,255,0.3); font-size: 12px;
+    }
+    input[type=range] {
+      -webkit-appearance: none; width: 100%; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px; margin-top: 8px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%;
+      background: #fbbf24; cursor: pointer; box-shadow: 0 0 10px rgba(251,191,36,0.5);
+    }
+
+    /* 双列对比 */
+    .vs-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; margin-bottom: 25px; }
+    .vs-card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 20px;
+    }
+    .vs-card.left { border-right: none; border-radius: 16px 0 0 16px; }
+    .vs-card.right { border-left: none; border-radius: 0 16px 16px 0; }
+    .vs-divider {
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.03); border-top: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 1px solid rgba(255,255,255,0.08); padding: 0 15px;
+      font-size: 1.5rem; color: rgba(255,255,255,0.3);
+    }
+    .vs-label {
+      font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .vs-value { font-size: 1.8rem; font-weight: 700; margin-bottom: 4px; }
+    .vs-value.gold { color: #fbbf24; }
+    .vs-value.blue { color: #60a5fa; }
+    .vs-value.green { color: #4ade80; }
+    .vs-value.red { color: #f87171; }
+    .vs-desc { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+    /* 图表 */
+    .chart-container {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 20px;
+      height: 420px; margin-bottom: 25px;
+    }
+
+    /* 结论卡片 */
+    .verdict-card {
+      background: linear-gradient(135deg, rgba(251,191,36,0.08), rgba(245,158,11,0.03));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 16px; padding: 25px;
+      margin-bottom: 25px;
+    }
+    .verdict-card.win-growth {
+      background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(16,185,129,0.03));
+      border-color: rgba(74,222,128,0.2);
+    }
+    .verdict-card.win-salary {
+      background: linear-gradient(135deg, rgba(96,165,250,0.08), rgba(59,130,246,0.03));
+      border-color: rgba(96,165,250,0.2);
+    }
+    .verdict-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 12px; }
+    .verdict-text { color: rgba(255,255,255,0.7); line-height: 1.8; font-size: 14px; }
+    .verdict-text strong { color: white; }
+    .verdict-text .highlight { color: #fbbf24; font-weight: 600; }
+    .verdict-text .highlight-green { color: #4ade80; font-weight: 600; }
+    .verdict-text .highlight-blue { color: #60a5fa; font-weight: 600; }
+
+    /* 真相区域 */
+    .truth-section {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 30px; margin-bottom: 25px;
+    }
+    .truth-title {
+      font-size: 1.3rem; font-weight: 700; margin-bottom: 20px; text-align: center;
+      color: #fbbf24;
+    }
+    .truth-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .truth-item {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 20px;
+      border-left: 3px solid;
+    }
+    .truth-item.trap { border-color: #f87171; }
+    .truth-item.real { border-color: #4ade80; }
+    .truth-item h4 { font-size: 15px; margin-bottom: 8px; }
+    .truth-item.trap h4 { color: #f87171; }
+    .truth-item.real h4 { color: #4ade80; }
+    .truth-item p { color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1.7; }
+
+    /* 底部结论 */
+    .final-verdict {
+      text-align: center; padding: 30px; margin-bottom: 20px;
+    }
+    .final-verdict h2 {
+      font-size: 1.5rem; margin-bottom: 15px; color: white;
+    }
+    .final-verdict p {
+      color: rgba(255,255,255,0.6); font-size: 15px; line-height: 1.8; max-width: 700px; margin: 0 auto;
+    }
+    .final-verdict .formula {
+      display: inline-block; background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3);
+      border-radius: 10px; padding: 12px 25px; margin: 15px 0; font-size: 1.1rem;
+      color: #fbbf24; font-weight: 600;
+    }
+
+    /* 复制按钮 */
+    .copy-section { text-align: center; margin: 20px 0; }
+    .copy-btn {
+      background: linear-gradient(90deg, #fbbf24, #f59e0b); border: none;
+      border-radius: 25px; padding: 12px 30px; color: #1a1a2e; font-size: 15px;
+      font-weight: 600; cursor: pointer; transition: all 0.3s;
+    }
+    .copy-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+
+    @media (max-width: 700px) {
+      .vs-grid { grid-template-columns: 1fr; }
+      .vs-card.left, .vs-card.right { border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); }
+      .vs-divider { padding: 10px; border: none; }
+      .header h1 { font-size: 1.5rem; }
+      .vs-value { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>💰 工资 vs 成长：老板的话是洗脑还是真理？</h1>
+    <p>用数学模型拆解"年轻人别太看重工资"这句话</p>
+  </div>
+
+  <!-- 场景选择 -->
+  <div class="scenario-tabs">
+    <button class="scenario-tab active" onclick="switchScenario('compare')">📊 收入对比模拟</button>
+    <button class="scenario-tab" onclick="switchScenario('breakeven')">⏱️ 回本时间计算</button>
+    <button class="scenario-tab" onclick="switchScenario('risk')">🎲 风险概率分析</button>
+  </div>
+
+  <!-- 场景1：收入对比 -->
+  <div id="scene-compare">
+    <div class="controls-card">
+      <div class="controls-title">⚙️ 调整参数，看看两条路的差距</div>
+      <div class="input-grid">
+        <div class="input-item">
+          <label>🅰️ 高薪路线 - 月薪</label>
+          <div class="input-wrapper">
+            <input type="number" id="highSalary" value="15000" oninput="updateCompare()">
+            <span class="unit">元/月</span>
+          </div>
+        </div>
+        <div class="input-item">
+          <label>🅰️ 高薪路线 - 年涨薪 <span id="highGrowthVal" style="color:#60a5fa">5%</span></label>
+          <input type="range" id="highGrowth" min="0" max="15" value="5" step="0.5" oninput="updateCompare()">
+        </div>
+        <div class="input-item">
+          <label>🅱️ 成长路线 - 月薪</label>
+          <div class="input-wrapper">
+            <input type="number" id="lowSalary" value="8000" oninput="updateCompare()">
+            <span class="unit">元/月</span>
+          </div>
+        </div>
+        <div class="input-item">
+          <label>🅱️ 成长路线 - 年涨薪 <span id="lowGrowthVal" style="color:#4ade80">20%</span></label>
+          <input type="range" id="lowGrowth" min="5" max="50" value="20" step="1" oninput="updateCompare()">
+        </div>
+        <div class="input-item">
+          <label>模拟年限 <span id="yearsVal" style="color:#fbbf24">10年</span></label>
+          <input type="range" id="simYears" min="3" max="20" value="10" step="1" oninput="updateCompare()">
+        </div>
+      </div>
+    </div>
+
+    <div class="vs-grid" id="vsCards">
+      <!-- 动态生成 -->
+    </div>
+
+    <div class="chart-container" id="compareChart"></div>
+
+    <div id="compareVerdict"></div>
+  </div>
+
+  <!-- 场景2：回本时间 -->
+  <div id="scene-breakeven" style="display:none">
+    <div class="controls-card">
+      <div class="controls-title">⚙️ 选择成长路线，要多久才能追回损失的工资？</div>
+      <div class="input-grid">
+        <div class="input-item">
+          <label>放弃的月薪差额</label>
+          <div class="input-wrapper">
+            <input type="number" id="beSalaryGap" value="7000" oninput="updateBreakeven()">
+            <span class="unit">元/月</span>
+          </div>
+        </div>
+        <div class="input-item">
+          <label>成长路线额外涨薪 <span id="beExtraGrowthVal" style="color:#4ade80">15%</span></label>
+          <input type="range" id="beExtraGrowth" min="5" max="40" value="15" step="1" oninput="updateBreakeven()">
+        </div>
+        <div class="input-item">
+          <label>低薪起点月薪</label>
+          <div class="input-wrapper">
+            <input type="number" id="beLowStart" value="8000" oninput="updateBreakeven()">
+            <span class="unit">元/月</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-container" id="breakevenChart"></div>
+    <div id="breakevenVerdict"></div>
+  </div>
+
+  <!-- 场景3：风险分析 -->
+  <div id="scene-risk" style="display:none">
+    <div class="controls-card">
+      <div class="controls-title">🎲 成长机会不是确定的，加入概率看看真实期望</div>
+      <div class="input-grid">
+        <div class="input-item">
+          <label>成长兑现概率 <span id="riskProbVal" style="color:#fbbf24">60%</span></label>
+          <input type="range" id="riskProb" min="10" max="100" value="60" step="5" oninput="updateRisk()">
+        </div>
+        <div class="input-item">
+          <label>成功后月薪涨幅</label>
+          <div class="input-wrapper">
+            <input type="number" id="riskSuccessBoost" value="25000" oninput="updateRisk()">
+            <span class="unit">元/月</span>
+          </div>
+        </div>
+        <div class="input-item">
+          <label>失败后月薪</label>
+          <div class="input-wrapper">
+            <input type="number" id="riskFailSalary" value="10000" oninput="updateRisk()">
+            <span class="unit">元/月</span>
+          </div>
+        </div>
+        <div class="input-item">
+          <label>确定性高薪月薪</label>
+          <div class="input-wrapper">
+            <input type="number" id="riskSureSalary" value="15000" oninput="updateRisk()">
+            <span class="unit">元/月</span>
+          </div>
+        </div>
+        <div class="input-item">
+          <label>蒙特卡洛模拟次数 <span id="riskSimVal" style="color:#fbbf24">1000</span></label>
+          <input type="range" id="riskSimCount" min="100" max="5000" value="1000" step="100" oninput="updateRisk()">
+        </div>
+      </div>
+    </div>
+    <div class="chart-container" id="riskChart"></div>
+    <div id="riskVerdict"></div>
+  </div>
+
+  <!-- 真相区域 -->
+  <div class="truth-section">
+    <div class="truth-title">🔍 什么时候是洗脑？什么时候是真理？</div>
+    <div class="truth-grid">
+      <div class="truth-item trap">
+        <h4>🚩 大概率是洗脑，如果...</h4>
+        <p>
+          • 公司没有清晰的晋升通道和时间表<br>
+          • "成长机会"只是画饼，没有具体的技能提升计划<br>
+          • 同行业同岗位薪资明显高于你<br>
+          • 老板自己开豪车，让你"别看重钱"<br>
+          • 你已经工作3年+，还在听这句话<br>
+          • 公司人员流动率很高
+        </p>
+      </div>
+      <div class="truth-item real">
+        <h4>✅ 可能是真理，如果...</h4>
+        <p>
+          • 你能接触到核心业务和关键技术<br>
+          • 有明确的导师制度和培养计划<br>
+          • 公司/行业处于高速增长期<br>
+          • 你能看到前辈的成长轨迹<br>
+          • 薪资差距在你可承受范围内（<30%）<br>
+          • 你还年轻（<28岁），试错成本低
+        </p>
+      </div>
+      <div class="truth-item trap">
+        <h4>📐 数学上的关键条件</h4>
+        <p>
+          成长路线要跑赢高薪路线，需要满足：<br>
+          <strong>额外年涨薪率 > 薪资差距比 ÷ 可等待年限</strong><br><br>
+          例：放弃7000月薪差距，起薪8000，<br>
+          需要额外涨薪 > 87.5%/可等待年限<br>
+          如果你能等5年，需要年均额外涨薪 > 17.5%
+        </p>
+      </div>
+      <div class="truth-item real">
+        <h4>🧠 最终判断公式</h4>
+        <p>
+          <strong>成长价值 = 成长兑现概率 × 未来收益增量</strong><br><br>
+          如果 成长价值 > 当前薪资损失 → 值得<br>
+          如果 成长价值 < 当前薪资损失 → 洗脑<br><br>
+          关键变量：<strong>概率</strong>。大多数人高估了成长兑现的概率。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 最终结论 -->
+  <div class="final-verdict">
+    <h2>📌 一句话结论</h2>
+    <div class="formula">成长的价值 = 概率 × 涨幅 × 时间 − 当前损失</div>
+    <p>
+      老板说的可能是真理，也可能是洗脑。区别在于：<br>
+      <strong>真正的成长机会有具体的路径、可量化的目标、和可验证的前辈案例。</strong><br>
+      如果只是一句空话，那就是用"未来"偷走你的"现在"。<br><br>
+      记住：<strong>工资是确定性收益，成长是概率性收益。</strong><br>
+      用确定性换概率性，你需要足够高的期望值来补偿风险。
+    </p>
+  </div>
+
+  <div class="copy-section">
+    <button class="copy-btn" onclick="copyAnswer()">📋 复制知乎回答文案</button>
+  </div>
+</div>
+
+<script>
+  // ========== 初始化图表 ==========
+  let compareChartInstance, breakevenChartInstance, riskChartInstance;
+
+  function initCharts() {
+    compareChartInstance = echarts.init(document.getElementById('compareChart'));
+    breakevenChartInstance = echarts.init(document.getElementById('breakevenChart'));
+    riskChartInstance = echarts.init(document.getElementById('riskChart'));
+  }
+
+  const fmt = (n) => {
+    if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+    return Math.round(n).toLocaleString();
+  };
+
+  // ========== 场景切换 ==========
+  function switchScenario(name) {
+    document.querySelectorAll('.scenario-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    ['compare', 'breakeven', 'risk'].forEach(s => {
+      document.getElementById('scene-' + s).style.display = s === name ? 'block' : 'none';
+    });
+    if (name === 'compare') updateCompare();
+    if (name === 'breakeven') updateBreakeven();
+    if (name === 'risk') updateRisk();
+  }
+
+  // ========== 场景1：收入对比 ==========
+  function updateCompare() {
+    const highSalary = +document.getElementById('highSalary').value;
+    const highGrowth = +document.getElementById('highGrowth').value / 100;
+    const lowSalary = +document.getElementById('lowSalary').value;
+    const lowGrowth = +document.getElementById('lowGrowth').value / 100;
+    const years = +document.getElementById('simYears').value;
+
+    document.getElementById('highGrowthVal').textContent = (highGrowth * 100).toFixed(1) + '%';
+    document.getElementById('lowGrowthVal').textContent = (lowGrowth * 100).toFixed(0) + '%';
+    document.getElementById('yearsVal').textContent = years + '年';
+
+    const labels = [];
+    const highData = [], lowData = [];
+    const highCumul = [], lowCumul = [];
+    let hTotal = 0, lTotal = 0;
+    let crossYear = -1;
+
+    for (let y = 0; y <= years; y++) {
+      labels.push('第' + y + '年');
+      const hMonthly = highSalary * Math.pow(1 + highGrowth, y);
+      const lMonthly = lowSalary * Math.pow(1 + lowGrowth, y);
+      highData.push(Math.round(hMonthly));
+      lowData.push(Math.round(lMonthly));
+      if (y > 0) {
+        hTotal += highSalary * Math.pow(1 + highGrowth, y - 1) * 12;
+        lTotal += lowSalary * Math.pow(1 + lowGrowth, y - 1) * 12;
+      }
+      highCumul.push(Math.round(hTotal));
+      lowCumul.push(Math.round(lTotal));
+      if (crossYear < 0 && lMonthly >= hMonthly) crossYear = y;
+    }
+
+    // VS 卡片
+    const finalH = highData[years], finalL = lowData[years];
+    document.getElementById('vsCards').innerHTML = `
+      <div class="vs-card left">
+        <div class="vs-label">🅰️ 高薪路线 · 第${years}年月薪</div>
+        <div class="vs-value blue">${fmt(finalH)}</div>
+        <div class="vs-desc">累计收入 ${fmt(hTotal)}</div>
+      </div>
+      <div class="vs-divider">VS</div>
+      <div class="vs-card right">
+        <div class="vs-label">🅱️ 成长路线 · 第${years}年月薪</div>
+        <div class="vs-value ${finalL > finalH ? 'green' : 'gold'}">${fmt(finalL)}</div>
+        <div class="vs-desc">累计收入 ${fmt(lTotal)}</div>
+      </div>
+    `;
+
+    // 图表
+    compareChartInstance.setOption({
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(0,0,0,0.85)', borderColor: '#fbbf24',
+        textStyle: { color: '#fff', fontSize: 13 },
+        formatter: params => {
+          let s = params[0].name + '<br/>';
+          params.forEach(p => { s += p.marker + p.seriesName + ': ' + fmt(p.value) + '/月<br/>'; });
+          return s;
+        }
+      },
+      legend: { data: ['高薪路线 月薪', '成长路线 月薪'], textStyle: { color: '#aaa' }, bottom: 0 },
+      grid: { left: '3%', right: '4%', bottom: '12%', top: '8%', containLabel: true },
+      xAxis: {
+        type: 'category', data: labels, boundaryGap: false,
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+        axisLabel: { color: 'rgba(255,255,255,0.5)' }
+      },
+      yAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+        axisLabel: { color: 'rgba(255,255,255,0.5)', formatter: v => fmt(v) }
+      },
+      series: [
+        {
+          name: '高薪路线 月薪', type: 'line', data: highData, symbol: 'none',
+          lineStyle: { color: '#60a5fa', width: 3 }, itemStyle: { color: '#60a5fa' },
+          areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[
+            {offset:0,color:'rgba(96,165,250,0.2)'},{offset:1,color:'rgba(96,165,250,0)'}
+          ])}
+        },
+        {
+          name: '成长路线 月薪', type: 'line', data: lowData, symbol: 'none',
+          lineStyle: { color: '#4ade80', width: 3 }, itemStyle: { color: '#4ade80' },
+          areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[
+            {offset:0,color:'rgba(74,222,128,0.2)'},{offset:1,color:'rgba(74,222,128,0)'}
+          ])}
+        }
+      ],
+      ...(crossYear > 0 ? {
+        markLine: { data: [{ xAxis: crossYear }], lineStyle: { color: '#fbbf24', type: 'dashed' } }
+      } : {})
+    });
+
+    // 结论
+    let verdictClass = '', verdictHTML = '';
+    if (crossYear > 0 && crossYear <= years) {
+      const cumulDiff = lTotal - hTotal;
+      verdictClass = cumulDiff > 0 ? 'win-growth' : 'win-salary';
+      verdictHTML = `
+        <div class="verdict-title">${cumulDiff > 0 ? '✅ 成长路线胜出！' : '⚠️ 成长路线月薪反超，但累计收入仍落后'}</div>
+        <div class="verdict-text">
+          成长路线在<span class="highlight">第${crossYear}年</span>月薪反超高薪路线。<br>
+          ${years}年累计收入差距：<strong>${cumulDiff > 0 ? '成长路线多赚' : '高薪路线多赚'} ${fmt(Math.abs(cumulDiff))}</strong><br>
+          ${cumulDiff > 0 ? '长期来看，成长路线的复利效应完全覆盖了早期的薪资损失。' : '虽然月薪已反超，但前期损失的累计收入还没追回来。再等几年看看？'}
+        </div>`;
+    } else {
+      verdictClass = 'win-salary';
+      verdictHTML = `
+        <div class="verdict-title">❌ ${years}年内成长路线未能反超</div>
+        <div class="verdict-text">
+          在当前参数下，成长路线的涨薪速度不足以在${years}年内追上高薪路线。<br>
+          累计少赚 <strong>${fmt(hTotal - lTotal)}</strong>。<br>
+          <span class="highlight">这种情况下，"别看重工资"大概率是洗脑。</span>
+        </div>`;
+    }
+    document.getElementById('compareVerdict').innerHTML = `<div class="verdict-card ${verdictClass}">${verdictHTML}</div>`;
+  }
+</script>
+
+<script>
+  // ========== 场景2：回本时间 ==========
+  function updateBreakeven() {
+    const gap = +document.getElementById('beSalaryGap').value;
+    const extraGrowth = +document.getElementById('beExtraGrowth').value / 100;
+    const lowStart = +document.getElementById('beLowStart').value;
+    const highStart = lowStart + gap;
+
+    document.getElementById('beExtraGrowthVal').textContent = (extraGrowth * 100).toFixed(0) + '%';
+
+    const highGrowthRate = 0.05; // 高薪路线固定5%涨薪
+    const lowGrowthRate = highGrowthRate + extraGrowth;
+    const maxYears = 20;
+    const labels = [], cumulDiffData = [];
+    let hTotal = 0, lTotal = 0, breakevenYear = -1;
+
+    for (let y = 0; y <= maxYears; y++) {
+      labels.push('第' + y + '年');
+      if (y > 0) {
+        hTotal += highStart * Math.pow(1 + highGrowthRate, y - 1) * 12;
+        lTotal += lowStart * Math.pow(1 + lowGrowthRate, y - 1) * 12;
+      }
+      cumulDiffData.push(Math.round(lTotal - hTotal));
+      if (breakevenYear < 0 && lTotal >= hTotal && y > 0) breakevenYear = y;
+    }
+
+    breakevenChartInstance.setOption({
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis', backgroundColor: 'rgba(0,0,0,0.85)', borderColor: '#fbbf24',
+        textStyle: { color: '#fff' },
+        formatter: params => {
+          const v = params[0].value;
+          return params[0].name + '<br/>累计收入差：' + (v >= 0 ? '+' : '') + fmt(v);
+        }
+      },
+      grid: { left: '3%', right: '4%', bottom: '8%', top: '8%', containLabel: true },
+      xAxis: {
+        type: 'category', data: labels, boundaryGap: false,
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+        axisLabel: { color: 'rgba(255,255,255,0.5)' }
+      },
+      yAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+        axisLabel: { color: 'rgba(255,255,255,0.5)', formatter: v => fmt(v) }
+      },
+      visualMap: {
+        show: false, pieces: [{ lt: 0, color: '#f87171' }, { gte: 0, color: '#4ade80' }],
+        seriesIndex: 0
+      },
+      series: [{
+        type: 'line', data: cumulDiffData, symbol: 'none',
+        lineStyle: { width: 3 },
+        areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[
+          {offset:0,color:'rgba(74,222,128,0.15)'},{offset:0.5,color:'rgba(0,0,0,0)'},
+          {offset:1,color:'rgba(248,113,113,0.15)'}
+        ])},
+        markLine: {
+          data: [{ yAxis: 0 }],
+          lineStyle: { color: 'rgba(255,255,255,0.3)', type: 'dashed' },
+          label: { formatter: '回本线', color: '#fbbf24' }
+        }
+      }]
+    });
+
+    let verdictHTML = '';
+    if (breakevenYear > 0) {
+      verdictHTML = `
+        <div class="verdict-card win-growth">
+          <div class="verdict-title">⏱️ 回本时间：第 ${breakevenYear} 年</div>
+          <div class="verdict-text">
+            选择低薪+高成长路线，你需要 <span class="highlight">${breakevenYear} 年</span> 才能在累计收入上追平高薪路线。<br>
+            之后每一年，成长路线都会越拉越大差距。<br><br>
+            <strong>判断标准：</strong>如果你能承受 ${breakevenYear} 年的收入损失，且成长确实能兑现，那就值得。<br>
+            ${breakevenYear <= 3 ? '✅ 3年内回本，风险可控，值得一试。' :
+              breakevenYear <= 5 ? '⚠️ 3-5年回本，需要较强的信心和经济基础。' :
+              '🚩 超过5年才回本，风险较高，请谨慎评估成长的确定性。'}
+          </div>
+        </div>`;
+    } else {
+      verdictHTML = `
+        <div class="verdict-card win-salary">
+          <div class="verdict-title">❌ 20年内无法回本</div>
+          <div class="verdict-text">
+            在当前参数下，成长路线的额外涨薪不足以弥补初始薪资差距。<br>
+            <span class="highlight">这就是典型的洗脑场景。</span>成长速度不够快，永远追不回来。
+          </div>
+        </div>`;
+    }
+    document.getElementById('breakevenVerdict').innerHTML = verdictHTML;
+  }
+
+  // ========== 场景3：风险概率分析 ==========
+  function updateRisk() {
+    const prob = +document.getElementById('riskProb').value / 100;
+    const successSalary = +document.getElementById('riskSuccessBoost').value;
+    const failSalary = +document.getElementById('riskFailSalary').value;
+    const sureSalary = +document.getElementById('riskSureSalary').value;
+    const simCount = +document.getElementById('riskSimCount').value;
+
+    document.getElementById('riskProbVal').textContent = (prob * 100).toFixed(0) + '%';
+    document.getElementById('riskSimVal').textContent = simCount;
+
+    // 蒙特卡洛模拟5年累计收入
+    const years = 5;
+    const sureTotal = sureSalary * 12 * years;
+    const results = [];
+    let winCount = 0;
+
+    for (let i = 0; i < simCount; i++) {
+      let total = 0;
+      let succeeded = false;
+      for (let y = 0; y < years; y++) {
+        if (!succeeded && Math.random() < prob / years * 2) {
+          // 成长在某年兑现（概率分散到各年，前期低后期高）
+          succeeded = true;
+        }
+        total += (succeeded ? successSalary : failSalary) * 12;
+      }
+      // 简化：直接用概率决定
+      const isSuccess = Math.random() < prob;
+      const finalTotal = isSuccess ? successSalary * 12 * years : failSalary * 12 * years;
+      results.push(finalTotal);
+      if (finalTotal > sureTotal) winCount++;
+    }
+
+    // 分布直方图
+    const min = Math.min(...results), max = Math.max(...results);
+    const bucketCount = 30;
+    const bucketSize = (max - min) / bucketCount || 1;
+    const buckets = new Array(bucketCount).fill(0);
+    const bucketLabels = [];
+
+    results.forEach(r => {
+      const idx = Math.min(Math.floor((r - min) / bucketSize), bucketCount - 1);
+      buckets[idx]++;
+    });
+    for (let i = 0; i < bucketCount; i++) {
+      bucketLabels.push(fmt(min + i * bucketSize));
+    }
+
+    const expectedValue = results.reduce((a, b) => a + b, 0) / results.length;
+    const winRate = (winCount / simCount * 100).toFixed(1);
+
+    riskChartInstance.setOption({
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis', backgroundColor: 'rgba(0,0,0,0.85)', borderColor: '#fbbf24',
+        textStyle: { color: '#fff' }
+      },
+      grid: { left: '3%', right: '4%', bottom: '8%', top: '8%', containLabel: true },
+      xAxis: {
+        type: 'category', data: bucketLabels,
+        axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+        axisLabel: { color: 'rgba(255,255,255,0.5)', rotate: 45, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value', name: '人数',
+        splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+        axisLabel: { color: 'rgba(255,255,255,0.5)' }
+      },
+      series: [{
+        type: 'bar', data: buckets.map((count, i) => ({
+          value: count,
+          itemStyle: { color: (min + i * bucketSize) >= sureTotal ? '#4ade80' : '#f87171' }
+        })),
+        barWidth: '80%',
+        markLine: {
+          data: [{ xAxis: Math.floor((sureTotal - min) / bucketSize) }],
+          lineStyle: { color: '#60a5fa', width: 2, type: 'dashed' },
+          label: { formatter: '高薪路线\n累计收入', color: '#60a5fa', fontSize: 11 }
+        }
+      }]
+    });
+
+    const isWorth = expectedValue > sureTotal;
+    document.getElementById('riskVerdict').innerHTML = `
+      <div class="verdict-card ${isWorth ? 'win-growth' : 'win-salary'}">
+        <div class="verdict-title">${isWorth ? '📊 期望值有利于成长路线' : '📊 期望值有利于高薪路线'}</div>
+        <div class="verdict-text">
+          模拟 <strong>${simCount}</strong> 次的结果：<br>
+          • 成长路线期望5年累计收入：<span class="highlight">${fmt(expectedValue)}</span><br>
+          • 高薪路线确定5年累计收入：<span class="highlight-blue">${fmt(sureTotal)}</span><br>
+          • 成长路线跑赢概率：<span class="${+winRate > 50 ? 'highlight-green' : 'highlight'}">${winRate}%</span><br><br>
+          ${+winRate >= 60 ? '✅ 超过60%概率跑赢，成长路线值得考虑。但记住，你只活一次，不是模拟1000次。' :
+            +winRate >= 40 ? '⚠️ 胜率接近五五开。这时候要看你的风险承受能力和经济状况。' :
+            '🚩 跑赢概率不到40%。除非你有很强的风险承受能力，否则拿确定的高薪更明智。'}
+          <br><br>
+          <strong>关键洞察：</strong>期望值为正不代表你该选。因为你只玩一次，不是玩1000次。
+          这就是为什么<span class="highlight">确定性有溢价</span>——行为经济学叫它"确定性效应"。
+        </div>
+      </div>`;
+  }
+</script>
+
+<script>
+  // ========== 复制知乎回答 ==========
+  function copyAnswer() {
+    const text = `老板说年轻人别太看重工资，要看成长机会，这是洗脑神技还是人生真理？
+
+我用数学模型算了一下，答案是：**看情况，但大多数时候是洗脑。**
+
+---
+
+## 【建个模型算一算】
+
+假设两条路：
+- A路线：月薪15000，年涨薪5%（稳定高薪）
+- B路线：月薪8000，年涨薪20%（低薪高成长）
+
+B路线大约在**第4年**月薪反超A路线。但累计收入要到**第6-7年**才追平。
+
+也就是说，即使成长路线的涨薪速度是高薪路线的4倍，你也要忍受至少4年的收入劣势。
+
+## 【关键变量：概率】
+
+上面的计算有个致命假设——成长一定能兑现。
+
+现实中，"成长机会"是概率性收益，而工资是确定性收益。
+
+**成长的真实价值 = 兑现概率 × 未来收益增量**
+
+如果成长兑现概率只有60%，那期望收益要打六折。很多时候打完折就不划算了。
+
+## 【什么时候是洗脑？】
+
+🚩 公司没有清晰的晋升通道和时间表
+🚩 "成长机会"只是画饼，没有具体的技能提升计划
+🚩 同行业同岗位薪资明显高于你
+🚩 老板自己开豪车，让你"别看重钱"
+🚩 你已经工作3年+，还在听这句话
+
+## 【什么时候是真理？】
+
+✅ 你能接触到核心业务和关键技术
+✅ 有明确的导师制度和培养计划
+✅ 公司/行业处于高速增长期
+✅ 你能看到前辈的成长轨迹
+✅ 薪资差距在可承受范围内（<30%）
+
+## 【一句话结论】
+
+> 工资是确定性收益，成长是概率性收益。用确定性换概率性，你需要足够高的期望值来补偿风险。
+
+真正的成长机会有具体的路径、可量化的目标、和可验证的前辈案例。如果只是一句空话，那就是用"未来"偷走你的"现在"。
+
+---
+
+我做了个交互式模拟器，可以自己调参数算算：
+https://mock.runnable.run/pages/salary-vs-growth.html
+
+输入你的实际薪资和预期涨幅，看看成长路线到底值不值。`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = '✅ 已复制！';
+      setTimeout(() => { btn.textContent = '📋 复制知乎回答文案'; }, 2000);
+    }).catch(() => {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = '✅ 已复制！';
+      setTimeout(() => { btn.textContent = '📋 复制知乎回答文案'; }, 2000);
+    });
+  }
+
+  // ========== 初始化 ==========
+  document.addEventListener('DOMContentLoaded', () => {
+    initCharts();
+    updateCompare();
+    window.addEventListener('resize', () => {
+      compareChartInstance && compareChartInstance.resize();
+      breakevenChartInstance && breakevenChartInstance.resize();
+      riskChartInstance && riskChartInstance.resize();
+    });
+  });
+</script>
+</body>
+</html>

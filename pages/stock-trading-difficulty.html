@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>炒股到底难在哪？</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #e0e0e0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding: 30px 20px;
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      background: linear-gradient(45deg, #ffd700, #ffed4e, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+      margin-bottom: 15px;
+    }
+
+    @keyframes shimmer {
+      to { background-position: 200% center; }
+    }
+
+    .header p {
+      font-size: 1.1em;
+      color: #b0b0b0;
+      line-height: 1.6;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 25px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .card h2 {
+      color: #ffd700;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+    }
+
+    .simulator {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    @media (max-width: 768px) {
+      .simulator {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .control-panel {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    .control-group {
+      margin-bottom: 20px;
+    }
+
+    .control-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #ffd700;
+      font-weight: 500;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffd700;
+      cursor: pointer;
+    }
+
+    .value-display {
+      color: #fff;
+      font-size: 1.1em;
+      margin-top: 5px;
+    }
+
+    button {
+      background: linear-gradient(135deg, #ffd700, #ffed4e);
+      color: #1a1a2e;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-size: 1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .chart-container {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 20px;
+      border-radius: 10px;
+      height: 400px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .stat-box {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .stat-label {
+      color: #b0b0b0;
+      font-size: 0.9em;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      color: #ffd700;
+      font-size: 1.5em;
+      font-weight: bold;
+    }
+
+    .stat-value.negative {
+      color: #ff4444;
+    }
+
+    .stat-value.positive {
+      color: #44ff44;
+    }
+
+    .insight {
+      background: rgba(255, 215, 0, 0.1);
+      border-left: 4px solid #ffd700;
+      padding: 15px;
+      margin-top: 20px;
+      border-radius: 5px;
+    }
+
+    .insight-title {
+      color: #ffd700;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .insight-text {
+      color: #e0e0e0;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📉 炒股到底难在哪？</h1>
+      <p>一个交互式模拟器，让你亲身体验股市的残酷真相</p>
+    </div>
+
+    <div class="card">
+      <h2>难点一：概率陷阱 - 胜率≠赚钱</h2>
+      <div class="simulator">
+        <div class="control-panel">
+          <div class="control-group">
+            <label>胜率（赢的概率）</label>
+            <input type="range" id="winRate" min="30" max="70" value="60" step="1">
+            <div class="value-display"><span id="winRateValue">60</span>%</div>
+          </div>
+
+          <div class="control-group">
+            <label>盈亏比（赚/亏）</label>
+            <input type="range" id="profitLossRatio" min="0.5" max="3" value="1" step="0.1">
+            <div class="value-display"><span id="ratioValue">1.0</span>:1</div>
+          </div>
+
+          <div class="control-group">
+            <label>每次投入本金比例</label>
+            <input type="range" id="betSize" min="5" max="50" value="20" step="5">
+            <div class="value-display"><span id="betSizeValue">20</span>%</div>
+          </div>
+
+          <div class="control-group">
+            <label>交易次数</label>
+            <input type="range" id="trades" min="10" max="100" value="50" step="10">
+            <div class="value-display"><span id="tradesValue">50</span>次</div>
+          </div>
+
+          <button onclick="runSimulation()">开始模拟</button>
+          <button onclick="runMultipleSimulations()" style="background: linear-gradient(135deg, #4a90e2, #357abd); color: white;">运行1000次看分布</button>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="equityChart"></canvas>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-label">最终收益率</div>
+          <div class="stat-value" id="finalReturn">0%</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">最大回撤</div>
+          <div class="stat-value negative" id="maxDrawdown">0%</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">胜率</div>
+          <div class="stat-value" id="actualWinRate">0%</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">破产概率</div>
+          <div class="stat-value" id="ruinProb">0%</div>
+        </div>
+      </div>
+
+      <div class="insight">
+        <div class="insight-title">💡 核心洞察</div>
+        <div class="insight-text" id="insight1">
+          调整参数后点击"开始模拟"查看结果
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>难点二：心理博弈 - 知道≠做到</h2>
+      <div class="simulator">
+        <div class="control-panel">
+          <div class="control-group">
+            <label>止损纪律（0=完全不止损）</label>
+            <input type="range" id="discipline" min="0" max="100" value="50" step="10">
+            <div class="value-display"><span id="disciplineValue">50</span>%</div>
+          </div>
+
+          <div class="control-group">
+            <label>情绪化程度（追涨杀跌）</label>
+            <input type="range" id="emotion" min="0" max="100" value="30" step="10">
+            <div class="value-display"><span id="emotionValue">30</span>%</div>
+          </div>
+
+          <button onclick="runPsychologySimulation()">模拟心理因素影响</button>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="psychologyChart"></canvas>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-label">理性策略收益</div>
+          <div class="stat-value positive" id="rationalReturn">0%</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">实际执行收益</div>
+          <div class="stat-value" id="actualReturn">0%</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">心理成本</div>
+          <div class="stat-value negative" id="psychCost">0%</div>
+        </div>
+      </div>
+
+      <div class="insight">
+        <div class="insight-title">💡 核心洞察</div>
+        <div class="insight-text" id="insight2">
+          调整参数后点击"模拟心理因素影响"查看结果
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>难点三：时间陷阱 - 长期生存才是王道</h2>
+      <div class="insight">
+        <div class="insight-title">🎲 生存游戏</div>
+        <div class="insight-text">
+          假设你有60%胜率，每次赚10%或亏10%，投入20%本金。<br>
+          看起来很稳？但连续亏5次的概率是 <strong>1.02%</strong>，意味着每100个人就有1个会遇到。<br>
+          如果遇到，你的本金会从 100万 → 80万 → 64万 → 51.2万 → 41万 → 32.8万<br>
+          <strong>亏损67.2%，需要涨205%才能回本。</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let equityChart, psychologyChart;
+
+    // 初始化图表
+    function initCharts() {
+      const chartConfig = {
+        type: 'line',
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { 
+              labels: { color: '#e0e0e0' }
+            }
+          },
+          scales: {
+            x: { 
+              ticks: { color: '#b0b0b0' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            },
+            y: { 
+              ticks: { color: '#b0b0b0' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            }
+          }
+        }
+      };
+
+      const ctx1 = document.getElementById('equityChart').getContext('2d');
+      equityChart = new Chart(ctx1, {
+        ...chartConfig,
+        data: { labels: [], datasets: [] }
+      });
+
+      const ctx2 = document.getElementById('psychologyChart').getContext('2d');
+      psychologyChart = new Chart(ctx2, {
+        ...chartConfig,
+        data: { labels: [], datasets: [] }
+      });
+    }
+
+    // 更新显示值
+    document.getElementById('winRate').oninput = (e) => {
+      document.getElementById('winRateValue').textContent = e.target.value;
+    };
+    document.getElementById('profitLossRatio').oninput = (e) => {
+      document.getElementById('ratioValue').textContent = parseFloat(e.target.value).toFixed(1);
+    };
+    document.getElementById('betSize').oninput = (e) => {
+      document.getElementById('betSizeValue').textContent = e.target.value;
+    };
+    document.getElementById('trades').oninput = (e) => {
+      document.getElementById('tradesValue').textContent = e.target.value;
+    };
+    document.getElementById('discipline').oninput = (e) => {
+      document.getElementById('disciplineValue').textContent = e.target.value;
+    };
+    document.getElementById('emotion').oninput = (e) => {
+      document.getElementById('emotionValue').textContent = e.target.value;
+    };
+
+    function runSimulation() {
+      const winRate = parseFloat(document.getElementById('winRate').value) / 100;
+      const ratio = parseFloat(document.getElementById('profitLossRatio').value);
+      const betSize = parseFloat(document.getElementById('betSize').value) / 100;
+      const trades = parseInt(document.getElementById('trades').value);
+
+      let capital = 100;
+      const equity = [capital];
+      let wins = 0;
+      let maxCapital = capital;
+      let maxDrawdown = 0;
+
+      for (let i = 0; i < trades; i++) {
+        const isWin = Math.random() < winRate;
+        if (isWin) {
+          capital += capital * betSize * ratio;
+          wins++;
+        } else {
+          capital -= capital * betSize;
+        }
+        equity.push(capital);
+
+        if (capital > maxCapital) maxCapital = capital;
+        const drawdown = (maxCapital - capital) / maxCapital * 100;
+        if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+      }
+
+      // 更新图表
+      equityChart.data.labels = equity.map((_, i) => i);
+      equityChart.data.datasets = [{
+        label: '资金曲线',
+        data: equity,
+        borderColor: capital > 100 ? '#44ff44' : '#ff4444',
+        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+        tension: 0.4
+      }];
+      equityChart.update();
+
+      // 更新统计
+      const finalReturn = ((capital - 100) / 100 * 100).toFixed(1);
+      document.getElementById('finalReturn').textContent = finalReturn + '%';
+      document.getElementById('finalReturn').className = 'stat-value ' + (capital > 100 ? 'positive' : 'negative');
+      document.getElementById('maxDrawdown').textContent = '-' + maxDrawdown.toFixed(1) + '%';
+      document.getElementById('actualWinRate').textContent = (wins / trades * 100).toFixed(1) + '%';
+
+      // 计算破产概率（简化版Kelly公式）
+      const q = 1 - winRate;
+      const ruinProb = q > winRate * ratio ? 100 : (Math.pow(q / (winRate * ratio), capital / 10) * 100);
+      document.getElementById('ruinProb').textContent = Math.min(ruinProb, 100).toFixed(1) + '%';
+
+      // 生成洞察
+      let insight = '';
+      const expectedValue = winRate * ratio - (1 - winRate);
+      
+      if (expectedValue > 0) {
+        insight = `数学期望为正(${(expectedValue * 100).toFixed(1)}%)，理论上长期会赚钱。`;
+      } else {
+        insight = `数学期望为负(${(expectedValue * 100).toFixed(1)}%)，这是个负期望游戏，长期必亏！`;
+      }
+
+      if (maxDrawdown > 30) {
+        insight += ` 但最大回撤${maxDrawdown.toFixed(1)}%，多数人会在中途崩溃离场。`;
+      }
+
+      if (betSize > 0.3) {
+        insight += ` 每次投入${(betSize * 100).toFixed(0)}%太激进，容易爆仓。`;
+      }
+
+      document.getElementById('insight1').textContent = insight;
+    }
+
+    function runMultipleSimulations() {
+      const winRate = parseFloat(document.getElementById('winRate').value) / 100;
+      const ratio = parseFloat(document.getElementById('profitLossRatio').value);
+      const betSize = parseFloat(document.getElementById('betSize').value) / 100;
+      const trades = parseInt(document.getElementById('trades').value);
+
+      const results = [];
+      let totalWins = 0;
+      let maxDrawdownSum = 0;
+      
+      for (let sim = 0; sim < 1000; sim++) {
+        let capital = 100;
+        let wins = 0;
+        let maxCapital = capital;
+        let maxDrawdown = 0;
+        
+        for (let i = 0; i < trades; i++) {
+          const isWin = Math.random() < winRate;
+          if (isWin) {
+            capital += capital * betSize * ratio;
+            wins++;
+          } else {
+            capital -= capital * betSize;
+          }
+          
+          if (capital > maxCapital) maxCapital = capital;
+          const drawdown = (maxCapital - capital) / maxCapital * 100;
+          if (drawdown > maxDrawdown) maxDrawdown = drawdown;
+        }
+        
+        results.push(capital);
+        totalWins += wins;
+        maxDrawdownSum += maxDrawdown;
+      }
+
+      // 统计分布 - 根据实际结果动态分桶
+      results.sort((a, b) => a - b);
+      const losers = results.filter(r => r < 100);
+      const winners = results.filter(r => r >= 100);
+
+      // 亏损区间按百分位分3桶，盈利区间按百分位分4桶
+      function makeBins(arr, numBins) {
+        if (arr.length === 0) return [];
+        const bins = [];
+        for (let i = 0; i < numBins; i++) {
+          const idx = Math.floor(i / numBins * arr.length);
+          bins.push(arr[idx]);
+        }
+        bins.push(arr[arr.length - 1] + 0.01);
+        return bins;
+      }
+
+      // 固定以100为分界，用对数刻度分桶
+      const allMin = Math.floor(results[0]);
+      const allMax = Math.ceil(results[results.length - 1]);
+      const bins = [allMin];
+      
+      // 亏损侧
+      if (allMin < 100) {
+        const lossSteps = [25, 50, 75, 100];
+        lossSteps.forEach(s => { if (s > allMin) bins.push(s); });
+      }
+      if (bins[bins.length - 1] !== 100) bins.push(100);
+      
+      // 盈利侧
+      const winSteps = [150, 250, 500, 1000, 5000];
+      winSteps.forEach(s => { if (s < allMax) bins.push(s); });
+      bins.push(allMax + 1);
+
+      // 去重并排序
+      const uniqueBins = [...new Set(bins)].sort((a, b) => a - b);
+
+      const distribution = new Array(uniqueBins.length - 1).fill(0);
+      results.forEach(r => {
+        for (let i = 0; i < uniqueBins.length - 1; i++) {
+          if (r >= uniqueBins[i] && r < uniqueBins[i + 1]) {
+            distribution[i]++;
+            break;
+          }
+        }
+      });
+
+      const labels = uniqueBins.slice(0, -1).map((v, i) => {
+        const lower = Math.round(v) - 100;
+        const upper = uniqueBins[i + 1] >= allMax ? '∞' : Math.round(uniqueBins[i + 1]) - 100;
+        const fmtLower = lower >= 0 ? `+${lower}%` : `${lower}%`;
+        const fmtUpper = upper === '∞' ? '∞' : (upper >= 0 ? `+${upper}%` : `${upper}%`);
+        return `${fmtLower}~${fmtUpper}`;
+      });
+      
+      equityChart.data.labels = labels;
+      equityChart.data.datasets = [{
+        label: '1000次模拟结果分布',
+        data: distribution,
+        backgroundColor: distribution.map((_, i) => {
+          if (uniqueBins[i + 1] <= 100) return 'rgba(255, 68, 68, 0.6)';
+          if (uniqueBins[i] < 100) return 'rgba(255, 215, 0, 0.6)';
+          return 'rgba(68, 255, 68, 0.6)';
+        }),
+        borderColor: '#ffd700',
+        borderWidth: 1
+      }];
+      equityChart.options.scales.y.title = { display: true, text: '次数', color: '#b0b0b0' };
+      equityChart.options.scales.x.title = { display: true, text: '最终收益率（初始本金=100%）', color: '#b0b0b0' };
+      equityChart.config.type = 'bar';
+      equityChart.update();
+
+      // 更新统计数据 - 基于1000次模拟
+      const avgFinalCapital = results.reduce((sum, r) => sum + r, 0) / 1000;
+      const avgReturn = ((avgFinalCapital - 100) / 100 * 100).toFixed(1);
+      const profitCount = results.filter(r => r > 100).length;
+      const lossCount = results.filter(r => r < 100).length;
+      const avgWinRate = (totalWins / (1000 * trades) * 100).toFixed(1);
+      const avgMaxDrawdown = (maxDrawdownSum / 1000).toFixed(1);
+      const ruinRate = (lossCount / 1000 * 100).toFixed(1);
+
+      document.getElementById('finalReturn').textContent = avgReturn + '%';
+      document.getElementById('finalReturn').className = 'stat-value ' + (avgFinalCapital > 100 ? 'positive' : 'negative');
+      document.getElementById('maxDrawdown').textContent = '-' + avgMaxDrawdown + '%';
+      document.getElementById('actualWinRate').textContent = avgWinRate + '%';
+      document.getElementById('ruinProb').textContent = ruinRate + '%';
+
+      document.getElementById('insight1').textContent = 
+        `运行1000次模拟：${lossCount}次亏损，${profitCount}次盈利，${1000 - profitCount - lossCount}次持平。平均收益${avgReturn}%，平均回撤${avgMaxDrawdown}%。即使胜率${(winRate * 100).toFixed(0)}%，仍有${ruinRate}%的人最终亏钱。这就是为什么"七亏二平一赚"。`;
+    }
+
+    function runPsychologySimulation() {
+      const discipline = parseFloat(document.getElementById('discipline').value) / 100;
+      const emotion = parseFloat(document.getElementById('emotion').value) / 100;
+
+      // 理性策略：固定仓位，严格止损
+      let rationalCapital = 100;
+      const rationalEquity = [rationalCapital];
+      
+      // 实际执行：受情绪影响
+      let actualCapital = 100;
+      const actualEquity = [actualCapital];
+
+      const trades = 50;
+      const baseWinRate = 0.55;
+      const baseBetSize = 0.15;
+
+      for (let i = 0; i < trades; i++) {
+        // 理性策略
+        const isWin = Math.random() < baseWinRate;
+        if (isWin) {
+          rationalCapital *= (1 + baseBetSize);
+        } else {
+          rationalCapital *= (1 - baseBetSize);
+        }
+        rationalEquity.push(rationalCapital);
+
+        // 实际执行
+        let actualBetSize = baseBetSize;
+        
+        // 情绪化：连亏后加仓（想回本）
+        if (i > 0 && actualEquity[i] < actualEquity[i - 1]) {
+          actualBetSize *= (1 + emotion);
+        }
+        
+        // 纪律性：该止损时不止损
+        const shouldStopLoss = !isWin && Math.random() > discipline;
+        
+        if (isWin) {
+          actualCapital *= (1 + actualBetSize);
+        } else {
+          if (shouldStopLoss) {
+            // 不止损，亏得更多
+            actualCapital *= (1 - actualBetSize * 1.5);
+          } else {
+            actualCapital *= (1 - actualBetSize);
+          }
+        }
+        actualEquity.push(actualCapital);
+      }
+
+      // 更新图表
+      psychologyChart.data.labels = rationalEquity.map((_, i) => i);
+      psychologyChart.data.datasets = [
+        {
+          label: '理性策略',
+          data: rationalEquity,
+          borderColor: '#44ff44',
+          backgroundColor: 'rgba(68, 255, 68, 0.1)',
+          tension: 0.4
+        },
+        {
+          label: '实际执行',
+          data: actualEquity,
+          borderColor: '#ff4444',
+          backgroundColor: 'rgba(255, 68, 68, 0.1)',
+          tension: 0.4
+        }
+      ];
+      psychologyChart.config.type = 'line';
+      psychologyChart.update();
+
+      // 更新统计
+      const rationalReturn = ((rationalCapital - 100) / 100 * 100).toFixed(1);
+      const actualReturn = ((actualCapital - 100) / 100 * 100).toFixed(1);
+      const psychCost = (rationalReturn - actualReturn).toFixed(1);
+
+      document.getElementById('rationalReturn').textContent = rationalReturn + '%';
+      document.getElementById('actualReturn').textContent = actualReturn + '%';
+      document.getElementById('actualReturn').className = 'stat-value ' + (actualCapital > 100 ? 'positive' : 'negative');
+      document.getElementById('psychCost').textContent = psychCost + '%';
+
+      // 生成洞察
+      let insight = `理性策略能赚${rationalReturn}%，但因为`;
+      if (discipline < 0.5) insight += '止损纪律差、';
+      if (emotion > 0.3) insight += '情绪化追涨杀跌、';
+      insight += `实际只赚${actualReturn}%。心理成本高达${psychCost}%！`;
+      
+      if (actualCapital < rationalCapital * 0.8) {
+        insight += ' 这就是为什么很多人明明知道方法，却还是亏钱。';
+      }
+
+      document.getElementById('insight2').textContent = insight;
+    }
+
+    // 页面加载时初始化
+    window.onload = () => {
+      initCharts();
+    };
+  </script>
+</body>
+</html>

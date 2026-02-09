@@ -434,6 +434,9 @@
         backgroundColor: 'rgba(255, 215, 0, 0.1)',
         tension: 0.4
       }];
+      equityChart.options.scales.x.title = { display: true, text: '交易次数', color: '#b0b0b0' };
+      equityChart.options.scales.y.title = { display: true, text: '资金（初始=100）', color: '#b0b0b0' };
+      equityChart.config.type = 'line';
       equityChart.update();
 
       // 更新统计
@@ -663,6 +666,8 @@
           tension: 0.4
         }
       ];
+      psychologyChart.options.scales.x.title = { display: true, text: '交易次数', color: '#b0b0b0' };
+      psychologyChart.options.scales.y.title = { display: true, text: '资金（初始=100）', color: '#b0b0b0' };
       psychologyChart.config.type = 'line';
       psychologyChart.update();
 

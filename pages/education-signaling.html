@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学历信号模型：为什么企业看学历？</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; padding: 20px; color: #e0e0e0;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 40px; padding: 30px 20px; }
+    .header h1 {
+      font-size: 2.5em;
+      background: linear-gradient(45deg, #ffd700, #ffed4e, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; animation: shimmer 3s linear infinite; margin-bottom: 15px;
+    }
+    @keyframes shimmer { to { background-position: 200% center; } }
+    .header p { font-size: 1.1em; color: #b0b0b0; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.05); border-radius: 15px; padding: 25px;
+      margin-bottom: 25px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .card h2 { color: #ffd700; margin-bottom: 20px; font-size: 1.5em; }
+    .simulator { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    @media (max-width: 768px) {
+      .simulator { grid-template-columns: 1fr; }
+      .header h1 { font-size: 1.8em; }
+    }
+    .control-panel { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; }
+    .control-group { margin-bottom: 20px; }
+    .control-group label { display: block; margin-bottom: 8px; color: #ffd700; font-weight: 500; }
+    input[type="range"] {
+      width: 100%; height: 6px; border-radius: 3px;
+      background: rgba(255,255,255,0.2); outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      border-radius: 50%; background: #ffd700; cursor: pointer;
+    }
+    .value-display { color: #fff; font-size: 1.1em; margin-top: 5px; }
+    button {
+      background: linear-gradient(135deg, #ffd700, #ffed4e); color: #1a1a2e;
+      border: none; padding: 12px 30px; border-radius: 25px; font-size: 1em;
+      font-weight: bold; cursor: pointer; transition: transform 0.2s; width: 100%; margin-top: 10px;
+    }
+    button:hover { transform: translateY(-2px); }
+    .btn-blue { background: linear-gradient(135deg, #4a90e2, #357abd); color: white; }
+    .chart-container { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; height: 400px; }
+    .stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px; margin-top: 20px;
+    }
+    .stat-box { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; text-align: center; }
+    .stat-label { color: #b0b0b0; font-size: 0.9em; margin-bottom: 5px; }
+    .stat-value { color: #ffd700; font-size: 1.5em; font-weight: bold; }
+    .stat-value.positive { color: #44ff44; }
+    .stat-value.negative { color: #ff4444; }
+    .insight {
+      background: rgba(255,215,0,0.1); border-left: 4px solid #ffd700;
+      padding: 15px; margin-top: 20px; border-radius: 5px;
+    }
+    .insight-title { color: #ffd700; font-weight: bold; margin-bottom: 10px; }
+    .insight-text { color: #e0e0e0; line-height: 1.6; }
+    .bls-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    .bls-table th, .bls-table td {
+      padding: 10px 15px; text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .bls-table th { color: #ffd700; font-weight: 600; }
+    .bls-table td { color: #e0e0e0; }
+    .bls-table tr:hover { background: rgba(255,255,255,0.05); }
+    .source-note { color: #888; font-size: 0.85em; margin-top: 10px; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎓 学历信号模型</h1>
+      <p>为什么"学历≠能力"和"企业看学历"可以同时成立？用诺贝尔经济学奖理论和数据来解释</p>
+    </div>
+
+    <!-- 模块一：真实数据 -->
+    <div class="card">
+      <h2>📊 真实数据：学历溢价有多大？</h2>
+      <p style="color:#b0b0b0; margin-bottom:15px;">美国劳工统计局（BLS）2024年数据，25岁以上全职工作者</p>
+      <table class="bls-table">
+        <thead>
+          <tr><th>学历</th><th>周薪中位数</th><th>失业率</th><th>相对高中溢价</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>高中以下</td><td>$738</td><td>6.2%</td><td>-22%</td></tr>
+          <tr><td>高中毕业</td><td>$946</td><td>4.0%</td><td>基准</td></tr>
+          <tr><td>大专</td><td>$1,058</td><td>3.2%</td><td>+12%</td></tr>
+          <tr><td>本科</td><td>$1,533</td><td>2.2%</td><td>+62%</td></tr>
+          <tr><td>硕士</td><td>$1,737</td><td>2.0%</td><td>+84%</td></tr>
+          <tr><td>博士</td><td>$2,083</td><td>1.2%</td><td>+120%</td></tr>
+        </tbody>
+      </table>
+      <p class="source-note">数据来源：U.S. Bureau of Labor Statistics, "Education Pays", 2024年度数据</p>
+      <div style="margin-top:20px;">
+        <div class="chart-container">
+          <canvas id="blsChart"></canvas>
+        </div>
+      </div>
+      <div class="insight">
+        <div class="insight-title">💡 关键发现</div>
+        <div class="insight-text">
+          学历每升一级，周薪中位数显著增加，失业率显著下降。本科比高中周薪高62%，失业率低近一半。
+          这不是说学历直接带来能力，而是说市场在统计层面上确实给学历定了价。
+        </div>
+      </div>
+    </div>
+
+    <!-- 模块二：Spence 信号模型模拟 -->
+    <div class="card">
+      <h2>🔬 Spence 信号模型模拟</h2>
+      <p style="color:#b0b0b0; margin-bottom:15px;">
+        1973年 Michael Spence 提出：即使教育不提升能力，它仍然有价值——因为获取学历的成本与能力负相关，学历因此成为能力的"信号"。
+      </p>
+      <div class="simulator">
+        <div class="control-panel">
+          <div class="control-group">
+            <label>高能力者占比</label>
+            <input type="range" id="highRatio" min="10" max="70" value="40" step="5">
+            <div class="value-display"><span id="highRatioVal">40</span>%</div>
+          </div>
+          <div class="control-group">
+            <label>高能力者年产出（万元）</label>
+            <input type="range" id="highOutput" min="10" max="30" value="15" step="1">
+            <div class="value-display"><span id="highOutputVal">15</span> 万</div>
+          </div>
+          <div class="control-group">
+            <label>普通能力者年产出（万元）</label>
+            <input type="range" id="lowOutput" min="3" max="15" value="8" step="1">
+            <div class="value-display"><span id="lowOutputVal">8</span> 万</div>
+          </div>
+          <div class="control-group">
+            <label>高能力者获取学历成本（万元）</label>
+            <input type="range" id="highCost" min="0.5" max="8" value="2" step="0.5">
+            <div class="value-display"><span id="highCostVal">2</span> 万</div>
+          </div>
+          <div class="control-group">
+            <label>普通能力者获取学历成本（万元）</label>
+            <input type="range" id="lowCost" min="2" max="15" value="7" step="0.5">
+            <div class="value-display"><span id="lowCostVal">7</span> 万</div>
+          </div>
+          <button onclick="runSignalingModel()">计算均衡</button>
+        </div>
+        <div class="chart-container">
+          <canvas id="signalingChart"></canvas>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-label">无信号时平均工资</div>
+          <div class="stat-value" id="poolingWage">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">高能力者净收益</div>
+          <div class="stat-value" id="highNet">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">普通能力者净收益</div>
+          <div class="stat-value" id="lowNet">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">信号均衡</div>
+          <div class="stat-value" id="equilibrium">-</div>
+        </div>
+      </div>
+      <div class="insight">
+        <div class="insight-title">💡 Spence 信号理论</div>
+        <div class="insight-text" id="signalingInsight">调整参数后点击"计算均衡"，看看学历信号在什么条件下有效</div>
+      </div>
+    </div>
+
+    <!-- 模块三：招聘模拟 -->
+    <div class="card">
+      <h2>🏢 招聘模拟：学历筛选 vs 随机招聘</h2>
+      <p style="color:#b0b0b0; margin-bottom:15px;">模拟企业招聘，对比用学历筛选和随机招聘的效果</p>
+      <div class="simulator">
+        <div class="control-panel">
+          <div class="control-group">
+            <label>候选人总数</label>
+            <input type="range" id="candidates" min="200" max="2000" value="500" step="100">
+            <div class="value-display"><span id="candidatesVal">500</span> 人</div>
+          </div>
+          <div class="control-group">
+            <label>招聘名额</label>
+            <input type="range" id="hireCount" min="10" max="100" value="30" step="5">
+            <div class="value-display"><span id="hireCountVal">30</span> 人</div>
+          </div>
+          <div class="control-group">
+            <label>高能力者中有学历的比例</label>
+            <input type="range" id="highEduRate" min="50" max="100" value="85" step="5">
+            <div class="value-display"><span id="highEduRateVal">85</span>%</div>
+          </div>
+          <div class="control-group">
+            <label>普通能力者中有学历的比例</label>
+            <input type="range" id="lowEduRate" min="5" max="60" value="20" step="5">
+            <div class="value-display"><span id="lowEduRateVal">20</span>%</div>
+          </div>
+          <button onclick="runHiringSimulation()">模拟一次招聘</button>
+          <button class="btn-blue" onclick="runHiringBatch()">模拟1000次看分布</button>
+        </div>
+        <div class="chart-container">
+          <canvas id="hiringChart"></canvas>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-label">学历筛选：高能力占比</div>
+          <div class="stat-value positive" id="eduHighRate">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">随机招聘：高能力占比</div>
+          <div class="stat-value" id="randHighRate">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">筛选提升</div>
+          <div class="stat-value positive" id="improvement">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">被误筛的高能力者</div>
+          <div class="stat-value negative" id="missedTalent">-</div>
+        </div>
+      </div>
+      <div class="insight">
+        <div class="insight-title">💡 筛选的代价</div>
+        <div class="insight-text" id="hiringInsight">点击模拟，看看学历筛选的收益和代价</div>
+      </div>
+    </div>
+
+    <!-- 模块四：学历通胀 -->
+    <div class="card">
+      <h2>📈 学历通胀：信号什么时候失灵？</h2>
+      <p style="color:#b0b0b0; margin-bottom:15px;">当越来越多人获得学历，信号的区分度会下降</p>
+      <div class="simulator">
+        <div class="control-panel">
+          <div class="control-group">
+            <label>学历普及率（所有人中有学历的比例）</label>
+            <input type="range" id="eduPopularity" min="10" max="95" value="30" step="5">
+            <div class="value-display"><span id="eduPopularityVal">30</span>%</div>
+          </div>
+          <button onclick="runInflationSim()">模拟学历通胀效果</button>
+        </div>
+        <div class="chart-container">
+          <canvas id="inflationChart"></canvas>
+        </div>
+      </div>
+      <div class="insight">
+        <div class="insight-title">💡 学历通胀</div>
+        <div class="insight-text" id="inflationInsight">
+          当学历普及率从30%上升到90%，学历的筛选精度会大幅下降。这就是为什么"遍地本科"的时代，企业开始看985/211、看研究生——他们需要更稀缺的信号。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let blsChart, signalingChart, hiringChart, inflationChart;
+
+    // ========== 初始化 ==========
+    function initCharts() {
+      const baseOpts = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#e0e0e0' } } },
+        scales: {
+          x: { ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+          y: { ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+        }
+      };
+      blsChart = new Chart(document.getElementById('blsChart').getContext('2d'), {
+        type: 'bar', data: { labels: [], datasets: [] }, options: { ...baseOpts }
+      });
+      signalingChart = new Chart(document.getElementById('signalingChart').getContext('2d'), {
+        type: 'bar', data: { labels: [], datasets: [] }, options: { ...baseOpts }
+      });
+      hiringChart = new Chart(document.getElementById('hiringChart').getContext('2d'), {
+        type: 'bar', data: { labels: [], datasets: [] }, options: { ...baseOpts }
+      });
+      inflationChart = new Chart(document.getElementById('inflationChart').getContext('2d'), {
+        type: 'line', data: { labels: [], datasets: [] }, options: { ...baseOpts }
+      });
+      renderBLSChart();
+    }
+
+    // ========== 滑块绑定 ==========
+    function bind(id, valId) {
+      document.getElementById(id).oninput = function() {
+        document.getElementById(valId).textContent = this.value;
+      };
+    }
+    bind('highRatio','highRatioVal'); bind('highOutput','highOutputVal');
+    bind('lowOutput','lowOutputVal'); bind('highCost','highCostVal');
+    bind('lowCost','lowCostVal'); bind('candidates','candidatesVal');
+    bind('hireCount','hireCountVal'); bind('highEduRate','highEduRateVal');
+    bind('lowEduRate','lowEduRateVal'); bind('eduPopularity','eduPopularityVal');
+
+    // ========== 模块一：BLS 数据图表 ==========
+    function renderBLSChart() {
+      const labels = ['高中以下','高中','大专','本科','硕士','博士'];
+      const wages = [738, 946, 1058, 1533, 1737, 2083];
+      const unemp = [6.2, 4.0, 3.2, 2.2, 2.0, 1.2];
+      blsChart.data.labels = labels;
+      blsChart.data.datasets = [
+        {
+          label: '周薪中位数 ($)', data: wages, type: 'bar',
+          backgroundColor: 'rgba(255,215,0,0.6)', borderColor: '#ffd700',
+          borderWidth: 1, yAxisID: 'y'
+        },
+        {
+          label: '失业率 (%)', data: unemp, type: 'line',
+          borderColor: '#ff6b6b', backgroundColor: 'transparent',
+          tension: 0.3, pointRadius: 5, pointBackgroundColor: '#ff6b6b', yAxisID: 'y1'
+        }
+      ];
+      blsChart.options.scales.y = {
+        type: 'linear', position: 'left',
+        title: { display: true, text: '周薪 ($)', color: '#b0b0b0' },
+        ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' }
+      };
+      blsChart.options.scales.y1 = {
+        type: 'linear', position: 'right',
+        title: { display: true, text: '失业率 (%)', color: '#b0b0b0' },
+        ticks: { color: '#b0b0b0' }, grid: { drawOnChartArea: false }, min: 0, max: 8
+      };
+      blsChart.update();
+    }
+
+    // ========== 模块二：Spence 信号模型 ==========
+    function calcSignalingEquilibrium(highRatio, highOutput, lowOutput, highCost, lowCost) {
+      const lowRatio = 1 - highRatio;
+      const poolingWage = lowRatio * lowOutput + highRatio * highOutput;
+      const highNetWithSignal = highOutput - highCost;
+      const lowNetWithSignal = highOutput - lowCost;
+      const highWantsSignal = highNetWithSignal > poolingWage;
+      const lowWantsSignal = lowNetWithSignal > poolingWage;
+      let eqType;
+      if (highWantsSignal && !lowWantsSignal) eqType = 'separating';
+      else if (highWantsSignal && lowWantsSignal) eqType = 'pooling_all';
+      else if (!highWantsSignal && !lowWantsSignal) eqType = 'pooling_none';
+      else eqType = 'broken';
+      return { poolingWage, highNetWithSignal, lowNetWithSignal, highWantsSignal, lowWantsSignal, eqType };
+    }
+
+    function runSignalingModel() {
+      const highRatio = parseFloat(document.getElementById('highRatio').value) / 100;
+      const highOutput = parseFloat(document.getElementById('highOutput').value);
+      const lowOutput = parseFloat(document.getElementById('lowOutput').value);
+      const highCost = parseFloat(document.getElementById('highCost').value);
+      const lowCost = parseFloat(document.getElementById('lowCost').value);
+
+      const eq = calcSignalingEquilibrium(highRatio, highOutput, lowOutput, highCost, lowCost);
+
+      document.getElementById('poolingWage').textContent = eq.poolingWage.toFixed(1) + '万';
+      document.getElementById('highNet').textContent = eq.highNetWithSignal.toFixed(1) + '万';
+      document.getElementById('highNet').className = 'stat-value ' + (eq.highWantsSignal ? 'positive' : 'negative');
+      document.getElementById('lowNet').textContent = eq.lowNetWithSignal.toFixed(1) + '万';
+      document.getElementById('lowNet').className = 'stat-value ' + (eq.lowWantsSignal ? 'positive' : 'negative');
+
+      const eqLabels = {
+        separating: '✅ 分离均衡', pooling_all: '⚠️ 混同（都拿学历）',
+        pooling_none: '❌ 混同（都不拿）', broken: '💔 反向信号'
+      };
+      document.getElementById('equilibrium').textContent = eqLabels[eq.eqType];
+
+      const categories = ['高能力-拿学历', '高能力-不拿', '普通-拿学历', '普通-不拿'];
+      const incomes = [highOutput, eq.poolingWage, highOutput, eq.poolingWage];
+      const costs = [highCost, 0, lowCost, 0];
+      const nets = incomes.map((v, i) => v - costs[i]);
+
+      signalingChart.config.type = 'bar';
+      signalingChart.data.labels = categories;
+      signalingChart.data.datasets = [
+        { label: '收入（万）', data: incomes, backgroundColor: 'rgba(68,255,68,0.5)', borderColor: '#44ff44', borderWidth: 1 },
+        { label: '学历成本（万）', data: costs, backgroundColor: 'rgba(255,68,68,0.5)', borderColor: '#ff4444', borderWidth: 1 },
+        { label: '净收益（万）', data: nets, backgroundColor: 'rgba(255,215,0,0.5)', borderColor: '#ffd700', borderWidth: 1 }
+      ];
+      signalingChart.options.scales = {
+        x: { ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+        y: { ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' },
+             title: { display: true, text: '万元', color: '#b0b0b0' } }
+      };
+      signalingChart.update();
+
+      let insight = '';
+      if (eq.eqType === 'separating') {
+        insight = '分离均衡成立！高能力者拿学历净赚' + eq.highNetWithSignal.toFixed(1) + '万（> 混同工资' + eq.poolingWage.toFixed(1) + '万），' +
+          '普通能力者拿学历只赚' + eq.lowNetWithSignal.toFixed(1) + '万（< 混同工资' + eq.poolingWage.toFixed(1) + '万），所以只有高能力者会去拿学历。' +
+          '企业看到学历就能有效区分能力。这就是 Spence 1973年论文的核心结论。';
+      } else if (eq.eqType === 'pooling_all') {
+        insight = '信号失灵！学历成本对普通能力者来说也不够高（净收益' + eq.lowNetWithSignal.toFixed(1) + '万 > 混同工资' + eq.poolingWage.toFixed(1) + '万），' +
+          '所有人都会去拿学历，企业无法区分。这就是"学历通胀"的数学本质。试试提高普通能力者的学历成本。';
+      } else if (eq.eqType === 'pooling_none') {
+        insight = '没人愿意拿学历！高能力者拿学历的净收益' + eq.highNetWithSignal.toFixed(1) + '万还不如混同工资' + eq.poolingWage.toFixed(1) + '万。' +
+          '学历成本太高了，信号机制无法启动。试试降低高能力者的学历成本。';
+      } else {
+        insight = '异常情况：普通能力者想拿学历但高能力者不想。这在现实中很少见，说明参数设置不太合理。';
+      }
+      document.getElementById('signalingInsight').textContent = insight;
+    }
+
+    // ========== 模块三：招聘模拟 ==========
+    function simulateHiring(totalCandidates, hireCount, highAbilityRatio, highEduRate, lowEduRate) {
+      const candidates = [];
+      for (let i = 0; i < totalCandidates; i++) {
+        const isHigh = Math.random() < highAbilityRatio;
+        const hasEdu = Math.random() < (isHigh ? highEduRate : lowEduRate);
+        candidates.push({ isHigh, hasEdu });
+      }
+      const withEdu = candidates.filter(c => c.hasEdu);
+      const shuffledEdu = withEdu.sort(() => Math.random() - 0.5);
+      const eduHires = shuffledEdu.slice(0, Math.min(hireCount, shuffledEdu.length));
+      const eduHighCount = eduHires.filter(c => c.isHigh).length;
+      const shuffledAll = [...candidates].sort(() => Math.random() - 0.5);
+      const randHires = shuffledAll.slice(0, hireCount);
+      const randHighCount = randHires.filter(c => c.isHigh).length;
+      const missedHigh = candidates.filter(c => c.isHigh && !c.hasEdu).length;
+      return {
+        eduHighRate: eduHires.length > 0 ? eduHighCount / eduHires.length : 0,
+        randHighRate: randHighCount / randHires.length,
+        missedHigh, totalHigh: candidates.filter(c => c.isHigh).length,
+        eduHireCount: eduHires.length
+      };
+    }
+
+    function runHiringSimulation() {
+      const total = parseInt(document.getElementById('candidates').value);
+      const hire = parseInt(document.getElementById('hireCount').value);
+      const highEdu = parseFloat(document.getElementById('highEduRate').value) / 100;
+      const lowEdu = parseFloat(document.getElementById('lowEduRate').value) / 100;
+      const highRatio = parseFloat(document.getElementById('highRatio').value) / 100;
+
+      const r = simulateHiring(total, hire, highRatio, highEdu, lowEdu);
+      document.getElementById('eduHighRate').textContent = (r.eduHighRate * 100).toFixed(1) + '%';
+      document.getElementById('randHighRate').textContent = (r.randHighRate * 100).toFixed(1) + '%';
+      document.getElementById('improvement').textContent = '+' + ((r.eduHighRate - r.randHighRate) * 100).toFixed(1) + '%';
+      document.getElementById('missedTalent').textContent = r.missedHigh + '/' + r.totalHigh;
+
+      hiringChart.config.type = 'bar';
+      hiringChart.data.labels = ['学历筛选', '随机招聘', '市场基准'];
+      hiringChart.data.datasets = [{
+        label: '录用者中高能力占比 (%)',
+        data: [r.eduHighRate * 100, r.randHighRate * 100, highRatio * 100],
+        backgroundColor: ['rgba(68,255,68,0.6)', 'rgba(255,107,107,0.6)', 'rgba(255,215,0,0.3)'],
+        borderColor: ['#44ff44', '#ff6b6b', '#ffd700'], borderWidth: 1
+      }];
+      hiringChart.options.scales = {
+        x: { ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+        y: { ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' },
+             title: { display: true, text: '高能力者占比 (%)', color: '#b0b0b0' }, min: 0, max: 100 }
+      };
+      hiringChart.update();
+
+      document.getElementById('hiringInsight').textContent =
+        '学历筛选后，录用者中高能力占比' + (r.eduHighRate*100).toFixed(1) + '%，比随机招聘的' + (r.randHighRate*100).toFixed(1) + '%高出' +
+        ((r.eduHighRate - r.randHighRate)*100).toFixed(1) + '个百分点。但代价是' + r.missedHigh + '个有能力但没学历的人被筛掉了（占全部高能力者的' +
+        (r.missedHigh/r.totalHigh*100).toFixed(1) + '%）。这就是学历筛选的本质：提高平均质量，但牺牲部分人才。';
+    }
+
+    function runHiringBatch() {
+      const total = parseInt(document.getElementById('candidates').value);
+      const hire = parseInt(document.getElementById('hireCount').value);
+      const highEdu = parseFloat(document.getElementById('highEduRate').value) / 100;
+      const lowEdu = parseFloat(document.getElementById('lowEduRate').value) / 100;
+      const highRatio = parseFloat(document.getElementById('highRatio').value) / 100;
+
+      const eduRates = [], randRates = [];
+      for (let i = 0; i < 1000; i++) {
+        const r = simulateHiring(total, hire, highRatio, highEdu, lowEdu);
+        eduRates.push(r.eduHighRate * 100);
+        randRates.push(r.randHighRate * 100);
+      }
+      const step = 5;
+      const bins = [];
+      for (let v = 0; v <= 100; v += step) bins.push(v);
+      function hist(data) {
+        const counts = new Array(bins.length - 1).fill(0);
+        data.forEach(v => { counts[Math.min(Math.floor(v / step), counts.length - 1)]++; });
+        return counts;
+      }
+      hiringChart.config.type = 'bar';
+      hiringChart.data.labels = bins.slice(0, -1).map(v => v + '-' + (v + step) + '%');
+      hiringChart.data.datasets = [
+        { label: '学历筛选', data: hist(eduRates), backgroundColor: 'rgba(68,255,68,0.5)', borderColor: '#44ff44', borderWidth: 1 },
+        { label: '随机招聘', data: hist(randRates), backgroundColor: 'rgba(255,107,107,0.5)', borderColor: '#ff6b6b', borderWidth: 1 }
+      ];
+      hiringChart.options.scales = {
+        x: { ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' },
+             title: { display: true, text: '高能力者占比', color: '#b0b0b0' } },
+        y: { ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' },
+             title: { display: true, text: '次数（共1000轮）', color: '#b0b0b0' } }
+      };
+      hiringChart.update();
+
+      const avgEdu = (eduRates.reduce((s,v) => s+v, 0) / 1000).toFixed(1);
+      const avgRand = (randRates.reduce((s,v) => s+v, 0) / 1000).toFixed(1);
+      document.getElementById('eduHighRate').textContent = avgEdu + '%';
+      document.getElementById('randHighRate').textContent = avgRand + '%';
+      document.getElementById('improvement').textContent = '+' + (avgEdu - avgRand).toFixed(1) + '%';
+      document.getElementById('hiringInsight').textContent =
+        '1000次模拟：学历筛选平均录到' + avgEdu + '%高能力者，随机招聘只有' + avgRand + '%。' +
+        '学历不完美，但在大规模招聘中确实是个有效的概率工具。';
+    }
+
+    // ========== 模块四：学历通胀 ==========
+    function runInflationSim() {
+      const popularity = parseFloat(document.getElementById('eduPopularity').value) / 100;
+      const highRatio = parseFloat(document.getElementById('highRatio').value) / 100;
+      const points = [];
+      for (let pop = 0.1; pop <= 0.95; pop += 0.05) {
+        const highEdu = Math.min(0.95, pop + (1 - pop) * 0.7);
+        const lowEdu = Math.max(0.05, pop - highRatio * (highEdu - pop) / (1 - highRatio));
+        const pEdu = highRatio * highEdu + (1 - highRatio) * lowEdu;
+        const precision = pEdu > 0 ? (highRatio * highEdu / pEdu) : highRatio;
+        points.push({ pop: (pop * 100).toFixed(0), precision: precision * 100, baseline: highRatio * 100 });
+      }
+      inflationChart.data.labels = points.map(p => p.pop + '%');
+      inflationChart.data.datasets = [
+        { label: '学历筛选精度', data: points.map(p => p.precision), borderColor: '#ffd700',
+          backgroundColor: 'rgba(255,215,0,0.1)', tension: 0.3, fill: true },
+        { label: '无筛选基准', data: points.map(p => p.baseline), borderColor: 'rgba(255,255,255,0.3)',
+          borderDash: [5, 5], pointRadius: 0 }
+      ];
+      inflationChart.options.scales = {
+        x: { ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' },
+             title: { display: true, text: '学历普及率', color: '#b0b0b0' } },
+        y: { ticks: { color: '#b0b0b0' }, grid: { color: 'rgba(255,255,255,0.1)' },
+             title: { display: true, text: '精度 (%)', color: '#b0b0b0' }, min: 0, max: 100 }
+      };
+      inflationChart.update();
+
+      const currentPrecision = points.find(p => Math.abs(p.pop - popularity * 100) < 3);
+      if (currentPrecision) {
+        document.getElementById('inflationInsight').textContent =
+          '当学历普及率为' + (popularity*100).toFixed(0) + '%时，有学历者中高能力占比约' + currentPrecision.precision.toFixed(1) + '%' +
+          '（无筛选基准为' + (highRatio*100).toFixed(0) + '%）。' +
+          (currentPrecision.precision - highRatio * 100 < 10 ?
+            '筛选精度已经很低了，学历几乎失去了区分能力。企业会转向更稀缺的信号（名校、研究生、实习经历等）。' :
+            '学历仍然有一定的筛选价值，但随着普及率上升，这个优势在缩小。');
+      }
+    }
+
+    window.onload = function() { initCharts(); };
+  </script>
+</body>
+</html>

@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>反直觉概率论 II - 更多让人困惑的概率悖论</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link {
+      display: inline-block;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2rem;
+      background: linear-gradient(135deg, #f5af19, #f12711, #f5af19);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .subtitle {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 30px;
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 25px;
+    }
+    .nav-tab {
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 25px;
+      color: rgba(255,255,255,0.8);
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 0.9rem;
+    }
+    .nav-tab:hover, .nav-tab.active {
+      background: linear-gradient(135deg, #f5af19, #f12711);
+      border-color: transparent;
+      color: white;
+      transform: translateY(-2px);
+    }
+    .card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 25px;
+      border: 1px solid rgba(255,255,255,0.1);
+      display: none;
+    }
+    .card.active { display: block; }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .card-icon { font-size: 2.5rem; }
+    .card-title {
+      font-size: 1.5rem;
+      background: linear-gradient(135deg, #f5af19, #f12711);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .card-subtitle {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+    .question-box {
+      background: linear-gradient(135deg, rgba(245,175,25,0.15), rgba(241,39,17,0.1));
+      border-left: 4px solid #f5af19;
+      padding: 20px;
+      border-radius: 0 15px 15px 0;
+      margin-bottom: 25px;
+      line-height: 1.8;
+    }
+    .question-box strong { color: #f5af19; }
+    .interactive-area {
+      background: rgba(0,0,0,0.2);
+      border-radius: 15px;
+      padding: 25px;
+      margin: 20px 0;
+    }
+    .btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 25px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 500;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #f5af19, #f12711);
+      color: white;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(245,175,25,0.3);
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #f5af19;
+    }
+    .stat-value.green { color: #4ade80; }
+    .stat-value.red { color: #f87171; }
+    .stat-value.blue { color: #60a5fa; }
+    .stat-label {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 5px;
+    }
+    .explanation {
+      background: rgba(255,255,255,0.03);
+      border-radius: 15px;
+      padding: 25px;
+      margin-top: 25px;
+    }
+    .explanation h3 {
+      color: #f5af19;
+      margin-bottom: 15px;
+      font-size: 1.1rem;
+    }
+    .explanation p {
+      color: rgba(255,255,255,0.85);
+      line-height: 1.9;
+      margin-bottom: 12px;
+    }
+    .formula {
+      background: rgba(255,255,255,0.08);
+      padding: 15px 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      margin: 15px 0;
+      overflow-x: auto;
+      border-left: 3px solid #f5af19;
+    }
+    .highlight { color: #f87171; font-weight: bold; }
+    .success { color: #4ade80; font-weight: bold; }
+
+    /* 骰子样式 */
+    .dice-arena {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin: 25px 0;
+      flex-wrap: wrap;
+    }
+    .dice-group {
+      text-align: center;
+    }
+    .dice {
+      width: 80px;
+      height: 80px;
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: bold;
+      margin: 10px auto;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    .dice-a { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .dice-b { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .dice-c { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .dice-label { font-size: 0.9rem; color: rgba(255,255,255,0.7); margin-top: 5px; }
+    .dice-faces { font-size: 0.75rem; color: rgba(255,255,255,0.5); }
+    .vs-text { font-size: 1.5rem; color: #f5af19; align-self: center; font-weight: bold; }
+
+    /* 家庭模拟 */
+    .family-display {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .child-icon {
+      font-size: 2.5rem;
+      padding: 10px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    /* 检测悖论 */
+    .population-grid {
+      display: grid;
+      grid-template-columns: repeat(20, 1fr);
+      gap: 3px;
+      margin: 20px 0;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .person-dot {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      transition: all 0.3s;
+    }
+    .person-dot.sick { background: #ef4444; }
+    .person-dot.false-positive { background: #f59e0b; }
+    .person-dot.true-negative { background: #22c55e; }
+
+    /* 集齐问题 */
+    .coupon-display {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .coupon {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      transition: all 0.3s;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.1);
+    }
+    .coupon.collected {
+      background: linear-gradient(135deg, #f5af19, #f12711);
+      border-color: transparent;
+      transform: scale(1.1);
+    }
+
+    /* 睡美人 */
+    .timeline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    .timeline-node {
+      padding: 10px 15px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      text-align: center;
+      min-width: 80px;
+    }
+    .timeline-arrow {
+      color: rgba(255,255,255,0.4);
+      font-size: 1.2rem;
+    }
+    .timeline-node.coin { background: rgba(245,175,25,0.3); border: 1px solid #f5af19; }
+    .timeline-node.wake { background: rgba(96,165,250,0.3); border: 1px solid #60a5fa; }
+    .timeline-node.sleep { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+
+    .conclusion-box {
+      background: linear-gradient(135deg, rgba(245,175,25,0.15), rgba(241,39,17,0.1));
+      border: 2px solid rgba(245,175,25,0.3);
+      border-radius: 15px;
+      padding: 25px;
+      text-align: center;
+      margin-top: 25px;
+    }
+    .conclusion-box h3 { color: #f5af19; margin-bottom: 15px; }
+    .conclusion-box p { color: rgba(255,255,255,0.9); line-height: 1.8; }
+
+    @media (max-width: 600px) {
+      .card { padding: 20px; }
+      .card-title { font-size: 1.2rem; }
+      .dice-arena { gap: 15px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .population-grid { grid-template-columns: repeat(10, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link"><i class="ti ti-arrow-left"></i> 返回首页</a>
+    <h1><i class="ti ti-brain"></i> 反直觉概率论 II</h1>
+    <p class="subtitle">五个新的概率悖论，每一个都会让你怀疑自己的直觉<br>全部配有交互式模拟，眼见为实</p>
+
+    <div class="nav-tabs">
+      <div class="nav-tab active" data-tab="nontransitive"><i class="ti ti-dice-3"></i> 非传递骰子</div>
+      <div class="nav-tab" data-tab="boyorgirl"><i class="ti ti-gender-bigender"></i> 男孩女孩悖论</div>
+      <div class="nav-tab" data-tab="falsepositive"><i class="ti ti-test-pipe"></i> 检测悖论</div>
+      <div class="nav-tab" data-tab="coupon"><i class="ti ti-ticket"></i> 集齐问题</div>
+      <div class="nav-tab" data-tab="sleepingbeauty"><i class="ti ti-moon-stars"></i> 睡美人问题</div>
+    </div>
+
+    <!-- 1. 非传递骰子 -->
+    <div class="card active" id="nontransitive">
+      <div class="card-header">
+        <div class="card-icon"><i class="ti ti-dice-3"></i></div>
+        <div>
+          <div class="card-title">非传递骰子</div>
+          <div class="card-subtitle">A赢B，B赢C，C却赢A — 石头剪刀布的概率版</div>
+        </div>
+      </div>
+
+      <div class="question-box">
+        <strong>设定：</strong>三颗特殊骰子：<br>
+        骰子A：面值 [2, 2, 4, 4, 9, 9]<br>
+        骰子B：面值 [1, 1, 6, 6, 8, 8]<br>
+        骰子C：面值 [3, 3, 5, 5, 7, 7]<br><br>
+        <strong>直觉：</strong>如果A赢B，B赢C，那A应该赢C吧？<br>
+        <strong>真相：</strong>A赢B（5/9），B赢C（5/9），但 <span class="highlight">C赢A（5/9）</span>！
+      </div>
+
+      <div class="interactive-area">
+        <div class="dice-arena">
+          <div class="dice-group">
+            <div class="dice dice-a" id="diceADisplay">?</div>
+            <div class="dice-label">骰子A</div>
+            <div class="dice-faces">[2,2,4,4,9,9]</div>
+          </div>
+          <div class="vs-text">VS</div>
+          <div class="dice-group">
+            <div class="dice dice-b" id="diceBDisplay">?</div>
+            <div class="dice-label">骰子B</div>
+            <div class="dice-faces">[1,1,6,6,8,8]</div>
+          </div>
+          <div class="vs-text">VS</div>
+          <div class="dice-group">
+            <div class="dice dice-c" id="diceCDisplay">?</div>
+            <div class="dice-label">骰子C</div>
+            <div class="dice-faces">[3,3,5,5,7,7]</div>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin-bottom:15px;">
+          <label style="color:rgba(255,255,255,0.7);">对决：</label>
+          <select id="diceMatchup" style="padding:8px 15px;border-radius:8px;background:rgba(0,0,0,0.3);color:white;border:1px solid rgba(255,255,255,0.2);">
+            <option value="ab">A vs B</option>
+            <option value="bc">B vs C</option>
+            <option value="ca">C vs A</option>
+          </select>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="diceTotal">0</div>
+            <div class="stat-label">总对局</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value green" id="diceLeftWin">0</div>
+            <div class="stat-label" id="diceLeftLabel">A胜</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value red" id="diceRightWin">0</div>
+            <div class="stat-label" id="diceRightLabel">B胜</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value blue" id="diceWinRate">-</div>
+            <div class="stat-label" id="diceWinRateLabel">A胜率</div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="rollDice()"><i class="ti ti-dice-3"></i> 掷一次</button>
+          <button class="btn btn-secondary" onclick="rollDiceMany(1000)"><i class="ti ti-bolt"></i> 掷1000次</button>
+          <button class="btn btn-secondary" onclick="resetDice()"><i class="ti ti-refresh"></i> 重置</button>
+        </div>
+      </div>
+
+      <div class="explanation">
+        <h3><i class="ti ti-bulb"></i> 为什么会这样？</h3>
+        <p>这叫<span class="success">非传递性</span>（Nontransitivity）。在日常生活中，"比较"通常是传递的：如果小明比小红高，小红比小刚高，那小明一定比小刚高。</p>
+        <p>但骰子比大小不是单一维度的比较，每颗骰子的面值分布不同，导致了循环克制关系。</p>
+        <div class="formula">
+A vs B: A的9能赢B所有面，A的4能赢B的1 → A赢的概率 = 5/9<br>
+B vs C: B的8能赢C的3,5,7中的两个... → B赢的概率 = 5/9<br>
+C vs A: C的7能赢A的2,4，C的5能赢A的2,4 → C赢的概率 = 5/9
+        </div>
+        <p><span class="highlight">沃伦·巴菲特</span>曾用非传递骰子和比尔·盖茨玩游戏，让盖茨先选骰子。盖茨研究了一会儿后说："你先选。"</p>
+      </div>
+    </div>
+
+    <!-- 2. 男孩女孩悖论 -->
+    <div class="card" id="boyorgirl">
+      <div class="card-header">
+        <div class="card-icon"><i class="ti ti-gender-bigender"></i></div>
+        <div>
+          <div class="card-title">男孩女孩悖论</div>
+          <div class="card-subtitle">同样是"有一个男孩"，概率却不同</div>
+        </div>
+      </div>
+
+      <div class="question-box">
+        <strong>问题A：</strong>一个家庭有两个孩子，已知<strong>老大是男孩</strong>，老二也是男孩的概率？<br>
+        <strong>答案A：</strong><span class="success">1/2</span>（很直观）<br><br>
+        <strong>问题B：</strong>一个家庭有两个孩子，已知<strong>至少有一个男孩</strong>，两个都是男孩的概率？<br>
+        <strong>答案B：</strong><span class="highlight">1/3</span>（反直觉！）
+      </div>
+
+      <div class="interactive-area">
+        <div style="text-align:center;margin-bottom:15px;">
+          <label style="color:rgba(255,255,255,0.7);">条件：</label>
+          <select id="boygirlCondition" style="padding:8px 15px;border-radius:8px;background:rgba(0,0,0,0.3);color:white;border:1px solid rgba(255,255,255,0.2);" onchange="resetBoyGirl()">
+            <option value="elder">老大是男孩</option>
+            <option value="atleast">至少有一个男孩</option>
+          </select>
+        </div>
+
+        <div class="family-display" id="familyDisplay">
+          <div class="child-icon">?</div>
+          <div class="child-icon">?</div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="bgTotal">0</div>
+            <div class="stat-label">符合条件的家庭</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value green" id="bgBothBoys">0</div>
+            <div class="stat-label">两个都是男孩</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value blue" id="bgRate">-</div>
+            <div class="stat-label">双男孩概率</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="bgTheory">1/2</div>
+            <div class="stat-label">理论值</div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="simBoyGirl()"><i class="ti ti-dice-3"></i> 模拟一次</button>
+          <button class="btn btn-secondary" onclick="simBoyGirlMany(5000)"><i class="ti ti-bolt"></i> 模拟5000次</button>
+          <button class="btn btn-secondary" onclick="resetBoyGirl()"><i class="ti ti-refresh"></i> 重置</button>
+        </div>
+      </div>
+
+      <div class="explanation">
+        <h3><i class="ti ti-bulb"></i> 为什么"至少一个男孩"变成了1/3？</h3>
+        <p>两个孩子的所有可能组合（等概率）：</p>
+        <div class="formula">
+(男,男)  (男,女)  (女,男)  (女,女)
+        </div>
+        <p><strong>条件A "老大是男孩"：</strong>排除后两种 → 剩 (男,男)(男,女) → 双男概率 = 1/2</p>
+        <p><strong>条件B "至少一个男孩"：</strong>只排除(女,女) → 剩 (男,男)(男,女)(女,男) → 双男概率 = <span class="highlight">1/3</span></p>
+        <p>关键区别：条件B保留了更多的样本空间。"至少一个男孩"是比"老大是男孩"更弱的条件，所以双男孩的比例更低。</p>
+      </div>
+    </div>
+
+    <!-- 3. 假阳性悖论 -->
+    <div class="card" id="falsepositive">
+      <div class="card-header">
+        <div class="card-icon"><i class="ti ti-test-pipe"></i></div>
+        <div>
+          <div class="card-title">假阳性悖论（检测悖论）</div>
+          <div class="card-subtitle">99%准确率的检测，阳性结果可能只有50%可信</div>
+        </div>
+      </div>
+
+      <div class="question-box">
+        <strong>场景：</strong>某罕见病发病率 1%。检测准确率 99%（灵敏度99%，特异度99%）。<br>
+        你检测呈阳性，你真的得病的概率是多少？<br><br>
+        <strong>直觉答案：</strong>99%？<br>
+        <strong>真实答案：</strong><span class="highlight">只有 50%</span>！
+      </div>
+
+      <div class="interactive-area">
+        <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;">
+          <div>
+            <label style="color:rgba(255,255,255,0.7);font-size:0.9rem;">发病率</label><br>
+            <input type="range" id="prevalence" min="0.1" max="10" step="0.1" value="1" style="width:150px;" oninput="updateFPDisplay()">
+            <span id="prevalenceDisplay" style="color:#f5af19;font-weight:bold;">1%</span>
+          </div>
+          <div>
+            <label style="color:rgba(255,255,255,0.7);font-size:0.9rem;">灵敏度</label><br>
+            <input type="range" id="sensitivity" min="80" max="99.9" step="0.1" value="99" style="width:150px;" oninput="updateFPDisplay()">
+            <span id="sensitivityDisplay" style="color:#4ade80;font-weight:bold;">99%</span>
+          </div>
+          <div>
+            <label style="color:rgba(255,255,255,0.7);font-size:0.9rem;">特异度</label><br>
+            <input type="range" id="specificity" min="80" max="99.9" step="0.1" value="99" style="width:150px;" oninput="updateFPDisplay()">
+            <span id="specificityDisplay" style="color:#60a5fa;font-weight:bold;">99%</span>
+          </div>
+        </div>
+
+        <div class="population-grid" id="populationGrid"></div>
+        <div style="text-align:center;margin:10px 0;font-size:0.8rem;color:rgba(255,255,255,0.5);">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;margin-right:3px;vertical-align:middle;"></span>真阳性
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b;margin:0 3px 0 15px;vertical-align:middle;"></span>假阳性
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin:0 3px 0 15px;vertical-align:middle;"></span>真阴性
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.15);margin:0 3px 0 15px;vertical-align:middle;"></span>未检测
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value red" id="fpTruePositive">-</div>
+            <div class="stat-label">真阳性</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" style="color:#f59e0b;" id="fpFalsePositive">-</div>
+            <div class="stat-label">假阳性</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value blue" id="fpPPV">-</div>
+            <div class="stat-label">阳性预测值</div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="simulateFP()"><i class="ti ti-test-pipe"></i> 模拟检测</button>
+          <button class="btn btn-secondary" onclick="simulateFPMany(10000)"><i class="ti ti-bolt"></i> 检测10000人</button>
+          <button class="btn btn-secondary" onclick="resetFP()"><i class="ti ti-refresh"></i> 重置</button>
+        </div>
+      </div>
+
+      <div class="explanation">
+        <h3><i class="ti ti-bulb"></i> 贝叶斯定理的威力</h3>
+        <p>假设10000人接受检测：</p>
+        <div class="formula">
+真正患病：10000 × 1% = 100人<br>
+其中检测阳性（真阳性）：100 × 99% = 99人<br><br>
+没有患病：10000 × 99% = 9900人<br>
+其中检测阳性（假阳性）：9900 × 1% = <span class="highlight">99人</span><br><br>
+总阳性 = 99 + 99 = 198人<br>
+阳性中真正患病 = 99 / 198 = <span class="highlight">50%</span>
+        </div>
+        <p>关键洞察：当疾病很罕见时，健康人的基数远大于患病人数。即使假阳性率很低（1%），乘以巨大的健康人基数，假阳性的绝对数量也很大。</p>
+        <p>这就是为什么医生通常不建议对低风险人群做罕见病筛查。</p>
+      </div>
+    </div>
+
+    <!-- 4. 集齐问题 -->
+    <div class="card" id="coupon">
+      <div class="card-header">
+        <div class="card-icon"><i class="ti ti-ticket"></i></div>
+        <div>
+          <div class="card-title">集齐优惠券问题</div>
+          <div class="card-subtitle">集齐5种卡片平均要买多少包？答案比你想的多得多</div>
+        </div>
+      </div>
+
+      <div class="question-box">
+        <strong>问题：</strong>干脆面里有5种卡片，每包随机一张。集齐所有5种平均要买多少包？<br><br>
+        <strong>直觉答案：</strong>5包？10包？<br>
+        <strong>真实答案：</strong><span class="highlight">约 11.42 包</span>！
+      </div>
+
+      <div class="interactive-area">
+        <div style="text-align:center;margin-bottom:15px;">
+          <label style="color:rgba(255,255,255,0.7);">卡片种类数：</label>
+          <input type="range" id="couponTypes" min="3" max="20" value="5" style="width:200px;vertical-align:middle;" oninput="updateCouponTheory()">
+          <span id="couponTypesDisplay" style="font-size:1.5rem;font-weight:bold;color:#f5af19;margin-left:10px;">5</span>
+        </div>
+
+        <div class="coupon-display" id="couponDisplay"></div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="couponBought">0</div>
+            <div class="stat-label">已购买</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value green" id="couponCollected">0</div>
+            <div class="stat-label">已集齐</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value blue" id="couponAvg">-</div>
+            <div class="stat-label">平均购买数</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="couponTheory">11.42</div>
+            <div class="stat-label">理论期望</div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="buyCoupon()"><i class="ti ti-shopping-cart"></i> 买一包</button>
+          <button class="btn btn-secondary" onclick="collectAll()"><i class="ti ti-bolt"></i> 集齐一次</button>
+          <button class="btn btn-secondary" onclick="collectAllMany(1000)"><i class="ti ti-bolt"></i> 模拟1000次</button>
+          <button class="btn btn-secondary" onclick="resetCoupon()"><i class="ti ti-refresh"></i> 重置</button>
+        </div>
+      </div>
+
+      <div class="explanation">
+        <h3><i class="ti ti-bulb"></i> 为什么需要这么多？</h3>
+        <p>这是经典的<span class="success">优惠券收集问题</span>（Coupon Collector's Problem）。</p>
+        <p>关键在于：集齐最后几张的难度远大于前几张。</p>
+        <div class="formula">
+已有0张 → 下一张新的概率 = 5/5 = 100%，期望 1 包<br>
+已有1张 → 下一张新的概率 = 4/5 = 80%，期望 1.25 包<br>
+已有2张 → 下一张新的概率 = 3/5 = 60%，期望 1.67 包<br>
+已有3张 → 下一张新的概率 = 2/5 = 40%，期望 2.5 包<br>
+已有4张 → 下一张新的概率 = 1/5 = 20%，期望 <span class="highlight">5 包</span><br><br>
+总期望 = 5×(1/5 + 1/4 + 1/3 + 1/2 + 1/1) = 5 × 2.283 ≈ <span class="success">11.42 包</span>
+        </div>
+        <p>一般公式：n种卡片的期望购买数 = n × H(n)，其中 H(n) = 1 + 1/2 + 1/3 + ... + 1/n 是调和级数。</p>
+        <p>如果是集齐<strong>108张水浒卡</strong>？期望要买约 <span class="highlight">569包</span>。</p>
+      </div>
+    </div>
+
+    <!-- 5. 睡美人问题 -->
+    <div class="card" id="sleepingbeauty">
+      <div class="card-header">
+        <div class="card-icon"><i class="ti ti-moon-stars"></i></div>
+        <div>
+          <div class="card-title">睡美人问题</div>
+          <div class="card-subtitle">哲学家至今争论不休的概率难题</div>
+        </div>
+      </div>
+
+      <div class="question-box">
+        <strong>实验：</strong>周日抛一枚公平硬币。<br>
+        - 如果正面：周一叫醒睡美人，实验结束。<br>
+        - 如果反面：周一叫醒她，给她吃遗忘药，周二再叫醒她。<br><br>
+        每次被叫醒时，睡美人不知道今天是周几。<br>
+        <strong>问题：</strong>被叫醒时，她认为硬币正面朝上的概率是多少？<br><br>
+        <strong>1/2派：</strong>硬币是公平的，当然是1/2。<br>
+        <strong>1/3派：</strong>三次醒来中只有一次是正面，所以是1/3。
+      </div>
+
+      <div class="interactive-area">
+        <div class="timeline">
+          <div class="timeline-node coin" id="sbCoin">抛硬币<br><span style="font-size:1.5rem;">🪙</span></div>
+          <div class="timeline-arrow">→</div>
+          <div class="timeline-node wake" id="sbMon">周一醒来<br><span style="font-size:1.2rem;" id="sbMonIcon">😴</span></div>
+          <div class="timeline-arrow" id="sbArrow2">→</div>
+          <div class="timeline-node sleep" id="sbTue">周二<br><span style="font-size:1.2rem;" id="sbTueIcon">?</span></div>
+        </div>
+
+        <div style="text-align:center;min-height:40px;margin:15px 0;" id="sbMessage">点击模拟开始实验</div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-value" id="sbExperiments">0</div>
+            <div class="stat-label">实验次数</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="sbWakeups">0</div>
+            <div class="stat-label">总醒来次数</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value green" id="sbHeadsWake">0</div>
+            <div class="stat-label">正面时醒来</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value blue" id="sbRatio">-</div>
+            <div class="stat-label">正面醒来占比</div>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="simSleepingBeauty()"><i class="ti ti-zzz"></i> 做一次实验</button>
+          <button class="btn btn-secondary" onclick="simSleepingBeautyMany(1000)"><i class="ti ti-bolt"></i> 做1000次</button>
+          <button class="btn btn-secondary" onclick="resetSleepingBeauty()"><i class="ti ti-refresh"></i> 重置</button>
+        </div>
+      </div>
+
+      <div class="explanation">
+        <h3><i class="ti ti-bulb"></i> 为什么两个答案都"对"？</h3>
+        <p>这取决于你怎么理解"概率"：</p>
+        <div class="formula">
+<span class="success">1/2派（Halfer）：</span><br>
+硬币是公平的，没有新信息改变这个事实。<br>
+"被叫醒"不是新证据，因为无论正反面都会被叫醒。<br>
+所以概率仍然是 1/2。<br><br>
+<span class="highlight">1/3派（Thirder）：</span><br>
+三种等可能的醒来情况：<br>
+① 正面 + 周一（概率1/2 × 1 = 1/2）<br>
+② 反面 + 周一（概率1/2 × 1/2 = 1/4）<br>
+③ 反面 + 周二（概率1/2 × 1/2 = 1/4）<br>
+但从"醒来次数"角度：正面1次，反面2次 → 1/3
+        </div>
+        <p>模拟结果支持1/3派：如果你统计所有醒来时刻，正面只占1/3。</p>
+        <p>但1/2派认为这是在偷换概念——把"实验次数"和"醒来次数"混淆了。</p>
+        <p><span class="highlight">这个问题至今没有公认的正确答案</span>，它触及了概率论的哲学基础。</p>
+      </div>
+    </div>
+
+    <!-- 总结 -->
+    <div class="conclusion-box">
+      <h3><i class="ti ti-sparkles"></i> 概率的世界没有"显然"</h3>
+      <p>
+        非传递骰子告诉我们：<strong>优势不可传递</strong><br>
+        男孩女孩悖论告诉我们：<strong>条件不同，概率不同</strong><br>
+        假阳性悖论告诉我们：<strong>基数比准确率更重要</strong><br>
+        集齐问题告诉我们：<strong>最后一步永远最难</strong><br>
+        睡美人问题告诉我们：<strong>"概率"本身的定义就有争议</strong><br><br>
+        <span style="color: #f5af19;">当你觉得一个概率问题"显然"时，多想三秒钟。</span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // ========== 标签切换 ==========
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ========== 1. 非传递骰子 ==========
+    const DICE = {
+      A: [2, 2, 4, 4, 9, 9],
+      B: [1, 1, 6, 6, 8, 8],
+      C: [3, 3, 5, 5, 7, 7]
+    };
+    let diceStats = { total: 0, leftWin: 0 };
+
+    function getMatchup() {
+      const m = document.getElementById('diceMatchup').value;
+      if (m === 'ab') return ['A', 'B'];
+      if (m === 'bc') return ['B', 'C'];
+      return ['C', 'A'];
+    }
+
+    function rollOneDie(faces) {
+      return faces[Math.floor(Math.random() * faces.length)];
+    }
+
+    function rollDice(animate) {
+      const [left, right] = getMatchup();
+      const lv = rollOneDie(DICE[left]);
+      const rv = rollOneDie(DICE[right]);
+      diceStats.total++;
+      if (lv > rv) diceStats.leftWin++;
+
+      if (animate !== false) {
+        document.getElementById('diceADisplay').textContent = left === 'A' || right === 'A' ? (left === 'A' ? lv : rv) : '·';
+        document.getElementById('diceBDisplay').textContent = left === 'B' || right === 'B' ? (left === 'B' ? lv : rv) : '·';
+        document.getElementById('diceCDisplay').textContent = left === 'C' || right === 'C' ? (left === 'C' ? lv : rv) : '·';
+      }
+      updateDiceStats(left, right);
+    }
+
+    function rollDiceMany(n) {
+      for (let i = 0; i < n; i++) rollDice(false);
+      const [left, right] = getMatchup();
+      updateDiceStats(left, right);
+    }
+
+    function updateDiceStats(left, right) {
+      document.getElementById('diceTotal').textContent = diceStats.total;
+      document.getElementById('diceLeftWin').textContent = diceStats.leftWin;
+      document.getElementById('diceRightWin').textContent = diceStats.total - diceStats.leftWin;
+      document.getElementById('diceLeftLabel').textContent = left + '胜';
+      document.getElementById('diceRightLabel').textContent = right + '胜';
+      document.getElementById('diceWinRateLabel').textContent = left + '胜率';
+      if (diceStats.total > 0) {
+        document.getElementById('diceWinRate').textContent = (diceStats.leftWin / diceStats.total * 100).toFixed(1) + '%';
+      }
+    }
+
+    function resetDice() {
+      diceStats = { total: 0, leftWin: 0 };
+      document.getElementById('diceTotal').textContent = '0';
+      document.getElementById('diceLeftWin').textContent = '0';
+      document.getElementById('diceRightWin').textContent = '0';
+      document.getElementById('diceWinRate').textContent = '-';
+      document.getElementById('diceADisplay').textContent = '?';
+      document.getElementById('diceBDisplay').textContent = '?';
+      document.getElementById('diceCDisplay').textContent = '?';
+    }
+
+    document.getElementById('diceMatchup').addEventListener('change', resetDice);
+
+    // ========== 2. 男孩女孩悖论 ==========
+    let bgStats = { total: 0, bothBoys: 0 };
+
+    function simBoyGirl(animate) {
+      const condition = document.getElementById('boygirlCondition').value;
+      let child1, child2;
+      // 不断生成直到满足条件
+      while (true) {
+        child1 = Math.random() < 0.5 ? 'boy' : 'girl';
+        child2 = Math.random() < 0.5 ? 'boy' : 'girl';
+        if (condition === 'elder' && child1 === 'boy') break;
+        if (condition === 'atleast' && (child1 === 'boy' || child2 === 'boy')) break;
+      }
+      bgStats.total++;
+      if (child1 === 'boy' && child2 === 'boy') bgStats.bothBoys++;
+
+      if (animate !== false) {
+        const display = document.getElementById('familyDisplay');
+        display.innerHTML = `
+          <div class="child-icon">${child1 === 'boy' ? '👦' : '👧'}<br><span style="font-size:0.7rem;color:rgba(255,255,255,0.5);">老大</span></div>
+          <div class="child-icon">${child2 === 'boy' ? '👦' : '👧'}<br><span style="font-size:0.7rem;color:rgba(255,255,255,0.5);">老二</span></div>
+        `;
+      }
+      updateBGStats();
+    }
+
+    function simBoyGirlMany(n) {
+      for (let i = 0; i < n; i++) simBoyGirl(false);
+      updateBGStats();
+    }
+
+    function updateBGStats() {
+      document.getElementById('bgTotal').textContent = bgStats.total;
+      document.getElementById('bgBothBoys').textContent = bgStats.bothBoys;
+      if (bgStats.total > 0) {
+        document.getElementById('bgRate').textContent = (bgStats.bothBoys / bgStats.total * 100).toFixed(1) + '%';
+      }
+      const condition = document.getElementById('boygirlCondition').value;
+      document.getElementById('bgTheory').textContent = condition === 'elder' ? '1/2' : '1/3';
+    }
+
+    function resetBoyGirl() {
+      bgStats = { total: 0, bothBoys: 0 };
+      document.getElementById('bgTotal').textContent = '0';
+      document.getElementById('bgBothBoys').textContent = '0';
+      document.getElementById('bgRate').textContent = '-';
+      document.getElementById('familyDisplay').innerHTML = '<div class="child-icon">?</div><div class="child-icon">?</div>';
+      const condition = document.getElementById('boygirlCondition').value;
+      document.getElementById('bgTheory').textContent = condition === 'elder' ? '1/2' : '1/3';
+    }
+
+    // ========== 3. 假阳性悖论 ==========
+    let fpStats = { truePos: 0, falsePos: 0, total: 0 };
+
+    function getFPParams() {
+      return {
+        prevalence: parseFloat(document.getElementById('prevalence').value) / 100,
+        sensitivity: parseFloat(document.getElementById('sensitivity').value) / 100,
+        specificity: parseFloat(document.getElementById('specificity').value) / 100
+      };
+    }
+
+    function updateFPDisplay() {
+      document.getElementById('prevalenceDisplay').textContent = document.getElementById('prevalence').value + '%';
+      document.getElementById('sensitivityDisplay').textContent = document.getElementById('sensitivity').value + '%';
+      document.getElementById('specificityDisplay').textContent = document.getElementById('specificity').value + '%';
+    }
+
+    function simulateFP() {
+      const { prevalence, sensitivity, specificity } = getFPParams();
+      const isSick = Math.random() < prevalence;
+      let testPositive;
+      if (isSick) {
+        testPositive = Math.random() < sensitivity;
+      } else {
+        testPositive = Math.random() > specificity;
+      }
+      if (testPositive) {
+        fpStats.total++;
+        if (isSick) fpStats.truePos++;
+        else fpStats.falsePos++;
+      }
+      updateFPStats();
+    }
+
+    function simulateFPMany(n) {
+      const { prevalence, sensitivity, specificity } = getFPParams();
+      for (let i = 0; i < n; i++) {
+        const isSick = Math.random() < prevalence;
+        let testPositive;
+        if (isSick) {
+          testPositive = Math.random() < sensitivity;
+        } else {
+          testPositive = Math.random() > specificity;
+        }
+        if (testPositive) {
+          fpStats.total++;
+          if (isSick) fpStats.truePos++;
+          else fpStats.falsePos++;
+        }
+      }
+      updateFPStats();
+      renderPopulationGrid();
+    }
+
+    function updateFPStats() {
+      document.getElementById('fpTruePositive').textContent = fpStats.truePos;
+      document.getElementById('fpFalsePositive').textContent = fpStats.falsePos;
+      if (fpStats.total > 0) {
+        document.getElementById('fpPPV').textContent = (fpStats.truePos / fpStats.total * 100).toFixed(1) + '%';
+      }
+    }
+
+    function renderPopulationGrid() {
+      const grid = document.getElementById('populationGrid');
+      const { prevalence, sensitivity, specificity } = getFPParams();
+      const total = 200;
+      grid.innerHTML = '';
+      for (let i = 0; i < total; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'person-dot';
+        const isSick = Math.random() < prevalence;
+        if (isSick) {
+          const detected = Math.random() < sensitivity;
+          if (detected) dot.classList.add('sick');
+        } else {
+          const falseAlarm = Math.random() > specificity;
+          if (falseAlarm) dot.classList.add('false-positive');
+          else dot.classList.add('true-negative');
+        }
+        grid.appendChild(dot);
+      }
+    }
+
+    function resetFP() {
+      fpStats = { truePos: 0, falsePos: 0, total: 0 };
+      document.getElementById('fpTruePositive').textContent = '-';
+      document.getElementById('fpFalsePositive').textContent = '-';
+      document.getElementById('fpPPV').textContent = '-';
+      document.getElementById('populationGrid').innerHTML = '';
+    }
+
+    // ========== 4. 集齐优惠券问题 ==========
+    let couponState = { collected: new Set(), bought: 0, rounds: 0, totalBought: 0 };
+    const COUPON_ICONS = ['🐉', '🐅', '🐒', '🐍', '🐎', '🐓', '🐕', '🐖', '🐀', '🐂', '🐇', '🐑', '🦊', '🐻', '🐼', '🦁', '🐧', '🦅', '🐬', '🦄'];
+
+    function getCouponCount() {
+      return parseInt(document.getElementById('couponTypes').value);
+    }
+
+    function couponExpected(n) {
+      let sum = 0;
+      for (let i = 1; i <= n; i++) sum += 1 / i;
+      return n * sum;
+    }
+
+    function updateCouponTheory() {
+      const n = getCouponCount();
+      document.getElementById('couponTypesDisplay').textContent = n;
+      document.getElementById('couponTheory').textContent = couponExpected(n).toFixed(2);
+      resetCoupon();
+    }
+
+    function renderCoupons() {
+      const n = getCouponCount();
+      const display = document.getElementById('couponDisplay');
+      display.innerHTML = '';
+      for (let i = 0; i < n; i++) {
+        const c = document.createElement('div');
+        c.className = 'coupon' + (couponState.collected.has(i) ? ' collected' : '');
+        c.textContent = couponState.collected.has(i) ? COUPON_ICONS[i % COUPON_ICONS.length] : '?';
+        display.appendChild(c);
+      }
+    }
+
+    function buyCoupon() {
+      const n = getCouponCount();
+      if (couponState.collected.size >= n) return;
+      const card = Math.floor(Math.random() * n);
+      couponState.collected.add(card);
+      couponState.bought++;
+      renderCoupons();
+      document.getElementById('couponBought').textContent = couponState.bought;
+      document.getElementById('couponCollected').textContent = couponState.collected.size + '/' + n;
+      if (couponState.collected.size >= n) {
+        couponState.rounds++;
+        couponState.totalBought += couponState.bought;
+        document.getElementById('couponAvg').textContent = (couponState.totalBought / couponState.rounds).toFixed(1);
+      }
+    }
+
+    function collectAll() {
+      const n = getCouponCount();
+      couponState.collected = new Set();
+      couponState.bought = 0;
+      while (couponState.collected.size < n) {
+        couponState.collected.add(Math.floor(Math.random() * n));
+        couponState.bought++;
+      }
+      couponState.rounds++;
+      couponState.totalBought += couponState.bought;
+      renderCoupons();
+      document.getElementById('couponBought').textContent = couponState.bought;
+      document.getElementById('couponCollected').textContent = n + '/' + n;
+      document.getElementById('couponAvg').textContent = (couponState.totalBought / couponState.rounds).toFixed(1);
+    }
+
+    function collectAllMany(times) {
+      const n = getCouponCount();
+      for (let t = 0; t < times; t++) {
+        const s = new Set();
+        let b = 0;
+        while (s.size < n) {
+          s.add(Math.floor(Math.random() * n));
+          b++;
+        }
+        couponState.rounds++;
+        couponState.totalBought += b;
+      }
+      document.getElementById('couponAvg').textContent = (couponState.totalBought / couponState.rounds).toFixed(1);
+      document.getElementById('couponBought').textContent = '批量';
+      document.getElementById('couponCollected').textContent = `${times}轮完成`;
+    }
+
+    function resetCoupon() {
+      couponState = { collected: new Set(), bought: 0, rounds: 0, totalBought: 0 };
+      renderCoupons();
+      document.getElementById('couponBought').textContent = '0';
+      document.getElementById('couponCollected').textContent = '0';
+      document.getElementById('couponAvg').textContent = '-';
+    }
+
+    // ========== 5. 睡美人问题 ==========
+    let sbStats = { experiments: 0, wakeups: 0, headsWake: 0 };
+
+    function simSleepingBeauty(animate) {
+      const isHeads = Math.random() < 0.5;
+      sbStats.experiments++;
+      if (isHeads) {
+        sbStats.wakeups += 1;
+        sbStats.headsWake += 1;
+      } else {
+        sbStats.wakeups += 2;
+      }
+
+      if (animate !== false) {
+        document.getElementById('sbCoin').innerHTML = '抛硬币<br><span style="font-size:1.5rem;">' + (isHeads ? '🌟正面' : '🌑反面') + '</span>';
+        document.getElementById('sbMonIcon').textContent = '😃';
+        if (isHeads) {
+          document.getElementById('sbTue').style.opacity = '0.3';
+          document.getElementById('sbTueIcon').textContent = '💤';
+          document.getElementById('sbMessage').innerHTML = '<span style="color:#4ade80;">正面</span> → 周一醒来1次，实验结束';
+        } else {
+          document.getElementById('sbTue').style.opacity = '1';
+          document.getElementById('sbTueIcon').textContent = '😃';
+          document.getElementById('sbMessage').innerHTML = '<span style="color:#f87171;">反面</span> → 周一醒来 + 遗忘药 + 周二再醒来，共2次';
+        }
+      }
+      updateSBStats();
+    }
+
+    function simSleepingBeautyMany(n) {
+      for (let i = 0; i < n; i++) simSleepingBeauty(false);
+      updateSBStats();
+    }
+
+    function updateSBStats() {
+      document.getElementById('sbExperiments').textContent = sbStats.experiments;
+      document.getElementById('sbWakeups').textContent = sbStats.wakeups;
+      document.getElementById('sbHeadsWake').textContent = sbStats.headsWake;
+      if (sbStats.wakeups > 0) {
+        document.getElementById('sbRatio').textContent = (sbStats.headsWake / sbStats.wakeups * 100).toFixed(1) + '%';
+      }
+    }
+
+    function resetSleepingBeauty() {
+      sbStats = { experiments: 0, wakeups: 0, headsWake: 0 };
+      document.getElementById('sbExperiments').textContent = '0';
+      document.getElementById('sbWakeups').textContent = '0';
+      document.getElementById('sbHeadsWake').textContent = '0';
+      document.getElementById('sbRatio').textContent = '-';
+      document.getElementById('sbCoin').innerHTML = '抛硬币<br><span style="font-size:1.5rem;">🪙</span>';
+      document.getElementById('sbMonIcon').textContent = '😴';
+      document.getElementById('sbTueIcon').textContent = '?';
+      document.getElementById('sbTue').style.opacity = '1';
+      document.getElementById('sbMessage').textContent = '点击模拟开始实验';
+    }
+
+    // ========== 初始化 ==========
+    renderCoupons();
+    updateCouponTheory();
+  </script>
+</body>
+</html>

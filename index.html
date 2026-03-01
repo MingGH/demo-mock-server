@@ -6,474 +6,98 @@
   <title>Mock Server Demo</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
   <script src="components/header.js" defer></script>
+  <script src="data/demos.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: flex; flex-direction: column; align-items: center;
       padding: 20px;
     }
-    h1 {
-      color: white;
-      margin-bottom: 40px;
-      font-size: 2.5rem;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-    }
-    .cards {
-      display: flex;
-      gap: 30px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
+    h1 { color: white; margin-bottom: 40px; font-size: 2.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
     .card {
-      background: white;
-      border-radius: 16px;
-      padding: 30px;
-      width: 320px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-      transition: transform 0.3s, box-shadow 0.3s;
-      text-decoration: none;
-      color: inherit;
+      background: white; border-radius: 16px; padding: 30px; width: 320px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2); transition: transform 0.3s, box-shadow 0.3s;
+      text-decoration: none; color: inherit;
     }
-    .card:hover {
-      transform: translateY(-10px);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    .card:hover { transform: translateY(-10px); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .card-icon { font-size: 48px; margin-bottom: 20px; color: #667eea; }
+    .card-icon i { font-size: 48px; }
+    .card h2 { color: #333; margin-bottom: 12px; font-size: 1.4rem; }
+    .card p { color: #666; line-height: 1.6; font-size: 0.95rem; }
+    .card.hidden { display: none; }
+    .category-section { width: 100%; max-width: 1400px; margin-bottom: 40px; }
+    .category-section.hidden { display: none; }
+    .category-title {
+      color: white; font-size: 1.4rem; margin-bottom: 20px; padding-left: 8px;
+      display: flex; align-items: center; gap: 10px;
     }
-    .card-icon {
-      font-size: 48px;
-      margin-bottom: 20px;
-      color: #667eea;
+    .category-title i { font-size: 1.4rem; opacity: 0.9; }
+    .category-title .count {
+      font-size: 0.85rem; background: rgba(255,255,255,0.2);
+      padding: 2px 10px; border-radius: 20px; font-weight: normal;
     }
-    .card-icon i {
-      font-size: 48px;
+    .category-cards { display: flex; gap: 30px; flex-wrap: wrap; }
+    .filter-tags {
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+      margin-bottom: 30px; max-width: 1000px;
     }
-    .card h2 {
-      color: #333;
-      margin-bottom: 12px;
-      font-size: 1.4rem;
+    .filter-tag {
+      padding: 8px 18px; border-radius: 50px;
+      border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.1);
+      color: white; cursor: pointer; font-size: 0.9rem;
+      transition: all 0.3s; user-select: none;
     }
-    .card p {
-      color: #666;
-      line-height: 1.6;
-      font-size: 0.95rem;
-    }
-    .footer {
-      margin-top: 40px;
-      color: rgba(255,255,255,0.8);
-    }
-    .footer a {
-      color: white;
-      margin: 0 10px;
-    }
-    
-    /* 搜索区域 */
-    .search-section {
-      width: 100%;
-      max-width: 600px;
-      margin-bottom: 30px;
-    }
-    .search-box {
-      position: relative;
-      width: 100%;
-    }
+    .filter-tag:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.5); }
+    .filter-tag.active { background: rgba(255,255,255,0.95); color: #667eea; border-color: white; font-weight: 600; }
+    .filter-tag i { margin-right: 4px; }
+    .search-section { width: 100%; max-width: 600px; margin-bottom: 30px; }
+    .search-box { position: relative; width: 100%; }
     .search-input {
-      width: 100%;
-      padding: 16px 50px 16px 20px;
-      border: none;
-      border-radius: 50px;
-      font-size: 1.1rem;
-      background: rgba(255,255,255,0.95);
-      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-      outline: none;
-      transition: all 0.3s;
+      width: 100%; padding: 16px 50px 16px 20px; border: none; border-radius: 50px;
+      font-size: 1.1rem; background: rgba(255,255,255,0.95);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2); outline: none; transition: all 0.3s;
     }
-    .search-input:focus {
-      box-shadow: 0 15px 50px rgba(0,0,0,0.3);
-      transform: translateY(-2px);
-    }
-    .search-input::placeholder {
-      color: #999;
-    }
-    .search-icon {
-      position: absolute;
-      right: 20px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 1.3rem;
-      color: #667eea;
-    }
-    .search-stats {
-      text-align: center;
-      color: rgba(255,255,255,0.8);
-      margin-top: 12px;
-      font-size: 0.9rem;
-    }
-    .search-stats span {
-      background: rgba(255,255,255,0.2);
-      padding: 4px 12px;
-      border-radius: 20px;
-      margin-left: 8px;
-    }
-    
-    /* 隐藏不匹配的卡片 */
-    .card.hidden {
-      display: none;
-    }
-    
-    /* 无结果提示 */
-    .no-results {
-      display: none;
-      text-align: center;
-      color: white;
-      padding: 60px 20px;
-      width: 100%;
-    }
-    .no-results.show {
-      display: block;
-    }
-    .no-results .icon {
-      font-size: 4rem;
-      margin-bottom: 20px;
-    }
-    .no-results h3 {
-      font-size: 1.5rem;
-      margin-bottom: 10px;
-    }
-    .no-results p {
-      color: rgba(255,255,255,0.7);
-    }
+    .search-input:focus { box-shadow: 0 15px 50px rgba(0,0,0,0.3); transform: translateY(-2px); }
+    .search-input::placeholder { color: #999; }
+    .search-icon { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 1.3rem; color: #667eea; }
+    .search-stats { text-align: center; color: rgba(255,255,255,0.8); margin-top: 12px; font-size: 0.9rem; }
+    .search-stats span { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; margin-left: 8px; }
+    .no-results { display: none; text-align: center; color: white; padding: 60px 20px; width: 100%; }
+    .no-results.show { display: block; }
+    .no-results .icon { font-size: 4rem; margin-bottom: 20px; }
+    .no-results h3 { font-size: 1.5rem; margin-bottom: 10px; }
+    .no-results p { color: rgba(255,255,255,0.7); }
+    .footer { margin-top: 40px; color: rgba(255,255,255,0.8); }
+    .footer a { color: white; margin: 0 10px; }
   </style>
 </head>
 <body>
   <h1><i class="ti ti-rocket" style="vertical-align: middle;"></i> Mock Server Demo</h1>
-  
-  <!-- 搜索区域 -->
+
   <div class="search-section">
     <div class="search-box">
-      <input type="text" class="search-input" id="searchInput" placeholder="搜索演示... 试试「概率」「模拟」「计算器」" oninput="filterCards()">
+      <input type="text" class="search-input" id="searchInput" placeholder="搜索演示... 试试「概率」「模拟」「计算器」" oninput="handleFilter()">
       <span class="search-icon"><i class="ti ti-search"></i></span>
     </div>
     <div class="search-stats">
-      共 <span id="totalCount">34</span> 个演示
+      共 <span id="totalCount">0</span> 个演示
       <span id="matchCount" style="display: none;">找到 0 个</span>
     </div>
   </div>
-  
-  <!-- 无结果提示 -->
+
+  <div class="filter-tags" id="filterTags"></div>
+
   <div class="no-results" id="noResults">
     <div class="icon"><i class="ti ti-search"></i></div>
     <h3>没有找到相关演示</h3>
     <p>试试其他关键词，如「赌博」「投资」「概率」「心理」</p>
   </div>
-  
-  <div class="cards" id="cardsContainer">
-    <a href="pages/mock-data.html" class="card">
-      <div class="card-icon"><i class="ti ti-database"></i></div>
-      <h2>IndexedDB 缓存分页</h2>
-      <p>从后端获取大量模拟数据，使用 IndexedDB 本地缓存，支持分页浏览，体验流畅的数据展示。</p>
-    </a>
-    
-    <a href="pages/chinese-names.html" class="card">
-      <div class="card-icon"><i class="ti ti-writing"></i></div>
-      <h2>随机中文名生成</h2>
-      <p>批量生成随机中文姓名，支持自定义数量，一键复制，适合测试数据填充场景。</p>
-    </a>
-    
-    <a href="pages/sync-async-demo.html" class="card">
-      <div class="card-icon"><i class="ti ti-arrows-exchange"></i></div>
-      <h2>同步 vs 异步演示</h2>
-      <p>通过动画直观理解同步与异步的区别，配合生活类比和代码示例，一看就懂。</p>
-    </a>
-    
-    <a href="pages/financial-risk-simulator.html" class="card">
-      <div class="card-icon"><i class="ti ti-coins"></i></div>
-      <h2>财务决策风险模拟</h2>
-      <p>用蒙特卡洛模拟分析大额消费的风险，看看买那个包/电脑后"吃土"的概率有多大。</p>
-    </a>
-    
-    <a href="pages/financial-freedom-calculator.html" class="card">
-      <div class="card-icon"><i class="ti ti-beach"></i></div>
-      <h2>财富自由计算器</h2>
-      <p>算算最初级财富自由需要多少钱？输入你的月支出，看看离"躺平"还差多远。</p>
-    </a>
-    
-    <a href="pages/data-size-visualizer.html" class="card">
-      <div class="card-icon"><i class="ti ti-device-floppy"></i></div>
-      <h2>数据大小可视化</h2>
-      <p>1MB/1GB/1TB到底有多大？用动画和类比让你直观感受数据的重量。</p>
-    </a>
-    
-    <a href="pages/monty-hall-simulator.html" class="card">
-      <div class="card-icon"><i class="ti ti-door"></i></div>
-      <h2>蒙提霍尔问题模拟</h2>
-      <p>三门问题：换门中奖率真的是2/3吗？亲自玩一局，或者让电脑跑1000次给你看。</p>
-    </a>
-    
-    <a href="pages/ship-of-theseus.html" class="card">
-      <div class="card-icon"><i class="ti ti-sailboat"></i></div>
-      <h2>忒修斯之船悖论</h2>
-      <p>一艘船的木板被逐渐替换，直到全部换新。它还是原来那艘船吗？你还是你吗？</p>
-    </a>
-    
-    <a href="pages/fund-dca-simulator.html" class="card">
-      <div class="card-icon"><i class="ti ti-trending-up"></i></div>
-      <h2>基金定投模拟器</h2>
-      <p>定投一定赚钱吗？模拟不同市场走势，看看微笑曲线和哭泣曲线的区别。</p>
-    </a>
-    
-    <a href="pages/compound-interest-calculator.html" class="card">
-      <div class="card-icon"><i class="ti ti-calculator"></i></div>
-      <h2>复利计算器</h2>
-      <p>定期存款终值计算，支持月存/年存、先付/后付年金，详细展示公式和步骤。</p>
-    </a>
 
-    <a href="pages/compound-power.html" class="card">
-      <div class="card-icon"><i class="ti ti-rocket"></i></div>
-      <h2>复利的威力可视化</h2>
-      <p>早10年存钱 vs 晚10年存钱，差距有多大？用模拟器直观展示"躺平流"如何战胜"奋斗流"。</p>
-    </a>
-    
-    <a href="pages/save-million-calculator.html" class="card">
-      <div class="card-icon"><i class="ti ti-building-bank"></i></div>
-      <h2>存100万有多难</h2>
-      <p>月薪5000的打工人，存到人生第一个100万需要多久？算完可能会沉默。</p>
-    </a>
-    
-    <a href="pages/christmas-hat.html" class="card">
-      <div class="card-icon"><i class="ti ti-christmas-tree"></i></div>
-      <h2>圣诞帽头像生成器</h2>
-      <p>上传头像添加圣诞贴图，支持拖拽、缩放、旋转，可叠加多个贴图，一键下载。</p>
-    </a>
-    
-    <a href="pages/coin-flip-probability.html" class="card">
-      <div class="card-icon"><i class="ti ti-coin"></i></div>
-      <h2>101 vs 100 硬币问题</h2>
-      <p>甲101枚硬币，乙100枚，谁正面多？用对称性证明+蒙特卡洛模拟验证。</p>
-    </a>
-    
-    <a href="pages/drug-relapse-dice.html" class="card">
-      <div class="card-icon"><i class="ti ti-dice-5"></i></div>
-      <h2>100面骰子：1.1%有多低</h2>
-      <p>掷100面骰子，只有掷出1才算成功。来感受一下1%的概率到底有多渺茫。</p>
-    </a>
-    
-    <a href="pages/poisson-distribution.html" class="card">
-      <div class="card-icon"><i class="ti ti-chart-bar"></i></div>
-      <h2>泊松分布可视化</h2>
-      <p>为什么排队、来电、Bug、事故都服从同一个分布？交互式理解泊松分布的本质。</p>
-    </a>
-    
-    <a href="pages/ssh-attack-map.html" class="card">
-      <div class="card-icon"><i class="ti ti-world"></i></div>
-      <h2>全球SSH攻击地图</h2>
-      <p>实时展示正在扫描你服务器的IP来源，看看攻击都来自哪些国家。</p>
-    </a>
-    
-    <a href="pages/wealth-button-paradox.html" class="card">
-      <div class="card-icon"><i class="ti ti-circle-filled"></i></div>
-      <h2>50%财富按钮悖论</h2>
-      <p>50%概率×9，50%概率×0.1，期望值为正，但你敢按吗？用模拟揭示期望值陷阱。</p>
-    </a>
-    
-    <a href="pages/200w-vs-2yi.html" class="card">
-      <div class="card-icon"><i class="ti ti-scale"></i></div>
-      <h2>200万 vs 2亿</h2>
-      <p>100%拿200万，还是99%拿2亿？期望值差99倍，但答案没那么简单。</p>
-    </a>
-    
-    <a href="pages/loss-aversion.html" class="card">
-      <div class="card-icon"><i class="ti ti-mood-sad"></i></div>
-      <h2>损失厌恶测试</h2>
-      <p>失去100元的痛苦=得到250元的快乐。测测你的损失厌恶系数，看看恐惧如何替你做决定。</p>
-    </a>
-    
-    <a href="pages/word-cloud.html" class="card">
-      <div class="card-icon"><i class="ti ti-cloud"></i></div>
-      <h2>户晨风直播词云分析</h2>
-      <p>基于直播实录数据生成的词云图，看看户晨风直播中最常提到的词汇有哪些。</p>
-    </a>
-    
-    <a href="pages/tombstone-generator.html" class="card">
-      <div class="card-icon"><i class="ti ti-grave-2"></i></div>
-      <h2>墓志铭生成器</h2>
-      <p>如果只有三行，你想写什么？生成你的专属墓碑，支持多种样式，可下载图片分享。</p>
-    </a>
-    
-    <a href="pages/weapon-damage-compare.html" class="card">
-      <div class="card-icon"><i class="ti ti-swords"></i></div>
-      <h2>武器伤害对比</h2>
-      <p>1~5 vs 2~4，哪把武器更强？期望相同但方差不同，用模拟揭示稳定与爆发的取舍。</p>
-    </a>
-    
-    <a href="pages/face-score.html" class="card">
-      <div class="card-icon"><i class="ti ti-sparkles"></i></div>
-      <h2>AI颜值评分器</h2>
-      <p>上传照片，AI 分析面部比例、对称性、五眼三庭，给你一个颜值分数。仅供娱乐！</p>
-    </a>
-    
-    <a href="pages/gambler-ruin.html" class="card">
-      <div class="card-icon"><i class="ti ti-cards"></i></div>
-      <h2>赌徒破产悖论</h2>
-      <p>50%概率的公平赌博，为什么赌久必输？用模拟揭示「随机游走」的残酷真相。</p>
-    </a>
-    
-    <a href="pages/quantum-random-visualizer.html" class="card">
-      <div class="card-icon"><i class="ti ti-atom"></i></div>
-      <h2>量子随机数可视化</h2>
-      <p>真随机 vs 伪随机，用眼睛看见随机性的本质。数据来自 ANU 量子真空涨落测量。</p>
-    </a>
-    
-    <a href="pages/quantum-lottery.html" class="card">
-      <div class="card-icon"><i class="ti ti-ticket"></i></div>
-      <h2>量子大乐透</h2>
-      <p>用真正的量子随机数生成彩票号码，体验物理学意义上的「真随机」。</p>
-    </a>
-    
-    <a href="pages/tian-ji-horse-racing.html" class="card">
-      <div class="card-icon"><i class="ti ti-horse"></i></div>
-      <h2>田忌赛马模拟器</h2>
-      <p>这是破坏规则还是博弈智慧？穷举6种策略，用模拟揭示孙膑的博弈论思维。</p>
-    </a>
-    
-    <a href="pages/spend-100-million.html" class="card">
-      <div class="card-icon"><i class="ti ti-shopping-cart"></i></div>
-      <h2>一个亿花钱模拟器</h2>
-      <p>拥有一个亿有多痛苦？来试试把它花光。买豪车、豪宅、私人飞机……你会发现根本花不完。</p>
-    </a>
-    
-    <a href="pages/trading-strategy-simulator.html" class="card">
-      <div class="card-icon"><i class="ti ti-chart-candle"></i></div>
-      <h2>交易策略模拟器</h2>
-      <p>高胜率 vs 高盈亏比，谁才是王道？用蒙特卡洛模拟揭示交易的数学本质。</p>
-    </a>
-    
-    <a href="pages/exponential-growth.html" class="card">
-      <div class="card-icon"><i class="ti ti-layers-intersect"></i></div>
-      <h2>指数增长有多恐怖</h2>
-      <p>一张纸对折42次，厚度超过地月距离。点击对折，亲眼见证指数增长的恐怖。</p>
-    </a>
-    
-    <a href="pages/winners-curse.html" class="card">
-      <div class="card-icon"><i class="ti ti-trophy"></i></div>
-      <h2>赢家诅咒模拟器</h2>
-      <p>为什么赢了竞拍反而亏钱？亲自参与拍卖，体验"赢家诅咒"的残酷真相。</p>
-    </a>
-    
-    <a href="pages/counter-intuitive-probability.html" class="card">
-      <div class="card-icon"><i class="ti ti-brain"></i></div>
-      <h2>反直觉概率论</h2>
-      <p>生日悖论、圣彼得堡悖论、辛普森悖论...那些让数学家都困惑的概率结论，交互式验证。</p>
-    </a>
-    
-    <a href="pages/prisoners-dilemma.html" class="card">
-      <div class="card-icon"><i class="ti ti-lock"></i></div>
-      <h2>囚徒困境模拟</h2>
-      <p>博弈论经典问题，合作还是背叛？体验纳什均衡的残酷与智慧。</p>
-    </a>
+  <div id="categoriesContainer"></div>
 
-    <a href="pages/multiple-choice-cracker.html" class="card">
-      <div class="card-icon"><i class="ti ti-target"></i></div>
-      <h2>选择题破解器</h2>
-      <p>100道4选1单选题，一题不会，只能看总分。如何用最少的提交次数找出所有正确答案？</p>
-    </a>
-
-    <a href="pages/placebo-buttons.html" class="card">
-      <div class="card-icon"><i class="ti ti-circle-dot"></i></div>
-      <h2>安慰剂按钮</h2>
-      <p>电梯关门键、人行道按钮、办公室温控器...那些看起来有用，实际什么都没做的按钮。</p>
-    </a>
-
-    <a href="pages/doomsday-button.html" class="card">
-      <div class="card-icon"><i class="ti ti-skull"></i></div>
-      <h2>十亿元按钮</h2>
-      <p>按下获得10亿元，但500年后人类毁灭。你会按吗？来试试看会发生什么。</p>
-    </a>
-
-    <a href="pages/gambling-relapse.html" class="card">
-      <div class="card-icon"><i class="ti ti-refresh-alert"></i></div>
-      <h2>复赌概率模拟器</h2>
-      <p>92%的赌博成瘾者在一年内复赌。用模拟体验戒赌一年有多难，理解为什么意志力不够用。</p>
-    </a>
-
-    <a href="pages/why-gamblers-lose.html" class="card">
-      <div class="card-icon"><i class="ti ti-cash-off"></i></div>
-      <h2>为什么十赌九输</h2>
-      <p>庄家抽水、赌徒破产定理、心理陷阱...用数学和模拟告诉你，这不是运气问题，是数学必然。</p>
-    </a>
-
-    <a href="pages/jquery-20-years.html" class="card">
-      <div class="card-icon"><i class="ti ti-brand-jquery"></i></div>
-      <h2>jQuery 20周年纪念</h2>
-      <p>用jQuery 4.0写的怀旧Demo，回顾选择器、链式调用、动画、Ajax等经典特性。Write Less, Do More.</p>
-    </a>
-
-    <a href="pages/chicken-leg-problem.html" class="card">
-      <div class="card-icon"><i class="ti ti-feather"></i></div>
-      <h2>百万只鸡砍腿问题</h2>
-      <p>100万只鸡砍100万次腿，还剩多少完好的鸡？用模拟验证这个有趣的概率问题。</p>
-    </a>
-
-    <a href="pages/kelly-criterion.html" class="card">
-      <div class="card-icon"><i class="ti ti-percentage"></i></div>
-      <h2>凯利公式计算器</h2>
-      <p>51%概率赢一倍，每次该下注多少？凯利公式告诉你长期财富增长最快的最优解。</p>
-    </a>
-
-    <a href="pages/euler-formula.html" class="card">
-      <div class="card-icon"><i class="ti ti-math-pi"></i></div>
-      <h2>欧拉公式可视化</h2>
-      <p>e^(iπ)+1=0，被费曼称为"数学的珠宝"。用动画理解五大常数如何完美相遇。</p>
-    </a>
-
-    <a href="pages/salary-vs-growth.html" class="card">
-      <div class="card-icon"><i class="ti ti-growth"></i></div>
-      <h2>工资 vs 成长机会</h2>
-      <p>老板说别太看重工资？用数学模型算算，成长路线到底要多久才能追回损失的薪资。</p>
-    </a>
-
-    <a href="pages/stock-trading-difficulty.html" class="card">
-      <div class="card-icon"><i class="ti ti-trending-down"></i></div>
-      <h2>炒股到底难在哪</h2>
-      <p>60%胜率也可能亏钱？用蒙特卡洛模拟揭示概率陷阱、心理博弈和时间陷阱的残酷真相。</p>
-    </a>
-
-    <a href="pages/probability-fraction.html" class="card">
-      <div class="card-icon"><i class="ti ti-math-symbols"></i></div>
-      <h2>1/100 vs 6/600 概率一样吗</h2>
-      <p>数学上完全一样，但你的直觉说不一样？用模拟验证比率偏差，揭示大脑的概率错觉。</p>
-    </a>
-
-    <a href="pages/education-signaling.html" class="card">
-      <div class="card-icon"><i class="ti ti-school"></i></div>
-      <h2>学历信号模型</h2>
-      <p>学历≠能力，但企业为什么还看学历？用诺贝尔经济学奖的信号模型和招聘模拟揭示答案。</p>
-    </a>
-
-    <a href="pages/counter-intuitive-probability-2.html" class="card">
-      <div class="card-icon"><i class="ti ti-brain"></i></div>
-      <h2>反直觉概率论 II</h2>
-      <p>非传递骰子、男孩女孩悖论、假阳性悖论、集齐问题、睡美人问题...五个新的概率悖论，交互式验证。</p>
-    </a>
-
-    <a href="pages/doubling-box.html" class="card">
-      <div class="card-icon"><i class="ti ti-box"></i></div>
-      <h2>薛定谔的钱箱</h2>
-      <p>50%翻倍50%消失，放还是不放？凯利公式告诉你最优下注比例，用模拟揭示全押必死的数学真相。</p>
-    </a>
-
-    <a href="pages/lottery-winner-bankruptcy.html" class="card">
-      <div class="card-icon"><i class="ti ti-ticket"></i></div>
-      <h2>彩票头奖为什么破产</h2>
-      <p>75%的中奖者在5年内破产。用财富衰减模型和蒙特卡洛模拟，揭示消费膨胀、心理账户、锚定效应的致命组合。</p>
-    </a>
-
-  </div>
-  
   <div class="footer">
     <span>Made with ❤️ by</span>
     <a href="https://www.zhihu.com/people/han-ming-45-96" target="_blank">@Asher</a>
@@ -481,64 +105,95 @@
   </div>
 
   <script>
-    // 搜索过滤
-    function filterCards() {
+    let activeCategory = 'all';
+    let demosData = null;
+
+    function init() {
+      demosData = DEMOS_DATA;
+      renderFilterTags();
+      renderCategories();
+      document.getElementById('totalCount').textContent = demosData.categories.reduce((s, c) => s + c.demos.length, 0);
+    }
+
+    function renderFilterTags() {
+      const container = document.getElementById('filterTags');
+      let html = '<span class="filter-tag active" data-category="all"><i class="ti ti-apps"></i>全部</span>';
+      demosData.categories.forEach(cat => {
+        html += `<span class="filter-tag" data-category="${cat.id}"><i class="ti ${cat.icon}"></i>${cat.name}</span>`;
+      });
+      container.innerHTML = html;
+      container.addEventListener('click', (e) => {
+        const tag = e.target.closest('.filter-tag');
+        if (!tag) return;
+        container.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+        tag.classList.add('active');
+        activeCategory = tag.dataset.category;
+        document.getElementById('searchInput').value = '';
+        handleFilter();
+      });
+    }
+
+    function renderCategories() {
+      const container = document.getElementById('categoriesContainer');
+      container.innerHTML = demosData.categories.map(cat => `
+        <div class="category-section" data-category="${cat.id}">
+          <div class="category-title">
+            <i class="ti ${cat.icon}"></i>${cat.name}
+            <span class="count">${cat.demos.length}</span>
+          </div>
+          <div class="category-cards">
+            ${cat.demos.map(d => `
+              <a href="${d.href}" class="card" data-category="${cat.id}">
+                <div class="card-icon"><i class="ti ${d.icon}"></i></div>
+                <h2>${d.title}</h2>
+                <p>${d.desc}</p>
+              </a>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function handleFilter() {
       const query = document.getElementById('searchInput').value.toLowerCase().trim();
-      const cards = document.querySelectorAll('.card');
       const noResults = document.getElementById('noResults');
       const matchCountEl = document.getElementById('matchCount');
-      
-      let visibleCount = 0;
-      
-      cards.forEach(card => {
-        const title = card.querySelector('h2').textContent.toLowerCase();
-        const desc = card.querySelector('p').textContent.toLowerCase();
-        const icon = card.querySelector('.card-icon').textContent;
-        const searchText = title + ' ' + desc + ' ' + icon;
-        
-        if (query === '' || searchText.includes(query)) {
-          card.classList.remove('hidden');
-          visibleCount++;
-        } else {
-          card.classList.add('hidden');
-        }
+      let totalVisible = 0;
+
+      document.querySelectorAll('.category-section').forEach(section => {
+        const categoryMatch = activeCategory === 'all' || section.dataset.category === activeCategory;
+        if (!categoryMatch) { section.classList.add('hidden'); return; }
+        let sectionVisible = 0;
+        section.querySelectorAll('.card').forEach(card => {
+          const text = (card.querySelector('h2').textContent + ' ' + card.querySelector('p').textContent).toLowerCase();
+          const match = query === '' || text.includes(query);
+          card.classList.toggle('hidden', !match);
+          if (match) { sectionVisible++; totalVisible++; }
+        });
+        section.classList.toggle('hidden', sectionVisible === 0);
       });
-      
-      // 显示/隐藏无结果提示
-      if (visibleCount === 0 && query !== '') {
-        noResults.classList.add('show');
-      } else {
-        noResults.classList.remove('show');
-      }
-      
-      // 更新计数
+
+      noResults.classList.toggle('show', totalVisible === 0 && (query !== '' || activeCategory !== 'all'));
       if (query !== '') {
         matchCountEl.style.display = 'inline';
-        matchCountEl.textContent = `找到 ${visibleCount} 个`;
+        matchCountEl.textContent = `找到 ${totalVisible} 个`;
       } else {
         matchCountEl.style.display = 'none';
       }
     }
-    
-    // 初始化总数
-    document.addEventListener('DOMContentLoaded', () => {
-      const total = document.querySelectorAll('.card').length;
-      document.getElementById('totalCount').textContent = total;
-    });
-    
-    // 支持快捷键
+
     document.addEventListener('keydown', (e) => {
-      // Ctrl/Cmd + K 聚焦搜索框
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        document.getElementById('searchInput').focus();
-      }
-      // ESC 清空搜索
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); document.getElementById('searchInput').focus(); }
       if (e.key === 'Escape') {
         document.getElementById('searchInput').value = '';
-        filterCards();
+        activeCategory = 'all';
+        document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+        document.querySelector('.filter-tag[data-category="all"]')?.classList.add('active');
+        handleFilter();
       }
     });
+
+    init();
   </script>
 </body>
 </html>

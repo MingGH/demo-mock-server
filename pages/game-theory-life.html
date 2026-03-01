@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>博弈论日常生活指南 - 用策略思维做更好的决策</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; padding: 20px; color: #fff; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .back-link { display: inline-block; color: rgba(255,255,255,0.8); text-decoration: none; margin-bottom: 15px; font-size: 0.9rem; }
+    .back-link:hover { text-decoration: underline; }
+    h1 { text-align: center; margin-bottom: 10px; font-size: 1.8rem; background: linear-gradient(135deg, #ffd93d, #ff6b6b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .subtitle { text-align: center; color: rgba(255,255,255,0.7); margin-bottom: 25px; font-size: 0.95rem; }
+    .card { background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border-radius: 16px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    .card h2 { color: #ffd93d; margin-bottom: 15px; font-size: 1.2rem; }
+    .question-box { background: linear-gradient(135deg, rgba(255,217,61,0.15), rgba(255,107,107,0.1)); border-left: 4px solid #ffd93d; padding: 15px 20px; border-radius: 0 12px 12px 0; margin-bottom: 20px; font-size: 1rem; line-height: 1.8; }
+    .question-box strong { color: #ffd93d; }
+    .tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .tab-btn { padding: 10px 20px; border: 2px solid rgba(255,255,255,0.2); border-radius: 10px; background: transparent; color: rgba(255,255,255,0.7); font-size: 0.95rem; cursor: pointer; transition: all 0.3s; }
+    .tab-btn:hover { border-color: #ffd93d; color: #ffd93d; }
+    .tab-btn.active { border-color: #ffd93d; background: rgba(255,217,61,0.15); color: #ffd93d; font-weight: bold; }
+    .scene-panel { display: none; }
+    .scene-panel.active { display: block; }
+    .action-btn { padding: 12px 30px; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: all 0.3s; margin: 5px; }
+    .action-btn.primary { background: linear-gradient(135deg, #ffd93d, #f0c000); color: #333; }
+    .action-btn.secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
+    .action-btn.accept { background: linear-gradient(135deg, #4ade80, #22c55e); color: white; }
+    .action-btn.reject { background: linear-gradient(135deg, #ff6b6b, #ef4444); color: white; }
+    .action-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .price-display { display: flex; justify-content: center; gap: 40px; margin: 20px 0; flex-wrap: wrap; }
+    .price-box { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px 30px; text-align: center; min-width: 150px; }
+    .price-box .label { font-size: 0.85rem; color: rgba(255,255,255,0.5); margin-bottom: 8px; }
+    .price-box .value { font-size: 2rem; font-weight: bold; color: #ffd93d; }
+    .price-box .value.seller { color: #ff6b6b; }
+    .price-box .value.buyer { color: #4ade80; }
+    .slider-group { margin: 15px auto; max-width: 500px; text-align: left; }
+    .slider-group label { display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem; }
+    .slider-group input[type="range"] { width: 100%; }
+    .slider-value { text-align: right; color: #ffd93d; font-size: 0.85rem; }
+    .matrix-container { overflow-x: auto; margin: 20px 0; }
+    .payoff-matrix { width: 100%; max-width: 520px; margin: 0 auto; border-collapse: collapse; font-size: 0.9rem; }
+    .payoff-matrix th, .payoff-matrix td { padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.2); }
+    .payoff-matrix th { background: rgba(255,255,255,0.1); color: #ffd93d; }
+    .payoff-matrix td { background: rgba(0,0,0,0.2); }
+    .payoff-matrix .nash { background: rgba(255,107,107,0.25); border: 2px solid #ff6b6b; }
+    .payoff-matrix .optimal { background: rgba(74,222,128,0.15); }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
+    @media (max-width: 600px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    .stat-box { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 15px; text-align: center; }
+    .stat-box .label { font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-bottom: 5px; }
+    .stat-box .value { font-size: 1.5rem; font-weight: bold; color: #ffd93d; }
+    .chart-container { position: relative; height: 280px; margin-top: 20px; }
+    .analysis { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 22px; margin-top: 20px; }
+    .analysis h3 { color: #ffd93d; margin-bottom: 15px; font-size: 1.1rem; }
+    .analysis p { color: rgba(255,255,255,0.85); line-height: 1.85; margin-bottom: 14px; }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+    .analysis .formula { background: rgba(255,255,255,0.08); padding: 12px 16px; border-radius: 8px; font-family: 'Courier New', monospace; margin: 14px 0; overflow-x: auto; }
+    .conclusion { background: linear-gradient(135deg, rgba(255,217,61,0.1), rgba(255,107,107,0.1)); border: 2px solid #ffd93d; border-radius: 16px; padding: 25px; text-align: center; margin-top: 20px; }
+    .conclusion h3 { font-size: 1.4rem; margin-bottom: 15px; color: #ffd93d; }
+    .conclusion p { color: rgba(255,255,255,0.9); line-height: 1.85; }
+    .round-log { max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px; margin-top: 15px; }
+    .round-item { display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; }
+    .round-item:last-child { border-bottom: none; }
+    .offer-bar { display: flex; align-items: center; gap: 15px; margin: 10px 0; }
+    .offer-bar .bar-track { flex: 1; height: 20px; background: rgba(0,0,0,0.3); border-radius: 10px; overflow: hidden; position: relative; }
+    .offer-bar .bar-fill { height: 100%; border-radius: 10px; transition: width 0.5s; }
+    .offer-bar .bar-label { min-width: 60px; text-align: right; font-size: 0.85rem; }
+    .emoji-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .result-msg { font-size: 1.2rem; font-weight: bold; margin: 15px 0; }
+    .result-msg.win { color: #4ade80; }
+    .result-msg.lose { color: #ff6b6b; }
+    .result-msg.draw { color: #ffd93d; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="../index.html" class="back-link"><i class="ti ti-arrow-left"></i> 返回首页</a>
+    <h1><i class="ti ti-chess"></i> 博弈论日常生活指南</h1>
+    <p class="subtitle">砍价、社交、选择...那些你每天都在玩的「博弈游戏」</p>
+
+    <!-- 导言 -->
+    <div class="card">
+      <div class="question-box">
+        <strong>博弈论听起来很高深？</strong>其实你每天都在用。<br>
+        砍价时出多少钱、朋友聚餐谁买单、要不要加班表现……<br>
+        这些都是<strong>博弈</strong>——你的最优选择取决于别人怎么选。<br><br>
+        下面用 4 个日常场景，让你亲手体验博弈论的威力。
+      </div>
+    </div>
+
+    <!-- 场景切换 -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchScene('bargain')"><i class="ti ti-shopping-cart"></i> 砍价博弈</button>
+      <button class="tab-btn" onclick="switchScene('ultimatum')"><i class="ti ti-scale"></i> 最后通牒</button>
+      <button class="tab-btn" onclick="switchScene('chicken')"><i class="ti ti-car"></i> 懦夫博弈</button>
+      <button class="tab-btn" onclick="switchScene('repeat')"><i class="ti ti-repeat"></i> 重复博弈</button>
+    </div>
+
+    <!-- 场景1: 砍价博弈 -->
+    <div class="scene-panel active" id="scene-bargain">
+      <div class="card">
+        <h2><i class="ti ti-shopping-cart"></i> 砍价博弈：纳什谈判解</h2>
+        <div class="question-box">
+          你在市场看中一件商品，卖家标价 <strong>1000 元</strong>。<br>
+          你心里最多愿出 800 元，卖家最低能接受 400 元。<br>
+          <strong>你该出价多少？</strong>纳什谈判解告诉你最优答案。
+        </div>
+        <div class="slider-group">
+          <label>卖家底价（你不知道的秘密）：<span id="sellerMinVal">400</span> 元</label>
+          <input type="range" min="100" max="900" value="400" id="sellerMin" oninput="updateBargain()">
+        </div>
+        <div class="slider-group">
+          <label>你的最高承受价：<span id="buyerMaxVal">800</span> 元</label>
+          <input type="range" min="200" max="1000" value="800" id="buyerMax" oninput="updateBargain()">
+        </div>
+        <div class="slider-group">
+          <label>你的出价：<span id="yourOfferVal">500</span> 元</label>
+          <input type="range" min="100" max="1000" value="500" id="yourOffer" oninput="updateBargain()">
+        </div>
+        <div class="price-display">
+          <div class="price-box">
+            <div class="label">纳什谈判解（最优出价）</div>
+            <div class="value" id="nashPrice">600</div>
+          </div>
+          <div class="price-box">
+            <div class="label">你的出价</div>
+            <div class="value buyer" id="yourPriceShow">500</div>
+          </div>
+          <div class="price-box">
+            <div class="label">成交概率</div>
+            <div class="value" id="dealProb">75%</div>
+          </div>
+        </div>
+        <div id="bargainResult" style="text-align:center; margin-top:15px; font-size:1rem; color:rgba(255,255,255,0.8);"></div>
+        <div class="analysis" style="margin-top:20px;">
+          <h3><i class="ti ti-math-function"></i> 纳什谈判解公式</h3>
+          <div class="formula">成交价 = (卖家底价 + 买家最高价) / 2</div>
+          <p>纳什谈判解的核心思想：双方在谈判中的<span class="highlight">议价能力对等</span>时，最终价格是双方底线的中点。</p>
+          <p>实际砍价技巧：先出一个<span class="safe">低于纳什解</span>的价格（锚定效应），然后逐步让步到纳什解附近。出价太低对方直接拒绝，出价太高你就亏了。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 场景2: 最后通牒博弈 -->
+    <div class="scene-panel" id="scene-ultimatum">
+      <div class="card">
+        <h2><i class="ti ti-scale"></i> 最后通牒博弈：公平 vs 理性</h2>
+        <div class="question-box">
+          你和陌生人分 <strong>100 元</strong>。你提出分配方案，对方只能选择<strong>接受或拒绝</strong>。<br>
+          如果拒绝，两人都得不到钱。<br>
+          <strong>理性上</strong>你应该只给对方 1 元（反正他拒绝就什么都没有）。<br>
+          但实验表明，低于 <strong>30%</strong> 的方案大概率被拒绝。
+        </div>
+        <div class="slider-group">
+          <label>你提议给对方的金额：<span id="offerAmountVal">30</span> 元（你留 <span id="keepAmountVal">70</span> 元）</label>
+          <input type="range" min="0" max="100" value="30" id="offerAmount" oninput="updateUltimatum()">
+        </div>
+        <div class="offer-bar">
+          <span style="color:#4ade80; min-width:40px;">你</span>
+          <div class="bar-track">
+            <div class="bar-fill" id="keepBar" style="width:70%; background: linear-gradient(90deg, #4ade80, #22c55e);"></div>
+          </div>
+          <span style="color:#ff6b6b; min-width:40px;">TA</span>
+          <div class="bar-track">
+            <div class="bar-fill" id="offerBar" style="width:30%; background: linear-gradient(90deg, #ff6b6b, #ef4444);"></div>
+          </div>
+        </div>
+        <div class="price-display">
+          <div class="price-box">
+            <div class="label">对方接受概率</div>
+            <div class="value" id="acceptProb">72%</div>
+          </div>
+          <div class="price-box">
+            <div class="label">你的期望收益</div>
+            <div class="value buyer" id="expectedGain">50.4</div>
+          </div>
+        </div>
+        <div style="text-align:center; margin:15px 0;">
+          <button class="action-btn primary" onclick="playUltimatum()"><i class="ti ti-send"></i> 提出方案</button>
+          <button class="action-btn secondary" onclick="runUltimatumSim()"><i class="ti ti-chart-bar"></i> 模拟1000次</button>
+        </div>
+        <div id="ultimatumResult" style="text-align:center; margin-top:15px;"></div>
+        <div class="chart-container" id="ultimatumChartBox" style="display:none;">
+          <canvas id="ultimatumChart"></canvas>
+        </div>
+        <div class="analysis" style="margin-top:20px;">
+          <h3><i class="ti ti-bulb"></i> 为什么「理性」方案会被拒绝？</h3>
+          <p>经济学假设人是理性的：对方应该接受任何大于 0 的金额。但实验中，<span class="highlight">低于 20% 的方案被拒绝率超过 50%</span>。</p>
+          <p>这是因为人有<span class="highlight">不公平厌恶</span>：宁可自己损失，也要惩罚不公平的行为。</p>
+          <p>生活启示：和朋友分东西、谈合作时，<span class="safe">给对方一个「感觉公平」的方案</span>，比榨取最大利益更明智。最优提议通常在 <span class="safe">35%-45%</span> 之间。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 场景3: 懦夫博弈 -->
+    <div class="scene-panel" id="scene-chicken">
+      <div class="card">
+        <h2><i class="ti ti-car"></i> 懦夫博弈：谁先让步？</h2>
+        <div class="question-box">
+          两辆车迎面对冲，谁先转向谁就是「懦夫」。<br>
+          <strong>都不转</strong> → 车毁人亡（-100）<br>
+          <strong>你转对方不转</strong> → 你丢面子（-10），对方赢（+10）<br>
+          <strong>都转</strong> → 平局（0, 0）<br><br>
+          日常版本：和室友争谁洗碗、和同事争谁加班、和对象争谁先道歉……
+        </div>
+        <div class="matrix-container">
+          <table class="payoff-matrix">
+            <tr><th></th><th></th><th colspan="2" style="color:#ff6b6b;">对方</th></tr>
+            <tr><th></th><th></th><th>让步</th><th>不让</th></tr>
+            <tr>
+              <th rowspan="2" style="color:#4ade80; writing-mode:vertical-lr; transform:rotate(180deg);">你</th>
+              <th style="color:#4ade80;">让步</th>
+              <td class="optimal">0 / 0<br><small style="color:rgba(255,255,255,0.4);">双方妥协</small></td>
+              <td>-10 / +10<br><small style="color:rgba(255,255,255,0.4);">你是懦夫</small></td>
+            </tr>
+            <tr>
+              <th style="color:#4ade80;">不让</th>
+              <td>+10 / -10<br><small style="color:rgba(255,255,255,0.4);">你赢了</small></td>
+              <td class="nash">-100 / -100<br><small style="color:#ff6b6b;">两败俱伤</small></td>
+            </tr>
+          </table>
+        </div>
+        <div style="text-align:center; margin:20px 0;">
+          <p style="color:rgba(255,255,255,0.7); margin-bottom:15px;">你的选择：</p>
+          <button class="action-btn accept" id="chickenSwerve" onclick="playChicken('swerve')"><i class="ti ti-arrow-back"></i> 让步</button>
+          <button class="action-btn reject" id="chickenStraight" onclick="playChicken('straight')"><i class="ti ti-arrow-up"></i> 不让</button>
+        </div>
+        <div id="chickenResult" style="text-align:center; margin:15px 0;"></div>
+        <div class="stats-grid" id="chickenStats" style="display:none;">
+          <div class="stat-box"><div class="label">总局数</div><div class="value" id="chickenRounds">0</div></div>
+          <div class="stat-box"><div class="label">你的总得分</div><div class="value" id="chickenYourScore">0</div></div>
+          <div class="stat-box"><div class="label">对方总得分</div><div class="value" id="chickenOppScore">0</div></div>
+        </div>
+        <div style="text-align:center; margin-top:10px;">
+          <button class="action-btn secondary" onclick="resetChicken()"><i class="ti ti-refresh"></i> 重置</button>
+          <button class="action-btn primary" onclick="simChicken1000()"><i class="ti ti-chart-bar"></i> 混合策略模拟</button>
+        </div>
+        <div class="chart-container" id="chickenChartBox" style="display:none;">
+          <canvas id="chickenChart"></canvas>
+        </div>
+        <div class="analysis" style="margin-top:20px;">
+          <h3><i class="ti ti-bulb"></i> 混合策略纳什均衡</h3>
+          <p>懦夫博弈没有纯策略纳什均衡（总有一方想改变）。最优策略是<span class="highlight">随机化</span>：以一定概率让步。</p>
+          <div class="formula">最优让步概率 p = (两败俱伤损失 - 赢的收益) / (两败俱伤损失 - 赢的收益 + 输的损失 - 平局收益)<br>本例: p = (100-10)/(100-10+10-0) = 90%</div>
+          <p>生活启示：<span class="safe">大多数时候让步是最优策略</span>。争一口气的代价往往远大于让步的损失。但偶尔展示「不让步」的决心，能防止对方总是欺负你。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 场景4: 重复博弈与声誉 -->
+    <div class="scene-panel" id="scene-repeat">
+      <div class="card">
+        <h2><i class="ti ti-repeat"></i> 重复博弈：为什么熟人之间更讲信用？</h2>
+        <div class="question-box">
+          一次性博弈中，背叛是理性选择。<br>
+          但如果你们<strong>要打很多次交道</strong>呢？<br>
+          选择一个策略，和电脑对战 50 轮「信任博弈」，看看谁赚得多。<br><br>
+          规则：双方各投入 <strong>10 元</strong>。合作=投入翻倍共享，背叛=偷走对方投入。
+        </div>
+        <div style="margin-bottom:15px;">
+          <p style="color:rgba(255,255,255,0.6); margin-bottom:10px;">选择你的策略：</p>
+          <div class="tabs" id="strategyTabs">
+            <button class="tab-btn active" onclick="selectRepeatStrategy(this,'tft')">以牙还牙</button>
+            <button class="tab-btn" onclick="selectRepeatStrategy(this,'always-c')">永远合作</button>
+            <button class="tab-btn" onclick="selectRepeatStrategy(this,'always-d')">永远背叛</button>
+            <button class="tab-btn" onclick="selectRepeatStrategy(this,'grudger')">记仇者</button>
+            <button class="tab-btn" onclick="selectRepeatStrategy(this,'random')">随机</button>
+          </div>
+          <p style="color:rgba(255,255,255,0.6); margin-bottom:10px;">对手策略：</p>
+          <div class="tabs" id="oppStrategyTabs">
+            <button class="tab-btn active" onclick="selectOppStrategy(this,'tft')">以牙还牙</button>
+            <button class="tab-btn" onclick="selectOppStrategy(this,'always-c')">永远合作</button>
+            <button class="tab-btn" onclick="selectOppStrategy(this,'always-d')">永远背叛</button>
+            <button class="tab-btn" onclick="selectOppStrategy(this,'grudger')">记仇者</button>
+            <button class="tab-btn" onclick="selectOppStrategy(this,'random')">随机</button>
+          </div>
+        </div>
+        <div style="text-align:center; margin:15px 0;">
+          <button class="action-btn primary" onclick="runRepeatGame()"><i class="ti ti-player-play"></i> 开始50轮对决</button>
+          <button class="action-btn secondary" onclick="runTournament()"><i class="ti ti-tournament"></i> 全策略锦标赛</button>
+        </div>
+        <div class="stats-grid" id="repeatStats" style="display:none;">
+          <div class="stat-box"><div class="label">你的总收益</div><div class="value" id="repeatYourTotal">0</div></div>
+          <div class="stat-box"><div class="label">对方总收益</div><div class="value" id="repeatOppTotal">0</div></div>
+          <div class="stat-box"><div class="label">合作率</div><div class="value" id="repeatCoopRate">0%</div></div>
+        </div>
+        <div class="chart-container" id="repeatChartBox" style="display:none;">
+          <canvas id="repeatChart"></canvas>
+        </div>
+        <div id="tournamentResult" style="display:none; margin-top:20px;">
+          <h3 style="color:#ffd93d; margin-bottom:10px;"><i class="ti ti-tournament"></i> 锦标赛结果</h3>
+          <div id="tournamentTable"></div>
+        </div>
+        <div class="analysis" style="margin-top:20px;">
+          <h3><i class="ti ti-bulb"></i> 重复博弈的启示</h3>
+          <p>Robert Axelrod 的经典锦标赛证明：<span class="safe">「以牙还牙」是最强策略</span>。它有四个特点：</p>
+          <p>1. <span class="safe">善良</span>：先合作，不主动背叛<br>
+             2. <span class="highlight">可激怒</span>：被背叛立刻报复<br>
+             3. <span class="safe">宽容</span>：对方改过就原谅<br>
+             4. <span class="safe">简单</span>：对方能理解你的逻辑</p>
+          <p>生活启示：和长期打交道的人（同事、邻居、朋友），<span class="safe">先释放善意，但别当老好人</span>。被占便宜要及时反馈，对方改正后要及时原谅。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card conclusion">
+      <h3><i class="ti ti-bulb"></i> 博弈论的四条生活法则</h3>
+      <p>
+        <span style="color:#4ade80;">1. 砍价时，锚定在纳什谈判解附近，别太贪也别太怂。</span><br><br>
+        <span style="color:#ff6b6b;">2. 分配利益时，给对方一个「感觉公平」的方案，比榨取最大利益更赚。</span><br><br>
+        <span style="color:#ffd93d;">3. 大多数冲突中，让步的代价远小于硬刚。但偶尔要展示底线。</span><br><br>
+        <span style="color:#00d4ff;">4. 和长期打交道的人：先善良，被欺负就反击，对方改了就原谅。</span>
+      </p>
+    </div>
+  </div>
+  <script>
+    // ===== 场景切换 =====
+    function switchScene(id) {
+      document.querySelectorAll('.scene-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('scene-' + id).classList.add('active');
+      event.target.closest('.tab-btn').classList.add('active');
+    }
+
+    // ===== 场景1: 砍价博弈 =====
+    function nashBargainPrice(sellerMin, buyerMax) {
+      if (buyerMax < sellerMin) return null;
+      return (sellerMin + buyerMax) / 2;
+    }
+    function bargainDealProb(offer, sellerMin, buyerMax) {
+      if (offer >= buyerMax) return Math.min(1, offer / buyerMax);
+      if (offer < sellerMin * 0.5) return 0;
+      if (offer >= sellerMin) return 1;
+      return (offer - sellerMin * 0.5) / (sellerMin - sellerMin * 0.5);
+    }
+    function updateBargain() {
+      var sm = +document.getElementById('sellerMin').value;
+      var bm = +document.getElementById('buyerMax').value;
+      var yo = +document.getElementById('yourOffer').value;
+      document.getElementById('sellerMinVal').textContent = sm;
+      document.getElementById('buyerMaxVal').textContent = bm;
+      document.getElementById('yourOfferVal').textContent = yo;
+      var nash = nashBargainPrice(sm, bm);
+      document.getElementById('nashPrice').textContent = nash !== null ? nash.toFixed(0) + ' 元' : '无解';
+      document.getElementById('yourPriceShow').textContent = yo + ' 元';
+      var prob = 0;
+      var msg = '';
+      if (nash === null) {
+        prob = 0;
+        msg = '<span style="color:#ff6b6b;">买家最高价低于卖家底价，无法成交。</span>';
+      } else if (yo < sm) {
+        prob = Math.max(0, 0.3 * (yo / sm));
+        msg = '<span style="color:#ff6b6b;">出价低于卖家底价，大概率被拒绝。</span>';
+      } else if (yo >= sm && yo <= nash) {
+        prob = 0.5 + 0.4 * ((yo - sm) / (nash - sm + 1));
+        msg = '<span style="color:#4ade80;">出价在底价和纳什解之间，不错的策略。</span>';
+      } else {
+        prob = 0.9 + 0.1 * Math.min(1, (yo - nash) / (bm - nash + 1));
+        msg = '<span style="color:#ffd93d;">出价高于纳什解，成交概率高但你多付了钱。</span>';
+      }
+      document.getElementById('dealProb').textContent = (prob * 100).toFixed(0) + '%';
+      document.getElementById('bargainResult').innerHTML = msg;
+    }
+    updateBargain();
+
+    // ===== 场景2: 最后通牒 =====
+    function ultimatumAcceptProb(offer) {
+      if (offer <= 0) return 0;
+      if (offer >= 50) return 0.98;
+      if (offer >= 40) return 0.90 + (offer - 40) * 0.008;
+      if (offer >= 30) return 0.70 + (offer - 30) * 0.02;
+      if (offer >= 20) return 0.40 + (offer - 20) * 0.03;
+      if (offer >= 10) return 0.15 + (offer - 10) * 0.025;
+      return offer * 0.015;
+    }
+    function ultimatumExpectedGain(offer) {
+      var keep = 100 - offer;
+      return keep * ultimatumAcceptProb(offer);
+    }
+    function updateUltimatum() {
+      var o = +document.getElementById('offerAmount').value;
+      document.getElementById('offerAmountVal').textContent = o;
+      document.getElementById('keepAmountVal').textContent = 100 - o;
+      document.getElementById('keepBar').style.width = (100 - o) + '%';
+      document.getElementById('offerBar').style.width = o + '%';
+      var p = ultimatumAcceptProb(o);
+      var eg = ultimatumExpectedGain(o);
+      document.getElementById('acceptProb').textContent = (p * 100).toFixed(0) + '%';
+      document.getElementById('expectedGain').textContent = eg.toFixed(1) + ' 元';
+    }
+    updateUltimatum();
+    var ultimatumChart = null;
+    function playUltimatum() {
+      var o = +document.getElementById('offerAmount').value;
+      var p = ultimatumAcceptProb(o);
+      var accepted = Math.random() < p;
+      var el = document.getElementById('ultimatumResult');
+      if (accepted) {
+        el.innerHTML = '<div class="result-msg win"><i class="ti ti-check"></i> 对方接受了！你获得 ' + (100 - o) + ' 元，对方获得 ' + o + ' 元。</div>';
+      } else {
+        el.innerHTML = '<div class="result-msg lose"><i class="ti ti-x"></i> 对方拒绝了！双方都得到 0 元。"宁可同归于尽，也不接受不公平。"</div>';
+      }
+    }
+    function runUltimatumSim() {
+      var data = [];
+      for (var o = 0; o <= 50; o++) {
+        data.push({ offer: o, expected: ultimatumExpectedGain(o), acceptRate: ultimatumAcceptProb(o) * 100 });
+      }
+      var best = data.reduce(function(a, b) { return a.expected > b.expected ? a : b; });
+      document.getElementById('ultimatumChartBox').style.display = 'block';
+      var ctx = document.getElementById('ultimatumChart').getContext('2d');
+      if (ultimatumChart) ultimatumChart.destroy();
+      ultimatumChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.map(function(d) { return d.offer; }),
+          datasets: [{
+            label: '期望收益（元）',
+            data: data.map(function(d) { return d.expected; }),
+            borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.1)',
+            fill: true, tension: 0.3, yAxisID: 'y'
+          }, {
+            label: '接受概率（%）',
+            data: data.map(function(d) { return d.acceptRate; }),
+            borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.1)',
+            fill: true, tension: 0.3, yAxisID: 'y1'
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: 'rgba(255,255,255,0.8)' } },
+            title: { display: true, text: '最优提议 = ' + best.offer + ' 元（期望收益 ' + best.expected.toFixed(1) + ' 元）', color: '#ffd93d' }
+          },
+          scales: {
+            x: { title: { display: true, text: '给对方的金额', color: 'rgba(255,255,255,0.6)' }, ticks: { color: 'rgba(255,255,255,0.6)' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            y: { position: 'left', title: { display: true, text: '期望收益', color: '#4ade80' }, ticks: { color: '#4ade80' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            y1: { position: 'right', title: { display: true, text: '接受概率%', color: '#ff6b6b' }, ticks: { color: '#ff6b6b' }, grid: { drawOnChartArea: false } }
+          }
+        }
+      });
+      document.getElementById('ultimatumResult').innerHTML = '<div class="result-msg draw"><i class="ti ti-chart-line"></i> 最优提议：给对方 ' + best.offer + ' 元，期望收益 ' + best.expected.toFixed(1) + ' 元</div>';
+    }
+
+    // ===== 场景3: 懦夫博弈 =====
+    var chickenPayoffs = { 'swerve-swerve': [0,0], 'swerve-straight': [-10,10], 'straight-swerve': [10,-10], 'straight-straight': [-100,-100] };
+    var chickenHistory = { rounds: 0, yourScore: 0, oppScore: 0 };
+    function chickenOppChoice() {
+      return Math.random() < 0.5 ? 'swerve' : 'straight';
+    }
+    function playChicken(myChoice) {
+      var opp = chickenOppChoice();
+      var key = myChoice + '-' + opp;
+      var pay = chickenPayoffs[key];
+      chickenHistory.rounds++;
+      chickenHistory.yourScore += pay[0];
+      chickenHistory.oppScore += pay[1];
+      var el = document.getElementById('chickenResult');
+      var oppText = opp === 'swerve' ? '让步' : '不让';
+      var myText = myChoice === 'swerve' ? '让步' : '不让';
+      if (pay[0] === -100) {
+        el.innerHTML = '<div class="result-msg lose"><i class="ti ti-car-crash"></i> 两败俱伤！你：' + myText + '，对方：' + oppText + '（' + pay[0] + ' / ' + pay[1] + '）</div>';
+      } else if (pay[0] > pay[1]) {
+        el.innerHTML = '<div class="result-msg win"><i class="ti ti-trophy"></i> 你赢了！你：' + myText + '，对方：' + oppText + '（+' + pay[0] + ' / ' + pay[1] + '）</div>';
+      } else if (pay[0] < pay[1]) {
+        el.innerHTML = '<div class="result-msg lose"><i class="ti ti-mood-sad"></i> 你让步了。你：' + myText + '，对方：' + oppText + '（' + pay[0] + ' / +' + pay[1] + '）</div>';
+      } else {
+        el.innerHTML = '<div class="result-msg draw"><i class="ti ti-equal"></i> 双方都让步。（0 / 0）</div>';
+      }
+      document.getElementById('chickenStats').style.display = 'grid';
+      document.getElementById('chickenRounds').textContent = chickenHistory.rounds;
+      document.getElementById('chickenYourScore').textContent = chickenHistory.yourScore;
+      document.getElementById('chickenOppScore').textContent = chickenHistory.oppScore;
+    }
+    function resetChicken() {
+      chickenHistory = { rounds: 0, yourScore: 0, oppScore: 0 };
+      document.getElementById('chickenResult').innerHTML = '';
+      document.getElementById('chickenStats').style.display = 'none';
+      document.getElementById('chickenChartBox').style.display = 'none';
+    }
+    var chickenChart = null;
+    function chickenMixedNE(crash, win, lose) {
+      return (Math.abs(crash) - win) / (Math.abs(crash) - win + Math.abs(lose));
+    }
+    function simChicken1000() {
+      var N = 1000;
+      var pSwerve = chickenMixedNE(-100, 10, -10);
+      var results = { 'ss': 0, 'sn': 0, 'ns': 0, 'nn': 0 };
+      var totalA = 0, totalB = 0;
+      for (var i = 0; i < N; i++) {
+        var a = Math.random() < pSwerve ? 'swerve' : 'straight';
+        var b = Math.random() < pSwerve ? 'swerve' : 'straight';
+        var k = (a === 'swerve' ? 's' : 'n') + (b === 'swerve' ? 's' : 'n');
+        results[k]++;
+        var pay = chickenPayoffs[a + '-' + b];
+        totalA += pay[0]; totalB += pay[1];
+      }
+      document.getElementById('chickenChartBox').style.display = 'block';
+      var ctx = document.getElementById('chickenChart').getContext('2d');
+      if (chickenChart) chickenChart.destroy();
+      chickenChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['都让步', '你让/对方不让', '你不让/对方让', '都不让'],
+          datasets: [{ label: '次数', data: [results.ss, results.sn, results.ns, results.nn], backgroundColor: ['#4ade80', '#ffd93d', '#00d4ff', '#ff6b6b'] }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: '混合策略均衡（让步概率=' + (pSwerve*100).toFixed(0) + '%）平均得分: ' + (totalA/N).toFixed(1), color: '#ffd93d' }
+          },
+          scales: {
+            x: { ticks: { color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            y: { ticks: { color: 'rgba(255,255,255,0.7)' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+          }
+        }
+      });
+    }
+
+    // ===== 场景4: 重复博弈 =====
+    var repeatPayoffs = { 'C-C': [3,3], 'C-D': [0,5], 'D-C': [5,0], 'D-D': [1,1] };
+    var myStrategy = 'tft', oppStrategy = 'tft';
+    var repeatChart = null;
+    function selectRepeatStrategy(btn, s) {
+      document.querySelectorAll('#strategyTabs .tab-btn').forEach(function(b){b.classList.remove('active');});
+      btn.classList.add('active'); myStrategy = s;
+    }
+    function selectOppStrategy(btn, s) {
+      document.querySelectorAll('#oppStrategyTabs .tab-btn').forEach(function(b){b.classList.remove('active');});
+      btn.classList.add('active'); oppStrategy = s;
+    }
+    function getChoice(strategy, myHist, oppHist) {
+      var n = myHist.length;
+      if (strategy === 'always-c') return 'C';
+      if (strategy === 'always-d') return 'D';
+      if (strategy === 'random') return Math.random() < 0.5 ? 'C' : 'D';
+      if (strategy === 'tft') return n === 0 ? 'C' : oppHist[n-1];
+      if (strategy === 'grudger') return oppHist.indexOf('D') >= 0 ? 'D' : 'C';
+      return 'C';
+    }
+    function runRepeatGame() {
+      var rounds = 50, myH = [], oppH = [], myScores = [0], oppScores = [0];
+      var myTotal = 0, oppTotal = 0, myCoops = 0;
+      for (var i = 0; i < rounds; i++) {
+        var mc = getChoice(myStrategy, myH, oppH);
+        var oc = getChoice(oppStrategy, oppH, myH);
+        var pay = repeatPayoffs[mc + '-' + oc];
+        myTotal += pay[0]; oppTotal += pay[1];
+        if (mc === 'C') myCoops++;
+        myH.push(mc); oppH.push(oc);
+        myScores.push(myTotal); oppScores.push(oppTotal);
+      }
+      document.getElementById('repeatStats').style.display = 'grid';
+      document.getElementById('repeatYourTotal').textContent = myTotal;
+      document.getElementById('repeatOppTotal').textContent = oppTotal;
+      document.getElementById('repeatCoopRate').textContent = (myCoops/rounds*100).toFixed(0) + '%';
+      document.getElementById('repeatChartBox').style.display = 'block';
+      var ctx = document.getElementById('repeatChart').getContext('2d');
+      if (repeatChart) repeatChart.destroy();
+      repeatChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: Array.from({length: myScores.length}, function(_,i){return i;}),
+          datasets: [
+            { label: '你的累计收益', data: myScores, borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.1)', fill: true, tension: 0.1 },
+            { label: '对方累计收益', data: oppScores, borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.1)', fill: true, tension: 0.1 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: 'rgba(255,255,255,0.8)' } } },
+          scales: {
+            x: { title: { display: true, text: '轮次', color: 'rgba(255,255,255,0.6)' }, ticks: { color: 'rgba(255,255,255,0.6)' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            y: { title: { display: true, text: '累计收益', color: 'rgba(255,255,255,0.6)' }, ticks: { color: 'rgba(255,255,255,0.6)' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+          }
+        }
+      });
+    }
+    function runTournament() {
+      var strategies = ['tft','always-c','always-d','grudger','random'];
+      var names = {'tft':'以牙还牙','always-c':'永远合作','always-d':'永远背叛','grudger':'记仇者','random':'随机'};
+      var scores = {};
+      strategies.forEach(function(s){ scores[s] = 0; });
+      for (var i = 0; i < strategies.length; i++) {
+        for (var j = 0; j < strategies.length; j++) {
+          var aH = [], bH = [];
+          var aTotal = 0, bTotal = 0;
+          for (var r = 0; r < 200; r++) {
+            var ac = getChoice(strategies[i], aH, bH);
+            var bc = getChoice(strategies[j], bH, aH);
+            var pay = repeatPayoffs[ac + '-' + bc];
+            aTotal += pay[0]; bTotal += pay[1];
+            aH.push(ac); bH.push(bc);
+          }
+          scores[strategies[i]] += aTotal;
+          scores[strategies[j]] += bTotal;
+        }
+      }
+      var sorted = strategies.slice().sort(function(a,b){ return scores[b] - scores[a]; });
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:0.9rem;">';
+      html += '<tr><th style="padding:10px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.2);color:#ffd93d;">排名</th><th style="padding:10px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.2);color:#ffd93d;">策略</th><th style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,0.2);color:#ffd93d;">总得分</th></tr>';
+      sorted.forEach(function(s, idx) {
+        var color = idx === 0 ? '#4ade80' : 'rgba(255,255,255,0.8)';
+        html += '<tr><td style="padding:8px;color:' + color + ';">' + (idx+1) + '</td><td style="padding:8px;color:' + color + ';">' + names[s] + '</td><td style="padding:8px;text-align:right;color:' + color + ';">' + scores[s] + '</td></tr>';
+      });
+      html += '</table>';
+      document.getElementById('tournamentResult').style.display = 'block';
+      document.getElementById('tournamentTable').innerHTML = html;
+    }
+  </script>
+</body>
+</html>

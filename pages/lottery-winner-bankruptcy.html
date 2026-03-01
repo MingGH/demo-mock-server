@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>彩票头奖得主为什么大多破产？财富衰减模拟器</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 30px; }
+    .header h1 {
+      font-size: 1.8rem; font-weight: 700;
+      background: linear-gradient(90deg, #4ade80, #feca57, #4ade80);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.6); margin-top: 10px; font-size: 14px; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 20px;
+    }
+    .question-box {
+      background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(254,202,87,0.05));
+      border-left: 4px solid #4ade80; padding: 20px;
+      border-radius: 0 12px 12px 0; margin-bottom: 20px; line-height: 1.9;
+    }
+    .question-box strong { color: #feca57; }
+    .answer-box {
+      text-align: center; padding: 30px 20px;
+      background: linear-gradient(135deg, rgba(74,222,128,0.15), rgba(254,202,87,0.1));
+      border: 2px solid #4ade80; border-radius: 16px; margin: 20px 0;
+    }
+    .big-answer { font-size: 2.2rem; font-weight: 800; color: #4ade80; line-height: 1.2; }
+    .answer-desc { font-size: 1rem; color: rgba(255,255,255,0.8); margin-top: 15px; line-height: 1.6; }
+    .setup-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 15px; margin: 20px 0; }
+    @media(max-width:600px){ .setup-grid{grid-template-columns:1fr} }
+    .setup-item { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 15px; text-align: center; }
+    .setup-item label { display: block; color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 8px; }
+    .setup-item input, .setup-item select {
+      width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; padding: 10px; color: white; font-size: 16px; text-align: center;
+    }
+    .setup-item input:focus, .setup-item select:focus { outline: none; border-color: #4ade80; }
+    .controls { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+    .btn { padding: 12px 25px; font-size: 14px; font-weight: 600; border: none; border-radius: 25px; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: linear-gradient(135deg, #4ade80, #22c55e); color: #1a1a2e; }
+    .btn-gold { background: linear-gradient(135deg, #feca57, #f0b429); color: #1a1a2e; }
+    .btn-danger { background: linear-gradient(135deg, #ff6b6b, #ee5a24); color: white; }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin: 20px 0; }
+    @media(max-width:600px){ .stats-row{grid-template-columns:repeat(2,1fr)} }
+    .stat-box { background: rgba(0,0,0,0.2); border-radius: 10px; padding: 15px; text-align: center; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; }
+    .stat-value.green { color: #4ade80; } .stat-value.red { color: #ff6b6b; } .stat-value.gold { color: #feca57; } .stat-value.blue { color: #60a5fa; }
+    .stat-label { color: rgba(255,255,255,0.5); font-size: 11px; margin-top: 5px; }
+    .chart-container { position: relative; height: 350px; margin: 20px 0; }
+    .analysis { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 22px; margin-top: 20px; }
+    .analysis h3 { color: #feca57; margin-bottom: 15px; font-size: 1.1rem; }
+    .analysis p { color: rgba(255,255,255,0.85); line-height: 1.85; margin-bottom: 14px; font-size: 14px; }
+    .analysis .highlight { color: #ff6b6b; font-weight: bold; }
+    .analysis .safe { color: #4ade80; font-weight: bold; }
+    .conclusion {
+      background: linear-gradient(135deg, rgba(74,222,128,0.15), rgba(254,202,87,0.1));
+      border: 2px solid #feca57; border-radius: 16px; padding: 25px; text-align: center;
+    }
+    .conclusion h3 { color: #4ade80; font-size: 1.3rem; margin-bottom: 15px; }
+    .conclusion p { color: rgba(255,255,255,0.85); line-height: 1.8; font-size: 14px; }
+    .conclusion .key-point { color: #feca57; font-weight: 600; }
+    .formula-box { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; }
+    .formula { font-family: 'Times New Roman', serif; font-size: 1.3rem; color: #feca57; margin: 10px 0; }
+    .formula-desc { color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1.8; }
+    .tab-bar { display: flex; gap: 0; margin-bottom: 20px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+    .tab-btn { flex: 1; padding: 12px; text-align: center; background: rgba(0,0,0,0.2); color: rgba(255,255,255,0.5); cursor: pointer; border: none; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+    .tab-btn.active { background: rgba(74,222,128,0.15); color: #4ade80; }
+    .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.05); }
+    .tab-content { display: none; } .tab-content.active { display: block; }
+    .scenario-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 15px; margin: 20px 0; }
+    @media(max-width:700px){ .scenario-grid{grid-template-columns:1fr} }
+    .scenario-card { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 20px; text-align: center; border: 2px solid transparent; transition: all 0.3s; cursor: pointer; }
+    .scenario-card:hover { border-color: rgba(255,255,255,0.2); }
+    .scenario-card.active { border-color: #4ade80; background: rgba(74,222,128,0.1); }
+    .scenario-card h4 { color: #feca57; margin-bottom: 8px; font-size: 0.95rem; }
+    .scenario-card .pct { font-size: 1.8rem; font-weight: 700; color: white; }
+    .scenario-card .desc { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 8px; line-height: 1.5; }
+    .progress-bar { width: 100%; height: 24px; background: rgba(0,0,0,0.3); border-radius: 12px; overflow: hidden; margin: 10px 0; }
+    .progress-fill { height: 100%; border-radius: 12px; transition: width 0.5s; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #1a1a2e; }
+    .copy-btn {
+      position: fixed; bottom: 20px; right: 20px; padding: 12px 20px;
+      background: rgba(74,222,128,0.9); color: #1a1a2e; border: none; border-radius: 25px;
+      font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(74,222,128,0.3); transition: all 0.2s;
+    }
+    .copy-btn:hover { transform: translateY(-2px); }
+    .toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 25px;
+      font-size: 14px; opacity: 0; transition: all 0.3s; z-index: 1000;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .factor-slider { margin: 15px 0; }
+    .factor-slider label { display: flex; justify-content: space-between; color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 5px; }
+    .factor-slider input[type="range"] { width: 100%; accent-color: #4ade80; }
+    .result-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 15px; }
+    @media(max-width:500px){ .result-grid{grid-template-columns:1fr} }
+    .result-card { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 20px; text-align: center; }
+    .result-card h4 { color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-bottom: 10px; }
+    .result-card .big-num { font-size: 2rem; font-weight: bold; }
+    .result-card .big-num.red { color: #ff6b6b; }
+    .result-card .big-num.green { color: #4ade80; }
+    .result-card .big-num.gold { color: #feca57; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-ticket"></i> 彩票头奖得主为什么大多破产？</h1>
+    <p>75%的中奖者在5年内破产。不是运气问题，是数学和心理的双重陷阱</p>
+  </div>
+</div>
+
+  <!-- 问题描述 -->
+  <div class="card">
+    <div class="question-box">
+      <strong>问题：</strong>据美国国家经济研究局调查：<br>
+      <i class="ti ti-alert-triangle" style="color:#ff6b6b"></i> 彩票中奖者的破产率每年高达 <strong>75%</strong><br>
+      <i class="ti ti-alert-triangle" style="color:#ff6b6b"></i> 每年12名中奖者当中就有 <strong>9名破产</strong><br>
+      <i class="ti ti-alert-triangle" style="color:#ff6b6b"></i> 大多数头奖得主在中奖后不到 <strong>5年</strong> 内穷困潦倒<br><br>
+      为什么突然拥有巨额财富，反而加速了破产？
+    </div>
+    <div class="answer-box">
+      <div class="big-answer">财富是流量，不是存量</div>
+      <div class="answer-desc">
+        中奖只改变了你的存量（银行余额），没有改变你的流量（收支结构）。<br>
+        当支出增速 > 资产收益率时，<span style="color:#ff6b6b;font-weight:700;">破产只是时间问题</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数学模型 -->
+  <div class="card">
+    <h2 style="color:#feca57;margin-bottom:15px;text-align:center;"><i class="ti ti-math-symbols"></i> 数学模型：财富衰减方程</h2>
+    <div class="formula-box">
+      <div style="color:rgba(255,255,255,0.7);margin-bottom:10px;">每月财富变化</div>
+      <div class="formula">W(t+1) = W(t) × (1 + r/12) - E(t)</div>
+      <div class="formula-desc">
+        W(t) = 第t月的财富，r = 年投资回报率，E(t) = 第t月的支出<br>
+        当 E(t) 持续增长而 r 不变时，W 必然归零
+      </div>
+    </div>
+    <div class="formula-box">
+      <div style="color:rgba(255,255,255,0.7);margin-bottom:10px;">支出膨胀模型（生活方式通胀）</div>
+      <div class="formula">E(t) = E₀ × (1 + g)^t</div>
+      <div class="formula-desc">
+        E₀ = 初始月支出，g = 月支出增长率<br>
+        中奖后支出通常呈指数增长：买房、买车、借钱给亲友、投资失败...<br>
+        <strong style="color:#ff6b6b;">关键：指数增长的支出 vs 线性增长的利息 = 必然破产</strong>
+      </div>
+    </div>
+    <div class="formula-box">
+      <div style="color:rgba(255,255,255,0.7);margin-bottom:10px;">破产时间估算（简化）</div>
+      <div class="formula">T ≈ W₀ / (E_avg - W₀ × r/12)</div>
+      <div class="formula-desc">
+        当月均支出 > 月投资收益时，破产时间 ≈ 总资产 / 月净流出<br>
+        1000万中奖，月花15万，年回报5% → 约 <strong style="color:#ff6b6b;">6.5年</strong> 破产
+      </div>
+    </div>
+  </div>
+
+  <!-- 模拟器1：个人财富衰减 -->
+  <div class="card">
+    <h2 style="color:#feca57;margin-bottom:15px;text-align:center;"><i class="ti ti-chart-line"></i> 模拟器：你的中奖金能撑多久？</h2>
+    <p style="text-align:center;color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:20px;">
+      设定中奖金额和消费习惯，看看财富归零的速度
+    </p>
+    <div class="setup-grid">
+      <div class="setup-item">
+        <label>中奖金额（万元）</label>
+        <input type="number" id="prizeMoney" value="1000" min="100" step="100">
+      </div>
+      <div class="setup-item">
+        <label>中奖前月支出（万元）</label>
+        <input type="number" id="baseExpense" value="1" min="0.3" step="0.1">
+      </div>
+      <div class="setup-item">
+        <label>年投资回报率（%）</label>
+        <input type="number" id="returnRate" value="4" min="0" max="20" step="0.5">
+      </div>
+    </div>
+
+    <div class="factor-slider">
+      <label><span>消费膨胀速度</span><span id="inflationLabel" style="color:#feca57;">中等（月支出翻5倍）</span></label>
+      <input type="range" id="inflationLevel" min="1" max="5" value="3" step="1" oninput="updateInflationLabel()">
+    </div>
+    <div style="display:flex;justify-content:space-between;color:rgba(255,255,255,0.3);font-size:11px;margin-top:-10px;margin-bottom:15px;">
+      <span>克制</span><span>小幅膨胀</span><span>中等</span><span>挥霍</span><span>疯狂挥霍</span>
+    </div>
+
+    <div class="scenario-grid">
+      <div class="scenario-card active" onclick="selectScenario('rational')">
+        <h4><i class="ti ti-brain"></i> 理性人</h4>
+        <div class="pct">4%</div>
+        <div class="desc">只花利息，本金不动<br>月支出仅小幅增长</div>
+      </div>
+      <div class="scenario-card" onclick="selectScenario('average')">
+        <h4><i class="ti ti-user"></i> 普通中奖者</h4>
+        <div class="pct">75%</div>
+        <div class="desc">买房买车借钱给亲友<br>月支出翻5-10倍</div>
+      </div>
+      <div class="scenario-card" onclick="selectScenario('extreme')">
+        <h4><i class="ti ti-flame"></i> 典型破产者</h4>
+        <div class="pct">95%</div>
+        <div class="desc">豪宅豪车投资失败<br>月支出翻20倍以上</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary" onclick="runSingleSim()"><i class="ti ti-player-play"></i> 开始模拟</button>
+      <button class="btn btn-gold" onclick="runThreeScenarios()"><i class="ti ti-chart-bar"></i> 三种人生对比</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-value gold" id="peakWealth">-</div>
+        <div class="stat-label">财富峰值</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value red" id="bankruptMonth">-</div>
+        <div class="stat-label">破产月份</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value blue" id="totalSpent">-</div>
+        <div class="stat-label">总共花掉</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value green" id="totalEarned">-</div>
+        <div class="stat-label">投资收益</div>
+      </div>
+    </div>
+
+    <div class="chart-container"><canvas id="wealthChart"></canvas></div>
+  </div>
+
+  <!-- 模拟器2：1000人蒙特卡洛 -->
+  <div class="card">
+    <h2 style="color:#feca57;margin-bottom:15px;text-align:center;"><i class="ti ti-users"></i> 蒙特卡洛模拟：1000个中奖者的命运</h2>
+    <p style="text-align:center;color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:20px;">
+      每个人的消费膨胀速度随机，投资回报随机波动，看看多少人能活过5年
+    </p>
+    <div class="setup-grid" style="grid-template-columns: repeat(2,1fr);">
+      <div class="setup-item">
+        <label>中奖金额（万元）</label>
+        <input type="number" id="mcPrize" value="1000" min="100" step="100">
+      </div>
+      <div class="setup-item">
+        <label>模拟年数</label>
+        <input type="number" id="mcYears" value="10" min="3" max="30" step="1">
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn btn-gold" onclick="runMonteCarlo()"><i class="ti ti-rocket"></i> 模拟1000个中奖者</button>
+    </div>
+    <div class="result-grid" id="mcResults" style="display:none;">
+      <div class="result-card">
+        <h4><i class="ti ti-skull"></i> 5年内破产</h4>
+        <div class="big-num red" id="mc5yr">-</div>
+      </div>
+      <div class="result-card">
+        <h4><i class="ti ti-skull"></i> 10年内破产</h4>
+        <div class="big-num red" id="mc10yr">-</div>
+      </div>
+      <div class="result-card">
+        <h4><i class="ti ti-coin"></i> 中位数剩余财富</h4>
+        <div class="big-num gold" id="mcMedian">-</div>
+      </div>
+      <div class="result-card">
+        <h4><i class="ti ti-trophy"></i> 财富增长者</h4>
+        <div class="big-num green" id="mcGrew">-</div>
+      </div>
+    </div>
+    <div class="chart-container" style="height:280px;"><canvas id="mcChart"></canvas></div>
+    <div style="margin-top:15px;">
+      <div style="color:rgba(255,255,255,0.5);font-size:12px;margin-bottom:8px;">破产率随时间变化</div>
+      <div class="chart-container" style="height:220px;"><canvas id="bankruptRateChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 四大陷阱分析 -->
+  <div class="card">
+    <h2 style="color:#feca57;margin-bottom:15px;text-align:center;"><i class="ti ti-alert-octagon"></i> 四大破产陷阱</h2>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('trap1',this)">消费膨胀</button>
+      <button class="tab-btn" onclick="switchTab('trap2',this)">社交压力</button>
+      <button class="tab-btn" onclick="switchTab('trap3',this)">投资幻觉</button>
+      <button class="tab-btn" onclick="switchTab('trap4',this)">锚定效应</button>
+    </div>
+
+    <div class="tab-content active" id="trap1">
+      <div class="analysis">
+        <h3><i class="ti ti-arrow-up-right"></i> 陷阱一：享乐适应与消费膨胀</h3>
+        <p>
+          心理学上叫<span class="safe">享乐跑步机（Hedonic Treadmill）</span>：人对任何快乐都会适应。
+          中奖后第一个月买了豪车，兴奋感持续两周；第二个月就觉得"也就那样"，需要更大的刺激。
+        </p>
+        <p>
+          消费膨胀的数学很残酷：月支出从1万涨到10万，<span class="highlight">不是多花了9万，而是烧钱速度变成了10倍</span>。
+          1000万的奖金，月花1万能撑83年，月花10万只能撑8.3年，月花30万不到3年就没了。
+        </p>
+        <p>
+          更要命的是，消费降级比消费升级痛苦得多。从月花30万降回1万，心理上等于<span class="highlight">失去了29万</span>，
+          而损失厌恶告诉我们，失去的痛苦是得到的2.5倍。所以大多数人宁可继续挥霍到破产，也不愿主动降级。
+        </p>
+      </div>
+    </div>
+
+    <div class="tab-content" id="trap2">
+      <div class="analysis">
+        <h3><i class="ti ti-users"></i> 陷阱二：社交压力与财富转移</h3>
+        <p>
+          中奖消息一旦传开，你会突然多出很多"亲戚"和"朋友"。研究显示，中奖者平均会被
+          <span class="highlight">超过50个人要求借钱或赠予</span>。
+        </p>
+        <p>
+          这不是简单的"借钱"问题，而是<span class="safe">博弈论困境</span>：
+          拒绝借钱 → 关系破裂，被说"有钱就忘本"；
+          同意借钱 → 钱有去无回，而且会有更多人来借。
+        </p>
+        <p>
+          佛罗里达大学的研究发现，中奖者在中奖后3年内，平均向亲友转移了奖金的<span class="highlight">20%-30%</span>。
+          这些钱几乎不可能收回。
+        </p>
+      </div>
+    </div>
+
+    <div class="tab-content" id="trap3">
+      <div class="analysis">
+        <h3><i class="ti ti-chart-candle"></i> 陷阱三：投资幻觉与达克效应</h3>
+        <p>
+          突然有了大笔钱，很多人觉得自己应该"让钱生钱"。但<span class="highlight">有钱 ≠ 会投资</span>。
+        </p>
+        <p>
+          达克效应（Dunning-Kruger Effect）：能力越低的人越高估自己。中奖者没有投资经验，
+          却觉得"我运气这么好，投资肯定也行"。结果往往是：
+        </p>
+        <p>
+          <span class="highlight">被骗投资</span>：亲友推荐的"好项目"、"稳赚不赔的生意"<br>
+          <span class="highlight">盲目创业</span>：开餐厅、开店，90%的新企业在5年内倒闭<br>
+          <span class="highlight">高风险投机</span>：炒股、炒币、期货，没有专业知识就是送钱
+        </p>
+        <p>
+          NBER的数据显示，中奖者的投资失败率远高于普通投资者，因为他们<span class="safe">同时缺乏知识和风险意识</span>。
+        </p>
+      </div>
+    </div>
+
+    <div class="tab-content" id="trap4">
+      <div class="analysis">
+        <h3><i class="ti ti-anchor"></i> 陷阱四：锚定效应与心理账户</h3>
+        <p>
+          中奖1000万后，你的心理锚点变成了"我是千万富翁"。所有消费决策都以这个锚点为参照：
+          50万的车？"才我资产的5%"。200万的房？"才20%"。
+        </p>
+        <p>
+          这就是<span class="safe">心理账户（Mental Accounting）</span>的陷阱：
+          你把中奖的钱放在"意外之财"账户里，花起来毫不心疼。
+          研究表明，人们花"意外之财"的速度是花工资的<span class="highlight">2-3倍</span>。
+        </p>
+        <p>
+          更致命的是<span class="highlight">锚定下移</span>：当1000万花到只剩200万时，
+          你的锚点还停留在"千万富翁"，消费习惯来不及调整，最后200万会以更快的速度消失。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 安全线计算器 -->
+  <div class="card">
+    <h2 style="color:#feca57;margin-bottom:15px;text-align:center;"><i class="ti ti-shield-check"></i> 安全线计算器：中了大奖该怎么花？</h2>
+    <p style="text-align:center;color:rgba(255,255,255,0.6);font-size:13px;margin-bottom:20px;">
+      4%法则：每年只花总资产的4%，理论上永远花不完
+    </p>
+    <div class="setup-grid" style="grid-template-columns: repeat(2,1fr);">
+      <div class="setup-item">
+        <label>中奖金额（万元）</label>
+        <input type="number" id="safePrize" value="1000" min="100" step="100" oninput="calcSafeLine()">
+      </div>
+      <div class="setup-item">
+        <label>年投资回报率（%）</label>
+        <input type="number" id="safeReturn" value="5" min="1" max="15" step="0.5" oninput="calcSafeLine()">
+      </div>
+    </div>
+    <div class="stats-row" style="grid-template-columns: repeat(3,1fr);">
+      <div class="stat-box">
+        <div class="stat-value green" id="safeMonthly">-</div>
+        <div class="stat-label">每月安全支出（4%法则）</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value gold" id="safeYearly">-</div>
+        <div class="stat-label">每年安全支出</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value blue" id="safeForever">-</div>
+        <div class="stat-label">理论可持续</div>
+      </div>
+    </div>
+    <div style="margin-top:15px;">
+      <div style="color:rgba(255,255,255,0.5);font-size:12px;margin-bottom:5px;">你的消费安全度</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="safeProgress" style="width:50%;background:linear-gradient(90deg,#4ade80,#feca57);">安全</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;color:rgba(255,255,255,0.3);font-size:11px;margin-top:5px;">
+        <span>永续</span><span>30年</span><span>10年</span><span>5年</span><span>破产</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结论 -->
+  <div class="card conclusion">
+    <h3><i class="ti ti-target"></i> 结论</h3>
+    <p>
+      彩票中奖者破产率是普通人的2倍，不是因为他们比普通人蠢，<br>
+      而是因为<span class="key-point">突然的巨额财富触发了一系列心理陷阱</span>。<br><br>
+      享乐适应让你永远不满足，社交压力让你不断失血，<br>
+      投资幻觉让你加速亏损，锚定效应让你无法刹车。<br><br>
+      <span style="color:rgba(255,255,255,0.6);">
+        真正的财富自由不是银行卡里有多少零，<br>
+        而是被动收入 > 日常支出。<br>
+        中了1000万，每月只花3.3万，你就是永远的富人。<br>
+        月花30万，你只是一个<span class="key-point">倒计时3年的穷人</span>。
+      </span>
+    </p>
+  </div>
+</div>
+
+<button class="copy-btn" onclick="copyShareText()"><i class="ti ti-clipboard"></i> 复制分享</button>
+<div class="toast" id="toast">已复制到剪贴板</div>
+
+<script>
+// ========== 核心算法（可独立测试） ==========
+
+/**
+ * 模拟单个中奖者的财富变化
+ * @param {number} prize - 中奖金额（万元）
+ * @param {number} baseExpense - 中奖前月支出（万元）
+ * @param {number} expenseMultiplier - 中奖后支出膨胀倍数
+ * @param {number} annualReturn - 年投资回报率（小数）
+ * @param {number} months - 模拟月数
+ * @param {object} options - 可选参数
+ * @returns {object} 模拟结果
+ */
+function simulateWealth(prize, baseExpense, expenseMultiplier, annualReturn, months, options) {
+  options = options || {};
+  const monthlyReturn = annualReturn / 12;
+  // 支出从基础值逐渐膨胀到峰值，用logistic曲线模拟
+  // 前几个月快速膨胀，然后趋于稳定
+  const peakExpense = baseExpense * expenseMultiplier;
+  const rampSpeed = options.rampSpeed || 0.15; // 膨胀速度
+
+  let wealth = prize;
+  const history = [wealth];
+  let totalSpent = 0;
+  let totalEarned = 0;
+  let bankruptMonth = -1;
+  let peakWealth = prize;
+
+  for (let m = 1; m <= months; m++) {
+    if (wealth <= 0) {
+      history.push(0);
+      continue;
+    }
+    // 投资收益（可加随机波动）
+    let returnRate = monthlyReturn;
+    if (options.randomReturn) {
+      // 正态分布波动，年化标准差约15%
+      returnRate = monthlyReturn + (randn() * 0.15 / Math.sqrt(12));
+    }
+    const earnings = wealth * returnRate;
+    totalEarned += Math.max(0, earnings);
+
+    // 支出：logistic膨胀曲线
+    const inflationFactor = 1 + (expenseMultiplier - 1) / (1 + Math.exp(-rampSpeed * (m - 6)));
+    let expense = baseExpense * inflationFactor;
+
+    // 随机支出冲击（大额消费事件）
+    if (options.randomShocks && Math.random() < 0.02) {
+      expense += prize * (0.03 + Math.random() * 0.07); // 3%-10%的一次性大额支出
+    }
+
+    totalSpent += expense;
+    wealth = wealth + earnings - expense;
+
+    if (wealth > peakWealth) peakWealth = wealth;
+    if (wealth <= 0 && bankruptMonth === -1) {
+      bankruptMonth = m;
+      wealth = 0;
+    }
+    history.push(Math.max(0, wealth));
+  }
+
+  return { history, totalSpent, totalEarned, bankruptMonth, peakWealth, finalWealth: Math.max(0, wealth) };
+}
+
+/**
+ * 计算4%法则的安全支出
+ */
+function calcSafeWithdrawal(prize, annualReturn) {
+  const safeRate = 0.04; // 4%法则
+  const yearlyWithdrawal = prize * safeRate;
+  const monthlyWithdrawal = yearlyWithdrawal / 12;
+  // 如果回报率 >= 4%，理论上永续
+  const sustainable = annualReturn >= safeRate;
+  return { monthlyWithdrawal, yearlyWithdrawal, sustainable };
+}
+
+/**
+ * 计算破产时间（简化公式，不考虑支出增长）
+ */
+function calcBankruptTime(prize, monthlyExpense, annualReturn) {
+  const monthlyReturn = annualReturn / 12;
+  const netBurn = monthlyExpense - prize * monthlyReturn;
+  if (netBurn <= 0) return Infinity; // 收益覆盖支出，不会破产
+  return prize / netBurn; // 月数
+}
+
+/**
+ * Box-Muller 正态分布随机数
+ */
+function randn() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+// ========== UI 逻辑 ==========
+let wealthChart = null, mcChart = null, bankruptRateChart = null;
+
+const INFLATION_LEVELS = {
+  1: { mult: 2, label: '克制（月支出翻2倍）' },
+  2: { mult: 3.5, label: '小幅膨胀（月支出翻3.5倍）' },
+  3: { mult: 5, label: '中等（月支出翻5倍）' },
+  4: { mult: 12, label: '挥霍（月支出翻12倍）' },
+  5: { mult: 25, label: '疯狂挥霍（月支出翻25倍）' }
+};
+
+function updateInflationLabel() {
+  const level = document.getElementById('inflationLevel').value;
+  document.getElementById('inflationLabel').textContent = INFLATION_LEVELS[level].label;
+}
+
+function selectScenario(type) {
+  document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  if (type === 'rational') {
+    document.getElementById('inflationLevel').value = 1;
+    document.getElementById('returnRate').value = 5;
+  } else if (type === 'average') {
+    document.getElementById('inflationLevel').value = 3;
+    document.getElementById('returnRate').value = 3;
+  } else {
+    document.getElementById('inflationLevel').value = 5;
+    document.getElementById('returnRate').value = 1;
+  }
+  updateInflationLabel();
+}
+
+function runSingleSim() {
+  const prize = parseFloat(document.getElementById('prizeMoney').value) || 1000;
+  const baseExp = parseFloat(document.getElementById('baseExpense').value) || 1;
+  const returnRate = (parseFloat(document.getElementById('returnRate').value) || 4) / 100;
+  const level = document.getElementById('inflationLevel').value;
+  const mult = INFLATION_LEVELS[level].mult;
+
+  const result = simulateWealth(prize, baseExp, mult, returnRate, 120); // 10年
+
+  // 更新统计
+  document.getElementById('peakWealth').textContent = formatMoney(result.peakWealth);
+  document.getElementById('bankruptMonth').textContent = result.bankruptMonth > 0
+    ? (result.bankruptMonth < 12 ? result.bankruptMonth + '个月' : (result.bankruptMonth / 12).toFixed(1) + '年')
+    : '未破产';
+  document.getElementById('bankruptMonth').className = 'stat-value ' + (result.bankruptMonth > 0 ? 'red' : 'green');
+  document.getElementById('totalSpent').textContent = formatMoney(result.totalSpent);
+  document.getElementById('totalEarned').textContent = formatMoney(result.totalEarned);
+
+  // 画图
+  drawWealthChart([{ name: INFLATION_LEVELS[level].label, data: result.history, color: result.bankruptMonth > 0 ? '#ff6b6b' : '#4ade80' }]);
+}
+
+function runThreeScenarios() {
+  const prize = parseFloat(document.getElementById('prizeMoney').value) || 1000;
+  const baseExp = parseFloat(document.getElementById('baseExpense').value) || 1;
+
+  const scenarios = [
+    { name: '理性人（×2，回报5%）', mult: 2, ret: 0.05, color: '#4ade80' },
+    { name: '普通中奖者（×5，回报3%）', mult: 5, ret: 0.03, color: '#feca57' },
+    { name: '典型破产者（×25，回报1%）', mult: 25, ret: 0.01, color: '#ff6b6b' }
+  ];
+
+  const results = scenarios.map(s => {
+    const r = simulateWealth(prize, baseExp, s.mult, s.ret, 120);
+    return { name: s.name, data: r.history, color: s.color };
+  });
+
+  drawWealthChart(results);
+
+  // 更新统计为普通中奖者
+  const avg = simulateWealth(prize, baseExp, 5, 0.03, 120);
+  document.getElementById('peakWealth').textContent = formatMoney(avg.peakWealth);
+  document.getElementById('bankruptMonth').textContent = avg.bankruptMonth > 0
+    ? (avg.bankruptMonth < 12 ? avg.bankruptMonth + '个月' : (avg.bankruptMonth / 12).toFixed(1) + '年')
+    : '未破产';
+  document.getElementById('bankruptMonth').className = 'stat-value ' + (avg.bankruptMonth > 0 ? 'red' : 'green');
+  document.getElementById('totalSpent').textContent = formatMoney(avg.totalSpent);
+  document.getElementById('totalEarned').textContent = formatMoney(avg.totalEarned);
+}
+
+function drawWealthChart(datasets) {
+  const ctx = document.getElementById('wealthChart').getContext('2d');
+  if (wealthChart) wealthChart.destroy();
+
+  const maxLen = Math.max(...datasets.map(d => d.data.length));
+  const labels = Array.from({ length: maxLen }, (_, i) => {
+    if (i % 12 === 0) return '第' + (i / 12) + '年';
+    return '';
+  });
+
+  wealthChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: datasets.map(d => ({
+        label: d.name,
+        data: d.data,
+        borderColor: d.color,
+        backgroundColor: 'transparent',
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: datasets.length > 1, labels: { color: 'rgba(255,255,255,0.7)', font: { size: 11 } } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 11 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)', callback: v => formatMoney(v) }, min: 0 }
+      }
+    }
+  });
+}
+
+function runMonteCarlo() {
+  const prize = parseFloat(document.getElementById('mcPrize').value) || 1000;
+  const years = parseInt(document.getElementById('mcYears').value) || 10;
+  const months = years * 12;
+  const N = 1000;
+
+  const results = [];
+  const bankruptByMonth = new Array(months + 1).fill(0);
+
+  for (let i = 0; i < N; i++) {
+    // 随机参数：消费膨胀倍数 2~30，基础支出 0.5~2万，回报率 0~8%
+    const basExp = 0.5 + Math.random() * 1.5;
+    const mult = 2 + Math.random() * 28; // 大部分人会膨胀
+    const ret = Math.random() * 0.08;
+    const r = simulateWealth(prize, basExp, mult, ret, months, { randomReturn: true, randomShocks: true, rampSpeed: 0.1 + Math.random() * 0.3 });
+    results.push(r);
+    if (r.bankruptMonth > 0) {
+      for (let m = r.bankruptMonth; m <= months; m++) {
+        bankruptByMonth[m]++;
+      }
+    }
+  }
+
+  // 统计
+  const bankrupt5yr = results.filter(r => r.bankruptMonth > 0 && r.bankruptMonth <= 60).length;
+  const bankrupt10yr = results.filter(r => r.bankruptMonth > 0 && r.bankruptMonth <= Math.min(120, months)).length;
+  const finals = results.map(r => r.finalWealth).sort((a, b) => a - b);
+  const median = finals[500];
+  const grew = results.filter(r => r.finalWealth > prize).length;
+
+  document.getElementById('mcResults').style.display = 'grid';
+  document.getElementById('mc5yr').textContent = bankrupt5yr + '/1000 (' + (bankrupt5yr / 10).toFixed(1) + '%)';
+  document.getElementById('mc10yr').textContent = years >= 10
+    ? bankrupt10yr + '/1000 (' + (bankrupt10yr / 10).toFixed(1) + '%)'
+    : 'N/A';
+  document.getElementById('mcMedian').textContent = formatMoney(median);
+  document.getElementById('mcGrew').textContent = grew + '/1000 (' + (grew / 10).toFixed(1) + '%)';
+
+  // 抽样画10条轨迹
+  drawMCChart(results, months);
+  drawBankruptRateChart(bankruptByMonth, months, N);
+}
+
+function drawMCChart(results, months) {
+  const ctx = document.getElementById('mcChart').getContext('2d');
+  if (mcChart) mcChart.destroy();
+
+  // 抽10条有代表性的轨迹
+  const sorted = [...results].sort((a, b) => a.finalWealth - b.finalWealth);
+  const indices = [0, 100, 250, 400, 500, 600, 750, 900, 950, 999];
+  const colors = ['#ff6b6b', '#ff8787', '#ffa07a', '#feca57', '#feca57', '#a8e6cf', '#88d8b0', '#4ade80', '#22c55e', '#16a34a'];
+
+  const labels = Array.from({ length: sorted[0].history.length }, (_, i) => {
+    if (i % 12 === 0) return '第' + (i / 12) + '年';
+    return '';
+  });
+
+  mcChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: indices.map((idx, j) => ({
+        label: 'P' + (idx / 10).toFixed(0) + '%',
+        data: sorted[idx].history,
+        borderColor: colors[j],
+        backgroundColor: 'transparent',
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 1.5
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: 'rgba(255,255,255,0.5)', font: { size: 10 } } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 11 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)', callback: v => formatMoney(v) }, min: 0 }
+      }
+    }
+  });
+}
+
+function drawBankruptRateChart(bankruptByMonth, months, N) {
+  const ctx = document.getElementById('bankruptRateChart').getContext('2d');
+  if (bankruptRateChart) bankruptRateChart.destroy();
+
+  // 每年采样一次
+  const yearlyData = [];
+  const labels = [];
+  for (let y = 0; y <= months / 12; y++) {
+    const m = y * 12;
+    labels.push('第' + y + '年');
+    yearlyData.push(((bankruptByMonth[m] || 0) / N * 100).toFixed(1));
+  }
+
+  bankruptRateChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '累计破产率(%)',
+        data: yearlyData,
+        backgroundColor: yearlyData.map(v => v > 50 ? 'rgba(255,107,107,0.7)' : v > 25 ? 'rgba(254,202,87,0.7)' : 'rgba(74,222,128,0.7)'),
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)', callback: v => v + '%' }, max: 100, min: 0 }
+      }
+    }
+  });
+}
+
+// ========== 安全线计算器 ==========
+function calcSafeLine() {
+  const prize = parseFloat(document.getElementById('safePrize').value) || 1000;
+  const ret = (parseFloat(document.getElementById('safeReturn').value) || 5) / 100;
+  const result = calcSafeWithdrawal(prize, ret);
+
+  document.getElementById('safeMonthly').textContent = result.monthlyWithdrawal.toFixed(1) + '万';
+  document.getElementById('safeYearly').textContent = result.yearlyWithdrawal.toFixed(0) + '万';
+  document.getElementById('safeForever').textContent = result.sustainable ? '永续' : '约' + Math.floor(prize / (result.yearlyWithdrawal - prize * ret)) + '年';
+
+  // 进度条：安全度
+  const safeRatio = (prize * ret) / (result.yearlyWithdrawal);
+  const pct = Math.min(100, Math.max(5, safeRatio * 100));
+  const bar = document.getElementById('safeProgress');
+  bar.style.width = pct + '%';
+  if (pct >= 80) {
+    bar.style.background = 'linear-gradient(90deg,#4ade80,#22c55e)';
+    bar.textContent = '非常安全';
+  } else if (pct >= 50) {
+    bar.style.background = 'linear-gradient(90deg,#4ade80,#feca57)';
+    bar.textContent = '安全';
+  } else if (pct >= 30) {
+    bar.style.background = 'linear-gradient(90deg,#feca57,#ff8c00)';
+    bar.textContent = '有风险';
+  } else {
+    bar.style.background = 'linear-gradient(90deg,#ff8c00,#ff6b6b)';
+    bar.textContent = '危险';
+  }
+}
+
+// ========== Tab 切换 ==========
+function switchTab(tabId, btn) {
+  btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const card = btn.closest('.card');
+  card.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+}
+
+// ========== 工具函数 ==========
+function formatMoney(num) {
+  if (num >= 10000) return (num / 10000).toFixed(1) + '亿';
+  if (num >= 100) return num.toFixed(0) + '万';
+  if (num >= 1) return num.toFixed(1) + '万';
+  if (num <= 0) return '0';
+  return (num * 10000).toFixed(0) + '元';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function copyShareText() {
+  const text = '【彩票头奖得主为什么大多破产？】\n75%的中奖者在5年内破产。不是运气问题，是数学和心理的双重陷阱。\n\n中了1000万，月花3.3万能花一辈子；月花30万，3年就没了。\n\n来试试财富衰减模拟器 👉 ' + window.location.href;
+  navigator.clipboard.writeText(text).then(() => showToast('已复制到剪贴板'));
+}
+
+// 初始化
+calcSafeLine();
+</script>
+</body>
+</html>

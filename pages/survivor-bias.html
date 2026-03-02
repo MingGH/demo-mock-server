@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>幸存者偏差模拟器 - 交互式概率论演示</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e8e8e8;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      padding: 40px 20px;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+      margin-bottom: 15px;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+
+    .header p {
+      font-size: 1.1rem;
+      color: #a0a0a0;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .demo-section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .demo-section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #ffd700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .demo-section h2 i {
+      font-size: 1.3rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd700, #ffb700);
+      color: #1a1a2e;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: #e8e8e8;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #ffd700;
+      margin-bottom: 5px;
+    }
+
+    .stat-card .label {
+      font-size: 0.9rem;
+      color: #a0a0a0;
+    }
+
+    .aircraft-container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin: 30px 0;
+    }
+
+    .aircraft {
+      width: 120px;
+      height: 80px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .aircraft svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .aircraft.crashed {
+      opacity: 0.3;
+      filter: grayscale(100%);
+    }
+
+    .aircraft.hit {
+      filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.5));
+    }
+
+    .hit-marker {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #ff4444;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: white;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin: 20px 0;
+    }
+
+    .insight-box {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 183, 0, 0.1));
+      border-left: 4px solid #ffd700;
+      padding: 20px;
+      border-radius: 0 12px 12px 0;
+      margin: 20px 0;
+    }
+
+    .insight-box h3 {
+      color: #ffd700;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .insight-box p {
+      color: #c0c0c0;
+      line-height: 1.8;
+    }
+
+    .slider-container {
+      margin: 20px 0;
+    }
+
+    .slider-container label {
+      display: block;
+      margin-bottom: 10px;
+      color: #a0a0a0;
+    }
+
+    .slider-container input[type="range"] {
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .slider-container input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffd700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .slider-container input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .slider-value {
+      text-align: center;
+      font-size: 1.5rem;
+      color: #ffd700;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .company-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .company {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+
+    .company.alive {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+    }
+
+    .company.dead {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .copy-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ffd700, #ffb700);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .copy-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4CAF50;
+      color: white;
+      padding: 15px 25px;
+      border-radius: 8px;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: all 0.3s ease;
+      z-index: 1001;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .two-column {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    @media (max-width: 768px) {
+      .two-column {
+        grid-template-columns: 1fr;
+      }
+
+      .header h1 {
+        font-size: 1.8rem;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-plane-arrival"></i> 幸存者偏差模拟器</h1>
+      <p>为什么你看到的成功都是「幸存者」？用交互式模拟理解这个改变二战的统计学故事</p>
+    </div>
+
+    <!-- 轰炸机问题 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-shield"></i> 轰炸机装甲问题 - 改变二战的统计学家</h2>
+
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 背景</h3>
+        <p>1943年，美军想给轰炸机加装装甲。工程师统计了返航飞机的弹孔分布，发现机身弹孔多、引擎弹孔少。直觉上应该在机身加装甲，但统计学家沃尔德说：应该在引擎加装甲！</p>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="simulateBombers()">
+          <i class="ti ti-play"></i> 模拟轰炸
+        </button>
+        <button class="btn btn-secondary" onclick="resetBombers()">
+          <i class="ti ti-refresh"></i> 重置
+        </button>
+      </div>
+
+      <div class="aircraft-container" id="aircraftContainer">
+        <!-- 飞机将通过JS生成 -->
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" id="totalAircraft">0</div>
+          <div class="label">出动的飞机</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="returnedAircraft">0</div>
+          <div class="label">返航的飞机</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="crashedAircraft">0</div>
+          <div class="label">坠毁的飞机</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="engineHits">0</div>
+          <div class="label">引擎中弹坠毁</div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="background: linear-gradient(135deg, rgba(255, 68, 68, 0.1), rgba(255, 0, 0, 0.1)); border-left-color: #ff4444;">
+        <h3 style="color: #ff4444;"><i class="ti ti-alert-triangle"></i> 关键洞察</h3>
+        <p><strong>引擎中弹的飞机都坠毁了，你根本统计不到它们！</strong><br>
+        这就是幸存者偏差：返航飞机显示「引擎很少中弹」，但这是因为引擎中弹的飞机根本回不来。<br>
+        <br>
+        <strong>沃尔德的结论</strong>：应该在引擎装装甲，而不是机身！</p>
+      </div>
+    </div>
+
+    <!-- 创业公司存活模拟 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-building"></i> 创业公司存活模拟</h2>
+
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 问题</h3>
+        <p>你听说过很多创业成功的故事：马云、马化腾、张一鸣...但你听说过多少创业失败的故事？那些失败的公司不会写传记、不会上新闻、不会分享「经验」。<br><br>
+        <strong>你只看到了「幸存者」。</strong></p>
+      </div>
+
+      <div class="slider-container">
+        <label>初始创业公司数量</label>
+        <input type="range" id="companyCount" min="100" max="2000" value="500" onchange="updateCompanyCount()">
+        <div class="slider-value"><span id="companyCountValue">500</span> 家</div>
+      </div>
+
+      <div class="slider-container">
+        <label>每年存活率</label>
+        <input type="range" id="survivalRate" min="50" max="99" value="90" onchange="updateSurvivalRate()">
+        <div class="slider-value"><span id="survivalRateValue">90</span>%</div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="simulateStartups()">
+          <i class="ti ti-play"></i> 模拟10年
+        </button>
+        <button class="btn btn-secondary" onclick="resetStartups()">
+          <i class="ti ti-refresh"></i> 重置
+        </button>
+      </div>
+
+      <div class="company-grid" id="companyGrid">
+        <!-- 公司将通过JS生成 -->
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" id="startCompanies">500</div>
+          <div class="label">初始公司</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="survivedCompanies">500</div>
+          <div class="label">10年后存活</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="failedCompanies">0</div>
+          <div class="label">10年间死亡</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="survivalRateDisplay">100%</div>
+          <div class="label">最终存活率</div>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <canvas id="survivalChart"></canvas>
+      </div>
+
+      <div class="insight-box">
+        <h3><i class="ti ti-brain"></i> 思考</h3>
+        <p>如果每年90%存活，10年后只剩 <strong>35%</strong> 的公司活着。<br>
+        这意味着 <strong>65%</strong> 的创业公司都失败了。<br><br>
+        但你只听说过那些「幸存者」的故事，因为失败者不会说话。<br><br>
+        <strong>这就是幸存者偏差的残酷真相。</strong></p>
+      </div>
+    </div>
+
+    <!-- 真实数据对比 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-chart-bar"></i> 真实数据：创业成功率</h2>
+
+      <div class="two-column">
+        <div>
+          <h3 style="margin-bottom: 15px; color: #ffd700;">不同行业的5年存活率</h3>
+          <div class="chart-container" style="height: 250px;">
+            <canvas id="industryChart"></canvas>
+          </div>
+        </div>
+        <div>
+          <h3 style="margin-bottom: 15px; color: #ffd700;">创业失败的主要原因</h3>
+          <div class="chart-container" style="height: 250px;">
+            <canvas id="failureChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3><i class="ti ti-lightbulb"></i> 数据来源</h3>
+        <p>数据基于美国小企业管理局（SBA）和中国工商统计报告。不同来源数据略有差异，但结论一致：<strong>大多数创业公司都会失败</strong>，只是失败者不会写书、不会演讲、不会分享「经验」。</p>
+      </div>
+    </div>
+
+    <!-- 总结 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-check"></i> 如何避免幸存者偏差？</h2>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" style="font-size: 1.5rem;">问自己</div>
+          <div class="label">「我漏掉了什么样本？」</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="font-size: 1.5rem;">找数据</div>
+          <div class="label">寻找「失败者」的统计</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="font-size: 1.5rem;">警惕故事</div>
+          <div class="label">成功者的经验往往是偏差</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="font-size: 1.5rem;">多角度</div>
+          <div class="label">别只听「活下来的人」说</div>
+        </div>
+      </div>
+
+      <div class="insight-box" style="background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(0, 200, 0, 0.1)); border-left-color: #4CAF50;">
+        <h3 style="color: #4CAF50;"><i class="ti ti-quote"></i> 最后的思考</h3>
+        <p>幸存者偏差最可怕的地方在于：<strong>你根本意识不到它的存在</strong>。<br><br>
+        你看到的世界，是「幸存者」让你看到的世界。<br>
+        真正的智慧，是学会问：<strong>「那些没说话的人，会说什么？」</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <button class="copy-btn" onclick="copyShareLink()" title="复制分享链接">
+    <i class="ti ti-link"></i>
+  </button>
+
+  <div class="toast" id="toast">链接已复制到剪贴板</div>
+
+  <script>
+    // 全局变量
+    let bomberData = { total: 0, returned: 0, crashed: 0, engineHits: 0 };
+    let startupData = { start: 500, survived: 500, failed: 0 };
+    let survivalChart = null;
+    let industryChart = null;
+    let failureChart = null;
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      initCharts();
+      resetBombers();
+      resetStartups();
+    });
+
+    // 初始化图表
+    function initCharts() {
+      // 创业存活曲线图
+      const survivalCtx = document.getElementById('survivalChart').getContext('2d');
+      survivalChart = new Chart(survivalCtx, {
+        type: 'line',
+        data: {
+          labels: ['第1年', '第2年', '第3年', '第4年', '第5年', '第6年', '第7年', '第8年', '第9年', '第10年'],
+          datasets: [{
+            label: '存活公司数量',
+            data: [],
+            borderColor: '#ffd700',
+            backgroundColor: 'rgba(255, 215, 0, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#e8e8e8' }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#a0a0a0' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            },
+            y: {
+              ticks: { color: '#a0a0a0' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            }
+          }
+        }
+      });
+
+      // 行业存活率图
+      const industryCtx = document.getElementById('industryChart').getContext('2d');
+      industryChart = new Chart(industryCtx, {
+        type: 'bar',
+        data: {
+          labels: ['科技', '餐饮', '零售', '制造', '服务', '建筑'],
+          datasets: [{
+            label: '5年存活率(%)',
+            data: [25, 30, 35, 40, 45, 50],
+            backgroundColor: [
+              'rgba(255, 215, 0, 0.8)',
+              'rgba(255, 183, 77, 0.8)',
+              'rgba(255, 152, 0, 0.8)',
+              'rgba(255, 87, 34, 0.8)',
+              'rgba(255, 68, 68, 0.8)',
+              'rgba(156, 39, 176, 0.8)'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#a0a0a0' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' }
+            },
+            y: {
+              ticks: { color: '#a0a0a0' },
+              grid: { color: 'rgba(255, 255, 255, 0.1)' },
+              max: 100
+            }
+          }
+        }
+      });
+
+      // 失败原因图
+      const failureCtx = document.getElementById('failureChart').getContext('2d');
+      failureChart = new Chart(failureCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['资金链断裂', '市场定位错误', '团队问题', '竞争失败', '其他'],
+          datasets: [{
+            data: [38, 25, 18, 12, 7],
+            backgroundColor: [
+              '#ff4444',
+              '#ff8800',
+              '#ffbb33',
+              '#4CAF50',
+              '#9e9e9e'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { color: '#e8e8e8' }
+            }
+          }
+        }
+      });
+    }
+
+    // 轰炸机模拟
+    function simulateBombers() {
+      const container = document.getElementById('aircraftContainer');
+      container.innerHTML = '';
+      bomberData = { total: 0, returned: 0, crashed: 0, engineHits: 0 };
+
+      const numAircraft = 20;
+
+      for (let i = 0; i < numAircraft; i++) {
+        const aircraft = document.createElement('div');
+        aircraft.className = 'aircraft';
+        aircraft.innerHTML = getAircraftSVG();
+        container.appendChild(aircraft);
+      }
+
+      // 模拟每架飞机的命运
+      setTimeout(() => {
+        const aircrafts = container.querySelectorAll('.aircraft');
+
+        aircrafts.forEach((aircraft, index) => {
+          setTimeout(() => {
+            // 随机决定是否中弹
+            const bodyHits = Math.floor(Math.random() * 5); // 机身0-4个弹孔
+            const wingHits = Math.floor(Math.random() * 3); // 机翼0-2个弹孔
+            const engineHit = Math.random() < 0.3; // 30%概率引擎中弹
+
+            // 添加机身弹孔
+            for (let h = 0; h < bodyHits; h++) {
+              addHitMarker(aircraft, 'body');
+            }
+
+            // 添加机翼弹孔
+            for (let h = 0; h < wingHits; h++) {
+              addHitMarker(aircraft, 'wing');
+            }
+
+            // 添加引擎弹孔
+            if (engineHit) {
+              addHitMarker(aircraft, 'engine');
+              bomberData.engineHits++;
+            }
+
+            bomberData.total++;
+
+            // 引擎中弹则坠毁
+            if (engineHit) {
+              aircraft.classList.add('crashed');
+              bomberData.crashed++;
+            } else {
+              aircraft.classList.add('hit');
+              bomberData.returned++;
+            }
+
+            updateBomberStats();
+          }, index * 100);
+        });
+      }, 500);
+    }
+
+    function getAircraftSVG() {
+      return `
+        <svg viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="60" cy="40" rx="50" ry="15" fill="#4a5568" stroke="#718096" stroke-width="2"/>
+          <path d="M20 40 L50 40 L60 25 L110 40 L60 55 L50 40" fill="#4a5568" stroke="#718096" stroke-width="2"/>
+          <ellipse cx="25" cy="40" rx="8" ry="5" fill="#2d3748" stroke="#718096" stroke-width="1"/>
+          <rect x="55" y="35" width="10" height="10" fill="#2d3748" stroke="#718096" stroke-width="1"/>
+        </svg>
+      `;
+    }
+
+    function addHitMarker(aircraft, type) {
+      const marker = document.createElement('div');
+      marker.className = 'hit-marker';
+      marker.textContent = '×';
+
+      const svg = aircraft.querySelector('svg');
+      const rect = svg.getBoundingClientRect();
+
+      // 根据类型设置不同位置
+      let x, y;
+      switch(type) {
+        case 'body':
+          x = 30 + Math.random() * 50;
+          y = 25 + Math.random() * 30;
+          break;
+        case 'wing':
+          x = 10 + Math.random() * 30;
+          y = 20 + Math.random() * 40;
+          break;
+        case 'engine':
+          x = 55;
+          y = 35;
+          break;
+      }
+
+      marker.style.left = x + 'px';
+      marker.style.top = y + 'px';
+      aircraft.appendChild(marker);
+    }
+
+    function updateBomberStats() {
+      document.getElementById('totalAircraft').textContent = bomberData.total;
+      document.getElementById('returnedAircraft').textContent = bomberData.returned;
+      document.getElementById('crashedAircraft').textContent = bomberData.crashed;
+      document.getElementById('engineHits').textContent = bomberData.engineHits;
+    }
+
+    function resetBombers() {
+      const container = document.getElementById('aircraftContainer');
+      container.innerHTML = '';
+
+      for (let i = 0; i < 20; i++) {
+        const aircraft = document.createElement('div');
+        aircraft.className = 'aircraft';
+        aircraft.innerHTML = getAircraftSVG();
+        container.appendChild(aircraft);
+      }
+
+      bomberData = { total: 0, returned: 0, crashed: 0, engineHits: 0 };
+      updateBomberStats();
+    }
+
+    // 创业公司模拟
+    function updateCompanyCount() {
+      const value = document.getElementById('companyCount').value;
+      document.getElementById('companyCountValue').textContent = value;
+      startupData.start = parseInt(value);
+      startupData.survived = parseInt(value);
+      document.getElementById('startCompanies').textContent = value;
+      document.getElementById('survivedCompanies').textContent = value;
+    }
+
+    function updateSurvivalRate() {
+      const value = document.getElementById('survivalRate').value;
+      document.getElementById('survivalRateValue').textContent = value;
+    }
+
+    function simulateStartups() {
+      const count = parseInt(document.getElementById('companyCount').value);
+      const rate = parseInt(document.getElementById('survivalRate').value) / 100;
+
+      startupData = { start: count, survived: count, failed: 0 };
+      const grid = document.getElementById('companyGrid');
+      grid.innerHTML = '';
+
+      // 创建公司方块
+      for (let i = 0; i < count; i++) {
+        const company = document.createElement('div');
+        company.className = 'company alive';
+        company.textContent = (i + 1);
+        grid.appendChild(company);
+      }
+
+      // 模拟10年
+      const yearlyData = [count];
+      let currentSurvived = count;
+
+      for (let year = 1; year <= 10; year++) {
+        setTimeout(() => {
+          const companies = grid.querySelectorAll('.company');
+          let yearSurvived = 0;
+
+          companies.forEach((company, index) => {
+            if (company.classList.contains('alive')) {
+              if (Math.random() < rate) {
+                yearSurvived++;
+              } else {
+                company.classList.remove('alive');
+                company.classList.add('dead');
+                startupData.failed++;
+              }
+            }
+          });
+
+          currentSurvived = yearSurvived;
+          yearlyData.push(currentSurvived);
+          startupData.survived = currentSurvived;
+
+          updateStartupStats();
+          updateSurvivalChart(yearlyData);
+        }, year * 300);
+      }
+    }
+
+    function updateStartupStats() {
+      document.getElementById('startCompanies').textContent = startupData.start;
+      document.getElementById('survivedCompanies').textContent = startupData.survived;
+      document.getElementById('failedCompanies').textContent = startupData.failed;
+
+      const finalRate = ((startupData.survived / startupData.start) * 100).toFixed(1);
+      document.getElementById('survivalRateDisplay').textContent = finalRate + '%';
+    }
+
+    function updateSurvivalChart(data) {
+      survivalChart.data.datasets[0].data = data;
+      survivalChart.update();
+    }
+
+    function resetStartups() {
+      const count = parseInt(document.getElementById('companyCount').value);
+      const grid = document.getElementById('companyGrid');
+      grid.innerHTML = '';
+
+      for (let i = 0; i < count; i++) {
+        const company = document.createElement('div');
+        company.className = 'company alive';
+        company.textContent = (i + 1);
+        grid.appendChild(company);
+      }
+
+      startupData = { start: count, survived: count, failed: 0 };
+      updateStartupStats();
+
+      survivalChart.data.datasets[0].data = [count, count, count, count, count, count, count, count, count, count, count];
+      survivalChart.update();
+    }
+
+    // 复制分享链接
+    function copyShareLink() {
+      const url = window.location.href.replace('survivor-bias.html', 'pages/survivor-bias.html');
+      navigator.clipboard.writeText(url).then(() => {
+        const toast = document.getElementById('toast');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+      });
+    }
+  </script>
+</body>
+</html>

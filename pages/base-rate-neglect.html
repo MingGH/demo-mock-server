@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>基率忽视模拟器 - 交互式概率论演示</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; padding: 40px 20px; margin-bottom: 30px; }
+    .header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      animation: shimmer 3s linear infinite; margin-bottom: 15px;
+    }
+    @keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+    .header p { font-size: 1.1rem; color: #a0a0a0; max-width: 700px; margin: 0 auto; }
+    .demo-section {
+      background: rgba(255,255,255,0.05); border-radius: 16px; padding: 30px;
+      margin-bottom: 30px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .demo-section h2 {
+      font-size: 1.5rem; margin-bottom: 20px; color: #ffd700;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .demo-section h2 i { font-size: 1.3rem; }
+    .controls { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; align-items: center; }
+    .btn {
+      padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem;
+      cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 600;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.3); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px; margin: 20px 0;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px;
+      text-align: center; border: 1px solid rgba(255,255,255,0.1);
+    }
+    .stat-card .value { font-size: 2rem; font-weight: bold; color: #ffd700; margin-bottom: 5px; }
+    .stat-card .label { font-size: 0.9rem; color: #a0a0a0; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,183,0,0.1));
+      border-left: 4px solid #ffd700; padding: 20px; border-radius: 0 12px 12px 0; margin: 20px 0;
+    }
+    .insight-box h3 { color: #ffd700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .insight-box p { color: #c0c0c0; line-height: 1.8; }
+    .insight-box.red {
+      background: linear-gradient(135deg, rgba(255,68,68,0.1), rgba(255,0,0,0.1));
+      border-left-color: #ff4444;
+    }
+    .insight-box.red h3 { color: #ff4444; }
+    .insight-box.green {
+      background: linear-gradient(135deg, rgba(76,175,80,0.1), rgba(0,200,0,0.1));
+      border-left-color: #4CAF50;
+    }
+    .insight-box.green h3 { color: #4CAF50; }
+    .slider-container { margin: 15px 0; }
+    .slider-container label { display: block; margin-bottom: 8px; color: #a0a0a0; font-size: 0.95rem; }
+    .slider-container input[type="range"] {
+      width: 100%; height: 8px; border-radius: 4px;
+      background: rgba(255,255,255,0.1); outline: none; -webkit-appearance: none;
+    }
+    .slider-container input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: #ffd700; cursor: pointer; transition: all 0.2s ease;
+    }
+    .slider-container input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .slider-value { text-align: center; font-size: 1.3rem; color: #ffd700; font-weight: bold; margin-top: 8px; }
+    .chart-container { position: relative; height: 300px; margin: 20px 0; }
+    .quiz-option {
+      background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15);
+      border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s ease;
+      margin-bottom: 12px; display: flex; align-items: center; gap: 15px;
+    }
+    .quiz-option:hover { border-color: rgba(255,215,0,0.5); background: rgba(255,255,255,0.12); }
+    .quiz-option.selected { border-color: #ffd700; background: rgba(255,215,0,0.15); }
+    .quiz-option.correct { border-color: #4CAF50; background: rgba(76,175,80,0.15); }
+    .quiz-option.wrong { border-color: #ff4444; background: rgba(255,68,68,0.15); }
+    .quiz-option .letter {
+      width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center; font-weight: bold;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .quiz-option.correct .letter { background: #4CAF50; color: white; }
+    .quiz-option.wrong .letter { background: #ff4444; color: white; }
+    .quiz-result { display: none; margin-top: 20px; }
+    .quiz-result.show { display: block; }
+    .person-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(10px, 1fr));
+      gap: 3px; margin: 20px 0; max-height: 300px; overflow: hidden;
+    }
+    .person {
+      aspect-ratio: 1; border-radius: 2px; transition: all 0.3s ease; min-width: 8px;
+    }
+    .person.healthy { background: #4CAF50; }
+    .person.sick { background: #ff4444; }
+    .person.true-positive { background: #ff4444; box-shadow: 0 0 4px #ff4444; }
+    .person.false-positive { background: #ff8800; }
+    .person.true-negative { background: #4CAF50; }
+    .person.false-negative { background: #9C27B0; }
+    .legend { display: flex; flex-wrap: wrap; gap: 15px; margin: 15px 0; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #a0a0a0; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+    .formula-box {
+      background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; margin: 20px 0;
+      font-family: 'Courier New', monospace; font-size: 1rem; line-height: 2;
+      overflow-x: auto; color: #e8e8e8;
+    }
+    .formula-box .highlight { color: #ffd700; font-weight: bold; }
+    .formula-box .red { color: #ff4444; }
+    .formula-box .green { color: #4CAF50; }
+    .formula-box .orange { color: #ff8800; }
+    .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    .scenario-card {
+      background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px;
+      border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.3s;
+    }
+    .scenario-card:hover { border-color: rgba(255,215,0,0.5); transform: translateY(-3px); }
+    .scenario-card.active { border-color: #ffd700; }
+    .scenario-card h4 { color: #ffd700; margin-bottom: 8px; }
+    .scenario-card p { color: #a0a0a0; font-size: 0.9rem; }
+    .copy-btn {
+      position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px;
+      border-radius: 50%; background: linear-gradient(135deg, #ffd700, #ffb700);
+      border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; box-shadow: 0 4px 20px rgba(255,215,0,0.3);
+      transition: all 0.3s ease; z-index: 1000;
+    }
+    .copy-btn:hover { transform: scale(1.1); }
+    .toast {
+      position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white;
+      padding: 15px 25px; border-radius: 8px; opacity: 0; transform: translateY(-20px);
+      transition: all 0.3s ease; z-index: 1001;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 768px) {
+      .two-column { grid-template-columns: 1fr; }
+      .header h1 { font-size: 1.8rem; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .person-grid { grid-template-columns: repeat(auto-fill, minmax(8px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-eye-off"></i> 基率忽视模拟器</h1>
+      <p>检测阳性≠真的有病。99%准确率的检测，阳性结果可能只有50%是真的。用交互式模拟理解这个被所有人忽略的认知陷阱。</p>
+    </div>
+
+    <!-- 直觉测试 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-brain"></i> 先测测你的直觉</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 问题</h3>
+        <p>某种疾病的发病率是 <strong>1%</strong>（每100人中有1人患病）。<br>
+        现在有一种检测方法，准确率 <strong>99%</strong>：<br>
+        - 真正患病的人，99% 会检测出阳性<br>
+        - 没有患病的人，99% 会检测出阴性（即1%会误报阳性）<br><br>
+        <strong>你检测结果为阳性，你真正患病的概率是多少？</strong></p>
+      </div>
+
+      <div id="quizArea">
+        <div class="quiz-option" data-value="99" onclick="selectQuiz(this)">
+          <div class="letter">A</div>
+          <div>99%  — 检测准确率就是99%嘛</div>
+        </div>
+        <div class="quiz-option" data-value="95" onclick="selectQuiz(this)">
+          <div class="letter">B</div>
+          <div>95%  — 差不多很高</div>
+        </div>
+        <div class="quiz-option" data-value="50" onclick="selectQuiz(this)">
+          <div class="letter">C</div>
+          <div>50%  — 大约一半一半</div>
+        </div>
+        <div class="quiz-option" data-value="10" onclick="selectQuiz(this)">
+          <div class="letter">D</div>
+          <div>10%  — 其实很低</div>
+        </div>
+      </div>
+
+      <div class="controls" style="margin-top: 20px;">
+        <button class="btn btn-primary" id="quizSubmitBtn" onclick="submitQuiz()" disabled>
+          <i class="ti ti-check"></i> 提交答案
+        </button>
+      </div>
+
+      <div class="quiz-result" id="quizResult">
+        <div class="insight-box red">
+          <h3><i class="ti ti-alert-triangle"></i> 正确答案：约 50%</h3>
+          <p id="quizExplanation"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 可视化：1000人检测 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-users"></i> 可视化：1000人检测场景</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 用人数来理解</h3>
+        <p>抽象的概率很难理解，我们换成具体的人数。假设有1000人接受检测，看看会发生什么。</p>
+      </div>
+
+      <div class="slider-container">
+        <label>发病率（每1000人中有多少人患病）</label>
+        <input type="range" id="prevalenceSlider" min="1" max="100" value="10" oninput="updateVisualization()">
+        <div class="slider-value"><span id="prevalenceValue">10</span> / 1000 = <span id="prevalencePercent">1%</span></div>
+      </div>
+      <div class="slider-container">
+        <label>检测灵敏度（真阳性率）</label>
+        <input type="range" id="sensitivitySlider" min="80" max="100" value="99" oninput="updateVisualization()">
+        <div class="slider-value"><span id="sensitivityValue">99</span>%</div>
+      </div>
+      <div class="slider-container">
+        <label>检测特异度（真阴性率）</label>
+        <input type="range" id="specificitySlider" min="80" max="100" value="99" oninput="updateVisualization()">
+        <div class="slider-value"><span id="specificityValue">99</span>%</div>
+      </div>
+
+      <div class="person-grid" id="personGrid"></div>
+
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#ff4444;box-shadow:0 0 4px #ff4444;"></div>真阳性（有病+检测阳性）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff8800;"></div>假阳性（没病+检测阳性）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4CAF50;"></div>真阴性（没病+检测阴性）</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#9C27B0;"></div>假阴性（有病+检测阴性）</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" id="truePositiveCount">0</div>
+          <div class="label">真阳性</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="color:#ff8800;" id="falsePositiveCount">0</div>
+          <div class="label">假阳性</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="color:#4CAF50;" id="trueNegativeCount">0</div>
+          <div class="label">真阴性</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="color:#9C27B0;" id="falseNegativeCount">0</div>
+          <div class="label">假阴性</div>
+        </div>
+      </div>
+
+      <div class="formula-box">
+        <div>阳性预测值 = <span class="highlight">真阳性</span> / (<span class="highlight">真阳性</span> + <span class="orange">假阳性</span>)</div>
+        <div style="margin-top:8px;">= <span class="highlight" id="formulaTP">0</span> / (<span class="highlight" id="formulaTP2">0</span> + <span class="orange" id="formulaFP">0</span>) = <span class="red" id="formulaPPV" style="font-size:1.3rem;">0%</span></div>
+      </div>
+
+      <div class="insight-box red" id="ppvInsight">
+        <h3><i class="ti ti-alert-triangle"></i> 关键发现</h3>
+        <p id="ppvInsightText"></p>
+      </div>
+    </div>
+
+    <!-- 蒙特卡洛模拟 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-chart-dots"></i> 蒙特卡洛模拟验证</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 用模拟验证贝叶斯公式</h3>
+        <p>不信数学？让电脑随机模拟10000人的检测过程，看看阳性结果中到底有多少是真的。</p>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="runMonteCarlo()">
+          <i class="ti ti-play"></i> 运行模拟（10000人）
+        </button>
+        <button class="btn btn-secondary" onclick="resetMonteCarlo()">
+          <i class="ti ti-refresh"></i> 重置
+        </button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" id="mcTheoretical">-</div>
+          <div class="label">理论阳性预测值</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="mcSimulated">-</div>
+          <div class="label">模拟阳性预测值</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="mcPositives">-</div>
+          <div class="label">总阳性人数</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="mcTruePos">-</div>
+          <div class="label">其中真阳性</div>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <canvas id="monteCarloChart"></canvas>
+      </div>
+    </div>
+
+    <!-- 生活场景 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-world"></i> 基率忽视无处不在</h2>
+
+      <div class="two-column">
+        <div class="scenario-card" onclick="loadScenario('airport')">
+          <h4><i class="ti ti-plane"></i> 机场安检</h4>
+          <p>安检系统99.9%能识别危险物品，但误报率0.1%。每天10万旅客中，真正的危险物品可能只有1件。</p>
+        </div>
+        <div class="scenario-card" onclick="loadScenario('spam')">
+          <h4><i class="ti ti-mail"></i> 垃圾邮件过滤</h4>
+          <p>过滤器准确率98%，但你收到的邮件中只有10%是垃圾邮件。被标记为垃圾的邮件中有多少是误判？</p>
+        </div>
+        <div class="scenario-card" onclick="loadScenario('drug')">
+          <h4><i class="ti ti-test-pipe"></i> 毒品检测</h4>
+          <p>某公司对1000名员工做毒品检测，准确率99%。假设实际吸毒率5%，阳性结果可信度？</p>
+        </div>
+        <div class="scenario-card" onclick="loadScenario('court')">
+          <h4><i class="ti ti-gavel"></i> 法庭DNA证据</h4>
+          <p>DNA匹配概率百万分之一，但城市有1000万人。嫌疑人DNA匹配，他是凶手的概率？</p>
+        </div>
+      </div>
+
+      <div id="scenarioResult" style="display:none; margin-top: 20px;">
+        <div class="formula-box" id="scenarioFormula"></div>
+        <div class="insight-box" id="scenarioInsight">
+          <h3><i class="ti ti-lightbulb"></i> 分析</h3>
+          <p id="scenarioText"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PPV vs 发病率曲线 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-chart-line"></i> 阳性预测值 vs 发病率</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 核心规律</h3>
+        <p>发病率越低，阳性结果的可信度越低。这就是为什么不建议对低风险人群做大规模筛查。</p>
+      </div>
+      <div class="chart-container" style="height: 350px;">
+        <canvas id="ppvCurveChart"></canvas>
+      </div>
+    </div>
+
+    <!-- 总结 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-check"></i> 如何避免基率忽视？</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" style="font-size:1.5rem;">问基率</div>
+          <div class="label">「这件事本身发生的概率是多少？」</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="font-size:1.5rem;">用人数</div>
+          <div class="label">把百分比转换成具体人数来思考</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="font-size:1.5rem;">算两面</div>
+          <div class="label">阳性中有多少真的？多少假的？</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="font-size:1.5rem;">警惕标签</div>
+          <div class="label">「被检测出」≠「真的是」</div>
+        </div>
+      </div>
+      <div class="insight-box green">
+        <h3><i class="ti ti-quote"></i> 最后的思考</h3>
+        <p>基率忽视是人类最普遍、最危险的认知偏差之一。<br><br>
+        医生会因为它误诊，法官会因为它误判，你会因为它焦虑。<br><br>
+        记住一句话：<strong>在判断「我是不是X」之前，先问「X本身有多常见」</strong>。<br><br>
+        这个简单的习惯，能帮你避开生活中90%的概率陷阱。</p>
+      </div>
+    </div>
+  </div>
+
+  <button class="copy-btn" onclick="copyShareLink()" title="复制分享链接">
+    <i class="ti ti-link"></i>
+  </button>
+  <div class="toast" id="toast">链接已复制到剪贴板</div>
+
+  <script>
+    // ========== 核心计算函数（可独立测试） ==========
+    function calcBayes(prevalence, sensitivity, specificity) {
+      const truePositive = prevalence * sensitivity;
+      const falsePositive = (1 - prevalence) * (1 - specificity);
+      const trueNegative = (1 - prevalence) * specificity;
+      const falseNegative = prevalence * (1 - sensitivity);
+      const ppv = truePositive / (truePositive + falsePositive);
+      const npv = trueNegative / (trueNegative + falseNegative);
+      return { truePositive, falsePositive, trueNegative, falseNegative, ppv, npv };
+    }
+
+    function simulatePopulation(n, prevalence, sensitivity, specificity) {
+      let tp = 0, fp = 0, tn = 0, fn = 0;
+      for (let i = 0; i < n; i++) {
+        const isSick = Math.random() < prevalence;
+        if (isSick) {
+          if (Math.random() < sensitivity) tp++; else fn++;
+        } else {
+          if (Math.random() < specificity) tn++; else fp++;
+        }
+      }
+      const ppv = tp + fp > 0 ? tp / (tp + fp) : 0;
+      return { tp, fp, tn, fn, ppv, total: n };
+    }
+
+    // ========== 直觉测试 ==========
+    let selectedAnswer = null;
+    function selectQuiz(el) {
+      document.querySelectorAll('.quiz-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedAnswer = parseInt(el.dataset.value);
+      document.getElementById('quizSubmitBtn').disabled = false;
+    }
+
+    function submitQuiz() {
+      if (selectedAnswer === null) return;
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(o => {
+        o.style.pointerEvents = 'none';
+        if (parseInt(o.dataset.value) === 50) o.classList.add('correct');
+        else if (o.classList.contains('selected') && selectedAnswer !== 50) o.classList.add('wrong');
+      });
+      document.getElementById('quizSubmitBtn').disabled = true;
+
+      const result = document.getElementById('quizResult');
+      result.classList.add('show');
+
+      const b = calcBayes(0.01, 0.99, 0.99);
+      const explanation = selectedAnswer === 50
+        ? `你答对了！大多数人（包括很多医生）都会答错这道题。<br><br>` +
+          `1000人中：10人患病，990人健康。<br>` +
+          `10个患病者中，9.9人检测阳性（真阳性）。<br>` +
+          `990个健康者中，9.9人也检测阳性（假阳性）。<br><br>` +
+          `阳性总数 ≈ 20人，其中只有约10人真的有病。<br>` +
+          `所以阳性预测值 = 9.9 / 19.8 ≈ <strong>${(b.ppv * 100).toFixed(0)}%</strong>。`
+        : `大多数人（包括很多医生）都会答错这道题。你选了 ${selectedAnswer}%，但正确答案是约 50%。<br><br>` +
+          `1000人中：10人患病，990人健康。<br>` +
+          `10个患病者中，9.9人检测阳性（真阳性）。<br>` +
+          `990个健康者中，9.9人也检测阳性（假阳性）。<br><br>` +
+          `阳性总数 ≈ 20人，其中只有约10人真的有病。<br>` +
+          `所以阳性预测值 = 9.9 / 19.8 ≈ <strong>${(b.ppv * 100).toFixed(0)}%</strong>。<br><br>` +
+          `<strong>99%准确率的检测，阳性结果只有50%是真的。</strong>这就是基率忽视。`;
+      document.getElementById('quizExplanation').innerHTML = explanation;
+    }
+
+    // ========== 1000人可视化 ==========
+    function updateVisualization() {
+      const prevalence = parseInt(document.getElementById('prevalenceSlider').value) / 1000;
+      const sensitivity = parseInt(document.getElementById('sensitivitySlider').value) / 100;
+      const specificity = parseInt(document.getElementById('specificitySlider').value) / 100;
+
+      document.getElementById('prevalenceValue').textContent = document.getElementById('prevalenceSlider').value;
+      document.getElementById('prevalencePercent').textContent = (prevalence * 100).toFixed(1) + '%';
+      document.getElementById('sensitivityValue').textContent = document.getElementById('sensitivitySlider').value;
+      document.getElementById('specificityValue').textContent = document.getElementById('specificitySlider').value;
+
+      const n = 1000;
+      const sick = Math.round(n * prevalence);
+      const healthy = n - sick;
+      const tp = Math.round(sick * sensitivity);
+      const fn = sick - tp;
+      const fp = Math.round(healthy * (1 - specificity));
+      const tn = healthy - fp;
+      const ppv = tp + fp > 0 ? tp / (tp + fp) : 0;
+
+      // 更新人群网格
+      const grid = document.getElementById('personGrid');
+      grid.innerHTML = '';
+      const people = [];
+      for (let i = 0; i < tp; i++) people.push('true-positive');
+      for (let i = 0; i < fn; i++) people.push('false-negative');
+      for (let i = 0; i < fp; i++) people.push('false-positive');
+      for (let i = 0; i < tn; i++) people.push('true-negative');
+      people.forEach(cls => {
+        const div = document.createElement('div');
+        div.className = 'person ' + cls;
+        grid.appendChild(div);
+      });
+
+      // 更新统计
+      document.getElementById('truePositiveCount').textContent = tp;
+      document.getElementById('falsePositiveCount').textContent = fp;
+      document.getElementById('trueNegativeCount').textContent = tn;
+      document.getElementById('falseNegativeCount').textContent = fn;
+
+      // 更新公式
+      document.getElementById('formulaTP').textContent = tp;
+      document.getElementById('formulaTP2').textContent = tp;
+      document.getElementById('formulaFP').textContent = fp;
+      document.getElementById('formulaPPV').textContent = (ppv * 100).toFixed(1) + '%';
+
+      // 更新洞察
+      const insightText = document.getElementById('ppvInsightText');
+      if (ppv < 0.5) {
+        insightText.innerHTML = `在当前参数下，检测阳性的人中只有 <strong>${(ppv * 100).toFixed(1)}%</strong> 是真正患病的。<br>也就是说，<strong>超过一半的阳性结果是误报</strong>。如果你因为阳性结果而恐慌，你大概率是在白担心。`;
+      } else if (ppv < 0.8) {
+        insightText.innerHTML = `在当前参数下，检测阳性的人中有 <strong>${(ppv * 100).toFixed(1)}%</strong> 是真正患病的。<br>虽然超过一半，但仍有 <strong>${((1 - ppv) * 100).toFixed(1)}%</strong> 的假阳性。建议做进一步确认检测。`;
+      } else {
+        insightText.innerHTML = `在当前参数下，检测阳性的人中有 <strong>${(ppv * 100).toFixed(1)}%</strong> 是真正患病的。<br>发病率较高时，阳性结果的可信度也较高。但仍有 <strong>${((1 - ppv) * 100).toFixed(1)}%</strong> 的假阳性。`;
+      }
+    }
+
+    // ========== 蒙特卡洛模拟 ==========
+    let mcChart = null;
+    function runMonteCarlo() {
+      const prevalence = parseInt(document.getElementById('prevalenceSlider').value) / 1000;
+      const sensitivity = parseInt(document.getElementById('sensitivitySlider').value) / 100;
+      const specificity = parseInt(document.getElementById('specificitySlider').value) / 100;
+
+      const theoretical = calcBayes(prevalence, sensitivity, specificity);
+      const sim = simulatePopulation(10000, prevalence, sensitivity, specificity);
+
+      document.getElementById('mcTheoretical').textContent = (theoretical.ppv * 100).toFixed(1) + '%';
+      document.getElementById('mcSimulated').textContent = (sim.ppv * 100).toFixed(1) + '%';
+      document.getElementById('mcPositives').textContent = sim.tp + sim.fp;
+      document.getElementById('mcTruePos').textContent = sim.tp;
+
+      // 多次模拟绘制分布
+      const ppvs = [];
+      for (let i = 0; i < 100; i++) {
+        const s = simulatePopulation(10000, prevalence, sensitivity, specificity);
+        ppvs.push(s.ppv * 100);
+      }
+
+      const bins = {};
+      ppvs.forEach(v => {
+        const bin = Math.round(v);
+        bins[bin] = (bins[bin] || 0) + 1;
+      });
+      const labels = Object.keys(bins).sort((a, b) => a - b);
+      const data = labels.map(l => bins[l]);
+
+      if (mcChart) mcChart.destroy();
+      const ctx = document.getElementById('monteCarloChart').getContext('2d');
+      mcChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels.map(l => l + '%'),
+          datasets: [{
+            label: '模拟PPV分布（100次）',
+            data: data,
+            backgroundColor: 'rgba(255,215,0,0.6)',
+            borderColor: '#ffd700',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#e8e8e8' } },
+            annotation: {
+              annotations: {
+                line1: {
+                  type: 'line', xMin: theoretical.ppv * 100, xMax: theoretical.ppv * 100,
+                  borderColor: '#ff4444', borderWidth: 2, borderDash: [5, 5],
+                  label: { display: true, content: '理论值', color: '#ff4444' }
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' }, title: { display: true, text: '阳性预测值', color: '#a0a0a0' } },
+            y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' }, title: { display: true, text: '次数', color: '#a0a0a0' } }
+          }
+        }
+      });
+    }
+
+    function resetMonteCarlo() {
+      document.getElementById('mcTheoretical').textContent = '-';
+      document.getElementById('mcSimulated').textContent = '-';
+      document.getElementById('mcPositives').textContent = '-';
+      document.getElementById('mcTruePos').textContent = '-';
+      if (mcChart) { mcChart.destroy(); mcChart = null; }
+    }
+
+    // ========== 生活场景 ==========
+    const scenarios = {
+      airport: {
+        prevalence: 0.00001, sensitivity: 0.999, specificity: 0.999,
+        title: '机场安检',
+        desc: '每天10万旅客，假设只有1人携带危险物品。安检系统灵敏度99.9%，误报率0.1%。'
+      },
+      spam: {
+        prevalence: 0.10, sensitivity: 0.98, specificity: 0.98,
+        title: '垃圾邮件过滤',
+        desc: '你收到的邮件中10%是垃圾邮件。过滤器准确率98%。'
+      },
+      drug: {
+        prevalence: 0.05, sensitivity: 0.99, specificity: 0.99,
+        title: '毒品检测',
+        desc: '1000名员工中约5%有吸毒行为。检测准确率99%。'
+      },
+      court: {
+        prevalence: 0.0000001, sensitivity: 0.999999, specificity: 0.999999,
+        title: 'DNA证据',
+        desc: '城市1000万人中只有1个凶手。DNA匹配错误率百万分之一。'
+      }
+    };
+
+    function loadScenario(key) {
+      const s = scenarios[key];
+      const b = calcBayes(s.prevalence, s.sensitivity, s.specificity);
+
+      document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+
+      document.getElementById('scenarioResult').style.display = 'block';
+
+      const n = key === 'court' ? 10000000 : (key === 'airport' ? 100000 : 1000);
+      const sick = Math.round(n * s.prevalence);
+      const healthy = n - sick;
+      const tp = Math.round(sick * s.sensitivity);
+      const fp = Math.round(healthy * (1 - s.specificity));
+
+      document.getElementById('scenarioFormula').innerHTML =
+        `<div><strong>${s.title}</strong>：${s.desc}</div>` +
+        `<div style="margin-top:12px;">${n}人中：<span class="red">${sick}人</span>是目标，<span class="green">${healthy}人</span>不是</div>` +
+        `<div>真阳性：<span class="highlight">${tp}</span>人 | 假阳性：<span class="orange">${fp}</span>人</div>` +
+        `<div style="margin-top:8px;">阳性预测值 = ${tp} / (${tp} + ${fp}) = <span class="red" style="font-size:1.3rem;">${(b.ppv * 100).toFixed(2)}%</span></div>`;
+
+      let insight = '';
+      if (b.ppv < 0.01) {
+        insight = `阳性结果的可信度极低，只有 ${(b.ppv * 100).toFixed(2)}%。这意味着绝大多数「报警」都是误报。这就是为什么安检经常「虚惊一场」——不是系统不好，而是基率太低了。`;
+      } else if (b.ppv < 0.5) {
+        insight = `阳性结果的可信度只有 ${(b.ppv * 100).toFixed(1)}%，不到一半。被标记为阳性的结果中，大部分其实是误报。`;
+      } else {
+        insight = `阳性结果的可信度为 ${(b.ppv * 100).toFixed(1)}%。因为基率（发病率/目标比例）较高，阳性结果相对可靠，但仍有 ${((1 - b.ppv) * 100).toFixed(1)}% 的假阳性。`;
+      }
+      document.getElementById('scenarioText').innerHTML = insight;
+    }
+
+    // ========== PPV曲线 ==========
+    let ppvCurveChart = null;
+    function initPPVCurve() {
+      const ctx = document.getElementById('ppvCurveChart').getContext('2d');
+      const labels = [];
+      const data99 = [], data95 = [], data90 = [];
+      for (let p = 1; p <= 200; p++) {
+        const prev = p / 1000;
+        labels.push((prev * 100).toFixed(1) + '%');
+        data99.push((calcBayes(prev, 0.99, 0.99).ppv * 100).toFixed(1));
+        data95.push((calcBayes(prev, 0.95, 0.95).ppv * 100).toFixed(1));
+        data90.push((calcBayes(prev, 0.90, 0.90).ppv * 100).toFixed(1));
+      }
+      ppvCurveChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: '准确率99%', data: data99, borderColor: '#ffd700', backgroundColor: 'rgba(255,215,0,0.1)', fill: false, tension: 0.3, pointRadius: 0 },
+            { label: '准确率95%', data: data95, borderColor: '#ff8800', backgroundColor: 'rgba(255,136,0,0.1)', fill: false, tension: 0.3, pointRadius: 0 },
+            { label: '准确率90%', data: data90, borderColor: '#ff4444', backgroundColor: 'rgba(255,68,68,0.1)', fill: false, tension: 0.3, pointRadius: 0 }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#e8e8e8' } } },
+          scales: {
+            x: { ticks: { color: '#a0a0a0', maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.1)' }, title: { display: true, text: '发病率', color: '#a0a0a0' } },
+            y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' }, title: { display: true, text: '阳性预测值(%)', color: '#a0a0a0' }, min: 0, max: 100 }
+          }
+        }
+      });
+    }
+
+    // ========== 复制链接 ==========
+    function copyShareLink() {
+      navigator.clipboard.writeText('https://demo-mockserver.runnable.run/pages/base-rate-neglect.html').then(() => {
+        const toast = document.getElementById('toast');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+      });
+    }
+
+    // ========== 初始化 ==========
+    document.addEventListener('DOMContentLoaded', function() {
+      updateVisualization();
+      initPPVCurve();
+    });
+  </script>
+</body>
+</html>

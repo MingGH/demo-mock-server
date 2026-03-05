@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>运气到底存不存在 - 交互式概率论演示</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; padding: 40px 20px; margin-bottom: 30px; }
+    .header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      animation: shimmer 3s linear infinite; margin-bottom: 15px;
+    }
+    @keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+    .header p { font-size: 1.1rem; color: #a0a0a0; max-width: 700px; margin: 0 auto; }
+    .demo-section {
+      background: rgba(255,255,255,0.05); border-radius: 16px; padding: 30px;
+      margin-bottom: 30px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .demo-section h2 {
+      font-size: 1.5rem; margin-bottom: 20px; color: #ffd700;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .demo-section h2 i { font-size: 1.3rem; }
+    .controls { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; align-items: center; }
+    .btn {
+      padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem;
+      cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 600;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.3); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px; margin: 20px 0;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px;
+      text-align: center; border: 1px solid rgba(255,255,255,0.1);
+    }
+    .stat-card .value { font-size: 2rem; font-weight: bold; color: #ffd700; margin-bottom: 5px; }
+    .stat-card .label { font-size: 0.9rem; color: #a0a0a0; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,183,0,0.1));
+      border-left: 4px solid #ffd700; padding: 20px; border-radius: 0 12px 12px 0; margin: 20px 0;
+    }
+    .insight-box h3 { color: #ffd700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .insight-box p { color: #c0c0c0; line-height: 1.8; }
+    .insight-box.red {
+      background: linear-gradient(135deg, rgba(255,68,68,0.1), rgba(255,0,0,0.1));
+      border-left-color: #ff4444;
+    }
+    .insight-box.red h3 { color: #ff4444; }
+    .insight-box.green {
+      background: linear-gradient(135deg, rgba(76,175,80,0.1), rgba(0,200,0,0.1));
+      border-left-color: #4CAF50;
+    }
+    .insight-box.green h3 { color: #4CAF50; }
+    .slider-container { margin: 15px 0; }
+    .slider-container label { display: block; margin-bottom: 8px; color: #a0a0a0; font-size: 0.95rem; }
+    .slider-container input[type="range"] {
+      width: 100%; height: 8px; border-radius: 4px;
+      background: rgba(255,255,255,0.1); outline: none; -webkit-appearance: none;
+    }
+    .slider-container input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: #ffd700; cursor: pointer; transition: all 0.2s ease;
+    }
+    .slider-container input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    .slider-value { text-align: center; font-size: 1.3rem; color: #ffd700; font-weight: bold; margin-top: 8px; }
+    .chart-container { position: relative; height: 300px; margin: 20px 0; }
+    .formula-box {
+      background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; margin: 20px 0;
+      font-family: 'Courier New', monospace; font-size: 1rem; line-height: 2;
+      overflow-x: auto; color: #e8e8e8;
+    }
+    .formula-box .highlight { color: #ffd700; font-weight: bold; }
+    .formula-box .red { color: #ff4444; }
+    .formula-box .green { color: #4CAF50; }
+    .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-clover"></i> 运气到底存不存在</h1>
+      <p>用等待时间悖论、友谊悖论和峰终定律，揭示「运气」背后的数学真相。你觉得自己运气差，可能只是概率在骗你。</p>
+    </div>
+
+    <!-- 模块1: 等待时间悖论 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-bus"></i> 等待时间悖论：为什么公交车总不来</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 问题</h3>
+        <p>公交车平均每10分钟一班。你随机到达车站，平均要等多久？<br>
+        直觉说5分钟，但真实答案往往远大于5分钟。这就是<strong>等待时间悖论</strong>（也叫检查悖论/公交车悖论）。</p>
+      </div>
+
+      <div class="slider-container">
+        <label>平均发车间隔（分钟）</label>
+        <input type="range" id="busIntervalSlider" min="5" max="30" value="10" oninput="updateBusLabel()">
+        <div class="slider-value"><span id="busIntervalValue">10</span> 分钟</div>
+      </div>
+      <div class="slider-container">
+        <label>发车间隔的随机波动程度（变异系数 CV）</label>
+        <input type="range" id="busCVSlider" min="0" max="200" value="100" oninput="updateBusLabel()">
+        <div class="slider-value">CV = <span id="busCVValue">1.0</span>（0=完全准时，1=指数分布，>1=极不规律）</div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="runBusSim()">
+          <i class="ti ti-play"></i> 模拟 10000 次随机到站
+        </button>
+        <button class="btn btn-secondary" onclick="resetBusSim()">
+          <i class="ti ti-refresh"></i> 重置
+        </button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" id="busNaive">-</div>
+          <div class="label">直觉预期等待（间隔/2）</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="busTheory">-</div>
+          <div class="label">理论平均等待</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="busSim">-</div>
+          <div class="label">模拟平均等待</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="color:#ff4444;" id="busRatio">-</div>
+          <div class="label">实际 / 直觉 倍数</div>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <canvas id="busChart"></canvas>
+      </div>
+
+      <div class="formula-box">
+        <div>等待时间悖论公式：</div>
+        <div style="margin-top:8px;">E[等待] = <span class="highlight">μ/2</span> × (1 + CV²)</div>
+        <div style="margin-top:4px;">其中 μ = 平均间隔，CV = 标准差/均值</div>
+        <div style="margin-top:8px;">当 CV=0（完全准时）：E[等待] = <span class="green">μ/2</span>（直觉正确）</div>
+        <div>当 CV=1（指数分布）：E[等待] = <span class="red">μ</span>（等于整个间隔！）</div>
+      </div>
+
+      <div class="insight-box red">
+        <h3><i class="ti ti-alert-triangle"></i> 为什么会这样？</h3>
+        <p>因为你更可能「撞上」一个长间隔。如果公交车有时3分钟一班、有时17分钟一班，你随机到达时，落在17分钟间隔里的概率远大于3分钟间隔。<br><br>
+        这就是<strong>长度偏差抽样</strong>：你不是在等「平均间隔」，你是在等一个被你的到达时间「偏向选中」的间隔。间隔越长，被选中的概率越大。<br><br>
+        所以你觉得「公交车总不来」，不是运气差，是数学必然。</p>
+      </div>
+    </div>
+
+    <!-- 模块2: 友谊悖论 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-users"></i> 友谊悖论：为什么你的朋友比你朋友多</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 一个反直觉的事实</h3>
+        <p>平均而言，你的朋友的朋友数量 > 你的朋友数量。<br>
+        这不是你社交能力差，这是一个数学定理。在任何社交网络中，大多数人的朋友数都低于其朋友的平均朋友数。</p>
+      </div>
+
+      <div class="slider-container">
+        <label>社交网络人数</label>
+        <input type="range" id="networkSizeSlider" min="20" max="200" value="50" oninput="updateNetworkLabel()">
+        <div class="slider-value"><span id="networkSizeValue">50</span> 人</div>
+      </div>
+      <div class="slider-container">
+        <label>平均每人朋友数</label>
+        <input type="range" id="avgFriendsSlider" min="2" max="20" value="5" oninput="updateNetworkLabel()">
+        <div class="slider-value"><span id="avgFriendsValue">5</span> 人</div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="runFriendshipSim()">
+          <i class="ti ti-play"></i> 生成社交网络并分析
+        </button>
+        <button class="btn btn-secondary" onclick="resetFriendshipSim()">
+          <i class="ti ti-refresh"></i> 重置
+        </button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" id="fpAvgFriends">-</div>
+          <div class="label">平均朋友数</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="fpAvgFOF">-</div>
+          <div class="label">朋友的平均朋友数</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="color:#ff4444;" id="fpPercent">-</div>
+          <div class="label">朋友数 < 朋友的朋友数的人占比</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="fpRatio">-</div>
+          <div class="label">朋友的朋友数 / 自己朋友数</div>
+        </div>
+      </div>
+
+      <div class="chart-container" style="height:350px;">
+        <canvas id="friendshipChart"></canvas>
+      </div>
+
+      <div class="formula-box">
+        <div>友谊悖论公式：</div>
+        <div style="margin-top:8px;">朋友的平均朋友数 = <span class="highlight">μ + σ²/μ</span></div>
+        <div style="margin-top:4px;">其中 μ = 平均朋友数，σ² = 朋友数的方差</div>
+        <div style="margin-top:8px;">只要 σ² > 0（朋友数不完全相同），朋友的朋友数就 <span class="red">> 你的朋友数</span></div>
+      </div>
+
+      <div class="insight-box red">
+        <h3><i class="ti ti-alert-triangle"></i> 为什么会这样？</h3>
+        <p>因为朋友多的人会出现在更多人的朋友列表中。一个有100个朋友的社交达人，会被100个人统计到「我朋友的朋友数」里。而一个只有2个朋友的人，只被2个人统计到。<br><br>
+        这就像你在朋友圈里看到的人，总是比你过得好、比你社交广。不是你差，是<strong>采样偏差</strong>让你系统性地高估了别人。<br><br>
+        同样的道理也解释了：为什么你觉得别人的生活比你精彩、别人的论文引用比你多、别人的粉丝比你多。</p>
+      </div>
+    </div>
+
+    <!-- 模块3: 连续事件中的「运气」 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-flame"></i> 连胜与连败：随机性中的「运气幻觉」</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 你以为的运气，其实是随机性的正常表现</h3>
+        <p>抛100次硬币，你觉得最长连续正面会有几次？大多数人猜3-5次。<br>
+        但数学告诉我们，100次抛掷中出现6-7次连续正面是<strong>完全正常</strong>的。<br>
+        这些「连胜」和「连败」不是运气，是随机性的必然产物。</p>
+      </div>
+
+      <div class="slider-container">
+        <label>抛掷次数</label>
+        <input type="range" id="coinCountSlider" min="50" max="500" value="100" oninput="updateCoinLabel()">
+        <div class="slider-value"><span id="coinCountValue">100</span> 次</div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="runStreakSim()">
+          <i class="ti ti-play"></i> 抛硬币
+        </button>
+        <button class="btn btn-secondary" onclick="runStreakBatch()">
+          <i class="ti ti-repeat"></i> 批量模拟 1000 轮
+        </button>
+        <button class="btn btn-secondary" onclick="resetStreakSim()">
+          <i class="ti ti-refresh"></i> 重置
+        </button>
+      </div>
+
+      <div id="coinSequence" style="margin:20px 0; font-family:monospace; font-size:0.85rem; line-height:1.8; word-break:break-all; display:none;"></div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" id="streakMax">-</div>
+          <div class="label">最长连续正面</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="streakMaxTail">-</div>
+          <div class="label">最长连续反面</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="streakExpected">-</div>
+          <div class="label">理论期望最长连续</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="color:#ff4444;" id="streakBatchAvg">-</div>
+          <div class="label">1000轮平均最长连续</div>
+        </div>
+      </div>
+
+      <div class="chart-container" id="streakChartContainer" style="display:none;">
+        <canvas id="streakChart"></canvas>
+      </div>
+
+      <div class="formula-box">
+        <div>n次抛掷中最长连续正面的期望：</div>
+        <div style="margin-top:8px;">E[最长连续] ≈ <span class="highlight">log₂(n)</span></div>
+        <div style="margin-top:4px;">100次 → 约 <span class="highlight">6.6</span> 次连续</div>
+        <div>500次 → 约 <span class="highlight">8.9</span> 次连续</div>
+      </div>
+
+      <div class="insight-box">
+        <h3><i class="ti ti-lightbulb"></i> 这意味着什么？</h3>
+        <p>如果你连续考试失利、连续面试被拒、连续投资亏损，你会觉得「我运气太差了」。<br><br>
+        但如果这些事件本身就有一定的失败概率，那么出现一段连续失败是<strong>数学上的必然</strong>，不需要「运气差」来解释。<br><br>
+        反过来，连续成功也不一定是「运气好」或「手感来了」。在随机序列中，连胜和连败都是正常现象。</p>
+      </div>
+    </div>
+
+    <!-- 模块4: 峰终定律与记忆偏差 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-brain"></i> 峰终定律：你的记忆在欺骗你</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 为什么坏运气比好运气更「刻骨铭心」</h3>
+        <p>心理学家丹尼尔·卡尼曼发现：人对一段经历的记忆，主要取决于<strong>峰值</strong>（最强烈的时刻）和<strong>终点</strong>（结束时的感受），而不是整体平均。<br><br>
+        再加上<strong>负面偏差</strong>（负面事件的心理权重是正面事件的2-3倍），你的大脑会系统性地高估坏运气、低估好运气。</p>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="runMemorySim()">
+          <i class="ti ti-play"></i> 模拟一周的随机事件
+        </button>
+        <button class="btn btn-secondary" onclick="resetMemorySim()">
+          <i class="ti ti-refresh"></i> 重置
+        </button>
+      </div>
+
+      <div class="chart-container" id="memoryChartContainer" style="display:none;">
+        <canvas id="memoryChart"></canvas>
+      </div>
+
+      <div class="stats-grid" id="memoryStats" style="display:none;">
+        <div class="stat-card">
+          <div class="value" id="memActualAvg">-</div>
+          <div class="label">实际平均体验值</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="memPeakEnd">-</div>
+          <div class="label">峰终定律记忆值</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="memNegBias">-</div>
+          <div class="label">加入负面偏差后的记忆</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="color:#ff4444;" id="memDistortion">-</div>
+          <div class="label">记忆扭曲程度</div>
+        </div>
+      </div>
+
+      <div class="insight-box red" id="memoryInsight" style="display:none;">
+        <h3><i class="ti ti-alert-triangle"></i> 记忆扭曲分析</h3>
+        <p id="memoryInsightText"></p>
+      </div>
+    </div>
+
+    <!-- 模块5: 综合模拟 - 100个平行人生 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-universe"></i> 100个平行人生：运气的分布</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 如果重活100次，你的人生会有多大差异？</h3>
+        <p>假设每个人每年经历若干随机事件（升职、失业、生病、中奖...），每个事件有固定的概率。<br>
+        让100个「你」同时经历这些随机事件，看看10年后的人生差距有多大。<br>
+        那些「最幸运」和「最不幸」的人生，差距可能超乎你的想象。</p>
+      </div>
+
+      <div class="slider-container">
+        <label>模拟年数</label>
+        <input type="range" id="lifeYearsSlider" min="5" max="30" value="10" oninput="updateLifeLabel()">
+        <div class="slider-value"><span id="lifeYearsValue">10</span> 年</div>
+      </div>
+      <div class="slider-container">
+        <label>每年随机事件数</label>
+        <input type="range" id="lifeEventsSlider" min="5" max="50" value="20" oninput="updateLifeLabel()">
+        <div class="slider-value"><span id="lifeEventsValue">20</span> 个</div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="runLifeSim()">
+          <i class="ti ti-play"></i> 模拟 100 个平行人生
+        </button>
+        <button class="btn btn-secondary" onclick="resetLifeSim()">
+          <i class="ti ti-refresh"></i> 重置
+        </button>
+      </div>
+
+      <div class="chart-container" id="lifeChartContainer" style="display:none; height:350px;">
+        <canvas id="lifeChart"></canvas>
+      </div>
+
+      <div class="stats-grid" id="lifeStats" style="display:none;">
+        <div class="stat-card">
+          <div class="value" id="lifeBest">-</div>
+          <div class="label">最幸运的人生（累计得分）</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="color:#ff4444;" id="lifeWorst">-</div>
+          <div class="label">最不幸的人生</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="lifeMedian">-</div>
+          <div class="label">中位数人生</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="lifeGap">-</div>
+          <div class="label">最大差距倍数</div>
+        </div>
+      </div>
+
+      <div class="insight-box green" id="lifeInsight" style="display:none;">
+        <h3><i class="ti ti-quote"></i> 这说明了什么？</h3>
+        <p id="lifeInsightText"></p>
+      </div>
+    </div>
+
+    <!-- 总结 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-check"></i> 所以，运气存在吗？</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="value" style="font-size:1.3rem;">随机性存在</div>
+          <div class="label">世界确实充满不确定性，结果有随机成分</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="font-size:1.3rem;">「运气」是错觉</div>
+          <div class="label">没有人被诅咒或被眷顾，只有概率分布</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="font-size:1.3rem;">感知有偏差</div>
+          <div class="label">等待时间悖论、友谊悖论、负面偏差让你觉得运气差</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" style="font-size:1.3rem;">差距是正常的</div>
+          <div class="label">同样的概率下，个体结果可以天差地别</div>
+        </div>
+      </div>
+      <div class="insight-box green">
+        <h3><i class="ti ti-quote"></i> 最后的思考</h3>
+        <p>运气不是一种神秘力量，而是随机性 + 认知偏差的产物。<br><br>
+        你觉得自己运气差，可能是因为：等待时间悖论让你总等不到车，友谊悖论让你觉得别人都比你好，峰终定律让你只记住坏事，负面偏差让坏事的权重翻倍。<br><br>
+        理解这些，不会让你变得「更幸运」，但会让你不再为随机性而自责。<br><br>
+        <strong>你不是运气差，你只是一个正常的随机样本。</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <button class="copy-btn" onclick="copyShareLink()" title="复制分享链接">
+    <i class="ti ti-link"></i>
+  </button>
+  <div class="toast" id="toast">链接已复制到剪贴板</div>
+
+  <script>
+    // ========== 核心算法（可独立测试） ==========
+
+    // 等待时间悖论：生成Gamma分布的发车间隔
+    function generateIntervals(n, mean, cv) {
+      if (cv === 0) return Array(n).fill(mean);
+      const shape = 1 / (cv * cv);
+      const scale = mean / shape;
+      const intervals = [];
+      for (let i = 0; i < n; i++) {
+        intervals.push(gammaRandom(shape, scale));
+      }
+      return intervals;
+    }
+
+    // Gamma分布随机数（Marsaglia and Tsang's method）
+    function gammaRandom(shape, scale) {
+      if (shape < 1) {
+        return gammaRandom(shape + 1, scale) * Math.pow(Math.random(), 1 / shape);
+      }
+      const d = shape - 1/3;
+      const c = 1 / Math.sqrt(9 * d);
+      while (true) {
+        let x, v;
+        do {
+          x = normalRandom();
+          v = 1 + c * x;
+        } while (v <= 0);
+        v = v * v * v;
+        const u = Math.random();
+        if (u < 1 - 0.0331 * (x * x) * (x * x)) return d * v * scale;
+        if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v * scale;
+      }
+    }
+
+    function normalRandom() {
+      let u, v, s;
+      do {
+        u = Math.random() * 2 - 1;
+        v = Math.random() * 2 - 1;
+        s = u * u + v * v;
+      } while (s >= 1 || s === 0);
+      return u * Math.sqrt(-2 * Math.log(s) / s);
+    }
+
+    // 模拟随机到站的等待时间
+    function simulateBusWait(intervals, numArrivals) {
+      const cumulative = [];
+      let sum = 0;
+      for (const iv of intervals) {
+        sum += iv;
+        cumulative.push(sum);
+      }
+      const totalTime = sum;
+      const waits = [];
+      for (let i = 0; i < numArrivals; i++) {
+        const arriveAt = Math.random() * totalTime;
+        let wait = 0;
+        for (const busTime of cumulative) {
+          if (busTime >= arriveAt) {
+            wait = busTime - arriveAt;
+            break;
+          }
+        }
+        waits.push(wait);
+      }
+      return waits;
+    }
+
+    // 等待时间理论值
+    function theoreticalWait(mean, cv) {
+      return (mean / 2) * (1 + cv * cv);
+    }
+
+    // 友谊悖论：生成社交网络
+    function generateNetwork(n, avgFriends) {
+      const edges = new Set();
+      const degree = new Array(n).fill(0);
+      const targetEdges = Math.floor(n * avgFriends / 2);
+      let attempts = 0;
+      while (edges.size < targetEdges && attempts < targetEdges * 10) {
+        const a = Math.floor(Math.random() * n);
+        let b = Math.floor(Math.random() * n);
+        if (a !== b) {
+          const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+          if (!edges.has(key)) {
+            edges.add(key);
+            degree[a]++;
+            degree[b]++;
+          }
+        }
+        attempts++;
+      }
+      // 构建邻接表
+      const adj = Array.from({length: n}, () => []);
+      for (const e of edges) {
+        const [a, b] = e.split('-').map(Number);
+        adj[a].push(b);
+        adj[b].push(a);
+      }
+      return { adj, degree };
+    }
+
+    // 计算友谊悖论指标
+    function calcFriendshipParadox(adj, degree) {
+      const n = degree.length;
+      const avgDegree = degree.reduce((a, b) => a + b, 0) / n;
+      let fofSum = 0;
+      let fofCount = 0;
+      let paradoxCount = 0;
+      for (let i = 0; i < n; i++) {
+        if (adj[i].length === 0) continue;
+        const friendAvg = adj[i].reduce((s, f) => s + degree[f], 0) / adj[i].length;
+        fofSum += friendAvg;
+        fofCount++;
+        if (degree[i] < friendAvg) paradoxCount++;
+      }
+      const avgFOF = fofCount > 0 ? fofSum / fofCount : 0;
+      return {
+        avgDegree,
+        avgFOF,
+        paradoxPercent: fofCount > 0 ? paradoxCount / fofCount : 0,
+        ratio: avgDegree > 0 ? avgFOF / avgDegree : 0
+      };
+    }
+
+    // 连胜/连败分析
+    function analyzeStreaks(sequence) {
+      let maxHead = 0, maxTail = 0, curHead = 0, curTail = 0;
+      for (const v of sequence) {
+        if (v === 1) { curHead++; curTail = 0; maxHead = Math.max(maxHead, curHead); }
+        else { curTail++; curHead = 0; maxTail = Math.max(maxTail, curTail); }
+      }
+      return { maxHead, maxTail };
+    }
+
+    function expectedMaxStreak(n) {
+      return Math.log2(n);
+    }
+
+    function generateCoinFlips(n) {
+      return Array.from({length: n}, () => Math.random() < 0.5 ? 1 : 0);
+    }
+
+    // 峰终定律模拟
+    function simulateWeekEvents() {
+      const days = ['周一','周二','周三','周四','周五','周六','周日'];
+      const events = days.map(day => ({
+        day,
+        value: Math.round((Math.random() * 10 - 5) * 10) / 10 // -5 到 +5
+      }));
+      return events;
+    }
+
+    function calcPeakEnd(events) {
+      const values = events.map(e => e.value);
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      const peak = values.reduce((a, b) => Math.abs(a) > Math.abs(b) ? a : b, 0);
+      const end = values[values.length - 1];
+      const peakEnd = (peak + end) / 2;
+      // 负面偏差：负面事件权重 x2.5
+      const biasedValues = values.map(v => v < 0 ? v * 2.5 : v);
+      const biasedPeak = biasedValues.reduce((a, b) => Math.abs(a) > Math.abs(b) ? a : b, 0);
+      const biasedEnd = biasedValues[biasedValues.length - 1];
+      const biasedPeakEnd = (biasedPeak + biasedEnd) / 2;
+      return { avg, peak, end, peakEnd, biasedPeakEnd };
+    }
+
+    // 平行人生模拟
+    function simulateParallelLives(numLives, years, eventsPerYear) {
+      const lives = [];
+      for (let i = 0; i < numLives; i++) {
+        let score = 0;
+        const trajectory = [0];
+        for (let y = 0; y < years; y++) {
+          for (let e = 0; e < eventsPerYear; e++) {
+            const r = Math.random();
+            if (r < 0.05) score += 10;       // 大好事 5%
+            else if (r < 0.20) score += 3;   // 小好事 15%
+            else if (r < 0.50) score += 1;   // 微好事 30%
+            else if (r < 0.80) score -= 1;   // 微坏事 30%
+            else if (r < 0.95) score -= 3;   // 小坏事 15%
+            else score -= 10;                // 大坏事 5%
+          }
+          trajectory.push(score);
+        }
+        lives.push({ score, trajectory });
+      }
+      lives.sort((a, b) => a.score - b.score);
+      return lives;
+    }
+
+    // ========== UI 逻辑 ==========
+
+    // 等待时间悖论
+    function updateBusLabel() {
+      document.getElementById('busIntervalValue').textContent = document.getElementById('busIntervalSlider').value;
+      const cv = parseInt(document.getElementById('busCVSlider').value) / 100;
+      document.getElementById('busCVValue').textContent = cv.toFixed(1);
+    }
+
+    let busChart = null;
+    function runBusSim() {
+      const mean = parseInt(document.getElementById('busIntervalSlider').value);
+      const cv = parseInt(document.getElementById('busCVSlider').value) / 100;
+      const intervals = generateIntervals(500, mean, cv);
+      const waits = simulateBusWait(intervals, 10000);
+      const avgWait = waits.reduce((a, b) => a + b, 0) / waits.length;
+      const theory = theoreticalWait(mean, cv);
+
+      document.getElementById('busNaive').textContent = (mean / 2).toFixed(1) + ' 分钟';
+      document.getElementById('busTheory').textContent = theory.toFixed(1) + ' 分钟';
+      document.getElementById('busSim').textContent = avgWait.toFixed(1) + ' 分钟';
+      document.getElementById('busRatio').textContent = (avgWait / (mean / 2)).toFixed(2) + ' 倍';
+
+      // 绘制等待时间分布
+      const bins = {};
+      const binSize = Math.max(1, Math.round(mean / 5));
+      waits.forEach(w => {
+        const bin = Math.floor(w / binSize) * binSize;
+        bins[bin] = (bins[bin] || 0) + 1;
+      });
+      const labels = Object.keys(bins).sort((a, b) => a - b).slice(0, 30);
+      const data = labels.map(l => bins[l]);
+
+      if (busChart) busChart.destroy();
+      const ctx = document.getElementById('busChart').getContext('2d');
+      busChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels.map(l => l + '分钟'),
+          datasets: [{
+            label: '等待时间分布',
+            data: data,
+            backgroundColor: 'rgba(255,215,0,0.6)',
+            borderColor: '#ffd700',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#e8e8e8' } } },
+          scales: {
+            x: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+          }
+        }
+      });
+    }
+
+    function resetBusSim() {
+      ['busNaive','busTheory','busSim','busRatio'].forEach(id => document.getElementById(id).textContent = '-');
+      if (busChart) { busChart.destroy(); busChart = null; }
+    }
+
+    // 友谊悖论
+    function updateNetworkLabel() {
+      document.getElementById('networkSizeValue').textContent = document.getElementById('networkSizeSlider').value;
+      document.getElementById('avgFriendsValue').textContent = document.getElementById('avgFriendsSlider').value;
+    }
+
+    let friendshipChart = null;
+    function runFriendshipSim() {
+      const n = parseInt(document.getElementById('networkSizeSlider').value);
+      const avgF = parseInt(document.getElementById('avgFriendsSlider').value);
+      const { adj, degree } = generateNetwork(n, avgF);
+      const result = calcFriendshipParadox(adj, degree);
+
+      document.getElementById('fpAvgFriends').textContent = result.avgDegree.toFixed(1);
+      document.getElementById('fpAvgFOF').textContent = result.avgFOF.toFixed(1);
+      document.getElementById('fpPercent').textContent = (result.paradoxPercent * 100).toFixed(0) + '%';
+      document.getElementById('fpRatio').textContent = result.ratio.toFixed(2) + 'x';
+
+      // 绘制分布对比
+      const maxDeg = Math.max(...degree);
+      const myBins = new Array(maxDeg + 1).fill(0);
+      degree.forEach(d => myBins[d]++);
+
+      // 朋友的朋友数分布
+      const fofDegrees = [];
+      for (let i = 0; i < n; i++) {
+        for (const f of adj[i]) {
+          fofDegrees.push(degree[f]);
+        }
+      }
+      const fofBins = new Array(maxDeg + 1).fill(0);
+      fofDegrees.forEach(d => fofBins[d]++);
+      // 归一化
+      const myTotal = myBins.reduce((a, b) => a + b, 0);
+      const fofTotal = fofDegrees.length;
+      const labels = Array.from({length: maxDeg + 1}, (_, i) => i);
+
+      if (friendshipChart) friendshipChart.destroy();
+      const ctx = document.getElementById('friendshipChart').getContext('2d');
+      friendshipChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '你的朋友数分布',
+              data: myBins.map(v => v / myTotal),
+              backgroundColor: 'rgba(255,215,0,0.6)',
+              borderColor: '#ffd700', borderWidth: 1
+            },
+            {
+              label: '朋友的朋友数分布',
+              data: fofBins.map(v => fofTotal > 0 ? v / fofTotal : 0),
+              backgroundColor: 'rgba(255,68,68,0.6)',
+              borderColor: '#ff4444', borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#e8e8e8' } } },
+          scales: {
+            x: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' }, title: { display: true, text: '朋友数', color: '#a0a0a0' } },
+            y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' }, title: { display: true, text: '比例', color: '#a0a0a0' } }
+          }
+        }
+      });
+    }
+
+    function resetFriendshipSim() {
+      ['fpAvgFriends','fpAvgFOF','fpPercent','fpRatio'].forEach(id => document.getElementById(id).textContent = '-');
+      if (friendshipChart) { friendshipChart.destroy(); friendshipChart = null; }
+    }
+
+    // 连胜连败
+    function updateCoinLabel() {
+      document.getElementById('coinCountValue').textContent = document.getElementById('coinCountSlider').value;
+    }
+
+    let streakChart = null;
+    function runStreakSim() {
+      const n = parseInt(document.getElementById('coinCountSlider').value);
+      const flips = generateCoinFlips(n);
+      const { maxHead, maxTail } = analyzeStreaks(flips);
+
+      // 显示序列
+      const seqDiv = document.getElementById('coinSequence');
+      seqDiv.style.display = 'block';
+      seqDiv.innerHTML = flips.map(v =>
+        `<span style="color:${v === 1 ? '#ffd700' : '#666'}">${v === 1 ? '正' : '反'}</span>`
+      ).join('');
+
+      document.getElementById('streakMax').textContent = maxHead;
+      document.getElementById('streakMaxTail').textContent = maxTail;
+      document.getElementById('streakExpected').textContent = expectedMaxStreak(n).toFixed(1);
+      document.getElementById('streakBatchAvg').textContent = '-';
+      document.getElementById('streakChartContainer').style.display = 'none';
+    }
+
+    function runStreakBatch() {
+      const n = parseInt(document.getElementById('coinCountSlider').value);
+      const maxHeads = [];
+      for (let i = 0; i < 1000; i++) {
+        const flips = generateCoinFlips(n);
+        maxHeads.push(analyzeStreaks(flips).maxHead);
+      }
+      const avg = maxHeads.reduce((a, b) => a + b, 0) / maxHeads.length;
+      document.getElementById('streakBatchAvg').textContent = avg.toFixed(1);
+
+      // 分布图
+      const bins = {};
+      maxHeads.forEach(v => { bins[v] = (bins[v] || 0) + 1; });
+      const labels = Object.keys(bins).sort((a, b) => a - b);
+      const data = labels.map(l => bins[l]);
+
+      document.getElementById('streakChartContainer').style.display = 'block';
+      if (streakChart) streakChart.destroy();
+      const ctx = document.getElementById('streakChart').getContext('2d');
+      streakChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels.map(l => l + '次'),
+          datasets: [{
+            label: '最长连续正面分布（1000轮）',
+            data: data,
+            backgroundColor: 'rgba(255,215,0,0.6)',
+            borderColor: '#ffd700', borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#e8e8e8' } } },
+          scales: {
+            x: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+          }
+        }
+      });
+    }
+
+    function resetStreakSim() {
+      ['streakMax','streakMaxTail','streakExpected','streakBatchAvg'].forEach(id => document.getElementById(id).textContent = '-');
+      document.getElementById('coinSequence').style.display = 'none';
+      document.getElementById('streakChartContainer').style.display = 'none';
+      if (streakChart) { streakChart.destroy(); streakChart = null; }
+    }
+
+    // 峰终定律
+    let memoryChart = null;
+    function runMemorySim() {
+      const events = simulateWeekEvents();
+      const result = calcPeakEnd(events);
+
+      document.getElementById('memoryChartContainer').style.display = 'block';
+      document.getElementById('memoryStats').style.display = 'grid';
+      document.getElementById('memoryInsight').style.display = 'block';
+
+      document.getElementById('memActualAvg').textContent = result.avg.toFixed(1);
+      document.getElementById('memPeakEnd').textContent = result.peakEnd.toFixed(1);
+      document.getElementById('memNegBias').textContent = result.biasedPeakEnd.toFixed(1);
+
+      const distortion = result.biasedPeakEnd - result.avg;
+      document.getElementById('memDistortion').textContent = (distortion > 0 ? '+' : '') + distortion.toFixed(1);
+
+      const insightText = document.getElementById('memoryInsightText');
+      if (result.biasedPeakEnd < result.avg) {
+        insightText.innerHTML = `实际平均体验是 <strong>${result.avg.toFixed(1)}</strong>，但经过峰终定律和负面偏差的双重扭曲，你的记忆会觉得这周的体验是 <strong>${result.biasedPeakEnd.toFixed(1)}</strong>。<br><br>你的大脑把一周的体验「记差了」 <strong>${Math.abs(distortion).toFixed(1)}</strong> 分。这就是为什么你总觉得运气不好——不是运气差，是记忆在骗你。`;
+      } else {
+        insightText.innerHTML = `这次模拟中，你的记忆偏差恰好是正向的（记忆值 ${result.biasedPeakEnd.toFixed(1)} > 实际 ${result.avg.toFixed(1)}）。<br><br>但多次模拟你会发现，由于负面偏差的存在，大多数时候记忆值都会低于实际值。点击多次「模拟」来验证。`;
+      }
+
+      // 绘制图表
+      if (memoryChart) memoryChart.destroy();
+      const ctx = document.getElementById('memoryChart').getContext('2d');
+      memoryChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: events.map(e => e.day),
+          datasets: [{
+            label: '每天体验值',
+            data: events.map(e => e.value),
+            backgroundColor: events.map(e => e.value >= 0 ? 'rgba(76,175,80,0.6)' : 'rgba(255,68,68,0.6)'),
+            borderColor: events.map(e => e.value >= 0 ? '#4CAF50' : '#ff4444'),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#e8e8e8' } } },
+          scales: {
+            x: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+          }
+        }
+      });
+    }
+
+    function resetMemorySim() {
+      ['memActualAvg','memPeakEnd','memNegBias','memDistortion'].forEach(id => document.getElementById(id).textContent = '-');
+      document.getElementById('memoryChartContainer').style.display = 'none';
+      document.getElementById('memoryStats').style.display = 'none';
+      document.getElementById('memoryInsight').style.display = 'none';
+      if (memoryChart) { memoryChart.destroy(); memoryChart = null; }
+    }
+
+    // 平行人生
+    function updateLifeLabel() {
+      document.getElementById('lifeYearsValue').textContent = document.getElementById('lifeYearsSlider').value;
+      document.getElementById('lifeEventsValue').textContent = document.getElementById('lifeEventsSlider').value;
+    }
+
+    let lifeChart = null;
+    function runLifeSim() {
+      const years = parseInt(document.getElementById('lifeYearsSlider').value);
+      const eventsPerYear = parseInt(document.getElementById('lifeEventsSlider').value);
+      const lives = simulateParallelLives(100, years, eventsPerYear);
+
+      document.getElementById('lifeChartContainer').style.display = 'block';
+      document.getElementById('lifeStats').style.display = 'grid';
+      document.getElementById('lifeInsight').style.display = 'block';
+
+      const best = lives[lives.length - 1];
+      const worst = lives[0];
+      const median = lives[Math.floor(lives.length / 2)];
+
+      document.getElementById('lifeBest').textContent = best.score;
+      document.getElementById('lifeWorst').textContent = worst.score;
+      document.getElementById('lifeMedian').textContent = median.score;
+
+      const gap = best.score - worst.score;
+      document.getElementById('lifeGap').textContent = gap;
+
+      const insightText = document.getElementById('lifeInsightText');
+      insightText.innerHTML = `100个完全相同的「你」，经历相同概率的随机事件，${years}年后最幸运的人得分 <strong>${best.score}</strong>，最不幸的人得分 <strong>${worst.score}</strong>，差距达到 <strong>${gap}</strong> 分。<br><br>这些「人」没有任何能力差异，纯粹是随机性造成的结果差异。<br><br>现实中，我们看到别人成功就说「他有本事」，看到别人失败就说「他不努力」。但这个模拟告诉你：<strong>即使所有人完全一样，纯随机也能制造出巨大的不平等。</strong>`;
+
+      // 绘制轨迹
+      if (lifeChart) lifeChart.destroy();
+      const ctx = document.getElementById('lifeChart').getContext('2d');
+      const datasets = [];
+      // 画所有轨迹（灰色半透明）
+      for (let i = 0; i < lives.length; i++) {
+        const isSpecial = i === 0 || i === lives.length - 1 || i === Math.floor(lives.length / 2);
+        datasets.push({
+          label: i === 0 ? '最不幸' : (i === lives.length - 1 ? '最幸运' : (i === Math.floor(lives.length / 2) ? '中位数' : '')),
+          data: lives[i].trajectory,
+          borderColor: i === 0 ? '#ff4444' : (i === lives.length - 1 ? '#ffd700' : (i === Math.floor(lives.length / 2) ? '#4CAF50' : 'rgba(255,255,255,0.08)')),
+          borderWidth: isSpecial ? 2.5 : 0.5,
+          pointRadius: 0,
+          tension: 0.3,
+          order: isSpecial ? 0 : 1
+        });
+      }
+      const labels = Array.from({length: years + 1}, (_, i) => '第' + i + '年');
+      lifeChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: '#e8e8e8',
+                filter: item => item.text !== ''
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+            y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.1)' }, title: { display: true, text: '累计得分', color: '#a0a0a0' } }
+          }
+        }
+      });
+    }
+
+    function resetLifeSim() {
+      ['lifeBest','lifeWorst','lifeMedian','lifeGap'].forEach(id => document.getElementById(id).textContent = '-');
+      document.getElementById('lifeChartContainer').style.display = 'none';
+      document.getElementById('lifeStats').style.display = 'none';
+      document.getElementById('lifeInsight').style.display = 'none';
+      if (lifeChart) { lifeChart.destroy(); lifeChart = null; }
+    }
+
+    // 分享
+    function copyShareLink() {
+      const url = 'https://demo-mockserver.runnable.run/pages/luck-existence.html';
+      navigator.clipboard.writeText(url).then(() => {
+        const toast = document.getElementById('toast');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+      });
+    }
+  </script>
+</body>
+</html>

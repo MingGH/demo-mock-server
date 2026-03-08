@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>集齐一套到底要抽多少次？- 优惠券收集问题</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./coupon-collector-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* 控制区 */
+    .ctrl-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .ctrl-item { flex: 1; min-width: 180px; }
+    .ctrl-item label { display: block; color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 8px; }
+    .ctrl-item input[type=range] {
+      -webkit-appearance: none; width: 100%; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px;
+    }
+    .ctrl-item input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%;
+      background: #fbbf24; cursor: pointer; box-shadow: 0 0 10px rgba(251,191,36,0.5);
+    }
+    .val-tag { color: #fbbf24; font-weight: 600; }
+
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3);
+    }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+
+    /* 阶段表格 */
+    .stage-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .stage-table th, .stage-table td {
+      padding: 10px 12px; text-align: center; font-size: 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .stage-table th { color: rgba(255,255,255,0.5); font-weight: 400; }
+    .stage-table td { color: rgba(255,255,255,0.8); }
+    .stage-table .highlight-row td { color: #fbbf24; font-weight: 600; }
+
+    /* 进度条 */
+    .bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .bar-bg { flex: 1; height: 8px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .bar-label { font-size: 12px; color: rgba(255,255,255,0.4); min-width: 50px; text-align: right; }
+
+    /* 图表 */
+    .chart-box { position: relative; height: 300px; margin-top: 15px; }
+
+    /* 结果卡片 */
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center;
+    }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+
+    /* 收集格子 */
+    .collection-grid {
+      display: flex; flex-wrap: wrap; gap: 6px; margin: 15px 0;
+    }
+    .coll-cell {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; transition: all 0.3s;
+      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .coll-cell.collected {
+      background: rgba(251,191,36,0.2); color: #fbbf24;
+      border-color: rgba(251,191,36,0.4);
+    }
+
+    .sim-log {
+      background: rgba(0,0,0,0.3); border-radius: 10px; padding: 15px;
+      font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.8;
+      max-height: 200px; overflow-y: auto; margin-top: 15px;
+    }
+
+    /* 对比表 */
+    .compare-table { width: 100%; border-collapse: collapse; }
+    .compare-table th, .compare-table td {
+      padding: 12px; text-align: center; font-size: 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .compare-table th { color: rgba(255,255,255,0.5); font-weight: 400; }
+    .compare-table td { color: rgba(255,255,255,0.8); }
+    .compare-table .em { color: #fbbf24; font-weight: 600; }
+
+    /* 洞察 */
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .coll-cell { width: 28px; height: 28px; font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-cards"></i> 集齐一套要抽多少次</h1>
+    <p>优惠券收集问题（Coupon Collector's Problem）— 为什么最后几张总是抽不到</p>
+  </div>
+
+  <!-- 参数设置 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-settings"></i> 参数设置</div>
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <label>一套有多少种？ <span class="val-tag" id="n-val">10</span> 种</label>
+        <input type="range" id="n-slider" min="3" max="100" value="10" oninput="onParamChange()">
+      </div>
+    </div>
+    <div class="insight-box" id="theory-summary" style="margin-top:15px"></div>
+  </div>
+
+  <!-- 理论分析 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-math-symbols"></i> 每个阶段有多难</div>
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:15px">
+      已经有 k 种时，抽到新种类的概率 = (n-k)/n，期望还要抽 n/(n-k) 次
+    </p>
+    <div id="stage-table-wrap"></div>
+    <div class="chart-box"><canvas id="stageChart"></canvas></div>
+  </div>
+
+  <!-- 单次模拟 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-player-play"></i> 单次模拟：亲眼看一次抽卡过程</div>
+    <div class="btn-row">
+      <button class="btn" onclick="runSingleSim()"><i class="ti ti-player-play"></i> 开始抽卡</button>
+      <button class="btn btn-secondary" onclick="runSingleSimFast()"><i class="ti ti-bolt"></i> 快速模拟</button>
+    </div>
+    <div class="result-grid" id="single-results" style="margin-top:20px"></div>
+    <div class="collection-grid" id="collection-grid"></div>
+    <div class="sim-log" id="sim-log" style="display:none"></div>
+  </div>
+
+  <!-- 批量模拟 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-histogram"></i> 批量模拟：跑 1000 次看分布</div>
+    <div class="btn-row">
+      <button class="btn" onclick="runBatchSim(1000)"><i class="ti ti-refresh"></i> 模拟 1000 次</button>
+      <button class="btn btn-secondary" onclick="runBatchSim(10000)"><i class="ti ti-flame"></i> 模拟 10000 次</button>
+    </div>
+    <div class="result-grid" id="batch-results" style="margin-top:20px"></div>
+    <div class="chart-box"><canvas id="histChart"></canvas></div>
+  </div>
+
+  <!-- 对比表 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-table"></i> 不同套数的集齐难度对比</div>
+    <div id="compare-table-wrap"></div>
+  </div>
+</div>
+
+<script>
+let stageChart = null;
+let histChart = null;
+let simRunning = false;
+
+function getN() { return parseInt(document.getElementById('n-slider').value); }
+
+function onParamChange() {
+  const n = getN();
+  document.getElementById('n-val').textContent = n;
+  updateTheory(n);
+  updateStageTable(n);
+  updateStageChart(n);
+  updateCompareTable();
+  initCollectionGrid(n);
+}
+
+function updateTheory(n) {
+  const e = CouponCollectorLogic.expectedDraws(n);
+  const ratio = (e / n).toFixed(1);
+  const lastStage = n;
+  document.getElementById('theory-summary').innerHTML =
+    `一套 <strong>${n}</strong> 种，理论期望要抽 <strong>${e.toFixed(1)}</strong> 次才能集齐（是种类数的 <strong>${ratio} 倍</strong>）。` +
+    `<br>其中最后一种平均要抽 <strong>${lastStage}</strong> 次才出现 — 这就是为什么「最后几张」特别难。`;
+}
+
+function updateStageTable(n) {
+  const stages = CouponCollectorLogic.stageExpected(n);
+  // 只显示前5个 + 最后3个（如果 n > 10）
+  let rows = stages;
+  let truncated = false;
+  if (n > 12) {
+    rows = [...stages.slice(0, 5), null, ...stages.slice(-3)];
+    truncated = true;
+  }
+
+  let html = '<table class="stage-table"><thead><tr>' +
+    '<th>已有</th><th>抽到新的概率</th><th>期望抽取次数</th><th>难度</th></tr></thead><tbody>';
+
+  for (const row of rows) {
+    if (!row) {
+      html += '<tr><td colspan="4" style="color:rgba(255,255,255,0.3)">...</td></tr>';
+      continue;
+    }
+    const isHard = row.expected >= n * 0.5;
+    const cls = isHard ? ' class="highlight-row"' : '';
+    const pct = (row.probability * 100).toFixed(1);
+    const barW = Math.max(2, row.probability * 100);
+    html += `<tr${cls}>` +
+      `<td>${row.owned} / ${n}</td>` +
+      `<td>${pct}%</td>` +
+      `<td>${row.expected.toFixed(1)} 次</td>` +
+      `<td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${barW}%;background:${isHard ? '#f87171' : '#fbbf24'}"></div></div></div></td>` +
+      '</tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('stage-table-wrap').innerHTML = html;
+}
+
+function updateStageChart(n) {
+  const stages = CouponCollectorLogic.stageExpected(n);
+  const ctx = document.getElementById('stageChart').getContext('2d');
+  if (stageChart) stageChart.destroy();
+
+  const labels = stages.map(s => s.owned + '/' + n);
+  const data = stages.map(s => s.expected);
+  const colors = stages.map(s => s.expected >= n * 0.3 ? 'rgba(248,113,113,0.8)' : 'rgba(251,191,36,0.8)');
+
+  stageChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '期望抽取次数',
+        data,
+        backgroundColor: colors,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => '已有 ' + items[0].label,
+            label: (item) => '还需约 ' + item.raw.toFixed(1) + ' 次抽到新的'
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.03)' },
+          ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 11 }, maxRotation: 45 }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          title: { display: true, text: '期望次数', color: 'rgba(255,255,255,0.4)' }
+        }
+      }
+    }
+  });
+}
+
+function initCollectionGrid(n) {
+  const wrap = document.getElementById('collection-grid');
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    html += `<div class="coll-cell" id="cell-${i}">${i + 1}</div>`;
+  }
+  wrap.innerHTML = html;
+  document.getElementById('single-results').innerHTML = '';
+  document.getElementById('sim-log').style.display = 'none';
+}
+
+// 单次模拟（动画版）
+async function runSingleSim() {
+  if (simRunning) return;
+  simRunning = true;
+  const n = getN();
+  initCollectionGrid(n);
+  const log = document.getElementById('sim-log');
+  log.style.display = 'block';
+  log.innerHTML = '';
+
+  const collected = new Set();
+  let draws = 0;
+  const delay = n <= 20 ? 120 : n <= 50 ? 40 : 10;
+
+  while (collected.size < n) {
+    const item = Math.floor(Math.random() * n);
+    draws++;
+    const isNew = !collected.has(item);
+    collected.add(item);
+
+    document.getElementById('cell-' + item).classList.add('collected');
+
+    if (isNew) {
+      log.innerHTML += `<span style="color:#4ade80">第 ${draws} 抽：#${item + 1} ✨ 新！(${collected.size}/${n})</span><br>`;
+    } else if (draws <= 80 || collected.size >= n - 2) {
+      log.innerHTML += `第 ${draws} 抽：#${item + 1} 重复<br>`;
+    }
+    log.scrollTop = log.scrollHeight;
+
+    await new Promise(r => setTimeout(r, delay));
+  }
+
+  log.innerHTML += `<br><span style="color:#fbbf24;font-weight:600">集齐！共抽了 ${draws} 次（理论期望 ${CouponCollectorLogic.expectedDraws(n).toFixed(1)} 次）</span>`;
+  log.scrollTop = log.scrollHeight;
+
+  document.getElementById('single-results').innerHTML =
+    `<div class="result-item"><div class="label">总抽取次数</div><div class="value">${draws}</div></div>` +
+    `<div class="result-item green"><div class="label">理论期望</div><div class="value">${CouponCollectorLogic.expectedDraws(n).toFixed(0)}</div></div>` +
+    `<div class="result-item"><div class="label">重复次数</div><div class="value">${draws - n}</div></div>` +
+    `<div class="result-item ${draws > CouponCollectorLogic.expectedDraws(n) * 1.3 ? 'red' : ''}"><div class="label">运气</div><div class="value">${draws <= CouponCollectorLogic.expectedDraws(n) ? '不错' : draws > CouponCollectorLogic.expectedDraws(n) * 1.3 ? '很背' : '一般'}</div></div>`;
+
+  simRunning = false;
+}
+
+// 快速模拟（无动画）
+function runSingleSimFast() {
+  const n = getN();
+  initCollectionGrid(n);
+  const result = CouponCollectorLogic.simulateOnce(n);
+
+  // 点亮所有格子
+  for (let i = 0; i < n; i++) {
+    document.getElementById('cell-' + i).classList.add('collected');
+  }
+
+  const log = document.getElementById('sim-log');
+  log.style.display = 'block';
+  log.innerHTML = `<span style="color:#fbbf24;font-weight:600">集齐！共抽了 ${result.totalDraws} 次（理论期望 ${CouponCollectorLogic.expectedDraws(n).toFixed(1)} 次）</span>`;
+
+  document.getElementById('single-results').innerHTML =
+    `<div class="result-item"><div class="label">总抽取次数</div><div class="value">${result.totalDraws}</div></div>` +
+    `<div class="result-item green"><div class="label">理论期望</div><div class="value">${CouponCollectorLogic.expectedDraws(n).toFixed(0)}</div></div>` +
+    `<div class="result-item"><div class="label">重复次数</div><div class="value">${result.totalDraws - n}</div></div>` +
+    `<div class="result-item ${result.totalDraws > CouponCollectorLogic.expectedDraws(n) * 1.3 ? 'red' : ''}"><div class="label">运气</div><div class="value">${result.totalDraws <= CouponCollectorLogic.expectedDraws(n) ? '不错' : result.totalDraws > CouponCollectorLogic.expectedDraws(n) * 1.3 ? '很背' : '一般'}</div></div>`;
+}
+
+// 批量模拟
+function runBatchSim(trials) {
+  const n = getN();
+  const results = CouponCollectorLogic.simulateBatch(n, trials);
+  const stats = CouponCollectorLogic.computeStats(results);
+  const theory = CouponCollectorLogic.expectedDraws(n);
+
+  document.getElementById('batch-results').innerHTML =
+    `<div class="result-item green"><div class="label">平均值</div><div class="value">${stats.mean.toFixed(1)}</div></div>` +
+    `<div class="result-item"><div class="label">中位数</div><div class="value">${stats.median}</div></div>` +
+    `<div class="result-item"><div class="label">最少</div><div class="value">${stats.min}</div></div>` +
+    `<div class="result-item red"><div class="label">最多</div><div class="value">${stats.max}</div></div>` +
+    `<div class="result-item"><div class="label">P90</div><div class="value">${stats.p90}</div></div>` +
+    `<div class="result-item red"><div class="label">P99（最倒霉1%）</div><div class="value">${stats.p99}</div></div>`;
+
+  // 直方图
+  const buckets = CouponCollectorLogic.buildHistogram(results, 30);
+  const ctx = document.getElementById('histChart').getContext('2d');
+  if (histChart) histChart.destroy();
+
+  histChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: buckets.map(b => b.lo + '-' + b.hi),
+      datasets: [{
+        label: '频次',
+        data: buckets.map(b => b.count),
+        backgroundColor: buckets.map(b => {
+          const mid = (b.lo + b.hi) / 2;
+          return mid > stats.p90 ? 'rgba(248,113,113,0.7)' : 'rgba(251,191,36,0.7)';
+        }),
+        borderRadius: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => items[0].label + ' 次',
+            label: (item) => item.raw + ' 次出现'
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 15 }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' }
+        }
+      }
+    }
+  });
+}
+
+function updateCompareTable() {
+  const ns = [5, 10, 20, 50, 100];
+  let html = '<table class="compare-table"><thead><tr>' +
+    '<th>套数 n</th><th>理论期望</th><th>期望/n 倍</th><th>最后一张期望</th><th>前80%只需</th></tr></thead><tbody>';
+
+  for (const n of ns) {
+    const e = CouponCollectorLogic.expectedDraws(n);
+    const ratio = (e / n).toFixed(1);
+    const lastExpected = n;
+    // 前80%的期望
+    const stages = CouponCollectorLogic.stageExpected(n);
+    const first80 = stages.slice(0, Math.floor(n * 0.8)).reduce((s, st) => s + st.expected, 0);
+
+    html += `<tr>` +
+      `<td class="em">${n}</td>` +
+      `<td>${e.toFixed(1)}</td>` +
+      `<td>${ratio}x</td>` +
+      `<td class="em">${lastExpected} 次</td>` +
+      `<td>${first80.toFixed(1)} 次</td>` +
+      `</tr>`;
+  }
+  html += '</tbody></table>';
+
+  html += '<div class="insight-box">' +
+    '规律很明显：<strong>前 80% 很快，后 20% 要命</strong>。' +
+    '以 100 种为例，集齐前 80 种只需约 161 次，但最后 20 种还要再抽约 357 次。' +
+    '<br>这就是为什么盲盒商家敢出「集齐一套送大奖」的活动 — 他们知道你大概率集不齐。' +
+    '</div>';
+
+  document.getElementById('compare-table-wrap').innerHTML = html;
+}
+
+// 初始化
+onParamChange();
+</script>
+</body>
+</html>

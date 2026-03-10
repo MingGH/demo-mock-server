@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>本福特定律：数字不会说谎</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./benfords-law-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-chart-pie"></i> 本福特定律：数字不会说谎</h1>
+    <p>Benford's Law — 为什么 1 开头的数字比 9 开头的多 6 倍？用它能抓到财务造假</p>
+  </div>
+
+  <!-- 理论介绍 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-math-symbols"></i> 你以为的 vs 实际的</div>
+    <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.8;margin-bottom:15px">
+      直觉告诉我们，自然数据中首位数字 1-9 应该均匀出现（各约 11.1%）。<br>
+      但本福特定律说：<span style="color:#fbbf24">1 出现的概率是 30.1%，而 9 只有 4.6%</span>。
+    </p>
+    <div class="theory-grid" id="theoryGrid"></div>
+    <div class="chart-box"><canvas id="theoryChart"></canvas></div>
+  </div>
+
+  <!-- 预设数据集验证 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-flask"></i> 用真实数据验证</div>
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:15px">
+      选择不同的数据集，看看它们的首位数字分布是否符合本福特定律
+    </p>
+    <div class="dataset-btns" id="datasetBtns"></div>
+    <div class="result-grid" id="datasetResults" style="margin-top:20px"></div>
+    <div class="chart-box"><canvas id="datasetChart"></canvas></div>
+    <div class="verdict-box" id="datasetVerdict" style="display:none"></div>
+  </div>
+
+  <!-- 自定义数据检测 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-search"></i> 粘贴你的数据来检测</div>
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:15px">
+      粘贴一组数字（每行一个，或用逗号/空格分隔），检测是否符合本福特定律
+    </p>
+    <textarea id="customInput" placeholder="粘贴数字，例如：&#10;1234&#10;5678&#10;910&#10;2345&#10;...至少 50 个数字效果更好" style="
+      width:100%;height:120px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);
+      border-radius:10px;padding:15px;color:#e4e4e4;font-size:14px;resize:vertical;
+      font-family:monospace;outline:none;
+    "></textarea>
+    <div class="btn-row">
+      <button class="btn" onclick="analyzeCustomData()"><i class="ti ti-analyze"></i> 开始检测</button>
+    </div>
+    <div class="result-grid" id="customResults" style="margin-top:20px"></div>
+    <div class="chart-box"><canvas id="customChart"></canvas></div>
+    <div class="verdict-box" id="customVerdict" style="display:none"></div>
+  </div>
+
+  <!-- 造假 vs 真实对比 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-spy"></i> 造假数据 vs 真实数据</div>
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:15px">
+      左边是符合本福特定律的自然数据，右边是人为编造的数字。看看差别有多明显
+    </p>
+    <div class="btn-row">
+      <button class="btn" onclick="runFakeComparison()"><i class="ti ti-refresh"></i> 生成对比</button>
+    </div>
+    <div class="compare-wrap" id="compareWrap" style="margin-top:20px">
+      <div class="compare-col">
+        <div class="compare-label" style="color:#4ade80"><i class="ti ti-check"></i> 自然数据（1000个）</div>
+        <div class="chart-box"><canvas id="realChart"></canvas></div>
+        <div class="verdict-box" id="realVerdict"></div>
+      </div>
+      <div class="compare-col">
+        <div class="compare-label" style="color:#f87171"><i class="ti ti-alert-triangle"></i> 伪造数据（1000个）</div>
+        <div class="chart-box"><canvas id="fakeChart"></canvas></div>
+        <div class="verdict-box" id="fakeVerdict"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 为什么有效 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-bulb"></i> 为什么本福特定律有效</div>
+    <div class="insight-box">
+      核心原因：<span style="color:#fbbf24">自然数据跨越多个数量级</span>。<br><br>
+      从 1 增长到 2，需要增长 100%；但从 8 增长到 9，只需要增长 12.5%。<br>
+      所以数字在「1 开头」的区间停留的时间最长，在「9 开头」的区间停留最短。<br><br>
+      数学表达：首位数字为 d 的概率 = log<sub>10</sub>(1 + 1/d)<br><br>
+      <span style="color:rgba(255,255,255,0.5)">适用场景：人口数据、财务报表、物理常数、河流长度、股票价格、城市面积...<br>
+      不适用：人为限定范围的数据（如年龄、电话号码、彩票号码）</span>
+    </div>
+  </div>
+</div>
+
+<style>
+    .theory-grid {
+      display: grid; grid-template-columns: repeat(9, 1fr); gap: 8px; margin-bottom: 20px;
+    }
+    .theory-cell {
+      background: rgba(0,0,0,0.2); border-radius: 10px; padding: 12px 6px; text-align: center;
+    }
+    .theory-cell .digit { font-size: 1.5rem; font-weight: 700; color: #fbbf24; }
+    .theory-cell .pct { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    .theory-cell .bar-mini {
+      height: 4px; border-radius: 2px; margin-top: 6px;
+      background: rgba(251,191,36,0.3);
+    }
+    .theory-cell .bar-mini-fill {
+      height: 100%; border-radius: 2px; background: #fbbf24;
+    }
+
+    .chart-box { position: relative; height: 280px; margin-top: 15px; }
+
+    .dataset-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    .ds-btn {
+      padding: 10px 18px; font-size: 13px; border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px; background: rgba(255,255,255,0.05); color: #e4e4e4;
+      cursor: pointer; transition: all 0.3s;
+    }
+    .ds-btn:hover { background: rgba(251,191,36,0.15); border-color: rgba(251,191,36,0.3); }
+    .ds-btn.active { background: rgba(251,191,36,0.2); border-color: #fbbf24; color: #fbbf24; }
+
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn-row { display: flex; gap: 12px; margin-top: 15px; flex-wrap: wrap; }
+
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+    .result-item {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center;
+    }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.4rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+
+    .verdict-box {
+      margin-top: 15px; padding: 15px 20px; border-radius: 12px;
+      font-size: 14px; line-height: 1.8;
+    }
+    .verdict-box.pass {
+      background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: #4ade80;
+    }
+    .verdict-box.fail {
+      background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: #f87171;
+    }
+
+    .compare-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .compare-col { min-width: 0; }
+    .compare-label { font-size: 14px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; line-height: 1.8; font-size: 14px; color: rgba(255,255,255,0.7);
+    }
+
+    @media (max-width: 700px) {
+      .header h1 { font-size: 1.5rem; }
+      .theory-grid { grid-template-columns: repeat(3, 1fr); }
+      .compare-wrap { grid-template-columns: 1fr; }
+      .chart-box { height: 220px; }
+    }
+</style>
+
+<script>
+let datasetChart = null;
+let customChart = null;
+let realChart = null;
+let fakeChart = null;
+
+const DATASETS = [
+  { id: 'fibonacci', name: '斐波那契数列', icon: 'ti-spiral', gen: () => BenfordsLawLogic.generateFibonacci(500) },
+  { id: 'powers2', name: '2的幂次', icon: 'ti-superscript', gen: () => BenfordsLawLogic.generatePowersOf2(200) },
+  { id: 'factorials', name: '阶乘', icon: 'ti-math-function', gen: () => BenfordsLawLogic.generateFactorials(80) },
+  { id: 'benford', name: '模拟自然数据', icon: 'ti-chart-dots', gen: () => BenfordsLawLogic.generateBenfordData(2000) },
+  { id: 'uniform', name: '均匀随机数', icon: 'ti-dice-5', gen: () => BenfordsLawLogic.generateUniformData(2000, 999) },
+  { id: 'fake', name: '人为编造数据', icon: 'ti-spy', gen: () => BenfordsLawLogic.generateFakeData(2000) },
+];
+
+function init() {
+  renderTheoryGrid();
+  renderTheoryChart();
+  renderDatasetBtns();
+  selectDataset('fibonacci');
+  runFakeComparison();
+}
+
+function renderTheoryGrid() {
+  const theory = BenfordsLawLogic.theoreticalDistribution();
+  const wrap = document.getElementById('theoryGrid');
+  let html = '';
+  for (let d = 1; d <= 9; d++) {
+    const pct = (theory[d] * 100).toFixed(1);
+    const barW = (theory[d] / theory[1]) * 100;
+    html += `<div class="theory-cell">
+      <div class="digit">${d}</div>
+      <div class="pct">${pct}%</div>
+      <div class="bar-mini"><div class="bar-mini-fill" style="width:${barW}%"></div></div>
+    </div>`;
+  }
+  wrap.innerHTML = html;
+}
+
+function renderTheoryChart() {
+  const theory = BenfordsLawLogic.theoreticalDistribution();
+  const ctx = document.getElementById('theoryChart').getContext('2d');
+  const uniform = 1 / 9;
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['1','2','3','4','5','6','7','8','9'],
+      datasets: [
+        {
+          label: '本福特定律',
+          data: Object.values(theory).map(v => +(v * 100).toFixed(1)),
+          backgroundColor: 'rgba(251,191,36,0.7)',
+          borderRadius: 4
+        },
+        {
+          label: '均匀分布（直觉）',
+          data: Array(9).fill(+(uniform * 100).toFixed(1)),
+          backgroundColor: 'rgba(255,255,255,0.15)',
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } },
+        tooltip: { callbacks: { label: item => item.dataset.label + ': ' + item.raw + '%' } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 14 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)', callback: v => v + '%' },
+          title: { display: true, text: '出现概率', color: 'rgba(255,255,255,0.4)' } }
+      }
+    }
+  });
+}
+
+function renderDatasetBtns() {
+  const wrap = document.getElementById('datasetBtns');
+  wrap.innerHTML = DATASETS.map(ds =>
+    `<button class="ds-btn" data-id="${ds.id}" onclick="selectDataset('${ds.id}')"><i class="ti ${ds.icon}"></i> ${ds.name}</button>`
+  ).join('');
+}
+
+function selectDataset(id) {
+  document.querySelectorAll('.ds-btn').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+  const ds = DATASETS.find(d => d.id === id);
+  const data = ds.gen();
+  showAnalysis(data, 'datasetResults', 'datasetChart', 'datasetVerdict', ds.name);
+}
+
+function showAnalysis(data, resultsId, chartId, verdictId, label) {
+  const { counts, freq, total } = BenfordsLawLogic.extractFirstDigits(data);
+  const theory = BenfordsLawLogic.theoreticalDistribution();
+  const test = BenfordsLawLogic.chiSquareTest(counts, total);
+  const mad = BenfordsLawLogic.computeMAD(freq);
+  const madV = BenfordsLawLogic.madVerdict(mad);
+
+  // 结果卡片
+  document.getElementById(resultsId).innerHTML =
+    `<div class="result-item"><div class="label">数据量</div><div class="value">${total}</div></div>` +
+    `<div class="result-item"><div class="label">卡方值</div><div class="value">${test.chiSquare.toFixed(2)}</div></div>` +
+    `<div class="result-item"><div class="label">MAD</div><div class="value">${mad.toFixed(4)}</div></div>` +
+    `<div class="result-item ${test.isConform ? 'green' : 'red'}"><div class="label">判定</div><div class="value">${test.isConform ? '符合' : '不符合'}</div></div>`;
+
+  // 图表
+  const canvas = document.getElementById(chartId);
+  const ctx = canvas.getContext('2d');
+  const chartRef = chartId === 'datasetChart' ? 'datasetChart' : chartId === 'customChart' ? 'customChart' : chartId;
+
+  if (chartId === 'datasetChart' && datasetChart) datasetChart.destroy();
+  if (chartId === 'customChart' && customChart) customChart.destroy();
+
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['1','2','3','4','5','6','7','8','9'],
+      datasets: [
+        {
+          label: label || '实际分布',
+          data: Object.values(freq).map(v => +(v * 100).toFixed(1)),
+          backgroundColor: 'rgba(96,165,250,0.7)',
+          borderRadius: 4
+        },
+        {
+          label: '本福特理论',
+          data: Object.values(theory).map(v => +(v * 100).toFixed(1)),
+          type: 'line',
+          borderColor: '#fbbf24',
+          borderWidth: 2,
+          pointBackgroundColor: '#fbbf24',
+          pointRadius: 4,
+          fill: false,
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } },
+        tooltip: { callbacks: { label: item => item.dataset.label + ': ' + item.raw + '%' } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 14 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)', callback: v => v + '%' } }
+      }
+    }
+  });
+
+  if (chartId === 'datasetChart') datasetChart = chart;
+  if (chartId === 'customChart') customChart = chart;
+
+  // 判定
+  const verdictEl = document.getElementById(verdictId);
+  verdictEl.style.display = 'block';
+  verdictEl.className = 'verdict-box ' + (test.isConform ? 'pass' : 'fail');
+  verdictEl.innerHTML = test.isConform
+    ? `<i class="ti ti-circle-check"></i> 数据符合本福特定律（卡方=${test.chiSquare.toFixed(2)}，MAD=${mad.toFixed(4)}「${madV}」）`
+    : `<i class="ti ti-alert-triangle"></i> 数据不符合本福特定律（卡方=${test.chiSquare.toFixed(2)}，MAD=${mad.toFixed(4)}「${madV}」）— 可能存在人为编造`;
+
+  return chart;
+}
+
+function analyzeCustomData() {
+  const raw = document.getElementById('customInput').value.trim();
+  if (!raw) return;
+  const numbers = raw.split(/[\s,;\n\r\t]+/).map(Number).filter(n => !isNaN(n) && n !== 0);
+  if (numbers.length < 10) {
+    document.getElementById('customVerdict').style.display = 'block';
+    document.getElementById('customVerdict').className = 'verdict-box fail';
+    document.getElementById('customVerdict').innerHTML = '数据太少，至少需要 10 个有效数字';
+    return;
+  }
+  showAnalysis(numbers, 'customResults', 'customChart', 'customVerdict', '你的数据');
+}
+
+function runFakeComparison() {
+  const realData = BenfordsLawLogic.generateBenfordData(1000);
+  const fakeData = BenfordsLawLogic.generateFakeData(1000);
+
+  // 真实数据
+  const r = BenfordsLawLogic.extractFirstDigits(realData);
+  const rTest = BenfordsLawLogic.chiSquareTest(r.counts, r.total);
+  const rMad = BenfordsLawLogic.computeMAD(r.freq);
+  renderCompareChart('realChart', r.freq, '自然数据', 'rgba(74,222,128,0.7)');
+  const rv = document.getElementById('realVerdict');
+  rv.style.display = 'block';
+  rv.className = 'verdict-box pass';
+  rv.innerHTML = `<i class="ti ti-circle-check"></i> 卡方=${rTest.chiSquare.toFixed(2)}，MAD=${rMad.toFixed(4)} — 符合`;
+
+  // 伪造数据
+  const f = BenfordsLawLogic.extractFirstDigits(fakeData);
+  const fTest = BenfordsLawLogic.chiSquareTest(f.counts, f.total);
+  const fMad = BenfordsLawLogic.computeMAD(f.freq);
+  renderCompareChart('fakeChart', f.freq, '伪造数据', 'rgba(248,113,113,0.7)');
+  const fv = document.getElementById('fakeVerdict');
+  fv.style.display = 'block';
+  fv.className = 'verdict-box fail';
+  fv.innerHTML = `<i class="ti ti-alert-triangle"></i> 卡方=${fTest.chiSquare.toFixed(2)}，MAD=${fMad.toFixed(4)} — 异常`;
+}
+
+function renderCompareChart(canvasId, freq, label, color) {
+  const theory = BenfordsLawLogic.theoreticalDistribution();
+  const ctx = document.getElementById(canvasId).getContext('2d');
+
+  if (canvasId === 'realChart' && realChart) realChart.destroy();
+  if (canvasId === 'fakeChart' && fakeChart) fakeChart.destroy();
+
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['1','2','3','4','5','6','7','8','9'],
+      datasets: [
+        {
+          label: label,
+          data: Object.values(freq).map(v => +(v * 100).toFixed(1)),
+          backgroundColor: color, borderRadius: 3
+        },
+        {
+          label: '本福特理论',
+          data: Object.values(theory).map(v => +(v * 100).toFixed(1)),
+          type: 'line', borderColor: '#fbbf24', borderWidth: 2,
+          pointBackgroundColor: '#fbbf24', pointRadius: 3, fill: false, tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: item => item.raw + '%' } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 12 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)', callback: v => v + '%' }, max: 35 }
+      }
+    }
+  });
+
+  if (canvasId === 'realChart') realChart = chart;
+  if (canvasId === 'fakeChart') fakeChart = chart;
+}
+
+init();
+</script>
+</body>
+</html>

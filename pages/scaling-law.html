@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 缩放定律：为什么大力出奇迹，但奇迹越来越贵</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./scaling-law-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.1rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 18px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .chart-box { position: relative; height: 300px; margin-top: 15px; }
+    .chart-box-sm { position: relative; height: 240px; margin-top: 15px; }
+    .desc { color: rgba(255,255,255,0.55); font-size: 14px; line-height: 1.8; margin-bottom: 14px; }
+    .highlight { color: #fbbf24; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .btn {
+      padding: 10px 24px; font-size: 13px; font-weight: 600; border: none;
+      border-radius: 20px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(251,191,36,0.3); }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .tab-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .tab {
+      padding: 8px 16px; font-size: 13px; border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.6);
+      cursor: pointer; transition: all 0.25s;
+    }
+    .tab.active { background: rgba(251,191,36,0.18); border-color: #fbbf24; color: #fbbf24; }
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 16px; }
+    .stat-card {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; text-align: center;
+    }
+    .stat-card .label { color: rgba(255,255,255,0.45); font-size: 12px; margin-bottom: 6px; }
+    .stat-card .value { font-size: 1.5rem; font-weight: 700; color: #fbbf24; }
+    .stat-card .sub { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 4px; }
+    .insight {
+      background: linear-gradient(135deg, rgba(251,191,36,0.08), rgba(245,158,11,0.04));
+      border: 1px solid rgba(251,191,36,0.18); border-radius: 12px;
+      padding: 16px 20px; font-size: 13px; line-height: 1.9; color: rgba(255,255,255,0.65);
+      margin-top: 16px;
+    }
+    .slider-row { display: flex; align-items: center; gap: 14px; margin: 12px 0; flex-wrap: wrap; }
+    .slider-row label { color: rgba(255,255,255,0.6); font-size: 13px; min-width: 120px; }
+    input[type=range] { flex: 1; min-width: 120px; accent-color: #fbbf24; }
+    .slider-val { color: #fbbf24; font-weight: 700; font-size: 14px; min-width: 60px; }
+    .result-box {
+      background: rgba(0,0,0,0.25); border-radius: 12px; padding: 18px 20px;
+      margin-top: 16px; font-size: 14px; line-height: 2;
+    }
+    .result-box .big { font-size: 2rem; font-weight: 700; color: #fbbf24; }
+    .era-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 11px;
+      font-weight: 600; margin-left: 6px;
+    }
+    .era-pre { background: rgba(248,113,113,0.2); color: #f87171; }
+    .era-chinchilla { background: rgba(74,222,128,0.2); color: #4ade80; }
+    .era-efficient { background: rgba(96,165,250,0.2); color: #60a5fa; }
+    .era-moe { background: rgba(167,139,250,0.2); color: #a78bfa; }
+    .era-frontier { background: rgba(251,191,36,0.2); color: #fbbf24; }
+    @media (max-width: 680px) {
+      .header h1 { font-size: 1.45rem; }
+      .grid2 { grid-template-columns: 1fr; }
+      .chart-box { height: 230px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-chart-line"></i> AI 缩放定律：大力出奇迹，但奇迹越来越贵</h1>
+    <p>Scaling Laws — 用幂律解释 AI 军备竞赛的数学本质</p>
+  </div>
+
+  <!-- 卡片1：核心概念 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-math-function"></i> 什么是缩放定律？</div>
+    <p class="desc">
+      2020年，OpenAI 发现了一个惊人规律：AI 模型的性能（Loss）与<span class="highlight">参数量、数据量、算力</span>之间存在严格的幂律关系。
+      就像物理定律一样精确——多投入 10 倍算力，Loss 下降幅度是可以预测的。
+    </p>
+    <p class="desc">
+      公式：<span class="highlight">Loss ∝ N<sup>-0.34</sup></span>（N = 参数量）
+      &nbsp;|&nbsp; <span class="highlight">Loss ∝ C<sup>-0.05</sup></span>（C = 算力）
+    </p>
+    <div class="tab-row">
+      <button class="tab active" onclick="switchCurve('params')">参数量 vs Loss</button>
+      <button class="tab" onclick="switchCurve('compute')">算力 vs Loss</button>
+    </div>
+    <div class="chart-box"><canvas id="scalingChart"></canvas></div>
+    <div class="insight">
+      <i class="ti ti-bulb"></i>
+      注意坐标轴是<span class="highlight">对数刻度</span>。在对数坐标下，幂律关系变成一条直线——这正是它被称为「定律」的原因：无论模型大小，这条线从未弯曲。
+    </div>
+  </div>
+
+  <!-- 卡片2：翻倍收益递减 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-trending-down"></i> 翻倍收益递减：为什么越来越贵</div>
+    <p class="desc">
+      参数量每翻一倍，Loss 下降的<span class="highlight">绝对量越来越小</span>，但<span class="highlight">百分比大致相同</span>。
+      这就是为什么从 GPT-2 到 GPT-3 感觉是质变，但从 GPT-4 到 GPT-5 却越来越难感知差距。
+    </p>
+    <div class="slider-row">
+      <label><i class="ti ti-arrows-right-left"></i> 幂律指数 α</label>
+      <input type="range" id="alphaSlider" min="0.1" max="0.6" step="0.01" value="0.34" oninput="updateDoublingChart()">
+      <span class="slider-val" id="alphaVal">0.34</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="chart-box-sm"><canvas id="doublingAbsChart"></canvas></div>
+        <div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.35);margin-top:6px">绝对收益（越来越小）</div>
+      </div>
+      <div>
+        <div class="chart-box-sm"><canvas id="doublingPctChart"></canvas></div>
+        <div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.35);margin-top:6px">百分比收益（大致稳定）</div>
+      </div>
+    </div>
+    <div class="stat-row" id="doublingStats"></div>
+  </div>
+
+  <!-- 卡片3：涌现能力 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-bolt"></i> 涌现能力：量变引发质变</div>
+    <p class="desc">
+      并非所有能力都平滑提升。某些能力在参数量达到<span class="highlight">临界阈值</span>前几乎为零，之后突然「涌现」。
+      这解释了为什么大模型会突然「学会」做算术、写代码、甚至推理——不是渐进的，是跃迁式的。
+    </p>
+    <div class="slider-row">
+      <label><i class="ti ti-target"></i> 涌现阈值（亿参数）</label>
+      <input type="range" id="thresholdSlider" min="5" max="200" step="5" value="50" oninput="updateEmergentChart()">
+      <span class="slider-val" id="thresholdVal">50亿</span>
+    </div>
+    <div class="chart-box"><canvas id="emergentChart"></canvas></div>
+    <div class="insight">
+      <i class="ti ti-alert-triangle"></i>
+      涌现能力让 AI 研究充满不确定性：你无法通过小模型实验预测大模型会「突然学会」什么。
+      这也是为什么各家公司都在疯狂堆参数——没人知道下一个涌现点在哪里。
+    </div>
+  </div>
+
+  <!-- 卡片4：效率前沿 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-scatter"></i> 效率前沿：DeepSeek 为什么震惊世界</div>
+    <p class="desc">
+      横轴是训练算力（FLOPs），纵轴是综合性能分数。
+      <span class="highlight">右上角</span>是「暴力堆算力」路线，<span class="highlight">左上角</span>是「高效率」路线。
+      DeepSeek-R1 用极少的算力达到了接近 GPT-4 的性能，打破了「大力出奇迹」的线性预期。
+    </p>
+    <div class="chart-box" style="height:340px"><canvas id="frontierChart"></canvas></div>
+    <div class="stat-row" id="frontierStats"></div>
+  </div>
+
+  <!-- 卡片5：预测计算器 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-calculator"></i> 算力需求预测器</div>
+    <p class="desc">
+      根据缩放定律，从当前性能提升到目标性能，需要多少倍的算力？
+    </p>
+    <div class="slider-row">
+      <label><i class="ti ti-gauge"></i> 当前性能分数</label>
+      <input type="range" id="currentScore" min="50" max="95" step="1" value="80" oninput="updatePredictor()">
+      <span class="slider-val" id="currentScoreVal">80</span>
+    </div>
+    <div class="slider-row">
+      <label><i class="ti ti-target-arrow"></i> 目标性能分数</label>
+      <input type="range" id="targetScore" min="51" max="99" step="1" value="90" oninput="updatePredictor()">
+      <span class="slider-val" id="targetScoreVal">90</span>
+    </div>
+    <div class="result-box" id="predictorResult"></div>
+    <div class="insight" id="predictorInsight"></div>
+  </div>
+
+</div>
+
+<script>
+// ---- 图表实例 ----
+let scalingChart = null, doublingAbsChart = null, doublingPctChart = null;
+let emergentChart = null, frontierChart = null;
+
+const CHART_DEFAULTS = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { labels: { color: 'rgba(255,255,255,0.55)', font: { size: 12 } } } },
+  scales: {
+    x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: 'rgba(255,255,255,0.45)' } },
+    y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: 'rgba(255,255,255,0.45)' } }
+  }
+};
+
+// ---- 卡片1：缩放曲线 ----
+function switchCurve(type) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderScalingChart(type);
+}
+
+function renderScalingChart(type = 'params') {
+  if (scalingChart) scalingChart.destroy();
+  const ctx = document.getElementById('scalingChart').getContext('2d');
+
+  let labels, data, xLabel, yLabel, xType;
+  if (type === 'params') {
+    const curve = ScalingLawLogic.generateScalingCurve(0.1, 1000, 60);
+    labels = curve.map(p => p.N);
+    data = curve.map(p => p.loss);
+    xLabel = '参数量（亿）';
+    yLabel = 'Loss（越低越好）';
+  } else {
+    const curve = ScalingLawLogic.generateComputeCurve(1e-3, 1e6, 60);
+    labels = curve.map(p => p.C);
+    data = curve.map(p => p.loss);
+    xLabel = '算力（PetaFLOP/s-day）';
+    yLabel = 'Loss';
+  }
+
+  scalingChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: type === 'params' ? 'Loss（Chinchilla 最优训练）' : 'Loss vs 算力',
+        data,
+        borderColor: '#fbbf24',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        fill: { target: 'origin', above: 'rgba(251,191,36,0.04)' },
+        tension: 0.3
+      }]
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      scales: {
+        x: {
+          type: 'logarithmic',
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: {
+            color: 'rgba(255,255,255,0.45)',
+            callback: v => {
+              if (type === 'params') return v >= 1 ? v + '亿' : v;
+              const e = Math.round(Math.log10(v));
+              return '10^' + e;
+            },
+            maxTicksLimit: 8
+          },
+          title: { display: true, text: xLabel, color: 'rgba(255,255,255,0.35)', font: { size: 12 } }
+        },
+        y: {
+          type: 'logarithmic',
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          ticks: { color: 'rgba(255,255,255,0.45)', maxTicksLimit: 6 },
+          title: { display: true, text: yLabel, color: 'rgba(255,255,255,0.35)', font: { size: 12 } }
+        }
+      }
+    }
+  });
+}
+
+// ---- 卡片2：翻倍收益 ----
+let doublingAbsChartInst = null, doublingPctChartInst = null;
+
+function updateDoublingChart() {
+  const alpha = parseFloat(document.getElementById('alphaSlider').value);
+  document.getElementById('alphaVal').textContent = alpha.toFixed(2);
+  const gains = ScalingLawLogic.computeDoublingGains(alpha, 8);
+  const labels = gains.slice(1).map((_, i) => `第${i + 1}次`);
+  const drops = gains.slice(1).map(g => +(g.drop * 100).toFixed(3));
+  const pcts = gains.slice(1).map(g => g.dropPct);
+
+  if (doublingAbsChartInst) doublingAbsChartInst.destroy();
+  if (doublingPctChartInst) doublingPctChartInst.destroy();
+
+  const absCtx = document.getElementById('doublingAbsChart').getContext('2d');
+  doublingAbsChartInst = new Chart(absCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'Loss 下降量（×100）', data: drops, backgroundColor: 'rgba(251,191,36,0.65)', borderRadius: 4 }]
+    },
+    options: { ...CHART_DEFAULTS, plugins: { legend: { display: false } } }
+  });
+
+  const pctCtx = document.getElementById('doublingPctChart').getContext('2d');
+  doublingPctChartInst = new Chart(pctCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'Loss 下降百分比', data: pcts, backgroundColor: 'rgba(96,165,250,0.65)', borderRadius: 4 }]
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: { legend: { display: false } },
+      scales: {
+        ...CHART_DEFAULTS.scales,
+        y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => v + '%' } }
+      }
+    }
+  });
+
+  // 统计卡片
+  const first = gains[1];
+  const last = gains[gains.length - 1];
+  document.getElementById('doublingStats').innerHTML = `
+    <div class="stat-card"><div class="label">第1次翻倍收益</div><div class="value">${(first.drop * 100).toFixed(2)}</div><div class="sub">Loss 下降（×100）</div></div>
+    <div class="stat-card"><div class="label">第8次翻倍收益</div><div class="value">${(last.drop * 100).toFixed(3)}</div><div class="sub">仅剩第1次的 ${((last.drop / first.drop) * 100).toFixed(1)}%</div></div>
+    <div class="stat-card"><div class="label">百分比收益</div><div class="value">${pcts[0].toFixed(1)}%</div><div class="sub">每次翻倍大致相同</div></div>
+    <div class="stat-card"><div class="label">8次翻倍后</div><div class="value">×${Math.pow(2, 8)}</div><div class="sub">参数量增加 256 倍</div></div>
+  `;
+}
+
+// ---- 卡片3：涌现能力 ----
+let emergentChartInst = null;
+
+function updateEmergentChart() {
+  const threshold = parseInt(document.getElementById('thresholdSlider').value);
+  document.getElementById('thresholdVal').textContent = threshold + '亿';
+  const data = ScalingLawLogic.generateEmergentCurve(threshold, 0.15, 80);
+
+  if (emergentChartInst) emergentChartInst.destroy();
+  const ctx = document.getElementById('emergentChart').getContext('2d');
+
+  emergentChartInst = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: '能力得分',
+        data: data.map(p => ({ x: p.N, y: p.ability * 100 })),
+        backgroundColor: data.map(p => {
+          const t = p.ability;
+          const r = Math.round(96 + (251 - 96) * t);
+          const g = Math.round(165 + (191 - 165) * t);
+          const b = Math.round(250 + (36 - 250) * t);
+          return `rgba(${r},${g},${b},0.7)`;
+        }),
+        pointRadius: 4
+      }, {
+        label: `涌现阈值 ${threshold}亿`,
+        data: [{ x: threshold, y: 0 }, { x: threshold, y: 100 }],
+        type: 'line',
+        borderColor: 'rgba(248,113,113,0.7)',
+        borderWidth: 2,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        fill: false
+      }]
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      scales: {
+        x: {
+          type: 'logarithmic',
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: 'rgba(255,255,255,0.45)', callback: v => v + '亿', maxTicksLimit: 8 },
+          title: { display: true, text: '参数量（亿）', color: 'rgba(255,255,255,0.35)', font: { size: 12 } }
+        },
+        y: {
+          min: 0, max: 100,
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          ticks: { color: 'rgba(255,255,255,0.45)', callback: v => v + '%' },
+          title: { display: true, text: '能力得分', color: 'rgba(255,255,255,0.35)', font: { size: 12 } }
+        }
+      }
+    }
+  });
+}
+
+// ---- 卡片4：效率前沿 ----
+function renderFrontierChart() {
+  const models = ScalingLawLogic.generateEfficiencyFrontier();
+  const ctx = document.getElementById('frontierChart').getContext('2d');
+
+  const eraColors = {
+    'pre-chinchilla': 'rgba(248,113,113,0.8)',
+    'chinchilla': 'rgba(74,222,128,0.8)',
+    'efficient': 'rgba(96,165,250,0.8)',
+    'moe': 'rgba(167,139,250,0.8)',
+    'frontier': 'rgba(251,191,36,0.9)'
+  };
+  const eraNames = {
+    'pre-chinchilla': '前Chinchilla时代',
+    'chinchilla': 'Chinchilla优化',
+    'efficient': '高效小模型',
+    'moe': 'MoE架构',
+    'frontier': '前沿大模型'
+  };
+
+  const eras = [...new Set(models.map(m => m.era))];
+  const datasets = eras.map(era => ({
+    label: eraNames[era],
+    data: models.filter(m => m.era === era).map(m => ({ x: m.compute, y: m.score, name: m.name, params: m.params })),
+    backgroundColor: eraColors[era],
+    pointRadius: 10,
+    pointHoverRadius: 13
+  }));
+
+  frontierChart = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.55)', font: { size: 12 }, pointStyle: 'circle', usePointStyle: true } },
+        tooltip: {
+          callbacks: {
+            label: item => {
+              const d = item.raw;
+              const e = Math.round(Math.log10(d.x));
+              return [`${d.name}`, `算力: 10^${e} FLOPs`, `性能: ${d.y}分`, `参数: ${d.params}B`];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'logarithmic',
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: 'rgba(255,255,255,0.45)', callback: v => { const e = Math.round(Math.log10(v)); return '10^' + e; }, maxTicksLimit: 8 },
+          title: { display: true, text: '训练算力（FLOPs）', color: 'rgba(255,255,255,0.35)', font: { size: 12 } }
+        },
+        y: {
+          min: 65, max: 95,
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          ticks: { color: 'rgba(255,255,255,0.45)' },
+          title: { display: true, text: '综合性能分数', color: 'rgba(255,255,255,0.35)', font: { size: 12 } }
+        }
+      }
+    }
+  });
+
+  // 统计
+  const deepseek = models.find(m => m.name.includes('DeepSeek-R1'));
+  const gpt4 = models.find(m => m.name.includes('GPT-4'));
+  const ratio = (gpt4.compute / deepseek.compute).toExponential(1);
+  document.getElementById('frontierStats').innerHTML = `
+    <div class="stat-card"><div class="label">GPT-4 训练算力</div><div class="value" style="font-size:1.1rem">10^25</div><div class="sub">FLOPs</div></div>
+    <div class="stat-card"><div class="label">DeepSeek-R1 算力</div><div class="value" style="font-size:1.1rem">10^22</div><div class="sub">FLOPs</div></div>
+    <div class="stat-card"><div class="label">算力差距</div><div class="value">${ratio}×</div><div class="sub">GPT-4 是 DeepSeek-R1 的</div></div>
+    <div class="stat-card"><div class="label">性能差距</div><div class="value">${gpt4.score - deepseek.score}分</div><div class="sub">仅差 ${gpt4.score - deepseek.score} 分</div></div>
+  `;
+}
+
+// ---- 卡片5：预测器 ----
+function updatePredictor() {
+  const cur = parseInt(document.getElementById('currentScore').value);
+  let tgt = parseInt(document.getElementById('targetScore').value);
+  if (tgt <= cur) { tgt = cur + 1; document.getElementById('targetScore').value = tgt; }
+  document.getElementById('currentScoreVal').textContent = cur;
+  document.getElementById('targetScoreVal').textContent = tgt;
+
+  const ratio = ScalingLawLogic.predictComputeNeeded(cur, tgt, 0.05);
+  const isInf = !isFinite(ratio);
+
+  let ratioText, analogy;
+  if (isInf) {
+    ratioText = '∞';
+    analogy = '理论上需要无限算力——这就是为什么「完美 AI」永远是下一代的事。';
+  } else if (ratio < 10) {
+    ratioText = ratio.toFixed(1) + '×';
+    analogy = `相当于把现有算力集群再复制 ${Math.round(ratio - 1)} 份。`;
+  } else if (ratio < 1000) {
+    ratioText = ratio.toFixed(0) + '×';
+    analogy = `相当于把现有数据中心扩大 ${ratio.toFixed(0)} 倍，成本可能超过数百亿美元。`;
+  } else {
+    const e = Math.log10(ratio).toFixed(1);
+    ratioText = '10^' + e + '×';
+    analogy = `这个数字已经超出了现实可行范围——这就是为什么「暴力堆算力」路线正在遭遇天花板。`;
+  }
+
+  document.getElementById('predictorResult').innerHTML = `
+    需要 <span class="big">${ratioText}</span> 算力<br>
+    <span style="color:rgba(255,255,255,0.5);font-size:13px">从 ${cur} 分提升到 ${tgt} 分（提升 ${tgt - cur} 分）</span>
+  `;
+  document.getElementById('predictorInsight').innerHTML =
+    `<i class="ti ti-info-circle"></i> ${analogy}<br>
+    <span style="color:rgba(255,255,255,0.4);font-size:12px">基于 OpenAI Scaling Laws：Loss ∝ C<sup>-0.05</sup>，性能 ≈ 100 - Loss</span>`;
+}
+
+// ---- 初始化 ----
+function init() {
+  renderScalingChart('params');
+  updateDoublingChart();
+  updateEmergentChart();
+  renderFrontierChart();
+  updatePredictor();
+}
+
+init();
+</script>
+</body>
+</html>

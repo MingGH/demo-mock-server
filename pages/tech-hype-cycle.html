@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>科技热词生命周期：这次是真的吗？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./tech-hype-cycle-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* 数据对比卡片 */
+    .stat-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: rgba(0,0,0,0.25); border-radius: 14px; padding: 20px; text-align: center;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .stat-card .label { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 8px; }
+    .stat-card .value { font-size: 1.6rem; font-weight: 700; }
+    .stat-card .sub { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 5px; }
+    .gold { color: #fbbf24; }
+    .green { color: #4ade80; }
+    .red { color: #f87171; }
+    .blue { color: #60a5fa; }
+
+    /* 图表 */
+    .chart-wrap { position: relative; height: 340px; margin-top: 15px; }
+
+    /* 热词选择器 */
+    .topic-tabs {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    .topic-tab {
+      padding: 9px 18px; font-size: 13px; border-radius: 20px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.6); transition: all 0.25s;
+    }
+    .topic-tab:hover { border-color: rgba(251,191,36,0.4); color: #fbbf24; }
+    .topic-tab.active { background: rgba(251,191,36,0.15); border-color: #fbbf24; color: #fbbf24; }
+
+    /* 参数调节 */
+    .param-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;
+    }
+    .param-item label {
+      display: block; font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 8px;
+    }
+    .param-item input[type=range] {
+      width: 100%; accent-color: #fbbf24; cursor: pointer;
+    }
+    .param-item .val { color: #fbbf24; font-weight: 600; font-size: 14px; }
+
+    /* 评分结果 */
+    .verdict-panel {
+      border-radius: 14px; padding: 22px; margin-top: 20px;
+      border: 1px solid; transition: all 0.4s;
+    }
+    .verdict-panel.bubble {
+      background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.3);
+    }
+    .verdict-panel.infra {
+      background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.3);
+    }
+    .verdict-panel.unclear {
+      background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.3);
+    }
+    .verdict-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .verdict-body { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.8; }
+
+    /* 评分条 */
+    .score-bar-wrap { margin: 16px 0; }
+    .score-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
+    .score-bar-bg { height: 10px; background: rgba(255,255,255,0.08); border-radius: 5px; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
+
+    /* 历史对比表 */
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .compare-table th {
+      color: rgba(255,255,255,0.4); font-weight: 500; padding: 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06); text-align: left;
+    }
+    .compare-table td {
+      padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.7);
+    }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .badge {
+      display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600;
+    }
+    .badge-bubble { background: rgba(248,113,113,0.2); color: #f87171; }
+    .badge-infra { background: rgba(74,222,128,0.2); color: #4ade80; }
+    .badge-mixed { background: rgba(251,191,36,0.2); color: #fbbf24; }
+
+    @media (max-width: 640px) {
+      .header h1 { font-size: 1.5rem; }
+      .param-grid { grid-template-columns: 1fr; }
+      .chart-wrap { height: 260px; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-trending-up"></i> 科技热词生命周期</h1>
+    <p>OpenClaw 是下一个元宇宙，还是下一个互联网？用数据判断这次是不是真的</p>
+  </div>
+
+  <!-- 核心数据对比 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-bar"></i> OpenClaw vs 元宇宙：数据说话</div>
+    <div class="stat-grid" id="statGrid"></div>
+    <p style="font-size:12px;color:rgba(255,255,255,0.3);margin-top:8px">
+      * GitHub 数据来源：公开报道；元宇宙数据来源：Meta 财报及 Google Trends
+    </p>
+  </div>
+
+  <!-- 热词生命周期图 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-line"></i> 历史热词生命周期对比</div>
+    <p style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:16px">
+      选择一个热词，查看其热度曲线。泡沫型热词呈现「快速拉升→崩塌」，基础设施型热词呈现「持续增长」。
+    </p>
+    <div class="topic-tabs" id="topicTabs"></div>
+    <div class="chart-wrap"><canvas id="hypeChart"></canvas></div>
+    <div id="topicDesc" style="margin-top:14px;font-size:13px;color:rgba(255,255,255,0.45);line-height:1.7;padding:14px;background:rgba(0,0,0,0.2);border-radius:10px;"></div>
+  </div>
+
+  <!-- 交互式评估器 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-adjustments"></i> 「这次是真的吗？」评估器</div>
+    <p style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:20px">
+      调节以下参数，系统根据历史规律判断一个新技术是「泡沫」还是「基础设施」
+    </p>
+    <div class="param-grid" id="paramGrid"></div>
+    <div id="verdictPanel" class="verdict-panel unclear">
+      <div class="verdict-title" id="verdictTitle"></div>
+      <div class="score-bar-wrap" id="scoreBars"></div>
+      <div class="verdict-body" id="verdictBody"></div>
+    </div>
+  </div>
+
+  <!-- 历史案例表 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-history"></i> 历史案例：泡沫 vs 基础设施</div>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>技术热词</th>
+          <th>峰值年份</th>
+          <th>真实用户驱动</th>
+          <th>企业 PR 占比</th>
+          <th>最终结果</th>
+          <th>判定</th>
+        </tr>
+      </thead>
+      <tbody id="historyTable"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+let hypeChart = null;
+
+const STATS = [
+  { label: 'OpenClaw 达到 100K stars', value: '2天', sub: 'GitHub 史上最快', cls: 'gold' },
+  { label: 'React 达到 100K stars', value: '8年', sub: 'Meta 开源框架', cls: 'blue' },
+  { label: 'Linux 达到 100K stars', value: '12年', sub: '操作系统内核', cls: 'blue' },
+  { label: 'Meta 元宇宙年亏损', value: '$130亿', sub: '2022年峰值投入', cls: 'red' },
+  { label: 'OpenClaw 当前 stars', value: '250K+', sub: '超过 React', cls: 'green' },
+  { label: '元宇宙用户信任度', value: '46%', sub: '54% 表示不信任', cls: 'red' },
+];
+
+const TOPICS = TechHypeCycleLogic.getTopics();
+const PARAMS = TechHypeCycleLogic.getParams();
+const HISTORY = TechHypeCycleLogic.getHistory();
+
+function init() {
+  renderStats();
+  renderTopicTabs();
+  selectTopic(TOPICS[0].id);
+  renderParams();
+  renderHistory();
+  updateVerdict();
+}
+
+function renderStats() {
+  document.getElementById('statGrid').innerHTML = STATS.map(s => `
+    <div class="stat-card">
+      <div class="label">${s.label}</div>
+      <div class="value ${s.cls}">${s.value}</div>
+      <div class="sub">${s.sub}</div>
+    </div>
+  `).join('');
+}
+
+function renderTopicTabs() {
+  document.getElementById('topicTabs').innerHTML = TOPICS.map(t =>
+    `<div class="topic-tab" data-id="${t.id}" onclick="selectTopic('${t.id}')">${t.name}</div>`
+  ).join('');
+}
+
+function selectTopic(id) {
+  document.querySelectorAll('.topic-tab').forEach(t => t.classList.toggle('active', t.dataset.id === id));
+  const topic = TOPICS.find(t => t.id === id);
+  renderHypeChart(topic);
+  document.getElementById('topicDesc').innerHTML = `<strong style="color:${topic.color}">${topic.name}</strong>：${topic.desc}`;
+}
+
+function renderHypeChart(topic) {
+  const ctx = document.getElementById('hypeChart').getContext('2d');
+  if (hypeChart) hypeChart.destroy();
+
+  hypeChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: topic.labels,
+      datasets: [{
+        label: topic.name + ' 热度指数',
+        data: topic.data,
+        borderColor: topic.color,
+        backgroundColor: topic.color.replace(')', ', 0.08)').replace('rgb', 'rgba'),
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: topic.color,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } },
+        tooltip: {
+          callbacks: {
+            label: item => '热度指数: ' + item.raw,
+            afterLabel: item => {
+              const ann = topic.annotations && topic.annotations[item.dataIndex];
+              return ann ? '📌 ' + ann : '';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 11 }, maxRotation: 45 } },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          title: { display: true, text: '相对热度（峰值=100）', color: 'rgba(255,255,255,0.35)', font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function renderParams() {
+  document.getElementById('paramGrid').innerHTML = PARAMS.map(p => `
+    <div class="param-item">
+      <label>${p.label} <span class="val" id="val_${p.id}">${p.default}${p.unit}</span></label>
+      <input type="range" min="${p.min}" max="${p.max}" value="${p.default}" step="${p.step}"
+        oninput="onParam('${p.id}', this.value)" />
+    </div>
+  `).join('');
+}
+
+function onParam(id, val) {
+  document.getElementById('val_' + id).textContent = val + PARAMS.find(p => p.id === id).unit;
+  updateVerdict();
+}
+
+function getParamValues() {
+  const vals = {};
+  PARAMS.forEach(p => {
+    const el = document.querySelector(`input[oninput*="${p.id}"]`);
+    vals[p.id] = el ? parseFloat(el.value) : p.default;
+  });
+  return vals;
+}
+
+function updateVerdict() {
+  const vals = getParamValues();
+  const result = TechHypeCycleLogic.evaluate(vals);
+
+  const panel = document.getElementById('verdictPanel');
+  panel.className = 'verdict-panel ' + result.type;
+
+  const icons = { bubble: '🫧', infra: '🏗️', unclear: '🤔' };
+  const colors = { bubble: '#f87171', infra: '#4ade80', unclear: '#fbbf24' };
+  document.getElementById('verdictTitle').innerHTML =
+    `<span style="color:${colors[result.type]}">${icons[result.type]} ${result.title}</span>`;
+
+  document.getElementById('scoreBars').innerHTML = result.scores.map(s => `
+    <div class="score-bar-wrap">
+      <div class="score-bar-label"><span>${s.label}</span><span style="color:${s.color}">${s.value}分</span></div>
+      <div class="score-bar-bg"><div class="score-bar-fill" style="width:${s.value}%;background:${s.color}"></div></div>
+    </div>
+  `).join('');
+
+  document.getElementById('verdictBody').innerHTML = result.body;
+}
+
+function renderHistory() {
+  document.getElementById('historyTable').innerHTML = HISTORY.map(h => `
+    <tr>
+      <td style="font-weight:600;color:#e4e4e4">${h.name}</td>
+      <td>${h.peak}</td>
+      <td><span style="color:${h.userDriven > 60 ? '#4ade80' : '#f87171'}">${h.userDriven}%</span></td>
+      <td><span style="color:${h.prDriven > 50 ? '#f87171' : '#4ade80'}">${h.prDriven}%</span></td>
+      <td style="color:rgba(255,255,255,0.6)">${h.outcome}</td>
+      <td><span class="badge badge-${h.verdict}">${h.verdictLabel}</span></td>
+    </tr>
+  `).join('');
+}
+
+init();
+</script>
+</body>
+</html>

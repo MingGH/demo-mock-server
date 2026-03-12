@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>为什么你排的队总是最慢的？- 排队论与等待心理学</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./queue-theory-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+
+    .ctrl-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .ctrl-item { flex: 1; min-width: 180px; }
+    .ctrl-item label { display: block; color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 8px; }
+    .ctrl-item input[type=range] {
+      -webkit-appearance: none; width: 100%; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px;
+    }
+    .ctrl-item input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%;
+      background: #fbbf24; cursor: pointer; box-shadow: 0 0 10px rgba(251,191,36,0.5);
+    }
+    .val-tag { color: #fbbf24; font-weight: 600; }
+
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3);
+    }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center;
+    }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+
+    .chart-box { position: relative; height: 300px; margin-top: 15px; }
+
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+
+    /* 排队动画区域 */
+    .queue-visual {
+      display: flex; flex-direction: column; gap: 12px; margin: 20px 0;
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 20px;
+    }
+    .queue-lane {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .queue-label {
+      font-size: 12px; color: rgba(255,255,255,0.5); min-width: 50px; text-align: right;
+    }
+    .queue-people {
+      display: flex; gap: 3px; flex: 1; min-height: 32px; align-items: center;
+    }
+    .queue-person {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; transition: all 0.3s;
+      background: rgba(255,255,255,0.1);
+    }
+    .queue-person.me {
+      background: rgba(251,191,36,0.3); border: 2px solid #fbbf24;
+      box-shadow: 0 0 10px rgba(251,191,36,0.3);
+    }
+    .queue-person.served {
+      background: rgba(74,222,128,0.2); border: 1px solid rgba(74,222,128,0.4);
+    }
+    .queue-counter {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: rgba(96,165,250,0.2); border: 1px solid rgba(96,165,250,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    /* 心理因素复选框 */
+    .factor-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px; margin: 15px 0;
+    }
+    .factor-item {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(0,0,0,0.2); border-radius: 10px; padding: 12px 15px;
+      cursor: pointer; transition: all 0.2s;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .factor-item:hover { border-color: rgba(251,191,36,0.3); }
+    .factor-item.active { border-color: rgba(251,191,36,0.5); background: rgba(251,191,36,0.08); }
+    .factor-item input { display: none; }
+    .factor-check {
+      width: 20px; height: 20px; border-radius: 5px;
+      border: 2px solid rgba(255,255,255,0.2); display: flex;
+      align-items: center; justify-content: center; transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .factor-item.active .factor-check {
+      background: #fbbf24; border-color: #fbbf24; color: #1a1a2e;
+    }
+    .factor-text { font-size: 13px; color: rgba(255,255,255,0.7); }
+    .factor-effect { font-size: 11px; margin-top: 2px; }
+    .factor-effect.bad { color: #f87171; }
+    .factor-effect.good { color: #4ade80; }
+
+    .perceived-bar {
+      display: flex; align-items: center; gap: 15px; margin: 15px 0;
+    }
+    .pbar-label { font-size: 13px; color: rgba(255,255,255,0.5); min-width: 80px; }
+    .pbar-track { flex: 1; height: 24px; background: rgba(0,0,0,0.3); border-radius: 12px; overflow: hidden; position: relative; }
+    .pbar-fill { height: 100%; border-radius: 12px; transition: width 0.5s; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-size: 12px; font-weight: 600; }
+    .pbar-fill.actual { background: linear-gradient(90deg, #60a5fa, #3b82f6); color: white; }
+    .pbar-fill.perceived { background: linear-gradient(90deg, #f87171, #ef4444); color: white; }
+
+    /* 对比表 */
+    .compare-table { width: 100%; border-collapse: collapse; }
+    .compare-table th, .compare-table td {
+      padding: 12px; text-align: center; font-size: 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .compare-table th { color: rgba(255,255,255,0.5); font-weight: 400; }
+    .compare-table td { color: rgba(255,255,255,0.8); }
+    .compare-table .em { color: #fbbf24; font-weight: 600; }
+    .compare-table .good { color: #4ade80; }
+    .compare-table .bad { color: #f87171; }
+
+    .tab-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 8px 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; background: transparent; color: rgba(255,255,255,0.5);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .tab-btn.active { background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.4); }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .queue-person { width: 22px; height: 22px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-users"></i> 为什么你排的队总是最慢的</h1>
+    <p>排队论（Queueing Theory）与等待心理学 — 用概率解释你的「排队焦虑」</p>
+  </div>
+</div>
+
+  <!-- Card 1: 为什么你的队最慢 -->
+  <div class="container">
+  <div class="card">
+    <div class="card-title"><i class="ti ti-mood-sad"></i> 为什么你排的队「总是」最慢的？</div>
+    <div class="card-desc">
+      假设有 N 条队伍，你随机选了一条。你排到最快那条的概率只有 1/N。<br>
+      也就是说，队伍越多，你「没选到最快」的概率越大。3条队时，你有 67% 的概率不是最快的。
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <label>队列数量 <span class="val-tag" id="luck-n-val">3</span> 条</label>
+        <input type="range" id="luck-n-slider" min="2" max="10" value="3" oninput="updateLuckParam()">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="runLuckSim()"><i class="ti ti-refresh"></i> 模拟 5000 次</button>
+    </div>
+    <div class="result-grid" id="luck-results" style="margin-top:20px"></div>
+    <div class="insight-box" id="luck-insight">
+      <strong>数学解释：</strong>N 条队伍，你在最快队列的概率 = 1/N。
+      当 N=3 时，你有 <strong>66.7%</strong> 的概率不在最快的队伍里。
+      再加上「确认偏误」— 你只记得慢的时候，不记得快的时候 — 所以你「总觉得」自己排的队最慢。
+    </div>
+  </div>
+
+  <!-- Card 2: 换队悖论 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-switch-horizontal"></i> 换队悖论：换了真的更快吗？</div>
+    <div class="card-desc">
+      排了一会儿觉得旁边的队更快，要不要换？模拟告诉你：换队的期望收益为负。<br>
+      因为你已经在当前队列「投入」了等待时间，换队意味着从头排起。
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <label>队列数量 <span class="val-tag" id="switch-n-val">3</span> 条</label>
+        <input type="range" id="switch-n-slider" min="2" max="8" value="3" oninput="document.getElementById('switch-n-val').textContent=this.value">
+      </div>
+      <div class="ctrl-item">
+        <label>每队人数 <span class="val-tag" id="switch-len-val">5</span> 人</label>
+        <input type="range" id="switch-len-slider" min="2" max="15" value="5" oninput="document.getElementById('switch-len-val').textContent=this.value">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="runSwitchSim(5000)"><i class="ti ti-refresh"></i> 模拟 5000 次</button>
+      <button class="btn btn-secondary" onclick="runSwitchSim(20000)"><i class="ti ti-flame"></i> 模拟 20000 次</button>
+    </div>
+    <div class="result-grid" id="switch-results" style="margin-top:20px"></div>
+    <div class="chart-box"><canvas id="switchChart"></canvas></div>
+  </div>
+
+  <!-- Card 3: 多队列 vs 蛇形队列 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-arrows-shuffle"></i> 多队列 vs 蛇形队列：哪种更公平？</div>
+    <div class="card-desc">
+      超市每个收银台一条队 vs 银行一条蛇形队多个窗口。哪种等待时间更短、更公平？
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <label>窗口/队列数 <span class="val-tag" id="compare-n-val">3</span></label>
+        <input type="range" id="compare-n-slider" min="2" max="8" value="3" oninput="document.getElementById('compare-n-val').textContent=this.value">
+      </div>
+      <div class="ctrl-item">
+        <label>顾客总数 <span class="val-tag" id="compare-cust-val">100</span></label>
+        <input type="range" id="compare-cust-slider" min="30" max="300" value="100" step="10" oninput="document.getElementById('compare-cust-val').textContent=this.value">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="runCompareSim()"><i class="ti ti-refresh"></i> 开始对比模拟</button>
+    </div>
+    <div class="result-grid" id="compare-results" style="margin-top:20px"></div>
+    <div class="chart-box"><canvas id="compareChart"></canvas></div>
+    <div class="insight-box" id="compare-insight" style="display:none"></div>
+  </div>
+
+  <!-- Card 4: M/M/1 排队模型 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-math-function"></i> M/M/1 排队模型：利用率的非线性陷阱</div>
+    <div class="card-desc">
+      服务利用率从 50% 提升到 90%，等待时间不是翻倍，而是暴涨 9 倍。<br>
+      拖动滑块感受一下：为什么医院、高速公路在「接近满载」时会突然崩溃。
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <label>到达率 λ = <span class="val-tag" id="mm1-lambda-val">4</span> 人/分钟</label>
+        <input type="range" id="mm1-lambda-slider" min="1" max="19" value="4" oninput="updateMM1()">
+      </div>
+      <div class="ctrl-item">
+        <label>服务率 μ = <span class="val-tag" id="mm1-mu-val">5</span> 人/分钟</label>
+        <input type="range" id="mm1-mu-slider" min="2" max="20" value="5" oninput="updateMM1()">
+      </div>
+    </div>
+    <div class="result-grid" id="mm1-results" style="margin-top:15px"></div>
+    <div class="chart-box"><canvas id="mm1Chart"></canvas></div>
+    <div class="insight-box" id="mm1-insight"></div>
+  </div>
+
+  <!-- Card 5: 等待心理学 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-brain"></i> 等待心理学：为什么 5 分钟能感觉像 20 分钟</div>
+    <div class="card-desc">
+      哈佛商学院研究发现，人对等待时间的感知受多种心理因素影响。勾选下面的因素，看看你的「感知等待时间」会变成多少。
+    </div>
+    <div class="ctrl-row" style="margin-bottom:15px">
+      <div class="ctrl-item">
+        <label>实际等待时间 <span class="val-tag" id="psych-time-val">10</span> 分钟</label>
+        <input type="range" id="psych-time-slider" min="1" max="60" value="10" oninput="updatePsych()">
+      </div>
+    </div>
+    <div class="factor-grid" id="factor-grid"></div>
+    <div class="perceived-bar">
+      <div class="pbar-label">实际时间</div>
+      <div class="pbar-track"><div class="pbar-fill actual" id="actual-bar"></div></div>
+    </div>
+    <div class="perceived-bar">
+      <div class="pbar-label">感知时间</div>
+      <div class="pbar-track"><div class="pbar-fill perceived" id="perceived-bar"></div></div>
+    </div>
+    <div class="result-grid" id="psych-results" style="margin-top:15px"></div>
+    <div class="insight-box" id="psych-insight"></div>
+  </div>
+
+  <!-- Card 6: 生活中的排队优化 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-bulb"></i> 排队论的生活启示</div>
+    <table class="compare-table">
+      <thead>
+        <tr><th>场景</th><th>常见做法</th><th>排队论建议</th><th>原因</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>超市结账</td>
+          <td class="bad">选人少的队</td>
+          <td class="good">看购物车里的商品数</td>
+          <td>服务时间方差比队长更重要</td>
+        </tr>
+        <tr>
+          <td>高速收费站</td>
+          <td class="bad">频繁变道</td>
+          <td class="good">选最左侧车道</td>
+          <td>多数人习惯靠右，左侧通常更快</td>
+        </tr>
+        <tr>
+          <td>医院挂号</td>
+          <td class="bad">现场排队</td>
+          <td class="good">预约制（蛇形队列思想）</td>
+          <td>将随机到达变为确定性到达，降低方差</td>
+        </tr>
+        <tr>
+          <td>餐厅等位</td>
+          <td class="bad">干等</td>
+          <td class="good">先点菜/看菜单</td>
+          <td>「已开始服务」让感知等待时间减少 15%</td>
+        </tr>
+        <tr>
+          <td>客服电话</td>
+          <td class="bad">反复挂断重拨</td>
+          <td class="good">等待（相当于换队悖论）</td>
+          <td>重拨 = 换队，期望等待时间更长</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  </div><!-- end container -->
+
+<script>
+let switchChart = null;
+let compareChart = null;
+let mm1Chart = null;
+
+// ========== Card 1: 你的队最慢 ==========
+function updateLuckParam() {
+  const n = parseInt(document.getElementById('luck-n-slider').value);
+  document.getElementById('luck-n-val').textContent = n;
+  const pct = ((1 - 1/n) * 100).toFixed(1);
+  document.getElementById('luck-insight').innerHTML =
+    `<strong>数学解释：</strong>N=${n} 条队伍，你在最快队列的概率 = 1/${n} = ${(100/n).toFixed(1)}%。` +
+    `<br>你有 <strong>${pct}%</strong> 的概率不在最快的队伍里。` +
+    `<br>再加上「确认偏误」— 你只记得慢的时候，不记得快的时候 — 所以你「总觉得」自己排的队最慢。`;
+}
+
+function runLuckSim() {
+  const n = parseInt(document.getElementById('luck-n-slider').value);
+  const result = QueueTheoryLogic.simulateQueueLuck(5000, n);
+  document.getElementById('luck-results').innerHTML =
+    `<div class="result-item green"><div class="label">排到最快队列</div><div class="value">${(result.fastestProb*100).toFixed(1)}%</div></div>` +
+    `<div class="result-item red"><div class="label">排到最慢队列</div><div class="value">${(result.slowestProb*100).toFixed(1)}%</div></div>` +
+    `<div class="result-item"><div class="label">不是最快的概率</div><div class="value">${(result.notFastestProb*100).toFixed(1)}%</div></div>` +
+    `<div class="result-item blue"><div class="label">理论值 1/N</div><div class="value">${(100/n).toFixed(1)}%</div></div>`;
+}
+</script>
+
+<script>
+// ========== Card 2: 换队悖论 ==========
+function runSwitchSim(trials) {
+  const n = parseInt(document.getElementById('switch-n-slider').value);
+  const len = parseInt(document.getElementById('switch-len-slider').value);
+  const r = QueueTheoryLogic.simulateSwitchParadox(trials, n, len);
+
+  document.getElementById('switch-results').innerHTML =
+    `<div class="result-item green"><div class="label">不换队赢</div><div class="value">${(r.stayWinRate*100).toFixed(1)}%</div></div>` +
+    `<div class="result-item red"><div class="label">换队赢</div><div class="value">${(r.switchWinRate*100).toFixed(1)}%</div></div>` +
+    `<div class="result-item"><div class="label">不换队平均耗时</div><div class="value">${r.stayAvg.toFixed(0)}s</div></div>` +
+    `<div class="result-item red"><div class="label">换队平均耗时</div><div class="value">${r.switchAvg.toFixed(0)}s</div></div>`;
+
+  // 绘制对比柱状图
+  const ctx = document.getElementById('switchChart').getContext('2d');
+  if (switchChart) switchChart.destroy();
+  switchChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['不换队赢', '换队赢', '平局'],
+      datasets: [{
+        label: '次数',
+        data: [r.stayWins, r.switchWins, r.ties],
+        backgroundColor: ['rgba(74,222,128,0.7)', 'rgba(248,113,113,0.7)', 'rgba(255,255,255,0.2)'],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: '不换队 vs 换队 胜负统计', color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.5)' } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)' } }
+      }
+    }
+  });
+}
+</script>
+
+<script>
+// ========== Card 3: 多队列 vs 蛇形队列 ==========
+function runCompareSim() {
+  const n = parseInt(document.getElementById('compare-n-slider').value);
+  const cust = parseInt(document.getElementById('compare-cust-slider').value);
+  const multi = QueueTheoryLogic.simulateMultiQueue(n, cust, 30);
+  const single = QueueTheoryLogic.simulateSingleQueue(n, cust, 30);
+
+  document.getElementById('compare-results').innerHTML =
+    `<div class="result-item red"><div class="label">多队列 平均等待</div><div class="value">${multi.avgWait.toFixed(1)}s</div></div>` +
+    `<div class="result-item green"><div class="label">蛇形队列 平均等待</div><div class="value">${single.avgWait.toFixed(1)}s</div></div>` +
+    `<div class="result-item red"><div class="label">多队列 最长等待</div><div class="value">${multi.maxWait.toFixed(0)}s</div></div>` +
+    `<div class="result-item green"><div class="label">蛇形队列 最长等待</div><div class="value">${single.maxWait.toFixed(0)}s</div></div>` +
+    `<div class="result-item"><div class="label">多队列 标准差</div><div class="value">${multi.stdDev.toFixed(1)}</div></div>` +
+    `<div class="result-item green"><div class="label">蛇形队列 标准差</div><div class="value">${single.stdDev.toFixed(1)}</div></div>`;
+
+  // 绘制等待时间分布对比
+  const ctx = document.getElementById('compareChart').getContext('2d');
+  if (compareChart) compareChart.destroy();
+
+  const maxVal = Math.max(multi.maxWait, single.maxWait);
+  const bucketCount = 25;
+  const bucketSize = Math.ceil(maxVal / bucketCount);
+  const labels = [];
+  const multiData = new Array(bucketCount).fill(0);
+  const singleData = new Array(bucketCount).fill(0);
+
+  for (let i = 0; i < bucketCount; i++) {
+    labels.push(i * bucketSize + 's');
+  }
+  for (const w of multi.waitTimes) {
+    const idx = Math.min(Math.floor(w / bucketSize), bucketCount - 1);
+    multiData[idx]++;
+  }
+  for (const w of single.waitTimes) {
+    const idx = Math.min(Math.floor(w / bucketSize), bucketCount - 1);
+    singleData[idx]++;
+  }
+
+  compareChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: '多队列', data: multiData, backgroundColor: 'rgba(248,113,113,0.5)', borderRadius: 3 },
+        { label: '蛇形队列', data: singleData, backgroundColor: 'rgba(74,222,128,0.5)', borderRadius: 3 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)' } },
+        title: { display: true, text: '等待时间分布对比', color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.4)', maxRotation: 45, autoSkip: true, maxTicksLimit: 12 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)' } }
+      }
+    }
+  });
+
+  const insight = document.getElementById('compare-insight');
+  insight.style.display = 'block';
+  const improvement = ((multi.avgWait - single.avgWait) / multi.avgWait * 100);
+  const fairness = ((multi.stdDev - single.stdDev) / multi.stdDev * 100);
+  insight.innerHTML = `<strong>结论：</strong>蛇形队列平均等待时间减少约 <strong>${improvement.toFixed(0)}%</strong>，` +
+    `等待时间标准差降低约 <strong>${fairness.toFixed(0)}%</strong>（更公平）。` +
+    `<br>这就是为什么银行、机场、迪士尼都采用蛇形排队 — 不是更快，而是<strong>更公平、方差更小</strong>。`;
+}
+</script>
+
+<script>
+// ========== Card 4: M/M/1 模型 ==========
+function updateMM1() {
+  const lambda = parseInt(document.getElementById('mm1-lambda-slider').value);
+  const mu = parseInt(document.getElementById('mm1-mu-slider').value);
+  document.getElementById('mm1-lambda-val').textContent = lambda;
+  document.getElementById('mm1-mu-val').textContent = mu;
+
+  const m = QueueTheoryLogic.mm1Metrics(lambda, mu);
+
+  if (lambda >= mu) {
+    document.getElementById('mm1-results').innerHTML =
+      `<div class="result-item red"><div class="label">系统状态</div><div class="value">崩溃</div></div>` +
+      `<div class="result-item red"><div class="label">利用率 ρ</div><div class="value">≥100%</div></div>` +
+      `<div class="result-item red"><div class="label">队列长度</div><div class="value">∞</div></div>` +
+      `<div class="result-item red"><div class="label">等待时间</div><div class="value">∞</div></div>`;
+    document.getElementById('mm1-insight').innerHTML =
+      `<strong>系统过载！</strong>到达率 ≥ 服务率时，队列会无限增长。这就是高速公路堵车、医院急诊爆满的数学本质。`;
+  } else {
+    const status = m.rho < 0.5 ? '空闲' : m.rho < 0.8 ? '正常' : m.rho < 0.95 ? '繁忙' : '危险';
+    const statusClass = m.rho < 0.5 ? 'green' : m.rho < 0.8 ? 'blue' : 'red';
+    document.getElementById('mm1-results').innerHTML =
+      `<div class="result-item ${statusClass}"><div class="label">系统状态</div><div class="value">${status}</div></div>` +
+      `<div class="result-item"><div class="label">利用率 ρ</div><div class="value">${(m.rho*100).toFixed(0)}%</div></div>` +
+      `<div class="result-item"><div class="label">平均排队人数</div><div class="value">${m.Lq.toFixed(1)}</div></div>` +
+      `<div class="result-item"><div class="label">平均等待时间</div><div class="value">${m.Wq.toFixed(2)}分</div></div>` +
+      `<div class="result-item"><div class="label">系统中总人数</div><div class="value">${m.L.toFixed(1)}</div></div>` +
+      `<div class="result-item"><div class="label">总逗留时间</div><div class="value">${m.W.toFixed(2)}分</div></div>`;
+    document.getElementById('mm1-insight').innerHTML =
+      `<strong>利特尔法则：</strong>L = λ × W → ${m.L.toFixed(1)} = ${lambda} × ${m.W.toFixed(2)}。` +
+      `<br>利用率 ${(m.rho*100).toFixed(0)}% 时，平均要排 ${m.Lq.toFixed(1)} 人、等 ${m.Wq.toFixed(1)} 分钟。` +
+      (m.rho > 0.8 ? `<br><strong>注意：</strong>利用率超过 80% 后，等待时间开始急剧上升！` : '');
+  }
+
+  // 绘制利用率 vs 等待时间曲线
+  drawMM1Chart(mu);
+}
+
+function drawMM1Chart(mu) {
+  const ctx = document.getElementById('mm1Chart').getContext('2d');
+  if (mm1Chart) mm1Chart.destroy();
+
+  const labels = [];
+  const waitData = [];
+  const queueData = [];
+  for (let rho = 0.05; rho < 0.99; rho += 0.05) {
+    const lam = rho * mu;
+    const m = QueueTheoryLogic.mm1Metrics(lam, mu);
+    labels.push((rho * 100).toFixed(0) + '%');
+    waitData.push(m.Wq);
+    queueData.push(m.Lq);
+  }
+
+  mm1Chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '平均等待时间（分钟）',
+          data: waitData,
+          borderColor: '#f87171',
+          backgroundColor: 'rgba(248,113,113,0.1)',
+          fill: true, tension: 0.4, pointRadius: 2
+        },
+        {
+          label: '平均排队人数',
+          data: queueData,
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251,191,36,0.1)',
+          fill: true, tension: 0.4, pointRadius: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)' } },
+        title: { display: true, text: '利用率 vs 等待时间（非线性爆炸）', color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.03)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          title: { display: true, text: '利用率 ρ', color: 'rgba(255,255,255,0.4)' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          title: { display: true, text: '数值', color: 'rgba(255,255,255,0.4)' }
+        }
+      }
+    }
+  });
+}
+</script>
+
+<script>
+// ========== Card 5: 等待心理学 ==========
+const psychFactors = [
+  { key: 'uncertain', label: '不知道要等多久', effect: '+40%', bad: true },
+  { key: 'bored', label: '无聊，没事做', effect: '+30%', bad: true },
+  { key: 'unfair', label: '有人插队/不公平', effect: '+50%', bad: true },
+  { key: 'anxious', label: '赶时间/焦虑', effect: '+35%', bad: true },
+  { key: 'progressBar', label: '有进度提示/叫号', effect: '-20%', bad: false },
+  { key: 'entertainment', label: '有手机/电视/杂志', effect: '-25%', bad: false },
+  { key: 'preService', label: '已开始服务（如先看菜单）', effect: '-15%', bad: false }
+];
+
+function initPsychFactors() {
+  const grid = document.getElementById('factor-grid');
+  grid.innerHTML = psychFactors.map(f =>
+    `<div class="factor-item" onclick="toggleFactor(this, '${f.key}')">` +
+    `<input type="checkbox" data-key="${f.key}">` +
+    `<div class="factor-check"><i class="ti ti-check" style="font-size:14px;display:none"></i></div>` +
+    `<div><div class="factor-text">${f.label}</div>` +
+    `<div class="factor-effect ${f.bad ? 'bad' : 'good'}">${f.effect} 感知时间</div></div></div>`
+  ).join('');
+  updatePsych();
+}
+
+function toggleFactor(el, key) {
+  el.classList.toggle('active');
+  const check = el.querySelector('input');
+  check.checked = !check.checked;
+  const icon = el.querySelector('.ti-check');
+  icon.style.display = check.checked ? 'block' : 'none';
+  updatePsych();
+}
+
+function updatePsych() {
+  const actual = parseInt(document.getElementById('psych-time-slider').value);
+  document.getElementById('psych-time-val').textContent = actual;
+
+  const factors = {};
+  document.querySelectorAll('#factor-grid input').forEach(inp => {
+    factors[inp.dataset.key] = inp.checked;
+  });
+
+  const perceived = QueueTheoryLogic.perceivedWaitTime(actual, factors);
+  const maxTime = actual * 2.8;
+  const actualPct = Math.min(100, (actual / maxTime) * 100);
+  const perceivedPct = Math.min(100, (perceived / maxTime) * 100);
+
+  document.getElementById('actual-bar').style.width = actualPct + '%';
+  document.getElementById('actual-bar').textContent = actual + '分钟';
+  document.getElementById('perceived-bar').style.width = perceivedPct + '%';
+  document.getElementById('perceived-bar').textContent = perceived.toFixed(1) + '分钟';
+
+  const ratio = (perceived / actual).toFixed(1);
+  const diff = perceived - actual;
+  document.getElementById('psych-results').innerHTML =
+    `<div class="result-item blue"><div class="label">实际等待</div><div class="value">${actual}分钟</div></div>` +
+    `<div class="result-item ${perceived > actual ? 'red' : 'green'}"><div class="label">感知等待</div><div class="value">${perceived.toFixed(1)}分钟</div></div>` +
+    `<div class="result-item"><div class="label">感知倍率</div><div class="value">${ratio}x</div></div>` +
+    `<div class="result-item ${diff > 0 ? 'red' : 'green'}"><div class="label">感知偏差</div><div class="value">${diff > 0 ? '+' : ''}${diff.toFixed(1)}分</div></div>`;
+
+  document.getElementById('psych-insight').innerHTML = perceived > actual
+    ? `你实际等了 <strong>${actual} 分钟</strong>，但感觉像等了 <strong>${perceived.toFixed(1)} 分钟</strong>（${ratio}倍）。` +
+      `<br>这就是为什么迪士尼在排队区放娱乐设施、海底捞等位时提供零食和美甲 — 它们在<strong>降低你的感知等待时间</strong>。`
+    : `你实际等了 <strong>${actual} 分钟</strong>，但感觉只等了 <strong>${perceived.toFixed(1)} 分钟</strong>。` +
+      `<br>有进度提示和娱乐的等待，感知时间会显著缩短。这就是好的排队体验设计的秘密。`;
+}
+
+// ========== 初始化 ==========
+updateLuckParam();
+updateMM1();
+initPsychFactors();
+</script>
+</body>
+</html>

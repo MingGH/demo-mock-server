@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>外卖几点下单最快？- 排队论与高峰期分析</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./takeout-peak-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+
+    .ctrl-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .ctrl-item { flex: 1; min-width: 180px; }
+    .ctrl-item label { display: block; color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 8px; }
+    .ctrl-item input[type=range] {
+      -webkit-appearance: none; width: 100%; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px;
+    }
+    .ctrl-item input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%;
+      background: #fbbf24; cursor: pointer; box-shadow: 0 0 10px rgba(251,191,36,0.5);
+    }
+    .val-tag { color: #fbbf24; font-weight: 600; }
+
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3);
+    }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center;
+    }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+
+    .chart-box { position: relative; height: 320px; margin-top: 15px; }
+
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+</style>
+
+    /* 时间选择器 */
+    .time-picker {
+      display: flex; align-items: center; gap: 15px; flex-wrap: wrap;
+    }
+    .time-input-group {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px 18px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .time-input-group.highlight {
+      border-color: rgba(251,191,36,0.4);
+      background: rgba(251,191,36,0.08);
+    }
+    .time-input-group .tag {
+      font-size: 12px; color: rgba(255,255,255,0.5);
+      min-width: 30px;
+    }
+    .time-input-group input[type=time] {
+      background: transparent; border: none; color: #fbbf24;
+      font-size: 1.3rem; font-weight: 700; font-family: inherit;
+      outline: none; width: 100px;
+    }
+    .time-input-group input[type=time]::-webkit-calendar-picker-indicator {
+      filter: invert(0.7);
+    }
+    .vs-badge {
+      font-size: 14px; color: rgba(255,255,255,0.3); font-weight: 700;
+    }
+
+    /* 时间轴标记 */
+    .timeline {
+      position: relative; height: 60px; margin: 20px 0;
+      background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden;
+    }
+    .timeline-bar {
+      position: absolute; top: 0; bottom: 0;
+      border-radius: 12px; transition: all 0.5s;
+    }
+    .timeline-label {
+      position: absolute; bottom: 5px; font-size: 11px;
+      color: rgba(255,255,255,0.5); transform: translateX(-50%);
+    }
+    .timeline-marker {
+      position: absolute; top: 5px; width: 3px; height: 30px;
+      border-radius: 2px; transition: left 0.3s;
+    }
+    .timeline-marker-label {
+      position: absolute; top: -18px; font-size: 11px; font-weight: 600;
+      transform: translateX(-50%); white-space: nowrap;
+    }
+
+    /* 推荐时段列表 */
+    .best-times-list {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px; margin-top: 15px;
+    }
+    .best-time-item {
+      background: rgba(0,0,0,0.2); border-radius: 10px; padding: 12px;
+      display: flex; align-items: center; gap: 10px;
+      border: 1px solid rgba(255,255,255,0.05);
+      transition: all 0.2s;
+    }
+    .best-time-item:first-child {
+      border-color: rgba(74,222,128,0.3);
+      background: rgba(74,222,128,0.05);
+    }
+    .best-time-item .rank {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); display: flex;
+      align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.5);
+      flex-shrink: 0;
+    }
+    .best-time-item:first-child .rank {
+      background: rgba(74,222,128,0.2); color: #4ade80;
+    }
+    .best-time-item .info { flex: 1; }
+    .best-time-item .time-label { font-size: 15px; font-weight: 600; color: #e4e4e4; }
+    .best-time-item .time-detail { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+
+    /* 堆叠条 */
+    .stacked-bar-container { margin: 15px 0; }
+    .stacked-bar-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .stacked-bar-label {
+      min-width: 60px; font-size: 13px; color: rgba(255,255,255,0.6); text-align: right;
+    }
+    .stacked-bar {
+      flex: 1; height: 32px; display: flex; border-radius: 8px; overflow: hidden;
+    }
+    .stacked-bar .seg {
+      height: 100%; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; color: rgba(0,0,0,0.7);
+      transition: width 0.5s;
+    }
+    .stacked-bar .seg-wait { background: #f87171; }
+    .stacked-bar .seg-prep { background: #fbbf24; }
+    .stacked-bar .seg-delivery { background: #60a5fa; }
+    .stacked-bar-total {
+      min-width: 60px; font-size: 13px; font-weight: 600; color: #e4e4e4;
+      text-align: left; padding-left: 8px;
+    }
+    .legend-row {
+      display: flex; gap: 20px; margin-top: 10px; flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 6px; font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+    .legend-dot {
+      width: 12px; height: 12px; border-radius: 3px;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .time-picker { flex-direction: column; align-items: stretch; }
+      .vs-badge { text-align: center; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-motorbike"></i> 外卖几点下单最快</h1>
+    <p>用排队论（M/M/c 模型）分析外卖平台的高峰期效应 — 提前 15 分钟下单，可能快 20 分钟到</p>
+  </div>
+
+  <!-- Card 1: 全天订单热力曲线 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-area-line"></i> 全天订单热力曲线</div>
+    <div class="card-desc">
+      外卖订单量在一天中呈现明显的波峰波谷。午高峰（11:30-12:30）和晚高峰（17:30-18:30）订单量是平时的 10-20 倍。<br>
+      下方曲线展示了每个时刻的订单到达率和对应的预计等待时间。
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <label>区域骑手数量 <span class="val-tag" id="curve-riders-val">500</span> 人</label>
+        <input type="range" id="curve-riders-slider" min="200" max="1000" value="500" step="50" oninput="updateCurve()">
+      </div>
+      <div class="ctrl-item">
+        <label>平均配送时间 <span class="val-tag" id="curve-delivery-val">25</span> 分钟</label>
+        <input type="range" id="curve-delivery-slider" min="15" max="45" value="25" step="5" oninput="updateCurve()">
+      </div>
+    </div>
+    <div class="chart-box" style="height:350px"><canvas id="dailyCurveChart"></canvas></div>
+    <div class="insight-box" id="curve-insight"></div>
+  </div>
+
+  <!-- Card 2: 两个时刻对比 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-arrows-exchange"></i> 下单时刻对比：早 15 分钟差多少？</div>
+    <div class="card-desc">
+      选择两个下单时刻，看看等待时间差多少。试试 11:45 vs 12:00，你会发现仅仅 15 分钟的差距，总等待时间可能差 10-20 分钟。
+    </div>
+    <div class="time-picker">
+      <div class="time-input-group highlight">
+        <span class="tag">早下单</span>
+        <input type="time" id="time1-input" value="11:45">
+      </div>
+      <span class="vs-badge">VS</span>
+      <div class="time-input-group">
+        <span class="tag">晚下单</span>
+        <input type="time" id="time2-input" value="12:00">
+      </div>
+      <button class="btn" onclick="runCompare()"><i class="ti ti-refresh"></i> 对比</button>
+    </div>
+    <div class="result-grid" id="compare-results" style="margin-top:20px"></div>
+    <div class="stacked-bar-container" id="compare-bars"></div>
+    <div class="insight-box" id="compare-insight" style="display:none"></div>
+  </div>
+
+  <!-- Card 3: 蒙特卡洛模拟 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-dice-5"></i> 蒙特卡洛模拟：你的外卖到底要等多久？</div>
+    <div class="card-desc">
+      同一时刻下单，每次等待时间都不一样（出餐快慢、骑手远近、路况好坏都是随机的）。<br>
+      模拟 2000 次下单，看看等待时间的分布 — 你可能 30 分钟就到，也可能等 1 小时。
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <label>下单时刻 <span class="val-tag" id="mc-time-val">12:00</span></label>
+        <input type="range" id="mc-time-slider" min="420" max="1320" value="720" step="15"
+          oninput="document.getElementById('mc-time-val').textContent=TakeoutPeakLogic.formatHour(this.value/60)">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="runMonteCarlo(2000)"><i class="ti ti-refresh"></i> 模拟 2000 次</button>
+      <button class="btn btn-secondary" onclick="runMonteCarlo(10000)"><i class="ti ti-flame"></i> 模拟 10000 次</button>
+    </div>
+    <div class="result-grid" id="mc-results" style="margin-top:20px"></div>
+    <div class="chart-box"><canvas id="mcChart"></canvas></div>
+  </div>
+
+  <!-- Card 4: 最佳下单时段推荐 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-clock-check"></i> 最佳下单时段推荐</div>
+    <div class="card-desc">
+      基于全天订单密度和骑手运力分析，这些时段下单等待时间最短。<br>
+      核心策略：避开高峰前 15-30 分钟下单，利用「高峰前的空窗期」。
+    </div>
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn" onclick="showBestTimes()"><i class="ti ti-sparkles"></i> 生成推荐</button>
+    </div>
+    <div class="best-times-list" id="best-times-list" style="margin-top:15px"></div>
+    <div class="insight-box" id="best-insight" style="display:none"></div>
+  </div>
+
+  <!-- Card 5: 为什么高峰期等待是非线性的 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-math-function"></i> 为什么高峰期等待是非线性爆炸的？</div>
+    <div class="card-desc">
+      订单量增加 10%，等待时间可能增加 50%。这不是外卖平台的问题，是排队论的数学规律。<br>
+      拖动滑块感受：当骑手利用率从 80% 升到 95% 时，等待时间如何暴涨。
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <label>订单到达率 <span class="val-tag" id="nonlinear-lambda-val">8</span> 单/分钟</label>
+        <input type="range" id="nonlinear-lambda-slider" min="1" max="19" value="8" oninput="updateNonlinear()">
+      </div>
+      <div class="ctrl-item">
+        <label>骑手数量 <span class="val-tag" id="nonlinear-c-val">500</span> 人</label>
+        <input type="range" id="nonlinear-c-slider" min="100" max="1000" value="500" step="50" oninput="updateNonlinear()">
+      </div>
+    </div>
+    <div class="result-grid" id="nonlinear-results" style="margin-top:15px"></div>
+    <div class="chart-box"><canvas id="nonlinearChart"></canvas></div>
+    <div class="insight-box" id="nonlinear-insight"></div>
+  </div>
+
+  <!-- Card 6: 实用建议 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-bulb"></i> 外卖下单实用策略</div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="padding:12px;text-align:left;font-size:13px;color:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.06);">策略</th>
+          <th style="padding:12px;text-align:left;font-size:13px;color:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.06);">原因</th>
+          <th style="padding:12px;text-align:center;font-size:13px;color:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.06);">预计节省</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:12px;font-size:13px;color:#4ade80;border-bottom:1px solid rgba(255,255,255,0.04);">午餐 11:30 前下单</td>
+          <td style="padding:12px;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.04);">避开 11:45-12:30 的订单洪峰，骑手利用率低</td>
+          <td style="padding:12px;font-size:13px;color:#fbbf24;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);">10-20 分钟</td>
+        </tr>
+        <tr>
+          <td style="padding:12px;font-size:13px;color:#4ade80;border-bottom:1px solid rgba(255,255,255,0.04);">晚餐 17:15 前下单</td>
+          <td style="padding:12px;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.04);">晚高峰比午高峰持续更久，提前量要更大</td>
+          <td style="padding:12px;font-size:13px;color:#fbbf24;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);">10-15 分钟</td>
+        </tr>
+        <tr>
+          <td style="padding:12px;font-size:13px;color:#4ade80;border-bottom:1px solid rgba(255,255,255,0.04);">选近距离商家</td>
+          <td style="padding:12px;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.04);">配送时间短 → 骑手周转快 → 等待骑手时间短</td>
+          <td style="padding:12px;font-size:13px;color:#fbbf24;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);">5-10 分钟</td>
+        </tr>
+        <tr>
+          <td style="padding:12px;font-size:13px;color:#4ade80;border-bottom:1px solid rgba(255,255,255,0.04);">避开「网红店」</td>
+          <td style="padding:12px;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.04);">出餐慢是高峰期最大的瓶颈，网红店出餐更慢</td>
+          <td style="padding:12px;font-size:13px;color:#fbbf24;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);">10-30 分钟</td>
+        </tr>
+        <tr>
+          <td style="padding:12px;font-size:13px;color:#4ade80;">预约单（定时送达）</td>
+          <td style="padding:12px;font-size:13px;color:rgba(255,255,255,0.7);">平台可以提前调度骑手，相当于「蛇形排队」优化</td>
+          <td style="padding:12px;font-size:13px;color:#fbbf24;text-align:center;">更准时</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+let dailyCurveChart = null;
+let mcChart = null;
+let nonlinearChart = null;
+
+// ========== Card 1: 全天曲线 ==========
+function updateCurve() {
+  const riders = parseInt(document.getElementById('curve-riders-slider').value);
+  const delivery = parseInt(document.getElementById('curve-delivery-slider').value);
+  document.getElementById('curve-riders-val').textContent = riders;
+  document.getElementById('curve-delivery-val').textContent = delivery;
+
+  const curve = TakeoutPeakLogic.generateDailyCurve(riders, delivery, 10);
+  // 只显示 6:00 - 23:00
+  const filtered = curve.filter(p => p.hour >= 6 && p.hour <= 23);
+
+  const labels = filtered.map(p => TakeoutPeakLogic.formatHour(p.hour));
+  const totalData = filtered.map(p => p.totalTime);
+  const lambdaData = filtered.map(p => p.lambda);
+  const utilData = filtered.map(p => p.utilization * 100);
+
+  const ctx = document.getElementById('dailyCurveChart').getContext('2d');
+  if (dailyCurveChart) dailyCurveChart.destroy();
+
+  dailyCurveChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '预计总等待（分钟）',
+          data: totalData,
+          borderColor: '#f87171',
+          backgroundColor: 'rgba(248,113,113,0.1)',
+          fill: true, tension: 0.4, pointRadius: 0, yAxisID: 'y',
+          borderWidth: 2
+        },
+        {
+          label: '订单到达率（单/分钟）',
+          data: lambdaData,
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251,191,36,0.05)',
+          fill: true, tension: 0.4, pointRadius: 0, yAxisID: 'y1',
+          borderWidth: 2, borderDash: [5, 3]
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)', usePointStyle: true } },
+        title: { display: true, text: '全天外卖等待时间 & 订单密度', color: 'rgba(255,255,255,0.6)', font: { size: 13 } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.datasetIndex === 0) return `等待: ${ctx.parsed.y.toFixed(1)} 分钟`;
+              return `订单率: ${ctx.parsed.y.toFixed(1)} 单/分钟`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.03)' },
+          ticks: { color: 'rgba(255,255,255,0.4)', maxRotation: 45, autoSkip: true, maxTicksLimit: 18 }
+        },
+        y: {
+          type: 'linear', position: 'left',
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: '#f87171' },
+          title: { display: true, text: '等待时间（分钟）', color: '#f87171' }
+        },
+        y1: {
+          type: 'linear', position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: { color: '#fbbf24' },
+          title: { display: true, text: '订单率（单/分钟）', color: '#fbbf24' }
+        }
+      }
+    }
+  });
+
+  // 找峰值
+  const peak = filtered.reduce((max, p) => p.totalTime > max.totalTime ? p : max, filtered[0]);
+  const valley = filtered.reduce((min, p) => p.totalTime < min.totalTime ? p : min, filtered[0]);
+  document.getElementById('curve-insight').innerHTML =
+    `<strong>全天等待时间分析：</strong>` +
+    `最长等待出现在 <strong>${TakeoutPeakLogic.formatHour(peak.hour)}</strong>（约 ${peak.totalTime.toFixed(0)} 分钟），` +
+    `最短等待在 <strong>${TakeoutPeakLogic.formatHour(valley.hour)}</strong>（约 ${valley.totalTime.toFixed(0)} 分钟）。` +
+    `<br>高峰期等待是低谷期的 <strong>${(peak.totalTime / valley.totalTime).toFixed(1)} 倍</strong>。` +
+    `提前 15-30 分钟下单，就能避开最拥挤的时段。`;
+}
+
+// ========== Card 2: 时刻对比 ==========
+function runCompare() {
+  const t1 = document.getElementById('time1-input').value;
+  const t2 = document.getElementById('time2-input').value;
+  const [h1, m1] = t1.split(':').map(Number);
+  const [h2, m2] = t2.split(':').map(Number);
+  const hour1 = h1 + m1 / 60;
+  const hour2 = h2 + m2 / 60;
+
+  const riders = parseInt(document.getElementById('curve-riders-slider').value);
+  const delivery = parseInt(document.getElementById('curve-delivery-slider').value);
+
+  const cmp = TakeoutPeakLogic.compareOrderTimes(hour1, hour2, riders, delivery);
+
+  const saved = cmp.timeSaved;
+  const savedAbs = Math.abs(saved);
+  const faster = saved > 0 ? t1 : t2;
+  const slower = saved > 0 ? t2 : t1;
+
+  document.getElementById('compare-results').innerHTML =
+    `<div class="result-item green"><div class="label">${t1} 总等待</div><div class="value">${cmp.order1.totalTime.toFixed(0)}分</div></div>` +
+    `<div class="result-item red"><div class="label">${t2} 总等待</div><div class="value">${cmp.order2.totalTime.toFixed(0)}分</div></div>` +
+    `<div class="result-item ${saved > 0 ? 'green' : 'red'}"><div class="label">时间差</div><div class="value">${savedAbs.toFixed(0)}分</div></div>` +
+    `<div class="result-item blue"><div class="label">快了</div><div class="value">${Math.abs(cmp.percentFaster).toFixed(0)}%</div></div>`;
+
+  // 堆叠条
+  const maxTotal = Math.max(cmp.order1.totalTime, cmp.order2.totalTime);
+  function barHTML(label, order) {
+    const wPct = (order.waitTime / maxTotal * 100).toFixed(1);
+    const pPct = (order.prepTime / maxTotal * 100).toFixed(1);
+    const dPct = (order.deliveryTime / maxTotal * 100).toFixed(1);
+    return `<div class="stacked-bar-row">
+      <div class="stacked-bar-label">${label}</div>
+      <div class="stacked-bar">
+        <div class="seg seg-wait" style="width:${wPct}%">${order.waitTime.toFixed(0)}分</div>
+        <div class="seg seg-prep" style="width:${pPct}%">${order.prepTime.toFixed(0)}分</div>
+        <div class="seg seg-delivery" style="width:${dPct}%">${order.deliveryTime.toFixed(0)}分</div>
+      </div>
+      <div class="stacked-bar-total">${order.totalTime.toFixed(0)}分钟</div>
+    </div>`;
+  }
+  document.getElementById('compare-bars').innerHTML =
+    barHTML(t1, cmp.order1) + barHTML(t2, cmp.order2) +
+    `<div class="legend-row">
+      <div class="legend-item"><div class="legend-dot" style="background:#f87171"></div>等骑手</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div>商家出餐</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>骑手配送</div>
+    </div>`;
+
+  const insight = document.getElementById('compare-insight');
+  insight.style.display = 'block';
+  if (savedAbs < 1) {
+    insight.innerHTML = `这两个时刻等待时间差不多，都不在高峰期的陡峭区间。试试对比 <strong>11:30 vs 12:00</strong> 看更明显的差异。`;
+  } else {
+    insight.innerHTML =
+      `<strong>${faster}</strong> 下单比 <strong>${slower}</strong> 快了约 <strong>${savedAbs.toFixed(0)} 分钟</strong>（${Math.abs(cmp.percentFaster).toFixed(0)}%）。` +
+      `<br>高峰期的等待时间增长是<strong>非线性</strong>的 — 订单量多 10%，等待可能多 30%。` +
+      `<br>这就是为什么「提前 15 分钟下单」效果这么显著。`;
+  }
+}
+
+// ========== Card 3: 蒙特卡洛 ==========
+function runMonteCarlo(trials) {
+  const minute = parseInt(document.getElementById('mc-time-slider').value);
+  const hour = minute / 60;
+  const riders = parseInt(document.getElementById('curve-riders-slider').value);
+  const delivery = parseInt(document.getElementById('curve-delivery-slider').value);
+  const timeLabel = TakeoutPeakLogic.formatHour(hour);
+
+  const mc = TakeoutPeakLogic.monteCarloWait(hour, riders, delivery, trials);
+
+  document.getElementById('mc-results').innerHTML =
+    `<div class="result-item"><div class="label">平均等待</div><div class="value">${mc.avg.toFixed(0)}分</div></div>` +
+    `<div class="result-item blue"><div class="label">中位数</div><div class="value">${mc.median.toFixed(0)}分</div></div>` +
+    `<div class="result-item red"><div class="label">P90（运气差）</div><div class="value">${mc.p90.toFixed(0)}分</div></div>` +
+    `<div class="result-item green"><div class="label">最快</div><div class="value">${mc.min.toFixed(0)}分</div></div>` +
+    `<div class="result-item red"><div class="label">最慢</div><div class="value">${mc.max.toFixed(0)}分</div></div>` +
+    `<div class="result-item"><div class="label">标准差</div><div class="value">${mc.stdDev.toFixed(0)}分</div></div>`;
+
+  // 直方图
+  const bucketCount = 30;
+  const bucketSize = Math.ceil(mc.max / bucketCount);
+  const buckets = new Array(bucketCount).fill(0);
+  const labels = [];
+  for (let i = 0; i < bucketCount; i++) {
+    labels.push(i * bucketSize + '分');
+    for (const t of mc.times) {
+      const idx = Math.min(Math.floor(t / bucketSize), bucketCount - 1);
+      if (idx === i) buckets[i]++;
+    }
+  }
+  // 重新计算（上面的循环有问题，修正）
+  buckets.fill(0);
+  for (const t of mc.times) {
+    const idx = Math.min(Math.floor(t / bucketSize), bucketCount - 1);
+    buckets[idx]++;
+  }
+
+  const ctx = document.getElementById('mcChart').getContext('2d');
+  if (mcChart) mcChart.destroy();
+  mcChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: `${timeLabel} 下单等待时间分布（${trials}次模拟）`,
+        data: buckets,
+        backgroundColor: buckets.map((_, i) => {
+          const t = i * bucketSize;
+          if (t < mc.median) return 'rgba(74,222,128,0.6)';
+          if (t < mc.p90) return 'rgba(251,191,36,0.6)';
+          return 'rgba(248,113,113,0.6)';
+        }),
+        borderRadius: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)' } },
+        title: { display: true, text: `${timeLabel} 下单 — 等待时间概率分布`, color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.4)', maxRotation: 45, autoSkip: true, maxTicksLimit: 15 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)' } }
+      }
+    }
+  });
+}
+
+// ========== Card 4: 最佳时段 ==========
+function showBestTimes() {
+  const riders = parseInt(document.getElementById('curve-riders-slider').value);
+  const delivery = parseInt(document.getElementById('curve-delivery-slider').value);
+  const best = TakeoutPeakLogic.findBestOrderTimes(riders, delivery);
+
+  document.getElementById('best-times-list').innerHTML = best.map((b, i) =>
+    `<div class="best-time-item">
+      <div class="rank">${i + 1}</div>
+      <div class="info">
+        <div class="time-label">${b.label}</div>
+        <div class="time-detail">约 ${b.totalTime.toFixed(0)} 分钟 · 利用率 ${(b.utilization * 100).toFixed(0)}%</div>
+      </div>
+    </div>`
+  ).join('');
+
+  const insight = document.getElementById('best-insight');
+  insight.style.display = 'block';
+  insight.innerHTML =
+    `<strong>最佳下单时段：</strong>${best[0].label}（约 ${best[0].totalTime.toFixed(0)} 分钟）。` +
+    `<br>午餐建议在 <strong>11:00-11:30</strong> 下单，晚餐建议在 <strong>17:00-17:15</strong> 下单。` +
+    `<br>核心原理：高峰前骑手利用率低（${(best[0].utilization * 100).toFixed(0)}%），商家也不忙，出餐快、配送快、等骑手时间短，三重优势叠加。`;
+}
+
+// ========== Card 5: 非线性爆炸 ==========
+function updateNonlinear() {
+  const lambda = parseInt(document.getElementById('nonlinear-lambda-slider').value);
+  const c = parseInt(document.getElementById('nonlinear-c-slider').value);
+  document.getElementById('nonlinear-lambda-val').textContent = lambda;
+  document.getElementById('nonlinear-c-val').textContent = c;
+
+  const mu = 1 / 25; // 固定配送时间25分钟
+  const m = TakeoutPeakLogic.mmcMetrics(lambda, mu, c);
+
+  if (m.utilization >= 1) {
+    document.getElementById('nonlinear-results').innerHTML =
+      `<div class="result-item red"><div class="label">系统状态</div><div class="value">过载</div></div>` +
+      `<div class="result-item red"><div class="label">骑手利用率</div><div class="value">≥100%</div></div>` +
+      `<div class="result-item red"><div class="label">等待时间</div><div class="value">无限</div></div>` +
+      `<div class="result-item red"><div class="label">排队订单</div><div class="value">爆满</div></div>`;
+  } else {
+    const status = m.utilization < 0.5 ? '空闲' : m.utilization < 0.8 ? '正常' : m.utilization < 0.95 ? '繁忙' : '危险';
+    const cls = m.utilization < 0.5 ? 'green' : m.utilization < 0.8 ? 'blue' : 'red';
+    document.getElementById('nonlinear-results').innerHTML =
+      `<div class="result-item ${cls}"><div class="label">系统状态</div><div class="value">${status}</div></div>` +
+      `<div class="result-item"><div class="label">骑手利用率</div><div class="value">${(m.utilization*100).toFixed(0)}%</div></div>` +
+      `<div class="result-item"><div class="label">等骑手时间</div><div class="value">${m.waitTime.toFixed(1)}分</div></div>` +
+      `<div class="result-item"><div class="label">排队订单数</div><div class="value">${m.queueLength.toFixed(1)}</div></div>`;
+  }
+
+  // 绘制利用率 vs 等待时间曲线
+  const labels = [];
+  const waitData = [];
+  const queueData = [];
+  for (let rho = 0.05; rho < 0.99; rho += 0.03) {
+    const lam = rho * c * mu;
+    const met = TakeoutPeakLogic.mmcMetrics(lam, mu, c);
+    labels.push((rho * 100).toFixed(0) + '%');
+    waitData.push(isFinite(met.waitTime) ? met.waitTime : null);
+    queueData.push(isFinite(met.queueLength) ? met.queueLength : null);
+  }
+
+  const ctx = document.getElementById('nonlinearChart').getContext('2d');
+  if (nonlinearChart) nonlinearChart.destroy();
+  nonlinearChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '等骑手时间（分钟）',
+          data: waitData,
+          borderColor: '#f87171',
+          backgroundColor: 'rgba(248,113,113,0.1)',
+          fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2
+        },
+        {
+          label: '排队订单数',
+          data: queueData,
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251,191,36,0.05)',
+          fill: true, tension: 0.4, pointRadius: 2, borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)' } },
+        title: { display: true, text: '骑手利用率 vs 等待时间（非线性爆炸）', color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.03)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          title: { display: true, text: '骑手利用率', color: 'rgba(255,255,255,0.4)' }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' }
+        }
+      }
+    }
+  });
+
+  document.getElementById('nonlinear-insight').innerHTML = m.utilization >= 1
+    ? `<strong>系统过载！</strong>订单到达速度超过骑手处理能力，队列无限增长。这就是高峰期外卖「爆单」的数学本质。`
+    : `<strong>当前利用率 ${(m.utilization*100).toFixed(0)}%：</strong>` +
+      (m.utilization > 0.9
+        ? `已进入危险区！等待时间开始急剧上升。再多 10% 的订单就可能导致系统崩溃。`
+        : m.utilization > 0.7
+          ? `系统较忙，等待时间开始明显增加。这是高峰期的典型状态。`
+          : `系统空闲，等待时间很短。这就是错峰下单的优势。`);
+}
+
+// ========== 初始化 ==========
+updateCurve();
+updateNonlinear();
+</script>
+</body>
+</html>

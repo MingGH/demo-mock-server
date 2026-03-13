@@ -15,19 +15,19 @@ const TakeoutPeakLogic = (function () {
     const rates = new Array(24 * 60).fill(0);
     for (let m = 0; m < 24 * 60; m++) {
       const hour = m / 60;
-      // 基础订单率
-      let rate = 0.5;
-      // 午高峰：以 12:00 为中心的高斯分布
-      rate += 18 * gaussian(hour, 12.0, 0.6);
-      // 晚高峰：以 18:00 为中心的高斯分布
-      rate += 14 * gaussian(hour, 18.0, 0.7);
-      // 下午茶小高峰
-      rate += 4 * gaussian(hour, 15.0, 0.8);
+      // 模拟一个商圈的订单到达率（单/分钟）
+      let rate = 0.1;
+      // 午高峰：以 12:10 为中心，窄而尖（sigma=0.4）
+      rate += 3.2 * gaussian(hour, 12.17, 0.4);
+      // 晚高峰：以 18:10 为中心
+      rate += 2.6 * gaussian(hour, 18.17, 0.45);
+      // 下午茶
+      rate += 0.5 * gaussian(hour, 15.0, 0.8);
       // 夜宵
-      rate += 5 * gaussian(hour, 21.5, 1.0);
+      rate += 0.8 * gaussian(hour, 21.5, 1.0);
       // 早餐
-      rate += 3 * gaussian(hour, 8.0, 0.6);
-      rates[m] = Math.max(0.1, rate);
+      rate += 0.5 * gaussian(hour, 8.0, 0.6);
+      rates[m] = Math.max(0.02, rate);
     }
     return rates;
   }
@@ -112,24 +112,24 @@ const TakeoutPeakLogic = (function () {
 
     const metrics = mmcMetrics(lambda, mu, numRiders);
 
-    // 商家出餐时间：高峰期更长
-    const basePrepTime = 10; // 基础出餐10分钟
-    const peakFactor = Math.min(2.5, 1 + metrics.utilization * 1.5);
+    // 商家出餐时间：高峰期更长（商家也在排队处理订单）
+    const basePrepTime = 8; // 基础出餐8分钟
+    const peakFactor = 1 + metrics.utilization * metrics.utilization * 4;
     const prepTime = basePrepTime * peakFactor;
 
     // 配送时间：高峰期路上更堵
     const baseDelivery = avgDeliveryMin;
-    const trafficFactor = 1 + metrics.utilization * 0.3;
+    const trafficFactor = 1 + metrics.utilization * 0.5;
     const deliveryTime = baseDelivery * trafficFactor;
 
     // 排队等待骑手时间
     const waitTime = metrics.waitTime;
 
     return {
-      waitTime: isFinite(waitTime) ? waitTime : 60,
+      waitTime: isFinite(waitTime) ? waitTime : 30,
       prepTime,
       deliveryTime,
-      totalTime: (isFinite(waitTime) ? waitTime : 60) + prepTime + deliveryTime,
+      totalTime: (isFinite(waitTime) ? waitTime : 30) + prepTime + deliveryTime,
       utilization: metrics.utilization,
       lambda,
       queueLength: isFinite(metrics.queueLength) ? metrics.queueLength : 999
@@ -153,14 +153,14 @@ const TakeoutPeakLogic = (function () {
       const lambda = rates[m];
       const metrics = mmcMetrics(lambda, mu, numRiders);
 
-      const basePrepTime = 10;
-      const peakFactor = Math.min(2.5, 1 + metrics.utilization * 1.5);
+      const basePrepTime = 8;
+      const peakFactor = 1 + metrics.utilization * metrics.utilization * 4;
       const prepTime = basePrepTime * peakFactor;
 
-      const trafficFactor = 1 + metrics.utilization * 0.3;
+      const trafficFactor = 1 + metrics.utilization * 0.5;
       const deliveryTime = avgDeliveryMin * trafficFactor;
 
-      const waitTime = isFinite(metrics.waitTime) ? metrics.waitTime : 60;
+      const waitTime = isFinite(metrics.waitTime) ? metrics.waitTime : 30;
 
       results.push({
         hour,
@@ -211,16 +211,16 @@ const TakeoutPeakLogic = (function () {
     const times = [];
     for (let i = 0; i < trials; i++) {
       // 出餐时间：指数分布
-      const basePrepTime = 10;
-      const peakFactor = Math.min(2.5, 1 + metrics.utilization * 1.5);
+      const basePrepTime = 8;
+      const peakFactor = 1 + metrics.utilization * metrics.utilization * 4;
       const prepTime = exponentialRandom(basePrepTime * peakFactor);
 
       // 等待骑手时间：指数分布
-      const meanWait = isFinite(metrics.waitTime) ? metrics.waitTime : 60;
+      const meanWait = isFinite(metrics.waitTime) ? metrics.waitTime : 30;
       const waitTime = exponentialRandom(Math.max(0.5, meanWait));
 
       // 配送时间
-      const trafficFactor = 1 + metrics.utilization * 0.3;
+      const trafficFactor = 1 + metrics.utilization * 0.5;
       const deliveryTime = exponentialRandom(avgDeliveryMin * trafficFactor);
 
       times.push(prepTime + waitTime + deliveryTime);

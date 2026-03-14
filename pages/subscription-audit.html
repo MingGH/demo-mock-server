@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>订阅审计器 — 你每月在为多少「不用的服务」付费？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./subscription-audit-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 15px; }
+    .btn-danger { background: linear-gradient(135deg, #f87171, #ef4444); color: #fff; }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 320px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+
+    /* 订阅列表 */
+    .sub-list { margin-top: 15px; }
+    .sub-item {
+      display: flex; align-items: center; gap: 12px; padding: 12px 15px;
+      background: rgba(0,0,0,0.15); border-radius: 10px; margin-bottom: 8px;
+      border: 1px solid rgba(255,255,255,0.05); transition: all 0.2s;
+    }
+    .sub-item:hover { border-color: rgba(255,255,255,0.1); }
+    .sub-item .sub-icon { font-size: 20px; color: rgba(255,255,255,0.4); width: 28px; text-align: center; }
+    .sub-item .sub-info { flex: 1; }
+    .sub-item .sub-name { font-size: 14px; font-weight: 600; }
+    .sub-item .sub-meta { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    .sub-item .sub-price { font-size: 15px; font-weight: 700; color: #fbbf24; min-width: 70px; text-align: right; }
+    .sub-item .sub-actions { display: flex; gap: 6px; }
+
+    /* 使用频率滑块 */
+    .usage-slider-wrap { display: flex; align-items: center; gap: 10px; min-width: 180px; }
+    .usage-slider-wrap input[type=range] {
+      -webkit-appearance: none; flex: 1; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px;
+    }
+    .usage-slider-wrap input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
+      background: #fbbf24; cursor: pointer; box-shadow: 0 0 8px rgba(251,191,36,0.4);
+    }
+    .usage-val { font-size: 12px; color: #fbbf24; min-width: 40px; text-align: center; font-weight: 600; }
+
+    /* 预设服务选择 */
+    .preset-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 8px; margin-top: 12px;
+    }
+    .preset-chip {
+      padding: 8px 12px; border-radius: 8px; font-size: 12px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer; transition: all 0.2s; text-align: center;
+      display: flex; align-items: center; gap: 6px; justify-content: center;
+    }
+    .preset-chip:hover { border-color: rgba(251,191,36,0.3); background: rgba(251,191,36,0.08); }
+    .preset-chip.selected { border-color: #fbbf24; background: rgba(251,191,36,0.15); color: #fbbf24; }
+    .preset-chip .chip-price { color: rgba(255,255,255,0.4); font-size: 11px; }
+
+    /* 审计报告 */
+    .report-bar {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .report-bar-label { min-width: 90px; font-size: 13px; color: rgba(255,255,255,0.6); text-align: right; }
+    .report-bar-track { flex: 1; height: 28px; background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden; position: relative; }
+    .report-bar-fill { height: 100%; border-radius: 8px; transition: width 0.5s; display: flex; align-items: center; padding: 0 10px; font-size: 11px; font-weight: 600; }
+    .report-bar-fill.used { background: linear-gradient(90deg, #4ade80, #22c55e); color: rgba(0,0,0,0.7); }
+    .report-bar-fill.wasted { background: linear-gradient(90deg, #f87171, #ef4444); color: #fff; }
+    .report-bar-amount { min-width: 80px; font-size: 13px; color: rgba(255,255,255,0.5); text-align: left; padding-left: 8px; }
+
+    /* 等价物 */
+    .equiv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 15px; }
+    .equiv-item {
+      background: rgba(0,0,0,0.2); border-radius: 10px; padding: 15px; text-align: center;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .equiv-item .equiv-icon { font-size: 24px; color: rgba(255,255,255,0.3); margin-bottom: 6px; }
+    .equiv-item .equiv-count { font-size: 1.4rem; font-weight: 700; color: #f87171; }
+    .equiv-item .equiv-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+
+    /* 健康度仪表盘 */
+    .gauge-wrap { display: flex; justify-content: center; margin: 20px 0; }
+    .gauge-circle {
+      width: 160px; height: 160px; border-radius: 50%; position: relative;
+      display: flex; align-items: center; justify-content: center; flex-direction: column;
+    }
+    .gauge-score { font-size: 3rem; font-weight: 700; }
+    .gauge-label { font-size: 13px; color: rgba(255,255,255,0.5); margin-top: 4px; }
+
+    /* 自定义输入 */
+    .custom-input-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .custom-input-row input, .custom-input-row select {
+      padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.3); color: #e4e4e4; font-size: 13px; font-family: inherit;
+      outline: none; transition: border-color 0.2s;
+    }
+    .custom-input-row input:focus, .custom-input-row select:focus { border-color: rgba(251,191,36,0.4); }
+    .custom-input-row input::placeholder { color: rgba(255,255,255,0.3); }
+
+    /* 分类筛选 */
+    .cat-filter { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+    .cat-tag {
+      padding: 5px 12px; border-radius: 15px; font-size: 12px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+      cursor: pointer; transition: all 0.2s; color: rgba(255,255,255,0.5);
+    }
+    .cat-tag:hover, .cat-tag.active { border-color: #fbbf24; color: #fbbf24; background: rgba(251,191,36,0.1); }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .sub-item { flex-wrap: wrap; }
+      .usage-slider-wrap { min-width: 100%; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-credit-card-off"></i> 订阅审计器</h1>
+    <p>你每月在为多少「不用的服务」付费？用遗忘曲线和沉没成本模型，算出你每年浪费了多少钱</p>
+  </div>
+
+  <!-- Card 1: 添加你的订阅 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-list-check"></i> 添加你的订阅</div>
+    <div class="card-desc">
+      点击下方常见服务快速添加，或手动输入自定义订阅。添加后拖动滑块设置你每月实际使用的天数。
+    </div>
+    <div class="cat-filter" id="cat-filter"></div>
+    <div class="preset-grid" id="preset-grid"></div>
+    <div class="custom-input-row">
+      <input type="text" id="custom-name" placeholder="自定义服务名" style="flex:1;min-width:120px;">
+      <input type="number" id="custom-price" placeholder="月费（元）" style="width:110px;" min="0">
+      <button class="btn btn-sm btn-secondary" onclick="addCustomSub()"><i class="ti ti-plus"></i> 添加</button>
+    </div>
+  </div>
+
+  <!-- Card 2: 我的订阅清单 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-receipt"></i> 我的订阅清单</div>
+    <div class="card-desc">
+      调整每个订阅的月使用天数（0 = 完全不用，30 = 每天都用）。设置完成后点击「生成审计报告」。
+    </div>
+    <div class="sub-list" id="sub-list">
+      <div style="text-align:center;color:rgba(255,255,255,0.3);padding:30px;font-size:13px;">
+        还没有添加任何订阅，请在上方选择或输入
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="generateReport()"><i class="ti ti-report-analytics"></i> 生成审计报告</button>
+      <button class="btn btn-secondary" onclick="clearAll()"><i class="ti ti-trash"></i> 清空</button>
+      <button class="btn btn-secondary" onclick="loadExample()"><i class="ti ti-sparkles"></i> 加载示例</button>
+    </div>
+  </div>
+
+  <!-- Card 3: 审计报告 -->
+  <div class="card" id="report-card" style="display:none;">
+    <div class="card-title"><i class="ti ti-report-analytics"></i> 审计报告</div>
+    <div class="result-grid" id="report-summary"></div>
+    <div id="report-bars"></div>
+    <div class="insight-box" id="report-insight"></div>
+  </div>
+
+  <!-- Card 4: 浪费等价物 -->
+  <div class="card" id="equiv-card" style="display:none;">
+    <div class="card-title"><i class="ti ti-coin"></i> 你的浪费等于...</div>
+    <div class="card-desc">把浪费的钱换算成你熟悉的东西，感受一下。</div>
+    <div class="equiv-grid" id="equiv-grid"></div>
+  </div>
+
+  <!-- Card 5: 订阅健康度 -->
+  <div class="card" id="gauge-card" style="display:none;">
+    <div class="card-title"><i class="ti ti-heart-rate-monitor"></i> 订阅健康度</div>
+    <div class="gauge-wrap">
+      <div class="gauge-circle" id="gauge-circle">
+        <div class="gauge-score" id="gauge-score">--</div>
+        <div class="gauge-label">健康指数</div>
+      </div>
+    </div>
+    <div class="insight-box" id="gauge-insight"></div>
+  </div>
+
+  <!-- Card 6: 遗忘曲线 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-line"></i> 订阅遗忘曲线</div>
+    <div class="card-desc">
+      艾宾浩斯遗忘曲线告诉我们：新订阅的使用频率会随时间指数衰减。<br>
+      「刚开通时天天用，一个月后偶尔用，三个月后忘了还在扣费」— 这不是你的问题，是人类记忆的数学规律。
+    </div>
+    <div class="chart-box"><canvas id="forgettingChart"></canvas></div>
+    <div class="insight-box">
+      <strong>关键数据：</strong>稳定性 S=30 天时，一个月后使用概率降到 37%，三个月后降到 5%。
+      这意味着大多数订阅在开通 3 个月后就变成了「隐形账单」。
+    </div>
+  </div>
+
+  <!-- Card 7: 蒙特卡洛模拟 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-dice-5"></i> 蒙特卡洛模拟：中国年轻人平均浪费多少？</div>
+    <div class="card-desc">
+      模拟 5000 个随机用户，每人拥有 3-10 个订阅，使用频率按遗忘曲线衰减。<br>
+      看看「平均浪费」和「运气最差的 10%」分别是多少。
+    </div>
+    <div class="btn-row" style="margin-top:0;">
+      <button class="btn" onclick="runMonteCarlo(5000)"><i class="ti ti-refresh"></i> 模拟 5000 人</button>
+      <button class="btn btn-secondary" onclick="runMonteCarlo(20000)"><i class="ti ti-flame"></i> 模拟 20000 人</button>
+    </div>
+    <div class="result-grid" id="mc-results" style="margin-top:20px;"></div>
+    <div class="chart-box"><canvas id="mcChart"></canvas></div>
+  </div>
+
+  <!-- Card 8: 实用建议 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-bulb"></i> 订阅管理策略</div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="padding:12px;text-align:left;font-size:13px;color:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.06);">策略</th>
+          <th style="padding:12px;text-align:left;font-size:13px;color:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.06);">原理</th>
+          <th style="padding:12px;text-align:center;font-size:13px;color:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.06);">预计节省</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:12px;font-size:13px;color:#4ade80;border-bottom:1px solid rgba(255,255,255,0.04);">每季度审计一次</td>
+          <td style="padding:12px;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.04);">遗忘曲线 3 个月后使用率降到 5%，正好是审计节点</td>
+          <td style="padding:12px;font-size:13px;color:#fbbf24;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);">30-50%</td>
+        </tr>
+        <tr>
+          <td style="padding:12px;font-size:13px;color:#4ade80;border-bottom:1px solid rgba(255,255,255,0.04);">用月付代替年付</td>
+          <td style="padding:12px;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.04);">年付看似便宜，但沉没成本让你不舍得取消</td>
+          <td style="padding:12px;font-size:13px;color:#fbbf24;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);">灵活止损</td>
+        </tr>
+        <tr>
+          <td style="padding:12px;font-size:13px;color:#4ade80;border-bottom:1px solid rgba(255,255,255,0.04);">同类只留一个</td>
+          <td style="padding:12px;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.04);">两个视频会员不会让你看两倍的剧</td>
+          <td style="padding:12px;font-size:13px;color:#fbbf24;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);">¥200+/年</td>
+        </tr>
+        <tr>
+          <td style="padding:12px;font-size:13px;color:#4ade80;border-bottom:1px solid rgba(255,255,255,0.04);">设置日历提醒</td>
+          <td style="padding:12px;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.04);">在续费日前 3 天提醒自己，打断自动续费的惯性</td>
+          <td style="padding:12px;font-size:13px;color:#fbbf24;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);">避免遗忘</td>
+        </tr>
+        <tr>
+          <td style="padding:12px;font-size:13px;color:#4ade80;">算单次成本</td>
+          <td style="padding:12px;font-size:13px;color:rgba(255,255,255,0.7);">月费 ÷ 使用次数 = 真实成本，超过替代方案就该取消</td>
+          <td style="padding:12px;font-size:13px;color:#fbbf24;text-align:center;">理性决策</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// ========== 状态管理 ==========
+let mySubscriptions = []; // [{name, price, usageDays, icon, category}]
+let forgettingChart = null;
+let mcChart = null;
+let currentCatFilter = 'all';
+
+// ========== 初始化 ==========
+window.addEventListener('DOMContentLoaded', function() {
+  renderCatFilter();
+  renderPresets();
+  renderForgettingCurve();
+});
+
+// ========== 分类筛选 ==========
+function renderCatFilter() {
+  const cats = ['all', ...Object.keys(SubscriptionAuditLogic.CATEGORIES)];
+  const labels = { all: '全部', ...SubscriptionAuditLogic.CATEGORIES };
+  document.getElementById('cat-filter').innerHTML = cats.map(function(c) {
+    return '<span class="cat-tag' + (c === currentCatFilter ? ' active' : '') +
+      '" onclick="filterCat(\'' + c + '\')">' + labels[c] + '</span>';
+  }).join('');
+}
+
+function filterCat(cat) {
+  currentCatFilter = cat;
+  renderCatFilter();
+  renderPresets();
+}
+
+// ========== 预设服务 ==========
+function renderPresets() {
+  var presets = SubscriptionAuditLogic.PRESET_SERVICES;
+  if (currentCatFilter !== 'all') {
+    presets = presets.filter(function(p) { return p.category === currentCatFilter; });
+  }
+  var selectedNames = mySubscriptions.map(function(s) { return s.name; });
+  document.getElementById('preset-grid').innerHTML = presets.map(function(p) {
+    var sel = selectedNames.indexOf(p.name) >= 0;
+    return '<div class="preset-chip' + (sel ? ' selected' : '') +
+      '" onclick="togglePreset(\'' + p.name + '\')">' +
+      '<i class="' + p.icon + '"></i> ' + p.name +
+      ' <span class="chip-price">¥' + p.price + '</span></div>';
+  }).join('');
+}
+
+function togglePreset(name) {
+  var idx = -1;
+  for (var i = 0; i < mySubscriptions.length; i++) {
+    if (mySubscriptions[i].name === name) { idx = i; break; }
+  }
+  if (idx >= 0) {
+    mySubscriptions.splice(idx, 1);
+  } else {
+    var preset = null;
+    for (var j = 0; j < SubscriptionAuditLogic.PRESET_SERVICES.length; j++) {
+      if (SubscriptionAuditLogic.PRESET_SERVICES[j].name === name) {
+        preset = SubscriptionAuditLogic.PRESET_SERVICES[j]; break;
+      }
+    }
+    if (preset) {
+      mySubscriptions.push({
+        name: preset.name, price: preset.price, usageDays: 10,
+        icon: preset.icon, category: preset.category
+      });
+    }
+  }
+  renderPresets();
+  renderSubList();
+}
+
+// ========== 自定义添加 ==========
+function addCustomSub() {
+  var name = document.getElementById('custom-name').value.trim();
+  var price = parseFloat(document.getElementById('custom-price').value);
+  if (!name || isNaN(price) || price <= 0) return;
+  mySubscriptions.push({ name: name, price: price, usageDays: 10, icon: 'ti-apps', category: 'other' });
+  document.getElementById('custom-name').value = '';
+  document.getElementById('custom-price').value = '';
+  renderSubList();
+  renderPresets();
+}
+
+// ========== 订阅列表渲染 ==========
+function renderSubList() {
+  var list = document.getElementById('sub-list');
+  if (mySubscriptions.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:30px;font-size:13px;">还没有添加任何订阅，请在上方选择或输入</div>';
+    return;
+  }
+  list.innerHTML = mySubscriptions.map(function(s, i) {
+    var verdictColor = s.usageDays >= 18 ? '#4ade80' : s.usageDays >= 9 ? '#fbbf24' : '#f87171';
+    return '<div class="sub-item">' +
+      '<div class="sub-icon"><i class="' + s.icon + '"></i></div>' +
+      '<div class="sub-info"><div class="sub-name">' + s.name + '</div>' +
+      '<div class="sub-meta">¥' + s.price + '/月 · ¥' + (s.price * 12).toFixed(0) + '/年</div></div>' +
+      '<div class="usage-slider-wrap">' +
+      '<input type="range" min="0" max="30" value="' + s.usageDays + '" oninput="updateUsage(' + i + ',this.value)">' +
+      '<span class="usage-val" style="color:' + verdictColor + '">' + s.usageDays + '天</span>' +
+      '</div>' +
+      '<div class="sub-price">¥' + s.price + '</div>' +
+      '<button class="btn btn-sm btn-danger" onclick="removeSub(' + i + ')"><i class="ti ti-x"></i></button>' +
+      '</div>';
+  }).join('');
+}
+
+function updateUsage(idx, val) {
+  mySubscriptions[idx].usageDays = parseInt(val);
+  renderSubList();
+}
+
+function removeSub(idx) {
+  mySubscriptions.splice(idx, 1);
+  renderSubList();
+  renderPresets();
+}
+
+function clearAll() {
+  mySubscriptions = [];
+  renderSubList();
+  renderPresets();
+  document.getElementById('report-card').style.display = 'none';
+  document.getElementById('equiv-card').style.display = 'none';
+  document.getElementById('gauge-card').style.display = 'none';
+}
+
+function loadExample() {
+  mySubscriptions = [
+    { name: '爱奇艺', price: 25, usageDays: 3, icon: 'ti-device-tv', category: 'video' },
+    { name: 'B站大会员', price: 25, usageDays: 20, icon: 'ti-device-tv', category: 'video' },
+    { name: '网易云音乐', price: 15, usageDays: 25, icon: 'ti-music', category: 'music' },
+    { name: 'iCloud 200GB', price: 21, usageDays: 30, icon: 'ti-cloud', category: 'cloud' },
+    { name: 'ChatGPT Plus', price: 140, usageDays: 15, icon: 'ti-robot', category: 'ai' },
+    { name: '知乎盐选', price: 25, usageDays: 2, icon: 'ti-book', category: 'reading' },
+    { name: '美团会员', price: 15, usageDays: 12, icon: 'ti-shopping-cart', category: 'life' },
+    { name: 'Keep会员', price: 19, usageDays: 1, icon: 'ti-run', category: 'health' },
+  ];
+  renderSubList();
+  renderPresets();
+}
+
+// ========== 审计报告 ==========
+function generateReport() {
+  if (mySubscriptions.length === 0) return;
+  var result = SubscriptionAuditLogic.calculateAnnualWaste(mySubscriptions);
+  var fatigue = SubscriptionAuditLogic.subscriptionFatigueIndex(mySubscriptions);
+
+  // 显示卡片
+  document.getElementById('report-card').style.display = 'block';
+  document.getElementById('equiv-card').style.display = 'block';
+  document.getElementById('gauge-card').style.display = 'block';
+
+  // 摘要
+  document.getElementById('report-summary').innerHTML =
+    '<div class="result-item red"><div class="label">年度浪费</div><div class="value">¥' + result.totalWaste.toFixed(0) + '</div></div>' +
+    '<div class="result-item"><div class="label">年度总支出</div><div class="value">¥' + result.totalAnnual.toFixed(0) + '</div></div>' +
+    '<div class="result-item red"><div class="label">浪费比例</div><div class="value">' + result.wastePercent.toFixed(0) + '%</div></div>' +
+    '<div class="result-item blue"><div class="label">订阅数量</div><div class="value">' + mySubscriptions.length + '个</div></div>';
+
+  // 每个订阅的使用/浪费条
+  var barsHtml = '';
+  for (var i = 0; i < result.details.length; i++) {
+    var d = result.details[i];
+    var usedPct = (d.usageRate * 100).toFixed(1);
+    var wastedPct = ((1 - d.usageRate) * 100).toFixed(1);
+    var verdictIcon = d.verdict === 'keep' ? '<i class="ti ti-check" style="color:#4ade80"></i>' :
+      d.verdict === 'review' ? '<i class="ti ti-alert-triangle" style="color:#fbbf24"></i>' :
+      '<i class="ti ti-x" style="color:#f87171"></i>';
+    barsHtml += '<div class="report-bar">' +
+      '<div class="report-bar-label">' + verdictIcon + ' ' + d.name + '</div>' +
+      '<div class="report-bar-track">' +
+      '<div class="report-bar-fill used" style="width:' + usedPct + '%">' + (d.usageRate >= 0.15 ? usedPct + '%' : '') + '</div>' +
+      '</div>' +
+      '<div class="report-bar-amount">浪费 ¥' + d.waste.toFixed(0) + '/年</div>' +
+      '</div>';
+  }
+  document.getElementById('report-bars').innerHTML = barsHtml;
+
+  // 洞察
+  var cancelList = result.details.filter(function(d) { return d.verdict === 'cancel'; });
+  var cancelNames = cancelList.map(function(d) { return d.name; }).join('、');
+  var cancelSave = cancelList.reduce(function(s, d) { return s + d.annual; }, 0);
+  var insightHtml = '<strong>审计结论：</strong>你每年在订阅上花费 ¥' + result.totalAnnual.toFixed(0) +
+    '，其中约 <strong>¥' + result.totalWaste.toFixed(0) + '（' + result.wastePercent.toFixed(0) + '%）</strong>是浪费。';
+  if (cancelList.length > 0) {
+    insightHtml += '<br>建议立即取消：<strong>' + cancelNames + '</strong>，每年可省 ¥' + cancelSave.toFixed(0) + '。';
+  }
+  document.getElementById('report-insight').innerHTML = insightHtml;
+
+  // 等价物
+  var equivs = SubscriptionAuditLogic.wasteEquivalents(result.totalWaste);
+  document.getElementById('equiv-grid').innerHTML = equivs.map(function(e) {
+    return '<div class="equiv-item"><div class="equiv-icon"><i class="' + e.icon + '"></i></div>' +
+      '<div class="equiv-count">' + e.count + '</div>' +
+      '<div class="equiv-label">' + e.item + '</div></div>';
+  }).join('');
+
+  // 健康度
+  var scoreColor = fatigue.score >= 80 ? '#4ade80' : fatigue.score >= 60 ? '#fbbf24' :
+    fatigue.score >= 40 ? '#f59e0b' : '#f87171';
+  var circle = document.getElementById('gauge-circle');
+  circle.style.background = 'conic-gradient(' + scoreColor + ' ' + (fatigue.score * 3.6) + 'deg, rgba(255,255,255,0.05) 0deg)';
+  document.getElementById('gauge-score').style.color = scoreColor;
+  document.getElementById('gauge-score').textContent = fatigue.score;
+  document.getElementById('gauge-insight').innerHTML = '<strong>' + fatigue.level.toUpperCase() + '：</strong>' + fatigue.suggestion;
+
+  // 滚动到报告
+  document.getElementById('report-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ========== 遗忘曲线 ==========
+function renderForgettingCurve() {
+  var data30 = SubscriptionAuditLogic.generateForgettingCurveData(30, 365, 5);
+  var data60 = SubscriptionAuditLogic.generateForgettingCurveData(60, 365, 5);
+  var data15 = SubscriptionAuditLogic.generateForgettingCurveData(15, 365, 5);
+
+  var labels = data30.map(function(d) { return d.day + '天'; });
+  var ctx = document.getElementById('forgettingChart').getContext('2d');
+  if (forgettingChart) forgettingChart.destroy();
+
+  forgettingChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: '容易遗忘 (S=15天)',
+          data: data15.map(function(d) { return (d.retention * 100).toFixed(1); }),
+          borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.05)',
+          fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
+        },
+        {
+          label: '普通用户 (S=30天)',
+          data: data30.map(function(d) { return (d.retention * 100).toFixed(1); }),
+          borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.05)',
+          fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
+        },
+        {
+          label: '高粘性 (S=60天)',
+          data: data60.map(function(d) { return (d.retention * 100).toFixed(1); }),
+          borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.05)',
+          fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)', usePointStyle: true } },
+        title: { display: true, text: '订阅使用概率随时间衰减（遗忘曲线）', color: 'rgba(255,255,255,0.6)', font: { size: 13 } },
+        tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y + '%'; } } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 12 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)', callback: function(v) { return v + '%'; } },
+          title: { display: true, text: '使用概率', color: 'rgba(255,255,255,0.4)' } }
+      }
+    }
+  });
+}
+
+// ========== 蒙特卡洛 ==========
+function runMonteCarlo(trials) {
+  var mc = SubscriptionAuditLogic.monteCarloSubscriptionWaste(trials, 12);
+
+  document.getElementById('mc-results').innerHTML =
+    '<div class="result-item red"><div class="label">平均年浪费</div><div class="value">¥' + mc.avgWaste.toFixed(0) + '</div></div>' +
+    '<div class="result-item"><div class="label">中位数</div><div class="value">¥' + mc.medianWaste.toFixed(0) + '</div></div>' +
+    '<div class="result-item red"><div class="label">P90（最惨10%）</div><div class="value">¥' + mc.p90Waste.toFixed(0) + '</div></div>' +
+    '<div class="result-item blue"><div class="label">平均订阅数</div><div class="value">' + mc.avgSubCount.toFixed(1) + '个</div></div>' +
+    '<div class="result-item green"><div class="label">平均活跃数</div><div class="value">' + mc.avgActiveCount.toFixed(1) + '个</div></div>' +
+    '<div class="result-item"><div class="label">活跃率</div><div class="value">' + (mc.avgActiveCount / mc.avgSubCount * 100).toFixed(0) + '%</div></div>';
+
+  // 直方图
+  var bucketCount = 30;
+  var maxWaste = mc.wastes[mc.wastes.length - 1];
+  var bucketSize = Math.ceil(maxWaste / bucketCount / 100) * 100;
+  var buckets = new Array(bucketCount).fill(0);
+  var bLabels = [];
+  for (var i = 0; i < bucketCount; i++) {
+    bLabels.push('¥' + (i * bucketSize));
+  }
+  for (var j = 0; j < mc.wastes.length; j++) {
+    var idx = Math.min(Math.floor(mc.wastes[j] / bucketSize), bucketCount - 1);
+    buckets[idx]++;
+  }
+
+  var ctx = document.getElementById('mcChart').getContext('2d');
+  if (mcChart) mcChart.destroy();
+  mcChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: bLabels,
+      datasets: [{
+        label: '年浪费金额分布（' + trials + '人模拟）',
+        data: buckets,
+        backgroundColor: buckets.map(function(_, i) {
+          var t = i * bucketSize;
+          if (t < mc.medianWaste) return 'rgba(74,222,128,0.6)';
+          if (t < mc.p90Waste) return 'rgba(251,191,36,0.6)';
+          return 'rgba(248,113,113,0.6)';
+        }),
+        borderRadius: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)' } },
+        title: { display: true, text: '年度订阅浪费金额分布', color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.4)', maxRotation: 45, autoSkip: true, maxTicksLimit: 12 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)' },
+          title: { display: true, text: '人数', color: 'rgba(255,255,255,0.4)' } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>

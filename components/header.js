@@ -267,7 +267,7 @@
   header.className = 'site-header';
   header.innerHTML = `
     <a href="${prefix}index.html" class="logo">
-      🚀 <span>Mock Server</span>
+      <i class="ti ti-brain"></i> <span>数字直觉</span>
     </a>
     <nav>
       <a href="${prefix}index.html" class="${currentPage === 'index.html' ? 'active' : ''}">首页</a>
@@ -277,7 +277,7 @@
     </nav>
     <div class="external-links">
       <button class="share-btn" onclick="window.openShareModal()">
-        <span>📤</span> 分享
+        <i class="ti ti-share"></i> 分享
       </button>
     </div>
   `;
@@ -306,7 +306,7 @@
           <span class="label">LinkedIn</span>
         </button>
         <button class="share-option" onclick="window.shareTo('qrcode')">
-          <span class="icon">📱</span>
+          <span class="icon"><i class="ti ti-qrcode" style="font-size:28px"></i></span>
           <span class="label">二维码</span>
         </button>
       </div>

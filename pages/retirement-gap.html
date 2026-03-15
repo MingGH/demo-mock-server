@@ -121,6 +121,26 @@
         <input type="number" id="inflationRate" value="3" min="0" max="10" step="0.5">
         <span class="unit">%</span>
       </div>
+      <div class="form-group">
+        <label>意外支出概率</label>
+        <input type="number" id="emergencyRate" value="5" min="0" max="50" step="1">
+        <span class="unit">%/年</span>
+      </div>
+      <div class="form-group">
+        <label>意外支出金额</label>
+        <input type="number" id="emergencyAmount" value="50000" min="0" step="10000">
+        <span class="unit">元/次</span>
+      </div>
+      <div class="form-group">
+        <label>大额支出(买房等)</label>
+        <input type="number" id="lumpSumAmount" value="0" min="0" step="100000">
+        <span class="unit">元</span>
+      </div>
+      <div class="form-group">
+        <label>大额支出年龄</label>
+        <input type="number" id="lumpSumAge" value="0" min="0" max="80">
+        <span class="unit">岁(0=无)</span>
+      </div>
     </div>
     <div class="btn-row">
       <button class="btn" onclick="runSimulation()"><i class="ti ti-player-play"></i> 开始模拟</button>
@@ -299,8 +319,10 @@ function getParams() {
     inflationRate: (parseFloat(document.getElementById('inflationRate').value) || 3) / 100,
     inflationStd: 0.01,
     pensionMonthly: parseFloat(document.getElementById('pensionMonthly').value) || 0,
-    emergencyRate: 0.05,
-    emergencyAmount: 50000
+    emergencyRate: (parseFloat(document.getElementById('emergencyRate').value) || 5) / 100,
+    emergencyAmount: parseFloat(document.getElementById('emergencyAmount').value) || 50000,
+    lumpSumAmount: parseFloat(document.getElementById('lumpSumAmount').value) || 0,
+    lumpSumAge: parseInt(document.getElementById('lumpSumAge').value) || 0
   };
 }
 
@@ -308,13 +330,16 @@ function loadPreset(type) {
   var presets = {
     young: { currentAge:25, retireAge:60, lifeExpectancy:85, currentSavings:20000,
              monthlySaving:1500, monthlyExpense:4000, pensionMonthly:1500,
-             annualReturn:5, inflationRate:3 },
+             annualReturn:5, inflationRate:3, emergencyRate:5, emergencyAmount:50000,
+             lumpSumAmount:0, lumpSumAge:0 },
     mid:   { currentAge:35, retireAge:60, lifeExpectancy:85, currentSavings:300000,
              monthlySaving:5000, monthlyExpense:6000, pensionMonthly:3000,
-             annualReturn:5, inflationRate:3 },
+             annualReturn:5, inflationRate:3, emergencyRate:8, emergencyAmount:100000,
+             lumpSumAmount:500000, lumpSumAge:55 },
     late:  { currentAge:45, retireAge:60, lifeExpectancy:85, currentSavings:150000,
              monthlySaving:4000, monthlyExpense:5000, pensionMonthly:2500,
-             annualReturn:4, inflationRate:3 }
+             annualReturn:4, inflationRate:3, emergencyRate:8, emergencyAmount:100000,
+             lumpSumAmount:200000, lumpSumAge:55 }
   };
   var p = presets[type];
   if (!p) return;
@@ -327,50 +352,71 @@ function loadPreset(type) {
   document.getElementById('pensionMonthly').value = p.pensionMonthly;
   document.getElementById('annualReturn').value = p.annualReturn;
   document.getElementById('inflationRate').value = p.inflationRate;
+  document.getElementById('emergencyRate').value = p.emergencyRate;
+  document.getElementById('emergencyAmount').value = p.emergencyAmount;
+  document.getElementById('lumpSumAmount').value = p.lumpSumAmount;
+  document.getElementById('lumpSumAge').value = p.lumpSumAge;
 }
 </script>
 
 <script>
 function runSimulation() {
-  var params = getParams();
-  var mc = RetirementGapLogic.monteCarloRetirement(params, 5000);
-  var det = RetirementGapLogic.deterministicEstimate(params);
+  var btn = document.querySelector('.btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> 模拟中...';
 
-  // Show cards
-  ['result-card','path-card','dist-card','sens-card','gap-card'].forEach(function(id) {
-    document.getElementById(id).style.display = 'block';
-  });
+  // 用 setTimeout 让浏览器先渲染 loading 状态
+  setTimeout(function() {
+    var params = getParams();
+    var mc = RetirementGapLogic.monteCarloRetirement(params, 5000);
+    var det = RetirementGapLogic.deterministicEstimate(params);
 
-  // Summary
-  var survColor = mc.survivalPercent >= 80 ? 'green' : mc.survivalPercent >= 50 ? '' : 'red';
-  var avgColor = mc.avgDepletionAge >= params.lifeExpectancy ? 'green' : mc.avgDepletionAge >= params.lifeExpectancy - 5 ? '' : 'red';
-  document.getElementById('result-summary').innerHTML =
-    '<div class="result-item ' + avgColor + '"><div class="label">平均撑到</div><div class="value">' + mc.avgDepletionAge.toFixed(1) + '岁</div></div>' +
-    '<div class="result-item"><div class="label">中位数</div><div class="value">' + mc.medianDepletionAge + '岁</div></div>' +
-    '<div class="result-item red"><div class="label">最惨10%</div><div class="value">' + mc.p10 + '岁</div></div>' +
-    '<div class="result-item ' + survColor + '"><div class="label">活到头概率</div><div class="value">' + mc.survivalPercent.toFixed(1) + '%</div></div>' +
-    '<div class="result-item blue"><div class="label">退休时财富</div><div class="value">¥' + formatNum(mc.avgWealthAtRetire) + '</div></div>' +
-    '<div class="result-item"><div class="label">确定性估算</div><div class="value">' + det.depletionAge + '岁</div></div>';
+    // Show cards
+    ['result-card','path-card','dist-card','sens-card','gap-card'].forEach(function(id) {
+      document.getElementById(id).style.display = 'block';
+    });
 
-  // Insight
-  var gap = params.lifeExpectancy - mc.avgDepletionAge;
-  var insightHtml = '';
-  if (mc.survivalPercent >= 90) {
-    insightHtml = '<strong>状态：安全</strong><br>在 5000 次模拟中，' + mc.survivalPercent.toFixed(1) + '% 的情况下你的钱能撑到 ' + params.lifeExpectancy + ' 岁。财务状况良好。';
-  } else if (mc.survivalPercent >= 50) {
-    insightHtml = '<strong>状态：有风险</strong><br>只有 ' + mc.survivalPercent.toFixed(1) + '% 的概率撑到 ' + params.lifeExpectancy + ' 岁。平均在 ' + mc.avgDepletionAge.toFixed(1) + ' 岁花完，缺口约 ' + gap.toFixed(1) + ' 年。建议增加储蓄或降低支出。';
-  } else {
-    insightHtml = '<strong>状态：危险</strong><br>仅 ' + mc.survivalPercent.toFixed(1) + '% 的概率撑到 ' + params.lifeExpectancy + ' 岁。平均 ' + mc.avgDepletionAge.toFixed(1) + ' 岁就会花完，缺口 ' + gap.toFixed(1) + ' 年。需要立即调整财务计划。';
-  }
-  insightHtml += '<br><br><strong>最惨 10% 的情况：</strong>' + mc.p10 + ' 岁就花完了。这意味着如果遇到连续的投资亏损或意外支出，情况会比平均值差很多。';
-  document.getElementById('result-insight').innerHTML = insightHtml;
+    // Summary
+    var survColor = mc.survivalPercent >= 80 ? 'green' : mc.survivalPercent >= 50 ? '' : 'red';
+    var avgColor = mc.avgDepletionAge >= params.lifeExpectancy ? 'green' : mc.avgDepletionAge >= params.lifeExpectancy - 5 ? '' : 'red';
+    document.getElementById('result-summary').innerHTML =
+      '<div class="result-item ' + avgColor + '"><div class="label">平均撑到</div><div class="value">' + mc.avgDepletionAge.toFixed(1) + '岁</div></div>' +
+      '<div class="result-item"><div class="label">中位数</div><div class="value">' + mc.medianDepletionAge + '岁</div></div>' +
+      '<div class="result-item red"><div class="label">最惨10%</div><div class="value">' + mc.p10 + '岁</div></div>' +
+      '<div class="result-item ' + survColor + '"><div class="label">活到头概率</div><div class="value">' + mc.survivalPercent.toFixed(1) + '%</div></div>' +
+      '<div class="result-item blue"><div class="label">退休时财富</div><div class="value">¥' + formatNum(mc.avgWealthAtRetire) + '</div></div>' +
+      '<div class="result-item"><div class="label">确定性估算</div><div class="value">' + det.depletionAge + '岁</div></div>';
 
-  renderPathChart(mc, params);
-  renderDistChart(mc, params);
-  renderGap(params, mc);
-  runSensitivity(params);
+    // Insight
+    var gap = params.lifeExpectancy - mc.avgDepletionAge;
+    var insightHtml = '';
+    if (mc.survivalPercent >= 90) {
+      insightHtml = '<strong>状态：安全</strong><br>在 5000 次模拟中，' + mc.survivalPercent.toFixed(1) + '% 的情况下你的钱能撑到 ' + params.lifeExpectancy + ' 岁。财务状况良好。';
+    } else if (mc.survivalPercent >= 50) {
+      insightHtml = '<strong>状态：有风险</strong><br>只有 ' + mc.survivalPercent.toFixed(1) + '% 的概率撑到 ' + params.lifeExpectancy + ' 岁。平均在 ' + mc.avgDepletionAge.toFixed(1) + ' 岁花完，缺口约 ' + gap.toFixed(1) + ' 年。建议增加储蓄或降低支出。';
+    } else {
+      insightHtml = '<strong>状态：危险</strong><br>仅 ' + mc.survivalPercent.toFixed(1) + '% 的概率撑到 ' + params.lifeExpectancy + ' 岁。平均 ' + mc.avgDepletionAge.toFixed(1) + ' 岁就会花完，缺口 ' + gap.toFixed(1) + ' 年。需要立即调整财务计划。';
+    }
+    insightHtml += '<br><br><strong>最惨 10% 的情况：</strong>' + mc.p10 + ' 岁就花完了。这意味着如果遇到连续的投资亏损或意外支出，情况会比平均值差很多。';
+    document.getElementById('result-insight').innerHTML = insightHtml;
 
-  document.getElementById('result-card').scrollIntoView({ behavior: 'smooth' });
+    renderPathChart(mc, params);
+    renderDistChart(mc, params);
+    renderGap(params, mc);
+
+    document.getElementById('result-card').scrollIntoView({ behavior: 'smooth' });
+
+    // 敏感性分析延迟执行，避免阻塞 UI
+    document.getElementById('sens-card').querySelector('.card-title').innerHTML =
+      '<i class="ti ti-adjustments"></i> 哪个变量影响最大？（计算中...）';
+    setTimeout(function() {
+      runSensitivity(params);
+      document.getElementById('sens-card').querySelector('.card-title').innerHTML =
+        '<i class="ti ti-adjustments"></i> 哪个变量影响最大？';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-player-play"></i> 开始模拟';
+    }, 50);
+  }, 30);
 }
 </script>
 
@@ -483,7 +529,7 @@ function renderDistChart(mc, params) {
 
 <script>
 function runSensitivity(params) {
-  var sa = RetirementGapLogic.sensitivityAnalysis(params, 1000);
+  var sa = RetirementGapLogic.sensitivityAnalysis(params, 500);
   var ctx = document.getElementById('sensChart').getContext('2d');
   if (sensChart) sensChart.destroy();
   var sorted = sa.scenarios.slice().sort(function(a, b) { return b.delta - a.delta; });

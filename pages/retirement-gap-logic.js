@@ -43,13 +43,15 @@
     var wealth = params.currentSavings || 0;
     var monthlySaving = params.monthlySaving || 0;
     var monthlyExpense = params.monthlyExpense || 3000;
-    var annualReturn = params.annualReturn || 0.05;
-    var returnStd = params.returnStd || 0.12;
-    var inflationRate = params.inflationRate || 0.03;
-    var inflationStd = params.inflationStd || 0.01;
+    var annualReturn = params.annualReturn != null ? params.annualReturn : 0.05;
+    var returnStd = params.returnStd != null ? params.returnStd : 0.12;
+    var inflationRate = params.inflationRate != null ? params.inflationRate : 0.03;
+    var inflationStd = params.inflationStd != null ? params.inflationStd : 0.01;
     var pensionMonthly = params.pensionMonthly || 0;
-    var emergencyRate = params.emergencyRate || 0.05;
-    var emergencyAmount = params.emergencyAmount || 50000;
+    var emergencyRate = params.emergencyRate != null ? params.emergencyRate : 0.05;
+    var emergencyAmount = params.emergencyAmount != null ? params.emergencyAmount : 50000;
+    var lumpSumAge = params.lumpSumAge || 0;
+    var lumpSumAmount = params.lumpSumAmount || 0;
 
     var peakWealth = wealth;
     var wealthAtRetire = 0;
@@ -76,6 +78,11 @@
       // 意外支出
       if (Math.random() < emergencyRate) {
         wealth -= emergencyAmount * cumulativeInflation;
+      }
+
+      // 一次性大额支出（如帮子女买房）
+      if (lumpSumAge > 0 && y + 1 === lumpSumAge) {
+        wealth -= lumpSumAmount * cumulativeInflation;
       }
 
       if (y === retireAge) {

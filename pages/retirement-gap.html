@@ -420,41 +420,60 @@ function renderPathChart(mc, params) {
 function renderDistChart(mc, params) {
   var ctx = document.getElementById('distChart').getContext('2d');
   if (distChart) distChart.destroy();
-  var labels = [], data = [];
   var maxAge = params.lifeExpectancy;
-  for (var age = params.retireAge; age <= maxAge; age++) {
-    labels.push(age + '岁');
-    data.push(mc.buckets[age] || 0);
+  // Count how many survived (depletionAge == maxAge means money lasted)
+  var survivedCount = 0;
+  for (var k = 0; k < mc.ages.length; k++) {
+    if (mc.ages[k] >= maxAge) survivedCount++;
   }
+  // Build labels & data for depleted people only (retireAge to maxAge-1)
+  var labels = [], depletedData = [], survivedData = [];
+  for (var age = params.retireAge; age < maxAge; age++) {
+    labels.push(age + '岁');
+    depletedData.push(mc.buckets[age] || 0);
+    survivedData.push(0);
+  }
+  // Add the "survived" bar as a separate last entry
+  labels.push(maxAge + '岁+');
+  depletedData.push(0);
+  survivedData.push(survivedCount);
+
   distChart = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: labels,
-      datasets: [{
-        label: '花完钱的人数',
-        data: data,
-        backgroundColor: data.map(function(_, i) {
-          var age = params.retireAge + i;
-          if (age >= maxAge) return 'rgba(74,222,128,0.7)';
-          if (age >= maxAge - 10) return 'rgba(251,191,36,0.6)';
-          return 'rgba(248,113,113,0.6)';
-        }),
-        borderRadius: 3
-      }]
+      datasets: [
+        {
+          label: '中途花完',
+          data: depletedData,
+          backgroundColor: depletedData.map(function(_, i) {
+            var a = params.retireAge + i;
+            if (a >= maxAge - 10) return 'rgba(251,191,36,0.6)';
+            return 'rgba(248,113,113,0.6)';
+          }),
+          borderRadius: 3
+        },
+        {
+          label: '安全到达',
+          data: survivedData,
+          backgroundColor: 'rgba(74,222,128,0.7)',
+          borderRadius: 3
+        }
+      ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } },
         title: { display: true, text: '钱花完的年龄分布（5000 次模拟）', color: 'rgba(255,255,255,0.6)', font: { size: 13 } },
         tooltip: { callbacks: { label: function(ctx) {
           var pct = (ctx.parsed.y / mc.trials * 100).toFixed(1);
-          return ctx.parsed.y + ' 人 (' + pct + '%)';
+          return ctx.dataset.label + ': ' + ctx.parsed.y + ' 人 (' + pct + '%)';
         }}}
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.4)', maxRotation: 45, autoSkip: true, maxTicksLimit: 15 } },
-        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)' },
+        x: { stacked: true, grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.4)', maxRotation: 45, autoSkip: true, maxTicksLimit: 15 } },
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)' },
           title: { display: true, text: '人数', color: 'rgba(255,255,255,0.4)' } }
       }
     }

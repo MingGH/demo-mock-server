@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>养老金缺口计算器 — 你的钱能撑到几岁？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./retirement-gap-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 350px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-old"></i> 养老金缺口计算器</h1>
+    <p>28% 的人退休储蓄为零，63% 怕钱花完比怕死还怕。<br>用蒙特卡洛模拟算算，你的钱能撑到几岁？</p>
+  </div>
+</div>
+
+  <!-- Card 1: 输入参数 -->
+  <div class="container">
+  <div class="card">
+    <div class="card-title"><i class="ti ti-settings"></i> 你的基本情况</div>
+    <div class="card-desc">输入你的财务数据，我们用蒙特卡洛方法模拟 5000 种可能的未来，算出你的钱能撑到几岁。</div>
+    <div class="form-grid" id="form-grid">
+      <div class="form-group">
+        <label>当前年龄</label>
+        <input type="number" id="currentAge" value="30" min="18" max="70">
+        <span class="unit">岁</span>
+      </div>
+      <div class="form-group">
+        <label>计划退休年龄</label>
+        <input type="number" id="retireAge" value="60" min="40" max="80">
+        <span class="unit">岁</span>
+      </div>
+      <div class="form-group">
+        <label>预期寿命</label>
+        <input type="number" id="lifeExpectancy" value="85" min="60" max="110">
+        <span class="unit">岁</span>
+      </div>
+      <div class="form-group">
+        <label>当前储蓄</label>
+        <input type="number" id="currentSavings" value="100000" min="0" step="10000">
+        <span class="unit">元</span>
+      </div>
+      <div class="form-group">
+        <label>每月储蓄</label>
+        <input type="number" id="monthlySaving" value="3000" min="0" step="500">
+        <span class="unit">元/月</span>
+      </div>
+      <div class="form-group">
+        <label>退休后月支出</label>
+        <input type="number" id="monthlyExpense" value="5000" min="1000" step="500">
+        <span class="unit">元/月</span>
+      </div>
+      <div class="form-group">
+        <label>预期养老金</label>
+        <input type="number" id="pensionMonthly" value="2000" min="0" step="500">
+        <span class="unit">元/月</span>
+      </div>
+      <div class="form-group">
+        <label>年化投资回报</label>
+        <input type="number" id="annualReturn" value="5" min="0" max="20" step="0.5">
+        <span class="unit">%</span>
+      </div>
+      <div class="form-group">
+        <label>年通胀率</label>
+        <input type="number" id="inflationRate" value="3" min="0" max="10" step="0.5">
+        <span class="unit">%</span>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="runSimulation()"><i class="ti ti-player-play"></i> 开始模拟</button>
+      <button class="btn btn-secondary" onclick="loadPreset('young')"><i class="ti ti-user"></i> 25岁打工人</button>
+      <button class="btn btn-secondary" onclick="loadPreset('mid')"><i class="ti ti-briefcase"></i> 35岁中产</button>
+      <button class="btn btn-secondary" onclick="loadPreset('late')"><i class="ti ti-alarm"></i> 45岁觉醒</button>
+    </div>
+  </div>
+
+  <!-- Card 2: 核心结果 -->
+  <div class="card" id="result-card" style="display:none;">
+    <div class="card-title"><i class="ti ti-report-analytics"></i> 模拟结果</div>
+    <div class="result-grid" id="result-summary"></div>
+    <div class="insight-box" id="result-insight"></div>
+  </div>
+
+  <!-- Card 3: 财富路径图 -->
+  <div class="card" id="path-card" style="display:none;">
+    <div class="card-title"><i class="ti ti-chart-line"></i> 财富路径（20 条随机命运线）</div>
+    <div class="card-desc">每条线代表一种可能的未来。投资回报波动、通胀变化、意外支出，让每条线走向不同的终点。</div>
+    <div class="chart-box"><canvas id="pathChart"></canvas></div>
+  </div>
+
+  <!-- Card 4: 耗尽年龄分布 -->
+  <div class="card" id="dist-card" style="display:none;">
+    <div class="card-title"><i class="ti ti-chart-bar"></i> 钱花完的年龄分布</div>
+    <div class="card-desc">5000 次模拟中，你的钱分别在几岁花完？柱子越高说明在那个年龄花完的概率越大。</div>
+    <div class="chart-box"><canvas id="distChart"></canvas></div>
+  </div>
+
+  <!-- Card 5: 敏感性分析 -->
+  <div class="card" id="sens-card" style="display:none;">
+    <div class="card-title"><i class="ti ti-adjustments"></i> 哪个变量影响最大？</div>
+    <div class="card-desc">改变一个参数，看对「钱能撑到几岁」的影响。找到杠杆最大的那个变量。</div>
+    <div class="chart-box"><canvas id="sensChart"></canvas></div>
+    <div class="insight-box" id="sens-insight"></div>
+  </div>
+
+  <!-- Card 6: 储蓄缺口 -->
+  <div class="card" id="gap-card" style="display:none;">
+    <div class="card-title"><i class="ti ti-calculator"></i> 你的储蓄缺口</div>
+    <div class="result-grid" id="gap-summary"></div>
+    <div class="insight-box" id="gap-insight"></div>
+  </div>
+
+  <!-- Card 7: 关键数据 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-database"></i> 触目惊心的数据</div>
+    <table class="data-table">
+      <thead><tr>
+        <th>数据</th><th>来源</th><th>启示</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td class="highlight-red">28% 的人退休储蓄为零</td>
+          <td>美联储消费者财务调查</td>
+          <td>近三成人完全没有为退休做准备</td>
+        </tr>
+        <tr>
+          <td class="highlight-red">63% 怕钱花完比怕死还怕</td>
+          <td>退休信心调查</td>
+          <td>长寿风险是最被低估的财务风险</td>
+        </tr>
+        <tr>
+          <td class="highlight-yellow">千禧一代比上一代少存 40%</td>
+          <td>世界指标研究</td>
+          <td>房价、教育、消费主义三重挤压</td>
+        </tr>
+        <tr>
+          <td class="highlight-yellow">退休需要 ¥82 万储蓄</td>
+          <td>退休充足性研究</td>
+          <td>但 55-64 岁中位数储蓄仅 ¥18.5 万</td>
+        </tr>
+        <tr>
+          <td class="highlight-green">每天 1 万人进入退休年龄</td>
+          <td>人口统计数据</td>
+          <td>养老金体系压力持续增大</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Card 8: 策略建议 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-bulb"></i> 延长「财务寿命」的策略</div>
+    <table class="data-table">
+      <thead><tr><th>策略</th><th>原理</th><th>预计效果</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="highlight-green">尽早开始存钱</td>
+          <td>复利效应：25 岁开始比 35 岁开始，同样月存 ¥2000，60 岁时多出近一倍</td>
+          <td>+10~15 年</td>
+        </tr>
+        <tr>
+          <td class="highlight-green">控制退休后支出</td>
+          <td>支出每减少 ¥1000/月，退休金多撑 3-5 年</td>
+          <td>+3~5 年</td>
+        </tr>
+        <tr>
+          <td class="highlight-yellow">适度投资</td>
+          <td>年化 5% vs 3%，30 年后差距超过 50%</td>
+          <td>+3~8 年</td>
+        </tr>
+        <tr>
+          <td class="highlight-yellow">延迟退休</td>
+          <td>多工作 5 年 = 多存 5 年 + 少花 5 年，双重效果</td>
+          <td>+5~10 年</td>
+        </tr>
+        <tr>
+          <td class="highlight-green">建立应急基金</td>
+          <td>一次大病可能吃掉 5 年的储蓄，保险是对冲工具</td>
+          <td>防止黑天鹅</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  </div><!-- end container -->
+
+<style>
+    .form-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 15px;
+    }
+    .form-group {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(0,0,0,0.15); border-radius: 10px; padding: 10px 14px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .form-group label {
+      font-size: 13px; color: rgba(255,255,255,0.6); min-width: 100px; flex-shrink: 0;
+    }
+    .form-group input {
+      flex: 1; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3);
+      color: #fbbf24; font-size: 15px; font-weight: 600; font-family: inherit;
+      outline: none; text-align: right; min-width: 0;
+    }
+    .form-group input:focus { border-color: rgba(251,191,36,0.4); }
+    .form-group .unit { font-size: 12px; color: rgba(255,255,255,0.4); min-width: 40px; }
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      padding: 12px; text-align: left; font-size: 13px;
+      color: rgba(255,255,255,0.5); border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .data-table td {
+      padding: 12px; font-size: 13px; color: rgba(255,255,255,0.7);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .highlight-red { color: #f87171; font-weight: 600; }
+    .highlight-yellow { color: #fbbf24; font-weight: 600; }
+    .highlight-green { color: #4ade80; font-weight: 600; }
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .form-grid { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .btn-row { flex-direction: column; }
+      .btn-row .btn { width: 100%; text-align: center; }
+    }
+</style>
+
+<script>
+var pathChart = null, distChart = null, sensChart = null;
+
+function getParams() {
+  return {
+    currentAge: parseInt(document.getElementById('currentAge').value) || 30,
+    retireAge: parseInt(document.getElementById('retireAge').value) || 60,
+    lifeExpectancy: parseInt(document.getElementById('lifeExpectancy').value) || 85,
+    currentSavings: parseFloat(document.getElementById('currentSavings').value) || 0,
+    monthlySaving: parseFloat(document.getElementById('monthlySaving').value) || 0,
+    monthlyExpense: parseFloat(document.getElementById('monthlyExpense').value) || 5000,
+    annualReturn: (parseFloat(document.getElementById('annualReturn').value) || 5) / 100,
+    returnStd: 0.12,
+    inflationRate: (parseFloat(document.getElementById('inflationRate').value) || 3) / 100,
+    inflationStd: 0.01,
+    pensionMonthly: parseFloat(document.getElementById('pensionMonthly').value) || 0,
+    emergencyRate: 0.05,
+    emergencyAmount: 50000
+  };
+}
+
+function loadPreset(type) {
+  var presets = {
+    young: { currentAge:25, retireAge:60, lifeExpectancy:85, currentSavings:20000,
+             monthlySaving:1500, monthlyExpense:4000, pensionMonthly:1500,
+             annualReturn:5, inflationRate:3 },
+    mid:   { currentAge:35, retireAge:60, lifeExpectancy:85, currentSavings:300000,
+             monthlySaving:5000, monthlyExpense:6000, pensionMonthly:3000,
+             annualReturn:5, inflationRate:3 },
+    late:  { currentAge:45, retireAge:60, lifeExpectancy:85, currentSavings:150000,
+             monthlySaving:4000, monthlyExpense:5000, pensionMonthly:2500,
+             annualReturn:4, inflationRate:3 }
+  };
+  var p = presets[type];
+  if (!p) return;
+  document.getElementById('currentAge').value = p.currentAge;
+  document.getElementById('retireAge').value = p.retireAge;
+  document.getElementById('lifeExpectancy').value = p.lifeExpectancy;
+  document.getElementById('currentSavings').value = p.currentSavings;
+  document.getElementById('monthlySaving').value = p.monthlySaving;
+  document.getElementById('monthlyExpense').value = p.monthlyExpense;
+  document.getElementById('pensionMonthly').value = p.pensionMonthly;
+  document.getElementById('annualReturn').value = p.annualReturn;
+  document.getElementById('inflationRate').value = p.inflationRate;
+}
+</script>
+
+<script>
+function runSimulation() {
+  var params = getParams();
+  var mc = RetirementGapLogic.monteCarloRetirement(params, 5000);
+  var det = RetirementGapLogic.deterministicEstimate(params);
+
+  // Show cards
+  ['result-card','path-card','dist-card','sens-card','gap-card'].forEach(function(id) {
+    document.getElementById(id).style.display = 'block';
+  });
+
+  // Summary
+  var survColor = mc.survivalPercent >= 80 ? 'green' : mc.survivalPercent >= 50 ? '' : 'red';
+  var avgColor = mc.avgDepletionAge >= params.lifeExpectancy ? 'green' : mc.avgDepletionAge >= params.lifeExpectancy - 5 ? '' : 'red';
+  document.getElementById('result-summary').innerHTML =
+    '<div class="result-item ' + avgColor + '"><div class="label">平均撑到</div><div class="value">' + mc.avgDepletionAge.toFixed(1) + '岁</div></div>' +
+    '<div class="result-item"><div class="label">中位数</div><div class="value">' + mc.medianDepletionAge + '岁</div></div>' +
+    '<div class="result-item red"><div class="label">最惨10%</div><div class="value">' + mc.p10 + '岁</div></div>' +
+    '<div class="result-item ' + survColor + '"><div class="label">活到头概率</div><div class="value">' + mc.survivalPercent.toFixed(1) + '%</div></div>' +
+    '<div class="result-item blue"><div class="label">退休时财富</div><div class="value">¥' + formatNum(mc.avgWealthAtRetire) + '</div></div>' +
+    '<div class="result-item"><div class="label">确定性估算</div><div class="value">' + det.depletionAge + '岁</div></div>';
+
+  // Insight
+  var gap = params.lifeExpectancy - mc.avgDepletionAge;
+  var insightHtml = '';
+  if (mc.survivalPercent >= 90) {
+    insightHtml = '<strong>状态：安全</strong><br>在 5000 次模拟中，' + mc.survivalPercent.toFixed(1) + '% 的情况下你的钱能撑到 ' + params.lifeExpectancy + ' 岁。财务状况良好。';
+  } else if (mc.survivalPercent >= 50) {
+    insightHtml = '<strong>状态：有风险</strong><br>只有 ' + mc.survivalPercent.toFixed(1) + '% 的概率撑到 ' + params.lifeExpectancy + ' 岁。平均在 ' + mc.avgDepletionAge.toFixed(1) + ' 岁花完，缺口约 ' + gap.toFixed(1) + ' 年。建议增加储蓄或降低支出。';
+  } else {
+    insightHtml = '<strong>状态：危险</strong><br>仅 ' + mc.survivalPercent.toFixed(1) + '% 的概率撑到 ' + params.lifeExpectancy + ' 岁。平均 ' + mc.avgDepletionAge.toFixed(1) + ' 岁就会花完，缺口 ' + gap.toFixed(1) + ' 年。需要立即调整财务计划。';
+  }
+  insightHtml += '<br><br><strong>最惨 10% 的情况：</strong>' + mc.p10 + ' 岁就花完了。这意味着如果遇到连续的投资亏损或意外支出，情况会比平均值差很多。';
+  document.getElementById('result-insight').innerHTML = insightHtml;
+
+  renderPathChart(mc, params);
+  renderDistChart(mc, params);
+  renderGap(params, mc);
+  runSensitivity(params);
+
+  document.getElementById('result-card').scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+
+<script>
+function formatNum(n) {
+  if (n >= 10000 * 10000) return (n / 10000 / 10000).toFixed(1) + '亿';
+  if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+  return n.toFixed(0);
+}
+
+function renderPathChart(mc, params) {
+  var ctx = document.getElementById('pathChart').getContext('2d');
+  if (pathChart) pathChart.destroy();
+  var datasets = mc.samplePaths.map(function(path, i) {
+    var lastAge = path[path.length - 1].age;
+    var survived = lastAge >= params.lifeExpectancy;
+    return {
+      label: i === 0 ? (survived ? '撑到头' : '中途花完') : '',
+      data: path.map(function(p) { return { x: p.age, y: Math.max(0, p.wealth) }; }),
+      borderColor: survived ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)',
+      borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3
+    };
+  });
+  pathChart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: '财富随年龄变化（每条线 = 一种可能的人生）', color: 'rgba(255,255,255,0.6)', font: { size: 13 } },
+        tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.x + '岁: ¥' + formatNum(ctx.parsed.y); } } }
+      },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: '年龄', color: 'rgba(255,255,255,0.4)' },
+             grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: 'rgba(255,255,255,0.4)' } },
+        y: { title: { display: true, text: '财富（元）', color: 'rgba(255,255,255,0.4)' },
+             grid: { color: 'rgba(255,255,255,0.05)' },
+             ticks: { color: 'rgba(255,255,255,0.4)', callback: function(v) { return '¥' + formatNum(v); } } }
+      }
+    }
+  });
+}
+</script>
+
+<script>
+function renderDistChart(mc, params) {
+  var ctx = document.getElementById('distChart').getContext('2d');
+  if (distChart) distChart.destroy();
+  var labels = [], data = [];
+  var maxAge = params.lifeExpectancy;
+  for (var age = params.retireAge; age <= maxAge; age++) {
+    labels.push(age + '岁');
+    data.push(mc.buckets[age] || 0);
+  }
+  distChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '花完钱的人数',
+        data: data,
+        backgroundColor: data.map(function(_, i) {
+          var age = params.retireAge + i;
+          if (age >= maxAge) return 'rgba(74,222,128,0.7)';
+          if (age >= maxAge - 10) return 'rgba(251,191,36,0.6)';
+          return 'rgba(248,113,113,0.6)';
+        }),
+        borderRadius: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: '钱花完的年龄分布（5000 次模拟）', color: 'rgba(255,255,255,0.6)', font: { size: 13 } },
+        tooltip: { callbacks: { label: function(ctx) {
+          var pct = (ctx.parsed.y / mc.trials * 100).toFixed(1);
+          return ctx.parsed.y + ' 人 (' + pct + '%)';
+        }}}
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.4)', maxRotation: 45, autoSkip: true, maxTicksLimit: 15 } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)' },
+          title: { display: true, text: '人数', color: 'rgba(255,255,255,0.4)' } }
+      }
+    }
+  });
+}
+</script>
+
+<script>
+function runSensitivity(params) {
+  var sa = RetirementGapLogic.sensitivityAnalysis(params, 1000);
+  var ctx = document.getElementById('sensChart').getContext('2d');
+  if (sensChart) sensChart.destroy();
+  var sorted = sa.scenarios.slice().sort(function(a, b) { return b.delta - a.delta; });
+  sensChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(function(s) { return s.name; }),
+      datasets: [{
+        label: '对「撑到几岁」的影响（年）',
+        data: sorted.map(function(s) { return parseFloat(s.delta.toFixed(1)); }),
+        backgroundColor: sorted.map(function(s) {
+          return s.delta >= 0 ? 'rgba(74,222,128,0.7)' : 'rgba(248,113,113,0.7)';
+        }),
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: '敏感性分析：改变一个参数的影响', color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(255,255,255,0.4)', callback: function(v) { return (v > 0 ? '+' : '') + v + '年'; } },
+          title: { display: true, text: '影响（年）', color: 'rgba(255,255,255,0.4)' } },
+        y: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.6)' } }
+      }
+    }
+  });
+  var best = sorted[0];
+  var worst = sorted[sorted.length - 1];
+  document.getElementById('sens-insight').innerHTML =
+    '<strong>最大正面杠杆：</strong>' + best.name + '，平均多撑 ' + best.delta.toFixed(1) + ' 年。<br>' +
+    '<strong>最大负面风险：</strong>' + worst.name + '，平均少撑 ' + Math.abs(worst.delta).toFixed(1) + ' 年。<br>' +
+    '通胀是最容易被忽视的「隐形杀手」，每多 1% 的通胀，退休金的购买力会被大幅侵蚀。';
+}
+</script>
+
+<script>
+function renderGap(params, mc) {
+  var reqFor85 = RetirementGapLogic.requiredSavings(params, 85);
+  var reqFor90 = RetirementGapLogic.requiredSavings(params, 90);
+  var reqFor95 = RetirementGapLogic.requiredSavings(params, 95);
+  var currentProjected = mc.avgWealthAtRetire;
+  var gap85 = Math.max(0, reqFor85 - currentProjected);
+  var gap90 = Math.max(0, reqFor90 - currentProjected);
+
+  document.getElementById('gap-summary').innerHTML =
+    '<div class="result-item blue"><div class="label">退休时预计财富</div><div class="value">¥' + formatNum(currentProjected) + '</div></div>' +
+    '<div class="result-item"><div class="label">撑到85岁需要</div><div class="value">¥' + formatNum(reqFor85) + '</div></div>' +
+    '<div class="result-item"><div class="label">撑到90岁需要</div><div class="value">¥' + formatNum(reqFor90) + '</div></div>' +
+    '<div class="result-item"><div class="label">撑到95岁需要</div><div class="value">¥' + formatNum(reqFor95) + '</div></div>' +
+    '<div class="result-item ' + (gap85 > 0 ? 'red' : 'green') + '"><div class="label">85岁缺口</div><div class="value">' + (gap85 > 0 ? '-¥' + formatNum(gap85) : '充足') + '</div></div>' +
+    '<div class="result-item ' + (gap90 > 0 ? 'red' : 'green') + '"><div class="label">90岁缺口</div><div class="value">' + (gap90 > 0 ? '-¥' + formatNum(gap90) : '充足') + '</div></div>';
+
+  var yearsToRetire = params.retireAge - params.currentAge;
+  var extraMonthly = yearsToRetire > 0 ? gap85 / (yearsToRetire * 12) : 0;
+  var gapInsight = '';
+  if (gap85 <= 0) {
+    gapInsight = '<strong>好消息：</strong>按当前计划，你的退休储蓄预计能覆盖到 85 岁。但别忘了，这是平均情况，蒙特卡洛模拟显示仍有 ' + (100 - mc.survivalPercent).toFixed(0) + '% 的概率提前花完。';
+  } else {
+    gapInsight = '<strong>缺口警告：</strong>要撑到 85 岁，你还需要额外 ¥' + formatNum(gap85) + '。如果从现在开始补，每月需要多存 <strong>¥' + extraMonthly.toFixed(0) + '</strong>。';
+  }
+  document.getElementById('gap-insight').innerHTML = gapInsight;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>群体智慧模拟器 — 为什么一群人的平均猜测能打败专家？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./wisdom-of-crowds-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 350px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+
+    /* 实验区域 */
+    .experiment-area {
+      background: rgba(0,0,0,0.15); border-radius: 12px; padding: 20px; margin: 15px 0;
+    }
+    .guess-input-row {
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    }
+    .guess-input-row input {
+      flex: 1; min-width: 120px; padding: 12px 16px; font-size: 18px; font-weight: 600;
+      background: rgba(0,0,0,0.3); border: 2px solid rgba(251,191,36,0.3);
+      border-radius: 12px; color: #fbbf24; outline: none; text-align: center;
+    }
+    .guess-input-row input:focus { border-color: #fbbf24; }
+    .guess-input-row input::placeholder { color: rgba(251,191,36,0.3); }
+    .crowd-list {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; max-height: 120px; overflow-y: auto;
+    }
+    .crowd-tag {
+      background: rgba(255,255,255,0.06); border-radius: 6px; padding: 4px 10px;
+      font-size: 12px; color: rgba(255,255,255,0.5);
+    }
+    .crowd-tag.user { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .progress-bar {
+      width: 100%; height: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; margin: 12px 0; overflow: hidden;
+    }
+    .progress-bar .fill {
+      height: 100%; border-radius: 4px; transition: width 0.3s;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b);
+    }
+    .reveal-box {
+      text-align: center; padding: 30px; margin: 20px 0;
+      background: rgba(0,0,0,0.2); border-radius: 16px;
+    }
+    .reveal-box .truth { font-size: 3rem; font-weight: 800; color: #4ade80; margin: 10px 0; }
+    .reveal-box .crowd-answer { font-size: 2rem; font-weight: 700; color: #fbbf24; }
+    .comparison-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;
+    }
+    .comparison-item {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 18px; text-align: center;
+    }
+    .comparison-item .comp-label { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 8px; }
+    .comparison-item .comp-value { font-size: 1.8rem; font-weight: 700; }
+    .comparison-item .comp-sub { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+    .slider-group { margin: 12px 0; }
+    .slider-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px;
+    }
+    .slider-group label span { color: #fbbf24; font-weight: 600; }
+    .slider-group input[type="range"] {
+      width: 100%; -webkit-appearance: none; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px; outline: none;
+    }
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: #fbbf24; border-radius: 50%; cursor: pointer;
+    }
+    .tab-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 8px 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; background: transparent; color: rgba(255,255,255,0.5);
+      cursor: pointer; transition: all 0.3s;
+    }
+    .tab-btn.active { background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.3); }
+    .hidden { display: none; }
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .comparison-row { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-box { height: 280px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-users-group"></i> 群体智慧模拟器</h1>
+    <p>1906年，高尔顿发现787个人猜牛的体重，中位数只差了0.8%。<br>为什么一群「不专业的人」的平均猜测，能打败大多数专家？</p>
+  </div>
+
+  <!-- Card 1: 亲自参与猜测实验 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-bulb"></i> 实验一：亲自参与猜测</div>
+    <div class="card-desc">一张照片里有多少颗糖果？先输入你的猜测，然后我们加入模拟群众的猜测，看看群体均值和你谁更准。</div>
+
+    <div class="experiment-area" id="exp1-guess-area">
+      <div style="text-align:center; margin-bottom: 15px;">
+        <div style="font-size: 80px; line-height: 1;">🫙</div>
+        <div style="color: rgba(255,255,255,0.4); font-size: 13px; margin-top: 8px;">这个罐子里有多少颗糖果？</div>
+      </div>
+      <div class="guess-input-row">
+        <input type="number" id="userGuess" placeholder="输入你的猜测..." min="1" max="9999">
+        <button class="btn" id="submitGuessBtn" onclick="submitGuess()"><i class="ti ti-send"></i> 提交</button>
+      </div>
+    </div>
+
+    <div id="exp1-result" class="hidden">
+      <div class="progress-bar"><div class="fill" id="crowdProgress" style="width:0%"></div></div>
+      <div style="text-align:center; font-size:13px; color:rgba(255,255,255,0.4); margin-bottom: 15px;">
+        <span id="crowdProgressText">正在收集群众猜测...</span>
+      </div>
+
+      <div class="reveal-box" id="exp1-reveal" style="display:none">
+        <div style="font-size:13px; color:rgba(255,255,255,0.4);">罐子里实际有</div>
+        <div class="truth" id="exp1-truth"></div>
+        <div style="font-size:13px; color:rgba(255,255,255,0.4); margin-top: 15px;">群体均值猜测</div>
+        <div class="crowd-answer" id="exp1-crowd"></div>
+      </div>
+
+      <div class="comparison-row" id="exp1-comparison" style="display:none">
+        <div class="comparison-item">
+          <div class="comp-label">你的猜测</div>
+          <div class="comp-value" style="color:#60a5fa" id="exp1-your-guess"></div>
+          <div class="comp-sub" id="exp1-your-error"></div>
+        </div>
+        <div class="comparison-item">
+          <div class="comp-label">群体均值</div>
+          <div class="comp-value" style="color:#fbbf24" id="exp1-crowd-guess"></div>
+          <div class="comp-sub" id="exp1-crowd-error"></div>
+        </div>
+      </div>
+
+      <div class="result-grid" id="exp1-stats" style="display:none">
+        <div class="result-item green"><div class="label">群体中位数</div><div class="value" id="exp1-median"></div></div>
+        <div class="result-item blue"><div class="label">参与人数</div><div class="value" id="exp1-count"></div></div>
+        <div class="result-item"><div class="label">群体打败了</div><div class="value" id="exp1-beat"></div></div>
+        <div class="result-item red"><div class="label">平均个体误差</div><div class="value" id="exp1-avg-err"></div></div>
+      </div>
+
+      <div class="crowd-list" id="exp1-crowd-list"></div>
+
+      <div class="insight-box" id="exp1-insight" style="display:none"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="resetExp1()"><i class="ti ti-refresh"></i> 再来一次</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 2: 收敛性模拟 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-line"></i> 实验二：人越多越准吗？</div>
+    <div class="card-desc">随着参与人数增加，群体均值如何逐步逼近真实值？拖动滑块调整参数，观察收敛过程。</div>
+
+    <div class="slider-group">
+      <label>真实值 <span id="conv-truth-val">1000</span></label>
+      <input type="range" id="conv-truth" min="100" max="10000" value="1000" step="100" oninput="updateConvLabel()">
+    </div>
+    <div class="slider-group">
+      <label>最大人数 <span id="conv-count-val">500</span></label>
+      <input type="range" id="conv-count" min="50" max="2000" value="500" step="50" oninput="updateConvLabel()">
+    </div>
+    <div class="slider-group">
+      <label>个体偏差范围 <span id="conv-bias-val">40%</span></label>
+      <input type="range" id="conv-bias" min="10" max="80" value="40" step="5" oninput="updateConvLabel()">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="runConvergence()"><i class="ti ti-player-play"></i> 开始模拟</button>
+    </div>
+
+    <div id="conv-result" class="hidden">
+      <div class="chart-box"><canvas id="convChart"></canvas></div>
+      <div class="result-grid" style="margin-top:15px">
+        <div class="result-item green"><div class="label">最终均值误差</div><div class="value" id="conv-final-mean"></div></div>
+        <div class="result-item blue"><div class="label">最终中位数误差</div><div class="value" id="conv-final-median"></div></div>
+        <div class="result-item"><div class="label">1人时误差</div><div class="value" id="conv-first-err"></div></div>
+        <div class="result-item red"><div class="label">误差缩小了</div><div class="value" id="conv-shrink"></div></div>
+      </div>
+      <div class="insight-box" id="conv-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 3: 信息级联 — 群体智慧的失效 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-alert-triangle"></i> 实验三：群体智慧什么时候失效？</div>
+    <div class="card-desc">如果每个人能看到前面人的猜测，会发生什么？信息级联会让群体趋同，多样性消失，智慧也随之消失。</div>
+
+    <div class="slider-group">
+      <label>从众强度 <span id="cascade-strength-val">50%</span></label>
+      <input type="range" id="cascade-strength" min="0" max="90" value="50" step="5" oninput="document.getElementById('cascade-strength-val').textContent=this.value+'%'">
+    </div>
+    <div class="slider-group">
+      <label>参与人数 <span id="cascade-count-val">200</span></label>
+      <input type="range" id="cascade-count" min="50" max="500" value="200" step="50" oninput="document.getElementById('cascade-count-val').textContent=this.value">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="runCascade()"><i class="ti ti-player-play"></i> 开始模拟</button>
+    </div>
+
+    <div id="cascade-result" class="hidden">
+      <div class="comparison-row">
+        <div class="comparison-item">
+          <div class="comp-label">独立猜测 — 群体均值误差</div>
+          <div class="comp-value" style="color:#4ade80" id="cascade-ind-err"></div>
+          <div class="comp-sub" id="cascade-ind-std"></div>
+        </div>
+        <div class="comparison-item">
+          <div class="comp-label">从众猜测 — 群体均值误差</div>
+          <div class="comp-value" style="color:#f87171" id="cascade-cas-err"></div>
+          <div class="comp-sub" id="cascade-cas-std"></div>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="cascadeChart"></canvas></div>
+      <div class="insight-box" id="cascade-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 4: 多样性预测定理 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-math-function"></i> 背后的数学：多样性预测定理</div>
+    <div class="card-desc">群体误差 = 平均个体误差 − 多样性。多样性越大，群体越聪明。这不是鸡汤，是数学定理。</div>
+
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn" onclick="runDiversity()"><i class="ti ti-player-play"></i> 验证定理</button>
+    </div>
+
+    <div id="diversity-result" class="hidden">
+      <div class="result-grid" style="margin-top:15px">
+        <div class="result-item red"><div class="label">平均个体误差²</div><div class="value" id="div-ind-err"></div></div>
+        <div class="result-item blue"><div class="label">多样性（方差）</div><div class="value" id="div-diversity"></div></div>
+        <div class="result-item green"><div class="label">群体误差²</div><div class="value" id="div-crowd-err"></div></div>
+        <div class="result-item"><div class="label">定理验证</div><div class="value" id="div-check"></div></div>
+      </div>
+      <div class="chart-box"><canvas id="diversityChart"></canvas></div>
+      <div class="insight-box" id="diversity-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 5: 历史案例 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-history"></i> 真实案例</div>
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="showCase('galton')">高尔顿猜牛</button>
+      <button class="tab-btn" onclick="showCase('jelly')">糖果罐实验</button>
+      <button class="tab-btn" onclick="showCase('submarine')">寻找潜艇</button>
+      <button class="tab-btn" onclick="showCase('polymarket')">预测市场</button>
+    </div>
+
+    <div id="case-galton" class="case-content">
+      <div class="experiment-area">
+        <div style="font-size:15px; line-height:1.8; color:rgba(255,255,255,0.7);">
+          <strong style="color:#fbbf24">1906年，英国普利茅斯</strong><br>
+          统计学家弗朗西斯·高尔顿在一场农业展览会上做了一个实验。787个人（包括屠夫、农民和普通市民）各自猜测一头牛宰杀后的重量。<br><br>
+          高尔顿本来想证明「普通人的判断不靠谱」，结果发现：<br>
+          <strong style="color:#4ade80">群体中位数：1207磅</strong><br>
+          <strong style="color:#60a5fa">实际重量：1198磅</strong><br>
+          <strong style="color:#fbbf24">误差仅 0.8%</strong><br><br>
+          这比任何一个「专家」的猜测都准。高尔顿震惊了，他原本是精英主义者。
+        </div>
+      </div>
+    </div>
+
+    <div id="case-jelly" class="case-content hidden">
+      <div class="experiment-area">
+        <div style="font-size:15px; line-height:1.8; color:rgba(255,255,255,0.7);">
+          <strong style="color:#fbbf24">经典课堂实验</strong><br>
+          金融学教授 Jack Treynor 让56个学生猜一个罐子里有多少颗糖果（实际850颗）。<br><br>
+          <strong style="color:#4ade80">群体均值：871颗</strong>，误差仅 2.5%<br>
+          <strong style="color:#f87171">只有1个学生</strong>比群体均值更准<br><br>
+          群体均值打败了 98% 的个体。这就是为什么我们的实验一用糖果罐。
+        </div>
+      </div>
+    </div>
+
+    <div id="case-submarine" class="case-content hidden">
+      <div class="experiment-area">
+        <div style="font-size:15px; line-height:1.8; color:rgba(255,255,255,0.7);">
+          <strong style="color:#fbbf24">1968年，美国海军</strong><br>
+          核潜艇「天蝎号」在大西洋失踪。海军军官 John Craven 没有依赖单一专家，而是让一群不同背景的专家各自独立估计潜艇位置。<br><br>
+          他用贝叶斯方法聚合所有人的猜测，得到一个综合位置。<br>
+          <strong style="color:#4ade80">最终找到潜艇的位置距离群体预测仅 220 码</strong><br><br>
+          没有任何一个专家的单独猜测比群体聚合更接近真实位置。
+        </div>
+      </div>
+    </div>
+
+    <div id="case-polymarket" class="case-content hidden">
+      <div class="experiment-area">
+        <div style="font-size:15px; line-height:1.8; color:rgba(255,255,255,0.7);">
+          <strong style="color:#fbbf24">2024-2026，预测市场爆发</strong><br>
+          Polymarket 在 2024 年美国大选中一战成名，交易量突破 184 亿美元。它的核心原理就是群体智慧：<br><br>
+          每个人用真金白银下注自己的判断，市场价格就是群体的概率估计。<br>
+          <strong style="color:#4ade80">2024大选预测准确率超过 95% 的民调机构</strong><br><br>
+          为什么？因为预测市场满足群体智慧的四个条件：<strong style="color:#fbbf24">多样性</strong>（各种背景的人参与）、<strong style="color:#fbbf24">独立性</strong>（用钱投票，不是跟风）、<strong style="color:#fbbf24">去中心化</strong>（没有权威主导）、<strong style="color:#fbbf24">聚合机制</strong>（市场价格自动聚合）。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 6: 总结 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-list-check"></i> 群体智慧的四个条件</div>
+    <div class="experiment-area">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-palette" style="color:#fbbf24"></i></div>
+          <div style="color:#fbbf24; font-weight:600; margin-bottom: 6px;">多样性</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">参与者来自不同背景，有不同的信息和视角</div>
+        </div>
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-user-shield" style="color:#4ade80"></i></div>
+          <div style="color:#4ade80; font-weight:600; margin-bottom: 6px;">独立性</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">每个人独立判断，不受他人影响</div>
+        </div>
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-network" style="color:#60a5fa"></i></div>
+          <div style="color:#60a5fa; font-weight:600; margin-bottom: 6px;">去中心化</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">没有权威主导，每个人的判断都有权重</div>
+        </div>
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-transform" style="color:#f87171"></i></div>
+          <div style="color:#f87171; font-weight:600; margin-bottom: 6px;">聚合机制</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">有一种方法把个体判断汇总为群体判断</div>
+        </div>
+      </div>
+    </div>
+    <div class="insight-box" style="margin-top:15px">
+      <strong>为什么群体能打败专家？</strong><br>
+      不是因为群体中的每个人都很聪明，而是因为每个人的误差方向不同。有人猜高，有人猜低，这些误差在聚合时互相抵消。<br><br>
+      <strong>多样性预测定理</strong>告诉我们：群体误差 = 平均个体误差 − 多样性。只要群体足够多样，即使每个人都不太准，群体的聚合结果也能非常接近真相。<br><br>
+      但一旦独立性被破坏（比如从众、信息级联），多样性消失，群体就会变成「乌合之众」。
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+// ========== 实验一：亲自参与猜测 ==========
+const CANDY_TRUTH = 847; // 罐子里的糖果数
+let exp1UserGuess = null;
+let exp1Guesses = [];
+let convChart = null, cascadeChart = null, diversityChart = null;
+
+function submitGuess() {
+  const input = document.getElementById('userGuess');
+  const val = parseInt(input.value);
+  if (!val || val < 1 || val > 9999) {
+    if (typeof showToast === 'function') showToast('请输入 1-9999 之间的数字');
+    return;
+  }
+  exp1UserGuess = val;
+  document.getElementById('submitGuessBtn').disabled = true;
+  document.getElementById('exp1-result').classList.remove('hidden');
+
+  // 模拟群众逐步加入
+  const totalCrowd = 200;
+  const crowdGuesses = generateGuesses(CANDY_TRUTH, totalCrowd, {
+    biasRange: 0.45, noiseStdDev: 0.3, outlierRate: 0.08
+  });
+  exp1Guesses = [val, ...crowdGuesses];
+
+  let step = 0;
+  const batchSize = 5;
+  const interval = setInterval(() => {
+    step += batchSize;
+    if (step >= totalCrowd) {
+      step = totalCrowd;
+      clearInterval(interval);
+      showExp1Result();
+    }
+    const pct = Math.round((step / totalCrowd) * 100);
+    document.getElementById('crowdProgress').style.width = pct + '%';
+    document.getElementById('crowdProgressText').textContent =
+      `已收集 ${step + 1} 人的猜测（包括你）...`;
+  }, 40);
+}
+
+function showExp1Result() {
+  document.getElementById('crowdProgressText').textContent =
+    `共 ${exp1Guesses.length} 人参与猜测`;
+
+  const analysis = analyzeWisdom(exp1Guesses, CANDY_TRUTH);
+
+  // 揭晓
+  document.getElementById('exp1-reveal').style.display = '';
+  document.getElementById('exp1-truth').textContent = CANDY_TRUTH + ' 颗';
+  document.getElementById('exp1-crowd').textContent = analysis.mean + ' 颗';
+
+  // 对比
+  document.getElementById('exp1-comparison').style.display = '';
+  document.getElementById('exp1-your-guess').textContent = exp1UserGuess;
+  const yourErr = calcErrorPercent(exp1UserGuess, CANDY_TRUTH);
+  document.getElementById('exp1-your-error').textContent = '误差 ' + yourErr.toFixed(1) + '%';
+  document.getElementById('exp1-crowd-guess').textContent = analysis.mean;
+  document.getElementById('exp1-crowd-error').textContent = '误差 ' + analysis.meanError + '%';
+
+  // 统计
+  document.getElementById('exp1-stats').style.display = '';
+  document.getElementById('exp1-median').textContent = analysis.median;
+  document.getElementById('exp1-count').textContent = exp1Guesses.length;
+  document.getElementById('exp1-beat').textContent = analysis.beatPercent + '%';
+  document.getElementById('exp1-avg-err').textContent = analysis.avgIndividualError + '%';
+
+  // 猜测列表
+  const listEl = document.getElementById('exp1-crowd-list');
+  listEl.innerHTML = '';
+  exp1Guesses.forEach((g, i) => {
+    const tag = document.createElement('span');
+    tag.className = 'crowd-tag' + (i === 0 ? ' user' : '');
+    tag.textContent = i === 0 ? '你: ' + g : g;
+    listEl.appendChild(tag);
+  });
+
+  // 洞察
+  const insightEl = document.getElementById('exp1-insight');
+  insightEl.style.display = '';
+  const youBeat = yourErr < analysis.meanError;
+  if (youBeat) {
+    insightEl.innerHTML = `<strong>恭喜，你比群体均值更准！</strong>你的误差是 ${yourErr.toFixed(1)}%，群体均值误差是 ${analysis.meanError}%。` +
+      `不过这并不常见——群体均值打败了 <strong>${analysis.beatPercent}%</strong> 的个体。你属于少数派。`;
+  } else {
+    insightEl.innerHTML = `<strong>群体均值比你更准。</strong>你的误差是 ${yourErr.toFixed(1)}%，群体均值误差只有 ${analysis.meanError}%。` +
+      `群体均值打败了 <strong>${analysis.beatPercent}%</strong> 的个体——包括你。这就是群体智慧的力量。`;
+  }
+}
+
+function resetExp1() {
+  exp1UserGuess = null;
+  exp1Guesses = [];
+  document.getElementById('userGuess').value = '';
+  document.getElementById('submitGuessBtn').disabled = false;
+  document.getElementById('exp1-result').classList.add('hidden');
+  document.getElementById('exp1-reveal').style.display = 'none';
+  document.getElementById('exp1-comparison').style.display = 'none';
+  document.getElementById('exp1-stats').style.display = 'none';
+  document.getElementById('exp1-insight').style.display = 'none';
+  document.getElementById('crowdProgress').style.width = '0%';
+}
+
+// ========== 实验二：收敛性模拟 ==========
+function updateConvLabel() {
+  document.getElementById('conv-truth-val').textContent = document.getElementById('conv-truth').value;
+  document.getElementById('conv-count-val').textContent = document.getElementById('conv-count').value;
+  document.getElementById('conv-bias-val').textContent = document.getElementById('conv-bias').value + '%';
+}
+
+function runConvergence() {
+  const truth = parseInt(document.getElementById('conv-truth').value);
+  const count = parseInt(document.getElementById('conv-count').value);
+  const bias = parseInt(document.getElementById('conv-bias').value) / 100;
+
+  const { steps } = simulateConvergence(truth, count, { biasRange: bias });
+
+  document.getElementById('conv-result').classList.remove('hidden');
+
+  const last = steps[steps.length - 1];
+  const first = steps[0];
+  document.getElementById('conv-final-mean').textContent = last.meanError + '%';
+  document.getElementById('conv-final-median').textContent = last.medianError + '%';
+  document.getElementById('conv-first-err').textContent = first.meanError + '%';
+  const shrink = first.meanError > 0 ? Math.round(first.meanError / Math.max(last.meanError, 0.01)) : '-';
+  document.getElementById('conv-shrink').textContent = shrink + '×';
+
+  // 图表
+  if (convChart) convChart.destroy();
+  const ctx = document.getElementById('convChart').getContext('2d');
+  convChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: steps.map(s => s.n),
+      datasets: [
+        {
+          label: '均值误差 %',
+          data: steps.map(s => s.meanError),
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251,191,36,0.1)',
+          fill: true, tension: 0.3, pointRadius: 2
+        },
+        {
+          label: '中位数误差 %',
+          data: steps.map(s => s.medianError),
+          borderColor: '#60a5fa',
+          backgroundColor: 'rgba(96,165,250,0.1)',
+          fill: true, tension: 0.3, pointRadius: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: '参与人数', color: 'rgba(255,255,255,0.4)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          title: { display: true, text: '误差 %', color: 'rgba(255,255,255,0.4)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+
+  document.getElementById('conv-insight').innerHTML =
+    `<strong>收敛规律：</strong>从1个人到 ${count} 人，误差从 <strong>${first.meanError}%</strong> 降到 <strong>${last.meanError}%</strong>，缩小了约 <strong>${shrink}倍</strong>。` +
+    `<br>这符合大数定律：随着样本量增加，样本均值趋近于总体均值。误差大致按 <strong>1/√n</strong> 的速度下降——人数翻4倍，误差减半。`;
+}
+</script>
+
+<script>
+// ========== 实验三：信息级联 ==========
+function runCascade() {
+  const strength = parseInt(document.getElementById('cascade-strength').value) / 100;
+  const count = parseInt(document.getElementById('cascade-count').value);
+  const truth = 1000;
+
+  const result = simulateCascade(truth, count, strength);
+
+  document.getElementById('cascade-result').classList.remove('hidden');
+  document.getElementById('cascade-ind-err').textContent = result.independentResult.meanError + '%';
+  document.getElementById('cascade-ind-std').textContent = '标准差: ' + result.independentResult.stdDev;
+  document.getElementById('cascade-cas-err').textContent = result.cascadedResult.meanError + '%';
+  document.getElementById('cascade-cas-std').textContent = '标准差: ' + result.cascadedResult.stdDev;
+
+  // 分布直方图
+  if (cascadeChart) cascadeChart.destroy();
+  const bins = 20;
+  const allVals = [...result.independent, ...result.cascaded];
+  const minVal = Math.min(...allVals);
+  const maxVal = Math.max(...allVals);
+  const binWidth = (maxVal - minVal) / bins || 1;
+
+  function toBins(arr) {
+    const counts = new Array(bins).fill(0);
+    arr.forEach(v => {
+      const idx = Math.min(Math.floor((v - minVal) / binWidth), bins - 1);
+      counts[idx]++;
+    });
+    return counts;
+  }
+
+  const labels = Array.from({ length: bins }, (_, i) =>
+    Math.round(minVal + i * binWidth)
+  );
+
+  const ctx = document.getElementById('cascadeChart').getContext('2d');
+  cascadeChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '独立猜测',
+          data: toBins(result.independent),
+          backgroundColor: 'rgba(74,222,128,0.4)',
+          borderColor: '#4ade80', borderWidth: 1
+        },
+        {
+          label: '从众猜测',
+          data: toBins(result.cascaded),
+          backgroundColor: 'rgba(248,113,113,0.4)',
+          borderColor: '#f87171', borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } },
+        annotation: {
+          annotations: {
+            truthLine: {
+              type: 'line', xMin: truth, xMax: truth,
+              borderColor: '#fbbf24', borderWidth: 2, borderDash: [5, 5],
+              label: { display: true, content: '真实值', color: '#fbbf24' }
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 10 },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+
+  const betterOrWorse = result.cascadedResult.meanError > result.independentResult.meanError ? '更差' : '更好';
+  document.getElementById('cascade-insight').innerHTML =
+    `<strong>从众强度 ${Math.round(strength * 100)}% 的结果：</strong>` +
+    `独立猜测的群体误差是 <strong>${result.independentResult.meanError}%</strong>，` +
+    `从众猜测的群体误差是 <strong>${result.cascadedResult.meanError}%</strong>（${betterOrWorse}）。<br><br>` +
+    `从众猜测的标准差（<strong>${result.cascadedResult.stdDev}</strong>）远小于独立猜测（<strong>${result.independentResult.stdDev}</strong>），` +
+    `说明多样性大幅下降。当所有人都在看别人的答案时，群体变成了「回声室」——大家越来越像，但不一定越来越对。<br><br>` +
+    `<strong>这就是为什么：</strong>投票要匿名、陪审团要隔离讨论、预测市场用真金白银而不是公开举手。独立性是群体智慧的生命线。`;
+}
+
+// ========== 实验四：多样性预测定理 ==========
+function runDiversity() {
+  const truth = 1000;
+  const guesses = generateGuesses(truth, 500, { biasRange: 0.4, noiseStdDev: 0.25 });
+  const dt = diversityTheorem(guesses, truth);
+
+  document.getElementById('diversity-result').classList.remove('hidden');
+  document.getElementById('div-ind-err').textContent = dt.avgIndividualError.toLocaleString();
+  document.getElementById('div-diversity').textContent = dt.diversity.toLocaleString();
+  document.getElementById('div-crowd-err').textContent = dt.crowdError.toLocaleString();
+  document.getElementById('div-check').textContent = dt.crowdError === dt.check ? '✓ 完美' : '≈ ' + dt.check.toLocaleString();
+
+  // 柱状图
+  if (diversityChart) diversityChart.destroy();
+  const ctx = document.getElementById('diversityChart').getContext('2d');
+  diversityChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['平均个体误差²', '多样性（方差）', '群体误差²', '个体误差² − 多样性'],
+      datasets: [{
+        data: [dt.avgIndividualError, dt.diversity, dt.crowdError, dt.check],
+        backgroundColor: ['rgba(248,113,113,0.6)', 'rgba(96,165,250,0.6)', 'rgba(74,222,128,0.6)', 'rgba(251,191,36,0.6)'],
+        borderColor: ['#f87171', '#60a5fa', '#4ade80', '#fbbf24'],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 } },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+
+  const ratio = dt.avgIndividualError > 0 ? Math.round((dt.diversity / dt.avgIndividualError) * 100) : 0;
+  document.getElementById('diversity-insight').innerHTML =
+    `<strong>多样性预测定理验证：</strong><br>` +
+    `平均个体误差² = <strong>${dt.avgIndividualError.toLocaleString()}</strong><br>` +
+    `多样性（猜测之间的方差）= <strong>${dt.diversity.toLocaleString()}</strong><br>` +
+    `群体误差² = ${dt.avgIndividualError.toLocaleString()} − ${dt.diversity.toLocaleString()} = <strong>${dt.check.toLocaleString()}</strong><br><br>` +
+    `多样性「吃掉」了 <strong>${ratio}%</strong> 的个体误差。这就是群体智慧的数学本质：不是每个人都对，而是错误的方向足够分散。`;
+}
+
+// ========== 历史案例切换 ==========
+function showCase(id) {
+  document.querySelectorAll('.case-content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('case-' + id).classList.remove('hidden');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

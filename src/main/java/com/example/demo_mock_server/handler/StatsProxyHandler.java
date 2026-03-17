@@ -45,6 +45,14 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
     public static final String KEY_KELLY_SIMS = KELLY_PREFIX + "sims";                // 总模拟次数
     public static final String KEY_KELLY_USERS = KELLY_PREFIX + "users";              // 参与用户数
     public static final String KEY_KELLY_BATCH_SIMS = KELLY_PREFIX + "batch-sims";    // 批量模拟次数
+    
+    // 注意力挑战统计 key
+    private static final String ATTENTION_PREFIX = "attention-challenge-";
+    public static final String KEY_ATTENTION_PLAYERS = ATTENTION_PREFIX + "players";          // 参与人数
+    public static final String KEY_ATTENTION_COMPLETED = ATTENTION_PREFIX + "completed";      // 完成测试人数
+    public static final String KEY_ATTENTION_TOTAL_SCORE = ATTENTION_PREFIX + "total-score";  // 总分数（用于算均分）
+    public static final String KEY_ATTENTION_BEST_SCORE = ATTENTION_PREFIX + "best-score";    // 最高分
+    public static final String KEY_ATTENTION_FASTEST_RT = ATTENTION_PREFIX + "fastest-rt";    // 最快反应时间（负数存储，incr取最大值）
 
     public StatsProxyHandler(Vertx vertx) {
         WebClientOptions options = new WebClientOptions()
@@ -92,9 +100,13 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
             return;
         }
 
+        // 支持自定义增量，默认为 1
+        String nParam = ctx.request().getParam("n");
+        String increment = (nParam != null && nParam.matches("\\d+")) ? nParam : "1";
+
         webClient.post("/counter/incr")
             .addQueryParam("key", key)
-            .addQueryParam("n", "1")
+            .addQueryParam("n", increment)
             .putHeader("X-Api-Token", apiToken)
             .send()
             .onSuccess(response -> {
@@ -189,7 +201,12 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
             key.equals(KEY_DOOMSDAY_USERS) ||
             key.equals(KEY_KELLY_SIMS) ||
             key.equals(KEY_KELLY_USERS) ||
-            key.equals(KEY_KELLY_BATCH_SIMS)
+            key.equals(KEY_KELLY_BATCH_SIMS) ||
+            key.equals(KEY_ATTENTION_PLAYERS) ||
+            key.equals(KEY_ATTENTION_COMPLETED) ||
+            key.equals(KEY_ATTENTION_TOTAL_SCORE) ||
+            key.equals(KEY_ATTENTION_BEST_SCORE) ||
+            key.equals(KEY_ATTENTION_FASTEST_RT)
         );
     }
 

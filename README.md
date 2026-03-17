@@ -4,53 +4,53 @@
 
 ## 🌐 在线预览
 
-**主站：** https://demo-mockserver.runnable.run
+**主站：** https://numfeel.996.ninja
 
 **后端 API：** https://demo-api-mockserver.runnable.run
 
 ## 📋 演示列表
 
 ### 💻 编程概念
-- **[同步 vs 异步演示](https://demo-mockserver.runnable.run/sync-async-demo.html)** - 通过动画直观理解同步与异步的区别
-- **[IndexedDB 缓存分页](https://demo-mockserver.runnable.run/mock-data.html)** - 大数据量的本地缓存与分页展示
+- **[同步 vs 异步演示](https://numfeel.996.ninja/sync-async-demo.html)** - 通过动画直观理解同步与异步的区别
+- **[IndexedDB 缓存分页](https://numfeel.996.ninja/mock-data.html)** - 大数据量的本地缓存与分页展示
 
 ### 💰 金融计算
-- **[财务决策风险模拟](https://demo-mockserver.runnable.run/financial-risk-simulator.html)** - 蒙特卡洛模拟分析消费风险
-- **[复利计算器](https://demo-mockserver.runnable.run/compound-interest-calculator.html)** - 可视化复利增长效果
-- **[基金定投模拟](https://demo-mockserver.runnable.run/fund-dca-simulator.html)** - 定投策略收益分析
-- **[财务自由计算器](https://demo-mockserver.runnable.run/financial-freedom-calculator.html)** - 计算达到财务自由所需时间
-- **[存100万有多难](https://demo-mockserver.runnable.run/save-million-calculator.html)** - 打工人攒钱真相计算器
-- **[200万 vs 2亿](https://demo-mockserver.runnable.run/200w-vs-2yi.html)** - 期望值与风险偏好的博弈
+- **[财务决策风险模拟](https://numfeel.996.ninja/financial-risk-simulator.html)** - 蒙特卡洛模拟分析消费风险
+- **[复利计算器](https://numfeel.996.ninja/compound-interest-calculator.html)** - 可视化复利增长效果
+- **[基金定投模拟](https://numfeel.996.ninja/fund-dca-simulator.html)** - 定投策略收益分析
+- **[财务自由计算器](https://numfeel.996.ninja/financial-freedom-calculator.html)** - 计算达到财务自由所需时间
+- **[存100万有多难](https://numfeel.996.ninja/save-million-calculator.html)** - 打工人攒钱真相计算器
+- **[200万 vs 2亿](https://numfeel.996.ninja/200w-vs-2yi.html)** - 期望值与风险偏好的博弈
 
 ### 🎲 概率统计
-- **[蒙提霍尔问题](https://demo-mockserver.runnable.run/monty-hall-simulator.html)** - 三门问题的概率验证
-- **[101 vs 100 硬币问题](https://demo-mockserver.runnable.run/coin-flip-probability.html)** - 对称性证明+蒙特卡洛模拟
-- **[泊松分布可视化](https://demo-mockserver.runnable.run/poisson-distribution.html)** - 交互式理解泊松分布的本质
-- **[50%财富按钮悖论](https://demo-mockserver.runnable.run/wealth-button-paradox.html)** - 期望值陷阱的模拟揭示
-- **[赌徒破产悖论](https://demo-mockserver.runnable.run/gambler-ruin.html)** - 随机游走的残酷真相
-- **[武器伤害对比](https://demo-mockserver.runnable.run/weapon-damage-compare.html)** - 期望相同但方差不同的取舍
-- **[100面骰子：1.1%有多低](https://demo-mockserver.runnable.run/drug-relapse-dice.html)** - 感受1%概率的渺茫
+- **[蒙提霍尔问题](https://numfeel.996.ninja/monty-hall-simulator.html)** - 三门问题的概率验证
+- **[101 vs 100 硬币问题](https://numfeel.996.ninja/coin-flip-probability.html)** - 对称性证明+蒙特卡洛模拟
+- **[泊松分布可视化](https://numfeel.996.ninja/poisson-distribution.html)** - 交互式理解泊松分布的本质
+- **[50%财富按钮悖论](https://numfeel.996.ninja/wealth-button-paradox.html)** - 期望值陷阱的模拟揭示
+- **[赌徒破产悖论](https://numfeel.996.ninja/gambler-ruin.html)** - 随机游走的残酷真相
+- **[武器伤害对比](https://numfeel.996.ninja/weapon-damage-compare.html)** - 期望相同但方差不同的取舍
+- **[100面骰子：1.1%有多低](https://numfeel.996.ninja/drug-relapse-dice.html)** - 感受1%概率的渺茫
 
 ### ⚛️ 量子物理
-- **[量子随机数可视化](https://demo-mockserver.runnable.run/quantum-random-visualizer.html)** - 真随机 vs 伪随机对比
-- **[量子大乐透](https://demo-mockserver.runnable.run/quantum-lottery.html)** - 用量子真随机数生成彩票号码
+- **[量子随机数可视化](https://numfeel.996.ninja/quantum-random-visualizer.html)** - 真随机 vs 伪随机对比
+- **[量子大乐透](https://numfeel.996.ninja/quantum-lottery.html)** - 用量子真随机数生成彩票号码
 
 ### 🧠 心理学 & 哲学
-- **[忒修斯之船](https://demo-mockserver.runnable.run/ship-of-theseus.html)** - 身份认同的经典思想实验
-- **[损失厌恶测试](https://demo-mockserver.runnable.run/loss-aversion.html)** - 测测你的损失厌恶系数
+- **[忒修斯之船](https://numfeel.996.ninja/ship-of-theseus.html)** - 身份认同的经典思想实验
+- **[损失厌恶测试](https://numfeel.996.ninja/loss-aversion.html)** - 测测你的损失厌恶系数
 
 ### �️ 实用工具
-- **[随机中文名生成](https://demo-mockserver.runnable.run/chinese-names.html)** - 批量生成测试用中文姓名
-- **[数据大小可视化](https://demo-mockserver.runnable.run/data-size-visualizer.html)** - 直观展示不同数据单位的大小关系
-- **[圣诞帽头像生成器](https://demo-mockserver.runnable.run/christmas-hat.html)** - 上传头像添加圣诞贴图
-- **[墓志铭生成器](https://demo-mockserver.runnable.run/tombstone-generator.html)** - 生成你的专属墓碑图片
+- **[随机中文名生成](https://numfeel.996.ninja/chinese-names.html)** - 批量生成测试用中文姓名
+- **[数据大小可视化](https://numfeel.996.ninja/data-size-visualizer.html)** - 直观展示不同数据单位的大小关系
+- **[圣诞帽头像生成器](https://numfeel.996.ninja/christmas-hat.html)** - 上传头像添加圣诞贴图
+- **[墓志铭生成器](https://numfeel.996.ninja/tombstone-generator.html)** - 生成你的专属墓碑图片
 
 ### � 安全 & 监控
-- **[全球SSH攻击地图](https://demo-mockserver.runnable.run/ssh-attack-map.html)** - 实时展示服务器被扫描的IP来源
+- **[全球SSH攻击地图](https://numfeel.996.ninja/ssh-attack-map.html)** - 实时展示服务器被扫描的IP来源
 
 ### 🎭 趣味 & 娱乐
-- **[AI颜值评分器](https://demo-mockserver.runnable.run/face-score.html)** - AI分析面部比例给出颜值分数
-- **[户晨风直播词云](https://demo-mockserver.runnable.run/word-cloud.html)** - 直播实录数据生成的词云图
+- **[AI颜值评分器](https://numfeel.996.ninja/face-score.html)** - AI分析面部比例给出颜值分数
+- **[户晨风直播词云](https://numfeel.996.ninja/word-cloud.html)** - 直播实录数据生成的词云图
 
 ## 🎯 项目目标
 

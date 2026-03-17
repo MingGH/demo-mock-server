@@ -291,6 +291,20 @@
       <div class="insight-box" id="compInsight"></div>
     </div>
 
+    <!-- 全球挑战数据 -->
+    <div class="card" style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.06), rgba(168, 85, 247, 0.06)); border: 1px solid rgba(0, 212, 255, 0.15);">
+      <div class="card-title" style="color:#00d4ff; border-left-color:#00d4ff;"><i class="ti ti-world"></i> 全球挑战数据</div>
+      <div class="result-grid" id="globalStats">
+        <div class="result-item"><div class="label">参与人数</div><div class="value" id="gPlayers" style="color:#00d4ff;">-</div></div>
+        <div class="result-item green"><div class="label">完成测试</div><div class="value" id="gCompleted">-</div></div>
+        <div class="result-item blue"><div class="label">全球均分</div><div class="value" id="gAvgScore">-</div></div>
+        <div class="result-item"><div class="label">最高分纪录</div><div class="value" id="gBestScore">-</div></div>
+        <div class="result-item"><div class="label">完成率</div><div class="value" id="gCompletionRate">-</div></div>
+        <div class="result-item hidden" id="gMyRankItem"><div class="label">你的排位</div><div class="value" id="gMyRank">-</div></div>
+      </div>
+      <div class="insight-box hidden" id="globalInsight" style="margin-top:15px; background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(168,85,247,0.05)); border-color: rgba(0,212,255,0.2);"></div>
+    </div>
+
     <!-- 科普卡片 -->
     <div class="card">
       <div class="card-title"><i class="ti ti-book"></i> 注意力的数学</div>
@@ -312,6 +326,106 @@
   </div>
 
   <script>
+    // === 统计 API ===
+    const STATS_API = 'https://demo-api-mockserver.runnable.run/stats';
+    const STATS_KEYS = {
+      players: 'attention-challenge-players',
+      completed: 'attention-challenge-completed',
+      totalScore: 'attention-challenge-total-score',
+      bestScore: 'attention-challenge-best-score',
+      fastestRT: 'attention-challenge-fastest-rt'
+    };
+    let hasRecordedPlayer = false;
+    let lastScore = 0; // 本次测试分数，用于对比
+
+    // 个人历史最佳（localStorage）
+    function getMyBest() { return parseInt(localStorage.getItem('attention-my-best') || '0'); }
+    function setMyBest(score) { localStorage.setItem('attention-my-best', score); }
+
+    async function loadGlobalStats() {
+      try {
+        const results = await Promise.all([
+          fetch(`${STATS_API}?action=get&key=${STATS_KEYS.players}`).then(r => r.json()),
+          fetch(`${STATS_API}?action=get&key=${STATS_KEYS.completed}`).then(r => r.json()),
+          fetch(`${STATS_API}?action=get&key=${STATS_KEYS.totalScore}`).then(r => r.json()),
+          fetch(`${STATS_API}?action=get&key=${STATS_KEYS.bestScore}`).then(r => r.json())
+        ]);
+        const players = results[0].data || 0;
+        const completed = results[1].data || 0;
+        const totalScore = results[2].data || 0;
+        const bestScore = results[3].data || 0;
+        const avgScore = completed > 0 ? Math.round(totalScore / completed) : 0;
+        const completionRate = players > 0 ? Math.round((completed / players) * 100) : 0;
+
+        document.getElementById('gPlayers').textContent = players.toLocaleString();
+        document.getElementById('gCompleted').textContent = completed.toLocaleString();
+        document.getElementById('gAvgScore').textContent = avgScore > 0 ? avgScore : '-';
+        document.getElementById('gBestScore').textContent = bestScore > 0 ? bestScore : '-';
+        document.getElementById('gCompletionRate').textContent = completionRate > 0 ? completionRate + '%' : '-';
+
+        // 如果用户已完成测试，显示与全球对比
+        if (lastScore > 0 && avgScore > 0) {
+          const rankItem = document.getElementById('gMyRankItem');
+          rankItem.classList.remove('hidden');
+          const myRankEl = document.getElementById('gMyRank');
+          if (lastScore >= bestScore) {
+            myRankEl.textContent = 'No.1';
+            myRankEl.style.color = '#fbbf24';
+          } else if (lastScore >= avgScore) {
+            myRankEl.textContent = '高于均值';
+            myRankEl.style.color = '#4ade80';
+          } else {
+            myRankEl.textContent = '低于均值';
+            myRankEl.style.color = '#f87171';
+          }
+
+          const insightEl = document.getElementById('globalInsight');
+          insightEl.classList.remove('hidden');
+          const diff = lastScore - avgScore;
+          const myBest = getMyBest();
+          let html = `<strong style="color:#00d4ff;">你的分数：${lastScore}</strong>，全球均分：<strong>${avgScore}</strong>`;
+          if (diff > 0) {
+            html += `，你超过了全球平均 <strong style="color:#4ade80;">+${diff}分</strong>`;
+          } else if (diff < 0) {
+            html += `，低于全球平均 <strong style="color:#f87171;">${diff}分</strong>`;
+          } else {
+            html += `，刚好等于全球平均`;
+          }
+          if (myBest > 0) {
+            html += `<br>你的历史最佳：<strong style="color:#fbbf24;">${myBest}分</strong>`;
+            if (lastScore > myBest) html += ` <span style="color:#4ade80;">（新纪录！）</span>`;
+          }
+          insightEl.innerHTML = html;
+        }
+      } catch (e) { console.log('Stats load failed:', e); }
+    }
+
+    async function recordPlayer() {
+      if (hasRecordedPlayer) return;
+      hasRecordedPlayer = true;
+      try { await fetch(`${STATS_API}?action=incr&key=${STATS_KEYS.players}`); } catch (e) {}
+    }
+
+    async function recordCompleted(score) {
+      lastScore = score;
+      // 更新个人最佳
+      if (score > getMyBest()) setMyBest(score);
+      try {
+        await fetch(`${STATS_API}?action=incr&key=${STATS_KEYS.completed}`);
+        // 累加分数用于算均分
+        if (score > 0) {
+          await fetch(`${STATS_API}?action=incr&key=${STATS_KEYS.totalScore}&n=${score}`);
+        }
+        // 检查是否破全球纪录
+        const res = await fetch(`${STATS_API}?action=get&key=${STATS_KEYS.bestScore}`).then(r => r.json());
+        if (score > (res.data || 0)) {
+          const diff = score - (res.data || 0);
+          await fetch(`${STATS_API}?action=incr&key=${STATS_KEYS.bestScore}&n=${diff}`);
+        }
+        loadGlobalStats();
+      } catch (e) {}
+    }
+
     // === 游戏状态 ===
     let difficulty = 'normal';
     const DIFF_CONFIG = {
@@ -343,6 +457,7 @@
 
     // === 游戏控制 ===
     function startGame() {
+      recordPlayer();
       const cfg = DIFF_CONFIG[difficulty];
       gameState = {
         running: true, round: 0, hits: 0, misses: 0,
@@ -526,11 +641,18 @@
         : Math.round((gameState.hits / (gameState.hits + gameState.misses)) * 100);
       const fitParams = fitExponentialDecay(rts);
 
+      // 上报统计
+      recordCompleted(score);
+
       // 分数环动画
       animateScore(score, level.color);
       document.getElementById('levelBadge').innerHTML =
         `<span style="color:${level.color}">${level.level}</span>` +
-        `<div style="font-size:13px;color:rgba(255,255,255,0.5);font-weight:400;margin-top:4px;">${level.desc}</div>`;
+        `<div style="font-size:13px;color:rgba(255,255,255,0.5);font-weight:400;margin-top:4px;">${level.desc}</div>` +
+        (score > getMyBest() - 1 && getMyBest() > 0 && score >= getMyBest()
+          ? `<div style="font-size:12px;color:#fbbf24;margin-top:6px;">&#11088; 新的个人最佳！</div>` : '') +
+        (getMyBest() > 0 && score < getMyBest()
+          ? `<div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:6px;">历史最佳：${getMyBest()}分</div>` : '');
 
       // 数据网格
       document.getElementById('resultGrid').innerHTML = `
@@ -733,6 +855,11 @@
         `衰减速度加快了约 <strong>${(afterFit.b / (beforeFit.b || 0.001)).toFixed(1)} 倍</strong>。<br><br>` +
         `这就是为什么刷完短视频后你会觉得「什么都不想做」——前额叶皮层的持续注意力功能被临时削弱了。`;
     }
+
+    // 页面加载时拉取全球统计
+    loadGlobalStats();
+    // 每5秒自动刷新统计
+    setInterval(loadGlobalStats, 5000);
   </script>
 </body>
 </html>

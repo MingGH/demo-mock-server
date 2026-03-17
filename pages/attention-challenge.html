@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>注意力挑战 — 短视频正在摧毁你的注意力？测一测</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./attention-challenge-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 300px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+
+    /* 游戏区域 */
+    .game-area {
+      position: relative; width: 100%; height: 400px;
+      background: rgba(0,0,0,0.3); border-radius: 16px;
+      border: 2px solid rgba(255,255,255,0.1); overflow: hidden;
+      cursor: crosshair; user-select: none;
+    }
+    .game-area.waiting { cursor: wait; }
+    .game-area.ended { cursor: default; }
+
+    .target {
+      position: absolute; width: 60px; height: 60px;
+      border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; transition: transform 0.1s;
+      animation: targetPop 0.2s ease-out;
+    }
+    .target:active { transform: scale(0.9); }
+    .target.real {
+      background: radial-gradient(circle, #fbbf24, #f59e0b);
+      box-shadow: 0 0 20px rgba(251,191,36,0.5);
+    }
+    .target.decoy {
+      background: radial-gradient(circle, #f87171, #dc2626);
+      box-shadow: 0 0 20px rgba(248,113,113,0.5);
+    }
+    @keyframes targetPop {
+      0% { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .game-hud {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px; background: rgba(0,0,0,0.2); border-radius: 12px;
+      margin-bottom: 12px; font-size: 14px;
+    }
+    .game-hud .hud-item { text-align: center; }
+    .game-hud .hud-label { color: rgba(255,255,255,0.4); font-size: 11px; }
+    .game-hud .hud-value { color: #fbbf24; font-weight: 700; font-size: 18px; }
+
+    .game-msg {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      text-align: center; pointer-events: none;
+    }
+    .game-msg .big { font-size: 48px; font-weight: 700; color: #fbbf24; }
+    .game-msg .sub { font-size: 14px; color: rgba(255,255,255,0.5); margin-top: 8px; }
+
+    .rt-flash {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 20px; font-weight: 700; pointer-events: none;
+      animation: rtFlash 0.8s ease-out forwards;
+    }
+    @keyframes rtFlash {
+      0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -80%) scale(1.3); }
+    }
+
+    /* 难度选择 */
+    .difficulty-row {
+      display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 15px 0;
+    }
+    .diff-btn {
+      padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.3s;
+    }
+    .diff-btn.active {
+      background: rgba(251,191,36,0.15); border-color: rgba(251,191,36,0.5);
+      color: #fbbf24;
+    }
+
+    /* 进度条 */
+    .progress-bar {
+      width: 100%; height: 4px; background: rgba(255,255,255,0.1);
+      border-radius: 2px; margin-bottom: 12px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b);
+      border-radius: 2px; transition: width 0.3s;
+    }
+
+    /* 分数环 */
+    .score-ring {
+      width: 160px; height: 160px; margin: 0 auto 20px; position: relative;
+    }
+    .score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .score-ring .bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 8; }
+    .score-ring .fg { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+    .score-ring .score-text {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    .score-ring .score-num { font-size: 42px; font-weight: 700; }
+    .score-ring .score-label { font-size: 12px; color: rgba(255,255,255,0.5); }
+
+    /* 数据卡片 */
+    .stat-tag {
+      display: inline-block; padding: 4px 10px; border-radius: 12px;
+      font-size: 12px; margin: 2px; background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.6);
+    }
+
+    .hidden { display: none; }
+
+    @media (max-width: 600px) {
+      body { padding: 15px 12px; }
+      .header h1 { font-size: 1.6rem; }
+      .header p { font-size: 13px; }
+      .card { padding: 18px; }
+      .game-area { height: 350px; }
+      .target { width: 52px; height: 52px; font-size: 20px; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-box { height: 250px; }
+      .game-hud { padding: 8px 12px; }
+      .game-hud .hud-value { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-brain"></i> 注意力挑战</h1>
+      <p>人类平均注意力从 12 秒降到 8.25 秒，比金鱼还短。<br>来测测你的注意力衰减曲线，看看短视频对大脑做了什么。</p>
+    </div>
+
+    <!-- 游戏设置 -->
+    <div class="card" id="setupCard">
+      <div class="card-title"><i class="ti ti-settings"></i> 挑战设置</div>
+      <div class="card-desc">
+        屏幕上会随机出现金色目标，点击它。红色是干扰项，不要点。<br>
+        测试会记录你每一轮的反应时间，分析你的注意力衰减曲线。
+      </div>
+      <div style="text-align:center;">
+        <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:8px;">选择难度</div>
+        <div class="difficulty-row">
+          <button class="diff-btn" data-diff="easy" onclick="setDifficulty('easy')">简单 (20轮)</button>
+          <button class="diff-btn active" data-diff="normal" onclick="setDifficulty('normal')">普通 (30轮)</button>
+          <button class="diff-btn" data-diff="hard" onclick="setDifficulty('hard')">困难 (40轮)</button>
+        </div>
+        <div style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:8px;" id="diffDesc">
+          30轮，偶尔出现干扰项
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="startGame()"><i class="ti ti-player-play"></i> 开始挑战</button>
+      </div>
+    </div>
+
+    <!-- 游戏进行中 -->
+    <div class="card hidden" id="gameCard">
+      <div class="game-hud">
+        <div class="hud-item">
+          <div class="hud-label">轮次</div>
+          <div class="hud-value" id="hudRound">0/30</div>
+        </div>
+        <div class="hud-item">
+          <div class="hud-label">命中</div>
+          <div class="hud-value" id="hudHits" style="color:#4ade80;">0</div>
+        </div>
+        <div class="hud-item">
+          <div class="hud-label">失误</div>
+          <div class="hud-value" id="hudMisses" style="color:#f87171;">0</div>
+        </div>
+        <div class="hud-item">
+          <div class="hud-label">上次反应</div>
+          <div class="hud-value" id="hudLastRT">-</div>
+        </div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <div class="game-area" id="gameArea">
+        <div class="game-msg" id="gameMsg">
+          <div class="big">准备</div>
+          <div class="sub">目标即将出现...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 结果面板 -->
+    <div class="card hidden" id="resultCard">
+      <div class="card-title"><i class="ti ti-chart-dots"></i> 测试结果</div>
+
+      <div class="score-ring" id="scoreRing">
+        <svg viewBox="0 0 120 120">
+          <circle class="bg" cx="60" cy="60" r="52"/>
+          <circle class="fg" id="scoreFg" cx="60" cy="60" r="52"
+            stroke-dasharray="326.73" stroke-dashoffset="326.73"/>
+        </svg>
+        <div class="score-text">
+          <div class="score-num" id="scoreNum">0</div>
+          <div class="score-label" id="scoreLabel">注意力分数</div>
+        </div>
+      </div>
+
+      <div id="levelBadge" style="text-align:center;margin-bottom:20px;font-size:18px;font-weight:700;"></div>
+
+      <div class="result-grid" id="resultGrid"></div>
+
+      <div class="card-title" style="margin-top:25px;"><i class="ti ti-chart-line"></i> 反应时间曲线</div>
+      <div class="card-desc">每一轮的反应时间（ms），橙色虚线是指数衰减拟合</div>
+      <div class="chart-box"><canvas id="rtChart"></canvas></div>
+
+      <div class="card-title" style="margin-top:25px;"><i class="ti ti-chart-bar"></i> 注意力衰减分析</div>
+      <div class="card-desc">按时间窗口分组的平均反应时间，观察注意力如何随时间下降</div>
+      <div class="chart-box"><canvas id="decayChart"></canvas></div>
+
+      <div class="insight-box" id="insightBox"></div>
+
+      <div class="btn-row">
+        <button class="btn" onclick="startGame()"><i class="ti ti-refresh"></i> 再测一次</button>
+        <button class="btn btn-secondary" onclick="showComparison()"><i class="ti ti-arrows-exchange"></i> 看对比数据</button>
+      </div>
+    </div>
+
+    <!-- 对比面板 -->
+    <div class="card hidden" id="compCard">
+      <div class="card-title"><i class="ti ti-device-mobile-vibration"></i> 刷短视频前 vs 后</div>
+      <div class="card-desc">
+        研究数据显示，刷30分钟短视频后，反应时间平均增加15-25%，注意力衰减速度加快2倍。<br>
+        下图对比了典型的「刷视频前」和「刷视频30分钟后」的注意力曲线。
+      </div>
+      <div class="chart-box" style="height:320px;"><canvas id="compChart"></canvas></div>
+
+      <div class="result-grid" id="compGrid" style="margin-top:20px;"></div>
+
+      <div class="insight-box" id="compInsight"></div>
+    </div>
+
+    <!-- 科普卡片 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-book"></i> 注意力的数学</div>
+      <div class="card-desc" style="line-height:2;">
+        <strong style="color:#fbbf24;">指数衰减模型</strong>：注意力随时间的变化可以用 <code style="color:#60a5fa;">A(t) = a·e^(-bt) + c</code> 描述。
+        其中 <code style="color:#60a5fa;">a</code> 是初始注意力水平，<code style="color:#60a5fa;">b</code> 是衰减速率，<code style="color:#60a5fa;">c</code> 是基线水平。<br><br>
+        <strong style="color:#fbbf24;">关键数据</strong>：<br>
+        <span class="stat-tag">人类平均注意力 8.25 秒</span>
+        <span class="stat-tag">金鱼注意力 9 秒</span>
+        <span class="stat-tag">18-22岁成瘾率 32%</span>
+        <span class="stat-tag">短视频后注意力 -23%</span>
+        <span class="stat-tag">54%成人无法专注30分钟</span><br><br>
+        <strong style="color:#fbbf24;">为什么短视频摧毁注意力？</strong><br>
+        短视频的「变比率强化」机制（类似老虎机）让大脑不断释放多巴胺。每次滑动都是一次「微型赌博」——
+        你不知道下一个视频是无聊还是有趣，这种不确定性恰恰是最容易成瘾的强化模式。
+        长期暴露后，前额叶皮层的持续注意力功能会显著下降。
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // === 游戏状态 ===
+    let difficulty = 'normal';
+    const DIFF_CONFIG = {
+      easy:   { rounds: 20, decoyRate: 0.1, minDelay: 800, maxDelay: 2000, label: '20轮，很少干扰项' },
+      normal: { rounds: 30, decoyRate: 0.2, minDelay: 600, maxDelay: 1800, label: '30轮，偶尔出现干扰项' },
+      hard:   { rounds: 40, decoyRate: 0.35, minDelay: 400, maxDelay: 1500, label: '40轮，大量干扰项，节奏更快' }
+    };
+
+    let gameState = {
+      running: false,
+      round: 0,
+      hits: 0,
+      misses: 0,
+      reactionTimes: [],
+      targetShownAt: 0,
+      currentTimeout: null,
+      totalRounds: 30
+    };
+
+    let rtChartInstance = null;
+    let decayChartInstance = null;
+    let compChartInstance = null;
+
+    function setDifficulty(diff) {
+      difficulty = diff;
+      document.querySelectorAll('.diff-btn').forEach(b => b.classList.toggle('active', b.dataset.diff === diff));
+      document.getElementById('diffDesc').textContent = DIFF_CONFIG[diff].label;
+    }
+
+    // === 游戏控制 ===
+    function startGame() {
+      const cfg = DIFF_CONFIG[difficulty];
+      gameState = {
+        running: true, round: 0, hits: 0, misses: 0,
+        reactionTimes: [], targetShownAt: 0, currentTimeout: null,
+        totalRounds: cfg.rounds
+      };
+
+      document.getElementById('setupCard').classList.add('hidden');
+      document.getElementById('resultCard').classList.add('hidden');
+      document.getElementById('compCard').classList.add('hidden');
+      document.getElementById('gameCard').classList.remove('hidden');
+
+      updateHUD();
+      showMessage('准备', '3秒后开始...');
+
+      setTimeout(() => {
+        if (gameState.running) {
+          showMessage('', '');
+          nextRound();
+        }
+      }, 3000);
+    }
+
+    function nextRound() {
+      if (!gameState.running) return;
+      if (gameState.round >= gameState.totalRounds) {
+        endGame();
+        return;
+      }
+
+      const cfg = DIFF_CONFIG[difficulty];
+      const delay = generateDelay(cfg.minDelay, cfg.maxDelay);
+      const area = document.getElementById('gameArea');
+      area.classList.add('waiting');
+
+      // 清除旧目标
+      area.querySelectorAll('.target').forEach(t => t.remove());
+      area.querySelectorAll('.rt-flash').forEach(f => f.remove());
+
+      gameState.currentTimeout = setTimeout(() => {
+        if (!gameState.running) return;
+        area.classList.remove('waiting');
+        gameState.round++;
+        updateHUD();
+
+        const isDecoy = Math.random() < cfg.decoyRate;
+        spawnTarget(isDecoy);
+      }, delay);
+    }
+
+    function spawnTarget(isDecoy) {
+      const area = document.getElementById('gameArea');
+      const rect = area.getBoundingClientRect();
+      const size = window.innerWidth <= 600 ? 52 : 60;
+      const pos = generateTargetPosition(rect.width, rect.height, size);
+
+      const el = document.createElement('div');
+      el.className = `target ${isDecoy ? 'decoy' : 'real'}`;
+      el.style.left = (pos.x - size / 2) + 'px';
+      el.style.top = (pos.y - size / 2) + 'px';
+      el.innerHTML = isDecoy
+        ? '<i class="ti ti-x" style="font-size:24px;color:#fff;"></i>'
+        : '<i class="ti ti-target" style="font-size:24px;color:#1a1a2e;"></i>';
+
+      if (!isDecoy) {
+        gameState.targetShownAt = performance.now();
+      }
+
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleTargetClick(isDecoy, el);
+      });
+      el.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        handleTargetClick(isDecoy, el);
+      }, { passive: false });
+
+      area.appendChild(el);
+
+      // 超时未点击（3秒）
+      if (!isDecoy) {
+        gameState.currentTimeout = setTimeout(() => {
+          if (!gameState.running) return;
+          if (el.parentNode) {
+            gameState.misses++;
+            el.remove();
+            showFlash('超时', '#f87171');
+            updateHUD();
+            nextRound();
+          }
+        }, 3000);
+      } else {
+        // 干扰项2秒后自动消失
+        setTimeout(() => {
+          if (el.parentNode) el.remove();
+          nextRound();
+        }, 2000);
+      }
+    }
+
+    function handleTargetClick(isDecoy, el) {
+      if (!gameState.running || !el.parentNode) return;
+      clearTimeout(gameState.currentTimeout);
+      el.remove();
+
+      if (isDecoy) {
+        // 点了干扰项
+        gameState.misses++;
+        showFlash('干扰项', '#f87171');
+      } else {
+        // 正确点击
+        const rt = Math.round(performance.now() - gameState.targetShownAt);
+        gameState.reactionTimes.push(rt);
+        gameState.hits++;
+        showFlash(rt + 'ms', rt < 400 ? '#4ade80' : rt < 600 ? '#fbbf24' : '#f87171');
+        document.getElementById('hudLastRT').textContent = rt + 'ms';
+        document.getElementById('hudLastRT').style.color = rt < 400 ? '#4ade80' : rt < 600 ? '#fbbf24' : '#f87171';
+      }
+
+      updateHUD();
+      nextRound();
+    }
+
+    // 点击空白区域不算失误（只有点干扰项才算）
+    document.addEventListener('DOMContentLoaded', () => {
+      const area = document.getElementById('gameArea');
+      area.addEventListener('click', (e) => {
+        if (e.target === area && gameState.running) {
+          // 空白区域点击，不做任何处理
+        }
+      });
+    });
+
+    function showFlash(text, color) {
+      const area = document.getElementById('gameArea');
+      const flash = document.createElement('div');
+      flash.className = 'rt-flash';
+      flash.style.color = color;
+      flash.textContent = text;
+      area.appendChild(flash);
+      setTimeout(() => flash.remove(), 800);
+    }
+
+    function showMessage(big, sub) {
+      const msg = document.getElementById('gameMsg');
+      msg.querySelector('.big').textContent = big;
+      msg.querySelector('.sub').textContent = sub;
+      msg.style.display = (big || sub) ? 'block' : 'none';
+    }
+
+    function updateHUD() {
+      document.getElementById('hudRound').textContent = `${gameState.round}/${gameState.totalRounds}`;
+      document.getElementById('hudHits').textContent = gameState.hits;
+      document.getElementById('hudMisses').textContent = gameState.misses;
+      const pct = (gameState.round / gameState.totalRounds) * 100;
+      document.getElementById('progressFill').style.width = pct + '%';
+    }
+
+    // === 结束游戏 ===
+    function endGame() {
+      gameState.running = false;
+      clearTimeout(gameState.currentTimeout);
+      document.getElementById('gameCard').classList.add('hidden');
+      document.getElementById('resultCard').classList.remove('hidden');
+
+      const rts = gameState.reactionTimes;
+      if (rts.length === 0) {
+        showMessage('无数据', '你没有点中任何目标');
+        return;
+      }
+
+      const score = calcAttentionScore(rts, gameState.hits, gameState.misses);
+      const level = getAttentionLevel(score);
+      const avg = Math.round(calcMean(rts));
+      const med = Math.round(calcMedian(rts));
+      const std = Math.round(calcStdDev(rts));
+      const fastest = Math.min(...rts);
+      const slowest = Math.max(...rts);
+      const accuracy = gameState.hits + gameState.misses === 0 ? 0
+        : Math.round((gameState.hits / (gameState.hits + gameState.misses)) * 100);
+      const fitParams = fitExponentialDecay(rts);
+
+      // 分数环动画
+      animateScore(score, level.color);
+      document.getElementById('levelBadge').innerHTML =
+        `<span style="color:${level.color}">${level.level}</span>` +
+        `<div style="font-size:13px;color:rgba(255,255,255,0.5);font-weight:400;margin-top:4px;">${level.desc}</div>`;
+
+      // 数据网格
+      document.getElementById('resultGrid').innerHTML = `
+        <div class="result-item"><div class="label">平均反应</div><div class="value">${avg}ms</div></div>
+        <div class="result-item blue"><div class="label">中位数</div><div class="value">${med}ms</div></div>
+        <div class="result-item green"><div class="label">最快</div><div class="value">${fastest}ms</div></div>
+        <div class="result-item red"><div class="label">最慢</div><div class="value">${slowest}ms</div></div>
+        <div class="result-item"><div class="label">波动(标准差)</div><div class="value">${std}ms</div></div>
+        <div class="result-item ${accuracy >= 80 ? 'green' : accuracy >= 60 ? '' : 'red'}">
+          <div class="label">准确率</div><div class="value">${accuracy}%</div>
+        </div>
+      `;
+
+      // 反应时间曲线
+      renderRTChart(rts, fitParams);
+
+      // 衰减分析
+      const windows = analyzeDecay(rts);
+      renderDecayChart(windows);
+
+      // 洞察
+      const decayRate = fitParams.b;
+      let insight = `<strong>你的注意力衰减速率：${decayRate > 0 ? decayRate.toFixed(4) : '未检测到明显衰减'}</strong><br>`;
+      if (decayRate > 0.02) {
+        insight += '你的注意力衰减较快，后期反应时间明显变长。这可能与近期频繁使用短视频有关——大脑习惯了高频刺激，持续注意力下降。';
+      } else if (decayRate > 0.005) {
+        insight += '你的注意力有轻微衰减，属于正常范围。人类注意力本身就会随时间下降，关键是衰减速率。';
+      } else {
+        insight += '你的注意力非常稳定，几乎没有衰减。这说明你的持续注意力很强，前额叶皮层功能良好。';
+      }
+      insight += `<br><br><strong>拟合优度 R² = ${fitParams.r2}</strong>（越接近1，指数衰减模型越能解释你的数据）`;
+      document.getElementById('insightBox').innerHTML = insight;
+    }
+
+    function animateScore(score, color) {
+      const fg = document.getElementById('scoreFg');
+      const numEl = document.getElementById('scoreNum');
+      fg.style.stroke = color;
+      const circumference = 2 * Math.PI * 52;
+      const offset = circumference * (1 - score / 100);
+      // 触发动画
+      requestAnimationFrame(() => {
+        fg.style.strokeDashoffset = offset;
+      });
+      // 数字动画
+      let current = 0;
+      const step = Math.max(1, Math.floor(score / 30));
+      const timer = setInterval(() => {
+        current = Math.min(current + step, score);
+        numEl.textContent = current;
+        numEl.style.color = color;
+        if (current >= score) clearInterval(timer);
+      }, 30);
+    }
+
+    // === 图表 ===
+    function renderRTChart(rts, fitParams) {
+      if (rtChartInstance) rtChartInstance.destroy();
+      const labels = rts.map((_, i) => i + 1);
+      const fitted = labels.map((_, i) => Math.round(predictDecay(fitParams, i)));
+
+      rtChartInstance = new Chart(document.getElementById('rtChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '反应时间 (ms)',
+              data: rts,
+              borderColor: '#fbbf24',
+              backgroundColor: 'rgba(251,191,36,0.1)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 3,
+              pointBackgroundColor: rts.map(t => t < 400 ? '#4ade80' : t < 600 ? '#fbbf24' : '#f87171')
+            },
+            {
+              label: '指数衰减拟合',
+              data: fitted,
+              borderColor: 'rgba(251,191,36,0.4)',
+              borderDash: [6, 4],
+              fill: false,
+              tension: 0.4,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 11 } } }
+          },
+          scales: {
+            x: { title: { display: true, text: '轮次', color: 'rgba(255,255,255,0.4)' },
+              ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { title: { display: true, text: '反应时间 (ms)', color: 'rgba(255,255,255,0.4)' },
+              ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    function renderDecayChart(windows) {
+      if (decayChartInstance) decayChartInstance.destroy();
+      if (windows.length === 0) return;
+
+      decayChartInstance = new Chart(document.getElementById('decayChart'), {
+        type: 'bar',
+        data: {
+          labels: windows.map(w => `第${w.startRound}-${w.endRound}轮`),
+          datasets: [{
+            label: '平均反应时间 (ms)',
+            data: windows.map(w => w.avgRT),
+            backgroundColor: windows.map((w, i) => {
+              const ratio = i / (windows.length - 1 || 1);
+              return `rgba(251,191,36,${0.3 + ratio * 0.5})`;
+            }),
+            borderColor: '#fbbf24',
+            borderWidth: 1,
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { display: false } },
+            y: { title: { display: true, text: 'ms', color: 'rgba(255,255,255,0.4)' },
+              ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    // === 对比数据 ===
+    function showComparison() {
+      document.getElementById('compCard').classList.remove('hidden');
+      document.getElementById('compCard').scrollIntoView({ behavior: 'smooth' });
+
+      const comp = generateComparisonData();
+      const beforeFit = fitExponentialDecay(comp.before);
+      const afterFit = fitExponentialDecay(comp.after);
+
+      if (compChartInstance) compChartInstance.destroy();
+      const labels = Array.from({ length: 30 }, (_, i) => i + 1);
+
+      compChartInstance = new Chart(document.getElementById('compChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '刷视频前',
+              data: comp.before,
+              borderColor: '#4ade80',
+              backgroundColor: 'rgba(74,222,128,0.08)',
+              fill: true, tension: 0.3, pointRadius: 2
+            },
+            {
+              label: '刷视频30分钟后',
+              data: comp.after,
+              borderColor: '#f87171',
+              backgroundColor: 'rgba(248,113,113,0.08)',
+              fill: true, tension: 0.3, pointRadius: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 11 } } }
+          },
+          scales: {
+            x: { title: { display: true, text: '轮次', color: 'rgba(255,255,255,0.4)' },
+              ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { title: { display: true, text: '反应时间 (ms)', color: 'rgba(255,255,255,0.4)' },
+              ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+
+      const beforeAvg = Math.round(calcMean(comp.before));
+      const afterAvg = Math.round(calcMean(comp.after));
+      const increase = Math.round((afterAvg - beforeAvg) / beforeAvg * 100);
+
+      document.getElementById('compGrid').innerHTML = `
+        <div class="result-item green"><div class="label">刷视频前均值</div><div class="value">${beforeAvg}ms</div></div>
+        <div class="result-item red"><div class="label">刷视频后均值</div><div class="value">${afterAvg}ms</div></div>
+        <div class="result-item"><div class="label">反应变慢</div><div class="value">${increase}%</div></div>
+        <div class="result-item blue"><div class="label">衰减加速</div><div class="value">${(afterFit.b / (beforeFit.b || 0.001)).toFixed(1)}x</div></div>
+      `;
+
+      document.getElementById('compInsight').innerHTML =
+        `<strong>刷30分钟短视频后：</strong><br>` +
+        `平均反应时间从 <strong style="color:#4ade80">${beforeAvg}ms</strong> 增加到 <strong style="color:#f87171">${afterAvg}ms</strong>，` +
+        `变慢了 <strong>${increase}%</strong>。<br>` +
+        `注意力衰减速率从 ${beforeFit.b.toFixed(4)} 增加到 ${afterFit.b.toFixed(4)}，` +
+        `衰减速度加快了约 <strong>${(afterFit.b / (beforeFit.b || 0.001)).toFixed(1)} 倍</strong>。<br><br>` +
+        `这就是为什么刷完短视频后你会觉得「什么都不想做」——前额叶皮层的持续注意力功能被临时削弱了。`;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>满减凑单计算器 — 你为了省50块多花了200块</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./full-reduction-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 350px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+    .experiment-area {
+      background: rgba(0,0,0,0.15); border-radius: 12px; padding: 20px; margin: 15px 0;
+    }
+    .input-group { margin-bottom: 16px; }
+    .input-group label {
+      display: block; font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px;
+    }
+    .input-group label span { color: #fbbf24; font-weight: 600; }
+    .input-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .input-row input, .input-row select {
+      flex: 1; min-width: 100px; padding: 12px 16px; font-size: 16px; font-weight: 600;
+      background: rgba(0,0,0,0.3); border: 2px solid rgba(251,191,36,0.3);
+      border-radius: 12px; color: #fbbf24; outline: none; text-align: center;
+    }
+    .input-row input:focus, .input-row select:focus { border-color: #fbbf24; }
+    .input-row input::placeholder { color: rgba(251,191,36,0.3); font-size: 14px; }
+    .input-row .unit { color: rgba(255,255,255,0.4); font-size: 14px; white-space: nowrap; }
+    .verdict {
+      text-align: center; padding: 25px; margin: 20px 0;
+      border-radius: 16px; font-size: 1.1rem; font-weight: 600;
+    }
+    .verdict.good { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: #4ade80; }
+    .verdict.bad { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: #f87171; }
+    .verdict .big { font-size: 2.5rem; font-weight: 800; display: block; margin: 8px 0; }
+    .verdict .sub { font-size: 13px; font-weight: 400; opacity: 0.7; }
+    .comparison-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;
+    }
+    .comparison-item {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 18px; text-align: center;
+    }
+    .comparison-item .comp-label { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 8px; }
+    .comparison-item .comp-value { font-size: 1.8rem; font-weight: 700; }
+    .comparison-item .comp-sub { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+    .preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+    .preset-btn {
+      padding: 6px 14px; font-size: 12px; border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 16px; background: transparent; color: rgba(255,255,255,0.5);
+      cursor: pointer; transition: all 0.3s;
+    }
+    .preset-btn:hover, .preset-btn.active {
+      background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.3);
+    }
+    .tier-row {
+      display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .tier-row input {
+      width: 100px; padding: 8px 12px; font-size: 14px;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px; color: #fbbf24; outline: none; text-align: center;
+    }
+    .tier-row input:focus { border-color: #fbbf24; }
+    .tier-row .tier-label { color: rgba(255,255,255,0.4); font-size: 13px; }
+    .tier-tag {
+      display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 12px; margin: 2px;
+    }
+    .tier-tag.best { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+    .tier-tag.ok { background: rgba(251,191,36,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+    .tier-tag.bad { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+    .hidden { display: none; }
+    .slider-group { margin: 12px 0; }
+    .slider-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px;
+    }
+    .slider-group label span { color: #fbbf24; font-weight: 600; }
+    .slider-group input[type="range"] {
+      width: 100%; -webkit-appearance: none; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px; outline: none;
+    }
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: #fbbf24; border-radius: 50%; cursor: pointer;
+    }
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .comparison-row { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-box { height: 280px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-shopping-cart"></i> 满减凑单计算器</h1>
+    <p>满300减50，你为了省50块多花了200块？<br>算算凑单的「真实折扣率」，看看你到底是赚了还是亏了。</p>
+  </div>
+</div>
+
+<script>
+// 页面交互逻辑将在后续追加
+</script>
+</body>
+</html>
+    <p>满300减50，你为了省50块多花了200块？<br>算算凑单的「真实折扣率」，看看你到底是赚了还是亏了。</p>
+  </div>
+
+  <!-- Card 1: 快速计算器 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-calculator"></i> 凑单真相计算器</div>
+    <div class="card-desc">输入你真正想买的商品价格和满减规则，一秒算出你到底是赚了还是亏了。</div>
+
+    <div class="preset-row">
+      <button class="preset-btn active" onclick="applyPreset(300,50,this)">满300减50</button>
+      <button class="preset-btn" onclick="applyPreset(200,25,this)">满200减25</button>
+      <button class="preset-btn" onclick="applyPreset(400,60,this)">满400减60</button>
+      <button class="preset-btn" onclick="applyPreset(500,100,this)">满500减100</button>
+      <button class="preset-btn" onclick="applyPreset(1000,150,this)">满1000减150</button>
+    </div>
+
+    <div class="experiment-area">
+      <div class="input-group">
+        <label>满减规则</label>
+        <div class="input-row">
+          <span class="unit">满</span>
+          <input type="number" id="threshold" value="300" min="1" placeholder="门槛">
+          <span class="unit">减</span>
+          <input type="number" id="discount" value="50" min="1" placeholder="减免">
+          <span class="unit">元</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>你真正想买的商品总价 <span id="priceHint"></span></label>
+        <div class="input-row">
+          <input type="number" id="originalPrice" value="200" min="1" placeholder="输入金额">
+          <span class="unit">元</span>
+          <button class="btn" onclick="calculate()"><i class="ti ti-calculator"></i> 算一算</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="result1" class="hidden">
+      <div class="verdict" id="verdict"></div>
+
+      <div class="result-grid">
+        <div class="result-item"><div class="label">你想买的</div><div class="value" id="r-original"></div></div>
+        <div class="result-item red"><div class="label">凑单多花</div><div class="value" id="r-padding"></div></div>
+        <div class="result-item green"><div class="label">满减省了</div><div class="value" id="r-saved"></div></div>
+        <div class="result-item blue"><div class="label">实际支付</div><div class="value" id="r-actual"></div></div>
+      </div>
+
+      <div class="comparison-row">
+        <div class="comparison-item">
+          <div class="comp-label">名义折扣率</div>
+          <div class="comp-value" style="color:#fbbf24" id="r-nominal"></div>
+          <div class="comp-sub">商家宣传的折扣</div>
+        </div>
+        <div class="comparison-item">
+          <div class="comp-label">真实折扣率</div>
+          <div class="comp-value" id="r-real"></div>
+          <div class="comp-sub">算上凑单后的真实折扣</div>
+        </div>
+      </div>
+
+      <div class="insight-box" id="insight1"></div>
+    </div>
+  </div>
+
+  <!-- Card 2: 真实折扣率曲线 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-line"></i> 真实折扣率曲线</div>
+    <div class="card-desc">不同原价下，凑单的真实折扣率如何变化？找到「划算线」——超过这个价格凑单才不亏。</div>
+
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn" onclick="drawCurve()"><i class="ti ti-player-play"></i> 生成曲线</button>
+    </div>
+
+    <div id="result2" class="hidden">
+      <div class="chart-box"><canvas id="curveChart"></canvas></div>
+      <div class="result-grid" style="margin-top:15px">
+        <div class="result-item green"><div class="label">划算线（盈亏平衡）</div><div class="value" id="r-breakeven"></div></div>
+        <div class="result-item"><div class="label">名义折扣率</div><div class="value" id="r-nominal2"></div></div>
+        <div class="result-item red"><div class="label">最亏的情况</div><div class="value" id="r-worst"></div></div>
+        <div class="result-item blue"><div class="label">最划算的情况</div><div class="value" id="r-best"></div></div>
+      </div>
+      <div class="insight-box" id="insight2"></div>
+    </div>
+  </div>
+
+  <!-- Card 3: 多档满减对比 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-list-numbers"></i> 多档满减最优策略</div>
+    <div class="card-desc">很多平台有多个满减档位，到底凑哪一档最划算？输入你的价格，帮你找到最优解。</div>
+
+    <div class="experiment-area">
+      <div class="input-group">
+        <label>你想买的商品总价</label>
+        <div class="input-row">
+          <input type="number" id="tierPrice" value="180" min="1" placeholder="输入金额">
+          <span class="unit">元</span>
+        </div>
+      </div>
+      <div id="tierInputs">
+        <div class="tier-row">
+          <span class="tier-label">档位1：满</span>
+          <input type="number" class="tier-threshold" value="200" min="1">
+          <span class="tier-label">减</span>
+          <input type="number" class="tier-discount" value="20" min="1">
+        </div>
+        <div class="tier-row">
+          <span class="tier-label">档位2：满</span>
+          <input type="number" class="tier-threshold" value="300" min="1">
+          <span class="tier-label">减</span>
+          <input type="number" class="tier-discount" value="50" min="1">
+        </div>
+        <div class="tier-row">
+          <span class="tier-label">档位3：满</span>
+          <input type="number" class="tier-threshold" value="500" min="1">
+          <span class="tier-label">减</span>
+          <input type="number" class="tier-discount" value="100" min="1">
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn" onclick="calcTiers()"><i class="ti ti-analyze"></i> 分析最优档</button>
+      </div>
+    </div>
+
+    <div id="result3" class="hidden">
+      <div id="tierResults"></div>
+      <div class="insight-box" id="insight3"></div>
+    </div>
+  </div>
+
+  <!-- Card 4: 冲动消费后悔概率 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-mood-sad"></i> 凑单后悔概率模拟</div>
+    <div class="card-desc">消费心理学研究显示，约41%的冲动消费会在30天内后悔。凑单金额越大，后悔概率越高。</div>
+
+    <div class="slider-group">
+      <label>凑单金额 <span id="regret-amount-val">150 元</span></label>
+      <input type="range" id="regret-amount" min="10" max="500" value="150" step="10"
+        oninput="document.getElementById('regret-amount-val').textContent=this.value+' 元'">
+    </div>
+
+    <div class="btn-row" style="margin-top:0">
+      <button class="btn" onclick="runRegret()"><i class="ti ti-player-play"></i> 模拟 5000 次</button>
+    </div>
+
+    <div id="result4" class="hidden">
+      <div class="verdict" id="regretVerdict"></div>
+      <div class="result-grid">
+        <div class="result-item red"><div class="label">后悔概率</div><div class="value" id="r-regret-rate"></div></div>
+        <div class="result-item"><div class="label">平均后悔天数</div><div class="value" id="r-regret-day"></div></div>
+        <div class="result-item blue"><div class="label">模拟次数</div><div class="value" id="r-regret-runs"></div></div>
+        <div class="result-item green"><div class="label">不后悔概率</div><div class="value" id="r-no-regret"></div></div>
+      </div>
+      <div class="chart-box"><canvas id="regretChart"></canvas></div>
+      <div class="insight-box" id="insight4"></div>
+    </div>
+  </div>
+
+  <!-- Card 5: 省钱心理学 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-brain"></i> 为什么你总忍不住凑单？</div>
+    <div class="experiment-area">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-anchor" style="color:#fbbf24"></i></div>
+          <div style="color:#fbbf24; font-weight:600; margin-bottom: 6px;">锚定效应</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">「减50元」成为你的心理锚点，让你忽略了凑单多花的钱</div>
+        </div>
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-mood-sad" style="color:#f87171"></i></div>
+          <div style="color:#f87171; font-weight:600; margin-bottom: 6px;">损失厌恶</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">「不凑单就亏了50」的恐惧，比「多花100」的痛苦更强烈</div>
+        </div>
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-coin" style="color:#4ade80"></i></div>
+          <div style="color:#4ade80; font-weight:600; margin-bottom: 6px;">心理账户</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">凑单的钱被归入「省钱账户」而非「消费账户」，花起来不心疼</div>
+        </div>
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-clock" style="color:#60a5fa"></i></div>
+          <div style="color:#60a5fa; font-weight:600; margin-bottom: 6px;">沉没成本</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">已经花时间挑选了，不凑满觉得「白逛了」</div>
+        </div>
+      </div>
+    </div>
+    <div class="insight-box" style="margin-top:15px">
+      <strong>理性凑单的黄金法则：</strong><br>
+      1. 先算「划算线」：只有原价超过 <strong>门槛 − 减免金额</strong> 时，凑单才不亏<br>
+      2. 凑单的东西必须是你 <strong>未来30天内一定会买</strong> 的<br>
+      3. 如果凑单金额超过减免金额，直接放弃满减，反而省钱<br>
+      4. 记住：商家设计满减的目的是让你 <strong>多花钱</strong>，不是让你省钱
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+let curveChart = null, regretChart = null;
+
+// === Card 1: 快速计算 ===
+function applyPreset(threshold, discount, btn) {
+  document.getElementById('threshold').value = threshold;
+  document.getElementById('discount').value = discount;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function calculate() {
+  const price = parseFloat(document.getElementById('originalPrice').value);
+  const threshold = parseFloat(document.getElementById('threshold').value);
+  const discount = parseFloat(document.getElementById('discount').value);
+
+  if (!price || !threshold || !discount) return;
+
+  const r = analyzeFullReduction(price, threshold, discount);
+  if (r.error) return;
+
+  document.getElementById('result1').classList.remove('hidden');
+
+  // 判决
+  const verdictEl = document.getElementById('verdict');
+  if (!r.needPadding) {
+    verdictEl.className = 'verdict good';
+    verdictEl.innerHTML = `<span class="sub">已达门槛，直接享受满减</span><span class="big">省 ${r.saved} 元</span><span class="sub">真实折扣率 ${r.realDiscount}%</span>`;
+  } else if (r.worthIt) {
+    verdictEl.className = 'verdict good';
+    verdictEl.innerHTML = `<span class="sub">凑单划算，净省</span><span class="big">${r.netSaving} 元</span><span class="sub">但你需要额外花 ${r.paddingAmount} 元凑单</span>`;
+  } else {
+    verdictEl.className = 'verdict bad';
+    verdictEl.innerHTML = `<span class="sub">凑单亏了，净亏</span><span class="big">${Math.abs(r.netSaving)} 元</span><span class="sub">你为了省 ${r.saved} 元，多花了 ${r.wasted} 元</span>`;
+  }
+
+  document.getElementById('r-original').textContent = '¥' + r.originalPrice;
+  document.getElementById('r-padding').textContent = r.needPadding ? '¥' + r.paddingAmount : '¥0';
+  document.getElementById('r-saved').textContent = '¥' + r.saved;
+  document.getElementById('r-actual').textContent = '¥' + r.actualPay;
+  document.getElementById('r-nominal').textContent = r.nominalDiscount + '%';
+
+  const realEl = document.getElementById('r-real');
+  realEl.textContent = r.realDiscount + '%';
+  realEl.style.color = r.realDiscount >= 0 ? '#4ade80' : '#f87171';
+
+  // 洞察
+  const insightEl = document.getElementById('insight1');
+  if (!r.needPadding) {
+    insightEl.innerHTML = `<strong>你的商品已经超过满减门槛</strong>，直接享受 ${r.saved} 元优惠，真实折扣率 ${r.realDiscount}%。这是最理想的情况。`;
+  } else if (r.worthIt) {
+    insightEl.innerHTML = `<strong>凑单划算，但要注意：</strong>你需要额外花 <strong>${r.paddingAmount} 元</strong> 凑单。虽然净省 ${r.netSaving} 元，但前提是凑单买的东西你真的需要。如果凑单的东西最后吃灰了，这 ${r.paddingAmount} 元就是纯亏。`;
+  } else {
+    insightEl.innerHTML = `<strong>凑单不划算。</strong>你为了省 ${r.saved} 元，需要多花 <strong>${r.wasted} 元</strong> 凑单，净亏 <strong>${Math.abs(r.netSaving)} 元</strong>。名义折扣率是 ${r.nominalDiscount}%，但你的真实折扣率是 <strong>${r.realDiscount}%</strong>（负数意味着你反而多花了钱）。<br><br>建议：直接按原价 ${r.originalPrice} 元购买，反而比凑单省 ${Math.abs(r.netSaving)} 元。`;
+  }
+}
+
+// === Card 2: 折扣率曲线 ===
+function drawCurve() {
+  const threshold = parseFloat(document.getElementById('threshold').value) || 300;
+  const discount = parseFloat(document.getElementById('discount').value) || 50;
+
+  const data = batchAnalyze(threshold, discount, 10);
+  document.getElementById('result2').classList.remove('hidden');
+
+  // 盈亏平衡点
+  const breakeven = threshold - discount;
+  document.getElementById('r-breakeven').textContent = '¥' + breakeven;
+  document.getElementById('r-nominal2').textContent = round2((discount / threshold) * 100) + '%';
+
+  const belowThreshold = data.filter(d => d.price < threshold);
+  if (belowThreshold.length > 0) {
+    const worst = belowThreshold.reduce((a, b) => a.realDiscount < b.realDiscount ? a : b);
+    document.getElementById('r-worst').textContent = '¥' + worst.price;
+  }
+  const best = data.reduce((a, b) => a.realDiscount > b.realDiscount ? a : b);
+  document.getElementById('r-best').textContent = '¥' + best.price;
+
+  // 图表
+  if (curveChart) curveChart.destroy();
+  const ctx = document.getElementById('curveChart').getContext('2d');
+  curveChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(d => d.price),
+      datasets: [
+        {
+          label: '真实折扣率 %',
+          data: data.map(d => d.realDiscount),
+          borderColor: '#fbbf24',
+          backgroundColor: data.map(d => d.realDiscount >= 0 ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'),
+          fill: true, tension: 0.3, pointRadius: 2
+        },
+        {
+          label: '名义折扣率 %',
+          data: data.map(() => round2((discount / threshold) * 100)),
+          borderColor: 'rgba(255,255,255,0.2)',
+          borderDash: [5, 5], pointRadius: 0, fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.datasetIndex === 0) {
+                const d = data[ctx.dataIndex];
+                return `原价 ¥${d.price} → 真实折扣 ${d.realDiscount}%（${d.needPadding ? '需凑 ¥' + d.paddingAmount : '无需凑单'}）`;
+              }
+              return ctx.dataset.label + ': ' + ctx.parsed.y + '%';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: '商品原价（元）', color: 'rgba(255,255,255,0.4)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          title: { display: true, text: '折扣率 %', color: 'rgba(255,255,255,0.4)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+
+  document.getElementById('insight2').innerHTML =
+    `<strong>划算线：¥${breakeven}</strong><br>` +
+    `原价低于 ¥${breakeven} 时，凑单的真实折扣率为负——你反而在多花钱。<br>` +
+    `原价在 ¥${breakeven} 到 ¥${threshold} 之间时，凑单才真正划算。<br>` +
+    `原价超过 ¥${threshold} 时，不需要凑单，直接享受满减。<br><br>` +
+    `<strong>记住这个公式：</strong>划算线 = 门槛 − 减免金额 = ${threshold} − ${discount} = <strong>¥${breakeven}</strong>`;
+}
+
+// === Card 3: 多档满减 ===
+function calcTiers() {
+  const price = parseFloat(document.getElementById('tierPrice').value);
+  if (!price) return;
+
+  const thresholds = document.querySelectorAll('.tier-threshold');
+  const discounts = document.querySelectorAll('.tier-discount');
+  const tiers = [];
+  for (let i = 0; i < thresholds.length; i++) {
+    const t = parseFloat(thresholds[i].value);
+    const d = parseFloat(discounts[i].value);
+    if (t && d) tiers.push({ threshold: t, discount: d });
+  }
+
+  const result = analyzeTiers(price, tiers);
+  if (result.error) return;
+
+  document.getElementById('result3').classList.remove('hidden');
+
+  let html = '<div style="margin-bottom:15px">';
+  result.results.forEach((r, i) => {
+    const a = r.analysis;
+    if (a.error) return;
+    const isBest = result.best && r.tier.threshold === result.best.tier.threshold;
+    const net = a.netSaving !== undefined ? a.netSaving : a.saved;
+    const cls = isBest ? 'best' : (net >= 0 ? 'ok' : 'bad');
+    html += `<div class="tier-tag ${cls}" style="display:block; padding:12px 16px; margin-bottom:8px; border-radius:10px;">`;
+    html += `<div style="display:flex; justify-content:space-between; align-items:center;">`;
+    html += `<span>满${r.tier.threshold}减${r.tier.discount}</span>`;
+    if (isBest) html += `<span style="font-size:11px; background:rgba(74,222,128,0.2); padding:2px 8px; border-radius:4px;">推荐</span>`;
+    html += `</div>`;
+    html += `<div style="font-size:12px; margin-top:6px; opacity:0.8;">`;
+    if (!a.needPadding) {
+      html += `无需凑单，直接省 ¥${a.saved}，真实折扣 ${a.realDiscount}%`;
+    } else {
+      html += `需凑 ¥${a.paddingAmount}，${net >= 0 ? '净省' : '净亏'} ¥${Math.abs(net)}，真实折扣 ${a.realDiscount}%`;
+    }
+    html += `</div></div>`;
+  });
+  html += '</div>';
+  document.getElementById('tierResults').innerHTML = html;
+
+  const best = result.best;
+  const bestA = best.analysis;
+  const bestNet = bestA.netSaving !== undefined ? bestA.netSaving : bestA.saved;
+  document.getElementById('insight3').innerHTML =
+    `<strong>最优策略：满${best.tier.threshold}减${best.tier.discount}</strong><br>` +
+    (bestNet >= 0
+      ? `这个档位${bestA.needPadding ? '只需凑 ¥' + bestA.paddingAmount + '，' : '无需凑单，'}净省 <strong>¥${bestNet}</strong>，是最划算的选择。`
+      : `所有档位凑单都不划算，建议直接按原价 ¥${price} 购买。这个档位亏得最少（净亏 ¥${Math.abs(bestNet)}）。`);
+}
+
+// === Card 4: 后悔概率 ===
+function runRegret() {
+  const amount = parseInt(document.getElementById('regret-amount').value);
+  const sim = simulateRegret(amount, 5000);
+
+  document.getElementById('result4').classList.remove('hidden');
+
+  const verdictEl = document.getElementById('regretVerdict');
+  if (sim.regretRate > 50) {
+    verdictEl.className = 'verdict bad';
+    verdictEl.innerHTML = `<span class="sub">凑单 ¥${amount} 的东西</span><span class="big">${sim.regretRate}% 概率后悔</span><span class="sub">超过一半的情况你会后悔这笔消费</span>`;
+  } else {
+    verdictEl.className = 'verdict good';
+    verdictEl.innerHTML = `<span class="sub">凑单 ¥${amount} 的东西</span><span class="big">${sim.regretRate}% 概率后悔</span><span class="sub">后悔概率不算太高，但仍需谨慎</span>`;
+  }
+
+  document.getElementById('r-regret-rate').textContent = sim.regretRate + '%';
+  document.getElementById('r-regret-day').textContent = sim.avgRegretDay + ' 天';
+  document.getElementById('r-regret-runs').textContent = sim.runs;
+  document.getElementById('r-no-regret').textContent = round2(100 - sim.regretRate) + '%';
+
+  // 后悔天数分布图
+  if (regretChart) regretChart.destroy();
+  const labels = [];
+  const values = [];
+  for (let d = 1; d <= 30; d++) {
+    labels.push('第' + d + '天');
+    values.push(sim.dayDistribution[d] || 0);
+  }
+
+  const ctx = document.getElementById('regretChart').getContext('2d');
+  regretChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '后悔人数',
+        data: values,
+        backgroundColor: values.map((_, i) => i < 7 ? 'rgba(248,113,113,0.5)' : 'rgba(251,191,36,0.3)'),
+        borderColor: values.map((_, i) => i < 7 ? '#f87171' : '#fbbf24'),
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              return `${ctx.parsed.y} 人在这天后悔`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 10 },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          title: { display: true, text: '后悔人数', color: 'rgba(255,255,255,0.4)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+
+  document.getElementById('insight4').innerHTML =
+    `<strong>后悔高峰在前7天。</strong>大部分后悔发生在收到货的第1-3天——拆开包装的那一刻，你就知道这东西是不是真的需要。<br><br>` +
+    `消费心理学研究表明，冲动消费的后悔率约为 <strong>41%</strong>，而凑单消费的后悔率更高，因为购买动机不是「我需要」而是「凑个单」。<br><br>` +
+    `<strong>30秒冷静法则：</strong>凑单前问自己——「如果没有满减，我会花 ¥${amount} 买这个东西吗？」如果答案是否，那就别凑了。`;
+}
+
+// 页面加载后自动计算一次
+window.addEventListener('DOMContentLoaded', function() {
+  calculate();
+});
+</script>
+</body>
+</html>

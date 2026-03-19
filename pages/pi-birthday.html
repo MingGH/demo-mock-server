@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>π 里藏着你的生日 - 交互式演示</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; padding: 40px 20px; margin-bottom: 30px; }
+    .header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      animation: shimmer 3s linear infinite; margin-bottom: 15px;
+    }
+    @keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+    .header p { font-size: 1.1rem; color: #a0a0a0; max-width: 700px; margin: 0 auto; }
+    .demo-section {
+      background: rgba(255,255,255,0.05); border-radius: 16px; padding: 30px;
+      margin-bottom: 30px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .demo-section h2 {
+      font-size: 1.5rem; margin-bottom: 20px; color: #ffd700;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .demo-section h2 i { font-size: 1.3rem; }
+    .btn {
+      padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem;
+      cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 600;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.3); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px; margin: 20px 0;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px;
+      text-align: center; border: 1px solid rgba(255,255,255,0.1);
+    }
+    .stat-card .value { font-size: 2rem; font-weight: bold; color: #ffd700; margin-bottom: 5px; }
+    .stat-card .value.green { color: #4CAF50; }
+    .stat-card .value.red { color: #ff4444; }
+    .stat-card .label { font-size: 0.9rem; color: #a0a0a0; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,183,0,0.1));
+      border-left: 4px solid #ffd700; padding: 20px; border-radius: 0 12px 12px 0; margin: 20px 0;
+    }
+    .insight-box h3 { color: #ffd700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .insight-box p { color: #c0c0c0; line-height: 1.8; }
+    .insight-box.green {
+      background: linear-gradient(135deg, rgba(76,175,80,0.1), rgba(0,200,0,0.1));
+      border-left-color: #4CAF50;
+    }
+    .insight-box.green h3 { color: #4CAF50; }
+    .formula-box {
+      background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; margin: 20px 0;
+      font-family: 'Courier New', monospace; font-size: 0.95rem; line-height: 2;
+      overflow-x: auto; color: #e8e8e8; position: relative;
+    }
+    .formula-box .highlight { color: #ffd700; font-weight: bold; }
+    .chart-container { position: relative; height: 350px; margin: 20px 0; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-math-pi"></i> π 里藏着你的生日</h1>
+      <p>π 的小数位无限不循环，理论上包含任意有限数字序列。输入你的生日，看看它藏在 π 的第几位。</p>
+    </div>
+
+    <!-- 模块1: 生日搜索器 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-search"></i> 在 π 里找你的生日</h2>
+      <p style="color: #a0a0a0; margin-bottom: 20px;">输入你的生日，我们会在 π 的前100万位小数中搜索它出现的位置。</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 20px;">
+        <div>
+          <label style="display: block; color: #a0a0a0; font-size: 0.9rem; margin-bottom: 5px;">年</label>
+          <input type="number" id="inputYear" min="1900" max="2030" value="1990" style="width: 100px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #e8e8e8; font-size: 1rem;">
+        </div>
+        <div>
+          <label style="display: block; color: #a0a0a0; font-size: 0.9rem; margin-bottom: 5px;">月</label>
+          <input type="number" id="inputMonth" min="1" max="12" value="3" style="width: 80px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #e8e8e8; font-size: 1rem;">
+        </div>
+        <div>
+          <label style="display: block; color: #a0a0a0; font-size: 0.9rem; margin-bottom: 5px;">日</label>
+          <input type="number" id="inputDay" min="1" max="31" value="14" style="width: 80px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #e8e8e8; font-size: 1rem;">
+        </div>
+        <button class="btn btn-primary" onclick="searchBirthday()" id="searchBtn">
+          <i class="ti ti-search"></i> 搜索
+        </button>
+      </div>
+      <div id="searchStatus" style="color: #a0a0a0; font-size: 0.9rem; margin-bottom: 15px; display: none;">
+        <i class="ti ti-loader" style="animation: spin 1s linear infinite;"></i> 正在加载 π 的100万位小数...
+      </div>
+      <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+      <div id="searchResults" style="display: none;"></div>
+    </div>
+
+    <!-- 模块2: π 的数字流 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-eye"></i> π 的数字流</h2>
+      <p style="color: #a0a0a0; margin-bottom: 15px;">π 的前1000位小数。搜索后，你的生日会被高亮标记。</p>
+      <div id="piStream" style="font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.8; word-break: break-all; color: #666; max-height: 300px; overflow-y: auto; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 12px;">
+        <span style="color: #ffd700; font-size: 1.2rem;">3.</span>
+      </div>
+    </div>
+
+    <!-- 模块3: 概率分析 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-chart-bar"></i> 为什么一定能找到</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 正规数猜想</h3>
+        <p>
+          数学家猜想 π 是一个「正规数」——即每个数字（0-9）出现的频率相同，每个两位数序列（00-99）出现的频率也相同，以此类推。<br><br>
+          如果 π 是正规数，那么任何有限长度的数字序列都一定会在 π 的小数位中出现，而且会出现无穷多次。<br><br>
+          虽然这个猜想至今未被证明，但在已计算的100万亿位中，π 的数字分布确实非常均匀。
+        </p>
+      </div>
+      <div id="probabilitySection" style="display: none;">
+        <h3 style="color: #ffd700; margin: 20px 0 15px; display: flex; align-items: center; gap: 8px;">
+          <i class="ti ti-calculator"></i> 找到你生日的概率
+        </h3>
+        <div class="stats-grid" id="probStats"></div>
+        <div class="chart-container">
+          <canvas id="probChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 模块4: 数字频率分析 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-chart-pie"></i> π 的数字频率</h2>
+      <p style="color: #a0a0a0; margin-bottom: 15px;">如果 π 是正规数，0-9 每个数字应该各占 10%。看看实际分布如何。</p>
+      <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+        <button class="btn btn-secondary" onclick="analyzeFrequency(1000)" style="font-size: 0.9rem;">前1000位</button>
+        <button class="btn btn-secondary" onclick="analyzeFrequency(10000)" style="font-size: 0.9rem;">前1万位</button>
+        <button class="btn btn-primary" onclick="analyzeFrequency(100000)" style="font-size: 0.9rem;">前10万位</button>
+      </div>
+      <div class="chart-container">
+        <canvas id="freqChart"></canvas>
+      </div>
+      <div id="freqInsight" class="insight-box green" style="display: none;">
+        <h3><i class="ti ti-chart-dots"></i> 频率分析</h3>
+        <p id="freqInsightText"></p>
+      </div>
+    </div>
+
+    <!-- 模块5: 无限猴子定理 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-monkey"></i> 无限猴子定理</h2>
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 猴子与打字机</h3>
+        <p>
+          「无限猴子定理」说：一只猴子在打字机上随机敲键，给它无限的时间，它几乎必然能打出莎士比亚全集。<br><br>
+          π 就像一只「数学猴子」——它不断生成随机数字，给它足够多的位数，任何数字序列都会出现。
+        </p>
+      </div>
+      <div style="margin-top: 20px;">
+        <label style="color: #a0a0a0; font-size: 0.9rem;">输入任意数字序列：</label>
+        <div style="display: flex; gap: 10px; margin-top: 8px;">
+          <input type="text" id="customSequence" placeholder="例如：12345" maxlength="10" style="flex: 1; max-width: 300px; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #e8e8e8; font-size: 1rem; font-family: 'Courier New', monospace;">
+          <button class="btn btn-primary" onclick="searchCustom()">
+            <i class="ti ti-search"></i> 搜索
+          </button>
+        </div>
+      </div>
+      <div id="customResult" style="display: none; margin-top: 20px;"></div>
+      <div id="monkeyStats" style="display: none; margin-top: 20px;">
+        <div class="stats-grid" id="monkeyGrid"></div>
+      </div>
+    </div>
+
+    <!-- 模块6: 分享 -->
+    <div class="demo-section" style="position: relative;">
+      <h2><i class="ti ti-share"></i> 分享结论</h2>
+      <div class="formula-box" id="shareBox">
+        <button onclick="copyShareText()" style="position: absolute; top: 10px; right: 10px; padding: 6px 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #a0a0a0; cursor: pointer; font-size: 0.8rem;"><i class="ti ti-copy"></i> 复制</button>
+        <div id="shareContent">
+π = 3.14159265358979323846...<br><br>
+π 的小数位无限不循环，理论上包含任意有限数字序列。<br>
+你的生日、手机号、身份证号，都藏在 π 的某个位置。<br><br>
+试试看：<a href="https://numfeel.996.ninja/pages/pi-birthday.html" style="color: #ffd700;">https://numfeel.996.ninja/pages/pi-birthday.html</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="pi-birthday-logic.js"></script>
+  <script>
+    // === 全局状态 ===
+    let piDigits = PI_FIRST_1000; // 初始用硬编码的1000位
+    let piLoaded = false;
+    let probChart = null;
+    let freqChart = null;
+
+    // === 初始化 ===
+    function init() {
+      renderPiStream(PI_FIRST_1000);
+      initFreqChart();
+      analyzeFrequency(1000);
+    }
+
+    // === 加载 π 的大量位数 ===
+    async function loadPiDigits(count) {
+      if (piLoaded && piDigits.length >= count) return piDigits;
+      const statusEl = document.getElementById('searchStatus');
+      statusEl.style.display = 'block';
+      try {
+        // 分批加载，每次最多1000位
+        let digits = '';
+        const batchSize = 1000;
+        for (let start = 1; start <= count; start += batchSize) {
+          const n = Math.min(batchSize, count - start + 1);
+          const resp = await fetch(`https://api.pi.delivery/v1/pi?start=${start}&numberOfDigits=${n}`);
+          const data = await resp.json();
+          digits += data.content;
+        }
+        piDigits = digits;
+        piLoaded = true;
+        statusEl.style.display = 'none';
+        return digits;
+      } catch (e) {
+        statusEl.innerHTML = '<span style="color: #ff4444;"><i class="ti ti-alert-triangle"></i> API 加载失败，使用本地前1000位数据</span>';
+        piDigits = PI_FIRST_1000;
+        return PI_FIRST_1000;
+      }
+    }
+
+    // === 生日搜索 ===
+    async function searchBirthday() {
+      const year = parseInt(document.getElementById('inputYear').value);
+      const month = parseInt(document.getElementById('inputMonth').value);
+      const day = parseInt(document.getElementById('inputDay').value);
+      if (!year || !month || !day || month < 1 || month > 12 || day < 1 || day > 31) {
+        alert('请输入有效的日期');
+        return;
+      }
+      document.getElementById('searchBtn').disabled = true;
+      const digits = await loadPiDigits(1000000);
+      document.getElementById('searchBtn').disabled = false;
+
+      const sequences = birthdayToSequences(month, day, year);
+      let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
+      html += '<thead><tr style="border-bottom: 2px solid rgba(255,255,255,0.1);">';
+      html += '<th style="padding: 12px; text-align: left; color: #ffd700;">格式</th>';
+      html += '<th style="padding: 12px; text-align: center; color: #ffd700;">数字序列</th>';
+      html += '<th style="padding: 12px; text-align: center; color: #ffd700;">在 π 中的位置</th>';
+      html += '<th style="padding: 12px; text-align: center; color: #ffd700;">运气评价</th>';
+      html += '</tr></thead><tbody>';
+
+      let bestResult = null;
+      sequences.forEach(seq => {
+        const pos = searchInPi(digits, seq.sequence);
+        const stats = pos > 0 ? generateSearchStats(pos, seq.sequence.length) : null;
+        const posText = pos > 0 ? `第 <span style="color: #ffd700; font-weight: bold;">${pos.toLocaleString()}</span> 位` : '<span style="color: #666;">未找到</span>';
+        const luckText = stats ? `<span style="color: ${stats.ratio < 1 ? '#4CAF50' : '#a0a0a0'}">${stats.luck}</span>` : '-';
+        html += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">`;
+        html += `<td style="padding: 10px; color: #c0c0c0;">${seq.label}</td>`;
+        html += `<td style="padding: 10px; text-align: center; font-family: 'Courier New', monospace; color: #e8e8e8; font-size: 1.1rem;">${seq.sequence}</td>`;
+        html += `<td style="padding: 10px; text-align: center;">${posText}</td>`;
+        html += `<td style="padding: 10px; text-align: center;">${luckText}</td>`;
+        html += '</tr>';
+        if (pos > 0 && (!bestResult || pos < bestResult.pos)) {
+          bestResult = { pos, sequence: seq.sequence, label: seq.label, stats };
+        }
+      });
+      html += '</tbody></table></div>';
+
+      if (bestResult) {
+        html += `<div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, rgba(76,175,80,0.1), rgba(0,200,0,0.05)); border-left: 4px solid #4CAF50; border-radius: 0 12px 12px 0;">`;
+        html += `<h3 style="color: #4CAF50; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;"><i class="ti ti-sparkles"></i> 最佳匹配</h3>`;
+        html += `<p style="color: #c0c0c0; line-height: 1.8;">你的生日 <span style="color: #ffd700; font-family: 'Courier New', monospace;">${bestResult.sequence}</span>（${bestResult.label}）首次出现在 π 的第 <span style="color: #ffd700; font-weight: bold;">${bestResult.pos.toLocaleString()}</span> 位。`;
+        html += `<br>期望位置约为第 ${bestResult.stats.expected.toLocaleString()} 位，你的实际位置是期望的 ${bestResult.stats.ratio} 倍 —— ${bestResult.stats.luck}。</p>`;
+        html += `</div>`;
+        // 高亮 π 流
+        highlightInPiStream(bestResult.sequence);
+        // 更新分享文案
+        updateShareText(month, day, year, bestResult);
+      }
+
+      document.getElementById('searchResults').style.display = 'block';
+      document.getElementById('searchResults').innerHTML = html;
+
+      // 显示概率分析
+      showProbabilityAnalysis(sequences);
+    }
+
+    // === 渲染 π 数字流 ===
+    function renderPiStream(digits) {
+      const el = document.getElementById('piStream');
+      let html = '<span style="color: #ffd700; font-size: 1.2rem;">3.</span>';
+      for (let i = 0; i < digits.length; i++) {
+        if (i > 0 && i % 50 === 0) html += '<br>';
+        else if (i > 0 && i % 10 === 0) html += ' ';
+        html += `<span class="pi-digit" data-pos="${i}">${digits[i]}</span>`;
+      }
+      el.innerHTML = html;
+    }
+
+    function highlightInPiStream(sequence) {
+      // 先清除旧高亮
+      document.querySelectorAll('.pi-digit.highlighted').forEach(el => {
+        el.classList.remove('highlighted');
+        el.style.color = '';
+        el.style.background = '';
+      });
+      const pos = PI_FIRST_1000.indexOf(sequence);
+      if (pos === -1) return;
+      for (let i = pos; i < pos + sequence.length && i < 1000; i++) {
+        const el = document.querySelector(`.pi-digit[data-pos="${i}"]`);
+        if (el) {
+          el.classList.add('highlighted');
+          el.style.color = '#1a1a2e';
+          el.style.background = '#ffd700';
+          el.style.borderRadius = '3px';
+          el.style.padding = '0 1px';
+        }
+      }
+      // 滚动到高亮位置
+      const firstHighlight = document.querySelector('.pi-digit.highlighted');
+      if (firstHighlight) {
+        firstHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    // === 概率分析 ===
+    function showProbabilityAnalysis(sequences) {
+      document.getElementById('probabilitySection').style.display = 'block';
+      const lengths = [...new Set(sequences.map(s => s.sequence.length))].sort((a, b) => a - b);
+      const piLengths = [1000, 10000, 100000, 1000000, 10000000, 100000000];
+
+      let statsHtml = '';
+      lengths.forEach(k => {
+        const prob = probabilityOfFinding(1000000, k);
+        statsHtml += `<div class="stat-card">
+          <div class="value ${prob > 0.5 ? 'green' : 'red'}">${(prob * 100).toFixed(1)}%</div>
+          <div class="label">在100万位中找到${k}位数的概率</div>
+        </div>`;
+      });
+      document.getElementById('probStats').innerHTML = statsHtml;
+
+      // 绘制概率曲线
+      const ctx = document.getElementById('probChart').getContext('2d');
+      if (probChart) probChart.destroy();
+      const datasets = lengths.map((k, idx) => {
+        const colors = ['#ffd700', '#4CAF50', '#ff4444', '#00d4ff'];
+        return {
+          label: `${k}位数`,
+          data: piLengths.map(n => probabilityOfFinding(n, k) * 100),
+          borderColor: colors[idx % colors.length],
+          backgroundColor: colors[idx % colors.length] + '20',
+          fill: false, tension: 0.4, pointRadius: 4,
+        };
+      });
+      probChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: piLengths.map(n => formatNumber(n) + '位'), datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#a0a0a0' } },
+            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw.toFixed(2)}%` } }
+          },
+          scales: {
+            x: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: 'π 的位数', color: '#a0a0a0' } },
+            y: { min: 0, max: 100, ticks: { color: '#a0a0a0', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: '找到的概率', color: '#a0a0a0' } }
+          }
+        }
+      });
+    }
+
+    // === 数字频率分析 ===
+    function initFreqChart() {
+      const ctx = document.getElementById('freqChart').getContext('2d');
+      freqChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: ['0','1','2','3','4','5','6','7','8','9'], datasets: [] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => `${ctx.raw.toFixed(3)}%` } }
+          },
+          scales: {
+            x: { ticks: { color: '#a0a0a0', font: { size: 14 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { min: 9, max: 11, ticks: { color: '#a0a0a0', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: '出现频率', color: '#a0a0a0' } }
+          }
+        }
+      });
+    }
+
+    async function analyzeFrequency(count) {
+      let digits;
+      if (count <= 1000) {
+        digits = PI_FIRST_1000.slice(0, count);
+      } else {
+        digits = await loadPiDigits(count);
+        digits = digits.slice(0, count);
+      }
+      const freq = new Array(10).fill(0);
+      for (const ch of digits) freq[parseInt(ch)]++;
+      const pcts = freq.map(f => (f / digits.length) * 100);
+      const colors = pcts.map(p => {
+        const diff = Math.abs(p - 10);
+        if (diff < 0.3) return 'rgba(76,175,80,0.8)';
+        if (diff < 0.5) return 'rgba(255,215,0,0.8)';
+        return 'rgba(255,68,68,0.8)';
+      });
+      freqChart.data.datasets = [{
+        data: pcts,
+        backgroundColor: colors,
+        borderColor: colors.map(c => c.replace('0.8', '1')),
+        borderWidth: 1,
+      }];
+      // 添加10%参考线
+      freqChart.options.plugins.annotation = undefined;
+      freqChart.update();
+
+      const maxDev = Math.max(...pcts.map(p => Math.abs(p - 10)));
+      const insightEl = document.getElementById('freqInsight');
+      insightEl.style.display = 'block';
+      document.getElementById('freqInsightText').innerHTML =
+        `在 π 的前 <strong>${formatNumber(count)}</strong> 位中，每个数字的出现频率最大偏差为 <strong>${maxDev.toFixed(3)}%</strong>。` +
+        (maxDev < 0.5 ? '<br>非常接近理论值 10%，支持 π 是正规数的猜想。' :
+         maxDev < 1 ? '<br>偏差较小，随着位数增加会越来越接近 10%。' :
+         '<br>位数较少时偏差较大，这是正常的统计波动。增加位数后偏差会缩小。');
+    }
+
+    // === 自定义序列搜索 ===
+    async function searchCustom() {
+      const seq = document.getElementById('customSequence').value.trim();
+      if (!seq || !/^\d+$/.test(seq)) {
+        alert('请输入纯数字序列');
+        return;
+      }
+      if (seq.length > 10) {
+        alert('序列长度不能超过10位');
+        return;
+      }
+      const digits = await loadPiDigits(1000000);
+      const pos = searchInPi(digits, seq);
+      const resultEl = document.getElementById('customResult');
+      const monkeyEl = document.getElementById('monkeyStats');
+      resultEl.style.display = 'block';
+      monkeyEl.style.display = 'block';
+
+      if (pos > 0) {
+        const stats = generateSearchStats(pos, seq.length);
+        resultEl.innerHTML = `<div style="padding: 20px; background: linear-gradient(135deg, rgba(76,175,80,0.1), rgba(0,200,0,0.05)); border-left: 4px solid #4CAF50; border-radius: 0 12px 12px 0;">
+          <p style="color: #c0c0c0; line-height: 1.8;">
+            <span style="color: #ffd700; font-family: 'Courier New', monospace; font-size: 1.2rem;">${seq}</span> 首次出现在 π 的第 <span style="color: #ffd700; font-weight: bold; font-size: 1.2rem;">${pos.toLocaleString()}</span> 位。<br>
+            期望位置：第 ${stats.expected.toLocaleString()} 位 | 实际/期望 = ${stats.ratio} | ${stats.luck}
+          </p>
+        </div>`;
+      } else {
+        resultEl.innerHTML = `<div style="padding: 20px; background: rgba(255,68,68,0.1); border-left: 4px solid #ff4444; border-radius: 0 12px 12px 0;">
+          <p style="color: #c0c0c0;">在 π 的前100万位中未找到 <span style="color: #ffd700; font-family: 'Courier New', monospace;">${seq}</span>。<br>
+          ${seq.length}位序列期望需要约 ${formatNumber(expectedDigitsNeeded(seq.length))} 位才能找到。需要更多位数的 π。</p>
+        </div>`;
+      }
+
+      // 无限猴子统计
+      const monkey = monkeyTypingTime(seq.length);
+      document.getElementById('monkeyGrid').innerHTML = `
+        <div class="stat-card">
+          <div class="value">${formatNumber(monkey.combinations)}</div>
+          <div class="label">${seq.length}位数的可能组合</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">${monkey.formatted}</div>
+          <div class="label">猴子打出它的期望时间</div>
+        </div>
+        <div class="stat-card">
+          <div class="value">${(probabilityOfFinding(1000000, seq.length) * 100).toFixed(1)}%</div>
+          <div class="label">在100万位中出现的概率</div>
+        </div>
+      `;
+    }
+
+    // === 更新分享文案 ===
+    function updateShareText(month, day, year, best) {
+      document.getElementById('shareContent').innerHTML =
+        `我的生日 ${year}年${month}月${day}日 藏在 π 的第 ${best.pos.toLocaleString()} 位。<br><br>` +
+        `π 的小数位无限不循环，理论上包含任意有限数字序列。<br>` +
+        `你的生日、手机号、身份证号，都藏在 π 的某个位置。<br><br>` +
+        `试试看：<a href="https://numfeel.996.ninja/pages/pi-birthday.html" style="color: #ffd700;">https://numfeel.996.ninja/pages/pi-birthday.html</a>`;
+    }
+
+    function copyShareText() {
+      const text = document.getElementById('shareContent').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('#shareBox button');
+        btn.innerHTML = '<i class="ti ti-check"></i> 已复制';
+        setTimeout(() => { btn.innerHTML = '<i class="ti ti-copy"></i> 复制'; }, 2000);
+      });
+    }
+
+    // === 启动 ===
+    init();
+  </script>
+</body>
+</html>

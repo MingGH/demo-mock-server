@@ -88,7 +88,7 @@
     <!-- 模块1: 生日搜索器 -->
     <div class="demo-section">
       <h2><i class="ti ti-search"></i> 在 π 里找你的生日</h2>
-      <p style="color: #a0a0a0; margin-bottom: 20px;">输入你的生日，我们会在 π 的前100万位小数中搜索它出现的位置。</p>
+      <p style="color: #a0a0a0; margin-bottom: 20px;">输入你的生日，在 π 的前100万位小数中搜索它出现的位置。</p>
       <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 20px;">
         <div>
           <label style="display: block; color: #a0a0a0; font-size: 0.9rem; margin-bottom: 5px;">年</label>
@@ -106,17 +106,13 @@
           <i class="ti ti-search"></i> 搜索
         </button>
       </div>
-      <div id="searchStatus" style="color: #a0a0a0; font-size: 0.9rem; margin-bottom: 15px; display: none;">
-        <i class="ti ti-loader" style="animation: spin 1s linear infinite;"></i> 正在加载 π 的100万位小数...
-      </div>
-      <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
       <div id="searchResults" style="display: none;"></div>
     </div>
 
     <!-- 模块2: π 的数字流 -->
     <div class="demo-section">
       <h2><i class="ti ti-eye"></i> π 的数字流</h2>
-      <p style="color: #a0a0a0; margin-bottom: 15px;">π 的前1000位小数。搜索后，你的生日会被高亮标记。</p>
+      <p style="color: #a0a0a0; margin-bottom: 15px;">π 的前10000位小数。搜索后，你的生日会被高亮标记。</p>
       <div id="piStream" style="font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.8; word-break: break-all; color: #666; max-height: 300px; overflow-y: auto; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 12px;">
         <span style="color: #ffd700; font-size: 1.2rem;">3.</span>
       </div>
@@ -203,48 +199,23 @@
   </div>
 
   <script src="pi-birthday-logic.js"></script>
+  <script src="../data/pi-1m.js"></script>
   <script>
     // === 全局状态 ===
-    let piDigits = PI_FIRST_1000; // 初始用硬编码的1000位
-    let piLoaded = false;
+    let piDigits = (typeof PI_1M !== 'undefined') ? PI_1M : PI_FIRST_1000;
+    let piLoaded = (typeof PI_1M !== 'undefined');
     let probChart = null;
     let freqChart = null;
 
     // === 初始化 ===
     function init() {
-      renderPiStream(PI_FIRST_1000);
+      renderPiStream(piDigits.slice(0, 10000));
       initFreqChart();
       analyzeFrequency(1000);
     }
 
-    // === 加载 π 的大量位数 ===
-    async function loadPiDigits(count) {
-      if (piLoaded && piDigits.length >= count) return piDigits;
-      const statusEl = document.getElementById('searchStatus');
-      statusEl.style.display = 'block';
-      try {
-        // 分批加载，每次最多1000位
-        let digits = '';
-        const batchSize = 1000;
-        for (let start = 1; start <= count; start += batchSize) {
-          const n = Math.min(batchSize, count - start + 1);
-          const resp = await fetch(`https://api.pi.delivery/v1/pi?start=${start}&numberOfDigits=${n}`);
-          const data = await resp.json();
-          digits += data.content;
-        }
-        piDigits = digits;
-        piLoaded = true;
-        statusEl.style.display = 'none';
-        return digits;
-      } catch (e) {
-        statusEl.innerHTML = '<span style="color: #ff4444;"><i class="ti ti-alert-triangle"></i> API 加载失败，使用本地前1000位数据</span>';
-        piDigits = PI_FIRST_1000;
-        return PI_FIRST_1000;
-      }
-    }
-
     // === 生日搜索 ===
-    async function searchBirthday() {
+    function searchBirthday() {
       const year = parseInt(document.getElementById('inputYear').value);
       const month = parseInt(document.getElementById('inputMonth').value);
       const day = parseInt(document.getElementById('inputDay').value);
@@ -252,9 +223,6 @@
         alert('请输入有效的日期');
         return;
       }
-      document.getElementById('searchBtn').disabled = true;
-      const digits = await loadPiDigits(1000000);
-      document.getElementById('searchBtn').disabled = false;
 
       const sequences = birthdayToSequences(month, day, year);
       let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">';
@@ -267,7 +235,7 @@
 
       let bestResult = null;
       sequences.forEach(seq => {
-        const pos = searchInPi(digits, seq.sequence);
+        const pos = searchInPi(piDigits, seq.sequence);
         const stats = pos > 0 ? generateSearchStats(pos, seq.sequence.length) : null;
         const posText = pos > 0 ? `第 <span style="color: #ffd700; font-weight: bold;">${pos.toLocaleString()}</span> 位` : '<span style="color: #666;">未找到</span>';
         const luckText = stats ? `<span style="color: ${stats.ratio < 1 ? '#4CAF50' : '#a0a0a0'}">${stats.luck}</span>` : '-';
@@ -321,9 +289,10 @@
         el.style.color = '';
         el.style.background = '';
       });
-      const pos = PI_FIRST_1000.indexOf(sequence);
+      const streamDigits = piDigits.slice(0, 10000);
+      const pos = streamDigits.indexOf(sequence);
       if (pos === -1) return;
-      for (let i = pos; i < pos + sequence.length && i < 1000; i++) {
+      for (let i = pos; i < pos + sequence.length && i < 10000; i++) {
         const el = document.querySelector(`.pi-digit[data-pos="${i}"]`);
         if (el) {
           el.classList.add('highlighted');
@@ -406,14 +375,8 @@
       });
     }
 
-    async function analyzeFrequency(count) {
-      let digits;
-      if (count <= 1000) {
-        digits = PI_FIRST_1000.slice(0, count);
-      } else {
-        digits = await loadPiDigits(count);
-        digits = digits.slice(0, count);
-      }
+    function analyzeFrequency(count) {
+      const digits = piDigits.slice(0, Math.min(count, piDigits.length));
       const freq = new Array(10).fill(0);
       for (const ch of digits) freq[parseInt(ch)]++;
       const pcts = freq.map(f => (f / digits.length) * 100);
@@ -444,7 +407,7 @@
     }
 
     // === 自定义序列搜索 ===
-    async function searchCustom() {
+    function searchCustom() {
       const seq = document.getElementById('customSequence').value.trim();
       if (!seq || !/^\d+$/.test(seq)) {
         alert('请输入纯数字序列');
@@ -454,8 +417,7 @@
         alert('序列长度不能超过10位');
         return;
       }
-      const digits = await loadPiDigits(1000000);
-      const pos = searchInPi(digits, seq);
+      const pos = searchInPi(piDigits, seq);
       const resultEl = document.getElementById('customResult');
       const monkeyEl = document.getElementById('monkeyStats');
       resultEl.style.display = 'block';

@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>帕隆多悖论 — 两个必输的游戏组合起来反而赢</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./parrondo-paradox-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 350px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+    .experiment-area {
+      background: rgba(0,0,0,0.15); border-radius: 12px; padding: 20px; margin: 15px 0;
+    }
+    .slider-group { margin: 12px 0; }
+    .slider-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px;
+    }
+    .slider-group label span { color: #fbbf24; font-weight: 600; }
+    .slider-group input[type="range"] {
+      width: 100%; -webkit-appearance: none; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px; outline: none;
+    }
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: #fbbf24; border-radius: 50%; cursor: pointer;
+    }
+    .tab-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 8px 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; background: transparent; color: rgba(255,255,255,0.5);
+      cursor: pointer; transition: all 0.3s;
+    }
+    .tab-btn.active { background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.3); }
+    .hidden { display: none; }
+    .rules-box {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;
+    }
+    .rule-card {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 18px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .rule-card h3 { color: #fbbf24; font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .rule-card p { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.7; }
+    .rule-card .formula {
+      background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px;
+      font-family: 'Courier New', monospace; color: #fbbf24; font-size: 14px;
+      text-align: center; margin-top: 10px;
+    }
+    .live-game {
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+      justify-content: center; margin: 20px 0;
+    }
+    .live-capital {
+      font-size: 3rem; font-weight: 800; color: #fbbf24;
+      min-width: 120px; text-align: center; transition: color 0.3s;
+    }
+    .live-capital.positive { color: #4ade80; }
+    .live-capital.negative { color: #f87171; }
+    .live-step { font-size: 13px; color: rgba(255,255,255,0.4); text-align: center; }
+    .coin-display {
+      width: 60px; height: 60px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; font-weight: 700; transition: all 0.3s;
+      border: 3px solid rgba(255,255,255,0.1);
+    }
+    .coin-display.win { background: rgba(74,222,128,0.2); border-color: #4ade80; color: #4ade80; }
+    .coin-display.lose { background: rgba(248,113,113,0.2); border-color: #f87171; color: #f87171; }
+    .game-log {
+      display: flex; flex-wrap: wrap; gap: 3px; max-height: 80px; overflow-y: auto;
+      margin-top: 12px;
+    }
+    .game-log .step-tag {
+      width: 22px; height: 22px; border-radius: 4px; font-size: 10px;
+      display: flex; align-items: center; justify-content: center; font-weight: 600;
+    }
+    .step-tag.a-win { background: rgba(96,165,250,0.3); color: #60a5fa; }
+    .step-tag.a-lose { background: rgba(96,165,250,0.1); color: rgba(96,165,250,0.4); }
+    .step-tag.b-win { background: rgba(168,85,247,0.3); color: #a855f7; }
+    .step-tag.b-lose { background: rgba(168,85,247,0.1); color: rgba(168,85,247,0.4); }
+    .speed-control { display: flex; align-items: center; gap: 8px; }
+    .speed-control label { font-size: 12px; color: rgba(255,255,255,0.4); }
+    .speed-control select {
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+      color: #fbbf24; padding: 4px 8px; border-radius: 6px; font-size: 12px;
+    }
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .rules-box { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-box { height: 280px; }
+      .live-capital { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-arrows-shuffle"></i> 帕隆多悖论</h1>
+    <p>1996年，西班牙物理学家 Juan Parrondo 发现了一个不可思议的现象：<br>两个必输的游戏，交替着玩，反而能赢钱。</p>
+  </div>
+
+  <!-- Card 1: 游戏规则 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-book"></i> 游戏规则</div>
+    <div class="card-desc">两个简单的抛硬币游戏，赢了 +1 元，输了 -1 元。两个都是必输的。</div>
+    <div class="rules-box">
+      <div class="rule-card">
+        <h3><i class="ti ti-coin" style="color:#60a5fa"></i> 游戏 A</h3>
+        <p>抛一枚稍微不公平的硬币。赢的概率 49.5%，输的概率 50.5%。</p>
+        <div class="formula">P(赢) = 0.495</div>
+        <p style="margin-top:8px; color:rgba(255,255,255,0.4); font-size:12px;">简单粗暴，长期必输。</p>
+      </div>
+      <div class="rule-card">
+        <h3><i class="ti ti-coin" style="color:#a855f7"></i> 游戏 B</h3>
+        <p>看你当前资金是不是 3 的倍数：</p>
+        <div class="formula">
+          是 3 的倍数 → P(赢) = 9.5%<br>
+          不是 → P(赢) = 74.5%
+        </div>
+        <p style="margin-top:8px; color:rgba(255,255,255,0.4); font-size:12px;">看起来不错？但稳态下你会频繁踩到 9.5% 的坑。</p>
+      </div>
+    </div>
+    <div class="insight-box">
+      <strong>悖论的核心：</strong>A 单独玩必输，B 单独玩也必输。但如果交替玩 A 和 B（比如 AABB 循环），你反而能赢钱。这不是魔法，是数学。
+    </div>
+  </div>
+
+  <!-- Card 2: 亲手玩一局 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-player-play"></i> 亲手玩一局</div>
+    <div class="card-desc">选择策略，点击按钮逐步玩，或者让它自动跑。看看你的资金怎么变化。</div>
+
+    <div class="tab-row" id="live-strategy-tabs">
+      <button class="tab-btn active" onclick="setLiveStrategy('A')">只玩 A</button>
+      <button class="tab-btn" onclick="setLiveStrategy('B')">只玩 B</button>
+      <button class="tab-btn" onclick="setLiveStrategy('AABB')">AABB 交替</button>
+      <button class="tab-btn" onclick="setLiveStrategy('ABB')">ABB 交替</button>
+      <button class="tab-btn" onclick="setLiveStrategy('RANDOM')">随机混合</button>
+    </div>
+
+    <div class="live-game">
+      <div>
+        <div class="live-capital" id="live-capital">$0</div>
+        <div class="live-step" id="live-step">第 0 步</div>
+      </div>
+      <div class="coin-display" id="live-coin">?</div>
+    </div>
+
+    <div class="game-log" id="live-log"></div>
+
+    <div class="btn-row" style="justify-content: center; align-items: center;">
+      <button class="btn" id="live-next-btn" onclick="liveNext()"><i class="ti ti-chevron-right"></i> 下一步</button>
+      <button class="btn btn-secondary" id="live-auto-btn" onclick="liveAutoToggle()"><i class="ti ti-player-play"></i> 自动播放</button>
+      <button class="btn btn-secondary" onclick="liveReset()"><i class="ti ti-refresh"></i> 重置</button>
+      <div class="speed-control">
+        <label>速度</label>
+        <select id="live-speed" onchange="updateLiveSpeed()">
+          <option value="200">慢</option>
+          <option value="80" selected>中</option>
+          <option value="20">快</option>
+          <option value="5">极速</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 3: 蒙特卡洛大规模模拟 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-line"></i> 蒙特卡洛模拟：跑 1000 次看平均</div>
+    <div class="card-desc">一局可能有运气成分。跑 1000 次取平均，看看长期趋势到底是赢还是输。</div>
+
+    <div class="slider-group">
+      <label>模拟次数 <span id="mc-trials-val">1000</span></label>
+      <input type="range" id="mc-trials" min="100" max="5000" value="1000" step="100" oninput="document.getElementById('mc-trials-val').textContent=this.value">
+    </div>
+    <div class="slider-group">
+      <label>每次步数 <span id="mc-steps-val">500</span></label>
+      <input type="range" id="mc-steps" min="100" max="2000" value="500" step="100" oninput="document.getElementById('mc-steps-val').textContent=this.value">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="mc-run-btn" onclick="runMonteCarlo()"><i class="ti ti-player-play"></i> 开始模拟</button>
+    </div>
+
+    <div id="mc-result" class="hidden">
+      <div class="result-grid" style="margin-top:15px">
+        <div class="result-item red"><div class="label">Game A 平均收益</div><div class="value" id="mc-a-mean"></div></div>
+        <div class="result-item red"><div class="label">Game B 平均收益</div><div class="value" id="mc-b-mean"></div></div>
+        <div class="result-item green"><div class="label">AABB 平均收益</div><div class="value" id="mc-aabb-mean"></div></div>
+        <div class="result-item green"><div class="label">ABB 平均收益</div><div class="value" id="mc-abb-mean"></div></div>
+      </div>
+      <div class="result-grid">
+        <div class="result-item"><div class="label">A 胜率</div><div class="value" id="mc-a-wr"></div></div>
+        <div class="result-item"><div class="label">B 胜率</div><div class="value" id="mc-b-wr"></div></div>
+        <div class="result-item"><div class="label">AABB 胜率</div><div class="value" id="mc-aabb-wr"></div></div>
+        <div class="result-item"><div class="label">ABB 胜率</div><div class="value" id="mc-abb-wr"></div></div>
+      </div>
+      <div class="chart-box"><canvas id="mcChart"></canvas></div>
+      <div class="insight-box" id="mc-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 4: 策略探索器 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-adjustments"></i> 策略探索器</div>
+    <div class="card-desc">不是所有组合都能赢。试试不同的交替模式，看看哪些赢、哪些输。输入自定义模式（如 AAABBB）。</div>
+
+    <div class="experiment-area">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <input type="text" id="custom-pattern" placeholder="输入模式，如 AABBB" value="AABBB"
+          style="flex:1; min-width:150px; padding:10px 14px; font-size:16px; font-family:monospace;
+          background:rgba(0,0,0,0.3); border:2px solid rgba(251,191,36,0.3); border-radius:10px;
+          color:#fbbf24; outline:none; text-transform:uppercase;">
+        <button class="btn" onclick="runCustomPattern()"><i class="ti ti-player-play"></i> 模拟</button>
+      </div>
+      <div style="margin-top:10px; font-size:12px; color:rgba(255,255,255,0.3);">
+        试试: AB, AAB, ABB, AABB, AABBB, AAABBB, ABBB
+      </div>
+    </div>
+
+    <div id="custom-result" class="hidden">
+      <div class="result-grid" style="margin-top:15px">
+        <div class="result-item"><div class="label">模式</div><div class="value" id="custom-pattern-show" style="font-size:1.2rem;font-family:monospace"></div></div>
+        <div class="result-item"><div class="label">平均收益</div><div class="value" id="custom-mean"></div></div>
+        <div class="result-item"><div class="label">胜率</div><div class="value" id="custom-wr"></div></div>
+        <div class="result-item"><div class="label">结论</div><div class="value" id="custom-verdict"></div></div>
+      </div>
+      <div class="chart-box"><canvas id="customChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Card 5: 为什么会这样 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-math-function"></i> 为什么两个输的加起来能赢？</div>
+    <div class="experiment-area">
+      <div style="font-size:15px; line-height:1.8; color:rgba(255,255,255,0.7);">
+        <strong style="color:#fbbf24">关键在于 Game B 的「棘轮效应」。</strong><br><br>
+        Game B 单独玩时，你的资金会自然地频繁落在 3 的倍数上（稳态概率约 38%），这时你用的是那个只有 9.5% 胜率的烂硬币。<br><br>
+        但当你穿插 Game A 时，A 的随机扰动会把你的资金「踢」离 3 的倍数。这样你在 Game B 中就更多地使用 74.5% 胜率的好硬币。<br><br>
+        <strong style="color:#4ade80">A 的作用不是赢钱，而是改变你在 B 中的状态分布。</strong><br><br>
+        这就像一个棘轮（ratchet）：A 是随机的扰动，B 是有方向性的齿轮。单独都没用，但组合起来就能把随机运动变成定向运动。
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="runStateAnalysis()"><i class="ti ti-chart-pie"></i> 查看状态分布对比</button>
+    </div>
+
+    <div id="state-result" class="hidden">
+      <div class="result-grid" style="margin-top:15px">
+        <div class="result-item red">
+          <div class="label">Game B 单独玩<br>踩中 3 的倍数</div>
+          <div class="value" id="state-b-bad"></div>
+        </div>
+        <div class="result-item green">
+          <div class="label">AABB 交替玩<br>踩中 3 的倍数</div>
+          <div class="value" id="state-aabb-bad"></div>
+        </div>
+        <div class="result-item blue">
+          <div class="label">理论稳态值<br>(马尔可夫链)</div>
+          <div class="value" id="state-theory"></div>
+        </div>
+      </div>
+      <div class="insight-box" id="state-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 6: 现实中的帕隆多悖论 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-world"></i> 现实中的帕隆多悖论</div>
+    <div class="experiment-area">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-dna" style="color:#4ade80"></i></div>
+          <div style="color:#4ade80; font-weight:600; margin-bottom: 6px;">生物进化</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">细菌在两种不利环境间切换，反而比固定在一种环境中存活率更高。随机相位变异就是自然界的帕隆多策略。</div>
+        </div>
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-chart-candle" style="color:#fbbf24"></i></div>
+          <div style="color:#fbbf24; font-weight:600; margin-bottom: 6px;">投资组合</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">两只长期亏损的股票，定期再平衡后组合收益可能为正。波动率泵效应（volatility pumping）本质上就是帕隆多悖论。</div>
+        </div>
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-atom" style="color:#60a5fa"></i></div>
+          <div style="color:#60a5fa; font-weight:600; margin-bottom: 6px;">布朗棘轮</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">费曼提出的思想实验：分子的随机热运动，通过不对称的棘轮结构，可以被转化为定向运动。帕隆多悖论正是它的离散版本。</div>
+        </div>
+      </div>
+    </div>
+    <div class="insight-box">
+      <strong>一句话总结：</strong>帕隆多悖论告诉我们，在非线性系统中，「坏 + 坏 = 好」是完全可能的。关键不在于每个策略本身的好坏，而在于它们之间的相互作用如何改变了系统的状态分布。<br><br>
+      下次有人告诉你「两个烂选择里挑一个」的时候，也许你该想想：能不能交替着来？
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+// ========== 亲手玩一局 ==========
+let liveStrategy = 'A';
+let liveCapital = 0;
+let liveStep = 0;
+let liveAutoInterval = null;
+let liveSpeed = 80;
+let liveParams = getParams();
+
+function setLiveStrategy(s) {
+  liveReset();
+  liveStrategy = s;
+  const labels = { A: '只玩 A', B: '只玩 B', AABB: 'AABB', ABB: 'ABB', RANDOM: '随机' };
+  document.querySelectorAll('#live-strategy-tabs .tab-btn').forEach(btn => {
+    const match = Object.entries(labels).find(([k, v]) => btn.textContent.trim().includes(v));
+    btn.classList.toggle('active', match && match[0] === s);
+  });
+}
+
+function liveNext() {
+  const game = getGameForStep(liveStep, liveStrategy);
+  const result = (game === 'A') ? playGameA(liveParams) : playGameB(liveCapital, liveParams);
+  liveCapital += result;
+  liveStep++;
+
+  const capEl = document.getElementById('live-capital');
+  capEl.textContent = (liveCapital >= 0 ? '+' : '') + liveCapital;
+  capEl.className = 'live-capital ' + (liveCapital > 0 ? 'positive' : liveCapital < 0 ? 'negative' : '');
+  document.getElementById('live-step').textContent = '第 ' + liveStep + ' 步';
+
+  const coinEl = document.getElementById('live-coin');
+  coinEl.textContent = result > 0 ? '+1' : '-1';
+  coinEl.className = 'coin-display ' + (result > 0 ? 'win' : 'lose');
+
+  const tag = document.createElement('span');
+  tag.className = 'step-tag ' + game.toLowerCase() + '-' + (result > 0 ? 'win' : 'lose');
+  tag.textContent = game;
+  tag.title = '第' + liveStep + '步: Game ' + game + ' → ' + (result > 0 ? '赢' : '输');
+  const logEl = document.getElementById('live-log');
+  logEl.appendChild(tag);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function liveAutoToggle() {
+  const btn = document.getElementById('live-auto-btn');
+  if (liveAutoInterval) {
+    clearInterval(liveAutoInterval);
+    liveAutoInterval = null;
+    btn.innerHTML = '<i class="ti ti-player-play"></i> 自动播放';
+  } else {
+    liveAutoInterval = setInterval(liveNext, liveSpeed);
+    btn.innerHTML = '<i class="ti ti-player-pause"></i> 暂停';
+  }
+}
+
+function updateLiveSpeed() {
+  liveSpeed = parseInt(document.getElementById('live-speed').value);
+  if (liveAutoInterval) {
+    clearInterval(liveAutoInterval);
+    liveAutoInterval = setInterval(liveNext, liveSpeed);
+  }
+}
+
+function liveReset() {
+  if (liveAutoInterval) { clearInterval(liveAutoInterval); liveAutoInterval = null; }
+  liveCapital = 0; liveStep = 0;
+  document.getElementById('live-capital').textContent = '$0';
+  document.getElementById('live-capital').className = 'live-capital';
+  document.getElementById('live-step').textContent = '第 0 步';
+  document.getElementById('live-coin').textContent = '?';
+  document.getElementById('live-coin').className = 'coin-display';
+  document.getElementById('live-log').innerHTML = '';
+  document.getElementById('live-auto-btn').innerHTML = '<i class="ti ti-player-play"></i> 自动播放';
+}
+
+// ========== 蒙特卡洛模拟 ==========
+let mcChart = null;
+
+function runMonteCarlo() {
+  const trials = parseInt(document.getElementById('mc-trials').value);
+  const steps = parseInt(document.getElementById('mc-steps').value);
+  const btn = document.getElementById('mc-run-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> 模拟中...';
+
+  setTimeout(function() {
+    const results = compareStrategies(trials, steps, ['A', 'B', 'AABB', 'ABB']);
+    document.getElementById('mc-result').classList.remove('hidden');
+
+    document.getElementById('mc-a-mean').textContent = results['A'].meanFinal;
+    document.getElementById('mc-b-mean').textContent = results['B'].meanFinal;
+    document.getElementById('mc-aabb-mean').textContent = results['AABB'].meanFinal;
+    document.getElementById('mc-abb-mean').textContent = results['ABB'].meanFinal;
+    document.getElementById('mc-a-wr').textContent = results['A'].winRate + '%';
+    document.getElementById('mc-b-wr').textContent = results['B'].winRate + '%';
+    document.getElementById('mc-aabb-wr').textContent = results['AABB'].winRate + '%';
+    document.getElementById('mc-abb-wr').textContent = results['ABB'].winRate + '%';
+
+    ['mc-a-mean','mc-b-mean','mc-aabb-mean','mc-abb-mean'].forEach(function(id) {
+      var el = document.getElementById(id);
+      el.style.color = parseFloat(el.textContent) > 0 ? '#4ade80' : '#f87171';
+    });
+
+    if (mcChart) mcChart.destroy();
+    var stride = Math.max(1, Math.floor(steps / 50));
+    var labels = [];
+    for (var i = 0; i <= steps; i += stride) labels.push(i);
+    if (labels[labels.length - 1] !== steps) labels.push(steps);
+
+    mcChart = new Chart(document.getElementById('mcChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Game A', data: labels.map(function(i){ return results['A'].avgHistory[i]; }), borderColor: '#f87171', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0 },
+          { label: 'Game B', data: labels.map(function(i){ return results['B'].avgHistory[i]; }), borderColor: '#fb923c', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0 },
+          { label: 'AABB', data: labels.map(function(i){ return results['AABB'].avgHistory[i]; }), borderColor: '#4ade80', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0 },
+          { label: 'ABB', data: labels.map(function(i){ return results['ABB'].avgHistory[i]; }), borderColor: '#60a5fa', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0 }
+        ]
+      },
+      options: chartOpts('步数', '平均资金')
+    });
+
+    document.getElementById('mc-insight').innerHTML =
+      '<strong>' + trials + ' 次模拟，每次 ' + steps + ' 步的结果：</strong><br>' +
+      'Game A 平均亏 <strong style="color:#f87171">' + Math.abs(results['A'].meanFinal) + '</strong> 元，' +
+      'Game B 平均亏 <strong style="color:#f87171">' + Math.abs(results['B'].meanFinal) + '</strong> 元。<br>' +
+      '但 AABB 交替平均赚 <strong style="color:#4ade80">' + results['AABB'].meanFinal + '</strong> 元，' +
+      'ABB 交替平均赚 <strong style="color:#4ade80">' + results['ABB'].meanFinal + '</strong> 元。<br><br>' +
+      '两条红线往下走，两条绿线往上走——这就是帕隆多悖论的视觉冲击。';
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-player-play"></i> 重新模拟';
+  }, 50);
+}
+
+// ========== 策略探索器 ==========
+var customChart = null;
+
+function runCustomPattern() {
+  var pattern = document.getElementById('custom-pattern').value.toUpperCase().replace(/[^AB]/g, '');
+  if (!pattern) pattern = 'AB';
+  document.getElementById('custom-pattern').value = pattern;
+
+  var result = simulateMonteCarlo(2000, 500, pattern);
+  document.getElementById('custom-result').classList.remove('hidden');
+  document.getElementById('custom-pattern-show').textContent = pattern;
+  document.getElementById('custom-mean').textContent = result.meanFinal;
+  document.getElementById('custom-mean').style.color = result.meanFinal > 0 ? '#4ade80' : '#f87171';
+  document.getElementById('custom-wr').textContent = result.winRate + '%';
+  document.getElementById('custom-wr').style.color = result.winRate > 50 ? '#4ade80' : '#f87171';
+  document.getElementById('custom-verdict').textContent = result.meanFinal > 0 ? '赢' : '输';
+  document.getElementById('custom-verdict').style.color = result.meanFinal > 0 ? '#4ade80' : '#f87171';
+
+  if (customChart) customChart.destroy();
+  var stride = Math.max(1, Math.floor(500 / 50));
+  var labels = [];
+  for (var i = 0; i <= 500; i += stride) labels.push(i);
+  if (labels[labels.length - 1] !== 500) labels.push(500);
+
+  customChart = new Chart(document.getElementById('customChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: pattern + ' 平均轨迹',
+        data: labels.map(function(i){ return result.avgHistory[i]; }),
+        borderColor: result.meanFinal > 0 ? '#4ade80' : '#f87171',
+        backgroundColor: result.meanFinal > 0 ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
+        fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2
+      }]
+    },
+    options: chartOpts('步数', '平均资金')
+  });
+}
+
+// ========== 状态分布分析 ==========
+function runStateAnalysis() {
+  var trials = 5000, steps = 500;
+  var bBadCount = 0, bTotal = 0, aabbBadCount = 0, aabbTotal = 0;
+  var params = getParams();
+
+  for (var t = 0; t < trials; t++) {
+    var capB = 0, capAABB = 0;
+    for (var i = 0; i < steps; i++) {
+      capB += playGameB(capB, params);
+      if (capB % params.M === 0) bBadCount++;
+      bTotal++;
+
+      var gameAABB = getGameForStep(i, 'AABB');
+      capAABB += (gameAABB === 'A') ? playGameA(params) : playGameB(capAABB, params);
+      if (capAABB % params.M === 0) aabbBadCount++;
+      aabbTotal++;
+    }
+  }
+
+  var bBadPct = (bBadCount / bTotal * 100).toFixed(1);
+  var aabbBadPct = (aabbBadCount / aabbTotal * 100).toFixed(1);
+  var theory = gameB_stationaryBadCoinProb();
+
+  document.getElementById('state-result').classList.remove('hidden');
+  document.getElementById('state-b-bad').textContent = bBadPct + '%';
+  document.getElementById('state-aabb-bad').textContent = aabbBadPct + '%';
+  document.getElementById('state-theory').textContent = (theory.pi0 * 100).toFixed(1) + '%';
+
+  document.getElementById('state-insight').innerHTML =
+    '<strong>关键发现：</strong>Game B 单独玩时，你有 <strong style="color:#f87171">' + bBadPct + '%</strong> 的时间踩在 3 的倍数上（用烂硬币）。' +
+    '理论稳态值是 <strong>' + (theory.pi0 * 100).toFixed(1) + '%</strong>。<br><br>' +
+    '但 AABB 交替玩时，踩中 3 的倍数的比例降到了 <strong style="color:#4ade80">' + aabbBadPct + '%</strong>。' +
+    'Game A 的随机扰动把你从「坑」里踢了出来，让你更多地享受 74.5% 胜率的好硬币。<br><br>' +
+    '<strong>这就是悖论的本质：</strong>A 不是来赢钱的，它是来改变你在 B 中的位置的。两个游戏之间的依赖关系，打破了「独立时都输 → 组合也输」的直觉。';
+}
+
+// ========== 通用图表配置 ==========
+function chartOpts(xLabel, yLabel) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } } },
+    scales: {
+      x: { title: { display: true, text: xLabel, color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { title: { display: true, text: yLabel, color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
+  };
+}
+</script>
+</body>
+</html>

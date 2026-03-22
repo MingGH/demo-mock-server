@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>马太效应模拟器 — 第一个点赞的人决定了内容的命运</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./matthew-effect.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08); color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.3);
+    }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 320px; margin-top: 15px; }
+    .chart-box-tall { position: relative; height: 380px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+    .slider-group { margin: 12px 0; }
+    .slider-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px;
+    }
+    .slider-group label span { color: #fbbf24; font-weight: 600; }
+    .slider-group input[type="range"] {
+      width: 100%; -webkit-appearance: none; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px; outline: none;
+    }
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: #fbbf24; border-radius: 50%; cursor: pointer;
+    }
+    .hidden { display: none; }
+    .two-content-display {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;
+    }
+    .content-card {
+      background: rgba(0,0,0,0.2); border-radius: 14px; padding: 20px;
+      border: 2px solid rgba(255,255,255,0.06); text-align: center;
+      transition: border-color 0.3s;
+    }
+    .content-card.winner { border-color: rgba(74,222,128,0.4); }
+    .content-card.loser { border-color: rgba(248,113,113,0.2); }
+    .content-card .content-title { font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: 12px; }
+    .content-card .content-likes {
+      font-size: 2.8rem; font-weight: 800; color: #fbbf24;
+      transition: color 0.5s;
+    }
+    .content-card.winner .content-likes { color: #4ade80; }
+    .content-card.loser .content-likes { color: #f87171; }
+    .content-card .content-init { font-size: 12px; color: rgba(255,255,255,0.3); margin-top: 8px; }
+    .ratio-display {
+      text-align: center; padding: 15px;
+      font-size: 1.1rem; color: rgba(255,255,255,0.6);
+    }
+    .ratio-display .ratio-num { font-size: 2.5rem; font-weight: 800; color: #f87171; }
+    .experiment-area {
+      background: rgba(0,0,0,0.15); border-radius: 12px; padding: 20px; margin: 15px 0;
+    }
+    .bar-chart-container { margin-top: 15px; }
+    .bar-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+    }
+    .bar-label { width: 60px; font-size: 12px; color: rgba(255,255,255,0.5); text-align: right; flex-shrink: 0; }
+    .bar-track { flex: 1; background: rgba(255,255,255,0.05); border-radius: 4px; height: 20px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .bar-val { width: 60px; font-size: 12px; color: rgba(255,255,255,0.5); flex-shrink: 0; }
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .two-content-display { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-box { height: 260px; }
+      .chart-box-tall { height: 300px; }
+      .content-card .content-likes { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-trending-up"></i> 马太效应模拟器</h1>
+    <p>「凡有的，还要加给他，叫他有余；没有的，连他所有的也要夺过来。」<br>
+    两条质量完全相同的内容，只因初始点赞数不同，最终传播量可以相差百倍。</p>
+  </div>
+
+  <!-- Card 1: 两条内容的命运 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-git-fork"></i> 同样的内容，不同的命运</div>
+    <div class="card-desc">两条内容质量完全相同，只有初始点赞数不同。调整参数，看看「先发优势」能把差距拉到多大。</div>
+
+    <div class="experiment-area">
+      <div class="slider-group">
+        <label>内容A的初始点赞优势 <span id="boost-val">10</span> 个</label>
+        <input type="range" id="boost-slider" min="1" max="50" value="10"
+          oninput="document.getElementById('boost-val').textContent=this.value">
+      </div>
+      <div class="slider-group">
+        <label>马太效应强度（α） <span id="alpha-val">0.80</span></label>
+        <input type="range" id="alpha-slider" min="0" max="100" value="80"
+          oninput="document.getElementById('alpha-val').textContent=(this.value/100).toFixed(2)">
+      </div>
+      <div class="slider-group">
+        <label>模拟轮数 <span id="rounds-val">300</span></label>
+        <input type="range" id="rounds-slider" min="50" max="500" value="300" step="50"
+          oninput="document.getElementById('rounds-val').textContent=this.value">
+      </div>
+    </div>
+
+    <div class="two-content-display">
+      <div class="content-card" id="card-a">
+        <div class="content-title"><i class="ti ti-file-text" style="color:#4ade80"></i> 内容 A（先发）</div>
+        <div class="content-likes" id="likes-a">—</div>
+        <div class="content-init" id="init-a">初始点赞：11</div>
+      </div>
+      <div class="content-card" id="card-b">
+        <div class="content-title"><i class="ti ti-file-text" style="color:#f87171"></i> 内容 B（后发）</div>
+        <div class="content-likes" id="likes-b">—</div>
+        <div class="content-init">初始点赞：1</div>
+      </div>
+    </div>
+
+    <div class="ratio-display" id="ratio-display" style="display:none">
+      A 的最终点赞是 B 的 <span class="ratio-num" id="ratio-num">—</span> 倍
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="run-two-btn" onclick="runTwoContents()">
+        <i class="ti ti-player-play"></i> 开始模拟（200次平均）
+      </button>
+    </div>
+
+    <div id="two-result" class="hidden">
+      <div class="chart-box"><canvas id="twoChart"></canvas></div>
+      <div class="insight-box" id="two-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 2: 注意力分配模拟 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-bar"></i> 100条内容争夺注意力</div>
+    <div class="card-desc">模拟100条内容在同一平台上竞争，看看最终点赞分布有多不平等。</div>
+
+    <div class="experiment-area">
+      <div class="slider-group">
+        <label>马太效应强度（α=0完全随机，α=1纯马太） <span id="dist-alpha-val">0.80</span></label>
+        <input type="range" id="dist-alpha-slider" min="0" max="100" value="80"
+          oninput="document.getElementById('dist-alpha-val').textContent=(this.value/100).toFixed(2)">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="run-dist-btn" onclick="runDistribution()">
+        <i class="ti ti-player-play"></i> 模拟分配
+      </button>
+    </div>
+
+    <div id="dist-result" class="hidden">
+      <div class="result-grid" style="margin-top:15px">
+        <div class="result-item"><div class="label">基尼系数</div><div class="value" id="dist-gini"></div></div>
+        <div class="result-item red"><div class="label">前20%内容占比</div><div class="value" id="dist-top20"></div></div>
+        <div class="result-item blue"><div class="label">第1名点赞</div><div class="value" id="dist-top1"></div></div>
+        <div class="result-item"><div class="label">中位数点赞</div><div class="value" id="dist-median"></div></div>
+      </div>
+      <div class="chart-box-tall"><canvas id="distChart"></canvas></div>
+      <div class="insight-box" id="dist-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 3: α强度对比 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-adjustments"></i> 马太强度对比实验</div>
+    <div class="card-desc">同样的初始条件，不同的马太强度，最终差距有多大？</div>
+
+    <div class="btn-row">
+      <button class="btn" id="run-compare-btn" onclick="runAlphaCompare()">
+        <i class="ti ti-player-play"></i> 对比不同强度
+      </button>
+    </div>
+
+    <div id="compare-result" class="hidden">
+      <div class="chart-box-tall"><canvas id="compareChart"></canvas></div>
+      <div class="insight-box" id="compare-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 4: 原理解释 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-math-function"></i> 为什么会这样？优先连接模型</div>
+    <div class="experiment-area">
+      <div style="font-size:15px; line-height:1.9; color:rgba(255,255,255,0.7);">
+        <strong style="color:#fbbf24">核心机制：优先连接（Preferential Attachment）</strong><br><br>
+        在社交网络中，用户看到一条内容时，会受到「已有点赞数」的影响。
+        一条有100个赞的内容，比只有1个赞的内容，被点赞的概率高得多——不是因为它更好，而是因为它「看起来更受欢迎」。<br><br>
+        数学上，每个新点赞落在内容 i 上的概率正比于它当前的点赞数 k_i：<br>
+        <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:12px; margin:12px 0; font-family:monospace; color:#fbbf24; text-align:center; font-size:15px;">
+          P(i 获得新点赞) = α × k_i / Σk_j + (1-α) × 1/N
+        </div>
+        这个机制会产生<strong style="color:#4ade80">幂律分布</strong>：少数内容获得绝大多数关注，大多数内容几乎无人问津。<br><br>
+        <strong style="color:#f87171">关键洞察：</strong>初始的微小差异，在马太效应的放大下，会变成无法逾越的鸿沟。
+        不是你的内容不好，是你没有赶上「第一波」。
+      </div>
+    </div>
+    <div class="insight-box">
+      <strong>现实中的马太效应：</strong>知乎高赞回答、微博热搜、抖音爆款、GitHub Star 数……
+      几乎所有内容平台都存在这个规律。
+      <strong style="color:#4ade80">破局之道</strong>不是「做更好的内容」，而是找到能给你「第一批点赞」的渠道——
+      私域流量、垂直社群、早期粉丝，本质上都是在对抗马太效应的初始条件。
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+var twoChart = null;
+var distChart = null;
+var compareChart = null;
+
+function chartOpts(xLabel, yLabel) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } } },
+    scales: {
+      x: { title: { display: true, text: xLabel, color: 'rgba(255,255,255,0.4)' },
+           ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 10 },
+           grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { title: { display: true, text: yLabel, color: 'rgba(255,255,255,0.4)' },
+           ticks: { color: 'rgba(255,255,255,0.4)' },
+           grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
+  };
+}
+
+// ===== Card 1: 两条内容对比 =====
+function runTwoContents() {
+  var btn = document.getElementById('run-two-btn');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> 模拟中...';
+
+  var boost = parseInt(document.getElementById('boost-slider').value);
+  var alpha = parseInt(document.getElementById('alpha-slider').value) / 100;
+  var rounds = parseInt(document.getElementById('rounds-slider').value);
+
+  document.getElementById('init-a').textContent = '初始点赞：' + (1 + boost);
+
+  setTimeout(function() {
+    var res = simulateTwoContentsAvg({ boostA: boost, boostB: 0, alpha: alpha, rounds: rounds, trials: 300 });
+
+    document.getElementById('likes-a').textContent = res.avgA[rounds].toFixed(0);
+    document.getElementById('likes-b').textContent = res.avgB[rounds].toFixed(0);
+    document.getElementById('ratio-display').style.display = 'block';
+    document.getElementById('ratio-num').textContent = res.finalRatio + 'x';
+
+    var cardA = document.getElementById('card-a');
+    var cardB = document.getElementById('card-b');
+    cardA.className = 'content-card winner';
+    cardB.className = 'content-card loser';
+
+    document.getElementById('two-result').classList.remove('hidden');
+
+    var labels = [];
+    var stride = Math.max(1, Math.floor(rounds / 60));
+    for (var i = 0; i <= rounds; i += stride) labels.push(i);
+    if (labels[labels.length-1] !== rounds) labels.push(rounds);
+
+    if (twoChart) twoChart.destroy();
+    twoChart = new Chart(document.getElementById('twoChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: '内容A（初始+' + boost + '赞）', data: labels.map(function(i){ return res.avgA[i]; }),
+            borderColor: '#4ade80', borderWidth: 2.5, fill: false, tension: 0.3, pointRadius: 0 },
+          { label: '内容B（初始1赞）', data: labels.map(function(i){ return res.avgB[i]; }),
+            borderColor: '#f87171', borderWidth: 2.5, fill: false, tension: 0.3, pointRadius: 0 }
+        ]
+      },
+      options: chartOpts('轮数', '平均点赞数（300次模拟均值）')
+    });
+
+    var pct = res.finalRatio;
+    document.getElementById('two-insight').innerHTML =
+      '<strong>模拟结果：</strong>内容A初始只比B多 <strong style="color:#fbbf24">' + boost + '</strong> 个点赞，' +
+      '经过 ' + rounds + ' 轮传播后，A的点赞数是B的 <strong style="color:#f87171">' + pct + ' 倍</strong>。<br><br>' +
+      '马太强度 α=' + alpha.toFixed(2) + ' 意味着每次新点赞有 ' + (alpha*100).toFixed(0) + '% 的概率按「富者愈富」规则分配。' +
+      (pct > 10 ? '<br><br><strong style="color:#f87171">这就是为什么「内容质量不重要」——在马太效应面前，时机比质量更关键。</strong>' : '');
+
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh"></i> 重新模拟';
+  }, 30);
+}
+
+// ===== Card 2: 分布模拟 =====
+function runDistribution() {
+  var btn = document.getElementById('run-dist-btn');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> 模拟中...';
+
+  var alpha = parseInt(document.getElementById('dist-alpha-slider').value) / 100;
+
+  setTimeout(function() {
+    var res = simulateMatthewEffect({ contentCount: 100, totalLikes: 20000, initialBoost: 0, alpha: alpha, rounds: 200 });
+
+    var sorted = res.likes;
+    var median = sorted[Math.floor(sorted.length / 2)];
+
+    document.getElementById('dist-result').classList.remove('hidden');
+    document.getElementById('dist-gini').textContent = res.gini;
+    document.getElementById('dist-top20').textContent = res.top20pct + '%';
+    document.getElementById('dist-top1').textContent = sorted[0];
+    document.getElementById('dist-median').textContent = median;
+
+    // 颜色
+    var giniEl = document.getElementById('dist-gini');
+    giniEl.style.color = res.gini > 0.6 ? '#f87171' : res.gini > 0.4 ? '#fbbf24' : '#4ade80';
+    document.getElementById('dist-top20').style.color = res.top20pct > 70 ? '#f87171' : '#fbbf24';
+
+    // 只展示前30条（其余太小看不见）
+    var top30 = sorted.slice(0, 30);
+    var labels30 = top30.map(function(_, i){ return '#' + (i+1); });
+
+    if (distChart) distChart.destroy();
+    distChart = new Chart(document.getElementById('distChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels30,
+        datasets: [{
+          label: '点赞数（前30名）',
+          data: top30,
+          backgroundColor: top30.map(function(_, i){
+            if (i === 0) return 'rgba(248,113,113,0.8)';
+            if (i < 5) return 'rgba(251,191,36,0.7)';
+            if (i < 20) return 'rgba(96,165,250,0.5)';
+            return 'rgba(255,255,255,0.15)';
+          }),
+          borderRadius: 4,
+        }]
+      },
+      options: Object.assign({}, chartOpts('排名', '点赞数'), {
+        plugins: { legend: { display: false } }
+      })
+    });
+
+    document.getElementById('dist-insight').innerHTML =
+      '<strong>α=' + alpha.toFixed(2) + ' 时的分配结果：</strong>' +
+      '基尼系数 <strong style="color:#fbbf24">' + res.gini + '</strong>（0=完全平等，1=极度不平等），' +
+      '前20%的内容拿走了 <strong style="color:#f87171">' + res.top20pct + '%</strong> 的总点赞。<br><br>' +
+      (res.top20pct > 70
+        ? '这已经超过了「二八定律」，是典型的<strong>幂律分布</strong>。排名第一的内容点赞数是中位数的 <strong style="color:#f87171">' + (sorted[0]/Math.max(1,median)).toFixed(0) + ' 倍</strong>。'
+        : '马太效应较弱时，分配相对均匀，但头部效应依然存在。');
+
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh"></i> 重新模拟';
+  }, 30);
+}
+
+// ===== Card 3: α对比 =====
+function runAlphaCompare() {
+  var btn = document.getElementById('run-compare-btn');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> 模拟中...';
+
+  setTimeout(function() {
+    var alphas = [0, 0.3, 0.6, 0.9];
+    var colors = ['#4ade80', '#60a5fa', '#fbbf24', '#f87171'];
+    var rounds = 300;
+    var datasets = [];
+
+    var labels = [];
+    var stride = Math.max(1, Math.floor(rounds / 60));
+    for (var i = 0; i <= rounds; i += stride) labels.push(i);
+    if (labels[labels.length-1] !== rounds) labels.push(rounds);
+
+    for (var ai = 0; ai < alphas.length; ai++) {
+      var a = alphas[ai];
+      var res = simulateTwoContentsAvg({ boostA: 5, boostB: 0, alpha: a, rounds: rounds, trials: 200 });
+      datasets.push({
+        label: 'α=' + a.toFixed(1) + ' 内容A',
+        data: labels.map(function(i){ return res.avgA[i]; }),
+        borderColor: colors[ai], borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0
+      });
+    }
+
+    document.getElementById('compare-result').classList.remove('hidden');
+    if (compareChart) compareChart.destroy();
+    compareChart = new Chart(document.getElementById('compareChart').getContext('2d'), {
+      type: 'line',
+      data: { labels: labels, datasets: datasets },
+      options: chartOpts('轮数', '内容A的平均点赞数（初始+5赞优势）')
+    });
+
+    document.getElementById('compare-insight').innerHTML =
+      '<strong>同样是初始多5个赞的优势，马太强度不同，结局天差地别：</strong><br><br>' +
+      'α=0（完全随机）时，初始优势几乎消失，最终两条内容趋于平等。<br>' +
+      'α=0.9（强马太）时，初始的5个赞优势被持续放大，最终差距可达数十倍。<br><br>' +
+      '<strong style="color:#fbbf24">现实中的社交平台 α 值通常在 0.7~0.9 之间。</strong>这就是为什么「第一批点赞」如此关键。';
+
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh"></i> 重新对比';
+  }, 30);
+}
+</script>
+</body>
+</html>

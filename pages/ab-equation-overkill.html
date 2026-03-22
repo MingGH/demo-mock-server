@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A+B=90，A÷B=17，AB各多少？— 大炮打蚊子解方程</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 16px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.55); font-size: 13px; margin-bottom: 16px; line-height: 1.7; }
+    .btn {
+      padding: 10px 26px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08); color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.3);
+    }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 16px 0; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 14px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.5rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.blue .value { color: #60a5fa; }
+    .result-item.purple .value { color: #c084fc; }
+    .log-box {
+      background: rgba(0,0,0,0.3); border-radius: 10px; padding: 14px;
+      font-family: 'Courier New', monospace; font-size: 12px;
+      color: #86efac; max-height: 220px; overflow-y: auto; line-height: 1.8;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .log-box .dim { color: rgba(255,255,255,0.3); }
+    .log-box .highlight { color: #fbbf24; font-weight: bold; }
+    .log-box .err { color: #f87171; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.08), rgba(245,158,11,0.04));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 18px; margin-top: 16px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+    .chart-box { position: relative; height: 280px; margin-top: 14px; }
+    .method-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+    .tab {
+      padding: 6px 16px; border-radius: 20px; font-size: 13px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5);
+      transition: all 0.2s; background: transparent;
+    }
+    .tab.active { background: rgba(251,191,36,0.15); border-color: #fbbf24; color: #fbbf24; }
+    .answer-reveal {
+      text-align: center; padding: 20px;
+      font-size: 1.8rem; font-weight: 700; color: #4ade80;
+      display: none;
+    }
+    .progress-bar-wrap { background: rgba(255,255,255,0.08); border-radius: 6px; height: 8px; margin: 8px 0; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b); border-radius: 6px; transition: width 0.1s; }
+    .matrix-display {
+      font-family: 'Courier New', monospace; font-size: 13px;
+      color: #93c5fd; line-height: 2; text-align: center; padding: 10px;
+    }
+    .step-badge {
+      display: inline-block; background: rgba(251,191,36,0.15);
+      border: 1px solid rgba(251,191,36,0.3); border-radius: 20px;
+      padding: 3px 12px; font-size: 12px; color: #fbbf24; margin: 4px 2px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-math-symbols"></i> A+B=90，A÷B=17，AB各多少？</h1>
+    <p>一道小学二年级应用题，用上所有你听说过的数值方法来解它</p>
+  </div>
+
+  <!-- 问题展示 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-question-mark"></i> 题目</div>
+    <div class="card-desc">
+      已知：<strong style="color:#fbbf24">A + B = 90</strong>，<strong style="color:#fbbf24">A ÷ B = 17</strong>，且 A、B 均不为 0，求 A 和 B。<br><br>
+      正常解法：30秒，两行代数。<br>
+      本页解法：牛顿迭代、二分法、梯度下降、模拟退火、遗传算法、线性代数矩阵法……全部上场。
+    </div>
+    <div class="result-grid">
+      <div class="result-item"><div class="label">约束1</div><div class="value" style="font-size:1.1rem">A + B = 90</div></div>
+      <div class="result-item"><div class="label">约束2</div><div class="value" style="font-size:1.1rem">A / B = 17</div></div>
+      <div class="result-item green"><div class="label">正确答案 A</div><div class="value" id="ans-a">?</div></div>
+      <div class="result-item blue"><div class="label">正确答案 B</div><div class="value" id="ans-b">?</div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="revealAnswer()"><i class="ti ti-eye"></i> 先看答案</button>
+    </div>
+  </div>
+
+  <!-- 方法选择 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-cpu"></i> 选择解法，大炮打蚊子</div>
+    <div class="method-tabs">
+      <button class="tab active" onclick="selectMethod('newton', this)">牛顿迭代法</button>
+      <button class="tab" onclick="selectMethod('bisect', this)">二分法</button>
+      <button class="tab" onclick="selectMethod('gradient', this)">梯度下降</button>
+      <button class="tab" onclick="selectMethod('annealing', this)">模拟退火</button>
+      <button class="tab" onclick="selectMethod('genetic', this)">遗传算法</button>
+      <button class="tab" onclick="selectMethod('matrix', this)">线性代数</button>
+    </div>
+    <div id="method-desc" class="card-desc"></div>
+    <div class="log-box" id="log-box"><span class="dim">// 点击「开始求解」查看过程...</span></div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="progress" style="width:0%"></div></div>
+    <div class="result-grid" id="solve-result" style="display:none">
+      <div class="result-item green"><div class="label">求得 A</div><div class="value" id="res-a">—</div></div>
+      <div class="result-item blue"><div class="label">求得 B</div><div class="value" id="res-b">—</div></div>
+      <div class="result-item purple"><div class="label">迭代次数</div><div class="value" id="res-iter">—</div></div>
+      <div class="result-item"><div class="label">误差</div><div class="value" id="res-err" style="font-size:1rem">—</div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="solve-btn" onclick="startSolve()"><i class="ti ti-player-play"></i> 开始求解</button>
+      <button class="btn btn-secondary" onclick="runAll()"><i class="ti ti-stack"></i> 全部方法跑一遍</button>
+    </div>
+  </div>
+
+  <!-- 收敛过程图 -->
+  <div class="card" id="chart-card" style="display:none">
+    <div class="card-title"><i class="ti ti-chart-line"></i> 收敛过程</div>
+    <div class="chart-box"><canvas id="convergence-chart"></canvas></div>
+  </div>
+
+  <!-- 全部方法对比 -->
+  <div class="card" id="compare-card" style="display:none">
+    <div class="card-title"><i class="ti ti-table"></i> 各方法对比</div>
+    <div id="compare-table"></div>
+  </div>
+
+  <!-- 线性代数展示 -->
+  <div class="card" id="matrix-card" style="display:none">
+    <div class="card-title"><i class="ti ti-grid-dots"></i> 矩阵法推导过程</div>
+    <div class="matrix-display" id="matrix-display"></div>
+  </div>
+
+  <div class="insight-box">
+    <strong>为什么要这样做？</strong><br>
+    这道题的「正确」解法是：A = 17B，代入 17B + B = 90，得 B = 5，A = 85。
+    全程不超过两行。<br><br>
+    但数值方法的意义在于：当方程组没有解析解时，这些方法依然能找到答案。
+    用大炮打蚊子，是为了让你看清楚大炮长什么样。
+  </div>
+</div>
+
+<script>
+// ── 正确答案 ──
+const TRUE_A = 85, TRUE_B = 5;
+
+let currentMethod = 'newton';
+let convergenceData = [];
+let chart = null;
+
+const methodDescs = {
+  newton: '牛顿迭代法：把 f(B) = 17B + B - 90 = 0 当成一元方程，用切线逼近根。收敛极快，通常3步以内。',
+  bisect: '二分法：在 [0.001, 89] 区间内不断折半，找 f(B) = 0 的根。稳健但慢，每次只缩小一半。',
+  gradient: '梯度下降：最小化损失函数 L(A,B) = (A+B-90)² + (A-17B)²，沿梯度反方向更新参数。',
+  annealing: '模拟退火：随机扰动 B 的值，以一定概率接受更差的解，逐渐降温收敛。来自统计物理的启发。',
+  genetic: '遗传算法：维护一个「种群」，通过选择、交叉、变异进化出最优解。用进化论解方程。',
+  matrix: '线性代数：将方程组写成矩阵形式 Ax = b，用高斯消元（克拉默法则）直接求解。'
+};
+
+function selectMethod(m, el) {
+  currentMethod = m;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('method-desc').textContent = methodDescs[m];
+  document.getElementById('log-box').innerHTML = '<span class="dim">// 点击「开始求解」查看过程...</span>';
+  document.getElementById('solve-result').style.display = 'none';
+  document.getElementById('chart-card').style.display = 'none';
+  document.getElementById('matrix-card').style.display = 'none';
+  document.getElementById('progress').style.width = '0%';
+}
+
+// 初始化
+document.getElementById('method-desc').textContent = methodDescs['newton'];
+
+function log(box, msg, cls = '') {
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setProgress(p) {
+  document.getElementById('progress').style.width = p + '%';
+}
+
+function showResult(a, b, iter, err) {
+  document.getElementById('res-a').textContent = a.toFixed(6);
+  document.getElementById('res-b').textContent = b.toFixed(6);
+  document.getElementById('res-iter').textContent = iter;
+  document.getElementById('res-err').textContent = err.toExponential(2);
+  document.getElementById('solve-result').style.display = 'grid';
+}
+
+function drawChart(data, label) {
+  document.getElementById('chart-card').style.display = 'block';
+  const ctx = document.getElementById('convergence-chart').getContext('2d');
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map((_, i) => i + 1),
+      datasets: [{
+        label: label + ' — B 的估计值',
+        data: data,
+        borderColor: '#fbbf24',
+        backgroundColor: 'rgba(251,191,36,0.1)',
+        pointRadius: data.length < 30 ? 4 : 1,
+        tension: 0.3,
+        fill: true
+      }, {
+        label: '真实值 B = 5',
+        data: data.map(() => 5),
+        borderColor: '#4ade80',
+        borderDash: [6, 3],
+        pointRadius: 0,
+        borderWidth: 1.5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } } },
+      scales: {
+        x: { ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+}
+
+// ── 各方法实现 ──
+
+function solveNewton() {
+  const box = document.getElementById('log-box');
+  box.innerHTML = '';
+  log(box, '// 牛顿迭代法', 'dim');
+  log(box, '// f(B) = 18B - 90 = 0  (由 A=17B 代入 A+B=90)', 'dim');
+  log(box, '// f\'(B) = 18', 'dim');
+  log(box, '');
+  let B = 50; // 初始猜测
+  const history = [B];
+  let iter = 0;
+  log(box, `初始猜测 B₀ = ${B}`);
+  for (let i = 0; i < 20; i++) {
+    const f = 18 * B - 90;
+    const df = 18;
+    const Bnew = B - f / df;
+    iter++;
+    setProgress(iter * 5);
+    log(box, `第${iter}次迭代: B = ${B.toFixed(8)} → f(B) = ${f.toFixed(8)} → B_new = ${Bnew.toFixed(8)}`);
+    history.push(Bnew);
+    B = Bnew;
+    if (Math.abs(f) < 1e-12) break;
+  }
+  const A = 17 * B;
+  setProgress(100);
+  log(box, '', '');
+  log(box, `✓ 收敛！B = ${B.toFixed(8)}, A = ${A.toFixed(8)}`, 'highlight');
+  showResult(A, B, iter, Math.abs(A + B - 90));
+  drawChart(history, '牛顿迭代');
+  return { method: '牛顿迭代', A, B, iter };
+}
+
+function solveBisect() {
+  const box = document.getElementById('log-box');
+  box.innerHTML = '';
+  log(box, '// 二分法', 'dim');
+  log(box, '// f(B) = 18B - 90，在 [0.001, 89] 上找零点', 'dim');
+  log(box, '');
+  let lo = 0.001, hi = 89;
+  const history = [];
+  let iter = 0;
+  while (hi - lo > 1e-10 && iter < 60) {
+    const mid = (lo + hi) / 2;
+    const f = 18 * mid - 90;
+    history.push(mid);
+    iter++;
+    setProgress(Math.min(iter * 1.5, 99));
+    if (iter <= 10 || iter % 5 === 0)
+      log(box, `第${iter}次: [${lo.toFixed(6)}, ${hi.toFixed(6)}] mid=${mid.toFixed(8)} f=${f.toFixed(6)}`);
+    if (f < 0) lo = mid; else hi = mid;
+  }
+  const B = (lo + hi) / 2, A = 17 * B;
+  setProgress(100);
+  log(box, `... (共 ${iter} 次折半)`, 'dim');
+  log(box, `✓ 收敛！B = ${B.toFixed(8)}, A = ${A.toFixed(8)}`, 'highlight');
+  showResult(A, B, iter, Math.abs(A + B - 90));
+  drawChart(history, '二分法');
+  return { method: '二分法', A, B, iter };
+}
+
+function solveGradient() {
+  const box = document.getElementById('log-box');
+  box.innerHTML = '';
+  log(box, '// 梯度下降', 'dim');
+  log(box, '// L(A,B) = (A+B-90)² + (A-17B)²', 'dim');
+  log(box, '// ∂L/∂A = 2(A+B-90) + 2(A-17B)', 'dim');
+  log(box, '// ∂L/∂B = 2(A+B-90) - 34(A-17B)', 'dim');
+  log(box, '');
+  let A = 1, B = 1;
+  const lr = 0.001;
+  const history = [B];
+  let iter = 0;
+  for (let i = 0; i < 5000; i++) {
+    const c1 = A + B - 90, c2 = A - 17 * B;
+    const dA = 2 * c1 + 2 * c2;
+    const dB = 2 * c1 - 34 * c2;
+    A -= lr * dA;
+    B -= lr * dB;
+    iter++;
+    if (i < 10 || i % 200 === 0) {
+      history.push(B);
+      setProgress(Math.min(iter / 50, 99));
+      if (i < 10 || i % 500 === 0)
+        log(box, `第${iter}步: A=${A.toFixed(4)}, B=${B.toFixed(4)}, L=${(c1*c1+c2*c2).toFixed(6)}`);
+    }
+    if (Math.abs(c1) < 1e-8 && Math.abs(c2) < 1e-8) break;
+  }
+  setProgress(100);
+  log(box, `✓ 收敛！B = ${B.toFixed(8)}, A = ${A.toFixed(8)}`, 'highlight');
+  showResult(A, B, iter, Math.abs(A + B - 90));
+  drawChart(history, '梯度下降');
+  return { method: '梯度下降', A, B, iter };
+}
+
+function solveAnnealing() {
+  const box = document.getElementById('log-box');
+  box.innerHTML = '';
+  log(box, '// 模拟退火', 'dim');
+  log(box, '// 能量函数 E(B) = (18B-90)²', 'dim');
+  log(box, '// 温度从 T=100 指数衰减到 T=0.001', 'dim');
+  log(box, '');
+  let B = Math.random() * 80 + 1;
+  let E = Math.pow(18 * B - 90, 2);
+  let T = 100, alpha = 0.995;
+  const history = [B];
+  let iter = 0, accepted = 0;
+  while (T > 0.001) {
+    const Bnew = B + (Math.random() - 0.5) * T * 0.1;
+    if (Bnew <= 0 || Bnew >= 90) { T *= alpha; continue; }
+    const Enew = Math.pow(18 * Bnew - 90, 2);
+    const dE = Enew - E;
+    if (dE < 0 || Math.random() < Math.exp(-dE / T)) {
+      B = Bnew; E = Enew; accepted++;
+    }
+    T *= alpha; iter++;
+    if (iter % 200 === 0) {
+      history.push(B);
+      setProgress(Math.min(iter / 30, 99));
+    }
+    if (iter % 1000 === 0)
+      log(box, `T=${T.toFixed(4)}, B=${B.toFixed(6)}, E=${E.toFixed(8)}, 接受率=${(accepted/iter*100).toFixed(1)}%`);
+  }
+  const A = 17 * B;
+  setProgress(100);
+  log(box, `✓ 退火完成！B = ${B.toFixed(8)}, A = ${A.toFixed(8)}`, 'highlight');
+  log(box, `总迭代 ${iter} 次，接受 ${accepted} 次扰动`, 'dim');
+  showResult(A, B, iter, Math.abs(A + B - 90));
+  drawChart(history, '模拟退火');
+  return { method: '模拟退火', A, B, iter };
+}
+
+function solveGenetic() {
+  const box = document.getElementById('log-box');
+  box.innerHTML = '';
+  log(box, '// 遗传算法', 'dim');
+  log(box, '// 种群大小: 50，染色体: B 的值', 'dim');
+  log(box, '// 适应度: 1 / (1 + |18B-90|)', 'dim');
+  log(box, '');
+  const POP = 50, GENS = 200;
+  let pop = Array.from({length: POP}, () => Math.random() * 80 + 0.5);
+  const fitness = b => 1 / (1 + Math.abs(18 * b - 90));
+  const history = [];
+  let iter = 0;
+  for (let g = 0; g < GENS; g++) {
+    pop.sort((a, b) => fitness(b) - fitness(a));
+    const best = pop[0];
+    history.push(best);
+    iter++;
+    setProgress(g / GENS * 100);
+    if (g < 5 || g % 40 === 0)
+      log(box, `第${g+1}代: 最优B=${best.toFixed(6)}, 适应度=${fitness(best).toFixed(6)}`);
+    // 选择 + 交叉 + 变异
+    const elite = pop.slice(0, 10);
+    const newPop = [...elite];
+    while (newPop.length < POP) {
+      const p1 = elite[Math.floor(Math.random() * elite.length)];
+      const p2 = elite[Math.floor(Math.random() * elite.length)];
+      let child = (p1 + p2) / 2 + (Math.random() - 0.5) * (90 - g * 0.4);
+      child = Math.max(0.01, Math.min(89, child));
+      newPop.push(child);
+    }
+    pop = newPop;
+  }
+  const B = pop[0], A = 17 * B;
+  setProgress(100);
+  log(box, `✓ 进化完成！B = ${B.toFixed(8)}, A = ${A.toFixed(8)}`, 'highlight');
+  showResult(A, B, iter, Math.abs(A + B - 90));
+  drawChart(history, '遗传算法');
+  return { method: '遗传算法', A, B, iter };
+}
+
+function solveMatrix() {
+  const box = document.getElementById('log-box');
+  box.innerHTML = '';
+  log(box, '// 线性代数 — 矩阵法', 'dim');
+  log(box, '// 方程组: A + B = 90', 'dim');
+  log(box, '//         A - 17B = 0  (由 A/B=17 变形)', 'dim');
+  log(box, '');
+  log(box, '构造增广矩阵 [M|b]:');
+  log(box, '  [ 1   1 | 90 ]');
+  log(box, '  [ 1 -17 |  0 ]');
+  log(box, '');
+  log(box, '行变换 R2 = R2 - R1:');
+  log(box, '  [ 1   1 | 90 ]');
+  log(box, '  [ 0 -18 | -90 ]');
+  log(box, '');
+  log(box, 'R2 = R2 / (-18):');
+  log(box, '  [ 1   1 | 90 ]');
+  log(box, '  [ 0   1 |  5 ]');
+  log(box, '');
+  log(box, 'R1 = R1 - R2:');
+  log(box, '  [ 1   0 | 85 ]');
+  log(box, '  [ 0   1 |  5 ]');
+  log(box, '');
+  log(box, '→ A = 85, B = 5', 'highlight');
+  setProgress(100);
+
+  // 显示矩阵推导
+  document.getElementById('matrix-card').style.display = 'block';
+  document.getElementById('matrix-display').innerHTML = `
+    <div style="margin-bottom:12px">原方程组写成矩阵形式：</div>
+    <div style="font-size:1.1rem; margin:8px 0">
+      <span style="color:#fbbf24">⎡ 1 &nbsp;&nbsp; 1 ⎤</span> &nbsp;
+      <span style="color:#60a5fa">⎡ A ⎤</span> &nbsp; = &nbsp;
+      <span style="color:#4ade80">⎡ 90 ⎤</span>
+    </div>
+    <div style="font-size:1.1rem; margin:8px 0">
+      <span style="color:#fbbf24">⎣ 1 &nbsp; -17 ⎦</span> &nbsp;
+      <span style="color:#60a5fa">⎣ B ⎦</span> &nbsp; &nbsp; &nbsp;
+      <span style="color:#4ade80">⎣ &nbsp;0 ⎦</span>
+    </div>
+    <div style="margin:16px 0; color:rgba(255,255,255,0.5)">行最简形 → 单位矩阵</div>
+    <div style="font-size:1.1rem; margin:8px 0">
+      <span style="color:#fbbf24">⎡ 1 &nbsp; 0 ⎤</span> &nbsp;
+      <span style="color:#60a5fa">⎡ A ⎤</span> &nbsp; = &nbsp;
+      <span style="color:#4ade80">⎡ 85 ⎤</span>
+    </div>
+    <div style="font-size:1.1rem; margin:8px 0">
+      <span style="color:#fbbf24">⎣ 0 &nbsp; 1 ⎦</span> &nbsp;
+      <span style="color:#60a5fa">⎣ B ⎦</span> &nbsp; &nbsp; &nbsp;
+      <span style="color:#4ade80">⎣ &nbsp;5 ⎦</span>
+    </div>
+  `;
+
+  showResult(85, 5, 3, 0);
+  return { method: '线性代数', A: 85, B: 5, iter: 3 };
+}
+
+function startSolve() {
+  const solvers = { newton: solveNewton, bisect: solveBisect, gradient: solveGradient, annealing: solveAnnealing, genetic: solveGenetic, matrix: solveMatrix };
+  solvers[currentMethod]();
+}
+
+async function runAll() {
+  const methods = ['newton', 'bisect', 'gradient', 'annealing', 'genetic', 'matrix'];
+  const results = [];
+  for (const m of methods) {
+    currentMethod = m;
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.toggle('active', t.textContent.includes({newton:'牛顿',bisect:'二分',gradient:'梯度',annealing:'退火',genetic:'遗传',matrix:'线性'}[m]));
+    });
+    const solvers = { newton: solveNewton, bisect: solveBisect, gradient: solveGradient, annealing: solveAnnealing, genetic: solveGenetic, matrix: solveMatrix };
+    const r = solvers[m]();
+    results.push(r);
+    await new Promise(res => setTimeout(res, 300));
+  }
+  // 显示对比表
+  document.getElementById('compare-card').style.display = 'block';
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <tr style="color:#fbbf24;border-bottom:1px solid rgba(255,255,255,0.1)">
+      <th style="padding:10px;text-align:left">方法</th>
+      <th style="padding:10px;text-align:right">A</th>
+      <th style="padding:10px;text-align:right">B</th>
+      <th style="padding:10px;text-align:right">迭代次数</th>
+      <th style="padding:10px;text-align:right">误差</th>
+    </tr>`;
+  for (const r of results) {
+    const err = Math.abs(r.A + r.B - 90);
+    html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.7)">
+      <td style="padding:10px">${r.method}</td>
+      <td style="padding:10px;text-align:right;color:#4ade80">${r.A.toFixed(4)}</td>
+      <td style="padding:10px;text-align:right;color:#60a5fa">${r.B.toFixed(4)}</td>
+      <td style="padding:10px;text-align:right;color:#c084fc">${r.iter}</td>
+      <td style="padding:10px;text-align:right;color:${err < 1e-6 ? '#4ade80' : '#f87171'}">${err.toExponential(2)}</td>
+    </tr>`;
+  }
+  html += '</table>';
+  document.getElementById('compare-table').innerHTML = html;
+}
+
+function revealAnswer() {
+  document.getElementById('ans-a').textContent = '85';
+  document.getElementById('ans-b').textContent = '5';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>大数定律：「我身边10个人都这样」有多不靠谱</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./law-of-large-numbers.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08); color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.3);
+    }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 320px; margin-top: 15px; }
+    .chart-box-tall { position: relative; height: 380px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+    .slider-group { margin: 12px 0; }
+    .slider-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px;
+    }
+    .slider-group label span { color: #fbbf24; font-weight: 600; }
+    .slider-group input[type="range"] {
+      width: 100%; -webkit-appearance: none; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px; outline: none;
+    }
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: #fbbf24; border-radius: 50%; cursor: pointer;
+    }
+    .experiment-area {
+      background: rgba(0,0,0,0.15); border-radius: 12px; padding: 20px; margin: 15px 0;
+    }
+    .tab-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 8px 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; background: transparent; color: rgba(255,255,255,0.5);
+      cursor: pointer; transition: all 0.3s;
+    }
+    .tab-btn.active { background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.3); }
+    .hidden { display: none; }
+    .coin-strip {
+      display: flex; flex-wrap: wrap; gap: 4px; max-height: 120px;
+      overflow-y: auto; margin: 12px 0;
+    }
+    .coin-tag {
+      width: 28px; height: 28px; border-radius: 50%; font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .coin-tag.heads { background: rgba(251,191,36,0.25); color: #fbbf24; border: 1px solid rgba(251,191,36,0.4); }
+    .coin-tag.tails { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.1); }
+    .big-number { font-size: 3rem; font-weight: 800; color: #fbbf24; text-align: center; line-height: 1; }
+    .big-number.bad { color: #f87171; }
+    .big-number.good { color: #4ade80; }
+    .freq-bar-wrap { margin: 15px 0; }
+    .freq-bar-label { display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+    .freq-bar-track { height: 12px; background: rgba(255,255,255,0.06); border-radius: 6px; overflow: hidden; position: relative; }
+    .freq-bar-fill { height: 100%; border-radius: 6px; transition: width 0.4s ease; background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .freq-bar-center { position: absolute; top: 0; left: 50%; width: 2px; height: 100%; background: rgba(255,255,255,0.3); }
+    .scenario-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }
+    .scenario-card {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 18px;
+      border: 1px solid rgba(255,255,255,0.06); text-align: center;
+    }
+    .scenario-card .s-icon { font-size: 28px; margin-bottom: 8px; }
+    .scenario-card .s-title { color: #fbbf24; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+    .scenario-card .s-desc { font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.6; }
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-box { height: 260px; }
+      .chart-box-tall { height: 300px; }
+      .big-number { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-coin"></i> 大数定律</h1>
+    <p>「我身边10个人都这样」——这句话有多不靠谱？<br>从10次到10000次，看频率如何一步步收敛到真相。</p>
+  </div>
+
+  <!-- Card 1: 亲手抛硬币 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-hand-finger"></i> 亲手抛，感受小样本的「谎言」</div>
+    <div class="card-desc">先抛10次，记住你的结果。再抛10000次，看看频率最终落在哪里。</div>
+
+    <div class="tab-row" id="flip-tabs">
+      <button class="tab-btn active" onclick="setFlipCount(10)">10次</button>
+      <button class="tab-btn" onclick="setFlipCount(50)">50次</button>
+      <button class="tab-btn" onclick="setFlipCount(200)">200次</button>
+      <button class="tab-btn" onclick="setFlipCount(1000)">1000次</button>
+      <button class="tab-btn" onclick="setFlipCount(10000)">10000次</button>
+    </div>
+
+    <div class="experiment-area">
+      <div style="display:flex; gap:30px; align-items:center; flex-wrap:wrap; justify-content:center; margin-bottom:15px;">
+        <div>
+          <div class="big-number" id="flip-heads-pct">—</div>
+          <div style="text-align:center; color:rgba(255,255,255,0.4); font-size:13px; margin-top:4px;">正面频率</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:13px; color:rgba(255,255,255,0.4);">正面 <span id="flip-heads" style="color:#fbbf24">0</span> 次</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.4); margin-top:4px;">反面 <span id="flip-tails" style="color:rgba(255,255,255,0.3)">0</span> 次</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.4); margin-top:4px;">共 <span id="flip-total" style="color:#60a5fa">0</span> 次</div>
+        </div>
+        <div>
+          <div class="big-number" id="flip-deviation" style="font-size:1.8rem;">—</div>
+          <div style="text-align:center; color:rgba(255,255,255,0.4); font-size:13px; margin-top:4px;">偏离50%</div>
+        </div>
+      </div>
+
+      <div class="freq-bar-wrap">
+        <div class="freq-bar-label"><span>0%</span><span style="color:#fbbf24">50%</span><span>100%</span></div>
+        <div class="freq-bar-track">
+          <div class="freq-bar-fill" id="freq-bar" style="width:0%"></div>
+          <div class="freq-bar-center"></div>
+        </div>
+      </div>
+
+      <div class="coin-strip" id="coin-strip"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="flip-btn" onclick="runFlips()"><i class="ti ti-player-play"></i> 开始抛硬币</button>
+      <button class="btn btn-secondary" onclick="resetFlips()"><i class="ti ti-refresh"></i> 重置</button>
+    </div>
+
+    <div id="flip-insight" class="insight-box hidden"></div>
+  </div>
+
+  <!-- Card 2: 多路径收敛图 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-line"></i> 100条路径同时出发，看它们如何收敛</div>
+    <div class="card-desc">每条线代表一个「平行宇宙」里的抛硬币序列。小样本时乱成一锅粥，大样本时整齐收敛到50%。</div>
+
+    <div class="slider-group">
+      <label>最大抛掷次数 <span id="conv-n-val">500</span></label>
+      <input type="range" id="conv-n" min="50" max="2000" value="500" step="50"
+        oninput="document.getElementById('conv-n-val').textContent=this.value">
+    </div>
+    <div class="slider-group">
+      <label>路径数量 <span id="conv-paths-val">100</span></label>
+      <input type="range" id="conv-paths" min="10" max="200" value="100" step="10"
+        oninput="document.getElementById('conv-paths-val').textContent=this.value">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="conv-btn" onclick="runConvergence()"><i class="ti ti-player-play"></i> 生成收敛图</button>
+    </div>
+
+    <div class="chart-box-tall"><canvas id="convChart"></canvas></div>
+
+    <div class="insight-box" id="conv-insight" style="margin-top:15px">
+      点击「生成收敛图」，观察路径从混乱到收敛的过程。
+    </div>
+  </div>
+
+  <!-- Card 3: 小样本有多离谱 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-histogram"></i> 同样抛 N 次，结果能差多远？</div>
+    <div class="card-desc">模拟1000个人各自抛N次硬币，看看他们的「正面频率」分布有多分散。这就是为什么「我身边10个人」毫无统计意义。</div>
+
+    <div class="tab-row" id="dist-tabs">
+      <button class="tab-btn active" onclick="setDistN(10)">各抛10次</button>
+      <button class="tab-btn" onclick="setDistN(30)">各抛30次</button>
+      <button class="tab-btn" onclick="setDistN(100)">各抛100次</button>
+      <button class="tab-btn" onclick="setDistN(500)">各抛500次</button>
+      <button class="tab-btn" onclick="setDistN(1000)">各抛1000次</button>
+    </div>
+
+    <div id="dist-result">
+      <div class="result-grid" style="margin-top:15px">
+        <div class="result-item"><div class="label">模拟人数</div><div class="value" id="dist-trials">1000</div></div>
+        <div class="result-item blue"><div class="label">平均频率</div><div class="value" id="dist-mean">—</div></div>
+        <div class="result-item red"><div class="label">标准差</div><div class="value" id="dist-std">—</div></div>
+        <div class="result-item"><div class="label">理论标准差</div><div class="value" id="dist-theory-std">—</div></div>
+      </div>
+      <div class="result-grid">
+        <div class="result-item red"><div class="label">偏差 &gt;10% 的人</div><div class="value" id="dist-outlier10">—</div></div>
+        <div class="result-item red"><div class="label">偏差 &gt;20% 的人</div><div class="value" id="dist-outlier20">—</div></div>
+        <div class="result-item green"><div class="label">偏差 &lt;5% 的人</div><div class="value" id="dist-close5">—</div></div>
+        <div class="result-item green"><div class="label">偏差 &lt;2% 的人</div><div class="value" id="dist-close2">—</div></div>
+      </div>
+      <div class="chart-box"><canvas id="distChart"></canvas></div>
+      <div class="insight-box" id="dist-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 4: 「我身边N个人」有多不靠谱 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-users"></i> 「我身边 N 个人都这样」到底有多不靠谱</div>
+    <div class="card-desc">假设某件事的真实概率是50%。「我身边N个人都这样」意味着什么？</div>
+
+    <div class="slider-group">
+      <label>「我身边」的人数 N <span id="anecdote-n-val">10</span></label>
+      <input type="range" id="anecdote-n" min="3" max="50" value="10" step="1"
+        oninput="updateAnecdote(this.value)">
+    </div>
+    <div class="slider-group">
+      <label>真实概率 p <span id="anecdote-p-val">50%</span></label>
+      <input type="range" id="anecdote-p" min="10" max="90" value="50" step="5"
+        oninput="updateAnecdote(null, this.value)">
+    </div>
+
+    <div class="experiment-area" id="anecdote-result">
+      <div class="result-grid">
+        <div class="result-item red">
+          <div class="label">「N个人都这样」的概率</div>
+          <div class="value" id="anecdote-all-prob">—</div>
+        </div>
+        <div class="result-item">
+          <div class="label">频率偏差 &gt;20% 的概率</div>
+          <div class="value" id="anecdote-dev20">—</div>
+        </div>
+        <div class="result-item blue">
+          <div class="label">95% 置信区间</div>
+          <div class="value" id="anecdote-ci" style="font-size:1rem">—</div>
+        </div>
+        <div class="result-item">
+          <div class="label">需要多少人才可信</div>
+          <div class="value" id="anecdote-needed">—</div>
+        </div>
+      </div>
+      <div class="insight-box" id="anecdote-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 5: 现实中的小样本谬误 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-world"></i> 现实中的小样本谬误</div>
+    <div class="scenario-grid">
+      <div class="scenario-card">
+        <div class="s-icon"><i class="ti ti-users" style="color:#f87171"></i></div>
+        <div class="s-title">「我身边的人都…」</div>
+        <div class="s-desc">10个朋友的样本，置信区间宽达±31%。你的「身边」根本代表不了任何群体。</div>
+      </div>
+      <div class="scenario-card">
+        <div class="s-icon"><i class="ti ti-star" style="color:#fbbf24"></i></div>
+        <div class="s-title">网红产品「好评如潮」</div>
+        <div class="s-desc">100条评论里90条好评，听起来很棒？但这100人是怎么来的？购买者中只有5%会评论，而愿意评论的人本来就更满意。</div>
+      </div>
+      <div class="scenario-card">
+        <div class="s-icon"><i class="ti ti-school" style="color:#60a5fa"></i></div>
+        <div class="s-title">「小班教学效果更好」</div>
+        <div class="s-desc">研究发现全美成绩最好的学校往往是小学校，但成绩最差的也是。小样本放大了随机波动，让人误以为规模是原因。</div>
+      </div>
+      <div class="scenario-card">
+        <div class="s-icon"><i class="ti ti-pill" style="color:#4ade80"></i></div>
+        <div class="s-title">「这个偏方真的有效」</div>
+        <div class="s-desc">「我吃了3天就好了」——感冒本来就会自愈。3个人的样本，无法排除安慰剂效应和自然康复。</div>
+      </div>
+    </div>
+    <div class="insight-box">
+      <strong>大数定律的核心：</strong>频率收敛到概率，需要的是<strong>足够大的样本</strong>，而不是「感觉上够了」。<br><br>
+      统计学上，要让误差控制在 ±3% 以内（95% 置信度），你需要至少 <strong>1067 个样本</strong>。<br>
+      「我身边10个人」的误差范围是 ±31%——这不是数据，这是故事。
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+// ===== Card 1: 亲手抛硬币 =====
+let flipCount = 10;
+let flipHeads = 0, flipTails = 0;
+let flipChart = null;
+
+function setFlipCount(n) {
+  flipCount = n;
+  document.querySelectorAll('#flip-tabs .tab-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.textContent.trim() === n + '次');
+  });
+  resetFlips();
+}
+
+function resetFlips() {
+  flipHeads = 0; flipTails = 0;
+  document.getElementById('flip-heads-pct').textContent = '—';
+  document.getElementById('flip-heads-pct').className = 'big-number';
+  document.getElementById('flip-heads').textContent = '0';
+  document.getElementById('flip-tails').textContent = '0';
+  document.getElementById('flip-total').textContent = '0';
+  document.getElementById('flip-deviation').textContent = '—';
+  document.getElementById('freq-bar').style.width = '0%';
+  document.getElementById('coin-strip').innerHTML = '';
+  document.getElementById('flip-insight').classList.add('hidden');
+}
+
+function runFlips() {
+  resetFlips();
+  var btn = document.getElementById('flip-btn');
+  btn.disabled = true;
+  var strip = document.getElementById('coin-strip');
+  var delay = flipCount <= 50 ? 60 : flipCount <= 200 ? 15 : 2;
+  var i = 0;
+
+  function step() {
+    if (i >= flipCount) {
+      btn.disabled = false;
+      showFlipInsight();
+      return;
+    }
+    var result = Math.random() < 0.5 ? 1 : 0;
+    if (result) flipHeads++; else flipTails++;
+    i++;
+
+    var total = flipHeads + flipTails;
+    var pct = flipHeads / total;
+    var dev = Math.abs(pct - 0.5);
+
+    document.getElementById('flip-heads-pct').textContent = (pct * 100).toFixed(1) + '%';
+    var cls = 'big-number';
+    if (dev > 0.15) cls += ' bad';
+    else if (dev < 0.05 && total > 20) cls += ' good';
+    document.getElementById('flip-heads-pct').className = cls;
+
+    document.getElementById('flip-heads').textContent = flipHeads;
+    document.getElementById('flip-tails').textContent = flipTails;
+    document.getElementById('flip-total').textContent = total;
+    document.getElementById('flip-deviation').textContent = (dev * 100).toFixed(1) + '%';
+    document.getElementById('freq-bar').style.width = (pct * 100) + '%';
+
+    if (flipCount <= 200) {
+      var tag = document.createElement('div');
+      tag.className = 'coin-tag ' + (result ? 'heads' : 'tails');
+      tag.textContent = result ? 'H' : 'T';
+      strip.appendChild(tag);
+      strip.scrollTop = strip.scrollHeight;
+    }
+
+    if (delay > 5) setTimeout(step, delay);
+    else { for (var j = i; j < flipCount; j++) { var r = Math.random() < 0.5 ? 1 : 0; if (r) flipHeads++; else flipTails++; } i = flipCount; step(); }
+  }
+  step();
+}
+
+function showFlipInsight() {
+  var pct = flipHeads / flipCount;
+  var dev = Math.abs(pct - 0.5);
+  var el = document.getElementById('flip-insight');
+  el.classList.remove('hidden');
+  var verdict = dev > 0.1
+    ? '偏差超过10%，这在小样本中很常见。如果只看这 ' + flipCount + ' 次，你可能会得出「硬币不公平」的错误结论。'
+    : '偏差在10%以内，结果还算接近真实概率。但这只是运气，不代表样本够大。';
+  el.innerHTML = '<strong>这次结果：</strong>抛了 ' + flipCount + ' 次，正面 ' + flipHeads + ' 次（' + (pct*100).toFixed(1) + '%），偏离50%达 <strong style="color:' + (dev>0.1?'#f87171':'#4ade80') + '">' + (dev*100).toFixed(1) + '%</strong>。<br><br>' + verdict;
+}
+
+// ===== Card 2: 多路径收敛图 =====
+var convChart = null;
+
+function runConvergence() {
+  var n = parseInt(document.getElementById('conv-n').value);
+  var numPaths = parseInt(document.getElementById('conv-paths').value);
+  var btn = document.getElementById('conv-btn');
+  btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> 生成中...';
+
+  setTimeout(function() {
+    var paths = simulateMultiplePaths(numPaths, n);
+    var stride = Math.max(1, Math.floor(n / 80));
+    var labels = [];
+    for (var i = 1; i <= n; i += stride) labels.push(i);
+    if (labels[labels.length-1] !== n) labels.push(n);
+
+    var datasets = [];
+    // 画路径（半透明）
+    for (var t = 0; t < Math.min(numPaths, 80); t++) {
+      datasets.push({
+        data: labels.map(function(i){ return paths[t][i-1]; }),
+        borderColor: 'rgba(251,191,36,0.12)',
+        borderWidth: 1, fill: false, tension: 0.2, pointRadius: 0
+      });
+    }
+    // 画均值线
+    var meanLine = labels.map(function(i) {
+      var sum = 0;
+      for (var t = 0; t < numPaths; t++) sum += paths[t][i-1];
+      return sum / numPaths;
+    });
+    datasets.push({
+      label: '平均频率',
+      data: meanLine,
+      borderColor: '#4ade80', borderWidth: 2.5, fill: false, tension: 0.3, pointRadius: 0
+    });
+    // 画50%基准线
+    datasets.push({
+      label: '真实概率 50%',
+      data: labels.map(function(){ return 0.5; }),
+      borderColor: '#f87171', borderWidth: 1.5, borderDash: [6,4],
+      fill: false, pointRadius: 0
+    });
+
+    if (convChart) convChart.destroy();
+    convChart = new Chart(document.getElementById('convChart').getContext('2d'), {
+      type: 'line',
+      data: { labels: labels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {
+          legend: { labels: { color: 'rgba(255,255,255,0.6)', filter: function(item) { return item.text; } } }
+        },
+        scales: {
+          x: { title: { display: true, text: '抛掷次数', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { min: 0, max: 1, title: { display: true, text: '正面频率', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.4)', callback: function(v){ return (v*100).toFixed(0)+'%'; } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+
+    // 计算收敛程度
+    var finalDist = getFreqDistAtStep(paths, n);
+    var earlyDist = getFreqDistAtStep(paths, Math.min(10, n));
+    document.getElementById('conv-insight').innerHTML =
+      '<strong>收敛效果：</strong>前10步时，' + numPaths + '条路径的标准差为 <strong style="color:#f87171">' + (earlyDist.std*100).toFixed(1) + '%</strong>，最大偏差达 ' + (Math.max(Math.abs(earlyDist.max-0.5), Math.abs(earlyDist.min-0.5))*100).toFixed(0) + '%。<br>' +
+      '到第 ' + n + ' 步时，标准差收窄到 <strong style="color:#4ade80">' + (finalDist.std*100).toFixed(1) + '%</strong>，理论值为 ' + (theoreticalStd(n)*100).toFixed(1) + '%。<br><br>' +
+      '金色细线是每条路径，绿线是平均值，红虚线是真实概率50%。<strong>样本越大，混乱越少。</strong>';
+
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-player-play"></i> 重新生成';
+  }, 30);
+}
+
+// ===== Card 3: 频率分布直方图 =====
+var distN = 10;
+var distChart = null;
+
+function setDistN(n) {
+  distN = n;
+  document.querySelectorAll('#dist-tabs .tab-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.textContent.includes(n + '次'));
+  });
+  runDistribution();
+}
+
+function runDistribution() {
+  var trials = 1000;
+  var paths = simulateMultiplePaths(trials, distN);
+  var dist = getFreqDistAtStep(paths, distN);
+  var outlier10 = calcOutlierRate(paths, distN, 0.5, 0.1);
+  var outlier20 = calcOutlierRate(paths, distN, 0.5, 0.2);
+  var close5 = 100 - calcOutlierRate(paths, distN, 0.5, 0.05);
+  var close2 = 100 - calcOutlierRate(paths, distN, 0.5, 0.02);
+  var theoryStd = theoreticalStd(distN);
+
+  document.getElementById('dist-mean').textContent = (dist.mean * 100).toFixed(1) + '%';
+  document.getElementById('dist-std').textContent = (dist.std * 100).toFixed(1) + '%';
+  document.getElementById('dist-theory-std').textContent = (theoryStd * 100).toFixed(1) + '%';
+  document.getElementById('dist-outlier10').textContent = outlier10 + '%';
+  document.getElementById('dist-outlier20').textContent = outlier20 + '%';
+  document.getElementById('dist-close5').textContent = close5.toFixed(1) + '%';
+  document.getElementById('dist-close2').textContent = close2.toFixed(1) + '%';
+
+  var hist = buildHistogram(dist.values, 20);
+  if (distChart) distChart.destroy();
+  distChart = new Chart(document.getElementById('distChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: hist.labels,
+      datasets: [{
+        label: '人数',
+        data: hist.counts,
+        backgroundColor: hist.labels.map(function(l) {
+          var v = parseFloat(l) / 100;
+          return Math.abs(v - 0.5) > 0.2 ? 'rgba(248,113,113,0.6)' : Math.abs(v - 0.5) < 0.05 ? 'rgba(74,222,128,0.6)' : 'rgba(251,191,36,0.4)';
+        }),
+        borderWidth: 0, borderRadius: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: '正面频率', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { title: { display: true, text: '人数', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  document.getElementById('dist-insight').innerHTML =
+    '<strong>1000人各自抛 ' + distN + ' 次的结果：</strong>' +
+    '有 <strong style="color:#f87171">' + outlier10 + '%</strong> 的人偏差超过10%（即频率低于40%或高于60%）。' +
+    (distN <= 30 ? '这意味着每3个人里就有1个会得出「硬币不公平」的错误印象。' : '随着样本增大，这个比例在快速下降。') +
+    '<br><br>标准差 ' + (dist.std*100).toFixed(1) + '% ≈ 理论值 ' + (theoryStd*100).toFixed(1) + '%（中心极限定理预测）。' +
+    '<strong>样本量翻4倍，误差才缩小一半。</strong>';
+}
+
+// ===== Card 4: 「我身边N个人」 =====
+function updateAnecdote(nVal, pVal) {
+  var n = nVal ? parseInt(nVal) : parseInt(document.getElementById('anecdote-n').value);
+  var p = pVal ? parseInt(pVal) / 100 : parseInt(document.getElementById('anecdote-p').value) / 100;
+  document.getElementById('anecdote-n').value = n;
+  document.getElementById('anecdote-p').value = Math.round(p * 100);
+  document.getElementById('anecdote-n-val').textContent = n;
+  document.getElementById('anecdote-p-val').textContent = Math.round(p * 100) + '%';
+
+  // P(所有N人都这样) = p^n
+  var allProb = Math.pow(p, n);
+  // P(偏差>20%)
+  var dev20 = 0;
+  for (var k = 0; k <= n; k++) {
+    if (Math.abs(k/n - p) > 0.2) dev20 += binomProb(n, k, p);
+  }
+  // 95% CI: p ± 1.96*sqrt(p*(1-p)/n)
+  var margin = 1.96 * Math.sqrt(p * (1-p) / n);
+  var ciLow = Math.max(0, p - margin);
+  var ciHigh = Math.min(1, p + margin);
+  // 需要多少人才能让误差<3%
+  var needed = Math.ceil(Math.pow(1.96, 2) * p * (1-p) / Math.pow(0.03, 2));
+
+  document.getElementById('anecdote-all-prob').textContent = allProb < 0.001 ? '<0.1%' : (allProb * 100).toFixed(1) + '%';
+  document.getElementById('anecdote-dev20').textContent = (dev20 * 100).toFixed(1) + '%';
+  document.getElementById('anecdote-ci').textContent = (ciLow*100).toFixed(0) + '% ~ ' + (ciHigh*100).toFixed(0) + '%';
+  document.getElementById('anecdote-needed').textContent = needed + ' 人';
+
+  document.getElementById('anecdote-insight').innerHTML =
+    '真实概率 ' + Math.round(p*100) + '%，你问了身边 ' + n + ' 个人。' +
+    '这 ' + n + ' 个人给出的频率，95% 的情况下落在 <strong>' + (ciLow*100).toFixed(0) + '% ~ ' + (ciHigh*100).toFixed(0) + '%</strong> 之间——' +
+    '误差范围高达 <strong style="color:#f87171">±' + (margin*100).toFixed(0) + '%</strong>。<br><br>' +
+    '要把误差控制在 ±3% 以内，你需要问 <strong style="color:#4ade80">' + needed + ' 个人</strong>，而不是 ' + n + ' 个。';
+}
+
+function binomProb(n, k, p) {
+  return binomCoeff(n, k) * Math.pow(p, k) * Math.pow(1-p, n-k);
+}
+
+function binomCoeff(n, k) {
+  if (k > n) return 0;
+  if (k === 0 || k === n) return 1;
+  var result = 1;
+  for (var i = 0; i < Math.min(k, n-k); i++) {
+    result = result * (n - i) / (i + 1);
+  }
+  return result;
+}
+
+// ===== 初始化 =====
+runDistribution();
+updateAnecdote(10, 50);
+</script>
+</body>
+</html>

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>林迪效应：存在越久，活得越长</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./lindy-effect-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08); color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.3);
+    }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 320px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+    .slider-group { margin: 12px 0; }
+    .slider-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px;
+    }
+    .slider-group label span { color: #fbbf24; font-weight: 600; }
+    .slider-group input[type="range"] {
+      width: 100%; -webkit-appearance: none; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px; outline: none;
+    }
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: #fbbf24; border-radius: 50%; cursor: pointer;
+    }
+    .tab-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 8px 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; background: transparent; color: rgba(255,255,255,0.5);
+      cursor: pointer; transition: all 0.3s;
+    }
+    .tab-btn.active { background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.3); }
+    .hidden { display: none; }
+</style>
+  <style>
+    .compare-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    .compare-table th, .compare-table td {
+      padding: 12px 10px; text-align: center; font-size: 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .compare-table th { color: rgba(255,255,255,0.4); font-weight: 400; font-size: 12px; }
+    .compare-table td { color: rgba(255,255,255,0.8); }
+    .compare-table td:first-child { text-align: left; color: #fbbf24; font-weight: 600; }
+    .compare-table .bar-cell { position: relative; }
+    .compare-bar {
+      height: 8px; border-radius: 4px; background: linear-gradient(90deg, #fbbf24, #f59e0b);
+      transition: width 0.6s ease; min-width: 4px;
+    }
+    .input-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin: 15px 0; }
+    .input-group { flex: 1; min-width: 120px; }
+    .input-group label { display: block; font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 6px; }
+    .input-group input, .input-group select {
+      width: 100%; padding: 10px 14px; font-size: 14px; color: #e4e4e4;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; outline: none; transition: border-color 0.3s;
+    }
+    .input-group input:focus, .input-group select:focus { border-color: rgba(251,191,36,0.5); }
+    .input-group select option { background: #1a1a2e; color: #e4e4e4; }
+    .timeline-wrap { position: relative; padding: 20px 0 20px 30px; }
+    .timeline-line {
+      position: absolute; left: 14px; top: 0; bottom: 0; width: 2px;
+      background: linear-gradient(to bottom, #fbbf24, rgba(251,191,36,0.1));
+    }
+    .timeline-item { position: relative; margin-bottom: 24px; }
+    .timeline-dot {
+      position: absolute; left: -24px; top: 4px; width: 12px; height: 12px;
+      border-radius: 50%; background: #fbbf24; border: 2px solid #1a1a2e;
+    }
+    .timeline-item .t-name { color: #fbbf24; font-weight: 600; font-size: 14px; }
+    .timeline-item .t-detail { color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 4px; line-height: 1.6; }
+    .timeline-item .t-bar-wrap { margin-top: 8px; display: flex; gap: 4px; align-items: center; }
+    .timeline-item .t-bar-past {
+      height: 10px; border-radius: 5px 0 0 5px;
+      background: linear-gradient(90deg, #4ade80, #22c55e);
+    }
+    .timeline-item .t-bar-future {
+      height: 10px; border-radius: 0 5px 5px 0;
+      background: linear-gradient(90deg, #fbbf24, rgba(251,191,36,0.3));
+      border: 1px dashed rgba(251,191,36,0.4);
+    }
+    .timeline-item .t-bar-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-left: 8px; }
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .input-row { flex-direction: column; }
+      .compare-table { font-size: 12px; }
+      .compare-table th, .compare-table td { padding: 8px 4px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-hourglass-high"></i> 林迪效应：存在越久，活得越长</h1>
+      <p>一家餐厅开了20年，比开了2年的更可能再活20年。<br>一本书印了100年，比印了1年的更可能再印100年。<br>用帕累托分布和蒙特卡洛模拟，量化这个反直觉的生存法则。</p>
+    </div>
+
+    <!-- 卡片1：林迪预测器 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-calculator"></i> 林迪预测器</div>
+      <div class="card-desc">输入一个事物已经存在的时间，林迪效应会告诉你它还能活多久。</div>
+      <div class="input-row">
+        <div class="input-group" style="flex:2">
+          <label>事物名称</label>
+          <input type="text" id="itemName" value="Python 编程语言" placeholder="例：某餐厅、某本书">
+        </div>
+        <div class="input-group">
+          <label>已存在时间</label>
+          <input type="number" id="itemAge" value="35" min="0.1" step="0.1">
+        </div>
+        <div class="input-group">
+          <label>时间单位</label>
+          <select id="timeUnit">
+            <option value="年" selected>年</option>
+            <option value="月">月</option>
+            <option value="天">天</option>
+          </select>
+        </div>
+      </div>
+      <div class="slider-group">
+        <label>衰减速度 (α) <span id="alphaVal">2.0</span></label>
+        <input type="range" id="alphaSlider" min="1.1" max="5" step="0.1" value="2">
+      </div>
+      <div class="card-desc" id="alphaHint">α = 2.0：经典林迪效应，预期剩余寿命 = 已存在时间。适用于书籍、技术、文化现象。</div>
+      <div class="btn-row">
+        <button class="btn" onclick="predict()"><i class="ti ti-sparkles"></i> 预测</button>
+        <button class="btn btn-secondary" onclick="runMonteCarlo()"><i class="ti ti-chart-histogram"></i> 蒙特卡洛模拟</button>
+      </div>
+      <div id="predictResult" class="hidden" style="margin-top:20px">
+        <div class="result-grid" id="predictGrid"></div>
+        <div class="chart-box"><canvas id="survivalChart"></canvas></div>
+      </div>
+      <div id="mcResult" class="hidden" style="margin-top:20px">
+        <div class="result-grid" id="mcGrid"></div>
+        <div class="chart-box"><canvas id="mcChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- 卡片2：经典对比 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-arrows-sort"></i> 新 vs 老：谁活得更久？</div>
+      <div class="card-desc">选择一个领域，看看林迪效应如何预测不同「年龄」事物的命运。</div>
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="switchPreset('books', this)"><i class="ti ti-book"></i> 书籍</button>
+        <button class="tab-btn" onclick="switchPreset('restaurants', this)"><i class="ti ti-tools-kitchen-2"></i> 餐厅</button>
+        <button class="tab-btn" onclick="switchPreset('tech', this)"><i class="ti ti-code"></i> 技术</button>
+        <button class="tab-btn" onclick="switchPreset('companies', this)"><i class="ti ti-building"></i> 企业</button>
+      </div>
+      <div id="compareTimeline"></div>
+      <table class="compare-table" id="compareTable">
+        <thead><tr><th>名称</th><th>已存在</th><th>预期再活</th><th>50%概率再活</th><th>预期总寿命</th></tr></thead>
+        <tbody id="compareBody"></tbody>
+      </table>
+      <div class="insight-box" id="compareInsight"></div>
+    </div>
+
+    <!-- 卡片3：生存曲线对比 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-chart-line"></i> 生存曲线对比</div>
+      <div class="card-desc">同样再活 X 年，老事物的概率远高于新事物。这就是林迪效应的核心。</div>
+      <div class="chart-box" style="height:360px"><canvas id="survivalCompareChart"></canvas></div>
+      <div class="insight-box">
+        <strong>关键洞察：</strong>存在100年的事物，再活50年的概率是 <strong id="oldSurvProb">—</strong>；
+        存在2年的事物，再活50年的概率只有 <strong id="youngSurvProb">—</strong>。
+        差距 <strong id="survGap">—</strong> 倍。
+      </div>
+    </div>
+
+    <!-- 卡片4：α 敏感性分析 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-adjustments"></i> α 参数的含义</div>
+      <div class="card-desc">α 越小，尾巴越重，老事物的优势越大。不同领域的 α 值不同。</div>
+      <div class="slider-group">
+        <label>已存在时间 <span id="sensAgeVal">50 年</span></label>
+        <input type="range" id="sensAgeSlider" min="1" max="500" step="1" value="50" oninput="updateSensitivity()">
+      </div>
+      <div class="chart-box"><canvas id="sensitivityChart"></canvas></div>
+      <div class="insight-box">
+        <strong>α 参考值：</strong><br>
+        α ≈ 1.5：极端长尾（古典文学、宗教经典）<br>
+        α ≈ 2.0：经典林迪（书籍、编程语言、餐厅）<br>
+        α ≈ 3.0：中等衰减（消费品牌、流行音乐）<br>
+        α ≈ 5.0：快速衰减（APP、网络热梗、时尚潮流）
+      </div>
+    </div>
+
+    <!-- 卡片5：现实启示 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-bulb"></i> 林迪效应的现实启示</div>
+      <div class="insight-box" style="margin-top:0">
+        <strong>1. 读书选经典</strong><br>
+        一本印了200年的书，比畅销榜新书更值得读。时间是最好的筛选器。<br><br>
+        <strong>2. 学技术选老技术</strong><br>
+        SQL（50年）、C语言（53年）、Unix哲学（57年）——这些大概率比任何新框架活得久。<br><br>
+        <strong>3. 选餐厅看年龄</strong><br>
+        开了20年的老馆子，比新开的网红店更可能在你下次去时还在。<br><br>
+        <strong>4. 投资看存续</strong><br>
+        巴菲特说「我喜欢能存在100年的生意」——这就是林迪效应的投资版。<br><br>
+        <strong>5. 但要注意边界</strong><br>
+        林迪效应适用于「不会自然老化」的事物（思想、技术、文化）。人类、机器等有物理磨损的实体不适用。
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var L = window.LindyEffectLogic;
+    var survivalChartInst = null, mcChartInst = null, survCompChartInst = null, sensChartInst = null;
+
+    var alphaHints = {
+      '1.1': 'α = 1.1：极端长尾，老事物几乎「永生」。',
+      '1.5': 'α = 1.5：重尾分布，适用于宗教经典、古典哲学。',
+      '2.0': 'α = 2.0：经典林迪效应，预期剩余寿命 = 已存在时间。适用于书籍、技术、文化现象。',
+      '2.5': 'α = 2.5：中等偏重尾，适用于成熟品牌、传统行业。',
+      '3.0': 'α = 3.0：中等衰减，适用于消费品牌、流行音乐。',
+      '4.0': 'α = 4.0：较快衰减，适用于时尚潮流、社交媒体。',
+      '5.0': 'α = 5.0：快速衰减，适用于APP、网络热梗。'
+    };
+
+    document.getElementById('alphaSlider').addEventListener('input', function() {
+      var v = parseFloat(this.value).toFixed(1);
+      document.getElementById('alphaVal').textContent = v;
+      var hint = alphaHints[v];
+      if (!hint) {
+        var a = parseFloat(v);
+        if (a < 1.5) hint = 'α = ' + v + '：极端长尾，老事物优势巨大。';
+        else if (a < 2.5) hint = 'α = ' + v + '：中等偏重尾。';
+        else if (a < 4) hint = 'α = ' + v + '：中等衰减速度。';
+        else hint = 'α = ' + v + '：快速衰减，新旧差距较小。';
+      }
+      document.getElementById('alphaHint').textContent = hint;
+    });
+
+    function getParams() {
+      return {
+        name: document.getElementById('itemName').value || '未命名',
+        age: parseFloat(document.getElementById('itemAge').value) || 1,
+        alpha: parseFloat(document.getElementById('alphaSlider').value) || 2,
+        unit: document.getElementById('timeUnit').value
+      };
+    }
+
+    function fmtNum(n) {
+      if (n === Infinity) return '∞';
+      if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+      if (n >= 100) return Math.round(n).toLocaleString();
+      if (n >= 10) return n.toFixed(1);
+      return n.toFixed(2);
+    }
+
+    function predict() {
+      var p = getParams();
+      var expected = L.lindyExpectedRemaining(p.age, p.alpha);
+      var median = L.lindyMedianRemaining(p.age, p.alpha);
+      var prob50 = L.survivalProbability(p.age, p.age, p.alpha);
+      var prob2x = L.survivalProbability(p.age, p.age * 2, p.alpha);
+
+      var grid = document.getElementById('predictGrid');
+      grid.innerHTML =
+        '<div class="result-item"><div class="label">已存在</div><div class="value">' + fmtNum(p.age) + ' ' + p.unit + '</div></div>' +
+        '<div class="result-item green"><div class="label">预期再活</div><div class="value">' + fmtNum(expected) + ' ' + p.unit + '</div></div>' +
+        '<div class="result-item blue"><div class="label">50%概率再活</div><div class="value">' + fmtNum(median) + ' ' + p.unit + '</div></div>' +
+        '<div class="result-item"><div class="label">再活同样久的概率</div><div class="value">' + (prob50 * 100).toFixed(1) + '%</div></div>' +
+        '<div class="result-item red"><div class="label">活到3倍年龄的概率</div><div class="value">' + (prob2x * 100).toFixed(1) + '%</div></div>';
+
+      document.getElementById('predictResult').classList.remove('hidden');
+
+      // 生存曲线
+      var maxExtra = Math.max(expected * 3, p.age * 5);
+      var curve = L.survivalCurve(p.age, p.alpha, maxExtra, 100);
+      var labels = curve.map(function(d) { return d.year.toFixed(0); });
+      var data = curve.map(function(d) { return (d.probability * 100).toFixed(2); });
+
+      if (survivalChartInst) survivalChartInst.destroy();
+      survivalChartInst = new Chart(document.getElementById('survivalChart'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '生存概率 (%)',
+            data: data,
+            borderColor: '#fbbf24',
+            backgroundColor: 'rgba(251,191,36,0.1)',
+            fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: '「' + p.name + '」再活 X ' + p.unit + '的概率', color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+          },
+          scales: {
+            x: { title: { display: true, text: '额外存活时间 (' + p.unit + ')', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.3)', maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { title: { display: true, text: '概率 (%)', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.3)' }, grid: { color: 'rgba(255,255,255,0.05)' }, min: 0, max: 100 }
+          }
+        }
+      });
+    }
+
+    function runMonteCarlo() {
+      var p = getParams();
+      var result = L.monteCarloLindy(p.age, p.alpha, 10000);
+
+      var grid = document.getElementById('mcGrid');
+      grid.innerHTML =
+        '<div class="result-item green"><div class="label">模拟均值</div><div class="value">' + fmtNum(result.mean) + ' ' + p.unit + '</div></div>' +
+        '<div class="result-item blue"><div class="label">模拟中位数</div><div class="value">' + fmtNum(result.median) + ' ' + p.unit + '</div></div>' +
+        '<div class="result-item"><div class="label">25%分位</div><div class="value">' + fmtNum(result.p25) + ' ' + p.unit + '</div></div>' +
+        '<div class="result-item"><div class="label">75%分位</div><div class="value">' + fmtNum(result.p75) + ' ' + p.unit + '</div></div>' +
+        '<div class="result-item red"><div class="label">90%分位</div><div class="value">' + fmtNum(result.p90) + ' ' + p.unit + '</div></div>';
+
+      document.getElementById('mcResult').classList.remove('hidden');
+
+      if (mcChartInst) mcChartInst.destroy();
+      mcChartInst = new Chart(document.getElementById('mcChart'), {
+        type: 'bar',
+        data: {
+          labels: result.histogram.labels.map(function(l) { return l.toFixed(0); }),
+          datasets: [{
+            label: '频次',
+            data: result.histogram.counts,
+            backgroundColor: 'rgba(251,191,36,0.4)',
+            borderColor: 'rgba(251,191,36,0.8)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: '10000次模拟：剩余寿命分布', color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+          },
+          scales: {
+            x: { title: { display: true, text: '剩余寿命 (' + p.unit + ')', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.3)', maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { title: { display: true, text: '频次', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.3)' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    // ========== 卡片2：经典对比 ==========
+    function switchPreset(key, btn) {
+      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      renderCompare(key);
+    }
+
+    function renderCompare(key) {
+      var alpha = 2;
+      var items = L.PRESETS[key];
+      var results = L.compareItems(items, alpha);
+      var maxTotal = 0;
+      results.forEach(function(r) { if (r.totalExpected > maxTotal && r.totalExpected !== Infinity) maxTotal = r.totalExpected; });
+
+      // 时间线
+      var timeline = document.getElementById('compareTimeline');
+      var html = '<div class="timeline-wrap"><div class="timeline-line"></div>';
+      results.forEach(function(r) {
+        var pastW = Math.max(2, (r.age / maxTotal) * 200);
+        var futureW = Math.max(2, (r.expectedRemaining / maxTotal) * 200);
+        if (r.expectedRemaining === Infinity) futureW = 200;
+        html += '<div class="timeline-item">' +
+          '<div class="timeline-dot"></div>' +
+          '<div class="t-name">' + r.name + '</div>' +
+          '<div class="t-detail">已存在 ' + fmtNum(r.age) + ' 年 → 预期再活 ' + fmtNum(r.expectedRemaining) + ' 年</div>' +
+          '<div class="t-bar-wrap">' +
+            '<div class="t-bar-past" style="width:' + pastW + 'px" title="已存在"></div>' +
+            '<div class="t-bar-future" style="width:' + futureW + 'px" title="预期剩余"></div>' +
+            '<div class="t-bar-label">共 ' + fmtNum(r.totalExpected) + ' 年</div>' +
+          '</div></div>';
+      });
+      html += '</div>';
+      timeline.innerHTML = html;
+
+      // 表格
+      var tbody = document.getElementById('compareBody');
+      tbody.innerHTML = '';
+      results.forEach(function(r) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + r.name + '</td>' +
+          '<td>' + fmtNum(r.age) + ' 年</td>' +
+          '<td style="color:#4ade80;font-weight:600">' + fmtNum(r.expectedRemaining) + ' 年</td>' +
+          '<td>' + fmtNum(r.medianRemaining) + ' 年</td>' +
+          '<td style="color:#fbbf24;font-weight:600">' + fmtNum(r.totalExpected) + ' 年</td>';
+        tbody.appendChild(tr);
+      });
+
+      // 洞察
+      var oldest = results[0], youngest = results[results.length - 1];
+      var ratio = oldest.expectedRemaining / youngest.expectedRemaining;
+      var insight = document.getElementById('compareInsight');
+      insight.innerHTML = '<strong>对比结论：</strong>' + oldest.name + '（' + fmtNum(oldest.age) + '年）的预期剩余寿命是' +
+        youngest.name + '（' + fmtNum(youngest.age) + '年）的 <strong>' + fmtNum(ratio) + ' 倍</strong>。' +
+        '这不是因为老事物「更好」，而是因为它已经通过了时间的筛选——能活到现在，本身就是实力的证明。';
+    }
+
+    // ========== 卡片3：生存曲线对比 ==========
+    function renderSurvivalCompare() {
+      var alpha = 2;
+      var oldAge = 100, youngAge = 2;
+      var maxExtra = 200;
+      var curveOld = L.survivalCurve(oldAge, alpha, maxExtra, 80);
+      var curveYoung = L.survivalCurve(youngAge, alpha, maxExtra, 80);
+
+      var labels = curveOld.map(function(d) { return d.year.toFixed(0); });
+
+      if (survCompChartInst) survCompChartInst.destroy();
+      survCompChartInst = new Chart(document.getElementById('survivalCompareChart'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '存在100年的事物',
+              data: curveOld.map(function(d) { return (d.probability * 100).toFixed(2); }),
+              borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.08)',
+              fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2
+            },
+            {
+              label: '存在2年的事物',
+              data: curveYoung.map(function(d) { return (d.probability * 100).toFixed(2); }),
+              borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.08)',
+              fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: 'rgba(255,255,255,0.6)', usePointStyle: true, pointStyle: 'line' } },
+            title: { display: true, text: '再活 X 年的概率：100年老店 vs 2年新店', color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+          },
+          scales: {
+            x: { title: { display: true, text: '额外存活时间（年）', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.3)', maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { title: { display: true, text: '概率 (%)', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.3)' }, grid: { color: 'rgba(255,255,255,0.05)' }, min: 0, max: 100 }
+          }
+        }
+      });
+
+      // 填充洞察数据
+      var pOld50 = L.survivalProbability(oldAge, 50, alpha);
+      var pYoung50 = L.survivalProbability(youngAge, 50, alpha);
+      document.getElementById('oldSurvProb').textContent = (pOld50 * 100).toFixed(1) + '%';
+      document.getElementById('youngSurvProb').textContent = (pYoung50 * 100).toFixed(4) + '%';
+      document.getElementById('survGap').textContent = Math.round(pOld50 / pYoung50).toLocaleString();
+    }
+
+    // ========== 卡片4：α 敏感性 ==========
+    function updateSensitivity() {
+      var age = parseInt(document.getElementById('sensAgeSlider').value);
+      document.getElementById('sensAgeVal').textContent = age + ' 年';
+
+      var alphas = [];
+      for (var a = 1.2; a <= 5; a += 0.2) alphas.push(Math.round(a * 10) / 10);
+      var results = L.alphaSensitivity(age, alphas);
+
+      var labels = results.map(function(r) { return r.alpha.toFixed(1); });
+      var expectedData = results.map(function(r) { return r.expected === Infinity ? null : r.expected; });
+      var medianData = results.map(function(r) { return r.median; });
+
+      if (sensChartInst) sensChartInst.destroy();
+      sensChartInst = new Chart(document.getElementById('sensitivityChart'), {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '期望剩余寿命',
+              data: expectedData,
+              borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.1)',
+              fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2
+            },
+            {
+              label: '中位剩余寿命',
+              data: medianData,
+              borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.1)',
+              fill: false, tension: 0.3, pointRadius: 3, borderWidth: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: 'rgba(255,255,255,0.6)', usePointStyle: true, pointStyle: 'circle' } },
+            title: { display: true, text: '已存在 ' + age + ' 年的事物，不同 α 下的预期剩余寿命', color: 'rgba(255,255,255,0.6)', font: { size: 13 } }
+          },
+          scales: {
+            x: { title: { display: true, text: 'α（衰减参数）', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.3)' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { title: { display: true, text: '剩余寿命（年）', color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.3)' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    }
+
+    // ========== 初始化 ==========
+    window.addEventListener('DOMContentLoaded', function() {
+      renderCompare('books');
+      renderSurvivalCompare();
+      updateSensitivity();
+    });
+  </script>
+</body>
+</html>

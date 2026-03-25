@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>贝叶斯猜数字 — 带噪声的信息如何收敛到真相</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./bayes-guess-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 350px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+    .experiment-area {
+      background: rgba(0,0,0,0.15); border-radius: 12px; padding: 20px; margin: 15px 0;
+    }
+    .slider-group { margin: 12px 0; }
+    .slider-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px;
+    }
+    .slider-group label span { color: #fbbf24; font-weight: 600; }
+    .slider-group input[type="range"] {
+      width: 100%; -webkit-appearance: none; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px; outline: none;
+    }
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: #fbbf24; border-radius: 50%; cursor: pointer;
+    }
+    .hidden { display: none; }
+
+    /* 游戏专属样式 */
+    .number-input-area {
+      display: flex; align-items: center; gap: 15px; justify-content: center;
+      margin: 20px 0; flex-wrap: wrap;
+    }
+    .number-input-area input[type="number"] {
+      width: 120px; padding: 14px 18px; font-size: 28px; font-weight: 700;
+      text-align: center; background: rgba(0,0,0,0.3);
+      border: 2px solid rgba(251,191,36,0.3); border-radius: 12px;
+      color: #fbbf24; outline: none; font-family: 'Courier New', monospace;
+    }
+    .number-input-area input:focus { border-color: #fbbf24; }
+    .hint-display {
+      font-size: 18px; font-weight: 600; padding: 10px 20px;
+      border-radius: 10px; min-width: 120px; text-align: center;
+      transition: all 0.3s;
+    }
+    .hint-high { background: rgba(248,113,113,0.2); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+    .hint-low { background: rgba(96,165,250,0.2); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); }
+    .hint-correct { background: rgba(74,222,128,0.2); color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+    .hint-none { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.1); }
+
+    .history-table {
+      width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px;
+    }
+    .history-table th {
+      color: rgba(255,255,255,0.4); font-weight: 400; padding: 8px 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.08); text-align: center;
+    }
+    .history-table td {
+      padding: 8px 6px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .history-table .lie-tag {
+      font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    }
+    .lie-tag.truth { background: rgba(74,222,128,0.15); color: #4ade80; }
+    .lie-tag.lie { background: rgba(248,113,113,0.15); color: #f87171; }
+
+    /* 热力图 */
+    .heatmap-container { margin: 15px 0; overflow-x: auto; }
+    .heatmap {
+      display: flex; gap: 2px; flex-wrap: wrap; justify-content: center;
+      min-height: 40px;
+    }
+    .heatmap-cell {
+      width: 28px; height: 28px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.8);
+      transition: all 0.3s; cursor: default; position: relative;
+    }
+    .heatmap-cell:hover { transform: scale(1.3); z-index: 10; }
+    .heatmap-cell .tooltip {
+      display: none; position: absolute; bottom: 110%; left: 50%;
+      transform: translateX(-50%); background: rgba(0,0,0,0.9);
+      padding: 4px 8px; border-radius: 6px; font-size: 11px;
+      white-space: nowrap; color: #fbbf24; pointer-events: none;
+    }
+    .heatmap-cell:hover .tooltip { display: block; }
+
+    .game-status {
+      text-align: center; font-size: 15px; color: rgba(255,255,255,0.5);
+      margin: 10px 0; min-height: 24px;
+    }
+    .game-status.won { color: #4ade80; font-weight: 600; font-size: 18px; }
+
+    .map-indicator {
+      text-align: center; margin: 10px 0;
+      font-size: 14px; color: rgba(255,255,255,0.5);
+    }
+    .map-indicator strong { color: #fbbf24; font-size: 20px; }
+
+    .entropy-bar-container {
+      margin: 10px 0; display: flex; align-items: center; gap: 10px;
+    }
+    .entropy-bar-bg {
+      flex: 1; height: 8px; background: rgba(255,255,255,0.08);
+      border-radius: 4px; overflow: hidden;
+    }
+    .entropy-bar-fill {
+      height: 100%; border-radius: 4px; transition: width 0.5s;
+      background: linear-gradient(90deg, #4ade80, #fbbf24, #f87171);
+    }
+    .entropy-label { font-size: 12px; color: rgba(255,255,255,0.4); min-width: 80px; }
+
+    .rules-box {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;
+    }
+    .rule-card {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 18px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .rule-card h3 { color: #fbbf24; font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .rule-card p { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.7; }
+    .rule-card .formula {
+      background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px;
+      font-family: 'Courier New', monospace; color: #fbbf24; font-size: 13px;
+      text-align: center; margin-top: 10px; line-height: 1.6;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .rules-box { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-box { height: 280px; }
+      .heatmap-cell { width: 22px; height: 22px; font-size: 8px; }
+      .number-input-area input[type="number"] { width: 100px; font-size: 22px; padding: 10px 14px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-target-arrow"></i> 贝叶斯猜数字</h1>
+    <p>系统随机选了一个 1~100 的数字。你每次猜一个数，系统告诉你「偏高」或「偏低」。<br>但有 20% 的概率，系统会说谎。你能用几次猜中？</p>
+  </div>
+
+  <!-- Card 1: 游戏规则 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-book"></i> 游戏规则</div>
+    <div class="rules-box">
+      <div class="rule-card">
+        <h3><i class="ti ti-help-circle" style="color:#60a5fa"></i> 基本规则</h3>
+        <p>系统在 1~N 中随机选一个秘密数字。你每轮猜一个数，系统给出提示：</p>
+        <div class="formula">
+          偏高 → 你猜的数 > 秘密数字<br>
+          偏低 → 你猜的数 < 秘密数字<br>
+          正确 → 猜中了
+        </div>
+      </div>
+      <div class="rule-card">
+        <h3><i class="ti ti-spy" style="color:#f87171"></i> 噪声机制</h3>
+        <p>每次提示有一定概率说谎（默认 20%）。说谎时「偏高」变「偏低」，反之亦然。猜中时永远不说谎。</p>
+        <div class="formula">
+          P(真话) = 1 - 谎言率<br>
+          P(谎话) = 谎言率
+        </div>
+      </div>
+    </div>
+    <div class="insight-box">
+      <strong>贝叶斯更新：</strong>每次收到提示后，我们用贝叶斯定理更新每个数字的后验概率。即使提示可能是假的，多次更新后概率仍会收敛到真实值——因为真话的概率更高，真相会在噪声中浮现。
+    </div>
+  </div>
+
+  <!-- Card 2: 开始游戏 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-player-play"></i> 开始猜数字</div>
+
+    <div class="experiment-area" style="margin-bottom:15px">
+      <div style="display:flex; gap:15px; flex-wrap:wrap; align-items:center;">
+        <div class="slider-group" style="flex:1; min-width:200px; margin:0">
+          <label>数字范围 1 ~ <span id="range-val">100</span></label>
+          <input type="range" id="range-slider" min="10" max="200" value="100" step="10"
+            oninput="document.getElementById('range-val').textContent=this.value">
+        </div>
+        <div class="slider-group" style="flex:1; min-width:200px; margin:0">
+          <label>谎言概率 <span id="lie-val">20%</span></label>
+          <input type="range" id="lie-slider" min="0" max="45" value="20" step="5"
+            oninput="document.getElementById('lie-val').textContent=this.value+'%'">
+        </div>
+        <button class="btn" onclick="startNewGame()"><i class="ti ti-refresh"></i> 新游戏</button>
+      </div>
+    </div>
+
+    <div class="game-status" id="game-status">点击「新游戏」开始</div>
+
+    <div class="number-input-area">
+      <input type="number" id="guess-input" min="1" max="100" placeholder="?" disabled
+        onkeydown="if(event.key==='Enter')submitGuess()">
+      <button class="btn" id="guess-btn" onclick="submitGuess()" disabled><i class="ti ti-send"></i> 猜</button>
+      <div class="hint-display hint-none" id="hint-display">等待中</div>
+    </div>
+
+    <!-- MAP 估计 -->
+    <div class="map-indicator" id="map-indicator">
+      贝叶斯最优猜测：<strong id="map-value">-</strong>
+      <span style="margin-left:8px; font-size:12px;">(概率 <span id="map-prob">-</span>)</span>
+    </div>
+
+    <!-- 熵条 -->
+    <div class="entropy-bar-container">
+      <div class="entropy-label">不确定性</div>
+      <div class="entropy-bar-bg"><div class="entropy-bar-fill" id="entropy-bar" style="width:100%"></div></div>
+      <div class="entropy-label" style="text-align:right" id="entropy-text">最大</div>
+    </div>
+
+    <!-- 概率热力图 -->
+    <div class="card-desc" style="margin-top:15px; margin-bottom:8px;">
+      <i class="ti ti-flame" style="color:#fbbf24"></i> 后验概率热力图 — 颜色越亮，该数字是答案的概率越高
+    </div>
+    <div class="heatmap-container">
+      <div class="heatmap" id="heatmap"></div>
+    </div>
+
+    <!-- 猜测历史 -->
+    <div id="history-area" class="hidden" style="margin-top:20px;">
+      <div class="card-desc"><i class="ti ti-list"></i> 猜测历史</div>
+      <div style="max-height:250px; overflow-y:auto;">
+        <table class="history-table">
+          <thead><tr><th>#</th><th>猜测</th><th>提示</th><th>真/假</th><th>MAP</th><th>熵</th></tr></thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 胜利后的图表 -->
+    <div id="win-area" class="hidden">
+      <div class="result-grid" style="margin-top:20px">
+        <div class="result-item green"><div class="label">猜测次数</div><div class="value" id="win-steps">-</div></div>
+        <div class="result-item blue"><div class="label">秘密数字</div><div class="value" id="win-secret">-</div></div>
+        <div class="result-item"><div class="label">谎言次数</div><div class="value" id="win-lies">-</div></div>
+        <div class="result-item"><div class="label">谎言率(实际)</div><div class="value" id="win-lie-rate">-</div></div>
+      </div>
+      <div class="chart-box"><canvas id="entropyChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Card 3: AI 对战模式 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-robot"></i> AI 对战：最优贝叶斯策略</div>
+    <div class="card-desc">让 AI 用最大信息增益策略自动猜数字。每次选择能最大程度降低不确定性的猜测。看看 AI 需要几步。</div>
+
+    <div class="btn-row">
+      <button class="btn" id="ai-play-btn" onclick="runAIGame()"><i class="ti ti-player-play"></i> AI 猜一局</button>
+      <button class="btn btn-secondary" id="ai-auto-btn" onclick="runAIAuto()"><i class="ti ti-player-track-next"></i> 连续 50 局</button>
+    </div>
+
+    <div id="ai-result" class="hidden">
+      <div class="game-status" id="ai-status"></div>
+      <div class="heatmap-container">
+        <div class="heatmap" id="ai-heatmap"></div>
+      </div>
+      <div style="max-height:200px; overflow-y:auto; margin-top:10px;">
+        <table class="history-table">
+          <thead><tr><th>#</th><th>猜测</th><th>提示</th><th>真/假</th><th>MAP</th></tr></thead>
+          <tbody id="ai-history-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="ai-batch-result" class="hidden">
+      <div class="result-grid" style="margin-top:15px">
+        <div class="result-item green"><div class="label">平均步数</div><div class="value" id="ai-mean">-</div></div>
+        <div class="result-item blue"><div class="label">中位数</div><div class="value" id="ai-median">-</div></div>
+        <div class="result-item"><div class="label">最少</div><div class="value" id="ai-min">-</div></div>
+        <div class="result-item red"><div class="label">最多</div><div class="value" id="ai-max">-</div></div>
+      </div>
+      <div class="chart-box"><canvas id="aiDistChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Card 4: 谎言率对比实验 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-bar"></i> 谎言率 vs 猜测次数</div>
+    <div class="card-desc">谎言率从 0% 到 45%，AI 平均需要多少步？当谎言率接近 50% 时，提示几乎没有信息量，猜测次数会急剧上升。</div>
+
+    <div class="btn-row">
+      <button class="btn" id="compare-btn" onclick="runLieComparison()"><i class="ti ti-player-play"></i> 开始对比实验</button>
+    </div>
+
+    <div id="compare-result" class="hidden">
+      <div class="chart-box"><canvas id="compareChart"></canvas></div>
+      <div class="insight-box" id="compare-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 5: 数学原理 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-math-function"></i> 贝叶斯更新的数学</div>
+    <div class="experiment-area">
+      <div style="font-size:15px; line-height:1.8; color:rgba(255,255,255,0.7);">
+        <strong style="color:#fbbf24">核心公式：贝叶斯定理</strong><br><br>
+        对于每个候选数字 x，收到提示 h 后的后验概率：
+        <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:12px; margin:12px 0; font-family:'Courier New',monospace; color:#fbbf24; text-align:center; font-size:14px;">
+          P(x|h) = P(h|x) · P(x) / P(h)
+        </div>
+        其中似然函数 P(h|x) 取决于谎言率 ε：<br><br>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:10px; font-size:13px;">
+            如果 h 是真话方向：<br>
+            <span style="color:#4ade80; font-family:monospace;">P(h|x) = 1 - ε</span>
+          </div>
+          <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:10px; font-size:13px;">
+            如果 h 是谎话方向：<br>
+            <span style="color:#f87171; font-family:monospace;">P(h|x) = ε</span>
+          </div>
+        </div>
+        <br>
+        <strong style="color:#4ade80">为什么噪声中仍能收敛？</strong><br>
+        只要 ε < 0.5（谎言率不超过 50%），每次更新都会让真实值的概率相对增加。这就像投票：即使每个选民有 20% 概率投错票，只要多数人投对，最终结果仍然正确。<br><br>
+        <strong style="color:#60a5fa">信息论视角：</strong>每次提示携带的信息量为 1 - H(ε) 比特，其中 H(ε) = -ε·log₂(ε) - (1-ε)·log₂(1-ε) 是二元熵。当 ε=0 时每次获得 1 比特；当 ε=0.5 时信息量为 0。
+      </div>
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+// ========== 游戏状态 ==========
+var game = null;
+var entropyHistory = [];
+var maxEntropy = 1;
+var entropyChart = null;
+var aiDistChart = null;
+var compareChart = null;
+
+// ========== 新游戏 ==========
+function startNewGame() {
+  var N = parseInt(document.getElementById('range-slider').value);
+  var lie = parseInt(document.getElementById('lie-slider').value) / 100;
+  game = createGame(N, lie);
+  entropyHistory = [];
+  maxEntropy = Math.log2(N);
+
+  document.getElementById('guess-input').disabled = false;
+  document.getElementById('guess-input').max = N;
+  document.getElementById('guess-input').value = '';
+  document.getElementById('guess-btn').disabled = false;
+  document.getElementById('game-status').textContent = '已选好 1~' + N + ' 的秘密数字，开始猜吧！';
+  document.getElementById('game-status').className = 'game-status';
+  document.getElementById('hint-display').textContent = '等待中';
+  document.getElementById('hint-display').className = 'hint-display hint-none';
+  document.getElementById('history-body').innerHTML = '';
+  document.getElementById('history-area').classList.add('hidden');
+  document.getElementById('win-area').classList.add('hidden');
+
+  updateHeatmap('heatmap', game.prior, N);
+  updateMapIndicator();
+  updateEntropyBar();
+  document.getElementById('guess-input').focus();
+}
+
+// ========== 提交猜测 ==========
+function submitGuess() {
+  if (!game) return;
+  var input = document.getElementById('guess-input');
+  var guess = parseInt(input.value);
+  if (isNaN(guess) || guess < 1 || guess > game.N) {
+    input.style.borderColor = '#f87171';
+    setTimeout(function() { input.style.borderColor = 'rgba(251,191,36,0.3)'; }, 500);
+    return;
+  }
+
+  var result = playStep(game, guess);
+  var stepNum = game.history.length;
+  var entry = game.history[stepNum - 1];
+  var map = getMapEstimate(game.prior);
+  var entropy = getEntropy(game.prior);
+  entropyHistory.push(entropy);
+
+  // 更新提示显示
+  var hintEl = document.getElementById('hint-display');
+  if (result.hint === 'correct') {
+    hintEl.textContent = '正确！';
+    hintEl.className = 'hint-display hint-correct';
+  } else if (result.hint === 'high') {
+    hintEl.textContent = '偏高 ↓';
+    hintEl.className = 'hint-display hint-high';
+  } else {
+    hintEl.textContent = '偏低 ↑';
+    hintEl.className = 'hint-display hint-low';
+  }
+
+  // 更新历史表格
+  document.getElementById('history-area').classList.remove('hidden');
+  var hintText = result.hint === 'high' ? '偏高' : result.hint === 'low' ? '偏低' : '正确';
+  var lieTag = result.won ? '-' :
+    '<span class="lie-tag ' + (entry.truthful ? 'truth' : 'lie') + '">' +
+    (entry.truthful ? '真话' : '谎话') + '</span>';
+  var row = '<tr><td>' + stepNum + '</td><td style="color:#fbbf24;font-weight:600">' + guess +
+    '</td><td>' + hintText + '</td><td>' + lieTag +
+    '</td><td>' + map.value + '</td><td>' + entropy.toFixed(2) + '</td></tr>';
+  document.getElementById('history-body').innerHTML += row;
+
+  // 更新热力图和指标
+  updateHeatmap('heatmap', game.prior, game.N);
+  updateMapIndicator();
+  updateEntropyBar();
+
+  if (result.won) {
+    onWin();
+  } else {
+    input.value = '';
+    input.focus();
+    document.getElementById('game-status').textContent =
+      '第 ' + stepNum + ' 步 | MAP估计: ' + map.value + ' (概率 ' + (map.prob * 100).toFixed(1) + '%)';
+  }
+}
+
+function onWin() {
+  var steps = game.history.length;
+  var lies = 0;
+  for (var i = 0; i < game.history.length; i++) {
+    if (!game.history[i].truthful) lies++;
+  }
+  document.getElementById('guess-input').disabled = true;
+  document.getElementById('guess-btn').disabled = true;
+  document.getElementById('game-status').textContent =
+    '恭喜！用 ' + steps + ' 步猜中了秘密数字 ' + game.secret + '！';
+  document.getElementById('game-status').className = 'game-status won';
+
+  document.getElementById('win-area').classList.remove('hidden');
+  document.getElementById('win-steps').textContent = steps;
+  document.getElementById('win-secret').textContent = game.secret;
+  document.getElementById('win-lies').textContent = lies;
+  var actualLieRate = steps > 1 ? ((lies / (steps - 1)) * 100).toFixed(0) : '0';
+  document.getElementById('win-lie-rate').textContent = actualLieRate + '%';
+
+  // 熵变化图
+  if (entropyChart) entropyChart.destroy();
+  var labels = [];
+  for (var i = 1; i <= entropyHistory.length; i++) labels.push(i);
+  entropyChart = new Chart(document.getElementById('entropyChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '熵（不确定性）',
+        data: entropyHistory,
+        borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.1)',
+        fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#fbbf24', borderWidth: 2
+      }]
+    },
+    options: chartOpts('猜测轮次', '熵 (bits)')
+  });
+}
+
+// ========== 热力图 ==========
+function updateHeatmap(containerId, prior, N) {
+  var container = document.getElementById(containerId);
+  container.innerHTML = '';
+  var maxP = 0;
+  for (var i = 0; i < N; i++) { if (prior[i] > maxP) maxP = prior[i]; }
+
+  for (var i = 0; i < N; i++) {
+    var cell = document.createElement('div');
+    cell.className = 'heatmap-cell';
+    cell.textContent = i + 1;
+    var intensity = maxP > 0 ? prior[i] / maxP : 0;
+    var pct = (prior[i] * 100).toFixed(2);
+    if (intensity > 0.8) {
+      cell.style.background = 'rgba(251,191,36,' + (0.3 + intensity * 0.7) + ')';
+      cell.style.color = '#1a1a2e';
+      cell.style.fontWeight = '800';
+    } else if (intensity > 0.3) {
+      cell.style.background = 'rgba(251,191,36,' + (intensity * 0.4) + ')';
+    } else if (intensity > 0.01) {
+      cell.style.background = 'rgba(96,165,250,' + (intensity * 0.3) + ')';
+    } else {
+      cell.style.background = 'rgba(255,255,255,0.02)';
+      cell.style.color = 'rgba(255,255,255,0.2)';
+    }
+    var tooltip = document.createElement('span');
+    tooltip.className = 'tooltip';
+    tooltip.textContent = (i + 1) + ': ' + pct + '%';
+    cell.appendChild(tooltip);
+    container.appendChild(cell);
+  }
+}
+
+function updateMapIndicator() {
+  if (!game) return;
+  var map = getMapEstimate(game.prior);
+  document.getElementById('map-value').textContent = map.value;
+  document.getElementById('map-prob').textContent = (map.prob * 100).toFixed(1) + '%';
+}
+
+function updateEntropyBar() {
+  if (!game) return;
+  var H = getEntropy(game.prior);
+  var pct = maxEntropy > 0 ? (H / maxEntropy * 100) : 0;
+  document.getElementById('entropy-bar').style.width = pct + '%';
+  document.getElementById('entropy-text').textContent = H.toFixed(2) + ' bits';
+}
+
+// ========== AI 单局 ==========
+function runAIGame() {
+  var N = parseInt(document.getElementById('range-slider').value);
+  var lie = parseInt(document.getElementById('lie-slider').value) / 100;
+  var aiGame = createGame(N, lie);
+
+  document.getElementById('ai-result').classList.remove('hidden');
+  document.getElementById('ai-batch-result').classList.add('hidden');
+  document.getElementById('ai-history-body').innerHTML = '';
+
+  var maxSteps = 200;
+  for (var step = 0; step < maxSteps; step++) {
+    var guess = getBestGuess(aiGame.prior, N, lie);
+    var result = playStep(aiGame, guess);
+    var map = getMapEstimate(aiGame.prior);
+    var entry = aiGame.history[aiGame.history.length - 1];
+    var hintText = result.hint === 'high' ? '偏高' : result.hint === 'low' ? '偏低' : '正确';
+    var lieTag = result.won ? '-' :
+      '<span class="lie-tag ' + (entry.truthful ? 'truth' : 'lie') + '">' +
+      (entry.truthful ? '真话' : '谎话') + '</span>';
+    document.getElementById('ai-history-body').innerHTML +=
+      '<tr><td>' + (step + 1) + '</td><td style="color:#fbbf24;font-weight:600">' + guess +
+      '</td><td>' + hintText + '</td><td>' + lieTag + '</td><td>' + map.value + '</td></tr>';
+
+    if (result.won) {
+      document.getElementById('ai-status').textContent =
+        'AI 用 ' + (step + 1) + ' 步猜中了秘密数字 ' + aiGame.secret + '！';
+      document.getElementById('ai-status').className = 'game-status won';
+      break;
+    }
+  }
+  updateHeatmap('ai-heatmap', aiGame.prior, N);
+}
+
+// ========== AI 批量 ==========
+function runAIAuto() {
+  var N = parseInt(document.getElementById('range-slider').value);
+  var lie = parseInt(document.getElementById('lie-slider').value) / 100;
+  var btn = document.getElementById('ai-auto-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> 模拟中...';
+
+  setTimeout(function() {
+    var stats = simulateMultiple(50, N, lie);
+    document.getElementById('ai-result').classList.add('hidden');
+    document.getElementById('ai-batch-result').classList.remove('hidden');
+    document.getElementById('ai-mean').textContent = stats.mean;
+    document.getElementById('ai-median').textContent = stats.median;
+    document.getElementById('ai-min').textContent = stats.min;
+    document.getElementById('ai-max').textContent = stats.max;
+
+    // 分布直方图
+    if (aiDistChart) aiDistChart.destroy();
+    var maxStep = stats.max;
+    var bins = {};
+    for (var i = 0; i < stats.distribution.length; i++) {
+      var s = stats.distribution[i];
+      bins[s] = (bins[s] || 0) + 1;
+    }
+    var labels = [], data = [];
+    for (var s = stats.min; s <= maxStep; s++) {
+      labels.push(s + '步');
+      data.push(bins[s] || 0);
+    }
+    aiDistChart = new Chart(document.getElementById('aiDistChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '局数',
+          data: data,
+          backgroundColor: 'rgba(251,191,36,0.5)',
+          borderColor: '#fbbf24', borderWidth: 1
+        }]
+      },
+      options: chartOpts('猜测步数', '局数')
+    });
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-player-track-next"></i> 再来 50 局';
+  }, 50);
+}
+
+// ========== 谎言率对比 ==========
+function runLieComparison() {
+  var N = parseInt(document.getElementById('range-slider').value);
+  var btn = document.getElementById('compare-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader"></i> 实验中...';
+
+  setTimeout(function() {
+    var lieRates = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45];
+    var means = [];
+    var trials = 30;
+    for (var i = 0; i < lieRates.length; i++) {
+      var stats = simulateMultiple(trials, N, lieRates[i]);
+      means.push(parseFloat(stats.mean));
+    }
+
+    document.getElementById('compare-result').classList.remove('hidden');
+    if (compareChart) compareChart.destroy();
+    compareChart = new Chart(document.getElementById('compareChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: lieRates.map(function(r) { return (r * 100) + '%'; }),
+        datasets: [{
+          label: '平均猜测步数',
+          data: means,
+          borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.1)',
+          fill: true, tension: 0.3, pointRadius: 6, pointBackgroundColor: '#fbbf24', borderWidth: 3
+        }]
+      },
+      options: chartOpts('谎言概率', '平均步数')
+    });
+
+    var ratio = means[means.length - 1] / Math.max(means[0], 1);
+    document.getElementById('compare-insight').innerHTML =
+      '<strong>实验结果（N=' + N + '）：</strong><br>' +
+      '谎言率 0% 时平均 <strong style="color:#4ade80">' + means[0].toFixed(1) + '</strong> 步，' +
+      '谎言率 45% 时平均 <strong style="color:#f87171">' + means[means.length - 1].toFixed(1) + '</strong> 步，' +
+      '增加了 <strong>' + ratio.toFixed(1) + '</strong> 倍。<br><br>' +
+      '<strong style="color:#60a5fa">信息论解释：</strong>谎言率 ε 时，每次提示的有效信息量为 1 - H(ε) 比特。' +
+      '当 ε→0.5 时，H(ε)→1，有效信息量→0，提示变成纯噪声，猜测退化为随机搜索。' +
+      '这就是为什么曲线在 40%+ 时急剧上升。';
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-player-play"></i> 重新实验';
+  }, 50);
+}
+
+// ========== 通用图表配置 ==========
+function chartOpts(xLabel, yLabel) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } } },
+    scales: {
+      x: { title: { display: true, text: xLabel, color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { title: { display: true, text: yLabel, color: 'rgba(255,255,255,0.4)' }, ticks: { color: 'rgba(255,255,255,0.4)' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
+  };
+}
+</script>
+</body>
+</html>

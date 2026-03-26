@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>布雷斯悖论 — 多修一条路，反而更堵了</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./braess-paradox-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-danger { background: linear-gradient(135deg, #f87171, #ef4444); color: white; }
+    .btn-danger:hover { box-shadow: 0 8px 25px rgba(248,113,113,0.3); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 350px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+    .experiment-area {
+      background: rgba(0,0,0,0.15); border-radius: 12px; padding: 20px; margin: 15px 0;
+    }
+    .slider-group { margin: 12px 0; }
+    .slider-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px;
+    }
+    .slider-group label span { color: #fbbf24; font-weight: 600; }
+    .slider-group input[type="range"] {
+      width: 100%; appearance: none; -webkit-appearance: none; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px; outline: none;
+    }
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: #fbbf24; border-radius: 50%; cursor: pointer;
+    }
+    .hidden { display: none; }
+
+    /* 网络图 */
+    .network-container {
+      position: relative; width: 100%; max-width: 600px; margin: 0 auto;
+    }
+    .network-canvas { width: 100%; height: auto; display: block; }
+    .network-pair {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;
+    }
+    .network-box {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px;
+      text-align: center;
+    }
+    .network-box h3 {
+      font-size: 14px; margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .network-box h3.green { color: #4ade80; }
+    .network-box h3.red { color: #f87171; }
+
+    /* 对比条 */
+    .compare-bar {
+      display: flex; align-items: center; gap: 15px; margin: 15px 0;
+      padding: 15px; background: rgba(0,0,0,0.2); border-radius: 12px;
+    }
+    .compare-bar .bar-label { font-size: 13px; color: rgba(255,255,255,0.6); min-width: 80px; }
+    .compare-bar .bar-track {
+      flex: 1; height: 24px; background: rgba(255,255,255,0.05);
+      border-radius: 12px; overflow: hidden; position: relative;
+    }
+    .compare-bar .bar-fill {
+      height: 100%; border-radius: 12px; transition: width 1s ease;
+      display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;
+      font-size: 12px; font-weight: 700; color: white;
+    }
+    .bar-fill.green { background: linear-gradient(90deg, #22c55e, #4ade80); }
+    .bar-fill.red { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+    /* 内卷模型 */
+    .involution-grid {
+      display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px;
+      margin: 15px 0; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 12px;
+    }
+    .person-dot {
+      aspect-ratio: 1; border-radius: 4px; transition: background 0.3s;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+    }
+    .person-dot.normal { background: rgba(74,222,128,0.3); }
+    .person-dot.overtime { background: rgba(248,113,113,0.4); }
+
+    /* 动画小车 */
+    .car-animation {
+      position: relative; width: 100%; height: 300px;
+      background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden;
+      margin: 15px 0;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .network-pair { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-box { height: 280px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-road"></i> 布雷斯悖论</h1>
+    <p>1968年，德国数学家 Dietrich Braess 发现了一个不可思议的现象：<br>给交通网络多修一条路，所有人的通勤时间反而变长了。</p>
+  </div>
+</div>
+
+  <!-- Card 1: 问题设定 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-map-2"></i> 问题设定</div>
+    <div class="card-desc">4000 辆车要从 S（起点）开到 E（终点）。有两条路可选，每个司机都自私地选最快的路。</div>
+
+    <div class="experiment-area">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+          <div style="color: #60a5fa; font-weight: 600; font-size: 14px; margin-bottom: 8px;">
+            <i class="ti ti-route"></i> 路段类型 A：拥堵路段
+          </div>
+          <div style="font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.7;">
+            延迟 = 车辆数 / 100<br>
+            <span style="color: rgba(255,255,255,0.4);">车越多越慢，类似高速公路</span>
+          </div>
+        </div>
+        <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 10px;">
+          <div style="color: #a855f7; font-weight: 600; font-size: 14px; margin-bottom: 8px;">
+            <i class="ti ti-route"></i> 路段类型 B：固定路段
+          </div>
+          <div style="font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.7;">
+            延迟 = 45 分钟（固定）<br>
+            <span style="color: rgba(255,255,255,0.4);">不管多少车都一样，类似火车</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="network-pair">
+      <div class="network-box">
+        <h3 class="green"><i class="ti ti-check"></i> 原始网络（无捷径）</h3>
+        <canvas id="networkWithout" width="280" height="220" class="network-canvas"></canvas>
+      </div>
+      <div class="network-box">
+        <h3 class="red"><i class="ti ti-plus"></i> 加了捷径 A→B</h3>
+        <canvas id="networkWith" width="280" height="220" class="network-canvas"></canvas>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <strong>直觉告诉你：</strong>多一条路 = 多一个选择 = 更快到达。<br>
+      <strong>数学告诉你：</strong>多一条路 = 所有人涌向捷径 = 拥堵路段车辆翻倍 = 所有人更慢。
+    </div>
+  </div>
+
+  <!-- Card 2: 一键对比 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-arrows-diff"></i> 一键对比：加路前 vs 加路后</div>
+    <div class="card-desc">点击按钮，计算纳什均衡（每个司机都选最优路径）下的通勤时间。</div>
+
+    <div class="slider-group">
+      <label>车辆总数 <span id="cars-val">4000</span></label>
+      <input type="range" id="cars-slider" min="1000" max="8000" value="4000" step="500"
+        oninput="document.getElementById('cars-val').textContent=this.value">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="runComparison()"><i class="ti ti-player-play"></i> 计算纳什均衡</button>
+    </div>
+
+    <div id="compare-result" class="hidden">
+      <div class="result-grid" style="margin-top: 15px;">
+        <div class="result-item green">
+          <div class="label">无捷径 · 通勤时间</div>
+          <div class="value" id="cmp-without"></div>
+        </div>
+        <div class="result-item red">
+          <div class="label">有捷径 · 通勤时间</div>
+          <div class="value" id="cmp-with"></div>
+        </div>
+        <div class="result-item red">
+          <div class="label">加路后多花</div>
+          <div class="value" id="cmp-delta"></div>
+        </div>
+        <div class="result-item blue">
+          <div class="label">社会最优</div>
+          <div class="value" id="cmp-optimal"></div>
+        </div>
+      </div>
+
+      <!-- 流量分布对比 -->
+      <div id="flow-bars"></div>
+
+      <div class="insight-box" id="cmp-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 3: 车辆数 vs 悖论效应 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-line"></i> 车辆数 vs 悖论效应</div>
+    <div class="card-desc">悖论不是永远存在的。车少时捷径确实有帮助，车多了才会反噬。拖动看临界点在哪。</div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="runRangeSimulation()"><i class="ti ti-chart-area-line"></i> 生成曲线</button>
+    </div>
+
+    <div id="range-result" class="hidden">
+      <div class="chart-box"><canvas id="rangeChart"></canvas></div>
+      <div class="insight-box" id="range-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 4: 交互式网络编辑器 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-adjustments"></i> 交互式实验室</div>
+    <div class="card-desc">调整捷径的延迟时间，看看什么时候悖论消失。当捷径延迟足够高时，没人会走它，悖论就不存在了。</div>
+
+    <div class="experiment-area">
+      <div class="slider-group">
+        <label>捷径 A→B 延迟 <span id="shortcut-val">0</span> 分钟</label>
+        <input type="range" id="shortcut-slider" min="0" max="50" value="0" step="1"
+          oninput="document.getElementById('shortcut-val').textContent=this.value; runInteractive();">
+      </div>
+      <div class="slider-group">
+        <label>实验车辆数 <span id="lab-cars-val">4000</span></label>
+        <input type="range" id="lab-cars-slider" min="1000" max="8000" value="4000" step="500"
+          oninput="document.getElementById('lab-cars-val').textContent=this.value; runInteractive();">
+      </div>
+    </div>
+
+    <div id="lab-result">
+      <div class="result-grid" style="margin-top: 15px;">
+        <div class="result-item green">
+          <div class="label">无捷径</div>
+          <div class="value" id="lab-without">—</div>
+        </div>
+        <div class="result-item" id="lab-with-item">
+          <div class="label">有捷径</div>
+          <div class="value" id="lab-with">—</div>
+        </div>
+        <div class="result-item" id="lab-delta-item">
+          <div class="label">差值</div>
+          <div class="value" id="lab-delta">—</div>
+        </div>
+        <div class="result-item">
+          <div class="label">走捷径的车</div>
+          <div class="value" id="lab-shortcut-flow">—</div>
+        </div>
+      </div>
+      <div class="insight-box" id="lab-insight" style="margin-top:15px;">
+        拖动滑块开始实验。
+      </div>
+    </div>
+  </div>
+
+  <!-- Card 5: 内卷模型 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-flame"></i> 延伸：内卷的数学本质</div>
+    <div class="card-desc">
+      布雷斯悖论不只是交通问题。加班文化、军备竞赛、教育内卷，本质上都是同一个博弈结构：<br>
+      每个人的「理性选择」叠加起来，让所有人都变差了。
+    </div>
+
+    <div class="experiment-area">
+      <div style="font-size: 14px; line-height: 1.8; color: rgba(255,255,255,0.7);">
+        <strong style="color: #fbbf24;">模型设定：</strong>100 个员工，基础工资 100。<br>
+        加班的人获得相对优势（抢走不加班者的份额），但付出 20 的健康成本。<br>
+        当所有人都加班时，相对优势消失，但成本仍在。
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="runInvolution()"><i class="ti ti-player-play"></i> 模拟内卷演化</button>
+    </div>
+
+    <div id="involution-result" class="hidden">
+      <div class="involution-grid" id="involution-grid"></div>
+      <div style="display:flex; gap:15px; justify-content:center; margin:10px 0; font-size:12px; color:rgba(255,255,255,0.4);">
+        <span><span style="display:inline-block;width:12px;height:12px;background:rgba(74,222,128,0.3);border-radius:3px;vertical-align:middle;margin-right:4px;"></span>正常下班</span>
+        <span><span style="display:inline-block;width:12px;height:12px;background:rgba(248,113,113,0.4);border-radius:3px;vertical-align:middle;margin-right:4px;"></span>加班</span>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-item green">
+          <div class="label">无人加班时收益</div>
+          <div class="value">100</div>
+        </div>
+        <div class="result-item red">
+          <div class="label">全员加班后收益</div>
+          <div class="value" id="inv-final-payoff"></div>
+        </div>
+        <div class="result-item red">
+          <div class="label">每人损失</div>
+          <div class="value" id="inv-loss"></div>
+        </div>
+        <div class="result-item blue">
+          <div class="label">收敛轮数</div>
+          <div class="value" id="inv-rounds"></div>
+        </div>
+      </div>
+
+      <div class="chart-box"><canvas id="involutionChart"></canvas></div>
+      <div class="insight-box" id="inv-insight"></div>
+    </div>
+  </div>
+
+  <!-- Card 6: 现实案例 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-world"></i> 现实中的布雷斯悖论</div>
+    <div class="experiment-area">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-building-bridge" style="color:#fbbf24"></i></div>
+          <div style="color:#fbbf24; font-weight:600; margin-bottom: 6px;">纽约 42 街</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">1990年地球日，纽约关闭了42街。交通部门预期大堵车，结果周边道路反而更通畅了。这是布雷斯悖论最著名的现实验证。</div>
+        </div>
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-network" style="color:#4ade80"></i></div>
+          <div style="color:#4ade80; font-weight:600; margin-bottom: 6px;">互联网路由</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">增加网络带宽有时会降低整体吞吐量。自私路由协议下，每个数据包选择最短路径，导致热门链路过载。</div>
+        </div>
+        <div style="text-align:center; padding: 15px;">
+          <div style="font-size: 28px; margin-bottom: 8px;"><i class="ti ti-briefcase" style="color:#60a5fa"></i></div>
+          <div style="color:#60a5fa; font-weight:600; margin-bottom: 6px;">加班与内卷</div>
+          <div style="font-size:13px; color:rgba(255,255,255,0.5); line-height:1.6;">「加班」就是那条捷径。一个人加班能获得优势，但当所有人都加班时，优势消失，只剩下疲惫。纳什均衡 ≠ 社会最优。</div>
+        </div>
+      </div>
+    </div>
+    <div class="insight-box">
+      <strong>一句话总结：</strong>布雷斯悖论告诉我们，在竞争系统中，给个体更多选择不一定让整体更好。每个人的「最优选择」叠加起来，可能是所有人的「最差结果」。<br><br>
+      这就是为什么我们需要红绿灯、交通管制、劳动法——不是限制自由，而是防止纳什均衡把所有人拖入深渊。
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<script>
+// ========== 网络图绘制 ==========
+function drawNetwork(canvasId, hasShortcut, result) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // 节点位置
+  const nodes = {
+    S: { x: 40, y: H/2 },
+    A: { x: W/2, y: 35 },
+    B: { x: W/2, y: H - 35 },
+    E: { x: W - 40, y: H/2 }
+  };
+
+  // 画边
+  function drawEdge(from, to, label, flow, color, dashed) {
+    const f = nodes[from], t = nodes[to];
+    ctx.beginPath();
+    ctx.strokeStyle = color || 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = flow ? Math.max(1.5, Math.min(6, flow / 800)) : 1.5;
+    if (dashed) ctx.setLineDash([6, 4]);
+    else ctx.setLineDash([]);
+    ctx.moveTo(f.x, f.y);
+    ctx.lineTo(t.x, t.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 箭头
+    const angle = Math.atan2(t.y - f.y, t.x - f.x);
+    const arrowLen = 8;
+    const ax = t.x - 18 * Math.cos(angle);
+    const ay = t.y - 18 * Math.sin(angle);
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - arrowLen * Math.cos(angle - 0.4), ay - arrowLen * Math.sin(angle - 0.4));
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - arrowLen * Math.cos(angle + 0.4), ay - arrowLen * Math.sin(angle + 0.4));
+    ctx.strokeStyle = color || 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 标签
+    const mx = (f.x + t.x) / 2, my = (f.y + t.y) / 2;
+    const offsetX = (to === 'B' && from === 'A') ? 12 : (from === 'S' && to === 'A') ? -8 : (from === 'B' && to === 'E') ? 8 : -8;
+    const offsetY = (to === 'B' && from === 'A') ? 0 : (from === 'S' && to === 'B') ? 8 : (from === 'A' && to === 'E') ? -8 : 0;
+    ctx.font = '11px PingFang SC, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, mx + offsetX, my + offsetY);
+
+    // 流量
+    if (flow !== undefined && flow > 0) {
+      ctx.font = 'bold 10px PingFang SC, sans-serif';
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText(flow + '辆', mx + offsetX, my + offsetY + 14);
+    }
+  }
+
+  // 获取流量数据
+  var ec = result ? result.edgeCars : {};
+
+  // 画边
+  drawEdge('S', 'A', 'T/100', ec['S-A'], '#60a5fa');
+  drawEdge('A', 'E', '45min', ec['A-E'], '#a855f7');
+  drawEdge('S', 'B', '45min', ec['S-B'], '#a855f7');
+  drawEdge('B', 'E', 'T/100', ec['B-E'], '#60a5fa');
+  if (hasShortcut) {
+    drawEdge('A', 'B', '0min', ec['A-B'], '#f87171', false);
+  }
+
+  // 画节点
+  Object.entries(nodes).forEach(function(entry) {
+    var name = entry[0], pos = entry[1];
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 16, 0, Math.PI * 2);
+    ctx.fillStyle = (name === 'S' || name === 'E') ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.08)';
+    ctx.fill();
+    ctx.strokeStyle = (name === 'S' || name === 'E') ? '#fbbf24' : 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = 'bold 14px PingFang SC, sans-serif';
+    ctx.fillStyle = (name === 'S' || name === 'E') ? '#fbbf24' : '#e4e4e4';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, pos.x, pos.y);
+  });
+}
+
+// 初始绘制
+window.addEventListener('DOMContentLoaded', function() {
+  drawNetwork('networkWithout', false);
+  drawNetwork('networkWith', true);
+});
+
+// ========== 一键对比 ==========
+function runComparison() {
+  var totalCars = parseInt(document.getElementById('cars-slider').value);
+  var result = compareBraess(totalCars);
+
+  document.getElementById('compare-result').classList.remove('hidden');
+  document.getElementById('cmp-without').textContent = result.without.avgDelay.toFixed(1) + '分钟';
+  document.getElementById('cmp-with').textContent = result.with.avgDelay.toFixed(1) + '分钟';
+  document.getElementById('cmp-delta').textContent = '+' + result.paradoxDelta.toFixed(1) + '分钟';
+  document.getElementById('cmp-optimal').textContent = result.optWithout.avgDelay.toFixed(1) + '分钟';
+
+  // 更新网络图
+  drawNetwork('networkWithout', false, result.without);
+  drawNetwork('networkWith', true, result.with);
+
+  // 流量分布条
+  var flowHtml = '<div style="margin-top:15px;">';
+  result.without.paths.forEach(function(p) {
+    var flow = result.without.pathFlows[p.id];
+    var pct = (flow / totalCars * 100).toFixed(0);
+    flowHtml += '<div class="compare-bar"><div class="bar-label">' + p.label + '</div>';
+    flowHtml += '<div class="bar-track"><div class="bar-fill green" style="width:' + pct + '%">' + flow + '</div></div></div>';
+  });
+  flowHtml += '<div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.3);margin:8px 0;">▲ 无捷径 &nbsp;&nbsp; ▼ 有捷径</div>';
+  result.with.paths.forEach(function(p) {
+    var flow = result.with.pathFlows[p.id];
+    var pct = (flow / totalCars * 100).toFixed(0);
+    flowHtml += '<div class="compare-bar"><div class="bar-label">' + p.label + '</div>';
+    flowHtml += '<div class="bar-track"><div class="bar-fill red" style="width:' + pct + '%">' + flow + '</div></div></div>';
+  });
+  flowHtml += '</div>';
+  document.getElementById('flow-bars').innerHTML = flowHtml;
+
+  // 洞察
+  var insightEl = document.getElementById('cmp-insight');
+  if (result.paradoxDelta > 0) {
+    insightEl.innerHTML = '<strong>悖论出现了。</strong>' + totalCars + ' 辆车的情况下，加了捷径后每个人多花 <strong style="color:#f87171">' +
+      result.paradoxDelta.toFixed(1) + ' 分钟</strong>。<br><br>' +
+      '原因：所有人都涌向「看起来更快」的捷径 S→A→B→E，导致 S→A 和 B→E 两段拥堵路段车辆翻倍。' +
+      '每个人都在做「对自己最优」的选择，但合起来却是最差的结果。<br><br>' +
+      '<strong>纳什均衡 ≠ 社会最优。</strong>这就是博弈论最深刻的教训。';
+  } else {
+    insightEl.innerHTML = '<strong>车辆较少时，捷径确实有帮助。</strong>加了捷径后每人节省 <strong style="color:#4ade80">' +
+      Math.abs(result.paradoxDelta).toFixed(1) + ' 分钟</strong>。<br><br>' +
+      '试试把车辆数调到 4000 以上，悖论就会出现。';
+  }
+}
+
+// ========== 车辆数范围模拟 ==========
+var rangeChart = null;
+
+function runRangeSimulation() {
+  var data = simulateCarRange(500, 8000, 250);
+
+  document.getElementById('range-result').classList.remove('hidden');
+
+  if (rangeChart) rangeChart.destroy();
+  rangeChart = new Chart(document.getElementById('rangeChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: data.carCounts,
+      datasets: [
+        {
+          label: '无捷径',
+          data: data.withoutDelays,
+          borderColor: '#4ade80',
+          backgroundColor: 'rgba(74,222,128,0.1)',
+          fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2
+        },
+        {
+          label: '有捷径',
+          data: data.withDelays,
+          borderColor: '#f87171',
+          backgroundColor: 'rgba(248,113,113,0.1)',
+          fill: false, tension: 0.3, pointRadius: 2, borderWidth: 2
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } },
+        annotation: undefined
+      },
+      scales: {
+        x: {
+          title: { display: true, text: '车辆数', color: 'rgba(255,255,255,0.4)' },
+          ticks: { color: 'rgba(255,255,255,0.4)', maxTicksLimit: 10 },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          title: { display: true, text: '平均通勤时间（分钟）', color: 'rgba(255,255,255,0.4)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+
+  // 找交叉点
+  var crossIdx = -1;
+  for (var i = 1; i < data.deltas.length; i++) {
+    if (data.deltas[i - 1] < 0 && data.deltas[i] >= 0) {
+      crossIdx = i;
+      break;
+    }
+  }
+
+  var insightEl = document.getElementById('range-insight');
+  if (crossIdx >= 0) {
+    insightEl.innerHTML = '<strong>临界点约在 ' + data.carCounts[crossIdx] + ' 辆车附近。</strong><br>' +
+      '车辆少于此值时，捷径确实有帮助（绿线在红线上方）。<br>' +
+      '超过此值后，红线反超绿线——悖论出现，捷径反而让所有人更慢。<br><br>' +
+      '这解释了为什么小城市修路有效，大城市修路可能适得其反。';
+  } else {
+    insightEl.innerHTML = '<strong>在整个范围内，两条曲线的关系清晰可见。</strong>';
+  }
+}
+
+// ========== 交互式实验室 ==========
+function runInteractive() {
+  var shortcutDelay = parseInt(document.getElementById('shortcut-slider').value);
+  var totalCars = parseInt(document.getElementById('lab-cars-slider').value);
+
+  // 无捷径
+  var networkWithout = {
+    totalCars: totalCars,
+    edges: {
+      'S-A': { type: 'linear', param: 1/100 },
+      'S-B': { type: 'fixed', param: 45 },
+      'A-E': { type: 'fixed', param: 45 },
+      'B-E': { type: 'linear', param: 1/100 },
+      'A-B': { type: 'fixed', param: 0, enabled: false }
+    }
+  };
+
+  // 有捷径（自定义延迟）
+  var networkWith = {
+    totalCars: totalCars,
+    edges: {
+      'S-A': { type: 'linear', param: 1/100 },
+      'S-B': { type: 'fixed', param: 45 },
+      'A-E': { type: 'fixed', param: 45 },
+      'B-E': { type: 'linear', param: 1/100 },
+      'A-B': { type: 'fixed', param: shortcutDelay, enabled: true }
+    }
+  };
+
+  var rWithout = solveNashEquilibrium(networkWithout);
+  var rWith = solveNashEquilibrium(networkWith);
+  var delta = rWith.avgDelay - rWithout.avgDelay;
+
+  document.getElementById('lab-without').textContent = rWithout.avgDelay.toFixed(1) + '分';
+  document.getElementById('lab-with').textContent = rWith.avgDelay.toFixed(1) + '分';
+  document.getElementById('lab-delta').textContent = (delta >= 0 ? '+' : '') + delta.toFixed(1) + '分';
+  document.getElementById('lab-shortcut-flow').textContent = (rWith.pathFlows['S-A-B-E'] || 0);
+
+  // 颜色
+  var withItem = document.getElementById('lab-with-item');
+  var deltaItem = document.getElementById('lab-delta-item');
+  document.getElementById('lab-with').style.color = delta > 0 ? '#f87171' : '#4ade80';
+  document.getElementById('lab-delta').style.color = delta > 0 ? '#f87171' : '#4ade80';
+
+  var insightEl = document.getElementById('lab-insight');
+  if (delta > 0) {
+    insightEl.innerHTML = '<strong style="color:#f87171">悖论出现。</strong>捷径延迟 ' + shortcutDelay +
+      ' 分钟时，' + (rWith.pathFlows['S-A-B-E'] || 0) + ' 辆车走捷径，导致所有人多花 ' + delta.toFixed(1) + ' 分钟。' +
+      '<br>试试增大捷径延迟，看看悖论什么时候消失。';
+  } else if (delta < -0.5) {
+    insightEl.innerHTML = '<strong style="color:#4ade80">捷径有帮助。</strong>延迟 ' + shortcutDelay +
+      ' 分钟的捷径让通勤时间减少了 ' + Math.abs(delta).toFixed(1) + ' 分钟。' +
+      '<br>试试减小捷径延迟到 0，看看悖论什么时候出现。';
+  } else {
+    insightEl.innerHTML = '<strong>临界状态。</strong>捷径延迟 ' + shortcutDelay + ' 分钟时，加不加路几乎没区别。';
+  }
+}
+
+// ========== 内卷模型 ==========
+var invChart = null;
+
+function runInvolution() {
+  var result = simulateInvolution(100, 50);
+  document.getElementById('involution-result').classList.remove('hidden');
+
+  // 画人物网格（最终状态）
+  var gridEl = document.getElementById('involution-grid');
+  var gridHtml = '';
+  var nOvertime = Math.round(result.finalState.overtimeRate);
+  for (var i = 0; i < 100; i++) {
+    var isOvertime = i < nOvertime;
+    gridHtml += '<div class="person-dot ' + (isOvertime ? 'overtime' : 'normal') + '">' +
+      '<i class="ti ti-' + (isOvertime ? 'flame' : 'mood-smile') + '" style="font-size:14px;color:' +
+      (isOvertime ? 'rgba(248,113,113,0.8)' : 'rgba(74,222,128,0.6)') + '"></i></div>';
+  }
+  gridEl.innerHTML = gridHtml;
+
+  // 动画：逐步显示内卷过程
+  animateInvolutionGrid(result.history);
+
+  document.getElementById('inv-final-payoff').textContent = result.finalState.avgPayoff;
+  document.getElementById('inv-loss').textContent = (100 - result.finalState.avgPayoff).toFixed(0);
+  document.getElementById('inv-rounds').textContent = result.history.findIndex(function(h) { return h.overtimeRate >= 100; }) + 1 || '50+';
+
+  // 图表
+  if (invChart) invChart.destroy();
+  invChart = new Chart(document.getElementById('involutionChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: result.history.map(function(h) { return h.round; }),
+      datasets: [
+        {
+          label: '加班者收益',
+          data: result.history.map(function(h) { return h.overtimePayoff; }),
+          borderColor: '#f87171', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0
+        },
+        {
+          label: '正常下班者收益',
+          data: result.history.map(function(h) { return h.normalPayoff; }),
+          borderColor: '#4ade80', borderWidth: 2, fill: false, tension: 0.3, pointRadius: 0
+        },
+        {
+          label: '平均收益',
+          data: result.history.map(function(h) { return h.avgPayoff; }),
+          borderColor: '#fbbf24', borderWidth: 2, borderDash: [5, 3], fill: false, tension: 0.3, pointRadius: 0
+        },
+        {
+          label: '加班率 %',
+          data: result.history.map(function(h) { return h.overtimeRate; }),
+          borderColor: '#a855f7', borderWidth: 1.5, fill: false, tension: 0.3, pointRadius: 0,
+          yAxisID: 'y1'
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 11 } } } },
+      scales: {
+        x: {
+          title: { display: true, text: '轮次', color: 'rgba(255,255,255,0.4)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          title: { display: true, text: '收益', color: 'rgba(255,255,255,0.4)' },
+          ticks: { color: 'rgba(255,255,255,0.4)' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          min: 0
+        },
+        y1: {
+          position: 'right',
+          title: { display: true, text: '加班率 %', color: 'rgba(255,255,255,0.4)' },
+          ticks: { color: 'rgba(168,85,247,0.6)' },
+          grid: { display: false },
+          min: 0, max: 100
+        }
+      }
+    }
+  });
+
+  document.getElementById('inv-insight').innerHTML =
+    '<strong>内卷的纳什均衡：</strong>每个人都「理性地」选择加班（因为不加班会被淘汰），最终所有人都加班，' +
+    '但平均收益从 <strong style="color:#4ade80">100</strong> 降到了 <strong style="color:#f87171">' +
+    result.finalState.avgPayoff + '</strong>。<br><br>' +
+    '这和布雷斯悖论完全同构：加班 = 那条捷径，每个人走捷径是理性的，但所有人走捷径后所有人都更慢。<br><br>' +
+    '<strong>解法也一样：</strong>需要外部规则（劳动法、加班限制）来阻止纳什均衡，把系统推向社会最优。';
+}
+
+// 内卷网格动画
+function animateInvolutionGrid(history) {
+  var gridEl = document.getElementById('involution-grid');
+  var step = 0;
+
+  function animate() {
+    if (step >= history.length) return;
+    var nOvertime = Math.round(history[step].overtimeRate);
+    var dots = gridEl.querySelectorAll('.person-dot');
+    dots.forEach(function(dot, i) {
+      var isOvertime = i < nOvertime;
+      dot.className = 'person-dot ' + (isOvertime ? 'overtime' : 'normal');
+      dot.innerHTML = '<i class="ti ti-' + (isOvertime ? 'flame' : 'mood-smile') +
+        '" style="font-size:14px;color:' + (isOvertime ? 'rgba(248,113,113,0.8)' : 'rgba(74,222,128,0.6)') + '"></i>';
+    });
+    step++;
+    setTimeout(animate, 100);
+  }
+  animate();
+}
+</script>
+</body>
+</html>

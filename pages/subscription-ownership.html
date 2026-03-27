@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>订阅时代的拥有感测试 - 为什么什么都能订阅，你却越来越不像在拥有？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./subscription-ownership-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 45%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px 60px;
+    }
+    .container { max-width: 1180px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 36px; }
+    .header h1 {
+      font-size: 2.35rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fde68a, #fbbf24);
+      background-size: 220% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 4s ease infinite;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .header p {
+      color: rgba(255,255,255,0.58);
+      margin-top: 12px;
+      font-size: 15px;
+      line-height: 1.8;
+      max-width: 860px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+    }
+    .card-title {
+      color: #fbbf24;
+      font-size: 16px;
+      margin-bottom: 18px;
+      padding-left: 10px;
+      border-left: 3px solid #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+    }
+    .card-desc {
+      color: rgba(255,255,255,0.55);
+      font-size: 13px;
+      line-height: 1.7;
+      margin-bottom: 18px;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .result-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 14px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .result-item .label {
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .result-item .value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #fbbf24;
+    }
+    .result-item .sub {
+      margin-top: 8px;
+      color: rgba(255,255,255,0.45);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .result-item.red .value { color: #f87171; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.blue .value { color: #60a5fa; }
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    .btn {
+      padding: 11px 24px;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: #1a1a2e;
+    }
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(251,191,36,0.3);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08);
+      color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.25);
+    }
+    .btn-secondary:hover {
+      background: rgba(251,191,36,0.1);
+      box-shadow: none;
+    }
+    .cat-filter {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .cat-tag {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.56);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .cat-tag.active, .cat-tag:hover {
+      color: #fbbf24;
+      border-color: rgba(251,191,36,0.4);
+      background: rgba(251,191,36,0.1);
+    }
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+    .preset-chip {
+      padding: 14px 14px 12px;
+      border-radius: 14px;
+      background: rgba(0,0,0,0.18);
+      border: 1px solid rgba(255,255,255,0.07);
+      cursor: pointer;
+      transition: all 0.2s;
+      min-height: 108px;
+    }
+    .preset-chip:hover {
+      transform: translateY(-1px);
+      border-color: rgba(251,191,36,0.28);
+      background: rgba(251,191,36,0.08);
+    }
+    .preset-chip.selected {
+      border-color: rgba(251,191,36,0.52);
+      background: rgba(251,191,36,0.14);
+      box-shadow: 0 8px 24px rgba(251,191,36,0.08);
+    }
+    .preset-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .preset-name {
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .preset-price {
+      font-size: 12px;
+      color: #fbbf24;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+    .preset-meta {
+      font-size: 12px;
+      color: rgba(255,255,255,0.46);
+      line-height: 1.6;
+    }
+    .selected-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .selected-item {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.18);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .selected-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .selected-name {
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .selected-meta {
+      margin-top: 6px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.48);
+      line-height: 1.6;
+    }
+    .selected-price {
+      text-align: right;
+      min-width: 95px;
+    }
+    .selected-price .main {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fbbf24;
+    }
+    .selected-price .sub {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      margin-top: 4px;
+    }
+    .selected-controls {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(120px, 160px)) auto;
+      gap: 12px;
+      align-items: center;
+    }
+    .control-box {
+      background: rgba(255,255,255,0.04);
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 74px;
+    }
+    .control-box .mini-label {
+      color: rgba(255,255,255,0.46);
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+    .control-box .mini-value {
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .control-box input[type=range] {
+      width: 100%;
+      margin-top: 8px;
+      accent-color: #fbbf24;
+    }
+    .remove-btn {
+      align-self: stretch;
+      border: 1px solid rgba(248,113,113,0.32);
+      background: rgba(248,113,113,0.1);
+      color: #f87171;
+      border-radius: 12px;
+      cursor: pointer;
+      padding: 0 16px;
+      font-weight: 700;
+    }
+    .empty-state {
+      text-align: center;
+      color: rgba(255,255,255,0.36);
+      padding: 34px 10px;
+      font-size: 14px;
+    }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.11), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.18);
+      border-radius: 14px;
+      padding: 18px;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.74);
+      font-size: 14px;
+    }
+    .insight-box strong { color: #fbbf24; }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 18px;
+    }
+    .chart-box {
+      position: relative;
+      height: 320px;
+      background: rgba(0,0,0,0.15);
+      border-radius: 16px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .break-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .break-item {
+      background: rgba(0,0,0,0.16);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .break-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .break-row .name {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .break-row .months {
+      color: #fbbf24;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .break-track {
+      height: 10px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.08);
+    }
+    .break-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #60a5fa, #fbbf24);
+    }
+    .break-meta {
+      margin-top: 10px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.46);
+      line-height: 1.6;
+    }
+    .scenario-tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .scenario-tab {
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05);
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .scenario-tab.active, .scenario-tab:hover {
+      color: #fbbf24;
+      border-color: rgba(251,191,36,0.4);
+      background: rgba(251,191,36,0.1);
+    }
+    .impact-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .impact-item {
+      background: rgba(0,0,0,0.15);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .impact-item .name {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .impact-item .severity {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      margin-bottom: 8px;
+      background: rgba(248,113,113,0.14);
+      color: #fca5a5;
+    }
+    .impact-item .text {
+      font-size: 12px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.54);
+    }
+    .summary-copy {
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+      margin-top: 10px;
+      min-height: 18px;
+    }
+    @media (max-width: 900px) {
+      .two-col { grid-template-columns: 1fr; }
+      .selected-controls { grid-template-columns: 1fr; }
+      .remove-btn { padding: 12px 16px; }
+    }
+    @media (max-width: 640px) {
+      .header h1 { font-size: 1.8rem; }
+      .result-grid { grid-template-columns: repeat(2, 1fr); }
+      .preset-grid { grid-template-columns: repeat(2, 1fr); }
+      .selected-top { flex-direction: column; }
+      .selected-price { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-lock-access"></i> 订阅时代的拥有感测试</h1>
+      <p>每月扣 15 元、25 元、68 元时，你买到的往往不是资产，而是一段可被撤回的访问权限。把你的数字生活摆上桌面，看看长期成本、控制权和停订冲击会怎么变化。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-layout-grid-add"></i> 搭建你的订阅组合</div>
+      <div class="card-desc">先勾选你常见的订阅，再调整每项服务对你生活或工作的依赖度。这个页面不判断订阅好坏，只回答一个问题：你买到的到底更像资产，还是更像随时续费的许可。</div>
+      <div class="cat-filter" id="categoryFilter"></div>
+      <div class="preset-grid" id="presetGrid"></div>
+      <div class="btn-row">
+        <button class="btn" onclick="loadExample()"><i class="ti ti-sparkles"></i> 加载示例组合</button>
+        <button class="btn btn-secondary" onclick="clearAll()"><i class="ti ti-trash"></i> 清空</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-list-details"></i> 我的数字生活</div>
+      <div class="card-desc">依赖度越高，意味着一旦停订，这项服务对你的工作流、资料、内容访问或日常节奏打击越大。</div>
+      <div class="selected-list" id="selectedList"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-chart-dots-3"></i> 拥有感总览</div>
+      <div class="result-grid" id="summaryGrid"></div>
+      <div class="insight-box" id="summaryInsight"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="copySummary()"><i class="ti ti-copy"></i> 复制诊断摘要</button>
+      </div>
+      <div class="summary-copy" id="copyStatus"></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-chart-line"></i> 长期成本曲线</div>
+        <div class="card-desc">蓝线是你当前组合继续订阅的总成本；金线只统计那些存在买断替代的项目，用来回答一个问题：很多“月付不贵”的服务，几年后到底会不会比买断更贵。</div>
+        <div class="chart-box"><canvas id="costChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-shield-lock"></i> 拥有感拆解</div>
+        <div class="card-desc">拥有感不是玄学，它大致等于四件事：控制权、可迁移性、连续性和价格稳定性。</div>
+        <div class="chart-box"><canvas id="ownershipChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-hourglass"></i> 买断回本线</div>
+      <div class="card-desc">不是所有订阅都适合买断，但凡是存在一次性替代方案的服务，都值得问一句：我要付几个月，才会比买断更贵？</div>
+      <div class="break-list" id="breakEvenList"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-alert-triangle"></i> 断供演习</div>
+      <div class="card-desc">点几个情景按钮，看看“我拥有很多服务”和“我真正掌握很多东西”之间，到底隔了多远。</div>
+      <div class="scenario-tabs">
+        <div class="scenario-tab active" data-mode="cancel" onclick="setScenario('cancel')">全部停订</div>
+        <div class="scenario-tab" data-mode="price" onclick="setScenario('price')">整体涨价 20%</div>
+        <div class="scenario-tab" data-mode="content" onclick="setScenario('content')">片库/内容下架</div>
+      </div>
+      <div class="result-grid" id="scenarioSummary"></div>
+      <div class="insight-box" id="scenarioInsight"></div>
+      <div class="impact-list" id="scenarioDetails"></div>
+    </div>
+  </div>
+
+  <script>
+    const SOL = SubscriptionOwnershipLogic;
+    let selectedServices = [];
+    let activeCategory = 'all';
+    let activeScenario = 'cancel';
+    let costChart = null;
+    let ownershipChart = null;
+
+    function formatMoney(value) {
+      const amount = Number(value || 0);
+      if (Math.abs(amount - Math.round(amount)) < 0.001) {
+        return '¥' + Math.round(amount);
+      }
+      return '¥' + amount.toFixed(1);
+    }
+
+    function formatMonths(months) {
+      return months ? months + ' 个月' : '无买断';
+    }
+
+    function isSelected(id) {
+      return selectedServices.some(function (service) {
+        return service.id === id;
+      });
+    }
+
+    function renderCategoryFilter() {
+      const container = document.getElementById('categoryFilter');
+      let html = '<div class="cat-tag ' + (activeCategory === 'all' ? 'active' : '') + '" onclick="setCategory(\'all\')">全部</div>';
+      Object.keys(SOL.CATEGORIES).forEach(function (key) {
+        html += '<div class="cat-tag ' + (activeCategory === key ? 'active' : '') + '" onclick="setCategory(\'' + key + '\')">' + SOL.CATEGORIES[key] + '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    function renderPresetGrid() {
+      const grid = document.getElementById('presetGrid');
+      const services = SOL.PRESET_SERVICES.filter(function (service) {
+        return activeCategory === 'all' || service.category === activeCategory;
+      });
+      grid.innerHTML = services.map(function (service) {
+        const selected = isSelected(service.id) ? 'selected' : '';
+        return '<div class="preset-chip ' + selected + '" onclick="toggleService(\'' + service.id + '\')">' +
+          '<div class="preset-top">' +
+            '<div class="preset-name"><i class="ti ' + service.icon + '"></i>' + service.name + '</div>' +
+            '<div class="preset-price">' + formatMoney(service.monthlyPrice) + '/月</div>' +
+          '</div>' +
+          '<div class="preset-meta">类别：' + SOL.CATEGORIES[service.category] + '<br>替代：' + service.alternativeName + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderSelectedList() {
+      const container = document.getElementById('selectedList');
+      if (!selectedServices.length) {
+        container.innerHTML = '<div class="empty-state">先从上面选几个订阅。这个 demo 最有意思的时刻，通常发生在你点下“全部停订”之后。</div>';
+        return;
+      }
+
+      const analysis = SOL.analyzePortfolio(selectedServices, 5);
+      const scoreMap = {};
+      analysis.detailedServices.forEach(function (item) {
+        scoreMap[item.id] = item;
+      });
+
+      container.innerHTML = selectedServices.map(function (service) {
+        const evaluated = scoreMap[service.id];
+        return '<div class="selected-item">' +
+          '<div class="selected-top">' +
+            '<div>' +
+              '<div class="selected-name"><i class="ti ' + service.icon + '"></i>' + service.name + '</div>' +
+              '<div class="selected-meta">' + service.capability + '<br>' + service.alternativeName + '</div>' +
+            '</div>' +
+            '<div class="selected-price">' +
+              '<div class="main">' + formatMoney(service.monthlyPrice) + '</div>' +
+              '<div class="sub">买断线：' + formatMonths(evaluated.breakEvenMonths) + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="selected-controls">' +
+            '<div class="control-box">' +
+              '<div class="mini-label">依赖度 ' + service.dependency + '/5</div>' +
+              '<div class="mini-value">' + (service.dependency >= 4 ? '离开会明显卡顿' : service.dependency === 3 ? '停掉会不舒服' : '更多是可选加成') + '</div>' +
+              '<input type="range" min="1" max="5" value="' + service.dependency + '" oninput="setDependency(\'' + service.id + '\', this.value)">' +
+            '</div>' +
+            '<div class="control-box">' +
+              '<div class="mini-label">拥有感得分</div>' +
+              '<div class="mini-value">' + evaluated.ownershipScore + ' / 100</div>' +
+            '</div>' +
+            '<div class="control-box">' +
+              '<div class="mini-label">停订后失去</div>' +
+              '<div class="mini-value">' + service.cancelLoss.replace('停订后，', '').replace('停订后', '') + '</div>' +
+            '</div>' +
+            '<button class="remove-btn" onclick="removeService(\'' + service.id + '\')"><i class="ti ti-x"></i> 移除</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function buildSummaryInsight(analysis) {
+      if (!analysis.selectedCount) {
+        return '<strong>先选几个订阅。</strong> 你会看到：问题往往不在于某个服务特别贵，而在于越来越多核心功能都变成了“按月续命”的入口。';
+      }
+
+      const weak = analysis.vulnerabilityList[0];
+      const buyoutGap = analysis.comparableCount > 0
+        ? analysis.comparableSubscriptionCost - analysis.totalBuyout
+        : 0;
+
+      let text = '<strong>你的拥有感是 ' + analysis.ownershipScore + ' 分，属于「' + SOL.scoreLabel(analysis.ownershipScore) + '」。</strong>';
+
+      if (weak) {
+        text += ' 当前最脆弱的环节是 <strong>' + weak.name + '</strong>，它既贵又容易形成依赖，一旦停止续费，损失会马上显形。';
+      } else {
+        text += ' 你当前组合里，真正危险的订阅并不多，控制权主要还是掌握在自己手里。';
+      }
+
+      if (analysis.comparableCount > 0) {
+        if (buyoutGap > 0) {
+          text += ' 对于那 ' + analysis.comparableCount + ' 个存在买断替代的项目，按 5 年看，你继续订阅要比一次性替代多花 <strong>' + formatMoney(buyoutGap) + '</strong>。';
+        } else {
+          text += ' 你选择的这些可买断项目，短期内继续订阅还不算吃亏，但长期要继续盯着。';
+        }
+      }
+
+      text += ' 真正让人没有拥有感的，不是账单本身，而是你已经把内容、数据、工作流和习惯都绑定在续费状态上。';
+      return text;
+    }
+
+    function renderSummary(analysis) {
+      const container = document.getElementById('summaryGrid');
+      container.innerHTML = [
+        { label: '月付总额', value: formatMoney(analysis.totalMonthly), sub: '看起来都不贵，所以最容易失去警觉', cls: '' },
+        { label: '年付总额', value: formatMoney(analysis.totalAnnual), sub: '把每月自动扣款摊平后，体感会变钝', cls: 'blue' },
+        { label: '5 年花费', value: formatMoney(analysis.totalHorizon), sub: '很多服务不贵，但很耐久', cls: 'red' },
+        { label: '可买断替代', value: formatMoney(analysis.totalBuyout), sub: analysis.comparableCount ? '仅统计存在一次性替代的项目' : '当前没有可比较项目', cls: 'green' },
+        { label: '拥有感指数', value: analysis.ownershipScore, sub: '控制权 + 连续性 + 可迁移性 + 价格稳定性', cls: '' },
+        { label: '脆弱订阅数', value: analysis.vulnerableCount, sub: '得分低于 55 的项目越多，断供越难受', cls: 'red' }
+      ].map(function (item) {
+        return '<div class="result-item ' + item.cls + '">' +
+          '<div class="label">' + item.label + '</div>' +
+          '<div class="value">' + item.value + '</div>' +
+          '<div class="sub">' + item.sub + '</div>' +
+        '</div>';
+      }).join('');
+      document.getElementById('summaryInsight').innerHTML = buildSummaryInsight(analysis);
+    }
+
+    function renderCostChart() {
+      const ctx = document.getElementById('costChart');
+      if (costChart) {
+        costChart.destroy();
+      }
+
+      const curve = SOL.costCurve(selectedServices, 5);
+      costChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: curve.labels,
+          datasets: [
+            {
+              label: '当前组合继续订阅',
+              data: curve.subscription,
+              borderColor: '#60a5fa',
+              backgroundColor: 'rgba(96,165,250,0.12)',
+              tension: 0.25,
+              fill: true
+            },
+            {
+              label: '可买断项目的一次性替代',
+              data: curve.comparableBuyout,
+              borderColor: '#fbbf24',
+              backgroundColor: 'rgba(251,191,36,0.08)',
+              tension: 0.1,
+              fill: false
+            },
+            {
+              label: '可买断项目继续订阅',
+              data: curve.comparableSubscription,
+              borderColor: '#f87171',
+              backgroundColor: 'rgba(248,113,113,0.06)',
+              tension: 0.2,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: 'rgba(255,255,255,0.75)' }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: 'rgba(255,255,255,0.55)' },
+              grid: { color: 'rgba(255,255,255,0.06)' }
+            },
+            y: {
+              ticks: {
+                color: 'rgba(255,255,255,0.55)',
+                callback: function (value) { return '¥' + value; }
+              },
+              grid: { color: 'rgba(255,255,255,0.06)' }
+            }
+          }
+        }
+      });
+    }
+
+    function renderOwnershipChart(analysis) {
+      const ctx = document.getElementById('ownershipChart');
+      if (ownershipChart) {
+        ownershipChart.destroy();
+      }
+
+      ownershipChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['控制权', '可迁移性', '连续性', '价格稳定性'],
+          datasets: [{
+            label: '当前组合',
+            data: [
+              analysis.ownership.control,
+              analysis.ownership.portability,
+              analysis.ownership.continuity,
+              analysis.ownership.pricing
+            ],
+            borderColor: '#fbbf24',
+            backgroundColor: 'rgba(251,191,36,0.18)',
+            pointBackgroundColor: '#fbbf24',
+            pointBorderColor: '#1a1a2e'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: 'rgba(255,255,255,0.75)' }
+            }
+          },
+          scales: {
+            r: {
+              min: 0,
+              max: 100,
+              angleLines: { color: 'rgba(255,255,255,0.08)' },
+              grid: { color: 'rgba(255,255,255,0.08)' },
+              pointLabels: { color: 'rgba(255,255,255,0.72)' },
+              ticks: {
+                color: 'rgba(255,255,255,0.42)',
+                backdropColor: 'transparent',
+                stepSize: 20
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderBreakEven(analysis) {
+      const container = document.getElementById('breakEvenList');
+      if (!analysis.breakEvenList.length) {
+        container.innerHTML = '<div class="empty-state">你选的这些服务大多没有真正可比的买断方案。这本身就是订阅时代的特征：你很难通过一次性付款获得稳定控制权。</div>';
+        return;
+      }
+
+      const maxMonths = analysis.breakEvenList[analysis.breakEvenList.length - 1].breakEvenMonths || 1;
+      container.innerHTML = analysis.breakEvenList.map(function (service) {
+        const width = Math.max(8, Math.round(service.breakEvenMonths / maxMonths * 100));
+        return '<div class="break-item">' +
+          '<div class="break-row">' +
+            '<div class="name">' + service.name + '</div>' +
+            '<div class="months">约 ' + service.breakEvenMonths + ' 个月回本</div>' +
+          '</div>' +
+          '<div class="break-track"><div class="break-fill" style="width:' + width + '%"></div></div>' +
+          '<div class="break-meta">月费 ' + formatMoney(service.monthlyPrice) + '，近似买断线 ' + formatMoney(service.buyoutPrice) + '。如果你会长期使用，它就不再只是便宜，而是会变成慢慢攀升的长期承诺。</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderScenario() {
+      const summary = document.getElementById('scenarioSummary');
+      const insight = document.getElementById('scenarioInsight');
+      const details = document.getElementById('scenarioDetails');
+
+      if (!selectedServices.length) {
+        summary.innerHTML = '<div class="result-item"><div class="label">提示</div><div class="value">0</div><div class="sub">先选服务再做演习</div></div>';
+        insight.innerHTML = '<strong>断供演习还没开始。</strong> 先搭一个真实一点的组合，再点一次情景按钮，冲击感会明显很多。';
+        details.innerHTML = '';
+        return;
+      }
+
+      if (activeScenario === 'cancel') {
+        const result = SOL.cancelAllScenario(selectedServices);
+        summary.innerHTML = [
+          { label: '受影响服务', value: result.serviceCount, sub: '你依赖的入口总数' },
+          { label: '高冲击项', value: result.severeCount, sub: '依赖度 4 或 5 的服务' },
+          { label: '断供冲击分', value: result.lossScore, sub: '分数越高，越像突然抽走地基' }
+        ].map(function (item) {
+          return '<div class="result-item red"><div class="label">' + item.label + '</div><div class="value">' + item.value + '</div><div class="sub">' + item.sub + '</div></div>';
+        }).join('');
+        insight.innerHTML = '<strong>全部停订的可怕之处，不是你少了几个 App。</strong> 真正被抽走的是连续性：你熟悉的内容入口、数据同步、工作节奏和习惯提醒会一起失效。';
+        details.innerHTML = result.impacts.map(function (item) {
+          return '<div class="impact-item"><div class="name">' + item.name + '</div><div class="severity">冲击 ' + item.severity + '</div><div class="text">' + item.message + '</div></div>';
+        }).join('');
+      } else if (activeScenario === 'price') {
+        const result = SOL.priceShockScenario(selectedServices, 0.2);
+        summary.innerHTML = [
+          { label: '每月新增', value: formatMoney(result.extraMonthly), sub: '很多人就是在这里开始麻木' },
+          { label: '每年新增', value: formatMoney(result.extraAnnual), sub: '涨价不会一次掏空你，但会持续改变结构' },
+          { label: '5 年新增', value: formatMoney(result.extraFiveYear), sub: '小涨价叠加时间，就是新的长期税' }
+        ].map(function (item) {
+          return '<div class="result-item blue"><div class="label">' + item.label + '</div><div class="value">' + item.value + '</div><div class="sub">' + item.sub + '</div></div>';
+        }).join('');
+        insight.innerHTML = '<strong>订阅最容易绕过痛感的方式，就是把涨价拆进未来。</strong> 单次看不重，但一旦你已经形成依赖，平台的议价权就开始反过来作用于你。';
+        details.innerHTML = result.details.slice(0, 6).map(function (item) {
+          return '<div class="impact-item"><div class="name">' + item.name + '</div><div class="severity">月增 ' + formatMoney(item.monthlyIncrease) + '</div><div class="text">按当前组合估算，5 年多付 ' + formatMoney(item.fiveYearIncrease) + '。</div></div>';
+        }).join('');
+      } else {
+        const result = SOL.contentShockScenario(selectedServices, 0.3);
+        summary.innerHTML = [
+          { label: '受影响项目', value: result.affectedCount, sub: '主要集中在内容型订阅' },
+          { label: '每月价值缩水', value: formatMoney(result.monthlyValueLoss), sub: '花的钱没少，用到的东西却更少' },
+          { label: '损失类型', value: '访问权', sub: '下架时丢掉的是权限而不是资产' }
+        ].map(function (item) {
+          return '<div class="result-item"><div class="label">' + item.label + '</div><div class="value">' + item.value + '</div><div class="sub">' + item.sub + '</div></div>';
+        }).join('');
+        insight.innerHTML = '<strong>内容下架最能暴露“并不拥有”这件事。</strong> 你付费时感觉自己拥有了海量内容，实际拥有的却只是某一段时间里的访问许可。';
+        details.innerHTML = result.details.length ? result.details.map(function (item) {
+          return '<div class="impact-item"><div class="name">' + item.name + '</div><div class="severity">缩水 ' + formatMoney(item.valueLoss) + '/月</div><div class="text">' + item.message + '</div></div>';
+        }).join('') : '<div class="empty-state">你当前选的组合里，内容型订阅不多，这个冲击会相对有限。</div>';
+      }
+    }
+
+    function refreshAll() {
+      renderCategoryFilter();
+      renderPresetGrid();
+      renderSelectedList();
+      const analysis = SOL.analyzePortfolio(selectedServices, 5);
+      renderSummary(analysis);
+      renderCostChart();
+      renderOwnershipChart(analysis);
+      renderBreakEven(analysis);
+      renderScenario();
+    }
+
+    function toggleService(id) {
+      if (isSelected(id)) {
+        selectedServices = selectedServices.filter(function (service) {
+          return service.id !== id;
+        });
+      } else {
+        const cloned = SOL.cloneService(id);
+        if (cloned) {
+          selectedServices.push(cloned);
+        }
+      }
+      refreshAll();
+    }
+
+    function removeService(id) {
+      selectedServices = selectedServices.filter(function (service) {
+        return service.id !== id;
+      });
+      refreshAll();
+    }
+
+    function setDependency(id, value) {
+      selectedServices = selectedServices.map(function (service) {
+        if (service.id === id) {
+          service.dependency = Number(value);
+        }
+        return service;
+      });
+      refreshAll();
+    }
+
+    function loadExample() {
+      selectedServices = [
+        SOL.cloneService('qq-music'),
+        SOL.cloneService('icloud-200'),
+        SOL.cloneService('chatgpt-plus'),
+        SOL.cloneService('github-copilot'),
+        SOL.cloneService('wps-vip'),
+        SOL.cloneService('keep')
+      ].filter(Boolean);
+      refreshAll();
+    }
+
+    function clearAll() {
+      selectedServices = [];
+      refreshAll();
+    }
+
+    function setCategory(category) {
+      activeCategory = category;
+      renderCategoryFilter();
+      renderPresetGrid();
+    }
+
+    function setScenario(mode) {
+      activeScenario = mode;
+      document.querySelectorAll('.scenario-tab').forEach(function (tab) {
+        tab.classList.toggle('active', tab.dataset.mode === mode);
+      });
+      renderScenario();
+    }
+
+    function buildCopyText() {
+      const analysis = SOL.analyzePortfolio(selectedServices, 5);
+      if (!analysis.selectedCount) {
+        return '我还没选任何订阅。';
+      }
+      const weakest = analysis.vulnerabilityList[0];
+      let text = '我在「订阅时代的拥有感测试」里测了一下：';
+      text += '当前月付 ' + formatMoney(analysis.totalMonthly) + '，5 年总花费 ' + formatMoney(analysis.totalHorizon) + '，拥有感指数 ' + analysis.ownershipScore + ' 分。';
+      if (analysis.comparableCount > 0) {
+        text += '其中存在买断替代的项目，继续订阅 5 年要花 ' + formatMoney(analysis.comparableSubscriptionCost) + '，近似买断只要 ' + formatMoney(analysis.totalBuyout) + '。';
+      }
+      if (weakest) {
+        text += '最脆弱的一项是 ' + weakest.name + '。';
+      }
+      return text;
+    }
+
+    function copySummary() {
+      const text = buildCopyText();
+      const status = document.getElementById('copyStatus');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          status.textContent = '已复制：' + text;
+        }).catch(function () {
+          status.textContent = text;
+        });
+      } else {
+        status.textContent = text;
+      }
+    }
+
+    loadExample();
+  </script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import com.example.demo_mock_server.generator.ChineseNameGenerator;
 import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.BlockIpHandler;
 import com.example.demo_mock_server.handler.ChineseNameHandler;
+import com.example.demo_mock_server.handler.MemoryLeaderboardHandler;
 import com.example.demo_mock_server.handler.MockHandler;
 import com.example.demo_mock_server.handler.QuantumAvailableHandler;
 import com.example.demo_mock_server.handler.QuantumRandomHandler;
@@ -12,6 +13,7 @@ import com.example.demo_mock_server.handler.WordCloudHandler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CorsHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 
@@ -50,6 +52,8 @@ public class RouterConfig {
     }
 
     private void configureRoutes(Router router) {
+        router.route().handler(BodyHandler.create());
+
         FakeDataGenerator dataGenerator = new FakeDataGenerator();
         MockHandler mockHandler = new MockHandler(dataGenerator);
         router.get("/mock").handler(mockHandler);
@@ -78,6 +82,10 @@ public class RouterConfig {
         // 量子随机数可用量查询
         QuantumAvailableHandler quantumAvailableHandler = new QuantumAvailableHandler(vertx);
         router.get("/quantum/available").handler(quantumAvailableHandler);
+
+        MemoryLeaderboardHandler memoryLeaderboardHandler = new MemoryLeaderboardHandler();
+        router.get("/memory-challenge/leaderboard").handler(memoryLeaderboardHandler);
+        router.post("/memory-challenge/leaderboard").handler(memoryLeaderboardHandler);
 
         // Static handler for pages and components
         router.route("/pages/*").handler(StaticHandler.create("pages"));

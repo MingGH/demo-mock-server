@@ -270,6 +270,75 @@
       line-height: 1.6;
     }
 
+    .leaderboard-panel {
+      margin-top: 30px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .leaderboard-panel h3 {
+      margin: 0 0 16px;
+      color: #c7d2fe;
+      font-size: 1.1rem;
+    }
+
+    .leaderboard-submit {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .leaderboard-submit input {
+      flex: 1;
+      min-width: 170px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e5e7eb;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+    }
+
+    .leaderboard-status {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      min-height: 20px;
+    }
+
+    .leaderboard-list {
+      overflow-x: auto;
+      margin-top: 10px;
+    }
+
+    .leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+
+    .leaderboard-table th,
+    .leaderboard-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .leaderboard-table th {
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+
+    .leaderboard-empty {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 16px 0;
+    }
+
     @media (max-width: 600px) {
       .color-block {
         width: 60px;
@@ -354,6 +423,31 @@
         <!-- Share text -->
       </div>
 
+      <div class="leaderboard-panel">
+        <h3>全球玩家排行榜</h3>
+        <div class="leaderboard-submit">
+          <input id="player-name" type="text" maxlength="24" placeholder="输入你的昵称（最多24字）">
+          <button id="submit-score-btn" onclick="game.submitScore()">提交到全球榜</button>
+        </div>
+        <div class="leaderboard-status" id="leaderboard-status">完成挑战后可提交成绩</div>
+        <div class="leaderboard-list">
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>排名</th>
+                <th>玩家</th>
+                <th>记忆容量</th>
+                <th>平均准确率</th>
+                <th>挑战时间</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+              <tr><td colspan="5" class="leaderboard-empty">暂无数据</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div style="text-align: center; margin-top: 30px;">
         <button onclick="location.reload()">重新挑战</button>
       </div>
@@ -378,6 +472,8 @@
         this.gameState = 'idle'; // idle, counting, memorizing, playing, checking
         this.timer = null;
         this.chart = null;
+        this.finalResult = null;
+        this.hasSubmitted = false;
 
         this.views = {
           start: document.getElementById('start-view'),
@@ -392,7 +488,11 @@
           timerWrapper: document.getElementById('timer-wrapper'),
           timerBar: document.getElementById('timer-bar'),
           submitBtn: document.getElementById('submit-btn'),
-          nextBtn: document.getElementById('next-btn')
+          nextBtn: document.getElementById('next-btn'),
+          playerName: document.getElementById('player-name'),
+          submitScoreBtn: document.getElementById('submit-score-btn'),
+          leaderboardBody: document.getElementById('leaderboard-body'),
+          leaderboardStatus: document.getElementById('leaderboard-status')
         };
       }
 
@@ -405,6 +505,8 @@
       start() {
         this.currentLevelIdx = 0;
         this.history = [];
+        this.hasSubmitted = false;
+        this.finalResult = null;
         this.showView('game');
         this.loadLevel();
       }
@@ -598,6 +700,11 @@
         this.showView('result');
         this.renderChart();
         this.renderStats();
+        this.loadLeaderboard();
+        const cachedName = localStorage.getItem('memory-challenge-player-name');
+        if (cachedName) {
+          this.dom.playerName.value = cachedName;
+        }
       }
 
       calculateCapacity() {
@@ -617,7 +724,7 @@
 
       renderStats() {
         const capacity = this.calculateCapacity();
-        const cacheKB = ((capacity * 3) / 1024).toFixed(3); // Fake 3 bits per color/pos
+        const cacheKB = ((capacity * 3) / 1024).toFixed(3);
         
         document.getElementById('capacity-val').textContent = capacity;
         document.getElementById('cache-val').textContent = cacheKB + ' KB';
@@ -645,6 +752,107 @@
 
         const share = document.getElementById('share-content');
         share.textContent = `【颜色记忆挑战】我的工作记忆容量为 ${capacity}，大脑瞬时缓存 ${cacheKB} KB，击败了全球 ${percent}% 的人类！你能挑战 15 个方块吗？`;
+
+        const avgAccuracy = this.history.length > 0
+          ? this.history.reduce((sum, item) => sum + item.accuracy, 0) / this.history.length
+          : 0;
+        this.finalResult = {
+          capacity,
+          cacheKB: parseFloat(cacheKB),
+          avgAccuracy: Number(avgAccuracy.toFixed(2))
+        };
+        this.dom.leaderboardStatus.textContent = '输入昵称后可提交成绩到全球榜';
+        this.dom.submitScoreBtn.disabled = false;
+      }
+
+      async submitScore() {
+        if (!this.finalResult || this.hasSubmitted) {
+          return;
+        }
+        const name = this.dom.playerName.value.trim();
+        if (!name) {
+          this.dom.leaderboardStatus.textContent = '请先输入昵称';
+          return;
+        }
+
+        this.dom.submitScoreBtn.disabled = true;
+        this.dom.leaderboardStatus.textContent = '提交中...';
+
+        try {
+          const response = await fetch('/memory-challenge/leaderboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name,
+              capacity: this.finalResult.capacity,
+              cacheKB: this.finalResult.cacheKB,
+              history: this.history
+            })
+          });
+          const data = await response.json();
+          if (data.status !== 200) {
+            throw new Error(data.message || '提交失败');
+          }
+
+          this.hasSubmitted = true;
+          localStorage.setItem('memory-challenge-player-name', name);
+          this.dom.leaderboardStatus.textContent = '提交成功，已加入全球排行榜';
+          await this.loadLeaderboard();
+        } catch (err) {
+          this.dom.submitScoreBtn.disabled = false;
+          this.dom.leaderboardStatus.textContent = '提交失败，请稍后重试';
+        }
+      }
+
+      async loadLeaderboard() {
+        this.dom.leaderboardBody.innerHTML = '<tr><td colspan="5" class="leaderboard-empty">加载中...</td></tr>';
+
+        try {
+          const response = await fetch('/memory-challenge/leaderboard?limit=20');
+          const result = await response.json();
+          if (result.status !== 200) {
+            throw new Error(result.message || '加载失败');
+          }
+
+          const leaders = result.data?.leaders || [];
+          if (leaders.length === 0) {
+            this.dom.leaderboardBody.innerHTML = '<tr><td colspan="5" class="leaderboard-empty">还没有玩家上榜，快来抢沙发</td></tr>';
+            return;
+          }
+
+          this.dom.leaderboardBody.innerHTML = leaders.map(item => `
+            <tr>
+              <td>#${item.rank}</td>
+              <td>${this.escapeHtml(item.name || '匿名玩家')}</td>
+              <td>${item.capacity}</td>
+              <td>${Math.round(item.avgAccuracy || 0)}%</td>
+              <td>${this.formatTime(item.createdAt)}</td>
+            </tr>
+          `).join('');
+        } catch (err) {
+          this.dom.leaderboardBody.innerHTML = '<tr><td colspan="5" class="leaderboard-empty">排行榜加载失败</td></tr>';
+        }
+      }
+
+      formatTime(timestamp) {
+        if (!timestamp) return '-';
+        const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) return '-';
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        const hh = String(date.getHours()).padStart(2, '0');
+        const mm = String(date.getMinutes()).padStart(2, '0');
+        return `${y}-${m}-${d} ${hh}:${mm}`;
+      }
+
+      escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
       }
 
       renderChart() {

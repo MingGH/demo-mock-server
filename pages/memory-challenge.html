@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>颜色记忆挑战 — 你的大脑缓存有几KB？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <style>
+    :root {
+      --accent-color: #818cf8;
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #e4e4e4;
+      --text-muted: #94a3b8;
+    }
+
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: var(--text-main);
+      padding: 30px 20px;
+      margin: 0;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin: 40px 0 30px;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      background: linear-gradient(to right, #fff, var(--accent-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      border: 1px solid var(--card-border);
+      padding: 30px;
+      margin-bottom: 25px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Game UI */
+    #game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 300px;
+    }
+
+    #status-info {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+
+    #level-title {
+      font-size: 1.2rem;
+      color: var(--accent-color);
+    }
+
+    #timer-wrapper {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      margin-bottom: 30px;
+      overflow: hidden;
+      display: none;
+    }
+
+    #timer-bar {
+      height: 100%;
+      background: var(--accent-color);
+      width: 100%;
+      transition: width 0.1s linear;
+    }
+
+    #stage-area {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      perspective: 1000px;
+    }
+
+    .color-block {
+      width: 80px;
+      height: 80px;
+      border-radius: 12px;
+      cursor: grab;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+      position: relative;
+    }
+
+    .color-block.dragging {
+      opacity: 0.5;
+      transform: scale(1.1);
+      cursor: grabbing;
+    }
+
+    .color-block.over {
+      border: 2px solid #fff;
+    }
+
+    .color-block.selected {
+      border: 3px solid var(--accent-color);
+      transform: scale(1.05);
+      box-shadow: 0 0 20px var(--accent-color);
+    }
+
+    .color-block.correct::after {
+      content: '✓';
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: #10b981;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: white;
+    }
+
+    .color-block.wrong::after {
+      content: '×';
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      background: #ef4444;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: white;
+    }
+
+    #countdown {
+      font-size: 4rem;
+      font-weight: bold;
+      color: var(--accent-color);
+    }
+
+    .btn-group {
+      margin-top: 40px;
+      display: flex;
+      gap: 15px;
+    }
+
+    button {
+      background: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(129, 140, 248, 0.3);
+    }
+
+    button:hover {
+      background: #6366f1;
+      transform: translateY(-2px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button.secondary {
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: none;
+    }
+
+    button.secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    button:disabled {
+      background: #4b5563;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Results */
+    #result-view {
+      display: none;
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin: 30px 0;
+    }
+
+    .stat-item {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--accent-color);
+      margin-bottom: 5px;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    #chart-container {
+      height: 300px;
+      margin: 30px 0;
+    }
+
+    .share-text {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid var(--accent-color);
+      font-style: italic;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 600px) {
+      .color-block {
+        width: 60px;
+        height: 60px;
+      }
+      .header h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>颜色记忆挑战</h1>
+      <p>测试你的大脑瞬时缓存容量 (7±2 法则验证)</p>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-view" class="card">
+      <div style="text-align: center; padding: 20px;">
+        <h2 style="margin-bottom: 20px;">准备好挑战你的记忆力了吗？</h2>
+        <p style="margin-bottom: 30px; line-height: 1.8;">
+          你将看到一排彩色方块，请在规定时间内记住它们的顺序。<br>
+          随后方块会随机打乱，你需要通过拖拽将它们还原。<br>
+          关卡难度会逐渐增加，看你能挑战到哪一级！
+        </p>
+        <button id="begin-btn" onclick="game.start()">立即开始</button>
+      </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-view" class="card" style="display: none;">
+      <div id="game-container">
+        <div id="status-info">
+          <div id="level-title">第 1 关 (3 个方块)</div>
+          <div id="stage-text">准备...</div>
+        </div>
+        
+        <div id="timer-wrapper">
+          <div id="timer-bar"></div>
+        </div>
+
+        <div id="stage-area">
+          <!-- Blocks or Countdown will be injected here -->
+        </div>
+
+        <div class="btn-group">
+          <button id="submit-btn" style="display: none;" onclick="game.check()">提交结果</button>
+          <button id="next-btn" style="display: none;" onclick="game.nextLevel()">下一关</button>
+          <button id="giveup-btn" class="secondary" onclick="game.finish()">结束挑战，查看报告</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="result-view" class="card">
+      <h2 style="text-align: center; margin-bottom: 30px;">挑战评估报告</h2>
+      
+      <div class="stat-grid">
+        <div class="stat-item">
+          <span class="stat-value" id="capacity-val">7</span>
+          <span class="stat-label">工作记忆容量 (N)</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="cache-val">0.05 KB</span>
+          <span class="stat-label">大脑瞬时缓存</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="percent-val">85%</span>
+          <span class="stat-label">超越平均水平</span>
+        </div>
+      </div>
+
+      <div id="chart-container">
+        <canvas id="memory-chart"></canvas>
+      </div>
+
+      <div id="analysis-text" style="margin-bottom: 30px; line-height: 1.6;">
+        <!-- Dynamic analysis -->
+      </div>
+
+      <div class="share-text" id="share-content">
+        <!-- Share text -->
+      </div>
+
+      <div style="text-align: center; margin-top: 30px;">
+        <button onclick="location.reload()">重新挑战</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LEVELS = [3, 4, 5, 6, 7, 8, 9, 10, 12, 15];
+    const PALETTE = [
+      '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+      '#FDCB6E', '#6C5CE7', '#A8E6CF', '#FF8B94', '#D4A5A5',
+      '#818CF8', '#FB7185', '#34D399', '#FBBF24', '#A78BFA',
+      '#22D3EE', '#F472B6', '#94A3B8', '#6EE7B7', '#F87171'
+    ];
+
+    class MemoryGame {
+      constructor() {
+        this.currentLevelIdx = 0;
+        this.history = []; // { n, accuracy, time }
+        this.originalOrder = [];
+        this.currentOrder = [];
+        this.gameState = 'idle'; // idle, counting, memorizing, playing, checking
+        this.timer = null;
+        this.chart = null;
+
+        this.views = {
+          start: document.getElementById('start-view'),
+          game: document.getElementById('game-view'),
+          result: document.getElementById('result-view')
+        };
+
+        this.dom = {
+          stage: document.getElementById('stage-area'),
+          levelTitle: document.getElementById('level-title'),
+          stageText: document.getElementById('stage-text'),
+          timerWrapper: document.getElementById('timer-wrapper'),
+          timerBar: document.getElementById('timer-bar'),
+          submitBtn: document.getElementById('submit-btn'),
+          nextBtn: document.getElementById('next-btn')
+        };
+      }
+
+      showView(viewName) {
+        Object.keys(this.views).forEach(v => {
+          this.views[v].style.display = v === viewName ? 'block' : 'none';
+        });
+      }
+
+      start() {
+        this.currentLevelIdx = 0;
+        this.history = [];
+        this.showView('game');
+        this.loadLevel();
+      }
+
+      loadLevel() {
+        const n = LEVELS[this.currentLevelIdx];
+        this.dom.levelTitle.textContent = `第 ${this.currentLevelIdx + 1} 关 (${n} 个方块)`;
+        this.dom.stageText.textContent = '准备...';
+        this.dom.submitBtn.style.display = 'none';
+        this.dom.nextBtn.style.display = 'none';
+        this.dom.timerWrapper.style.display = 'none';
+        
+        // Pick random colors
+        const colors = [...PALETTE].sort(() => Math.random() - 0.5).slice(0, n);
+        this.originalOrder = colors.map((c, i) => ({ id: i, color: c }));
+        this.currentOrder = [...this.originalOrder];
+
+        this.renderCountdown();
+      }
+
+      renderCountdown() {
+        this.gameState = 'counting';
+        let count = 3;
+        this.dom.stage.innerHTML = `<div id="countdown">${count}</div>`;
+        
+        const interval = setInterval(() => {
+          count--;
+          if (count > 0) {
+            document.getElementById('countdown').textContent = count;
+          } else {
+            clearInterval(interval);
+            this.startMemorizing();
+          }
+        }, 1000);
+      }
+
+      startMemorizing() {
+        this.gameState = 'memorizing';
+        this.dom.stageText.textContent = '记住顺序！';
+        this.renderBlocks(false);
+        
+        this.dom.timerWrapper.style.display = 'block';
+        const duration = LEVELS[this.currentLevelIdx] > 6 ? 1000 : 1500;
+        const startTime = Date.now();
+        
+        const updateTimer = () => {
+          const elapsed = Date.now() - startTime;
+          const remaining = Math.max(0, 100 - (elapsed / duration * 100));
+          this.dom.timerBar.style.width = remaining + '%';
+          
+          if (remaining > 0) {
+            this.timer = requestAnimationFrame(updateTimer);
+          } else {
+            this.startPlaying();
+          }
+        };
+        this.timer = requestAnimationFrame(updateTimer);
+      }
+
+      startPlaying() {
+        this.gameState = 'playing';
+        this.dom.stageText.textContent = '请还原顺序 (拖拽方块)';
+        this.dom.timerWrapper.style.display = 'none';
+        this.dom.submitBtn.style.display = 'inline-block';
+
+        // Shuffle
+        this.currentOrder.sort(() => Math.random() - 0.5);
+        this.renderBlocks(true);
+      }
+
+      renderBlocks(draggable) {
+        this.dom.stage.innerHTML = '';
+        this.currentOrder.forEach((item, index) => {
+          const el = document.createElement('div');
+          el.className = 'color-block';
+          el.style.backgroundColor = item.color;
+          el.dataset.id = item.id;
+          el.dataset.index = index;
+          
+          if (draggable) {
+            el.draggable = true;
+            this.addDragEvents(el);
+          }
+          
+          this.dom.stage.appendChild(el);
+        });
+      }
+
+      addDragEvents(el) {
+        // Desktop Drag & Drop
+        el.addEventListener('dragstart', (e) => {
+          if (this.gameState !== 'playing') return;
+          el.classList.add('dragging');
+          e.dataTransfer.setData('text/plain', el.dataset.index);
+        });
+
+        el.addEventListener('dragend', () => {
+          el.classList.remove('dragging');
+          document.querySelectorAll('.color-block').forEach(b => b.classList.remove('over'));
+        });
+
+        el.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          return false;
+        });
+
+        el.addEventListener('dragenter', (e) => {
+          el.classList.add('over');
+        });
+
+        el.addEventListener('dragleave', () => {
+          el.classList.remove('over');
+        });
+
+        el.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+          const toIndex = parseInt(el.dataset.index);
+          
+          if (!isNaN(fromIndex) && fromIndex !== toIndex) {
+            this.swapElements(fromIndex, toIndex);
+          }
+          return false;
+        });
+
+        // Touch/Click fallback: Click two blocks to swap
+        el.addEventListener('click', () => {
+          if (this.gameState !== 'playing') return;
+          
+          const selected = this.dom.stage.querySelector('.selected');
+          if (selected) {
+            if (selected === el) {
+              el.classList.remove('selected');
+            } else {
+              const fromIdx = parseInt(selected.dataset.index);
+              const toIdx = parseInt(el.dataset.index);
+              this.swapElements(fromIdx, toIdx);
+            }
+          } else {
+            el.classList.add('selected');
+          }
+        });
+      }
+
+      swapElements(fromIdx, toIdx) {
+        const item = this.currentOrder.splice(fromIdx, 1)[0];
+        this.currentOrder.splice(toIdx, 0, item);
+        this.renderBlocks(true);
+      }
+
+      check() {
+        this.gameState = 'checking';
+        this.dom.submitBtn.style.display = 'none';
+        
+        let correctCount = 0;
+        const blocks = this.dom.stage.querySelectorAll('.color-block');
+        
+        this.currentOrder.forEach((item, i) => {
+          const isCorrect = item.id === this.originalOrder[i].id;
+          if (isCorrect) correctCount++;
+          
+          blocks[i].classList.add(isCorrect ? 'correct' : 'wrong');
+        });
+
+        const accuracy = correctCount / this.originalOrder.length;
+        this.history.push({
+          n: this.originalOrder.length,
+          accuracy: accuracy * 100
+        });
+
+        this.dom.stageText.textContent = `准确率: ${Math.round(accuracy * 100)}%`;
+        
+        if (this.currentLevelIdx < LEVELS.length - 1) {
+          this.dom.nextBtn.style.display = 'inline-block';
+        } else {
+          setTimeout(() => this.finish(), 1500);
+        }
+      }
+
+      nextLevel() {
+        this.currentLevelIdx++;
+        this.loadLevel();
+      }
+
+      finish() {
+        this.gameState = 'idle';
+        if (this.history.length === 0) {
+            // If they give up before finishing any level
+            this.history.push({n: 0, accuracy: 0});
+        }
+        this.showView('result');
+        this.renderChart();
+        this.renderStats();
+      }
+
+      calculateCapacity() {
+        // Miller's Law capacity: highest N where accuracy >= 80%
+        let capacity = 0;
+        const threshold = 80;
+        
+        const validLevels = this.history.filter(h => h.accuracy >= threshold);
+        if (validLevels.length > 0) {
+          capacity = Math.max(...validLevels.map(h => h.n));
+        } else {
+          // If no level reached 80%, take the best one or a low value
+          capacity = this.history[0]?.n || 0;
+        }
+        return capacity;
+      }
+
+      renderStats() {
+        const capacity = this.calculateCapacity();
+        const cacheKB = ((capacity * 3) / 1024).toFixed(3); // Fake 3 bits per color/pos
+        
+        document.getElementById('capacity-val').textContent = capacity;
+        document.getElementById('cache-val').textContent = cacheKB + ' KB';
+        
+        let percent = 0;
+        if (capacity < 5) percent = Math.floor(Math.random() * 20) + 10;
+        else if (capacity < 7) percent = Math.floor(Math.random() * 30) + 40;
+        else if (capacity < 9) percent = Math.floor(Math.random() * 20) + 70;
+        else percent = Math.floor(Math.random() * 9) + 91;
+        
+        document.getElementById('percent-val').textContent = percent + '%';
+
+        const analysis = document.getElementById('analysis-text');
+        let text = '';
+        if (capacity >= 9) {
+          text = "<strong>卓越的记忆广度！</strong> 你的工作记忆容量远超常人，能够轻松处理复杂的多线程任务。在心理学上，这属于 'Super-memorizer' 的范畴。";
+        } else if (capacity >= 7) {
+          text = "<strong>优秀的缓存容量。</strong> 你完美契合了米勒的 7±2 法则。你的大脑在处理中等复杂度信息时非常稳健，是理想的决策者。";
+        } else if (capacity >= 5) {
+          text = "<strong>稳健的平均水平。</strong> 你的记忆广度处于人群的中位数。这足以应对日常生活和工作，建议通过联想记忆法来进一步扩充你的 '逻辑缓存'。";
+        } else {
+          text = "<strong>需要升级 '内存'。</strong> 你的瞬时记忆容易受到干扰。这可能是由于疲劳或注意力分散导致的。尝试专注训练可以有效提升这一指标。";
+        }
+        analysis.innerHTML = text;
+
+        const share = document.getElementById('share-content');
+        share.textContent = `【颜色记忆挑战】我的工作记忆容量为 ${capacity}，大脑瞬时缓存 ${cacheKB} KB，击败了全球 ${percent}% 的人类！你能挑战 15 个方块吗？`;
+      }
+
+      renderChart() {
+        const ctx = document.getElementById('memory-chart').getContext('2d');
+        if (this.chart) this.chart.destroy();
+
+        const labels = this.history.map(h => h.n);
+        const data = this.history.map(h => h.accuracy);
+
+        this.chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: '准确率 (%)',
+              data: data,
+              borderColor: '#818cf8',
+              backgroundColor: 'rgba(129, 140, 248, 0.2)',
+              fill: true,
+              tension: 0.4,
+              pointRadius: 6,
+              pointBackgroundColor: '#818cf8'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+                grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                ticks: { color: '#94a3b8' }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: '#94a3b8' },
+                title: { display: true, text: '方块数量 (N)', color: '#94a3b8' }
+              }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (context) => `准确率: ${context.parsed.y}%`
+                }
+              }
+            }
+          },
+          plugins: [{
+            id: 'millerLine',
+            afterDraw: (chart) => {
+              const {ctx, scales: {x, y}} = chart;
+              const xPos = x.getPixelForValue(7);
+              if (xPos >= x.left && xPos <= x.right) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(xPos, y.top);
+                ctx.lineTo(xPos, y.bottom);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.font = '12px sans-serif';
+                ctx.fillText("Miller's 7±2 法则", xPos + 5, y.top + 20);
+                ctx.restore();
+              }
+            }
+          }]
+        });
+      }
+    }
+
+    // Initialize game
+    const game = new MemoryGame();
+    // Default show start view is handled by style, but ensure correct state
+    window.onload = () => {
+        game.showView('start');
+    };
+  </script>
+</body>
+</html>

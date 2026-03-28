@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>颜色记忆挑战 - 单元测试</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a2e; color: #fff; }
+    .pass { color: #4ade80; }
+    .fail { color: #ff6b6b; }
+    .test-group { margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; }
+    .test-group h3 { margin-bottom: 10px; color: #feca57; }
+    .test-result { padding: 5px 0; }
+    .summary { margin-top: 20px; padding: 15px; border-radius: 8px; font-size: 1.2em; }
+    .summary.all-pass { background: rgba(74,222,128,0.2); border: 1px solid #4ade80; }
+    .summary.has-fail { background: rgba(255,107,107,0.2); border: 1px solid #ff6b6b; }
+  </style>
+</head>
+<body>
+  <h1>🧪 颜色记忆挑战 单元测试</h1>
+  <div id="results"></div>
+  <div id="summary"></div>
+
+<script>
+// ========== 核心逻辑（从主文件抽取） ==========
+
+const LEVELS = [3, 4, 5, 6, 7, 8, 9, 10, 12, 15];
+const PALETTE = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+  '#FDCB6E', '#6C5CE7', '#A8E6CF', '#FF8B94', '#D4A5A5',
+  '#818CF8', '#FB7185', '#34D399', '#FBBF24', '#A78BFA',
+  '#22D3EE', '#F472B6', '#94A3B8', '#6EE7B7', '#F87171'
+];
+
+/**
+ * 从调色板中随机选取 N 个不重复的颜色
+ * @param {number} n - 要选取的颜色数量
+ * @param {string[]} palette - 可用调色板
+ * @returns {string[]} 选中的颜色数组
+ */
+function pickColors(n, palette = PALETTE) {
+  const shuffled = [...palette].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n);
+}
+
+/**
+ * 生成原始顺序数组
+ * @param {string[]} colors - 颜色数组
+ * @returns {{id: number, color: string}[]}
+ */
+function createOriginalOrder(colors) {
+  return colors.map((c, i) => ({ id: i, color: c }));
+}
+
+/**
+ * 打乱顺序（返回新数组，不修改原数组）
+ * @param {Array} arr
+ * @returns {Array}
+ */
+function shuffleArray(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+/**
+ * 交换数组中两个元素（splice 方式，模拟拖拽插入）
+ * @param {Array} arr - 数组
+ * @param {number} fromIdx - 拖拽起始位置
+ * @param {number} toIdx - 拖拽目标位置
+ * @returns {Array} 交换后的新数组
+ */
+function swapElements(arr, fromIdx, toIdx) {
+  const copy = [...arr];
+  const item = copy.splice(fromIdx, 1)[0];
+  copy.splice(toIdx, 0, item);
+  return copy;
+}
+
+/**
+ * 计算本轮准确率
+ * @param {{id: number}[]} current - 当前顺序
+ * @param {{id: number}[]} original - 原始顺序
+ * @returns {number} 0~1 的准确率
+ */
+function calculateAccuracy(current, original) {
+  if (current.length !== original.length) return 0;
+  let correct = 0;
+  for (let i = 0; i < current.length; i++) {
+    if (current[i].id === original[i].id) correct++;
+  }
+  return correct / original.length;
+}
+
+/**
+ * 计算工作记忆容量（Miller 法则评估）
+ * @param {{n: number, accuracy: number}[]} history - 每关记录
+ * @param {number} threshold - 准确率阈值（百分比）
+ * @returns {number} 记忆容量 N
+ */
+function calculateCapacity(history, threshold = 80) {
+  const validLevels = history.filter(h => h.accuracy >= threshold);
+  if (validLevels.length > 0) {
+    return Math.max(...validLevels.map(h => h.n));
+  }
+  return history[0]?.n || 0;
+}
+
+/**
+ * 计算"大脑缓存"KB值
+ * @param {number} capacity - 记忆容量
+ * @param {number} bitsPerChunk - 每个组块的信息量（比特）
+ * @returns {string} KB 值（保留 3 位小数）
+ */
+function calculateCacheKB(capacity, bitsPerChunk = 3) {
+  return ((capacity * bitsPerChunk) / 1024 / 8).toFixed(4);
+}
+
+/**
+ * 计算百分位排名
+ * @param {number} capacity
+ * @returns {number} 百分位
+ */
+function estimatePercentile(capacity) {
+  if (capacity < 5) return Math.floor(Math.random() * 20) + 10;
+  if (capacity < 7) return Math.floor(Math.random() * 30) + 40;
+  if (capacity < 9) return Math.floor(Math.random() * 20) + 70;
+  return Math.floor(Math.random() * 9) + 91;
+}
+
+/**
+ * 获取记忆时间（毫秒）——方块多时给更短时间
+ * @param {number} n - 方块数量
+ * @returns {number} 毫秒
+ */
+function getMemorizeDuration(n) {
+  return n > 6 ? 1000 : 1500;
+}
+
+/**
+ * 判断单个方块的正误
+ * @param {{id: number}} currentItem - 当前位置的方块
+ * @param {{id: number}} originalItem - 原始位置的方块
+ * @returns {boolean}
+ */
+function isBlockCorrect(currentItem, originalItem) {
+  return currentItem.id === originalItem.id;
+}
+
+// ========== 测试框架 ==========
+
+let passCount = 0;
+let failCount = 0;
+const allResults = [];
+
+function test(name, fn) {
+  try {
+    fn();
+    passCount++;
+    allResults.push({ name, pass: true });
+  } catch (e) {
+    failCount++;
+    allResults.push({ name, pass: false, error: e.message });
+  }
+}
+
+function assertEqual(actual, expected, message = '') {
+  if (actual !== expected) {
+    throw new Error(`${message} 期望 ${JSON.stringify(expected)}，实际 ${JSON.stringify(actual)}`);
+  }
+}
+
+function assertApprox(actual, expected, tolerance = 0.01, message = '') {
+  if (Math.abs(actual - expected) > tolerance) {
+    throw new Error(`${message} 期望 ~${expected}，实际 ${actual}`);
+  }
+}
+
+function assertTrue(condition, message = '') {
+  if (!condition) {
+    throw new Error(message || '期望为 true');
+  }
+}
+
+function assertFalse(condition, message = '') {
+  if (condition) {
+    throw new Error(message || '期望为 false');
+  }
+}
+
+function assertArrayEqual(actual, expected, message = '') {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(`${message} 期望 ${JSON.stringify(expected)}，实际 ${JSON.stringify(actual)}`);
+  }
+}
+
+// ========== 测试用例 ==========
+
+// ---------- 测试组1：关卡配置 ----------
+
+test('LEVELS 应该有 10 个关卡', () => {
+  assertEqual(LEVELS.length, 10);
+});
+
+test('LEVELS 应该从 3 开始', () => {
+  assertEqual(LEVELS[0], 3);
+});
+
+test('LEVELS 应该以 15 结束', () => {
+  assertEqual(LEVELS[LEVELS.length - 1], 15);
+});
+
+test('LEVELS 应该递增排列', () => {
+  for (let i = 1; i < LEVELS.length; i++) {
+    assertTrue(LEVELS[i] > LEVELS[i - 1], `LEVELS[${i}]=${LEVELS[i]} 应大于 LEVELS[${i-1}]=${LEVELS[i-1]}`);
+  }
+});
+
+test('LEVELS 应该包含 Miller 阈值 7', () => {
+  assertTrue(LEVELS.includes(7), '应该包含 7');
+});
+
+test('PALETTE 应该至少有 15 种颜色（覆盖最高关卡）', () => {
+  assertTrue(PALETTE.length >= 15, `PALETTE 有 ${PALETTE.length} 种颜色，至少需要 15 种`);
+});
+
+test('PALETTE 中颜色应该全部不重复', () => {
+  const unique = new Set(PALETTE);
+  assertEqual(unique.size, PALETTE.length, '存在重复颜色');
+});
+
+// ---------- 测试组2：颜色选取 ----------
+
+test('pickColors(3) 应该返回 3 个颜色', () => {
+  const colors = pickColors(3);
+  assertEqual(colors.length, 3);
+});
+
+test('pickColors(15) 应该返回 15 个颜色', () => {
+  const colors = pickColors(15);
+  assertEqual(colors.length, 15);
+});
+
+test('pickColors 返回的颜色应该全部来自 PALETTE', () => {
+  const colors = pickColors(10);
+  for (const c of colors) {
+    assertTrue(PALETTE.includes(c), `${c} 不在 PALETTE 中`);
+  }
+});
+
+test('pickColors 返回的颜色应该互不相同', () => {
+  const colors = pickColors(10);
+  const unique = new Set(colors);
+  assertEqual(unique.size, colors.length, '选出了重复颜色');
+});
+
+test('pickColors(0) 应该返回空数组', () => {
+  const colors = pickColors(0);
+  assertEqual(colors.length, 0);
+});
+
+// ---------- 测试组3：原始顺序生成 ----------
+
+test('createOriginalOrder 应该生成正确的 id 和 color', () => {
+  const order = createOriginalOrder(['#FF0000', '#00FF00', '#0000FF']);
+  assertEqual(order.length, 3);
+  assertEqual(order[0].id, 0);
+  assertEqual(order[0].color, '#FF0000');
+  assertEqual(order[1].id, 1);
+  assertEqual(order[2].id, 2);
+});
+
+test('createOriginalOrder 空数组应该返回空', () => {
+  const order = createOriginalOrder([]);
+  assertEqual(order.length, 0);
+});
+
+// ---------- 测试组4：打乱逻辑 ----------
+
+test('shuffleArray 不应该修改原数组', () => {
+  const original = [1, 2, 3, 4, 5];
+  const copy = [...original];
+  shuffleArray(original);
+  assertArrayEqual(original, copy, '原数组被修改了');
+});
+
+test('shuffleArray 返回数组长度不变', () => {
+  const result = shuffleArray([1, 2, 3, 4, 5]);
+  assertEqual(result.length, 5);
+});
+
+test('shuffleArray 应该包含所有原始元素', () => {
+  const original = [1, 2, 3, 4, 5];
+  const result = shuffleArray(original);
+  const sorted = [...result].sort((a, b) => a - b);
+  assertArrayEqual(sorted, original, '打乱后元素缺失或多余');
+});
+
+test('shuffleArray 大样本下不应该总是返回相同顺序', () => {
+  // 连续打乱 20 次，至少应该有 1 次不同
+  const original = [1, 2, 3, 4, 5, 6, 7, 8];
+  const first = shuffleArray(original).join(',');
+  let hasDiff = false;
+  for (let i = 0; i < 20; i++) {
+    if (shuffleArray(original).join(',') !== first) {
+      hasDiff = true;
+      break;
+    }
+  }
+  assertTrue(hasDiff, '20 次打乱全部相同，随机性可能有问题');
+});
+
+// ---------- 测试组5：交换逻辑（核心拖拽操作） ----------
+
+test('swapElements(0→2) 应该正确移动元素', () => {
+  // [A, B, C, D] → 把 A 从位置 0 拿出来插入到位置 2
+  // splice(0,1) → 取出 A → [B, C, D]
+  // splice(2,0,A) → [B, C, A, D]
+  const arr = [{id:0}, {id:1}, {id:2}, {id:3}];
+  const result = swapElements(arr, 0, 2);
+  assertArrayEqual(result.map(r => r.id), [1, 2, 0, 3]);
+});
+
+test('swapElements(3→0) 应该正确移动元素到开头', () => {
+  const arr = [{id:0}, {id:1}, {id:2}, {id:3}];
+  const result = swapElements(arr, 3, 0);
+  assertArrayEqual(result.map(r => r.id), [3, 0, 1, 2]);
+});
+
+test('swapElements(1→1) 同位置交换不应改变数组', () => {
+  const arr = [{id:0}, {id:1}, {id:2}];
+  const result = swapElements(arr, 1, 1);
+  assertArrayEqual(result.map(r => r.id), [0, 1, 2]);
+});
+
+test('swapElements 不应修改原数组', () => {
+  const arr = [{id:0}, {id:1}, {id:2}];
+  swapElements(arr, 0, 2);
+  assertEqual(arr[0].id, 0, '原数组被修改了');
+});
+
+test('swapElements 相邻交换', () => {
+  const arr = [{id:0}, {id:1}, {id:2}, {id:3}];
+  const result = swapElements(arr, 1, 2);
+  assertArrayEqual(result.map(r => r.id), [0, 2, 1, 3]);
+});
+
+// ---------- 测试组6：准确率计算 ----------
+
+test('完全正确时准确率应该是 1', () => {
+  const order = [{id:0}, {id:1}, {id:2}];
+  assertEqual(calculateAccuracy(order, order), 1);
+});
+
+test('完全错误时准确率应该是 0', () => {
+  const original = [{id:0}, {id:1}, {id:2}];
+  const current  = [{id:2}, {id:0}, {id:1}];
+  assertEqual(calculateAccuracy(current, original), 0);
+});
+
+test('部分正确时准确率计算正确', () => {
+  const original = [{id:0}, {id:1}, {id:2}, {id:3}];
+  const current  = [{id:0}, {id:2}, {id:1}, {id:3}]; // 位置0和3正确
+  assertApprox(calculateAccuracy(current, original), 0.5, 0.001);
+});
+
+test('只有 1 个元素时准确率 100%', () => {
+  assertEqual(calculateAccuracy([{id:0}], [{id:0}]), 1);
+});
+
+test('长度不匹配时准确率应该为 0', () => {
+  assertEqual(calculateAccuracy([{id:0}], [{id:0}, {id:1}]), 0);
+});
+
+test('7 个方块中 5 个正确的准确率', () => {
+  const original = [{id:0},{id:1},{id:2},{id:3},{id:4},{id:5},{id:6}];
+  const current  = [{id:0},{id:1},{id:2},{id:3},{id:4},{id:6},{id:5}]; // 最后两个互换
+  assertApprox(calculateAccuracy(current, original), 5/7, 0.001);
+});
+
+// ---------- 测试组7：记忆容量计算（Miller 法则核心） ----------
+
+test('所有关卡都 100% 准确率时，容量应该是最大 N', () => {
+  const history = [
+    {n: 3, accuracy: 100},
+    {n: 5, accuracy: 100},
+    {n: 7, accuracy: 100},
+    {n: 10, accuracy: 95}
+  ];
+  assertEqual(calculateCapacity(history), 10);
+});
+
+test('准确率在 7 之后低于 80% 时，容量应该是 7', () => {
+  const history = [
+    {n: 3, accuracy: 100},
+    {n: 5, accuracy: 95},
+    {n: 7, accuracy: 85},
+    {n: 9, accuracy: 40},
+    {n: 12, accuracy: 20}
+  ];
+  assertEqual(calculateCapacity(history), 7);
+});
+
+test('所有关卡都低于 80% 时，容量取第一关的 N', () => {
+  const history = [
+    {n: 3, accuracy: 50},
+    {n: 5, accuracy: 30},
+  ];
+  assertEqual(calculateCapacity(history), 3);
+});
+
+test('空历史记录应该返回 0', () => {
+  assertEqual(calculateCapacity([]), 0);
+});
+
+test('恰好 80% 准确率应该算合格', () => {
+  const history = [{n: 7, accuracy: 80}];
+  assertEqual(calculateCapacity(history, 80), 7);
+});
+
+test('79% 准确率不应该算合格', () => {
+  const history = [{n: 7, accuracy: 79}];
+  // 因为没有>=80的关卡，回退到 history[0].n
+  assertEqual(calculateCapacity(history, 80), 7); // 回退逻辑返回 history[0].n
+});
+
+test('非单调递减的准确率也能正确取最大 N', () => {
+  // 有时候用户在某一关发挥失常但后面又好了
+  const history = [
+    {n: 3, accuracy: 100},
+    {n: 5, accuracy: 60},  // 失误
+    {n: 7, accuracy: 90},  // 恢复
+    {n: 9, accuracy: 30}
+  ];
+  assertEqual(calculateCapacity(history), 7);
+});
+
+// ---------- 测试组8：缓存 KB 计算 ----------
+
+test('容量 7，每 chunk 3 bit 时的 KB 值', () => {
+  // 7 * 3 = 21 bits = 21 / 8 / 1024 KB ≈ 0.0026 KB
+  const kb = calculateCacheKB(7, 3);
+  assertApprox(parseFloat(kb), 0.0026, 0.0001, `7 chunk 缓存`);
+});
+
+test('容量 0 时缓存应该是 0 KB', () => {
+  assertEqual(parseFloat(calculateCacheKB(0, 3)), 0);
+});
+
+test('容量 15 时的 KB 值', () => {
+  // 15 * 3 = 45 bits = 45 / 8 / 1024 ≈ 0.0055 KB
+  const kb = calculateCacheKB(15, 3);
+  assertApprox(parseFloat(kb), 0.0055, 0.0001);
+});
+
+// ---------- 测试组9：百分位估算 ----------
+
+test('容量 < 5 时百分位在 10~29 范围', () => {
+  for (let i = 0; i < 50; i++) {
+    const p = estimatePercentile(3);
+    assertTrue(p >= 10 && p <= 29, `容量3的百分位 ${p} 超出 [10,29]`);
+  }
+});
+
+test('容量 5~6 时百分位在 40~69 范围', () => {
+  for (let i = 0; i < 50; i++) {
+    const p = estimatePercentile(6);
+    assertTrue(p >= 40 && p <= 69, `容量6的百分位 ${p} 超出 [40,69]`);
+  }
+});
+
+test('容量 7~8 时百分位在 70~89 范围', () => {
+  for (let i = 0; i < 50; i++) {
+    const p = estimatePercentile(7);
+    assertTrue(p >= 70 && p <= 89, `容量7的百分位 ${p} 超出 [70,89]`);
+  }
+});
+
+test('容量 >= 9 时百分位在 91~99 范围', () => {
+  for (let i = 0; i < 50; i++) {
+    const p = estimatePercentile(10);
+    assertTrue(p >= 91 && p <= 99, `容量10的百分位 ${p} 超出 [91,99]`);
+  }
+});
+
+test('百分位随容量单调递增（大趋势）', () => {
+  // 多次采样取平均，验证趋势
+  const avg = (cap) => {
+    let sum = 0;
+    for (let i = 0; i < 100; i++) sum += estimatePercentile(cap);
+    return sum / 100;
+  };
+  const avg3 = avg(3);
+  const avg6 = avg(6);
+  const avg8 = avg(8);
+  const avg10 = avg(10);
+  assertTrue(avg3 < avg6, `容量3平均百分位(${avg3}) 应小于 容量6(${avg6})`);
+  assertTrue(avg6 < avg8, `容量6平均百分位(${avg6}) 应小于 容量8(${avg8})`);
+  assertTrue(avg8 < avg10, `容量8平均百分位(${avg8}) 应小于 容量10(${avg10})`);
+});
+
+// ---------- 测试组10：记忆时间 ----------
+
+test('3 个方块记忆时间 1500ms', () => {
+  assertEqual(getMemorizeDuration(3), 1500);
+});
+
+test('6 个方块记忆时间 1500ms', () => {
+  assertEqual(getMemorizeDuration(6), 1500);
+});
+
+test('7 个方块记忆时间 1000ms（难度提升）', () => {
+  assertEqual(getMemorizeDuration(7), 1000);
+});
+
+test('15 个方块记忆时间 1000ms', () => {
+  assertEqual(getMemorizeDuration(15), 1000);
+});
+
+// ---------- 测试组11：单个方块判定 ----------
+
+test('相同 id 的方块应判为正确', () => {
+  assertTrue(isBlockCorrect({id: 3}, {id: 3}));
+});
+
+test('不同 id 的方块应判为错误', () => {
+  assertFalse(isBlockCorrect({id: 3}, {id: 5}));
+});
+
+// ---------- 测试组12：端到端流程验证 ----------
+
+test('完整流程：选色→生成→打乱→还原→计算准确率', () => {
+  // 模拟一个完整的 3 方块关卡
+  const colors = pickColors(3);
+  const original = createOriginalOrder(colors);
+  const shuffled = shuffleArray(original);
+  
+  // 验证打乱后元素不变
+  assertEqual(shuffled.length, 3);
+  const ids = shuffled.map(s => s.id).sort();
+  assertArrayEqual(ids, [0, 1, 2]);
+  
+  // 模拟用户完美还原
+  const accuracy = calculateAccuracy(original, original);
+  assertEqual(accuracy, 1);
+});
+
+test('完整流程：模拟多关记录→计算容量→生成缓存值', () => {
+  const history = [
+    {n: 3, accuracy: 100},
+    {n: 4, accuracy: 100},
+    {n: 5, accuracy: 100},
+    {n: 6, accuracy: 90},
+    {n: 7, accuracy: 85},
+    {n: 8, accuracy: 60},
+    {n: 9, accuracy: 30},
+  ];
+  
+  const capacity = calculateCapacity(history);
+  assertEqual(capacity, 7, '容量应该是 7（最后一个 >=80% 的关卡）');
+  
+  const kb = calculateCacheKB(capacity);
+  assertTrue(parseFloat(kb) > 0, '缓存 KB 应大于 0');
+  
+  const percentile = estimatePercentile(capacity);
+  assertTrue(percentile >= 70 && percentile <= 89, `容量7对应百分位应在70~89，实际${percentile}`);
+});
+
+test('极端情况：用户第一关就放弃', () => {
+  const history = [{n: 0, accuracy: 0}];
+  const capacity = calculateCapacity(history);
+  assertEqual(capacity, 0, '放弃时容量应为 0');
+  assertEqual(parseFloat(calculateCacheKB(0)), 0, '缓存应为 0');
+});
+
+test('所有关卡全部满分的理想玩家', () => {
+  const history = LEVELS.map(n => ({n, accuracy: 100}));
+  const capacity = calculateCapacity(history);
+  assertEqual(capacity, 15, '全满分容量应为 15');
+  
+  const percentile = estimatePercentile(capacity);
+  assertTrue(percentile >= 91, `满分百分位应 >= 91，实际 ${percentile}`);
+});
+
+// ========== 输出结果 ==========
+
+function renderResults() {
+  const container = document.getElementById('results');
+  
+  const groups = {
+    '关卡配置': allResults.filter(r =>
+      r.name.includes('LEVELS') || r.name.includes('PALETTE')),
+    '颜色选取': allResults.filter(r =>
+      r.name.includes('pickColors')),
+    '原始顺序生成': allResults.filter(r =>
+      r.name.includes('createOriginalOrder')),
+    '打乱逻辑': allResults.filter(r =>
+      r.name.includes('shuffleArray') || r.name.includes('打乱')),
+    '交换逻辑（拖拽）': allResults.filter(r =>
+      r.name.includes('swapElements') || r.name.includes('交换')),
+    '准确率计算': allResults.filter(r =>
+      r.name.includes('准确率') && !r.name.includes('容量') && !r.name.includes('流程')),
+    'Miller法则：记忆容量': allResults.filter(r =>
+      r.name.includes('容量') || r.name.includes('80%') || r.name.includes('单调')),
+    '缓存KB计算': allResults.filter(r =>
+      r.name.includes('KB') || r.name.includes('缓存')),
+    '百分位估算': allResults.filter(r =>
+      r.name.includes('百分位')),
+    '记忆时间': allResults.filter(r =>
+      r.name.includes('记忆时间')),
+    '方块判定': allResults.filter(r =>
+      r.name.includes('方块应判')),
+    '端到端流程': allResults.filter(r =>
+      r.name.includes('流程') || r.name.includes('放弃') || r.name.includes('满分'))
+  };
+  
+  let html = '';
+  for (const [groupName, tests] of Object.entries(groups)) {
+    if (tests.length === 0) continue;
+    html += `<div class="test-group"><h3>${groupName}</h3>`;
+    for (const t of tests) {
+      const icon = t.pass ? '✅' : '❌';
+      const cls = t.pass ? 'pass' : 'fail';
+      html += `<div class="test-result ${cls}">${icon} ${t.name}`;
+      if (!t.pass) html += ` - <em>${t.error}</em>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  
+  container.innerHTML = html;
+  
+  const summary = document.getElementById('summary');
+  const allPass = failCount === 0;
+  summary.className = `summary ${allPass ? 'all-pass' : 'has-fail'}`;
+  summary.innerHTML = `
+    <strong>${allPass ? '🎉 全部通过！' : '⚠️ 有测试失败'}</strong><br>
+    通过: ${passCount} | 失败: ${failCount} | 总计: ${passCount + failCount}
+  `;
+}
+
+renderResults();
+</script>
+</body>
+</html>

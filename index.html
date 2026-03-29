@@ -126,6 +126,16 @@
       });
     }
 
+    const probabilityCategory = demosData.categories.find(cat => cat.id === 'probability');
+    if (probabilityCategory && !probabilityCategory.demos.some(demo => demo.href === 'pages/right-hand-maze.html')) {
+      probabilityCategory.demos.unshift({
+        href: 'pages/right-hand-maze.html',
+        icon: 'ti-route',
+        title: '右转迷宫谣言粉碎机',
+        desc: '“一直向右就能出迷宫”是真的吗？用右手法和最短路对照，现场看它什么时候失灵。'
+      });
+    }
+
     function init() {
       renderFilterTags();
       renderCategories();

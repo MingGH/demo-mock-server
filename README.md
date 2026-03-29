@@ -1,4 +1,4 @@
-<img width="1600" height="905" alt="image" src="https://github.com/user-attachments/assets/f82d6fa6-0f35-4f39-a5ed-1338693dc652" /># 🚀 Demo Collection
+# 🚀 Demo Collection
 
 一个交互式技术演示合集，用可视化和互动方式解释编程概念、算法原理和生活中的数学问题。
 

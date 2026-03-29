@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>迷宫里一直向右走就能到出口？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./right-hand-maze-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+    .container { max-width: 1020px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 35px; }
+    .header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    .header p {
+      color: rgba(255,255,255,0.55);
+      margin-top: 12px;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 24px;
+      margin-bottom: 22px;
+    }
+    .card-title {
+      color: #fbbf24;
+      font-size: 16px;
+      margin-bottom: 18px;
+      padding-left: 10px;
+      border-left: 3px solid #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-desc {
+      color: rgba(255,255,255,0.55);
+      font-size: 13px;
+      margin-bottom: 14px;
+      line-height: 1.7;
+    }
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .fact {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 14px;
+    }
+    .fact .k {
+      color: #fbbf24;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .fact .v {
+      color: rgba(255,255,255,0.86);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .ctrl-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 8px;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.25);
+      color: #e4e4e4;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .btn {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(251,191,36,0.28); }
+    .btn.secondary {
+      background: rgba(255,255,255,0.08);
+      color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.3);
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .result-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .result-item .label {
+      color: rgba(255,255,255,0.52);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .result-item .value {
+      color: #fbbf24;
+      font-weight: 700;
+      font-size: 1.3rem;
+    }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .map-wrap {
+      margin-top: 16px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 12px;
+      overflow-x: auto;
+    }
+    .map-note {
+      margin-top: 8px;
+      color: rgba(255,255,255,0.55);
+      font-size: 12px;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .dir-note {
+      margin-top: 10px;
+      color: rgba(255,255,255,0.68);
+      font-size: 12px;
+      line-height: 1.7;
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .replay-box {
+      margin-top: 12px;
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .replay-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .replay-meta {
+      color: rgba(255,255,255,0.65);
+      font-size: 12px;
+      min-width: 140px;
+    }
+    .replay-slider {
+      flex: 1;
+      min-width: 180px;
+      accent-color: #fbbf24;
+    }
+    .mini-btn {
+      padding: 6px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(251,191,36,0.3);
+      background: rgba(251,191,36,0.12);
+      color: #fbbf24;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .mini-btn:hover { background: rgba(251,191,36,0.2); }
+    #mazeCanvas {
+      display: block;
+      margin: 0 auto;
+      border-radius: 8px;
+      background: #0b1221;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .insight {
+      margin-top: 14px;
+      border-radius: 12px;
+      padding: 14px;
+      line-height: 1.8;
+      font-size: 14px;
+      color: rgba(255,255,255,0.78);
+      border: 1px solid rgba(251,191,36,0.2);
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.04));
+    }
+    .chart-box {
+      margin-top: 16px;
+      position: relative;
+      height: 300px;
+    }
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.7rem; }
+      .chart-box { height: 250px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-route"></i> 迷宫里一直向右走就能到出口？</h1>
+    <p>很多人从小听过这个口诀：把右手贴墙，一直走就能出去。<br>它在部分迷宫里是真的，但在有环路和孤岛墙体时会失灵。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-bulb"></i> 先说结论</div>
+    <div class="facts">
+      <div class="fact"><div class="k">口诀成立条件</div><div class="v">迷宫墙体是单连通结构，起点和出口与同一外边界连通。</div></div>
+      <div class="fact"><div class="k">口诀失灵条件</div><div class="v">存在内部孤岛或环路时，你可能一直绕圈，不会主动离开当前墙面。</div></div>
+      <div class="fact"><div class="k">对照策略</div><div class="v">最短路搜索（BFS）不依赖墙面跟随，只要出口可达就能找到路径。</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-map-2"></i> 单局验证：同一个迷宫，两种算法</div>
+    <div class="card-desc">选择迷宫和初始朝向后，对比「右手法」与「最短路」。金色是右手路径，绿色是最短路径。</div>
+    <div class="ctrl-row">
+      <div>
+        <label>迷宫类型</label>
+        <select id="mazeSelect"></select>
+      </div>
+      <div>
+        <label>初始朝向</label>
+        <select id="dirSelect">
+          <option value="N">向上</option>
+          <option value="E">向右</option>
+          <option value="S">向下</option>
+          <option value="W">向左</option>
+        </select>
+      </div>
+      <div>
+        <label>最大步数</label>
+        <input id="maxStepsInput" type="number" min="100" max="10000" step="100" value="3000">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="runBtn"><i class="ti ti-player-play"></i> 运行对比</button>
+      <button class="btn secondary" id="toggleShortestBtn"><i class="ti ti-path"></i> 显示/隐藏最短路</button>
+    </div>
+    <div class="dir-note" id="directionEffect"></div>
+    <div class="result-grid">
+      <div class="result-item"><div class="label">右手法结果</div><div class="value" id="rightOutcome">-</div></div>
+      <div class="result-item"><div class="label">右手法步数（格）</div><div class="value" id="rightSteps">-</div></div>
+      <div class="result-item green"><div class="label">最短路可达</div><div class="value" id="shortestReach">-</div></div>
+      <div class="result-item green"><div class="label">最短距离（格）</div><div class="value" id="shortestLen">-</div></div>
+    </div>
+    <div class="map-wrap"><canvas id="mazeCanvas"></canvas></div>
+    <div class="map-note">每个小方格代表 1 步，沿中心线从一格走到相邻一格记作 1。</div>
+    <div class="replay-box">
+      <div class="replay-row">
+        <span class="replay-meta" id="replayMeta">回放：0 / 0 步</span>
+        <input class="replay-slider" id="replaySlider" type="range" min="0" max="0" value="0">
+        <button class="mini-btn" id="replayPlayBtn">播放</button>
+        <button class="mini-btn" id="replayResetBtn">重置</button>
+        <select id="replaySpeed" style="width:auto; padding:6px 10px; font-size:12px;">
+          <option value="180">慢速</option>
+          <option value="100" selected>中速</option>
+          <option value="35">快速</option>
+        </select>
+      </div>
+    </div>
+    <div class="insight" id="singleInsight"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-chart-bar"></i> 批量试验：口诀到底稳定吗</div>
+    <div class="card-desc">随机抽取迷宫和初始朝向，重复试验。看右手法成功率和失败原因分布。</div>
+    <div class="ctrl-row">
+      <div>
+        <label>试验次数</label>
+        <input id="batchTrialsInput" type="number" min="20" max="5000" step="20" value="400">
+      </div>
+      <div></div>
+      <div></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="batchBtn"><i class="ti ti-chart-histogram"></i> 运行批量试验</button>
+    </div>
+    <div class="result-grid">
+      <div class="result-item"><div class="label">右手法成功率</div><div class="value" id="batchSuccess">-</div></div>
+      <div class="result-item red"><div class="label">绕圈失败</div><div class="value" id="batchLoopFail">-</div></div>
+      <div class="result-item"><div class="label">可达率（最短路）</div><div class="value" id="batchReachable">-</div></div>
+      <div class="result-item"><div class="label">平均最短距离</div><div class="value" id="batchShortestAvg">-</div></div>
+    </div>
+    <div class="chart-box"><canvas id="batchChart"></canvas></div>
+    <div class="insight" id="batchInsight"></div>
+  </div>
+</div>
+
+<script>
+  const mazeSelect = document.getElementById('mazeSelect');
+  const dirSelect = document.getElementById('dirSelect');
+  const maxStepsInput = document.getElementById('maxStepsInput');
+  const runBtn = document.getElementById('runBtn');
+  const toggleShortestBtn = document.getElementById('toggleShortestBtn');
+  const batchBtn = document.getElementById('batchBtn');
+  const batchTrialsInput = document.getElementById('batchTrialsInput');
+  const canvas = document.getElementById('mazeCanvas');
+  const ctx = canvas.getContext('2d');
+  const replaySlider = document.getElementById('replaySlider');
+  const replayMeta = document.getElementById('replayMeta');
+  const replayPlayBtn = document.getElementById('replayPlayBtn');
+  const replayResetBtn = document.getElementById('replayResetBtn');
+  const replaySpeed = document.getElementById('replaySpeed');
+
+  let showShortestPath = true;
+  let batchChart = null;
+  let lastSingle = null;
+  let replayIndex = 0;
+  let replayTimer = null;
+
+  function clearReplayTimer() {
+    if (replayTimer) {
+      clearInterval(replayTimer);
+      replayTimer = null;
+    }
+  }
+
+  function buildMazeOptions() {
+    mazeSelect.innerHTML = Object.values(PRESET_MAZES).map(item => (
+      `<option value="${item.id}">${item.name}</option>`
+    )).join('');
+  }
+
+  function getCellSize(maze) {
+    const maxWidth = 860;
+    const maxHeight = 460;
+    return Math.max(18, Math.floor(Math.min(maxWidth / maze.width, maxHeight / maze.height)));
+  }
+
+  function drawMaze(maze, rightResult, shortestResult) {
+    const cell = getCellSize(maze);
+    canvas.width = maze.width * cell;
+    canvas.height = maze.height * cell;
+
+    for (let r = 0; r < maze.height; r++) {
+      for (let c = 0; c < maze.width; c++) {
+        const wall = maze.grid[r][c] === '#';
+        ctx.fillStyle = wall ? '#10182f' : '#1f2a44';
+        ctx.fillRect(c * cell, r * cell, cell, cell);
+        ctx.strokeStyle = wall ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.11)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(c * cell + 0.5, r * cell + 0.5, cell - 1, cell - 1);
+      }
+    }
+
+    const paintPath = (path, color, alpha) => {
+      if (!path || path.length === 0) return;
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = Math.max(3, Math.floor(cell * 0.28));
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i = 0; i < path.length; i++) {
+        const p = path[i];
+        const x = p.c * cell + cell / 2;
+        const y = p.r * cell + cell / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    };
+
+    const rightPathVisible = rightResult.path.slice(0, replayIndex + 1);
+    paintPath(rightPathVisible, '#fbbf24', 0.95);
+    if (showShortestPath) {
+      paintPath(shortestResult.path, '#4ade80', 0.8);
+    }
+
+    const drawMarker = (pos, label, bg) => {
+      ctx.fillStyle = bg;
+      ctx.fillRect(pos.c * cell + 2, pos.r * cell + 2, cell - 4, cell - 4);
+      ctx.fillStyle = '#0f172a';
+      ctx.font = `${Math.max(11, Math.floor(cell * 0.45))}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, pos.c * cell + cell / 2, pos.r * cell + cell / 2 + 1);
+    };
+
+    drawMarker(maze.start, 'S', '#60a5fa');
+    drawMarker(maze.exit, 'E', '#f87171');
+  }
+
+  function updateReplayView() {
+    if (!lastSingle) return;
+    const maxStep = Math.max(0, lastSingle.right.path.length - 1);
+    replaySlider.max = String(maxStep);
+    replaySlider.value = String(Math.min(replayIndex, maxStep));
+    replayMeta.textContent = `回放：${Math.min(replayIndex, maxStep)} / ${maxStep} 步`;
+    drawMaze(lastSingle.maze, lastSingle.right, lastSingle.shortest);
+  }
+
+  function singleInsightText(rightResult, shortestResult, mazeName) {
+    if (rightResult.success) {
+      return `这次在「${mazeName}」中，右手法成功了，用了 ${rightResult.steps} 步。最短路只要 ${shortestResult.distance} 步。口诀不是错，只是它只在一类迷宫里稳定。`;
+    }
+    if (rightResult.reason === 'LOOP' && shortestResult.reachable) {
+      return `这次右手法进入了循环，但最短路依然能到出口。核心原因是你一直贴着同一面墙走，遇到内部孤岛时会绕圈。`;
+    }
+    if (!shortestResult.reachable) {
+      return '这个迷宫本身不可达，任何算法都到不了出口。';
+    }
+    return `这次右手法失败（${rightResult.reason}），但最短路可达。说明“贴墙走”不是通用解法。`;
+  }
+
+  function runSingle() {
+    const mazeId = mazeSelect.value;
+    const mazeData = PRESET_MAZES[mazeId];
+    const initialDir = dirSelect.value;
+    const maxSteps = Math.max(100, Number(maxStepsInput.value || 3000));
+    const maze = parseMaze(mazeData.rows);
+    const right = simulateRightHand(maze, { initialDir, maxSteps });
+    const shortest = shortestPath(maze);
+
+    lastSingle = { maze, mazeData, right, shortest };
+    clearReplayTimer();
+    replayPlayBtn.textContent = '播放';
+    replayIndex = Math.max(0, right.path.length - 1);
+    updateReplayView();
+
+    const reasonLabel = right.reason === 'LOOP' ? '死循环' : right.reason;
+    document.getElementById('rightOutcome').textContent = right.success ? '到达出口' : reasonLabel;
+    document.getElementById('rightSteps').textContent = String(right.steps);
+    document.getElementById('shortestReach').textContent = shortest.reachable ? '可达' : '不可达';
+    document.getElementById('shortestLen').textContent = shortest.reachable ? String(shortest.distance) : '-';
+    document.getElementById('singleInsight').textContent = singleInsightText(right, shortest, mazeData.name);
+
+    const dirResults = ['N', 'E', 'S', 'W'].map(d => {
+      const r = simulateRightHand(maze, { initialDir: d, maxSteps });
+      const label = r.success ? `到达:${r.steps}` : `${r.reason === 'LOOP' ? '死循环' : r.reason}:${r.steps}`;
+      return { d, label, success: r.success, reason: r.reason, steps: r.steps };
+    });
+    const uniqueLabels = new Set(dirResults.map(x => x.label));
+    const summary = dirResults.map(x => `${x.d}=${x.label}`).join('，');
+    const sensitivity = uniqueLabels.size === 1
+      ? '这个迷宫对初始朝向不敏感，四个方向结果一致。'
+      : '这个迷宫对初始朝向敏感，不同方向会出现不同结果。';
+    document.getElementById('directionEffect').textContent = `${sensitivity} 当前统计：${summary}`;
+  }
+
+  function updateBatchChart(summary) {
+    const data = [
+      summary.rightHandSuccess,
+      summary.rightHandFailLoop,
+      summary.rightHandFailStuck + summary.rightHandFailMaxSteps
+    ];
+    const labels = ['右手法成功', '右手法绕圈失败', '右手法其他失败'];
+    if (batchChart) {
+      batchChart.destroy();
+    }
+    batchChart = new Chart(document.getElementById('batchChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: '次数',
+          data,
+          backgroundColor: ['rgba(74, 222, 128, 0.75)', 'rgba(248, 113, 113, 0.75)', 'rgba(96, 165, 250, 0.75)'],
+          borderColor: ['#4ade80', '#f87171', '#60a5fa'],
+          borderWidth: 1.5
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: 'rgba(255,255,255,0.6)' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: 'rgba(255,255,255,0.6)' }, grid: { color: 'rgba(255,255,255,0.06)' } }
+        }
+      }
+    });
+  }
+
+  function runBatch() {
+    const trials = Math.max(20, Number(batchTrialsInput.value || 400));
+    const summary = runBatchExperiment(trials, { maxSteps: 3000 });
+    const successRate = ((summary.rightHandSuccess / summary.total) * 100).toFixed(1);
+    const loopRate = ((summary.rightHandFailLoop / summary.total) * 100).toFixed(1);
+    const reachableRate = ((summary.reachableByShortestPath / summary.total) * 100).toFixed(1);
+
+    document.getElementById('batchSuccess').textContent = `${successRate}%`;
+    document.getElementById('batchLoopFail').textContent = `${loopRate}%`;
+    document.getElementById('batchReachable').textContent = `${reachableRate}%`;
+    document.getElementById('batchShortestAvg').textContent = String(summary.avgShortestDistance);
+    document.getElementById('batchInsight').textContent = `在 ${summary.total} 次随机试验里，出口可达率是 ${reachableRate}%，但右手法成功率只有 ${successRate}%。大部分失败来自绕圈（${loopRate}%）。口诀能用，但不是万能钥匙。`;
+    updateBatchChart(summary);
+  }
+
+  runBtn.addEventListener('click', runSingle);
+  toggleShortestBtn.addEventListener('click', () => {
+    showShortestPath = !showShortestPath;
+    if (lastSingle) {
+      drawMaze(lastSingle.maze, lastSingle.right, lastSingle.shortest);
+    }
+  });
+  batchBtn.addEventListener('click', runBatch);
+  replaySlider.addEventListener('input', (e) => {
+    replayIndex = Number(e.target.value);
+    updateReplayView();
+  });
+  replayPlayBtn.addEventListener('click', () => {
+    if (!lastSingle) return;
+    if (replayTimer) {
+      clearReplayTimer();
+      replayPlayBtn.textContent = '播放';
+      return;
+    }
+    replayPlayBtn.textContent = '暂停';
+    replayTimer = setInterval(() => {
+      const maxStep = Math.max(0, lastSingle.right.path.length - 1);
+      if (replayIndex >= maxStep) {
+        clearReplayTimer();
+        replayPlayBtn.textContent = '播放';
+        return;
+      }
+      replayIndex += 1;
+      updateReplayView();
+    }, Number(replaySpeed.value));
+  });
+  replayResetBtn.addEventListener('click', () => {
+    clearReplayTimer();
+    replayPlayBtn.textContent = '播放';
+    replayIndex = 0;
+    updateReplayView();
+  });
+  replaySpeed.addEventListener('change', () => {
+    if (replayTimer) {
+      clearReplayTimer();
+      replayPlayBtn.textContent = '播放';
+    }
+  });
+  buildMazeOptions();
+  runSingle();
+  runBatch();
+</script>
+</body>
+</html>

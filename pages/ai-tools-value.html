@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI工具值不值得付费</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./ai-tools-value-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e5e7eb;
+      padding: 24px 16px 40px;
+    }
+    .container { max-width: 1020px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 32px; }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    .header p {
+      margin-top: 12px;
+      color: rgba(255,255,255,0.58);
+      font-size: 14px;
+    }
+    @keyframes shimmer {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 18px;
+      backdrop-filter: blur(4px);
+    }
+    .card-title {
+      color: #fbbf24;
+      font-size: 16px;
+      margin-bottom: 16px;
+      padding-left: 10px;
+      border-left: 3px solid #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.62);
+    }
+    .field input {
+      width: 100%;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.22);
+      color: #e5e7eb;
+      padding: 0 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    .field input:focus {
+      border-color: rgba(251,191,36,0.75);
+      box-shadow: 0 0 0 2px rgba(251,191,36,0.2);
+    }
+    .slider-wrap {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .slider-row { margin-bottom: 12px; }
+    .slider-row:last-child { margin-bottom: 0; }
+    .slider-head {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.66);
+    }
+    .slider-head strong { color: #fbbf24; font-weight: 700; }
+    input[type=range] {
+      width: 100%;
+      accent-color: #fbbf24;
+      cursor: pointer;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 6px;
+    }
+    .kpi {
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .kpi .label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.54);
+      margin-bottom: 6px;
+    }
+    .kpi .value {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .kpi .sub {
+      margin-top: 4px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.45);
+    }
+    .green { color: #4ade80; }
+    .red { color: #f87171; }
+    .gold { color: #fbbf24; }
+    .blue { color: #60a5fa; }
+    .insight {
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 12px;
+      border: 1px solid;
+      line-height: 1.75;
+      font-size: 13px;
+    }
+    .insight.excellent { background: rgba(74,222,128,0.12); border-color: rgba(74,222,128,0.36); }
+    .insight.good { background: rgba(96,165,250,0.12); border-color: rgba(96,165,250,0.36); }
+    .insight.neutral { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.36); }
+    .insight.bad { background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.36); }
+    .chart-wrap {
+      height: 320px;
+      margin-top: 8px;
+    }
+    .tips {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .tip {
+      border-radius: 10px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 10px 12px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.66);
+      line-height: 1.7;
+    }
+    @media (max-width: 760px) {
+      .header h1 { font-size: 1.55rem; }
+      .grid { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .tips { grid-template-columns: 1fr; }
+      .chart-wrap { height: 280px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-robot"></i> AI工具值不值得付费</h1>
+      <p>把任务拆成起草、检索、润色，再加上核验返工，算清楚你是省时间，还是多花钱</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-adjustments"></i> 输入你的工作结构</div>
+      <div class="grid">
+        <div class="field">
+          <label>每月同类任务数</label>
+          <input id="tasksPerMonth" type="number" min="0" value="24">
+        </div>
+        <div class="field">
+          <label>你的小时价值（元）</label>
+          <input id="hourlyValue" type="number" min="0" value="90">
+        </div>
+        <div class="field">
+          <label>工具月费（元）</label>
+          <input id="toolCost" type="number" min="0" value="140">
+        </div>
+        <div class="field">
+          <label>每任务核验返工（分钟）</label>
+          <input id="verifyMinutes" type="number" min="0" value="12">
+        </div>
+      </div>
+      <div style="height:12px"></div>
+      <div class="grid">
+        <div class="slider-wrap">
+          <div class="slider-row">
+            <div class="slider-head"><span>起草基准耗时（分钟）</span><strong id="draftMinutesVal">35</strong></div>
+            <input id="draftMinutes" type="range" min="5" max="180" value="35">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>检索基准耗时（分钟）</span><strong id="researchMinutesVal">25</strong></div>
+            <input id="researchMinutes" type="range" min="5" max="180" value="25">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>润色基准耗时（分钟）</span><strong id="polishMinutesVal">20</strong></div>
+            <input id="polishMinutes" type="range" min="5" max="180" value="20">
+          </div>
+        </div>
+        <div class="slider-wrap">
+          <div class="slider-row">
+            <div class="slider-head"><span>起草节省比例</span><strong id="draftSavePctVal">45%</strong></div>
+            <input id="draftSavePct" type="range" min="0" max="95" value="45">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>检索节省比例</span><strong id="researchSavePctVal">35%</strong></div>
+            <input id="researchSavePct" type="range" min="0" max="95" value="35">
+          </div>
+          <div class="slider-row">
+            <div class="slider-head"><span>润色节省比例</span><strong id="polishSavePctVal">25%</strong></div>
+            <input id="polishSavePct" type="range" min="0" max="95" value="25">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-report-money"></i> 收益测算</div>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="label">每月节省时长</div>
+          <div class="value gold" id="savedHours">0h</div>
+          <div class="sub" id="manualVsAi">手工 0h / 使用后 0h</div>
+        </div>
+        <div class="kpi">
+          <div class="label">净收益</div>
+          <div class="value" id="netGain">¥0</div>
+          <div class="sub" id="timeValue">时间价值 ¥0 - 月费 ¥0</div>
+        </div>
+        <div class="kpi">
+          <div class="label">盈亏平衡任务量</div>
+          <div class="value blue" id="breakEven">0 个/月</div>
+          <div class="sub">达到这个任务量以上通常更划算</div>
+        </div>
+      </div>
+      <div id="insight" class="insight neutral"></div>
+      <div class="tips">
+        <div class="tip" id="intervalTip"></div>
+        <div class="tip" id="structureTip"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-chart-line"></i> 任务量变化下的收益曲线</div>
+      <div class="chart-wrap">
+        <canvas id="roiChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let roiChart = null;
+    const ids = [
+      'tasksPerMonth', 'hourlyValue', 'toolCost', 'verifyMinutes',
+      'draftMinutes', 'researchMinutes', 'polishMinutes',
+      'draftSavePct', 'researchSavePct', 'polishSavePct'
+    ];
+
+    function getParams() {
+      const params = {};
+      ids.forEach(id => {
+        params[id] = Number(document.getElementById(id).value);
+      });
+      return params;
+    }
+
+    function fmtMoney(v) {
+      const sign = v >= 0 ? '' : '-';
+      return sign + '¥' + Math.abs(v).toFixed(0);
+    }
+
+    function renderSliderText(params) {
+      document.getElementById('draftMinutesVal').textContent = params.draftMinutes;
+      document.getElementById('researchMinutesVal').textContent = params.researchMinutes;
+      document.getElementById('polishMinutesVal').textContent = params.polishMinutes;
+      document.getElementById('draftSavePctVal').textContent = params.draftSavePct + '%';
+      document.getElementById('researchSavePctVal').textContent = params.researchSavePct + '%';
+      document.getElementById('polishSavePctVal').textContent = params.polishSavePct + '%';
+    }
+
+    function renderChart(points) {
+      const ctx = document.getElementById('roiChart').getContext('2d');
+      if (roiChart) roiChart.destroy();
+      roiChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: points.map(p => p.tasks),
+          datasets: [
+            {
+              label: '净收益（元）',
+              data: points.map(p => p.netGain),
+              borderColor: '#fbbf24',
+              backgroundColor: 'rgba(251,191,36,0.1)',
+              fill: true,
+              borderWidth: 2.2,
+              pointRadius: 0,
+              tension: 0.25
+            },
+            {
+              label: '时间价值（元）',
+              data: points.map(p => p.timeValue),
+              borderColor: '#60a5fa',
+              borderWidth: 1.8,
+              pointRadius: 0,
+              fill: false,
+              tension: 0.25
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: 'rgba(255,255,255,0.75)' } }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '每月任务数', color: 'rgba(255,255,255,0.6)' },
+              ticks: { color: 'rgba(255,255,255,0.6)' },
+              grid: { color: 'rgba(255,255,255,0.08)' }
+            },
+            y: {
+              title: { display: true, text: '金额（元）', color: 'rgba(255,255,255,0.6)' },
+              ticks: { color: 'rgba(255,255,255,0.6)' },
+              grid: { color: 'rgba(255,255,255,0.08)' }
+            }
+          }
+        }
+      });
+    }
+
+    function update() {
+      const params = getParams();
+      renderSliderText(params);
+
+      const result = AIToolsValueLogic.calculateROI(params);
+      const cls = AIToolsValueLogic.classifyResult(result);
+      const interval = AIToolsValueLogic.simulateROIInterval(params, 1500);
+      const curve = AIToolsValueLogic.generateTaskCurve(params, Math.max(params.tasksPerMonth * 2, 80));
+      const be = AIToolsValueLogic.breakEvenTasks(params);
+
+      document.getElementById('savedHours').textContent = result.savedHours.toFixed(1) + 'h';
+      document.getElementById('manualVsAi').textContent = '手工 ' + result.manualHours.toFixed(1) + 'h / 使用后 ' + result.aiHours.toFixed(1) + 'h';
+
+      const netEl = document.getElementById('netGain');
+      netEl.textContent = fmtMoney(result.netGain);
+      netEl.className = 'value ' + (result.netGain >= 0 ? 'green' : 'red');
+      document.getElementById('timeValue').textContent = '时间价值 ' + fmtMoney(result.monthlyTimeValue) + ' - 月费 ' + fmtMoney(result.params.toolCost);
+
+      document.getElementById('breakEven').textContent = Number.isFinite(be) ? be.toFixed(1) + ' 个/月' : '不可达';
+
+      const insight = document.getElementById('insight');
+      insight.className = 'insight ' + cls.level;
+      insight.innerHTML =
+        '<strong>结论：</strong>' + cls.text +
+        '<br>当前 ROI：<strong>' + (Number.isFinite(result.roi) ? (result.roi * 100).toFixed(1) + '%' : '∞') + '</strong>' +
+        '，净收益 <strong>' + fmtMoney(result.netGain) + '</strong>。';
+
+      document.getElementById('intervalTip').innerHTML =
+        '在不同波动下，净收益区间（P10-P90）约为 <strong>' +
+        fmtMoney(interval.p10NetGain) + ' 到 ' + fmtMoney(interval.p90NetGain) +
+        '</strong>，盈利概率约 <strong>' + (interval.positiveRate * 100).toFixed(1) + '%</strong>。';
+
+      document.getElementById('structureTip').innerHTML =
+        '单任务手工耗时 <strong>' + result.perTask.manualPerTask.toFixed(1) +
+        ' 分钟</strong>，使用后 <strong>' + result.perTask.aiPerTask.toFixed(1) +
+        ' 分钟</strong>。如果核验返工上升，这个差值会快速缩小。';
+
+      renderChart(curve);
+    }
+
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', update);
+      el.addEventListener('change', update);
+    });
+
+    update();
+  </script>
+</body>
+</html>

@@ -136,6 +136,16 @@
       });
     }
 
+    const psychologyCategory = demosData.categories.find(cat => cat.id === 'psychology');
+    if (psychologyCategory && !psychologyCategory.demos.some(demo => demo.href === 'pages/predict-100ms.html')) {
+      psychologyCategory.demos.unshift({
+        href: 'pages/predict-100ms.html',
+        icon: 'ti-bolt',
+        title: '预知 0.1 秒能改命吗',
+        desc: '你能提前知道100ms后的事，但动作来不及。把预测窗口和反应速度放在同一把尺子里。'
+      });
+    }
+
     function init() {
       renderFilterTags();
       renderCategories();

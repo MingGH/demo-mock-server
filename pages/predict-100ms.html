@@ -188,6 +188,92 @@
     .reaction-item .k { font-size: 12px; color: rgba(255,255,255,0.48); margin-bottom: 4px; }
     .reaction-item .v { font-size: 1.2rem; font-weight: 700; color: #fbbf24; }
     .reaction-list { margin-top: 10px; color: rgba(255,255,255,0.68); line-height: 1.8; font-size: 13px; }
+    .game-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 16px;
+    }
+    .game-status {
+      font-size: 14px;
+      color: rgba(255,255,255,0.72);
+      line-height: 1.7;
+      margin-bottom: 12px;
+      min-height: 48px;
+    }
+    .game-hud {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .game-hud-item {
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      padding: 8px;
+      text-align: center;
+    }
+    .game-hud-item .k { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .game-hud-item .v { font-size: 1.05rem; font-weight: 700; color: #fbbf24; margin-top: 2px; }
+    .arena {
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.12);
+      background: linear-gradient(180deg, rgba(15,23,42,0.7), rgba(2,6,23,0.9));
+      height: 180px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 12px;
+    }
+    .tower {
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: rgba(255,255,255,0.72);
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.12s;
+    }
+    .tower.future { border-color: rgba(248,113,113,0.6); background: rgba(248,113,113,0.2); color: #fecaca; }
+    .tower.saved { border-color: rgba(74,222,128,0.65); background: rgba(74,222,128,0.2); color: #bbf7d0; }
+    .tower.boom { border-color: rgba(248,113,113,0.85); background: rgba(248,113,113,0.35); color: #fee2e2; }
+    .countdown {
+      position: absolute;
+      left: 50%;
+      top: 12px;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: rgba(255,255,255,0.65);
+      background: rgba(0,0,0,0.3);
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+    .shield-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .shield-btn {
+      border: 1px solid rgba(251,191,36,0.35);
+      background: rgba(255,255,255,0.08);
+      color: #fbbf24;
+      border-radius: 10px;
+      min-height: 46px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .shield-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .game-log { color: rgba(255,255,255,0.64); font-size: 12px; line-height: 1.8; min-height: 22px; }
     @media (max-width: 768px) {
       body { padding: 16px 12px calc(18px + env(safe-area-inset-bottom)); }
       .header h1 { font-size: 1.7rem; }
@@ -202,6 +288,9 @@
       .reaction-pad { height: 140px; font-size: 18px; }
       .reaction-status { font-size: 13px; }
       .reaction-list { font-size: 12px; }
+      .game-hud { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .arena { height: 156px; padding: 10px; }
+      .tower { font-size: 13px; }
       .chart-wrap { height: 250px; }
     }
   </style>
@@ -226,6 +315,35 @@
         </div>
         <div class="reaction-grid" id="reactionGrid"></div>
         <div class="reaction-list" id="reactionRounds"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-swords"></i> 100ms 预知改命挑战</div>
+      <div class="game-box">
+        <div class="game-status" id="gameStatus">
+          你拥有 100ms 的预知能力。系统会提前 100ms 告诉你哪座塔将被击中。看到提示后，立即点击下方对应护盾按钮。
+        </div>
+        <div class="game-hud">
+          <div class="game-hud-item"><div class="k">回合</div><div class="v" id="gameRound">0/8</div></div>
+          <div class="game-hud-item"><div class="k">改写成功</div><div class="v" id="gameWin" style="color:#4ade80;">0</div></div>
+          <div class="game-hud-item"><div class="k">改写失败</div><div class="v" id="gameLose" style="color:#f87171;">0</div></div>
+          <div class="game-hud-item"><div class="k">最快反应</div><div class="v" id="gameBest">-</div></div>
+        </div>
+        <div class="arena" id="arena">
+          <div class="countdown" id="gameCountdown">等待开局</div>
+          <div class="tower" id="towerLeft">左塔</div>
+          <div class="tower" id="towerRight">右塔</div>
+        </div>
+        <div class="game-log" style="margin-bottom:8px;">操作提示：请点击下方「左塔护盾 / 右塔护盾」按钮，不是点上面的塔。</div>
+        <div class="shield-row">
+          <button class="shield-btn" id="shieldLeft" onclick="handleShield('left', event)">左塔护盾</button>
+          <button class="shield-btn" id="shieldRight" onclick="handleShield('right', event)">右塔护盾</button>
+        </div>
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn" id="gameStartBtn" onclick="startForesightGame()"><i class="ti ti-player-play"></i> 开始挑战（8回合）</button>
+        </div>
+        <div class="game-log" id="gameLog"></div>
       </div>
     </div>
 
@@ -289,6 +407,23 @@
       falseStarts: 0,
       startAt: 0,
       timerId: null
+    };
+    const foresightGame = {
+      running: false,
+      round: 0,
+      total: 8,
+      wins: 0,
+      loses: 0,
+      bestRt: Infinity,
+      predictionMs: 100,
+      target: '',
+      windowOpen: false,
+      resolved: false,
+      openAt: 0,
+      deadlineAt: 0,
+      waitTimer: null,
+      impactTimer: null,
+      history: []
     };
 
     function getConfig() {
@@ -541,6 +676,160 @@
       runSimulation();
     }
 
+    function clearForesightTimers() {
+      clearTimeout(foresightGame.waitTimer);
+      clearTimeout(foresightGame.impactTimer);
+      foresightGame.waitTimer = null;
+      foresightGame.impactTimer = null;
+    }
+
+    function setShieldEnabled(enabled) {
+      document.getElementById('shieldLeft').disabled = !enabled;
+      document.getElementById('shieldRight').disabled = !enabled;
+    }
+
+    function setArenaState(state, targetLane) {
+      const left = document.getElementById('towerLeft');
+      const right = document.getElementById('towerRight');
+      left.className = 'tower';
+      right.className = 'tower';
+      if (!targetLane) return;
+      const targetEl = targetLane === 'left' ? left : right;
+      if (state === 'future') targetEl.classList.add('future');
+      if (state === 'saved') targetEl.classList.add('saved');
+      if (state === 'boom') targetEl.classList.add('boom');
+    }
+
+    function renderGameHud() {
+      document.getElementById('gameRound').textContent = `${foresightGame.round}/${foresightGame.total}`;
+      document.getElementById('gameWin').textContent = String(foresightGame.wins);
+      document.getElementById('gameLose').textContent = String(foresightGame.loses);
+      document.getElementById('gameBest').textContent = Number.isFinite(foresightGame.bestRt) ? `${foresightGame.bestRt.toFixed(1)}ms` : '-';
+    }
+
+    function appendGameLog(text) {
+      const log = document.getElementById('gameLog');
+      log.textContent = text;
+    }
+
+    function finishForesightGame() {
+      foresightGame.running = false;
+      foresightGame.windowOpen = false;
+      foresightGame.resolved = true;
+      setShieldEnabled(false);
+      const successRate = foresightGame.total > 0 ? (foresightGame.wins / foresightGame.total * 100) : 0;
+      const avgRt = foresightGame.history.length > 0
+        ? foresightGame.history.reduce((s, x) => s + x.rt, 0) / foresightGame.history.length
+        : 0;
+      const status = document.getElementById('gameStatus');
+      status.textContent = `挑战结束：你成功改写 ${foresightGame.wins}/${foresightGame.total} 次（${successRate.toFixed(1)}%）。` +
+        (avgRt > 0 ? ` 有效反应均值 ${avgRt.toFixed(1)}ms。` : '本局没有在窗口内做出有效动作。');
+      document.getElementById('gameCountdown').textContent = '挑战结束';
+      document.getElementById('gameStartBtn').innerHTML = '<i class="ti ti-refresh"></i> 再玩一次';
+      const rateHint = Predict100msLogic.estimateSuccessRate({
+        predictionMs: foresightGame.predictionMs,
+        reactionMs: Number(document.getElementById('reactionMs').value),
+        motorMs: Number(document.getElementById('motorMs').value),
+        jitterMs: Number(document.getElementById('jitterMs').value)
+      });
+      appendGameLog(`按当前参数，理论改写率约 ${(rateHint * 100).toFixed(1)}%。`);
+    }
+
+    function resolveForesightRound(success, lane, rt, reason) {
+      if (!foresightGame.running || foresightGame.resolved) return;
+      foresightGame.resolved = true;
+      foresightGame.windowOpen = false;
+      setShieldEnabled(false);
+      const target = foresightGame.target;
+      if (success) {
+        foresightGame.wins++;
+        if (Number.isFinite(rt)) {
+          foresightGame.bestRt = Math.min(foresightGame.bestRt, rt);
+          foresightGame.history.push({ rt });
+        }
+        setArenaState('saved', target);
+        document.getElementById('gameStatus').textContent = `第 ${foresightGame.round + 1} 回合：你在 ${rt.toFixed(1)}ms 内开盾，成功改写未来。`;
+      } else {
+        foresightGame.loses++;
+        setArenaState('boom', target);
+        if (reason === 'timeout') {
+          document.getElementById('gameStatus').textContent = `第 ${foresightGame.round + 1} 回合：${foresightGame.predictionMs}ms 窗口结束，你来不及改写。`;
+        } else if (reason === 'wrong') {
+          document.getElementById('gameStatus').textContent = `第 ${foresightGame.round + 1} 回合：你按了${lane === 'left' ? '左塔' : '右塔'}，但未来击中的是${target === 'left' ? '左塔' : '右塔'}。`;
+        } else {
+          document.getElementById('gameStatus').textContent = `第 ${foresightGame.round + 1} 回合：动作用了 ${rt.toFixed(1)}ms，超过 ${foresightGame.predictionMs}ms 窗口。`;
+        }
+      }
+      appendGameLog(`目标：${target === 'left' ? '左塔' : '右塔'}｜窗口：${foresightGame.predictionMs}ms｜本轮结果：${success ? '改写成功' : '失败'}`);
+      foresightGame.round++;
+      renderGameHud();
+      if (foresightGame.round >= foresightGame.total) {
+        finishForesightGame();
+        return;
+      }
+      foresightGame.waitTimer = setTimeout(() => {
+        runForesightRound();
+      }, 800);
+    }
+
+    function runForesightRound() {
+      if (!foresightGame.running) return;
+      foresightGame.resolved = false;
+      foresightGame.windowOpen = false;
+      setArenaState('', '');
+      setShieldEnabled(false);
+      document.getElementById('gameCountdown').textContent = '扫描未来...';
+      document.getElementById('gameStatus').textContent = `第 ${foresightGame.round + 1}/${foresightGame.total} 回合：未来尚未展开。`;
+      const waitMs = 800 + Math.random() * 1200;
+      foresightGame.waitTimer = setTimeout(() => {
+        foresightGame.target = Math.random() < 0.5 ? 'left' : 'right';
+        foresightGame.windowOpen = true;
+        foresightGame.resolved = false;
+        setArenaState('future', foresightGame.target);
+        foresightGame.openAt = performance.now();
+        foresightGame.deadlineAt = foresightGame.openAt + foresightGame.predictionMs;
+        document.getElementById('gameCountdown').textContent = `${foresightGame.predictionMs}ms 后命中`;
+        document.getElementById('gameStatus').textContent = `未来闪现：${foresightGame.predictionMs}ms 后，${foresightGame.target === 'left' ? '左塔' : '右塔'}将被击中。`;
+        setShieldEnabled(true);
+        foresightGame.impactTimer = setTimeout(() => {
+          resolveForesightRound(false, '', foresightGame.predictionMs, 'timeout');
+        }, foresightGame.predictionMs);
+      }, waitMs);
+    }
+
+    function startForesightGame() {
+      clearForesightTimers();
+      foresightGame.running = true;
+      foresightGame.round = 0;
+      foresightGame.wins = 0;
+      foresightGame.loses = 0;
+      foresightGame.bestRt = Infinity;
+      foresightGame.history = [];
+      foresightGame.windowOpen = false;
+      foresightGame.resolved = false;
+      foresightGame.predictionMs = 100;
+      document.getElementById('gameStartBtn').innerHTML = '<i class="ti ti-player-pause"></i> 挑战进行中';
+      renderGameHud();
+      appendGameLog(`规则：看到未来提示后，点击下方对应护盾按钮。窗口仅 ${foresightGame.predictionMs}ms。`);
+      runForesightRound();
+    }
+
+    function handleShield(lane, event) {
+      if (!foresightGame.running || !foresightGame.windowOpen || foresightGame.resolved) return;
+      const ts = normalizeEventTimestamp(event);
+      const rt = Math.max(0, ts - foresightGame.openAt);
+      clearTimeout(foresightGame.impactTimer);
+      if (ts > foresightGame.deadlineAt) {
+        resolveForesightRound(false, lane, rt, 'slow');
+        return;
+      }
+      if (lane !== foresightGame.target) {
+        resolveForesightRound(false, lane, rt, 'wrong');
+        return;
+      }
+      resolveForesightRound(true, lane, rt, 'success');
+    }
+
     function setActivePreset(button) {
       document.querySelectorAll('.preset').forEach(el => el.classList.remove('active'));
       button.classList.add('active');
@@ -600,10 +889,23 @@
         handleReactionPadClick(event);
       }
     });
+    window.addEventListener('keydown', (event) => {
+      if (!foresightGame.running) return;
+      if (event.code === 'ArrowLeft' || event.code === 'KeyA') {
+        event.preventDefault();
+        handleShield('left', event);
+      }
+      if (event.code === 'ArrowRight' || event.code === 'KeyL') {
+        event.preventDefault();
+        handleShield('right', event);
+      }
+    });
 
     bindPresets();
     updateLabels();
     updateReactionBoard();
+    renderGameHud();
+    setShieldEnabled(false);
     runSimulation();
   </script>
 </body>

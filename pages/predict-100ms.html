@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>预知 0.1 秒：你真的能改变结果吗？</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./predict-100ms-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { overflow-x: hidden; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px calc(24px + env(safe-area-inset-bottom));
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 36px; }
+    .header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    .header p { color: rgba(255,255,255,0.58); margin-top: 12px; line-height: 1.8; font-size: 15px; }
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      color: #fbbf24;
+      font-size: 16px;
+      margin-bottom: 16px;
+      border-left: 3px solid #fbbf24;
+      padding-left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .desc { color: rgba(255,255,255,0.55); line-height: 1.7; font-size: 14px; margin-bottom: 16px; }
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .control-item {
+      background: rgba(0,0,0,0.22);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .control-item label { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: rgba(255,255,255,0.74); margin-bottom: 10px; }
+    .control-item strong { color: #fbbf24; }
+    .control-item input[type="range"] { width: 100%; accent-color: #fbbf24; }
+    .btn-row { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 11px 20px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: #1a1a2e;
+      min-height: 44px;
+      touch-action: manipulation;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(251,191,36,0.25); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08);
+      color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.35);
+    }
+    .preset-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .preset {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.8);
+      border-radius: 999px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      min-height: 36px;
+      touch-action: manipulation;
+    }
+    .preset.active {
+      border-color: rgba(251,191,36,0.5);
+      color: #fbbf24;
+      background: rgba(251,191,36,0.14);
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .result-item {
+      background: rgba(0,0,0,0.23);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+    .result-item .label { color: rgba(255,255,255,0.45); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { color: #fbbf24; font-size: 1.55rem; font-weight: 700; }
+    .result-item .value.red { color: #f87171; }
+    .result-item .value.green { color: #4ade80; }
+    .chart-wrap { position: relative; height: 290px; margin-top: 14px; }
+    .insight {
+      margin-top: 16px;
+      border: 1px solid rgba(251,191,36,0.2);
+      border-radius: 12px;
+      padding: 16px;
+      line-height: 1.8;
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.04));
+      color: rgba(255,255,255,0.74);
+      font-size: 14px;
+    }
+    .insight strong { color: #fbbf24; }
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 2px 10px;
+      margin-left: 6px;
+      font-size: 12px;
+      vertical-align: middle;
+    }
+    .pill.red { color: #fca5a5; background: rgba(248,113,113,0.15); }
+    .pill.orange { color: #fdba74; background: rgba(251,146,60,0.15); }
+    .pill.green { color: #86efac; background: rgba(74,222,128,0.15); }
+    .mini-list { line-height: 1.9; font-size: 14px; color: rgba(255,255,255,0.74); }
+    .reaction-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 16px;
+    }
+    .reaction-status {
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 12px;
+      line-height: 1.7;
+    }
+    .reaction-pad {
+      border-radius: 12px;
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      cursor: pointer;
+      font-size: 20px;
+      font-weight: 700;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.72);
+      transition: all 0.2s;
+      text-align: center;
+      padding: 10px;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+    }
+    .reaction-pad.waiting { background: rgba(59,130,246,0.12); border-color: rgba(96,165,250,0.45); color: #93c5fd; }
+    .reaction-pad.ready { background: rgba(74,222,128,0.16); border-color: rgba(74,222,128,0.55); color: #86efac; }
+    .reaction-pad.early { background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.55); color: #fca5a5; }
+    .reaction-grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .reaction-item {
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+    }
+    .reaction-item .k { font-size: 12px; color: rgba(255,255,255,0.48); margin-bottom: 4px; }
+    .reaction-item .v { font-size: 1.2rem; font-weight: 700; color: #fbbf24; }
+    .reaction-list { margin-top: 10px; color: rgba(255,255,255,0.68); line-height: 1.8; font-size: 13px; }
+    @media (max-width: 768px) {
+      body { padding: 16px 12px calc(18px + env(safe-area-inset-bottom)); }
+      .header h1 { font-size: 1.7rem; }
+      .card { padding: 18px; }
+      .control-grid { grid-template-columns: 1fr; }
+      .btn-row { gap: 8px; }
+      .btn-row .btn { width: 100%; }
+      .preset-group { gap: 6px; }
+      .preset { font-size: 12px; }
+      .result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .reaction-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .reaction-pad { height: 140px; font-size: 18px; }
+      .reaction-status { font-size: 13px; }
+      .reaction-list { font-size: 12px; }
+      .chart-wrap { height: 250px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-bolt"></i> 预知 0.1 秒，能做什么？</h1>
+      <p>你提前知道 100ms 后会发生什么，但身体来不及执行动作。<br>这个页面把“预测窗口”和“人类动作延迟”放在同一把尺子里。</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-stopwatch"></i> 先测你自己的反应速度（5轮）</div>
+      <div class="reaction-box">
+        <div class="reaction-status" id="reactionStatus">
+          点击“开始测试”，方块会在随机时刻变绿。变绿后立刻点，连续完成 5 轮。支持空格键触发。
+        </div>
+        <div class="reaction-pad" id="reactionPad" tabindex="0">点击“开始测试”</div>
+        <div class="btn-row">
+          <button class="btn" id="reactionStartBtn" onclick="startReactionTest()"><i class="ti ti-player-play"></i> 开始5轮测试</button>
+          <button class="btn btn-secondary" onclick="applyReactionToSlider()"><i class="ti ti-arrows-right-left"></i> 用测试均值回填参数</button>
+        </div>
+        <div class="reaction-grid" id="reactionGrid"></div>
+        <div class="reaction-list" id="reactionRounds"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-adjustments"></i> 参数设置</div>
+      <div class="desc">总延迟 = 反应延迟 + 手指执行延迟 ± 波动。只要总延迟超过 100ms，本轮就无法改写结果。</div>
+      <div class="control-grid">
+        <div class="control-item">
+          <label>预测窗口 <strong id="predictionVal">100ms</strong></label>
+          <input id="predictionMs" type="range" min="60" max="300" step="5" value="100">
+        </div>
+        <div class="control-item">
+          <label>反应延迟 <strong id="reactionVal">220ms</strong></label>
+          <input id="reactionMs" type="range" min="80" max="350" step="5" value="220">
+        </div>
+        <div class="control-item">
+          <label>执行延迟 <strong id="motorVal">35ms</strong></label>
+          <input id="motorMs" type="range" min="5" max="120" step="1" value="35">
+        </div>
+        <div class="control-item">
+          <label>波动幅度 <strong id="jitterVal">20ms</strong></label>
+          <input id="jitterMs" type="range" min="0" max="80" step="1" value="20">
+        </div>
+      </div>
+      <div class="preset-group" id="presetGroup">
+        <button class="preset active" data-reaction="220" data-motor="35" data-jitter="20">普通成年人</button>
+        <button class="preset" data-reaction="170" data-motor="25" data-jitter="15">快反应玩家</button>
+        <button class="preset" data-reaction="130" data-motor="18" data-jitter="10">职业选手级</button>
+        <button class="preset" data-reaction="80" data-motor="10" data-jitter="5">超能力设定</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="runSimulation()"><i class="ti ti-player-play"></i> 跑 60 轮模拟</button>
+        <button class="btn btn-secondary" onclick="resetToDefault()"><i class="ti ti-refresh"></i> 恢复默认</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-chart-arcs"></i> 模拟结果</div>
+      <div class="result-grid" id="resultGrid"></div>
+      <div class="chart-wrap"><canvas id="marginChart"></canvas></div>
+      <div class="insight" id="insight"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-list-details"></i> 结论要点</div>
+      <div class="mini-list" id="bulletList"></div>
+    </div>
+  </div>
+
+  <script>
+    let marginChart;
+    let reactionSummary = null;
+    const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+    const reactionState = {
+      running: false,
+      waiting: false,
+      ready: false,
+      round: 0,
+      total: 5,
+      times: [],
+      falseStarts: 0,
+      startAt: 0,
+      timerId: null
+    };
+
+    function getConfig() {
+      return {
+        predictionMs: Number(document.getElementById('predictionMs').value),
+        reactionMs: Number(document.getElementById('reactionMs').value),
+        motorMs: Number(document.getElementById('motorMs').value),
+        jitterMs: Number(document.getElementById('jitterMs').value),
+        rounds: 60
+      };
+    }
+
+    function updateLabels() {
+      document.getElementById('predictionVal').textContent = document.getElementById('predictionMs').value + 'ms';
+      document.getElementById('reactionVal').textContent = document.getElementById('reactionMs').value + 'ms';
+      document.getElementById('motorVal').textContent = document.getElementById('motorMs').value + 'ms';
+      document.getElementById('jitterVal').textContent = document.getElementById('jitterMs').value + 'ms';
+    }
+
+    function classPill(level, text) {
+      const map = {
+        impossible: 'red',
+        rare: 'orange',
+        hard: 'orange',
+        possible: 'green'
+      };
+      const cls = map[level] || 'orange';
+      return '<span class="pill ' + cls + '">' + text + '</span>';
+    }
+
+    function renderResults(result) {
+      const rate = (result.successRate * 100).toFixed(1);
+      const avgDelay = result.avgDelay.toFixed(1);
+      const required = result.requiredReactionMs.toFixed(1);
+      const strict = result.strictRequiredReactionMs.toFixed(1);
+      const modelRate = (Predict100msLogic.estimateSuccessRate(result.config) * 100).toFixed(1);
+      const state = Predict100msLogic.classify(result);
+      const totalBase = (result.config.reactionMs + result.config.motorMs).toFixed(1);
+
+      document.getElementById('resultGrid').innerHTML = `
+        <div class="result-item">
+          <div class="label">成功改写次数</div>
+          <div class="value ${result.successCount === 0 ? 'red' : 'green'}">${result.successCount}/${result.config.rounds}</div>
+        </div>
+        <div class="result-item">
+          <div class="label">模拟成功率</div>
+          <div class="value ${result.successRate < 0.05 ? 'red' : 'green'}">${rate}%</div>
+        </div>
+        <div class="result-item">
+          <div class="label">平均总延迟</div>
+          <div class="value ${result.avgDelay > result.config.predictionMs ? 'red' : 'green'}">${avgDelay}ms</div>
+        </div>
+        <div class="result-item">
+          <div class="label">理论成功率</div>
+          <div class="value">${modelRate}%</div>
+        </div>
+      `;
+
+      document.getElementById('insight').innerHTML =
+        `当前判定：<strong>${state.text}</strong>${classPill(state.level, state.level)}<br>` +
+        `你的基线总延迟约 <strong>${totalBase}ms</strong>，预测窗口为 <strong>${result.config.predictionMs}ms</strong>。<br>` +
+        `如果只给 ${result.config.predictionMs}ms，反应延迟需要压到 <strong>${required}ms</strong> 以下才有机会命中；` +
+        `给一点安全边际后，目标会收紧到 <strong>${strict}ms</strong>。`;
+
+      document.getElementById('bulletList').innerHTML =
+        `1) 预测不是执行，执行受反应链路限制。<br>` +
+        `2) 100ms 通常小于正常人的视觉反应时间。<br>` +
+        `3) 你能“知道结果”，但往往“来不及干预”。<br>` +
+        `4) 把窗口拉到 200ms 以上，可干预概率会明显抬升。`;
+    }
+
+    function renderChart(result) {
+      const labels = result.trials.map((_, i) => i + 1);
+      const margins = result.trials.map(t => Number(t.margin.toFixed(1)));
+      const colors = margins.map(m => m >= 0 ? 'rgba(74,222,128,0.85)' : 'rgba(248,113,113,0.85)');
+
+      if (!marginChart) {
+        const ctx = document.getElementById('marginChart').getContext('2d');
+        marginChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: '每轮剩余时间（ms）',
+              data: margins,
+              backgroundColor: colors,
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: { ticks: { color: 'rgba(255,255,255,0.55)' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+              y: { ticks: { color: 'rgba(255,255,255,0.55)' }, grid: { color: 'rgba(255,255,255,0.08)' } }
+            },
+            plugins: {
+              legend: { labels: { color: 'rgba(255,255,255,0.7)' } }
+            }
+          }
+        });
+        return;
+      }
+
+      marginChart.data.labels = labels;
+      marginChart.data.datasets[0].data = margins;
+      marginChart.data.datasets[0].backgroundColor = colors;
+      marginChart.update();
+    }
+
+    function runSimulation() {
+      const result = Predict100msLogic.runBatch(getConfig());
+      renderResults(result);
+      renderChart(result);
+    }
+
+    function normalizeEventTimestamp(event) {
+      const ts = Number(event && event.timeStamp);
+      if (!Number.isFinite(ts)) return performance.now();
+      if (ts > 1e12 && Number.isFinite(performance.timeOrigin)) {
+        return ts - performance.timeOrigin;
+      }
+      return ts;
+    }
+
+    function updateReactionBoard() {
+      const status = document.getElementById('reactionStatus');
+      const pad = document.getElementById('reactionPad');
+      const rounds = document.getElementById('reactionRounds');
+      const grid = document.getElementById('reactionGrid');
+      if (!reactionState.running && reactionState.times.length === 0 && reactionState.falseStarts === 0) {
+        status.textContent = '点击“开始测试”，方块会在随机时刻变绿。变绿后立刻点，连续完成 5 轮。支持空格键触发。';
+        pad.textContent = '点击“开始测试”';
+        pad.className = 'reaction-pad';
+        grid.innerHTML = '';
+        rounds.innerHTML = '';
+        return;
+      }
+      const roundText = `第 ${reactionState.round + 1}/${reactionState.total} 轮`;
+      if (reactionState.running && reactionState.waiting) {
+        status.textContent = `${roundText}：等待变绿后再点，提前点会记为抢跑。`;
+        pad.textContent = '等待中...';
+        pad.className = 'reaction-pad waiting';
+      } else if (reactionState.running && reactionState.ready) {
+        status.textContent = `${roundText}：现在点击`;
+        pad.textContent = '点我';
+        pad.className = 'reaction-pad ready';
+      } else if (reactionState.running) {
+        status.textContent = `${roundText}：准备下一轮`;
+        pad.textContent = '准备中...';
+        pad.className = 'reaction-pad';
+      }
+      rounds.innerHTML = reactionState.times.length > 0
+        ? reactionState.times.map((v, i) => `第${i + 1}轮：${v.toFixed(1)}ms`).join(' ｜ ')
+        : '';
+      if (reactionSummary) {
+        const hitRate = (reactionSummary.hit100msRate * 100).toFixed(1);
+        grid.innerHTML = `
+          <div class="reaction-item"><div class="k">平均反应</div><div class="v">${reactionSummary.averageMs.toFixed(1)}ms</div></div>
+          <div class="reaction-item"><div class="k">最快一轮</div><div class="v">${reactionSummary.bestMs.toFixed(1)}ms</div></div>
+          <div class="reaction-item"><div class="k">慢于100ms</div><div class="v">${reactionSummary.slowerByMs.toFixed(1)}ms</div></div>
+          <div class="reaction-item"><div class="k">≤100ms命中率</div><div class="v">${hitRate}%</div></div>
+        `;
+      } else {
+        grid.innerHTML = '';
+      }
+    }
+
+    function finishReactionTest() {
+      reactionState.running = false;
+      reactionState.waiting = false;
+      reactionState.ready = false;
+      reactionSummary = Predict100msLogic.summarizeReactionTest(reactionState.times, 100);
+      const ratio = reactionSummary.ratioToTarget;
+      const tag = ratio <= 1 ? '已进入100ms窗口' : `约为100ms的${ratio.toFixed(2)}倍`;
+      document.getElementById('reactionStatus').textContent =
+        `测试完成：5轮均值 ${reactionSummary.averageMs.toFixed(1)}ms，${tag}，抢跑 ${reactionState.falseStarts} 次。`;
+      document.getElementById('reactionPad').textContent = '测试完成';
+      document.getElementById('reactionPad').className = 'reaction-pad';
+      document.getElementById('reactionStartBtn').innerHTML = '<i class="ti ti-refresh"></i> 再测5轮';
+      updateReactionBoard();
+    }
+
+    function scheduleReactionRound() {
+      reactionState.waiting = true;
+      reactionState.ready = false;
+      updateReactionBoard();
+      const delay = 900 + Math.random() * 1700;
+      reactionState.timerId = setTimeout(() => {
+        reactionState.waiting = false;
+        reactionState.ready = true;
+        reactionState.startAt = performance.now();
+        updateReactionBoard();
+      }, delay);
+    }
+
+    function startReactionTest() {
+      clearTimeout(reactionState.timerId);
+      reactionState.running = true;
+      reactionState.waiting = false;
+      reactionState.ready = false;
+      reactionState.round = 0;
+      reactionState.times = [];
+      reactionState.falseStarts = 0;
+      reactionSummary = null;
+      document.getElementById('reactionStartBtn').innerHTML = '<i class="ti ti-player-pause"></i> 测试进行中';
+      if (!isTouchDevice) {
+        document.getElementById('reactionPad').focus();
+      }
+      scheduleReactionRound();
+    }
+
+    function handleReactionPadClick(event) {
+      if (!reactionState.running) return;
+      const eventTs = normalizeEventTimestamp(event);
+      if (reactionState.waiting && !reactionState.ready) {
+        reactionState.falseStarts++;
+        clearTimeout(reactionState.timerId);
+        const pad = document.getElementById('reactionPad');
+        pad.textContent = '抢跑了';
+        pad.className = 'reaction-pad early';
+        document.getElementById('reactionStatus').textContent = `你提前点击了。抢跑 ${reactionState.falseStarts} 次，本轮重来。`;
+        setTimeout(() => {
+          if (reactionState.running) scheduleReactionRound();
+        }, 600);
+        return;
+      }
+      if (!reactionState.ready) return;
+      const rt = Math.max(0, eventTs - reactionState.startAt);
+      reactionState.times.push(rt);
+      reactionState.round++;
+      reactionState.ready = false;
+      reactionState.waiting = false;
+      if (reactionState.round >= reactionState.total) {
+        finishReactionTest();
+        return;
+      }
+      document.getElementById('reactionStatus').textContent = `第 ${reactionState.round}/${reactionState.total} 轮完成，准备下一轮。`;
+      updateReactionBoard();
+      setTimeout(() => {
+        if (reactionState.running) scheduleReactionRound();
+      }, 550);
+    }
+
+    function applyReactionToSlider() {
+      if (!reactionSummary || reactionSummary.count === 0) return;
+      const value = Math.max(80, Math.min(350, Math.round(reactionSummary.averageMs)));
+      document.getElementById('reactionMs').value = value;
+      updateLabels();
+      runSimulation();
+    }
+
+    function setActivePreset(button) {
+      document.querySelectorAll('.preset').forEach(el => el.classList.remove('active'));
+      button.classList.add('active');
+    }
+
+    function bindPresets() {
+      document.getElementById('presetGroup').addEventListener('click', (e) => {
+        const btn = e.target.closest('.preset');
+        if (!btn) return;
+        document.getElementById('reactionMs').value = btn.dataset.reaction;
+        document.getElementById('motorMs').value = btn.dataset.motor;
+        document.getElementById('jitterMs').value = btn.dataset.jitter;
+        setActivePreset(btn);
+        updateLabels();
+        runSimulation();
+      });
+    }
+
+    function resetToDefault() {
+      document.getElementById('predictionMs').value = 100;
+      document.getElementById('reactionMs').value = 220;
+      document.getElementById('motorMs').value = 35;
+      document.getElementById('jitterMs').value = 20;
+      const defaultPreset = document.querySelector('.preset[data-reaction="220"]');
+      if (defaultPreset) setActivePreset(defaultPreset);
+      updateLabels();
+      runSimulation();
+    }
+
+    ['predictionMs', 'reactionMs', 'motorMs', 'jitterMs'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        updateLabels();
+        runSimulation();
+      });
+    });
+
+    const reactionPad = document.getElementById('reactionPad');
+    if ('PointerEvent' in window) {
+      reactionPad.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
+        handleReactionPadClick(event);
+      });
+    } else {
+      reactionPad.addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        const touch = event.changedTouches && event.changedTouches[0];
+        handleReactionPadClick({ timeStamp: touch ? event.timeStamp : performance.now() });
+      }, { passive: false });
+      reactionPad.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        handleReactionPadClick(event);
+      });
+    }
+    reactionPad.addEventListener('keydown', (event) => {
+      if (event.code === 'Space' || event.code === 'Enter') {
+        event.preventDefault();
+        handleReactionPadClick(event);
+      }
+    });
+
+    bindPresets();
+    updateLabels();
+    updateReactionBoard();
+    runSimulation();
+  </script>
+</body>
+</html>

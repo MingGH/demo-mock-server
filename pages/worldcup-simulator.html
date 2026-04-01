@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="用蒙特卡洛模拟跑10万次2026美加墨世界杯，基于FIFA排名计算48支球队的夺冠概率。调整爆冷系数，看黑马如何改变格局。">
+  <title>2026世界杯夺冠概率模拟器 | 数字直觉</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../components/header.js" defer></script>
+  <script src="./worldcup-simulator-logic.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2.2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; line-height: 1.6; }
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.6; }
+    .btn {
+      padding: 12px 30px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+    .btn-secondary:hover { background: rgba(251,191,36,0.15); }
+    .btn-row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .result-item { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center; }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.6rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+    .result-item.blue .value { color: #60a5fa; }
+    .chart-box { position: relative; height: 500px; margin-top: 15px; }
+    .chart-box-small { position: relative; height: 350px; margin-top: 15px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; margin-top: 20px; line-height: 1.8; font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .insight-box strong { color: #fbbf24; }
+    .slider-group { margin: 12px 0; }
+    .slider-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 6px;
+    }
+    .slider-group label span { color: #fbbf24; font-weight: 600; }
+    .slider-group input[type="range"] {
+      width: 100%; -webkit-appearance: none; height: 6px;
+      background: rgba(255,255,255,0.1); border-radius: 3px; outline: none;
+    }
+    .slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px;
+      background: #fbbf24; border-radius: 50%; cursor: pointer;
+    }
+    .experiment-area {
+      background: rgba(0,0,0,0.15); border-radius: 12px; padding: 20px; margin: 15px 0;
+    }
+    .progress-bar {
+      width: 100%; height: 6px; background: rgba(255,255,255,0.1);
+      border-radius: 3px; overflow: hidden; margin: 10px 0;
+    }
+    .progress-bar .fill {
+      height: 100%; background: linear-gradient(90deg, #fbbf24, #f59e0b);
+      border-radius: 3px; transition: width 0.3s;
+    }
+    .status-text { color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 8px; }
+    /* 排名表格 */
+    .rank-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    .rank-table th {
+      text-align: left; padding: 10px 12px; font-size: 12px;
+      color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-weight: 500;
+    }
+    .rank-table td {
+      padding: 10px 12px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .rank-table tr:hover { background: rgba(255,255,255,0.03); }
+    .rank-num { color: #fbbf24; font-weight: 700; width: 30px; }
+    .rank-1 .rank-num { color: #ffd700; font-size: 18px; }
+    .rank-2 .rank-num { color: #c0c0c0; }
+    .rank-3 .rank-num { color: #cd7f32; }
+    .team-name { font-weight: 600; }
+    .team-meta { color: rgba(255,255,255,0.4); font-size: 12px; }
+    .prob-bar {
+      display: inline-block; height: 20px; border-radius: 4px;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b);
+      min-width: 4px; vertical-align: middle; margin-right: 8px;
+    }
+    .prob-text { font-weight: 700; color: #fbbf24; }
+    /* 分组视图 */
+    .groups-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 15px; }
+    .group-card {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .group-card h3 { color: #fbbf24; font-size: 14px; margin-bottom: 10px; }
+    .group-team {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .group-team:last-child { border-bottom: none; }
+    .group-team .rate { color: #4ade80; font-weight: 600; font-size: 12px; }
+    .tab-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab-btn {
+      padding: 8px 18px; font-size: 13px; border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px; cursor: pointer; background: transparent; color: rgba(255,255,255,0.6);
+      transition: all 0.3s;
+    }
+    .tab-btn.active { background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.4); }
+    .tab-btn:hover { border-color: rgba(251,191,36,0.3); color: #fbbf24; }
+    .hidden { display: none; }
+    .data-source {
+      margin-top: 30px; padding: 15px; font-size: 12px; color: rgba(255,255,255,0.3);
+      border-top: 1px solid rgba(255,255,255,0.05); line-height: 1.8;
+    }
+    .data-source a { color: rgba(251,191,36,0.5); text-decoration: none; }
+    .data-source a:hover { color: #fbbf24; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-trophy"></i> 2026世界杯夺冠概率模拟器</h1>
+      <p>基于 FIFA 排名 + 蒙特卡洛模拟，计算 48 支球队的夺冠概率<br>调整「爆冷系数」看黑马如何改变格局</p>
+    </div>
+    <!-- 控制面板 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-settings"></i> 模拟参数</div>
+      <div class="experiment-area">
+        <div class="slider-group">
+          <label>模拟次数 <span id="trialsLabel">10,000</span></label>
+          <input type="range" id="trialsSlider" min="1000" max="100000" step="1000" value="10000">
+        </div>
+        <div class="slider-group">
+          <label>爆冷系数 <span id="upsetLabel">0.00</span></label>
+          <input type="range" id="upsetSlider" min="0" max="100" step="5" value="0">
+        </div>
+        <div class="card-desc">
+          爆冷系数 = 0：完全按实力来，强队碾压。<br>
+          爆冷系数 = 1：弱队也有很大机会赢，谁都可能夺冠。<br>
+          真实世界杯大约在 0.2 ~ 0.4 之间。
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="runBtn" onclick="runSimulation()"><i class="ti ti-player-play"></i> 开始模拟</button>
+          <button class="btn btn-secondary" id="presetBtn1" onclick="runPreset(0)">纯实力模式</button>
+          <button class="btn btn-secondary" id="presetBtn2" onclick="runPreset(0.3)">真实模式</button>
+          <button class="btn btn-secondary" id="presetBtn3" onclick="runPreset(0.7)">黑马模式</button>
+        </div>
+        <div class="progress-bar"><div class="fill" id="progressFill" style="width:0%"></div></div>
+        <div class="status-text" id="statusText">准备就绪</div>
+      </div>
+    </div>
+
+    <!-- 结果概览 -->
+    <div class="card hidden" id="resultCard">
+      <div class="card-title"><i class="ti ti-chart-bar"></i> 模拟结果</div>
+      <div class="result-grid" id="resultGrid"></div>
+
+      <!-- Tab 切换 -->
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="switchTab('chart')">夺冠概率图</button>
+        <button class="tab-btn" onclick="switchTab('table')">完整排名</button>
+        <button class="tab-btn" onclick="switchTab('groups')">小组出线率</button>
+      </div>
+
+      <!-- 夺冠概率图 -->
+      <div id="chartView">
+        <div class="chart-box"><canvas id="champChart"></canvas></div>
+      </div>
+
+      <!-- 完整排名表 -->
+      <div id="tableView" class="hidden">
+        <table class="rank-table">
+          <thead><tr><th>#</th><th>球队</th><th>小组</th><th>FIFA排名</th><th>历史冠军</th><th>夺冠概率</th></tr></thead>
+          <tbody id="rankTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- 小组出线率 -->
+      <div id="groupsView" class="hidden">
+        <div class="groups-grid" id="groupsGrid"></div>
+      </div>
+
+      <div class="insight-box" id="insightBox"></div>
+    </div>
+
+    <!-- 数据来源 -->
+    <div class="data-source">
+      数据来源：<br>
+      · FIFA 排名：FIFA Men's World Ranking (2025年11月 / 2026年3月更新)<br>
+      · 分组抽签：<a href="https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_seeding" target="_blank">Wikipedia - 2026 FIFA World Cup seeding</a><br>
+      · 历史夺冠：FIFA World Cup 官方记录<br>
+      · 模拟方法：蒙特卡洛模拟 + Elo 风格胜率模型<br>
+      · 本模拟仅供娱乐参考，实际比赛受伤病、状态、战术等因素影响
+    </div>
+  </div>
+  <script>
+    let champChart = null;
+    let lastResults = null;
+    let lastGroupResults = null;
+
+    // 滑块联动
+    document.getElementById('trialsSlider').addEventListener('input', e => {
+      document.getElementById('trialsLabel').textContent = parseInt(e.target.value).toLocaleString();
+    });
+    document.getElementById('upsetSlider').addEventListener('input', e => {
+      document.getElementById('upsetLabel').textContent = (parseInt(e.target.value) / 100).toFixed(2);
+    });
+
+    function runPreset(upset) {
+      document.getElementById('upsetSlider').value = upset * 100;
+      document.getElementById('upsetLabel').textContent = upset.toFixed(2);
+      runSimulation();
+    }
+
+    function runSimulation() {
+      const trials = parseInt(document.getElementById('trialsSlider').value);
+      const upsetFactor = parseInt(document.getElementById('upsetSlider').value) / 100;
+      const btn = document.getElementById('runBtn');
+      btn.disabled = true;
+      document.getElementById('statusText').textContent = '模拟中...';
+      document.getElementById('progressFill').style.width = '10%';
+
+      // 用 setTimeout 让 UI 更新
+      setTimeout(() => {
+        document.getElementById('progressFill').style.width = '30%';
+        setTimeout(() => {
+          // 夺冠概率
+          const results = monteCarloSimulation(trials, upsetFactor);
+          lastResults = results;
+          document.getElementById('progressFill').style.width = '70%';
+
+          setTimeout(() => {
+            // 小组出线率
+            const groupResults = groupQualifySimulation(Math.min(trials, 10000), upsetFactor);
+            lastGroupResults = groupResults;
+            document.getElementById('progressFill').style.width = '100%';
+
+            renderResults(results, groupResults, trials, upsetFactor);
+            btn.disabled = false;
+            document.getElementById('statusText').textContent =
+              `完成！模拟 ${trials.toLocaleString()} 次，爆冷系数 ${upsetFactor.toFixed(2)}`;
+          }, 50);
+        }, 50);
+      }, 50);
+    }
+
+    function renderResults(results, groupResults, trials, upsetFactor) {
+      document.getElementById('resultCard').classList.remove('hidden');
+
+      // 概览卡片
+      const top3 = results.slice(0, 3);
+      const medals = ['🥇', '🥈', '🥉'];
+      document.getElementById('resultGrid').innerHTML = top3.map((r, i) => `
+        <div class="result-item ${i === 0 ? '' : i === 1 ? 'blue' : 'green'}">
+          <div class="label">${medals[i]} ${i === 0 ? '最可能夺冠' : i === 1 ? '第二热门' : '第三热门'}</div>
+          <div class="value">${r.name}</div>
+          <div class="label">${r.probability}%</div>
+        </div>
+      `).join('') + `
+        <div class="result-item red">
+          <div class="label">模拟次数</div>
+          <div class="value">${(trials / 1000).toFixed(0)}K</div>
+          <div class="label">爆冷系数 ${upsetFactor.toFixed(2)}</div>
+        </div>
+      `;
+
+      // 图表 - Top 20
+      renderChart(results.slice(0, 20));
+      // 表格
+      renderTable(results);
+      // 分组
+      renderGroups(groupResults);
+      // 洞察
+      renderInsight(results, upsetFactor);
+    }
+
+    function renderChart(top20) {
+      const ctx = document.getElementById('champChart').getContext('2d');
+      if (champChart) champChart.destroy();
+
+      const colors = top20.map((_, i) => {
+        if (i === 0) return '#ffd700';
+        if (i === 1) return '#c0c0c0';
+        if (i === 2) return '#cd7f32';
+        return `rgba(251, 191, 36, ${0.7 - i * 0.025})`;
+      });
+
+      champChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: top20.map(r => r.name),
+          datasets: [{
+            label: '夺冠概率 (%)',
+            data: top20.map(r => r.probability),
+            backgroundColor: colors,
+            borderRadius: 6,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.parsed.x}% (FIFA排名 #${top20[ctx.dataIndex].fifaRank})`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.5)', callback: v => v + '%' }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: 'rgba(255,255,255,0.8)', font: { size: 13 } }
+            }
+          }
+        }
+      });
+    }
+
+    function renderTable(results) {
+      const maxProb = results[0].probability;
+      document.getElementById('rankTableBody').innerHTML = results.map((r, i) => `
+        <tr class="${i < 3 ? 'rank-' + (i + 1) : ''}">
+          <td class="rank-num">${i + 1}</td>
+          <td><span class="team-name">${r.name}</span> <span class="team-meta">${r.nameEn}</span></td>
+          <td>${r.group}</td>
+          <td>#${r.fifaRank}</td>
+          <td>${r.titles > 0 ? '⭐'.repeat(r.titles) : '-'}</td>
+          <td>
+            <span class="prob-bar" style="width:${Math.max(4, (r.probability / maxProb) * 120)}px"></span>
+            <span class="prob-text">${r.probability}%</span>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderGroups(groupResults) {
+      const groups = {};
+      groupResults.forEach(r => {
+        if (!groups[r.group]) groups[r.group] = [];
+        groups[r.group].push(r);
+      });
+
+      document.getElementById('groupsGrid').innerHTML = Object.keys(groups).sort().map(g => {
+        const teams = groups[g].sort((a, b) => b.qualifyRate - a.qualifyRate);
+        return `
+          <div class="group-card">
+            <h3>小组 ${g}</h3>
+            ${teams.map(t => `
+              <div class="group-team">
+                <span>${t.name} <span class="team-meta">#${t.fifaRank}</span></span>
+                <span class="rate">${t.qualifyRate}%</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderInsight(results, upsetFactor) {
+      const top = results[0];
+      const topEuro = results.find(r => ['Spain', 'France', 'England', 'Germany', 'Portugal', 'Netherlands', 'Belgium'].includes(r.nameEn));
+      const topSA = results.find(r => ['Argentina', 'Brazil', 'Uruguay', 'Colombia', 'Ecuador'].includes(r.nameEn));
+      const topAfrica = results.find(r => ['Morocco', 'Senegal', 'Egypt', 'Ivory Coast', 'Algeria', 'Tunisia', 'Ghana', 'South Africa', 'Cape Verde', 'DR Congo'].includes(r.nameEn));
+      const topAsia = results.find(r => ['Japan', 'South Korea', 'Iran', 'Australia', 'Saudi Arabia', 'Qatar', 'Uzbekistan', 'Iraq', 'Jordan'].includes(r.nameEn));
+
+      const euroTotal = results.filter(r => TEAMS.find(t => t.nameEn === r.nameEn)?.confederation === 'UEFA')
+        .reduce((s, r) => s + r.probability, 0);
+      const saTotal = results.filter(r => TEAMS.find(t => t.nameEn === r.nameEn)?.confederation === 'CONMEBOL')
+        .reduce((s, r) => s + r.probability, 0);
+
+      let html = `<strong>${top.name}</strong> 以 ${top.probability}% 的概率排名第一。`;
+      html += `欧洲球队合计夺冠概率 <strong>${euroTotal.toFixed(1)}%</strong>，`;
+      html += `南美球队合计 <strong>${saTotal.toFixed(1)}%</strong>。`;
+
+      if (topAfrica) html += `<br>非洲最大黑马：<strong>${topAfrica.name}</strong>（${topAfrica.probability}%）。`;
+      if (topAsia) html += `亚洲最强：<strong>${topAsia.name}</strong>（${topAsia.probability}%）。`;
+
+      if (upsetFactor >= 0.5) {
+        html += `<br><br>在高爆冷系数下，概率分布明显更平均，弱队有了更多机会。这也是世界杯的魅力所在——任何事都可能发生。`;
+      } else if (upsetFactor <= 0.1) {
+        html += `<br><br>在纯实力模式下，传统强队占据绝对优势。但历史告诉我们，FIFA 排名第一的球队从未赢得过世界杯（自1994年排名制度建立以来）。`;
+      }
+
+      document.getElementById('insightBox').innerHTML = html;
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', ['chart', 'table', 'groups'][i] === tab);
+      });
+      document.getElementById('chartView').classList.toggle('hidden', tab !== 'chart');
+      document.getElementById('tableView').classList.toggle('hidden', tab !== 'table');
+      document.getElementById('groupsView').classList.toggle('hidden', tab !== 'groups');
+    }
+
+    // 页面加载后自动跑一次「真实模式」
+    window.addEventListener('load', () => { runPreset(0.3); });
+  </script>
+</body>
+</html>

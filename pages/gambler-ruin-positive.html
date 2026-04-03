@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>胜率大于50%，赌徒还会输光吗</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460); min-height: 100vh; color: #e0e0e0; }
+    .container { max-width: 960px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+    .header { text-align: center; margin-bottom: 2.5rem; }
+    .header h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      background: linear-gradient(90deg, #ffd700, #ffaa00, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+      margin-bottom: .6rem;
+    }
+    @keyframes shimmer { to { background-position: 200% center; } }
+    .header p { color: #a0aec0; font-size: 1rem; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.5rem; }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 14px;
+      padding: 1.4rem;
+    }
+    .card h3 { font-size: .85rem; color: #a0aec0; margin-bottom: .8rem; text-transform: uppercase; letter-spacing: .05em; display: flex; align-items: center; gap: .4rem; }
+    .card h3 i { font-size: 1rem; color: #ffd700; }
+
+    .param-row { display: flex; align-items: center; gap: .8rem; margin-bottom: .9rem; }
+    .param-row label { font-size: .85rem; color: #a0aec0; min-width: 80px; }
+    .param-row input[type=range] { flex: 1; accent-color: #ffd700; }
+    .param-row .val { font-size: .9rem; color: #ffd700; font-weight: 600; min-width: 60px; text-align: right; }
+
+    .formula-box {
+      background: rgba(0,0,0,.3);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      font-family: 'Courier New', monospace;
+      font-size: .85rem;
+      color: #e2e8f0;
+      line-height: 1.8;
+    }
+    .formula-box .highlight { color: #ffd700; font-weight: 700; }
+    .formula-box .dim { color: #718096; }
+
+    .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin-bottom: 1.2rem; }
+    @media (max-width: 480px) { .result-grid { grid-template-columns: 1fr 1fr; } }
+    .result-item { background: rgba(0,0,0,.25); border-radius: 10px; padding: .9rem; text-align: center; }
+    .result-item .num { font-size: 1.3rem; font-weight: 700; color: #ffd700; }
+    .result-item .lbl { font-size: .72rem; color: #718096; margin-top: .2rem; }
+
+    .btn-row { display: flex; gap: .8rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+    button {
+      padding: .55rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: .88rem;
+      font-weight: 600;
+      transition: opacity .15s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+    .btn-primary { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #1a1a2e; }
+    .btn-secondary { background: rgba(255,255,255,.1); color: #e0e0e0; border: 1px solid rgba(255,255,255,.15); }
+    .btn-danger { background: rgba(239,68,68,.2); color: #fc8181; border: 1px solid rgba(239,68,68,.3); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    #canvas-wrap { position: relative; }
+    canvas { width: 100%; border-radius: 10px; background: rgba(0,0,0,.3); display: block; }
+
+    .sim-log {
+      background: rgba(0,0,0,.3);
+      border-radius: 10px;
+      padding: .8rem 1rem;
+      font-size: .8rem;
+      color: #718096;
+      max-height: 120px;
+      overflow-y: auto;
+      font-family: monospace;
+      line-height: 1.6;
+    }
+    .sim-log .ok { color: #68d391; }
+    .sim-log .fail { color: #fc8181; }
+
+    .tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
+    .tab { padding: .4rem .9rem; border-radius: 6px; font-size: .82rem; cursor: pointer; border: 1px solid rgba(255,255,255,.1); background: transparent; color: #a0aec0; transition: all .15s; }
+    .tab.active { background: rgba(255,215,0,.15); border-color: #ffd700; color: #ffd700; }
+
+    .heatmap-wrap { overflow-x: auto; }
+    #heatmap { border-radius: 8px; }
+
+    .insight {
+      background: rgba(255,215,0,.07);
+      border: 1px solid rgba(255,215,0,.2);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      font-size: .88rem;
+      line-height: 1.7;
+      color: #e2e8f0;
+    }
+    .insight strong { color: #ffd700; }
+
+    .progress-bar-wrap { height: 6px; background: rgba(255,255,255,.1); border-radius: 3px; margin-bottom: .8rem; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #ffd700, #ffaa00); border-radius: 3px; transition: width .1s; }
+
+    .section-title { font-size: 1rem; font-weight: 700; color: #e2e8f0; margin-bottom: .8rem; display: flex; align-items: center; gap: .5rem; }
+    .section-title i { color: #ffd700; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>胜率大于50%，赌徒还会输光吗</h1>
+    <p>赌徒破产问题的精确解 · 破产概率 · 期望步数 · 蒙特卡洛验证</p>
+  </div>
+
+  <!-- 参数控制 -->
+  <div class="grid">
+    <div class="card">
+      <h3><i class="ti ti-adjustments-horizontal"></i>参数设置</h3>
+      <div class="param-row">
+        <label>胜率 p</label>
+        <input type="range" id="sliderP" min="50.1" max="60" step="0.1" value="50.1">
+        <span class="val" id="valP">50.1%</span>
+      </div>
+      <div class="param-row">
+        <label>初始本金</label>
+        <input type="range" id="sliderN" min="10" max="5000" step="10" value="5000">
+        <span class="val" id="valN">5000</span>
+      </div>
+      <div class="param-row">
+        <label>模拟路径</label>
+        <input type="range" id="sliderPaths" min="1" max="200" step="1" value="50">
+        <span class="val" id="valPaths">50</span>
+      </div>
+      <div class="param-row">
+        <label>最大步数</label>
+        <input type="range" id="sliderSteps" min="1000" max="200000" step="1000" value="50000">
+        <span class="val" id="valSteps">50000</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><i class="ti ti-math-function"></i>理论公式</h3>
+      <div class="formula-box" id="formulaBox">
+        <div>q = 1 - p = <span class="highlight" id="fq">0.499</span></div>
+        <div>r = q/p = <span class="highlight" id="fr">0.9960</span></div>
+        <div class="dim">─────────────────────</div>
+        <div>破产概率 = r<sup>N</sup> = <span class="highlight" id="fRuin">≈ 2.06×10⁻⁹</span></div>
+        <div>期望步数 = N/(p-q) = <span class="highlight" id="fSteps">≈ 2,500,000</span></div>
+        <div class="dim">─────────────────────</div>
+        <div>期望收益/步 = <span class="highlight" id="fEdge">+0.002</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关键指标 -->
+  <div class="result-grid" id="resultGrid">
+    <div class="result-item">
+      <div class="num" id="rRuin">—</div>
+      <div class="lbl">理论破产概率</div>
+    </div>
+    <div class="result-item">
+      <div class="num" id="rExpSteps">—</div>
+      <div class="lbl">期望破产步数</div>
+    </div>
+    <div class="result-item">
+      <div class="num" id="rSimRuin">—</div>
+      <div class="lbl">模拟破产次数</div>
+    </div>
+  </div>
+
+  <!-- 模拟控制 -->
+  <div class="btn-row">
+    <button class="btn-primary" id="btnRun">
+      <i class="ti ti-player-play"></i> 开始模拟
+    </button>
+    <button class="btn-secondary" id="btnClear">清空</button>
+    <button class="btn-secondary" id="btnPreset1">预设：p=50.1% N=5000</button>
+    <button class="btn-secondary" id="btnPreset2">预设：p=55% N=100</button>
+    <button class="btn-secondary" id="btnPreset3">预设：p=50.01% N=100</button>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+
+  <!-- 路径图 -->
+  <div class="card" style="margin-bottom:1.2rem">
+    <div class="section-title"><i class="ti ti-chart-line"></i>资金路径模拟</div>
+    <div class="tabs">
+      <div class="tab active" data-tab="paths">路径图</div>
+      <div class="tab" data-tab="heatmap">破产热力图</div>
+    </div>
+    <div id="tabPaths">
+      <div id="canvas-wrap"><canvas id="pathCanvas" height="300"></canvas></div>
+    </div>
+    <div id="tabHeatmap" style="display:none">
+      <div class="heatmap-wrap"><canvas id="heatmapCanvas" height="300"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 日志 -->
+  <div class="card" style="margin-bottom:1.2rem">
+    <div class="section-title"><i class="ti ti-terminal"></i>模拟日志</div>
+    <div class="sim-log" id="simLog">等待模拟...</div>
+  </div>
+
+  <!-- 洞察 -->
+  <div class="card">
+    <div class="section-title"><i class="ti ti-bulb"></i>数学洞察</div>
+    <div class="insight" id="insightBox">
+      调整参数后点击「开始模拟」，这里会显示关键结论。
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── 数学核心 ───────────────────────────────────────────────
+function calcRuin(p, N) {
+  const q = 1 - p;
+  if (Math.abs(p - 0.5) < 1e-9) return 1; // 公平赌博
+  const r = q / p;
+  // r^N，用对数避免下溢
+  const logRuin = N * Math.log(r);
+  return Math.exp(logRuin);
+}
+
+function calcExpSteps(p, N) {
+  const q = 1 - p;
+  if (Math.abs(p - 0.5) < 1e-9) return Infinity;
+  return N / (p - q);
+}
+
+function formatProb(v) {
+  if (v < 1e-15) return '< 10⁻¹⁵';
+  if (v < 0.001) {
+    const exp = Math.floor(Math.log10(v));
+    const coef = (v / Math.pow(10, exp)).toFixed(2);
+    return `${coef}×10^${exp}`;
+  }
+  return (v * 100).toFixed(4) + '%';
+}
+
+function formatNum(n) {
+  if (n === Infinity) return '∞';
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + '亿';
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + '百万';
+  if (n >= 1e4) return (n / 1e4).toFixed(2) + '万';
+  return Math.round(n).toLocaleString();
+}
+
+// ─── 状态 ───────────────────────────────────────────────────
+let simRunning = false;
+let simPaths = [];
+let ruinCount = 0;
+let totalSims = 0;
+
+// ─── DOM ────────────────────────────────────────────────────
+const sliderP = document.getElementById('sliderP');
+const sliderN = document.getElementById('sliderN');
+const sliderPaths = document.getElementById('sliderPaths');
+const sliderSteps = document.getElementById('sliderSteps');
+const valP = document.getElementById('valP');
+const valN = document.getElementById('valN');
+const valPaths = document.getElementById('valPaths');
+const valSteps = document.getElementById('valSteps');
+const btnRun = document.getElementById('btnRun');
+const btnClear = document.getElementById('btnClear');
+const progressBar = document.getElementById('progressBar');
+const simLog = document.getElementById('simLog');
+
+function getParams() {
+  return {
+    p: parseFloat(sliderP.value) / 100,
+    N: parseInt(sliderN.value),
+    paths: parseInt(sliderPaths.value),
+    maxSteps: parseInt(sliderSteps.value)
+  };
+}
+
+function updateFormula() {
+  const { p, N } = getParams();
+  const q = 1 - p;
+  const r = q / p;
+  const ruin = calcRuin(p, N);
+  const expSteps = calcExpSteps(p, N);
+  const edge = (p - q).toFixed(4);
+
+  document.getElementById('fq').textContent = q.toFixed(4);
+  document.getElementById('fr').textContent = r.toFixed(6);
+  document.getElementById('fRuin').textContent = formatProb(ruin);
+  document.getElementById('fSteps').textContent = formatNum(expSteps);
+  document.getElementById('fEdge').textContent = `+${edge}`;
+
+  document.getElementById('rRuin').textContent = formatProb(ruin);
+  document.getElementById('rExpSteps').textContent = formatNum(expSteps);
+}
+
+[sliderP, sliderN, sliderPaths, sliderSteps].forEach(s => {
+  s.addEventListener('input', () => {
+    valP.textContent = parseFloat(sliderP.value).toFixed(1) + '%';
+    valN.textContent = parseInt(sliderN.value).toLocaleString();
+    valPaths.textContent = sliderPaths.value;
+    valSteps.textContent = parseInt(sliderSteps.value).toLocaleString();
+    updateFormula();
+  });
+});
+
+// ─── 模拟 ────────────────────────────────────────────────────
+function runOnePath(p, N, maxSteps) {
+  let capital = N;
+  const history = [capital];
+  for (let i = 0; i < maxSteps; i++) {
+    capital += Math.random() < p ? 1 : -1;
+    history.push(capital);
+    if (capital <= 0) return { history, ruined: true, steps: i + 1 };
+  }
+  return { history, ruined: false, steps: maxSteps };
+}
+
+async function runSimulation() {
+  if (simRunning) return;
+  simRunning = true;
+  btnRun.disabled = true;
+  btnRun.textContent = '模拟中...';
+
+  const { p, N, paths, maxSteps } = getParams();
+  simPaths = [];
+  ruinCount = 0;
+  totalSims = paths;
+
+  simLog.innerHTML = '';
+  progressBar.style.width = '0%';
+
+  const CHUNK = 5;
+  for (let i = 0; i < paths; i += CHUNK) {
+    const end = Math.min(i + CHUNK, paths);
+    for (let j = i; j < end; j++) {
+      const result = runOnePath(p, N, maxSteps);
+      simPaths.push(result);
+      if (result.ruined) {
+        ruinCount++;
+        appendLog(`<span class="fail">路径 ${j+1}：第 ${result.steps.toLocaleString()} 步破产</span>`);
+      }
+    }
+    progressBar.style.width = `${(end / paths * 100).toFixed(0)}%`;
+    drawPaths();
+    document.getElementById('rSimRuin').textContent = `${ruinCount}/${end}`;
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  if (ruinCount === 0) {
+    appendLog(`<span class="ok">全部 ${paths} 条路径均未破产（步数上限 ${maxSteps.toLocaleString()}）</span>`);
+  }
+
+  progressBar.style.width = '100%';
+  updateInsight(p, N, paths);
+  simRunning = false;
+  btnRun.disabled = false;
+  btnRun.innerHTML = '<i class="ti ti-player-play"></i> 再次模拟';
+}
+
+function appendLog(html) {
+  simLog.innerHTML += html + '<br>';
+  simLog.scrollTop = simLog.scrollHeight;
+}
+
+// ─── 绘图 ────────────────────────────────────────────────────
+function drawPaths() {
+  const canvas = document.getElementById('pathCanvas');
+  const W = canvas.offsetWidth || 800;
+  canvas.width = W;
+  canvas.height = 300;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, 300);
+
+  if (simPaths.length === 0) return;
+
+  const { N } = getParams();
+  let maxLen = 0, minV = 0, maxV = N * 1.5;
+  for (const path of simPaths) {
+    if (path.history.length > maxLen) maxLen = path.history.length;
+    for (const v of path.history) {
+      if (v < minV) minV = v;
+      if (v > maxV) maxV = v;
+    }
+  }
+
+  const toX = i => (i / (maxLen - 1)) * (W - 40) + 20;
+  const toY = v => 280 - ((v - minV) / (maxV - minV)) * 260;
+
+  // 零线
+  ctx.strokeStyle = 'rgba(255,255,255,.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(20, toY(0));
+  ctx.lineTo(W - 20, toY(0));
+  ctx.stroke();
+
+  // 初始本金线
+  ctx.strokeStyle = 'rgba(255,215,0,.2)';
+  ctx.beginPath();
+  ctx.moveTo(20, toY(N));
+  ctx.lineTo(W - 20, toY(N));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 路径（降采样到最多 2000 个点）
+  simPaths.forEach((path, idx) => {
+    const ruined = path.ruined;
+    ctx.strokeStyle = ruined
+      ? 'rgba(252,129,129,.8)'
+      : `hsla(${200 + idx * 3}, 70%, 65%, 0.5)`;
+    ctx.lineWidth = ruined ? 1.5 : 1;
+    ctx.beginPath();
+    const step = Math.max(1, Math.floor(path.history.length / 2000));
+    path.history.forEach((v, i) => {
+      if (i % step !== 0 && i !== path.history.length - 1) return;
+      const x = toX(i * (maxLen - 1) / (path.history.length - 1));
+      const y = toY(v);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  });
+
+  // 标注
+  ctx.fillStyle = 'rgba(255,215,0,.7)';
+  ctx.font = '11px sans-serif';
+  ctx.fillText(`初始本金 ${getParams().N}`, 24, toY(N) - 4);
+}
+
+function drawHeatmap() {
+  const canvas = document.getElementById('heatmapCanvas');
+  const W = canvas.offsetWidth || 800;
+  canvas.width = W;
+  canvas.height = 300;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, 300);
+
+  if (simPaths.length === 0) return;
+
+  const { N } = getParams();
+  const COLS = 200;
+  const ROWS = 100;
+  const grid = Array.from({ length: ROWS }, () => new Float32Array(COLS));
+
+  let maxLen = 0, maxV = N * 2;
+  for (const path of simPaths) {
+    if (path.history.length > maxLen) maxLen = path.history.length;
+    for (const v of path.history) {
+      if (v > maxV) maxV = v;
+    }
+  }
+
+  simPaths.forEach(path => {
+    path.history.forEach((v, i) => {
+      const col = Math.floor((i / (maxLen - 1)) * (COLS - 1));
+      const row = Math.floor(Math.max(0, Math.min(1, v / maxV)) * (ROWS - 1));
+      grid[ROWS - 1 - row][col]++;
+    });
+  });
+
+  const maxCount = Math.max(...grid.flatMap(r => Array.from(r)));
+  const cellW = W / COLS;
+  const cellH = 300 / ROWS;
+
+  grid.forEach((row, ri) => {
+    row.forEach((count, ci) => {
+      if (count === 0) return;
+      const t = count / maxCount;
+      const r = Math.floor(255 * Math.min(1, t * 2));
+      const g = Math.floor(215 * Math.min(1, t * 1.5));
+      const b = 0;
+      ctx.fillStyle = `rgba(${r},${g},${b},${0.1 + t * 0.9})`;
+      ctx.fillRect(ci * cellW, ri * cellH, cellW + 1, cellH + 1);
+    });
+  });
+}
+
+// ─── 洞察 ────────────────────────────────────────────────────
+function updateInsight(p, N, paths) {
+  const ruin = calcRuin(p, N);
+  const expSteps = calcExpSteps(p, N);
+  const pct = (p * 100).toFixed(1);
+  const edge = ((p - (1 - p)) * 100).toFixed(2);
+
+  let html = `
+    <strong>p = ${pct}%，N = ${N.toLocaleString()}</strong><br><br>
+    理论破产概率 = (${(1-p).toFixed(4)}/${p.toFixed(4)})^${N} = <strong>${formatProb(ruin)}</strong><br><br>
+  `;
+
+  if (ruin < 1e-6) {
+    html += `这个概率极其微小。跑 <strong>10亿次</strong> 模拟，期望出现破产的次数约为 <strong>${(ruin * 1e9).toFixed(2)}</strong> 次。<br><br>`;
+  }
+
+  html += `期望破产步数（对手资金无限）= N/(2p-1) = ${N}/${edge}% = <strong>${formatNum(expSteps)}</strong> 步<br><br>`;
+
+  if (ruin > 0 && ruin < 1) {
+    html += `结论：胜率大于50%时，破产概率 <strong>不是零</strong>，只是随本金 N 指数级缩小。
+    N 每增加一倍，破产概率变为原来的 (q/p)^N 次方，衰减极快。<br><br>`;
+  }
+
+  html += `本次模拟 ${paths} 条路径，实际破产 <strong>${ruinCount}</strong> 次。`;
+  document.getElementById('insightBox').innerHTML = html;
+}
+
+// ─── Tab 切换 ────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const name = tab.dataset.tab;
+    document.getElementById('tabPaths').style.display = name === 'paths' ? '' : 'none';
+    document.getElementById('tabHeatmap').style.display = name === 'heatmap' ? '' : 'none';
+    if (name === 'heatmap') drawHeatmap();
+  });
+});
+
+// ─── 预设 ────────────────────────────────────────────────────
+function applyPreset(p, N, paths, steps) {
+  sliderP.value = p;
+  sliderN.value = N;
+  sliderPaths.value = paths;
+  sliderSteps.value = steps;
+  valP.textContent = p.toFixed(1) + '%';
+  valN.textContent = N.toLocaleString();
+  valPaths.textContent = paths;
+  valSteps.textContent = steps.toLocaleString();
+  updateFormula();
+}
+
+document.getElementById('btnPreset1').addEventListener('click', () => applyPreset(50.1, 5000, 30, 100000));
+document.getElementById('btnPreset2').addEventListener('click', () => applyPreset(55, 100, 50, 10000));
+document.getElementById('btnPreset3').addEventListener('click', () => applyPreset(50.01, 100, 50, 50000));
+document.getElementById('btnClear').addEventListener('click', () => {
+  simPaths = [];
+  ruinCount = 0;
+  drawPaths();
+  simLog.innerHTML = '已清空';
+  document.getElementById('rSimRuin').textContent = '—';
+  progressBar.style.width = '0%';
+  document.getElementById('insightBox').textContent = '调整参数后点击「开始模拟」，这里会显示关键结论。';
+});
+btnRun.addEventListener('click', runSimulation);
+
+// ─── 初始化 ──────────────────────────────────────────────────
+updateFormula();
+drawPaths();
+</script>
+</body>
+</html>

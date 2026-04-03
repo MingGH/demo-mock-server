@@ -251,9 +251,8 @@ function formatProb(v) {
 
 function formatNum(n) {
   if (n === Infinity) return '∞';
-  if (n >= 1e9) return (n / 1e9).toFixed(2) + '亿';
-  if (n >= 1e6) return (n / 1e6).toFixed(2) + '百万';
-  if (n >= 1e4) return (n / 1e4).toFixed(2) + '万';
+  if (n >= 1e8) return (n / 1e8).toFixed(2) + '亿';
+  if (n >= 1e4) return (n / 1e4).toFixed(0) + '万';
   return Math.round(n).toLocaleString();
 }
 

@@ -398,57 +398,111 @@ function drawPaths() {
   if (simPaths.length === 0) return;
 
   const { N } = getParams();
-  let maxLen = 0, minV = 0, maxV = N * 1.5;
+  const COLS = Math.min(W - 40, 400); // 采样列数
+  let maxLen = 0;
   for (const path of simPaths) {
     if (path.history.length > maxLen) maxLen = path.history.length;
-    for (const v of path.history) {
-      if (v < minV) minV = v;
-      if (v > maxV) maxV = v;
-    }
   }
 
-  const toX = i => (i / (maxLen - 1)) * (W - 40) + 20;
-  const toY = v => 280 - ((v - minV) / (maxV - minV)) * 260;
+  // 每列计算分位数
+  const percentiles = [5, 25, 50, 75, 95];
+  const bands = percentiles.map(() => new Float32Array(COLS));
+
+  for (let col = 0; col < COLS; col++) {
+    const t = col / (COLS - 1);
+    const vals = simPaths.map(path => {
+      const idx = Math.min(Math.floor(t * (path.history.length - 1)), path.history.length - 1);
+      return path.history[idx];
+    }).sort((a, b) => a - b);
+    percentiles.forEach((p, pi) => {
+      const pos = (p / 100) * (vals.length - 1);
+      const lo = Math.floor(pos), hi = Math.ceil(pos);
+      bands[pi][col] = vals[lo] + (vals[hi] - vals[lo]) * (pos - lo);
+    });
+  }
+
+  // 值域
+  let minV = Infinity, maxV = -Infinity;
+  for (let col = 0; col < COLS; col++) {
+    if (bands[0][col] < minV) minV = bands[0][col];
+    if (bands[4][col] > maxV) maxV = bands[4][col];
+  }
+  minV = Math.min(minV, 0);
+  maxV = Math.max(maxV, N * 1.1);
+
+  const toX = col => (col / (COLS - 1)) * (W - 60) + 30;
+  const toY = v => 275 - ((v - minV) / (maxV - minV)) * 250;
 
   // 零线
-  ctx.strokeStyle = 'rgba(255,255,255,.15)';
+  ctx.strokeStyle = 'rgba(255,255,255,.1)';
   ctx.lineWidth = 1;
   ctx.setLineDash([4, 4]);
-  ctx.beginPath();
-  ctx.moveTo(20, toY(0));
-  ctx.lineTo(W - 20, toY(0));
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(30, toY(0)); ctx.lineTo(W - 30, toY(0)); ctx.stroke();
 
   // 初始本金线
-  ctx.strokeStyle = 'rgba(255,215,0,.2)';
-  ctx.beginPath();
-  ctx.moveTo(20, toY(N));
-  ctx.lineTo(W - 20, toY(N));
-  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,215,0,.25)';
+  ctx.beginPath(); ctx.moveTo(30, toY(N)); ctx.lineTo(W - 30, toY(N)); ctx.stroke();
   ctx.setLineDash([]);
 
-  // 路径（降采样到最多 2000 个点）
-  simPaths.forEach((path, idx) => {
-    const ruined = path.ruined;
-    ctx.strokeStyle = ruined
-      ? 'rgba(252,129,129,.8)'
-      : `hsla(${200 + idx * 3}, 70%, 65%, 0.5)`;
-    ctx.lineWidth = ruined ? 1.5 : 1;
+  // 填充带：p5~p95（最外层，最透明）
+  const fillBand = (piLo, piHi, color) => {
+    ctx.fillStyle = color;
     ctx.beginPath();
-    const step = Math.max(1, Math.floor(path.history.length / 2000));
-    path.history.forEach((v, i) => {
-      if (i % step !== 0 && i !== path.history.length - 1) return;
-      const x = toX(i * (maxLen - 1) / (path.history.length - 1));
-      const y = toY(v);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
+    ctx.moveTo(toX(0), toY(bands[piLo][0]));
+    for (let col = 1; col < COLS; col++) ctx.lineTo(toX(col), toY(bands[piLo][col]));
+    for (let col = COLS - 1; col >= 0; col--) ctx.lineTo(toX(col), toY(bands[piHi][col]));
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  fillBand(0, 4, 'rgba(99,179,237,.12)');   // p5~p95
+  fillBand(1, 3, 'rgba(99,179,237,.22)');   // p25~p75
+
+  // 中位线
+  ctx.strokeStyle = 'rgba(255,215,0,.9)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let col = 0; col < COLS; col++) {
+    col === 0 ? ctx.moveTo(toX(col), toY(bands[2][col])) : ctx.lineTo(toX(col), toY(bands[2][col]));
+  }
+  ctx.stroke();
+
+  // p5 / p95 边界线
+  [0, 4].forEach(pi => {
+    ctx.strokeStyle = 'rgba(99,179,237,.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let col = 0; col < COLS; col++) {
+      col === 0 ? ctx.moveTo(toX(col), toY(bands[pi][col])) : ctx.lineTo(toX(col), toY(bands[pi][col]));
+    }
     ctx.stroke();
   });
 
-  // 标注
-  ctx.fillStyle = 'rgba(255,215,0,.7)';
+  // 图例
+  const legend = [
+    { color: 'rgba(99,179,237,.4)', label: 'p5 ~ p95', type: 'fill' },
+    { color: 'rgba(99,179,237,.6)', label: 'p25 ~ p75', type: 'fill' },
+    { color: 'rgba(255,215,0,.9)',  label: '中位数 p50', type: 'line' },
+  ];
   ctx.font = '11px sans-serif';
-  ctx.fillText(`初始本金 ${getParams().N}`, 24, toY(N) - 4);
+  let lx = 34;
+  legend.forEach(({ color, label, type }) => {
+    if (type === 'fill') {
+      ctx.fillStyle = color;
+      ctx.fillRect(lx, 10, 14, 10);
+    } else {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(lx, 15); ctx.lineTo(lx + 14, 15); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.6)';
+    ctx.fillText(label, lx + 18, 20);
+    lx += ctx.measureText(label).width + 36;
+  });
+
+  // 初始本金标注
+  ctx.fillStyle = 'rgba(255,215,0,.6)';
+  ctx.fillText(`初始本金 ${N}`, 34, toY(N) - 5);
 }
 
 function drawHeatmap() {
@@ -512,7 +566,13 @@ function updateInsight(p, N, paths) {
   `;
 
   if (ruin < 1e-6) {
-    html += `这个概率极其微小。跑 <strong>10亿次</strong> 模拟，期望出现破产的次数约为 <strong>${(ruin * 1e9).toFixed(2)}</strong> 次。<br><br>`;
+    const needTrials = Math.round(1 / ruin);
+    const needStr = needTrials >= 1e8 ? (needTrials / 1e8).toFixed(0) + '亿' :
+                    needTrials >= 1e4 ? (needTrials / 1e4).toFixed(0) + '万' :
+                    needTrials.toLocaleString();
+    html += `这个概率极其微小。平均需要跑 <strong>${needStr} 次</strong>模拟才能遇到一次破产。<br>
+    前端每次跑 ${paths} 人，期望需要点击 <strong>${Math.round(needTrials / paths).toLocaleString()} 次</strong>「开始模拟」才能看到一次破产。<br>
+    <strong>你永远跑不出破产——这本身就是答案。</strong><br><br>`;
   }
 
   html += `期望破产局数（对手资金无限）= N/(2p-1) = ${N}/${edge}% = <strong>${formatNum(expSteps)}</strong> 局<br><br>`;

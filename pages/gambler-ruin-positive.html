@@ -123,6 +123,20 @@
     <p>赌徒破产问题的精确解 · 破产概率 · 期望步数 · 蒙特卡洛验证</p>
   </div>
 
+  <!-- 题目说明 -->
+  <div class="card" style="margin-bottom:1.5rem;border-color:rgba(255,215,0,.2)">
+    <div class="section-title"><i class="ti ti-info-circle"></i>问题背景</div>
+    <div style="font-size:.9rem;line-height:1.9;color:#cbd5e0">
+      一个赌徒，每局只赌 <strong style="color:#ffd700">1 元</strong>，胜率 <strong style="color:#ffd700">50.1%</strong>，初始本金 <strong style="color:#ffd700">5000 元</strong>，对手资金无限。<br>
+      有人跑了近 100 亿次模拟，资金几乎一直线性增长，几乎看不到破产。于是产生了一个问题：<br>
+      <strong style="color:#ffd700">胜率只要大于 50%，赌徒就永远不会输光吗？</strong><br><br>
+      答案是：<strong style="color:#68d391">不是</strong>。破产概率 = (q/p)^N，这个值大于 0，只是随本金指数级缩小。
+      p=0.501、N=5000 时，破产概率约为 <strong style="color:#ffd700">2×10⁻⁹</strong>（21亿分之4），
+      跑 100 亿次模拟期望出现约 20 次破产——没看到只是样本量不够。<br><br>
+      调整下方参数，观察不同胜率和本金下的理论破产概率与模拟路径。
+    </div>
+  </div>
+
   <!-- 参数控制 -->
   <div class="grid">
     <div class="card">
@@ -138,12 +152,12 @@
         <span class="val" id="valN">5000</span>
       </div>
       <div class="param-row">
-        <label>模拟路径</label>
+        <label>模拟人数</label>
         <input type="range" id="sliderPaths" min="1" max="200" step="1" value="50">
         <span class="val" id="valPaths">50</span>
       </div>
       <div class="param-row">
-        <label>最大步数</label>
+        <label>每人最多赌几局</label>
         <input type="range" id="sliderSteps" min="1000" max="200000" step="1000" value="50000">
         <span class="val" id="valSteps">50000</span>
       </div>
@@ -156,7 +170,7 @@
         <div>r = q/p = <span class="highlight" id="fr">0.9960</span></div>
         <div class="dim">─────────────────────</div>
         <div>破产概率 = r<sup>N</sup> = <span class="highlight" id="fRuin">≈ 2.06×10⁻⁹</span></div>
-        <div>期望步数 = N/(p-q) = <span class="highlight" id="fSteps">≈ 2,500,000</span></div>
+        <div>期望局数 = N/(p-q) = <span class="highlight" id="fSteps">≈ 2,500,000</span></div>
         <div class="dim">─────────────────────</div>
         <div>期望收益/步 = <span class="highlight" id="fEdge">+0.002</span></div>
       </div>
@@ -171,7 +185,7 @@
     </div>
     <div class="result-item">
       <div class="num" id="rExpSteps">—</div>
-      <div class="lbl">期望破产步数</div>
+      <div class="lbl">期望破产局数</div>
     </div>
     <div class="result-item">
       <div class="num" id="rSimRuin">—</div>
@@ -194,7 +208,7 @@
 
   <!-- 路径图 -->
   <div class="card" style="margin-bottom:1.2rem">
-    <div class="section-title"><i class="ti ti-chart-line"></i>资金路径模拟</div>
+    <div class="section-title"><i class="ti ti-chart-line"></i>每人的资金变化曲线</div>
     <div class="tabs">
       <div class="tab active" data-tab="paths">路径图</div>
       <div class="tab" data-tab="heatmap">破产热力图</div>
@@ -501,7 +515,7 @@ function updateInsight(p, N, paths) {
     html += `这个概率极其微小。跑 <strong>10亿次</strong> 模拟，期望出现破产的次数约为 <strong>${(ruin * 1e9).toFixed(2)}</strong> 次。<br><br>`;
   }
 
-  html += `期望破产步数（对手资金无限）= N/(2p-1) = ${N}/${edge}% = <strong>${formatNum(expSteps)}</strong> 步<br><br>`;
+  html += `期望破产局数（对手资金无限）= N/(2p-1) = ${N}/${edge}% = <strong>${formatNum(expSteps)}</strong> 局<br><br>`;
 
   if (ruin > 0 && ruin < 1) {
     html += `结论：胜率大于50%时，破产概率 <strong>不是零</strong>，只是随本金 N 指数级缩小。

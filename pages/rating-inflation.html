@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>为什么4.8分是新的及格线</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460); min-height: 100vh; color: #e0e0e0; }
+    .container { max-width: 960px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+    .header { text-align: center; margin-bottom: 2.5rem; }
+    .header h1 {
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      background: linear-gradient(90deg, #ffd700, #ffaa00, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+      margin-bottom: .6rem;
+    }
+    @keyframes shimmer { to { background-position: 200% center; } }
+    .header p { color: #a0aec0; font-size: 1rem; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.2rem; }
+    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .card {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 14px;
+      padding: 1.4rem;
+    }
+    .card-full { grid-column: 1 / -1; }
+    .card h3 { font-size: .82rem; color: #a0aec0; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; display: flex; align-items: center; gap: .4rem; }
+    .card h3 i { font-size: 1rem; color: #ffd700; }
+
+    .param-row { display: flex; align-items: center; gap: .8rem; margin-bottom: .85rem; }
+    .param-row label { font-size: .84rem; color: #a0aec0; min-width: 90px; }
+    .param-row input[type=range] { flex: 1; accent-color: #ffd700; }
+    .param-row .val { font-size: .9rem; color: #ffd700; font-weight: 600; min-width: 48px; text-align: right; }
+
+    .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: .7rem; margin-bottom: 1rem; }
+    .stat-item { background: rgba(0,0,0,.25); border-radius: 10px; padding: .85rem; text-align: center; }
+    .stat-item .num { font-size: 1.4rem; font-weight: 700; color: #ffd700; }
+    .stat-item .lbl { font-size: .7rem; color: #718096; margin-top: .2rem; }
+
+    canvas { width: 100% !important; border-radius: 10px; }
+
+    .insight-box {
+      background: rgba(255,215,0,.07);
+      border: 1px solid rgba(255,215,0,.2);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+      font-size: .88rem;
+      line-height: 1.7;
+      color: #d4c5a0;
+      margin-top: 1rem;
+    }
+    .insight-box strong { color: #ffd700; }
+
+    .scenario-tabs { display: flex; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tab-btn {
+      padding: .4rem .9rem;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.15);
+      background: rgba(255,255,255,.06);
+      color: #a0aec0;
+      font-size: .82rem;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .tab-btn.active { background: rgba(255,215,0,.15); border-color: rgba(255,215,0,.4); color: #ffd700; }
+
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 500px) { .compare-grid { grid-template-columns: 1fr; } }
+    .store-card {
+      background: rgba(0,0,0,.25);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      border: 2px solid transparent;
+      transition: border-color .2s;
+    }
+    .store-card.winner { border-color: rgba(255,215,0,.4); }
+    .store-card .score { font-size: 2.2rem; font-weight: 800; }
+    .store-card .score.high { color: #68d391; }
+    .store-card .score.low { color: #fc8181; }
+    .store-card .name { font-size: .85rem; color: #a0aec0; margin-bottom: .5rem; }
+    .store-card .detail { font-size: .78rem; color: #718096; margin-top: .4rem; line-height: 1.5; }
+    .store-card .verdict { font-size: .8rem; margin-top: .6rem; padding: .3rem .7rem; border-radius: 20px; display: inline-block; }
+    .verdict-good { background: rgba(104,211,145,.15); color: #68d391; }
+    .verdict-bad { background: rgba(252,129,129,.15); color: #fc8181; }
+
+    .progress-bar-wrap { margin: .4rem 0; }
+    .progress-bar-wrap .bar-label { display: flex; justify-content: space-between; font-size: .75rem; color: #718096; margin-bottom: .2rem; }
+    .progress-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; }
+    .progress-bar .fill { height: 100%; border-radius: 4px; transition: width .4s; }
+    .fill-5 { background: #68d391; }
+    .fill-4 { background: #90cdf4; }
+    .fill-3 { background: #fbd38d; }
+    .fill-2 { background: #fc8181; }
+    .fill-1 { background: #e53e3e; }
+
+    .formula-box {
+      background: rgba(0,0,0,.3);
+      border-radius: 10px;
+      padding: .9rem 1.1rem;
+      font-family: 'Courier New', monospace;
+      font-size: .82rem;
+      color: #e2e8f0;
+      line-height: 1.9;
+      margin-top: .8rem;
+    }
+    .formula-box .hl { color: #ffd700; font-weight: 700; }
+    .formula-box .dim { color: #718096; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-star"></i> 为什么4.8分是新的及格线</h1>
+    <p>当所有人都给5星，评分系统就失效了——用统计学解剖评分通货膨胀</p>
+  </div>
+
+  <!-- 第一部分：评分分布模拟 -->
+  <div class="grid-2" style="margin-bottom:1.2rem">
+    <div class="card">
+      <h3><i class="ti ti-adjustments"></i> 参数设置</h3>
+      <div class="param-row">
+        <label>差评率</label>
+        <input type="range" id="bad-rate" min="0" max="30" value="5" step="0.5">
+        <span class="val" id="bad-rate-val">5%</span>
+      </div>
+      <div class="param-row">
+        <label>中评率</label>
+        <input type="range" id="mid-rate" min="0" max="40" value="10" step="0.5">
+        <span class="val" id="mid-rate-val">10%</span>
+      </div>
+      <div class="param-row">
+        <label>评价总数</label>
+        <input type="range" id="total-reviews" min="50" max="5000" value="500" step="50">
+        <span class="val" id="total-reviews-val">500</span>
+      </div>
+      <div class="param-row">
+        <label>沉默多数</label>
+        <input type="range" id="silent-rate" min="0" max="95" value="70" step="1">
+        <span class="val" id="silent-rate-val">70%</span>
+      </div>
+      <div class="insight-box" id="insight-text"></div>
+    </div>
+    <div class="card">
+      <h3><i class="ti ti-chart-bar"></i> 观测评分分布</h3>
+      <canvas id="chart-observed" height="200"></canvas>
+      <div class="stat-row" style="margin-top:.8rem">
+        <div class="stat-item"><div class="num" id="stat-avg">—</div><div class="lbl">平均分</div></div>
+        <div class="stat-item"><div class="num" id="stat-5star">—</div><div class="lbl">5星占比</div></div>
+        <div class="stat-item"><div class="num" id="stat-info">—</div><div class="lbl">信息量</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 第二部分：真实 vs 观测 -->
+  <div class="card card-full" style="margin-bottom:1.2rem">
+    <h3><i class="ti ti-eye"></i> 真实质量分布 vs 观测评分分布</h3>
+    <canvas id="chart-compare" height="160"></canvas>
+    <div class="insight-box" style="margin-top:.8rem">
+      <strong>沉默多数效应：</strong>满意的顾客懒得写评价，不满意的顾客才会动笔——这个不对称性系统性地扭曲了评分。
+      调整上方「沉默多数」滑块，看真实分布和观测分布如何分裂。
+    </div>
+  </div>
+
+  <!-- 第三部分：两家店对比 -->
+  <div class="card card-full" style="margin-bottom:1.2rem">
+    <h3><i class="ti ti-building-store"></i> 场景模拟：4.8分 vs 4.2分，谁更好？</h3>
+    <div class="scenario-tabs">
+      <button class="tab-btn active" data-scene="0">外卖餐厅</button>
+      <button class="tab-btn" data-scene="1">网购商品</button>
+      <button class="tab-btn" data-scene="2">酒店民宿</button>
+      <button class="tab-btn" data-scene="3">自定义</button>
+    </div>
+    <div class="compare-grid" id="compare-grid"></div>
+    <canvas id="chart-scenario" height="140" style="margin-top:1rem"></canvas>
+  </div>
+
+  <!-- 第四部分：信息熵 -->
+  <div class="card card-full">
+    <h3><i class="ti ti-math-symbols"></i> 评分系统的信息熵：分数还在传递信息吗？</h3>
+    <canvas id="chart-entropy" height="160"></canvas>
+    <div class="formula-box">
+      <span class="dim">// 香农信息熵：H = -Σ p(x) × log₂(p(x))</span><br>
+      <span class="dim">// 5档评分满分熵 = log₂(5) ≈ 2.32 bits（每档概率相等时）</span><br>
+      当前熵值：<span class="hl" id="entropy-val">—</span> bits &nbsp;
+      <span class="dim">（满分 2.32 bits，越低说明评分越集中、越没有区分度）</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── 数据 ───────────────────────────────────────────────
+const SCENES = [
+  {
+    name: '外卖餐厅',
+    storeA: { name: '网红店A', score: 4.8, reviews: 2300, dist: [78, 12, 5, 3, 2], note: '开业3个月，刷单嫌疑' },
+    storeB: { name: '老店B',   score: 4.2, reviews: 8900, dist: [52, 18, 12, 10, 8], note: '经营5年，真实口碑' },
+  },
+  {
+    name: '网购商品',
+    storeA: { name: '旗舰店A', score: 4.9, reviews: 1200, dist: [85, 10, 3, 1, 1], note: '好评返现，评价注水' },
+    storeB: { name: '小店B',   score: 4.3, reviews: 340,  dist: [55, 20, 13, 7, 5], note: '无促销，自然评价' },
+  },
+  {
+    name: '酒店民宿',
+    storeA: { name: '精品民宿A', score: 4.85, reviews: 560,  dist: [80, 13, 4, 2, 1], note: '主动邀评，样本偏差' },
+    storeB: { name: '连锁酒店B', score: 4.1,  reviews: 4200, dist: [48, 22, 15, 9, 6], note: '大量真实住客评价' },
+  },
+  {
+    name: '自定义',
+    storeA: { name: '店铺A', score: 4.8, reviews: 1000, dist: [76, 14, 5, 3, 2], note: '高分店' },
+    storeB: { name: '店铺B', score: 4.2, reviews: 1000, dist: [52, 18, 12, 10, 8], note: '中分店' },
+  },
+];
+
+let currentScene = 0;
+
+// ─── Chart 实例 ──────────────────────────────────────────
+const chartDefaults = {
+  plugins: { legend: { labels: { color: '#a0aec0', font: { size: 11 } } } },
+  scales: {
+    x: { ticks: { color: '#718096' }, grid: { color: 'rgba(255,255,255,.05)' } },
+    y: { ticks: { color: '#718096' }, grid: { color: 'rgba(255,255,255,.05)' } },
+  }
+};
+
+const ctxObs = document.getElementById('chart-observed').getContext('2d');
+const chartObs = new Chart(ctxObs, {
+  type: 'bar',
+  data: { labels: ['1星','2星','3星','4星','5星'], datasets: [{ label: '评价数', data: [], backgroundColor: ['#e53e3e','#fc8181','#fbd38d','#90cdf4','#68d391'], borderRadius: 6 }] },
+  options: { ...chartDefaults, plugins: { legend: { display: false } }, responsive: true }
+});
+
+const ctxCmp = document.getElementById('chart-compare').getContext('2d');
+const chartCmp = new Chart(ctxCmp, {
+  type: 'bar',
+  data: {
+    labels: ['1星','2星','3星','4星','5星'],
+    datasets: [
+      { label: '真实质量分布', data: [], backgroundColor: 'rgba(144,205,244,.5)', borderColor: '#90cdf4', borderWidth: 1.5, borderRadius: 4 },
+      { label: '观测评分分布', data: [], backgroundColor: 'rgba(255,215,0,.5)', borderColor: '#ffd700', borderWidth: 1.5, borderRadius: 4 },
+    ]
+  },
+  options: { ...chartDefaults, responsive: true }
+});
+
+const ctxScn = document.getElementById('chart-scenario').getContext('2d');
+const chartScn = new Chart(ctxScn, {
+  type: 'bar',
+  data: {
+    labels: ['1星','2星','3星','4星','5星'],
+    datasets: [
+      { label: '店铺A评分分布', data: [], backgroundColor: 'rgba(252,129,129,.5)', borderColor: '#fc8181', borderWidth: 1.5, borderRadius: 4 },
+      { label: '店铺B评分分布', data: [], backgroundColor: 'rgba(104,211,145,.5)', borderColor: '#68d391', borderWidth: 1.5, borderRadius: 4 },
+    ]
+  },
+  options: { ...chartDefaults, responsive: true }
+});
+
+const ctxEnt = document.getElementById('chart-entropy').getContext('2d');
+const chartEnt = new Chart(ctxEnt, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: '当前评分熵 (bits)', data: [], borderColor: '#ffd700', backgroundColor: 'rgba(255,215,0,.1)', fill: true, tension: .4, pointRadius: 0 },
+      { label: '理论最大熵 2.32 bits', data: [], borderColor: '#718096', borderDash: [5,4], pointRadius: 0, fill: false },
+    ]
+  },
+  options: { ...chartDefaults, responsive: true }
+});
+
+// ─── 核心计算 ────────────────────────────────────────────
+function calcAvg(dist) {
+  const total = dist.reduce((a,b)=>a+b,0);
+  if (!total) return 0;
+  return dist.reduce((s,v,i)=>s+v*(i+1),0)/total;
+}
+
+function calcEntropy(dist) {
+  const total = dist.reduce((a,b)=>a+b,0);
+  if (!total) return 0;
+  return -dist.reduce((s,v)=>{ const p=v/total; return p>0 ? s+p*Math.log2(p) : s; },0);
+}
+
+// 模拟「真实分布」：假设真实满意度服从正态，中心在3.5
+function trueDistribution(badRate, midRate) {
+  const bad = badRate/100, mid = midRate/100;
+  const good = 1 - bad - mid;
+  // 1星:bad*0.4, 2星:bad*0.6, 3星:mid, 4星:good*0.45, 5星:good*0.55
+  return [bad*0.4, bad*0.6, mid, good*0.45, good*0.55].map(v=>Math.max(0,v));
+}
+
+// 观测分布：沉默多数主要沉默的是「满意但不极端」的人（3-4星）
+function observedDistribution(trueDist, silentRate) {
+  const s = silentRate/100;
+  // 1星差评者更愿意写（沉默率低），5星铁粉也愿意写，3-4星最沉默
+  const silentMult = [0.2, 0.3, s, s*0.9, 0.25]; // 各星级沉默倍率
+  const obs = trueDist.map((v,i)=>v*(1-silentMult[i]));
+  return obs;
+}
+
+function update() {
+  const badRate   = +document.getElementById('bad-rate').value;
+  const midRate   = +document.getElementById('mid-rate').value;
+  const total     = +document.getElementById('total-reviews').value;
+  const silentRate= +document.getElementById('silent-rate').value;
+
+  document.getElementById('bad-rate-val').textContent    = badRate+'%';
+  document.getElementById('mid-rate-val').textContent    = midRate+'%';
+  document.getElementById('total-reviews-val').textContent = total;
+  document.getElementById('silent-rate-val').textContent = silentRate+'%';
+
+  const trueDist = trueDistribution(badRate, midRate);
+  const obsDist  = observedDistribution(trueDist, silentRate);
+  const obsTotal = obsDist.reduce((a,b)=>a+b,0);
+  const obsNorm  = obsDist.map(v=>v/obsTotal);
+  const obsCounts= obsNorm.map(v=>Math.round(v*total));
+
+  // 修正总数
+  const diff = total - obsCounts.reduce((a,b)=>a+b,0);
+  obsCounts[4] += diff;
+
+  const avg = calcAvg(obsCounts);
+  const entropy = calcEntropy(obsCounts);
+  const fiveStarPct = (obsCounts[4]/total*100).toFixed(1);
+
+  document.getElementById('stat-avg').textContent = avg.toFixed(2);
+  document.getElementById('stat-5star').textContent = fiveStarPct+'%';
+  document.getElementById('stat-info').textContent = entropy.toFixed(2)+' bits';
+  document.getElementById('entropy-val').textContent = entropy.toFixed(3)+' bits';
+
+  // 洞察文字
+  const infoLoss = ((2.3219-entropy)/2.3219*100).toFixed(0);
+  document.getElementById('insight-text').innerHTML =
+    `当前平均分 <strong>${avg.toFixed(2)}</strong>，5星占比 <strong>${fiveStarPct}%</strong>。
+    评分系统损失了 <strong>${infoLoss}%</strong> 的区分信息——
+    ${infoLoss>60?'评分已严重通货膨胀，几乎无法区分好坏店铺。':
+      infoLoss>30?'评分有明显通胀，高分区间拥挤，低分区间稀疏。':
+      '评分分布相对健康，仍有一定区分度。'}`;
+
+  // 更新图表
+  chartObs.data.datasets[0].data = obsCounts;
+  chartObs.update('none');
+
+  chartCmp.data.datasets[0].data = trueDist.map(v=>+(v*100).toFixed(1));
+  chartCmp.data.datasets[1].data = obsNorm.map(v=>+(v*100).toFixed(1));
+  chartCmp.update('none');
+
+  // 熵随差评率变化曲线
+  const entLabels=[], entData=[], maxData=[];
+  for(let br=0; br<=30; br+=1) {
+    const td = trueDistribution(br, midRate);
+    const od = observedDistribution(td, silentRate);
+    const tot = od.reduce((a,b)=>a+b,0);
+    const cnt = od.map(v=>Math.round(v/tot*100));
+    entLabels.push(br+'%');
+    entData.push(+calcEntropy(cnt).toFixed(3));
+    maxData.push(2.322);
+  }
+  chartEnt.data.labels = entLabels;
+  chartEnt.data.datasets[0].data = entData;
+  chartEnt.data.datasets[1].data = maxData;
+  chartEnt.update('none');
+}
+
+// ─── 场景对比 ────────────────────────────────────────────
+function renderScene(idx) {
+  const scene = SCENES[idx];
+  const grid = document.getElementById('compare-grid');
+
+  function storeHTML(s, isWinner) {
+    const avg = calcAvg(s.dist.slice().reverse()); // dist是[5星,4星,3星,2星,1星]
+    const entropy = calcEntropy(s.dist.slice().reverse());
+    const total = s.dist.reduce((a,b)=>a+b,0);
+    const bars = s.dist.map((pct,i)=>{
+      const stars = 5-i;
+      const cls = ['fill-5','fill-4','fill-3','fill-2','fill-1'][i];
+      return `<div class="progress-bar-wrap">
+        <div class="bar-label"><span>${stars}星</span><span>${pct}%</span></div>
+        <div class="progress-bar"><div class="fill ${cls}" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+    const infoLoss = ((2.3219-entropy)/2.3219*100).toFixed(0);
+    return `<div class="store-card ${isWinner?'winner':''}">
+      <div class="name">${s.name}</div>
+      <div class="score ${avg>=4.6?'high':'low'}">${s.score}</div>
+      <div style="font-size:.72rem;color:#718096;margin:.3rem 0">${s.reviews.toLocaleString()} 条评价</div>
+      ${bars}
+      <div class="detail">${s.note}<br>信息熵 ${entropy.toFixed(2)} bits，损失 ${infoLoss}%</div>
+      <span class="verdict ${isWinner?'verdict-good':'verdict-bad'}">${isWinner?'实际更可靠':'高分低质风险'}</span>
+    </div>`;
+  }
+
+  // 判断谁更可靠：综合评价数量和分布离散度
+  const entropyA = calcEntropy(SCENES[idx].storeA.dist.slice().reverse());
+  const entropyB = calcEntropy(SCENES[idx].storeB.dist.slice().reverse());
+  const winnerA = entropyA > entropyB && scene.storeA.reviews > scene.storeB.reviews;
+
+  grid.innerHTML = storeHTML(scene.storeA, winnerA) + storeHTML(scene.storeB, !winnerA);
+
+  // 场景图表
+  chartScn.data.datasets[0].label = scene.storeA.name + ' 评分分布';
+  chartScn.data.datasets[1].label = scene.storeB.name + ' 评分分布';
+  chartScn.data.datasets[0].data = scene.storeA.dist.slice().reverse();
+  chartScn.data.datasets[1].data = scene.storeB.dist.slice().reverse();
+  chartScn.update('none');
+}
+
+// ─── 事件绑定 ────────────────────────────────────────────
+['bad-rate','mid-rate','total-reviews','silent-rate'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', update);
+});
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentScene = +btn.dataset.scene;
+    renderScene(currentScene);
+  });
+});
+
+// ─── 初始化 ──────────────────────────────────────────────
+update();
+renderScene(0);
+</script>
+</body>
+</html>

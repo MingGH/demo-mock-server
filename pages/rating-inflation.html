@@ -37,15 +37,15 @@
     .card h3 { font-size: .82rem; color: #a0aec0; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; display: flex; align-items: center; gap: .4rem; }
     .card h3 i { font-size: 1rem; color: #ffd700; }
 
-    .param-row { display: flex; align-items: center; gap: .8rem; margin-bottom: .85rem; }
-    .param-row label { font-size: .84rem; color: #a0aec0; min-width: 90px; }
-    .param-row input[type=range] { flex: 1; accent-color: #ffd700; }
-    .param-row .val { font-size: .9rem; color: #ffd700; font-weight: 600; min-width: 48px; text-align: right; }
+    .param-row { display: flex; align-items: center; gap: .6rem; margin-bottom: .85rem; flex-wrap: wrap; }
+    .param-row label { font-size: .84rem; color: #a0aec0; min-width: 72px; }
+    .param-row input[type=range] { flex: 1; min-width: 80px; accent-color: #ffd700; }
+    .param-row .val { font-size: .9rem; color: #ffd700; font-weight: 600; min-width: 44px; text-align: right; }
 
     .stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: .7rem; margin-bottom: 1rem; }
-    .stat-item { background: rgba(0,0,0,.25); border-radius: 10px; padding: .85rem; text-align: center; }
-    .stat-item .num { font-size: 1.4rem; font-weight: 700; color: #ffd700; }
-    .stat-item .lbl { font-size: .7rem; color: #718096; margin-top: .2rem; }
+    .stat-item { background: rgba(0,0,0,.25); border-radius: 10px; padding: .75rem .5rem; text-align: center; }
+    .stat-item .num { font-size: clamp(1rem, 3.5vw, 1.4rem); font-weight: 700; color: #ffd700; }
+    .stat-item .lbl { font-size: .68rem; color: #718096; margin-top: .2rem; }
 
     canvas { width: 100% !important; border-radius: 10px; }
 
@@ -85,7 +85,7 @@
       transition: border-color .2s;
     }
     .store-card.winner { border-color: rgba(255,215,0,.4); }
-    .store-card .score { font-size: 2.2rem; font-weight: 800; }
+    .store-card .score { font-size: clamp(1.6rem, 6vw, 2.2rem); font-weight: 800; }
     .store-card .score.high { color: #68d391; }
     .store-card .score.low { color: #fc8181; }
     .store-card .name { font-size: .85rem; color: #a0aec0; margin-bottom: .5rem; }
@@ -109,10 +109,12 @@
       border-radius: 10px;
       padding: .9rem 1.1rem;
       font-family: 'Courier New', monospace;
-      font-size: .82rem;
+      font-size: clamp(.72rem, 2vw, .82rem);
       color: #e2e8f0;
       line-height: 1.9;
       margin-top: .8rem;
+      overflow-x: auto;
+      word-break: break-word;
     }
     .formula-box .hl { color: #ffd700; font-weight: 700; }
     .formula-box .dim { color: #718096; }
@@ -153,7 +155,7 @@
     </div>
     <div class="card">
       <h3><i class="ti ti-chart-bar"></i> 观测评分分布</h3>
-      <canvas id="chart-observed" height="200"></canvas>
+      <canvas id="chart-observed" height="180"></canvas>
       <div class="stat-row" style="margin-top:.8rem">
         <div class="stat-item"><div class="num" id="stat-avg">—</div><div class="lbl">平均分</div></div>
         <div class="stat-item"><div class="num" id="stat-5star">—</div><div class="lbl">5星占比</div></div>
@@ -228,9 +230,10 @@ let currentScene = 0;
 // ─── Chart 实例 ──────────────────────────────────────────
 const chartDefaults = {
   plugins: { legend: { labels: { color: '#a0aec0', font: { size: 11 } } } },
+  maintainAspectRatio: true,
   scales: {
-    x: { ticks: { color: '#718096' }, grid: { color: 'rgba(255,255,255,.05)' } },
-    y: { ticks: { color: '#718096' }, grid: { color: 'rgba(255,255,255,.05)' } },
+    x: { ticks: { color: '#718096', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' } },
+    y: { ticks: { color: '#718096', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' } },
   }
 };
 

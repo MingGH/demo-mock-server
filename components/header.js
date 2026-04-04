@@ -35,6 +35,8 @@
   }
 
   function loadAssets() {
+    // 预加载 Chart.js，让后续页面命中缓存
+    ensureLink('data-chartjs-preload', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js', 'preload', 'script');
     ensureScript('data-umami-script', {
       defer: true,
       src: 'https://umami.runnable.run/script.js',
@@ -100,15 +102,16 @@
     document.head.appendChild(script);
   }
 
-  function ensureLink(flagName, href) {
+  function ensureLink(flagName, href, rel, as) {
     if (document.querySelector(`link[${flagName}]`)) {
       return;
     }
 
     const link = document.createElement('link');
     link.setAttribute(flagName, 'true');
-    link.rel = 'stylesheet';
+    link.rel = rel || 'stylesheet';
     link.href = href;
+    if (as) link.setAttribute('as', as);
     document.head.appendChild(link);
   }
 

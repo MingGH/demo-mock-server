@@ -814,3 +814,95 @@ body.numfeel-shell.detail-page .story-note {
     margin-top: 0;
   }
 }
+
+/* ── 相关推荐 footer ─────────────────────────────────────── */
+body.numfeel-shell.detail-page .related-footer {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px dashed rgba(242, 228, 207, 0.12);
+}
+body.numfeel-shell.detail-page .related-footer-inner {
+  max-width: 960px;
+}
+body.numfeel-shell.detail-page .related-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1rem;
+  color: rgba(242, 228, 207, 0.48);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+body.numfeel-shell.detail-page .related-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 720px) {
+  body.numfeel-shell.detail-page .related-cards {
+    grid-template-columns: 1fr;
+  }
+}
+body.numfeel-shell.detail-page .related-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(242, 228, 207, 0.08);
+  background: rgba(242, 228, 207, 0.03);
+  text-decoration: none;
+  color: var(--nf-paper);
+  transition: transform 0.22s var(--nf-ease), border-color 0.22s var(--nf-ease), background 0.22s var(--nf-ease);
+}
+body.numfeel-shell.detail-page .related-card:hover {
+  transform: translate3d(0, -3px, 0);
+  border-color: rgba(201, 107, 51, 0.3);
+  background: rgba(201, 107, 51, 0.08);
+}
+body.numfeel-shell.detail-page .related-card-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: rgba(242, 228, 207, 0.06);
+  border: 1px solid rgba(242, 228, 207, 0.08);
+  font-size: 1.1rem;
+  color: rgba(242, 228, 207, 0.8);
+}
+body.numfeel-shell.detail-page .related-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+body.numfeel-shell.detail-page .related-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--nf-paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.numfeel-shell.detail-page .related-card-desc {
+  font-size: 11px;
+  color: rgba(242, 228, 207, 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.numfeel-shell.detail-page .related-card-arrow {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: rgba(242, 228, 207, 0.3);
+  transition: color 0.2s, transform 0.2s;
+}
+body.numfeel-shell.detail-page .related-card:hover .related-card-arrow {
+  color: rgba(201, 107, 51, 0.8);
+  transform: translateX(3px);
+}

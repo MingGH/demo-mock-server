@@ -73,6 +73,7 @@
     } else {
       createDetailShell();
       enhanceDetailPage();
+      buildRelatedFooter();
     }
 
     window.addEventListener('keydown', handleEscape);
@@ -599,4 +600,75 @@
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 1800);
   }
+
+  // ── 相关推荐 footer ──────────────────────────────────────
+  function buildRelatedFooter() {
+    const jsonUrl = `${prefix}data/demos.json`;
+    fetch(jsonUrl)
+      .then(r => r.json())
+      .then(data => {
+        const currentFile = currentPage; // e.g. benfords-law.html
+        let currentCat = null;
+        let allDemos = [];
+
+        data.categories.forEach(cat => {
+          cat.demos.forEach(demo => {
+            const file = demo.href.split('/').pop();
+            allDemos.push({ ...demo, catId: cat.id, catName: cat.name, file });
+            if (file === currentFile) currentCat = cat.id;
+          });
+        });
+
+        // 排除当前页
+        const others = allDemos.filter(d => d.file !== currentFile);
+
+        // 同分类优先：取同分类随机2个 + 其他分类随机1个
+        const sameCat  = shuffle(others.filter(d => d.catId === currentCat));
+        const diffCat  = shuffle(others.filter(d => d.catId !== currentCat));
+        const picks    = [...sameCat.slice(0, 2), ...diffCat.slice(0, 1)];
+
+        if (picks.length === 0) return;
+
+        const container = document.querySelector('.site-content > .container') ||
+                          document.querySelector('.site-content');
+        if (!container) return;
+
+        const footer = document.createElement('div');
+        footer.className = 'related-footer';
+        footer.innerHTML = `
+          <div class="related-footer-inner">
+            <div class="related-label">
+              <iconify-icon icon="ph:compass"></iconify-icon>
+              继续探索
+            </div>
+            <div class="related-cards">
+              ${picks.map(d => `
+                <a class="related-card" href="${prefix}${d.href}">
+                  <span class="related-card-icon">
+                    <i class="ti ${d.icon}"></i>
+                  </span>
+                  <span class="related-card-body">
+                    <span class="related-card-title">${d.title}</span>
+                    <span class="related-card-desc">${d.desc.slice(0, 36)}…</span>
+                  </span>
+                  <iconify-icon icon="ph:arrow-right" class="related-card-arrow"></iconify-icon>
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        container.appendChild(footer);
+      })
+      .catch(() => {}); // 静默失败，不影响主页面
+  }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
 })();

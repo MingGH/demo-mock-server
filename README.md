@@ -13,87 +13,101 @@
 ## 📋 演示列表
 
 ### 🎲 概率与统计
-- [蒙提霍尔问题模拟](https://numfeel.996.ninja/pages/monty-hall-simulator.html) - 三门问题：换门中奖率真的是2/3吗？
-- [101 vs 100 硬币问题](https://numfeel.996.ninja/pages/coin-flip-probability.html) - 对称性证明+蒙特卡洛模拟验证
-- [泊松分布可视化](https://numfeel.996.ninja/pages/poisson-distribution.html) - 交互式理解泊松分布的本质
-- [反直觉概率论](https://numfeel.996.ninja/pages/counter-intuitive-probability.html) - 生日悖论、圣彼得堡悖论、辛普森悖论等
-- [反直觉概率论 II](https://numfeel.996.ninja/pages/counter-intuitive-probability-2.html) - 非传递骰子、男孩女孩悖论等五个新悖论
-- [100面骰子：1.1%有多低](https://numfeel.996.ninja/pages/drug-relapse-dice.html) - 感受1%概率的渺茫
-- [百万只鸡砍腿问题](https://numfeel.996.ninja/pages/chicken-leg-problem.html) - 用模拟验证这个有趣的概率问题
-- [1/100 vs 6/600 概率一样吗](https://numfeel.996.ninja/pages/probability-fraction.html) - 揭示大脑的概率错觉
-- [量子随机数可视化](https://numfeel.996.ninja/pages/quantum-random-visualizer.html) - 真随机 vs 伪随机对比
-- [量子大乐透](https://numfeel.996.ninja/pages/quantum-lottery.html) - 用量子真随机数生成彩票号码
-- [选择题破解器](https://numfeel.996.ninja/pages/multiple-choice-cracker.html) - 用最少提交次数找出所有正确答案
-- [武器伤害对比](https://numfeel.996.ninja/pages/weapon-damage-compare.html) - 期望相同但方差不同的取舍
-- [幸存者偏差模拟器](https://numfeel.996.ninja/pages/survivor-bias.html) - 用轰炸机装甲问题理解幸存者偏差
-- [基率忽视模拟器](https://numfeel.996.ninja/pages/base-rate-neglect.html) - 99%准确率检测的贝叶斯陷阱
-- [运气到底存不存在](https://numfeel.996.ninja/pages/luck-existence.html) - 揭示「运气」背后的数学真相
-- [集齐一套要抽多少次](https://numfeel.996.ninja/pages/coupon-collector.html) - 优惠券收集问题
-- [本福特定律：数字的测谎仪](https://numfeel.996.ninja/pages/benfords-law.html) - 一键验证数据是否符合本福特定律
-- [为什么你排的队总是最慢的](https://numfeel.996.ninja/pages/queue-theory.html) - 排队论与等待心理学
-- [外卖几点下单最快](https://numfeel.996.ninja/pages/takeout-peak.html) - M/M/c排队模型分析外卖高峰期
-- [群体智慧模拟器](https://numfeel.996.ninja/pages/wisdom-of-crowds.html) - 验证多样性预测定理
+- [蒙提霍尔问题模拟](https://numfeel.996.ninja/pages/monty-hall-simulator.html) - 三门问题：换门中奖率真的是2/3吗？亲自玩一局，或者让电脑跑1000次给你看。
+- [101 vs 100 硬币问题](https://numfeel.996.ninja/pages/coin-flip-probability.html) - 甲101枚硬币，乙100枚，谁正面多？用对称性证明+蒙特卡洛模拟验证。
+- [泊松分布可视化](https://numfeel.996.ninja/pages/poisson-distribution.html) - 为什么排队、来电、Bug、事故都服从同一个分布？交互式理解泊松分布的本质。
+- [反直觉概率论](https://numfeel.996.ninja/pages/counter-intuitive-probability.html) - 生日悖论、圣彼得堡悖论、辛普森悖论...那些让数学家都困惑的概率结论，交互式验证...
+- [反直觉概率论 II](https://numfeel.996.ninja/pages/counter-intuitive-probability-2.html) - 非传递骰子、男孩女孩悖论、假阳性悖论、集齐问题、睡美人问题...五个新的概率悖论...
+- [100面骰子：1.1%有多低](https://numfeel.996.ninja/pages/drug-relapse-dice.html) - 掷100面骰子，只有掷出1才算成功。来感受一下1%的概率到底有多渺茫。
+- [百万只鸡砍腿问题](https://numfeel.996.ninja/pages/chicken-leg-problem.html) - 100万只鸡砍100万次腿，还剩多少完好的鸡？用模拟验证这个有趣的概率问题。
+- [1/100 vs 6/600 概率一样吗](https://numfeel.996.ninja/pages/probability-fraction.html) - 数学上完全一样，但你的直觉说不一样？用模拟验证比率偏差，揭示大脑的概率错觉。
+- [量子随机数可视化](https://numfeel.996.ninja/pages/quantum-random-visualizer.html) - 真随机 vs 伪随机，用眼睛看见随机性的本质。数据来自 ANU 量子真空涨落测量...
+- [量子大乐透](https://numfeel.996.ninja/pages/quantum-lottery.html) - 用真正的量子随机数生成彩票号码，体验物理学意义上的真随机。
+- [选择题破解器](https://numfeel.996.ninja/pages/multiple-choice-cracker.html) - 100道4选1单选题，一题不会，只能看总分。如何用最少的提交次数找出所有正确答案...
+- [武器伤害对比](https://numfeel.996.ninja/pages/weapon-damage-compare.html) - 1~5 vs 2~4，哪把武器更强？期望相同但方差不同，用模拟揭示稳定与爆发的取...
+- [幸存者偏差模拟器](https://numfeel.996.ninja/pages/survivor-bias.html) - 为什么你看到的成功都是幸存者？用轰炸机装甲问题和创业公司存活模拟，理解这个改变二...
+- [基率忽视模拟器](https://numfeel.996.ninja/pages/base-rate-neglect.html) - 99%准确率的检测，阳性结果可能只有50%是真的。用贝叶斯定理和蒙特卡洛模拟，揭...
+- [运气到底存不存在](https://numfeel.996.ninja/pages/luck-existence.html) - 用等待时间悖论、友谊悖论和峰终定律，揭示运气背后的数学真相。你觉得自己运气差，可...
+- [集齐一套要抽多少次](https://numfeel.996.ninja/pages/coupon-collector.html) - 抽卡/盲盒越到后面越难集齐？优惠券收集问题告诉你：集齐10种平均要抽29次，最后...
+- [本福特定律：数字的测谎仪](https://numfeel.996.ninja/pages/benfords-law.html) - 为什么1开头的数字比9开头的多6倍？用它能检测财务造假。粘贴你的数据，一键验证是...
+- [为什么你排的队总是最慢的](https://numfeel.996.ninja/pages/queue-theory.html) - 3条队你有67%概率不在最快的那条。换队期望收益为负。用排队论和等待心理学，解释...
+- [外卖几点下单最快](https://numfeel.996.ninja/pages/takeout-peak.html) - 11:45下单比12:00快20分钟？用M/M/c排队模型分析外卖高峰期效应，找...
+- [群体智慧模拟器](https://numfeel.996.ninja/pages/wisdom-of-crowds.html) - 787人猜牛的体重，中位数只差0.8%。为什么一群不专业的人的平均猜测能打败专家...
+- [排列五2979注一等奖](https://numfeel.996.ninja/pages/lottery-2979.html) - 四川开出2979注排列五一等奖，清空奖池2.979亿。用泊松分布和蒙特卡洛模拟，...
+- [帕隆多悖论模拟器](https://numfeel.996.ninja/pages/parrondo-paradox.html) - 两个必输的游戏，交替着玩反而赢钱？亲手体验输+输=赢的魔法，用蒙特卡洛模拟验证这...
+- [马太效应模拟器](https://numfeel.996.ninja/pages/matthew-effect.html) - 两条质量相同的内容，只因初始点赞差10个，最终传播量相差50倍。用优先连接模型和...
+- [大数定律：小样本的谎言](https://numfeel.996.ninja/pages/law-of-large-numbers.html) - 我身边10个人都这样——这句话有多不靠谱？从10次到10000次，看频率如何收敛...
+- [林迪效应：存在越久，活得越长](https://numfeel.996.ninja/pages/lindy-effect.html) - 一家餐厅开了20年，比开了2年的更可能再活20年。用帕累托分布和蒙特卡洛模拟，量...
+- [贝叶斯猜数字](https://numfeel.996.ninja/pages/bayes-guess.html) - 系统选了1~100的数，每次提示偏高/偏低但有20%概率说谎。用贝叶斯更新实时追...
+- [2026世界杯夺冠概率模拟器](https://numfeel.996.ninja/pages/worldcup-simulator.html) - 基于FIFA排名+蒙特卡洛模拟跑10万次世界杯，计算48支球队的夺冠概率。调整爆...
+- [为什么4.8分是新的及格线](https://numfeel.996.ninja/pages/rating-inflation.html) - 当所有人都给5星，评分系统就失效了。用信息熵量化评分通货膨胀，揭示为什么4.8分...
 
 ### 🃏 赌博与风险
-- [赌徒破产悖论](https://numfeel.996.ninja/pages/gambler-ruin.html) - 随机游走的残酷真相
-- [为什么十赌九输](https://numfeel.996.ninja/pages/why-gamblers-lose.html) - 庄家抽水、破产定理、心理陷阱
-- [复赌概率模拟器](https://numfeel.996.ninja/pages/gambling-relapse.html) - 92%的赌博成瘾者一年内复赌
-- [凯利公式计算器](https://numfeel.996.ninja/pages/kelly-criterion.html) - 长期财富增长最快的最优下注比例
-- [50%财富按钮悖论](https://numfeel.996.ninja/pages/wealth-button-paradox.html) - 期望值陷阱的模拟揭示
-- [薛定谔的钱箱](https://numfeel.996.ninja/pages/doubling-box.html) - 凯利公式揭示全押必死的数学真相
-- [彩票头奖为什么破产](https://numfeel.996.ninja/pages/lottery-winner-bankruptcy.html) - 75%中奖者5年内破产的原因
-
+- [赌徒破产悖论](https://numfeel.996.ninja/pages/gambler-ruin.html) - 50%概率的公平赌博，为什么赌久必输？用模拟揭示随机游走的残酷真相。
+- [胜率大于50%，赌徒还会输光吗](https://numfeel.996.ninja/pages/gambler-ruin-positive.html) - 胜率50.1%本金5000，破产概率约2×10⁻⁹。用精确公式和蒙特卡洛模拟，回...
+- [为什么十赌九输](https://numfeel.996.ninja/pages/why-gamblers-lose.html) - 庄家抽水、赌徒破产定理、心理陷阱...用数学和模拟告诉你，这不是运气问题，是数学...
+- [复赌概率模拟器](https://numfeel.996.ninja/pages/gambling-relapse.html) - 92%的赌博成瘾者在一年内复赌。用模拟体验戒赌一年有多难，理解为什么意志力不够用...
+- [凯利公式计算器](https://numfeel.996.ninja/pages/kelly-criterion.html) - 51%概率赢一倍，每次该下注多少？凯利公式告诉你长期财富增长最快的最优解。
+- [50%财富按钮悖论](https://numfeel.996.ninja/pages/wealth-button-paradox.html) - 50%概率×9，50%概率×0.1，期望值为正，但你敢按吗？用模拟揭示期望值陷阱...
+- [薛定谔的钱箱](https://numfeel.996.ninja/pages/doubling-box.html) - 50%翻倍50%消失，放还是不放？凯利公式告诉你最优下注比例，用模拟揭示全押必死...
+- [彩票头奖为什么破产](https://numfeel.996.ninja/pages/lottery-winner-bankruptcy.html) - 75%的中奖者在5年内破产。用财富衰减模型和蒙特卡洛模拟，揭示消费膨胀、心理账户...
 
 ### 💰 投资与理财
-- [复利计算器](https://numfeel.996.ninja/pages/compound-interest-calculator.html) - 定期存款终值计算
-- [复利的威力可视化](https://numfeel.996.ninja/pages/compound-power.html) - 早10年存钱 vs 晚10年存钱
-- [基金定投模拟器](https://numfeel.996.ninja/pages/fund-dca-simulator.html) - 模拟不同市场走势下的定投收益
-- [交易策略模拟器](https://numfeel.996.ninja/pages/trading-strategy-simulator.html) - 高胜率 vs 高盈亏比
-- [炒股到底难在哪](https://numfeel.996.ninja/pages/stock-trading-difficulty.html) - 60%胜率也可能亏钱
-- [财务决策风险模拟](https://numfeel.996.ninja/pages/financial-risk-simulator.html) - 蒙特卡洛模拟分析大额消费风险
-- [财富自由计算器](https://numfeel.996.ninja/pages/financial-freedom-calculator.html) - 算算离「躺平」还差多远
-- [存100万有多难](https://numfeel.996.ninja/pages/save-million-calculator.html) - 打工人攒钱真相计算器
-- [工资 vs 成长机会](https://numfeel.996.ninja/pages/salary-vs-growth.html) - 成长路线多久追回损失的薪资
-- [赢家诅咒模拟器](https://numfeel.996.ninja/pages/winners-curse.html) - 赢了竞拍反而亏钱
-- [订阅审计器](https://numfeel.996.ninja/pages/subscription-audit.html) - 算出你每年浪费了多少订阅费
-- [养老金缺口计算器](https://numfeel.996.ninja/pages/retirement-gap.html) - 蒙特卡洛模拟5000次算你的钱能撑到几岁
+- [复利计算器](https://numfeel.996.ninja/pages/compound-interest-calculator.html) - 定期存款终值计算，支持月存/年存、先付/后付年金，详细展示公式和步骤。
+- [复利的威力可视化](https://numfeel.996.ninja/pages/compound-power.html) - 早10年存钱 vs 晚10年存钱，差距有多大？用模拟器直观展示躺平流如何战胜奋斗...
+- [基金定投模拟器](https://numfeel.996.ninja/pages/fund-dca-simulator.html) - 定投一定赚钱吗？模拟不同市场走势，看看微笑曲线和哭泣曲线的区别。
+- [交易策略模拟器](https://numfeel.996.ninja/pages/trading-strategy-simulator.html) - 高胜率 vs 高盈亏比，谁才是王道？用蒙特卡洛模拟揭示交易的数学本质。
+- [炒股到底难在哪](https://numfeel.996.ninja/pages/stock-trading-difficulty.html) - 60%胜率也可能亏钱？用蒙特卡洛模拟揭示概率陷阱、心理博弈和时间陷阱的残酷真相。
+- [财务决策风险模拟](https://numfeel.996.ninja/pages/financial-risk-simulator.html) - 用蒙特卡洛模拟分析大额消费的风险，看看买那个包/电脑后吃土的概率有多大。
+- [财富自由计算器](https://numfeel.996.ninja/pages/financial-freedom-calculator.html) - 算算最初级财富自由需要多少钱？输入你的月支出，看看离躺平还差多远。
+- [存100万有多难](https://numfeel.996.ninja/pages/save-million-calculator.html) - 月薪5000的打工人，存到人生第一个100万需要多久？算完可能会沉默。
+- [工资 vs 成长机会](https://numfeel.996.ninja/pages/salary-vs-growth.html) - 老板说别太看重工资？用数学模型算算，成长路线到底要多久才能追回损失的薪资。
+- [赢家诅咒模拟器](https://numfeel.996.ninja/pages/winners-curse.html) - 为什么赢了竞拍反而亏钱？亲自参与拍卖，体验赢家诅咒的残酷真相。
+- [订阅审计器](https://numfeel.996.ninja/pages/subscription-audit.html) - 你每月在为多少不用的服务付费？用遗忘曲线和沉没成本模型，算出你每年浪费了多少钱。
+- [满减凑单计算器](https://numfeel.996.ninja/pages/full-reduction.html) - 满300减50，你为了省50块多花了200块？算算凑单的真实折扣率和划算线，模拟...
+- [养老金缺口计算器](https://numfeel.996.ninja/pages/retirement-gap.html) - 28%的人退休储蓄为零，63%怕钱花完比怕死还怕。用蒙特卡洛模拟5000次，算算...
 
 ### ♟️ 博弈论
-- [囚徒困境模拟](https://numfeel.996.ninja/pages/prisoners-dilemma.html) - 合作还是背叛？体验纳什均衡
-- [田忌赛马模拟器](https://numfeel.996.ninja/pages/tian-ji-horse-racing.html) - 穷举6种策略揭示博弈论思维
-- [博弈论日常生活指南](https://numfeel.996.ninja/pages/game-theory-life.html) - 砍价、分东西、争执的最优策略
+- [囚徒困境模拟](https://numfeel.996.ninja/pages/prisoners-dilemma.html) - 博弈论经典问题，合作还是背叛？体验纳什均衡的残酷与智慧。
+- [田忌赛马模拟器](https://numfeel.996.ninja/pages/tian-ji-horse-racing.html) - 这是破坏规则还是博弈智慧？穷举6种策略，用模拟揭示孙膑的博弈论思维。
+- [博弈论日常生活指南](https://numfeel.996.ninja/pages/game-theory-life.html) - 砍价、分东西、争执、长期关系...用纳什谈判解、最后通牒、懦夫博弈、重复博弈，揭...
+- [布雷斯悖论：多修路反而更堵](https://numfeel.996.ninja/pages/braess-paradox.html) - 给交通网络多修一条路，所有人通勤时间反而变长。用纳什均衡模拟验证这个反直觉的博弈...
 
 ### 📐 数学可视化
-- [欧拉公式可视化](https://numfeel.996.ninja/pages/euler-formula.html) - 五大常数如何完美相遇
-- [指数增长有多恐怖](https://numfeel.996.ninja/pages/exponential-growth.html) - 一张纸对折42次超过地月距离
-- [数据大小可视化](https://numfeel.996.ninja/pages/data-size-visualizer.html) - 直观感受数据的重量
+- [欧拉公式可视化](https://numfeel.996.ninja/pages/euler-formula.html) - e^(iπ)+1=0，被费曼称为数学的珠宝。用动画理解五大常数如何完美相遇。
+- [指数增长有多恐怖](https://numfeel.996.ninja/pages/exponential-growth.html) - 一张纸对折42次，厚度超过地月距离。点击对折，亲眼见证指数增长的恐怖。
+- [数据大小可视化](https://numfeel.996.ninja/pages/data-size-visualizer.html) - 1MB/1GB/1TB到底有多大？用动画和类比让你直观感受数据的重量。
+- [π 里藏着你的生日](https://numfeel.996.ninja/pages/pi-birthday.html) - π 的小数位无限不循环，理论上包含任意有限数字序列。输入你的生日，看看它藏在 π...
+- [大炮打蚊子解方程](https://numfeel.996.ninja/pages/ab-equation-overkill.html) - A+B=90，A÷B=17，AB各多少？一道小学题，用牛顿迭代、二分法、梯度下降...
 
 ### 🧠 心理与决策
-- [损失厌恶测试](https://numfeel.996.ninja/pages/loss-aversion.html) - 测测你的损失厌恶系数
-- [200万 vs 2亿](https://numfeel.996.ninja/pages/200w-vs-2yi.html) - 期望值与风险偏好的博弈
-- [学历信号模型](https://numfeel.996.ninja/pages/education-signaling.html) - 诺贝尔经济学奖的信号模型
-- [安慰剂按钮](https://numfeel.996.ninja/pages/placebo-buttons.html) - 那些看起来有用实际什么都没做的按钮
-- [十亿元按钮](https://numfeel.996.ninja/pages/doomsday-button.html) - 按下获得10亿元但500年后人类毁灭
-- [忒修斯之船悖论](https://numfeel.996.ninja/pages/ship-of-theseus.html) - 身份认同的经典思想实验
-- [概率决策工具箱](https://numfeel.996.ninja/pages/probability-decision-making.html) - 五个真实场景的概率决策
-- [注意力挑战](https://numfeel.996.ninja/pages/attention-challenge.html) - 测测你的注意力衰减曲线
+- [损失厌恶测试](https://numfeel.996.ninja/pages/loss-aversion.html) - 失去100元的痛苦=得到250元的快乐。测测你的损失厌恶系数，看看恐惧如何替你做...
+- [200万 vs 2亿](https://numfeel.996.ninja/pages/200w-vs-2yi.html) - 100%拿200万，还是99%拿2亿？期望值差99倍，但答案没那么简单。
+- [学历信号模型](https://numfeel.996.ninja/pages/education-signaling.html) - 学历≠能力，但企业为什么还看学历？用诺贝尔经济学奖的信号模型和招聘模拟揭示答案。
+- [安慰剂按钮](https://numfeel.996.ninja/pages/placebo-buttons.html) - 电梯关门键、人行道按钮、办公室温控器...那些看起来有用，实际什么都没做的按钮。
+- [十亿元按钮](https://numfeel.996.ninja/pages/doomsday-button.html) - 按下获得10亿元，但500年后人类毁灭。你会按吗？来试试看会发生什么。
+- [忒修斯之船悖论](https://numfeel.996.ninja/pages/ship-of-theseus.html) - 一艘船的木板被逐渐替换，直到全部换新。它还是原来那艘船吗？你还是你吗？
+- [概率决策工具箱](https://numfeel.996.ninja/pages/probability-decision-making.html) - 期望效用、贝叶斯体检、分散投资、37%法则、小样本陷阱——五个真实场景，用概率论...
+- [注意力挑战](https://numfeel.996.ninja/pages/attention-challenge.html) - 人类注意力从12秒降到8.25秒，比金鱼还短。测测你的注意力衰减曲线，用指数衰减...
+- [颜色记忆挑战：大脑缓存有几KB](https://numfeel.996.ninja/pages/memory-challenge.html) - 记住一排彩色方块的顺序，打乱后还原。从3个到15个，你的准确率会在7附近断崖下降...
 
 ### ✨ 趣味工具
-- [一个亿花钱模拟器](https://numfeel.996.ninja/pages/spend-100-million.html) - 试试把一个亿花光
-- [墓志铭生成器](https://numfeel.996.ninja/pages/tombstone-generator.html) - 生成你的专属墓碑图片
-- [圣诞帽头像生成器](https://numfeel.996.ninja/pages/christmas-hat.html) - 上传头像添加圣诞贴图
-- [AI颜值评分器](https://numfeel.996.ninja/pages/face-score.html) - AI分析面部比例给出颜值分数
-- [户晨风直播词云分析](https://numfeel.996.ninja/pages/word-cloud.html) - 直播实录数据生成的词云图
+- [一个亿花钱模拟器](https://numfeel.996.ninja/pages/spend-100-million.html) - 拥有一个亿有多痛苦？来试试把它花光。买豪车、豪宅、私人飞机……你会发现根本花不完...
+- [墓志铭生成器](https://numfeel.996.ninja/pages/tombstone-generator.html) - 如果只有三行，你想写什么？生成你的专属墓碑，支持多种样式，可下载图片分享。
+- [圣诞帽头像生成器](https://numfeel.996.ninja/pages/christmas-hat.html) - 上传头像添加圣诞贴图，支持拖拽、缩放、旋转，可叠加多个贴图，一键下载。
+- [AI颜值评分器](https://numfeel.996.ninja/pages/face-score.html) - 上传照片，AI 分析面部比例、对称性、五眼三庭，给你一个颜值分数。仅供娱乐！
+- [户晨风直播词云分析](https://numfeel.996.ninja/pages/word-cloud.html) - 基于直播实录数据生成的词云图，看看户晨风直播中最常提到的词汇有哪些。
 
 ### 💻 技术演示
-- [IndexedDB 缓存分页](https://numfeel.996.ninja/pages/mock-data.html) - 大数据量的本地缓存与分页展示
-- [同步 vs 异步演示](https://numfeel.996.ninja/pages/sync-async-demo.html) - 动画直观理解同步与异步的区别
-- [随机中文名生成](https://numfeel.996.ninja/pages/chinese-names.html) - 批量生成测试用中文姓名
-- [jQuery 20周年纪念](https://numfeel.996.ninja/pages/jquery-20-years.html) - 用jQuery 4.0写的怀旧Demo
-- [全球SSH攻击地图](https://numfeel.996.ninja/pages/ssh-attack-map.html) - 实时展示服务器被扫描的IP来源
-- [AI 缩放定律可视化](https://numfeel.996.ninja/pages/scaling-law.html) - 用幂律解释AI军备竞赛
-- [科技热词生命周期](https://numfeel.996.ninja/pages/tech-hype-cycle.html) - 对比历史热词曲线评估技术趋势
-
+- [IndexedDB 缓存分页](https://numfeel.996.ninja/pages/mock-data.html) - 从后端获取大量模拟数据，使用 IndexedDB 本地缓存，支持分页浏览，体验流...
+- [同步 vs 异步演示](https://numfeel.996.ninja/pages/sync-async-demo.html) - 通过动画直观理解同步与异步的区别，配合生活类比和代码示例，一看就懂。
+- [随机中文名生成](https://numfeel.996.ninja/pages/chinese-names.html) - 批量生成随机中文姓名，支持自定义数量，一键复制，适合测试数据填充场景。
+- [jQuery 20周年纪念](https://numfeel.996.ninja/pages/jquery-20-years.html) - 用jQuery 4.0写的怀旧Demo，回顾选择器、链式调用、动画、Ajax等经...
+- [全球SSH攻击地图](https://numfeel.996.ninja/pages/ssh-attack-map.html) - 实时展示正在扫描你服务器的IP来源，看看攻击都来自哪些国家。
+- [AI 缩放定律可视化](https://numfeel.996.ninja/pages/scaling-law.html) - 大力出奇迹，但奇迹越来越贵。用幂律解释 AI 军备竞赛：为什么 DeepSeek...
+- [科技热词生命周期](https://numfeel.996.ninja/pages/tech-hype-cycle.html) - OpenClaw 是下一个元宇宙，还是下一个互联网？对比历史热词曲线，用参数评估...
+- [AI 工具值不值得付费](https://numfeel.996.ninja/pages/ai-tools-value.html) - 把工作拆成起草、检索、润色和核验返工，算清你的付费阈值、盈亏平衡点和ROI区间。
+- [隐形水印实验室](https://numfeel.996.ninja/pages/invisible-watermark.html) - APP截图真的藏着暗水印？亲手体验空间域（LSB）和频域（DCT）两种隐形水印技...
 ## 🎯 项目目标
 
 通过交互式演示回答知乎上的技术问题，让复杂概念变得易懂。

@@ -194,16 +194,15 @@ public class BrowserFingerprintHandler implements Handler<RoutingContext> {
                 long uniqueFull = row.getLong("unique_full");
                 long trulyUnique = row.getLong("truly_unique");
 
-                // 唯一率 = 只出现1次的hash数 / 总唯一hash数
-                double uniqueRate = uniqueFull > 0
-                    ? Math.round(trulyUnique * 10000.0 / uniqueFull) / 100.0
+                // 平均访问次数 = 总记录 / 不重复指纹数
+                double avgVisits = uniqueFull > 0
+                    ? Math.round(total * 100.0 / uniqueFull) / 100.0
                     : 0;
 
                 JsonObject data = new JsonObject()
                     .put("total", total)
                     .put("uniqueFull", uniqueFull)
-                    .put("trulyUnique", trulyUnique)
-                    .put("uniqueRate", uniqueRate)
+                    .put("avgVisits", avgVisits)
                     .put("uniqueCanvas", row.getLong("unique_canvas"))
                     .put("uniqueFont", row.getLong("unique_font"))
                     .put("uniqueWebgl", row.getLong("unique_webgl"))

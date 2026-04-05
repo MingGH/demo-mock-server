@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="浏览器指纹实验室：不用Cookie，网站如何通过字体、Canvas、WebGL等13个维度唯一识别你的设备。">
+  <title>为什么你的推特号、GitHub新号一注册就被封</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460); min-height: 100vh; color: #e0e0e0; }
+    .container { max-width: 960px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+    .header { text-align: center; margin-bottom: 2rem; }
+    .header h1 { font-size: clamp(1.4rem, 3.5vw, 2.2rem); background: linear-gradient(90deg, #ffd700, #ffaa00, #ffd700); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: shimmer 3s linear infinite; margin-bottom: .6rem; }
+    @keyframes shimmer { to { background-position: 200% center; } }
+    .header p { color: #a0aec0; font-size: .95rem; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .modal { background: #1e2a3a; border: 1px solid rgba(255,215,0,.3); border-radius: 16px; padding: 2rem; max-width: 480px; width: 100%; }
+    .modal h2 { color: #ffd700; font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem; }
+    .modal p { color: #cbd5e0; font-size: .9rem; line-height: 1.7; margin-bottom: .8rem; }
+    .modal ul { color: #a0aec0; font-size: .85rem; line-height: 1.8; padding-left: 1.2rem; margin-bottom: 1.2rem; }
+    .modal-btns { display: flex; gap: .8rem; }
+    .card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 1.4rem; margin-bottom: 1.2rem; }
+    .card-title { font-size: .85rem; color: #a0aec0; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: .05em; display: flex; align-items: center; gap: .4rem; }
+    .card-title i { font-size: 1rem; color: #ffd700; }
+    button { padding: .55rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-size: .88rem; font-weight: 600; transition: opacity .15s, transform .1s; }
+    button:active { transform: scale(.97); }
+    .btn-primary { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #1a1a2e; }
+    .btn-danger { background: rgba(239,68,68,.15); color: #fc8181; border: 1px solid rgba(239,68,68,.25); }
+    .hash-display { background: rgba(0,0,0,.4); border-radius: 10px; padding: 1.2rem; text-align: center; margin-bottom: 1.2rem; }
+    .hash-value { font-family: 'Courier New', monospace; font-size: clamp(.75rem, 2vw, .95rem); color: #ffd700; word-break: break-all; letter-spacing: .05em; margin-bottom: .5rem; }
+    .hash-meta { font-size: .8rem; color: #718096; }
+    .hash-meta span { color: #68d391; font-weight: 600; }
+    .dim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .8rem; }
+    .dim-item { background: rgba(0,0,0,.25); border-radius: 10px; padding: .9rem 1rem; display: flex; align-items: flex-start; gap: .8rem; }
+    .dim-icon { color: #ffd700; font-size: 1.1rem; flex-shrink: 0; margin-top: .1rem; }
+    .dim-body { flex: 1; min-width: 0; }
+    .dim-name { font-size: .82rem; color: #a0aec0; margin-bottom: .2rem; }
+    .dim-value { font-size: .88rem; color: #e2e8f0; word-break: break-all; font-family: monospace; }
+    .dim-entropy { font-size: .75rem; color: #68d391; margin-top: .2rem; }
+    .entropy-bar-wrap { margin-bottom: .5rem; }
+    .entropy-row { display: flex; align-items: center; gap: .8rem; margin-bottom: .5rem; }
+    .entropy-label { font-size: .8rem; color: #a0aec0; width: 120px; flex-shrink: 0; text-align: right; }
+    .entropy-bar-bg { flex: 1; height: 18px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; }
+    .entropy-bar-fill { height: 100%; background: linear-gradient(90deg, #4299e1, #ffd700); border-radius: 4px; transition: width .6s ease; }
+    .entropy-bits { font-size: .78rem; color: #ffd700; width: 50px; text-align: right; flex-shrink: 0; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin-bottom: 1rem; }
+    @media (max-width: 500px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+    .stat-item { background: rgba(0,0,0,.25); border-radius: 10px; padding: .9rem; text-align: center; }
+    .stat-num { font-size: 1.4rem; font-weight: 700; color: #ffd700; }
+    .stat-lbl { font-size: .72rem; color: #718096; margin-top: .2rem; }
+    .insight { background: rgba(255,215,0,.07); border: 1px solid rgba(255,215,0,.2); border-radius: 10px; padding: 1rem 1.2rem; font-size: .88rem; line-height: 1.8; color: #e2e8f0; }
+    .insight strong { color: #ffd700; }
+    .loading { text-align: center; padding: 2rem; color: #718096; font-size: .9rem; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255,215,0,.3); border-top-color: #ffd700; border-radius: 50%; animation: spin .8s linear infinite; margin-right: .5rem; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .notice-bar { background: rgba(99,179,237,.1); border: 1px solid rgba(99,179,237,.25); border-radius: 8px; padding: .7rem 1rem; font-size: .82rem; color: #90cdf4; margin-bottom: 1.2rem; display: flex; align-items: center; gap: .5rem; }
+  </style>
+</head>
+<body>
+
+<div class="modal-overlay" id="privacyModal">
+  <div class="modal">
+    <h2><i class="ti ti-shield-lock"></i> 隐私说明</h2>
+    <p>本页面是一个浏览器指纹技术演示，点击「开始检测」后会采集以下浏览器特征：</p>
+    <ul>
+      <li>Canvas 渲染指纹、WebGL 渲染指纹</li>
+      <li>已安装字体列表（通过渲染宽度测量）</li>
+      <li>屏幕分辨率、色深、像素比</li>
+      <li>时区、语言、操作系统平台</li>
+      <li>硬件并发数、设备内存、触控支持</li>
+    </ul>
+    <p>采集的数据仅用于演示目的，<strong style="color:#ffd700">不会关联你的个人身份</strong>，不会存储任何可识别个人的信息。数据以匿名方式汇总，用于展示「有多少人的指纹是唯一的」这一统计结果。</p>
+    <div class="modal-btns">
+      <button class="btn-primary" id="btnConsent">我了解，开始检测</button>
+      <button class="btn-danger" id="btnDecline">不参与</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <h1>为什么你的推特号、GitHub新号一注册就被封</h1>
+    <p>浏览器指纹实验室 · 不用 Cookie，平台如何认出你</p>
+  </div>
+
+  <div id="mainContent" style="display:none">
+    <div class="notice-bar">
+      <i class="ti ti-info-circle"></i>
+      数据已匿名采集，仅用于演示统计。你的指纹不会关联任何个人身份信息。
+    </div>
+
+    <div class="card" style="border-color:rgba(255,215,0,.2)">
+      <div class="card-title"><i class="ti ti-fingerprint"></i>你的浏览器指纹</div>
+      <div class="hash-display" id="hashDisplay">
+        <div class="loading"><span class="spinner"></span>正在采集指纹...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-chart-bar"></i>全站统计（真实数据）</div>
+      <div class="stats-grid">
+        <div class="stat-item"><div class="stat-num" id="sTotal">—</div><div class="stat-lbl">累计采集指纹</div></div>
+        <div class="stat-item"><div class="stat-num" id="sUnique">—</div><div class="stat-lbl">完全唯一指纹</div></div>
+        <div class="stat-item"><div class="stat-num" id="sRate">—</div><div class="stat-lbl">唯一率</div></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-item"><div class="stat-num" id="sCanvas">—</div><div class="stat-lbl">Canvas 唯一数</div></div>
+        <div class="stat-item"><div class="stat-num" id="sFont">—</div><div class="stat-lbl">字体指纹唯一数</div></div>
+        <div class="stat-item"><div class="stat-num" id="sEntropy">—</div><div class="stat-lbl">平均熵值 (bits)</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-chart-dots"></i>各维度熵值贡献（越高越能区分你）</div>
+      <div class="entropy-bar-wrap" id="entropyBars">
+        <div class="loading"><span class="spinner"></span>计算中...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-list-details"></i>你的指纹详情（共 <span id="dimCount">0</span> 个维度）</div>
+      <div class="dim-grid" id="dimGrid">
+        <div class="loading"><span class="spinner"></span>采集中...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="ti ti-bulb"></i>这意味着什么</div>
+      <div class="insight" id="insightBox">指纹采集完成后显示分析结论。</div>
+    </div>
+  </div>
+
+  <div id="declinedMsg" style="display:none; text-align:center; padding:4rem 1rem; color:#718096">
+    <i class="ti ti-eye-off" style="font-size:3rem; display:block; margin-bottom:1rem; color:#4a5568"></i>
+    你选择了不参与。这本身也说明了一件事：<br>
+    <span style="color:#a0aec0">当你知道被追踪时，你会拒绝。但大多数网站不会问你。</span>
+  </div>
+</div>
+
+<script>
+const API_BASE = 'https://numfeel-api.996.ninja';
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function shortHash(h) { return h ? h.substring(0, 16) + '...' : 'N/A'; }
+
+function getCanvasFingerprint() {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 200; c.height = 50;
+    const ctx = c.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(125, 1, 62, 20);
+    ctx.fillStyle = '#069';
+    ctx.fillText('Browser Fingerprint', 2, 15);
+    ctx.fillStyle = 'rgba(102,204,0,0.7)';
+    ctx.fillText('Browser Fingerprint', 4, 17);
+    return c.toDataURL();
+  } catch (e) { return 'canvas-blocked'; }
+}
+
+function getWebGLFingerprint() {
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+    if (!gl) return 'webgl-unsupported';
+    const dbgInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    const vendor   = dbgInfo ? gl.getParameter(dbgInfo.UNMASKED_VENDOR_WEBGL)   : gl.getParameter(gl.VENDOR);
+    const renderer = dbgInfo ? gl.getParameter(dbgInfo.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    return vendor + '::' + renderer;
+  } catch (e) { return 'webgl-error'; }
+}
+
+function getFontList() {
+  const testFonts = [
+    'Arial','Arial Black','Comic Sans MS','Courier New','Georgia','Impact',
+    'Times New Roman','Trebuchet MS','Verdana','Helvetica','Palatino',
+    'Garamond','Tahoma','Lucida Console','PingFang SC','Microsoft YaHei',
+    'SimSun','SimHei','STHeiti','Hiragino Sans GB','WenQuanYi Micro Hei',
+    'Noto Sans CJK SC','Menlo','Monaco','Consolas','Lucida Grande',
+    'Segoe UI','Calibri','Cambria','Candara','Constantia','Corbel',
+    'Franklin Gothic Medium','Gill Sans','Optima','Futura','Century Gothic',
+    'Rockwell','Baskerville'
+  ];
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const baseFont = 'monospace';
+  const testStr = 'mmmmmmmmmmlli';
+  ctx.font = '72px ' + baseFont;
+  const baseW = ctx.measureText(testStr).width;
+  return testFonts.filter(function(font) {
+    ctx.font = "72px '" + font + "', " + baseFont;
+    return ctx.measureText(testStr).width !== baseW;
+  });
+}
+
+function getAudioFingerprint() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 44100 });
+    const osc = ctx.createOscillator();
+    const analyser = ctx.createAnalyser();
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    osc.connect(analyser);
+    analyser.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(0);
+    const data = new Float32Array(analyser.frequencyBinCount);
+    analyser.getFloatFrequencyData(data);
+    osc.stop();
+    ctx.close();
+    return data.slice(0, 10).join(',');
+  } catch (e) { return 'audio-blocked'; }
+}
+
+const ENTROPY_MAP = [
+  { name: 'Canvas 指纹',   bits: 11.2, icon: 'ti-photo' },
+  { name: 'WebGL 渲染器',  bits: 8.6,  icon: 'ti-3d-cube-sphere' },
+  { name: '字体列表',      bits: 7.8,  icon: 'ti-typography' },
+  { name: '屏幕分辨率',    bits: 4.8,  icon: 'ti-device-desktop' },
+  { name: '时区',          bits: 3.9,  icon: 'ti-clock' },
+  { name: '音频指纹',      bits: 3.4,  icon: 'ti-music' },
+  { name: '语言',          bits: 2.7,  icon: 'ti-language' },
+  { name: '操作系统平台',  bits: 2.3,  icon: 'ti-brand-windows' },
+  { name: '硬件并发数',    bits: 2.1,  icon: 'ti-cpu' },
+  { name: '设备内存',      bits: 1.8,  icon: 'ti-database' },
+  { name: '像素比',        bits: 1.5,  icon: 'ti-zoom-in' },
+  { name: '色深',          bits: 1.2,  icon: 'ti-palette' },
+  { name: '触控支持',      bits: 0.9,  icon: 'ti-hand-finger' },
+];
+
+async function collectAndDisplay() {
+  const canvasRaw  = getCanvasFingerprint();
+  const webglRaw   = getWebGLFingerprint();
+  const fonts      = getFontList();
+  const audioRaw   = getAudioFingerprint();
+  const tz         = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const lang       = navigator.language || 'unknown';
+  const platform   = navigator.platform || 'unknown';
+  const hwc        = navigator.hardwareConcurrency || 0;
+  const mem        = navigator.deviceMemory || 0;
+  const touch      = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const colorDepth = screen.colorDepth;
+  const pixelRatio = window.devicePixelRatio || 1;
+  const screenInfo = screen.width + 'x' + screen.height + '@' + colorDepth + 'bit';
+
+  const [canvasHash, webglHash, fontHash, audioHash] = await Promise.all([
+    sha256(canvasRaw), sha256(webglRaw), sha256(fonts.join(',')), sha256(audioRaw)
+  ]);
+
+  const combined = [canvasHash, webglHash, fontHash, audioHash,
+    screenInfo, tz, lang, platform, hwc, mem, touch, colorDepth, pixelRatio].join('|');
+  const fullHash = await sha256(combined);
+
+  const totalEntropy = ENTROPY_MAP.reduce(function(s, v) { return s + v.bits; }, 0);
+  const uniqueCount  = Math.pow(2, Math.round(totalEntropy));
+
+  document.getElementById('hashDisplay').innerHTML =
+    '<div class="hash-value">' + fullHash + '</div>' +
+    '<div class="hash-meta">总熵值 <span>' + totalEntropy.toFixed(1) + ' bits</span> · 理论唯一性 1 / <span>' +
+    uniqueCount.toLocaleString() + '</span></div>';
+
+  const maxBits = Math.max.apply(null, ENTROPY_MAP.map(function(v) { return v.bits; }));
+  document.getElementById('entropyBars').innerHTML = ENTROPY_MAP.map(function(d) {
+    return '<div class="entropy-row">' +
+      '<div class="entropy-label">' + d.name + '</div>' +
+      '<div class="entropy-bar-bg"><div class="entropy-bar-fill" style="width:' +
+      (d.bits / maxBits * 100).toFixed(1) + '%"></div></div>' +
+      '<div class="entropy-bits">' + d.bits + ' bits</div></div>';
+  }).join('');
+
+  const dims = [
+    { name: 'Canvas 指纹',   icon: 'ti-photo',           value: shortHash(canvasHash), entropy: '11.2 bits' },
+    { name: 'WebGL 渲染器',  icon: 'ti-3d-cube-sphere',  value: webglRaw.length > 60 ? webglRaw.substring(0,60)+'...' : webglRaw, entropy: '8.6 bits' },
+    { name: '字体列表',      icon: 'ti-typography',      value: '检测到 ' + fonts.length + ' 种字体', entropy: '7.8 bits' },
+    { name: '音频指纹',      icon: 'ti-music',           value: shortHash(audioHash),  entropy: '3.4 bits' },
+    { name: '屏幕分辨率',    icon: 'ti-device-desktop',  value: screenInfo,            entropy: '4.8 bits' },
+    { name: '时区',          icon: 'ti-clock',           value: tz,                    entropy: '3.9 bits' },
+    { name: '语言',          icon: 'ti-language',        value: lang,                  entropy: '2.7 bits' },
+    { name: '操作系统平台',  icon: 'ti-brand-windows',   value: platform,              entropy: '2.3 bits' },
+    { name: '硬件并发数',    icon: 'ti-cpu',             value: hwc + ' 核',           entropy: '2.1 bits' },
+    { name: '设备内存',      icon: 'ti-database',        value: mem ? mem + ' GB' : '未知', entropy: '1.8 bits' },
+    { name: '像素比',        icon: 'ti-zoom-in',         value: pixelRatio + 'x',      entropy: '1.5 bits' },
+    { name: '色深',          icon: 'ti-palette',         value: colorDepth + ' bit',   entropy: '1.2 bits' },
+    { name: '触控支持',      icon: 'ti-hand-finger',     value: touch ? '支持' : '不支持', entropy: '0.9 bits' },
+  ];
+
+  document.getElementById('dimCount').textContent = dims.length;
+  document.getElementById('dimGrid').innerHTML = dims.map(function(d) {
+    return '<div class="dim-item"><i class="ti ' + d.icon + ' dim-icon"></i>' +
+      '<div class="dim-body"><div class="dim-name">' + d.name + '</div>' +
+      '<div class="dim-value">' + d.value + '</div>' +
+      '<div class="dim-entropy">熵值贡献：' + d.entropy + '</div></div></div>';
+  }).join('');
+
+  let sameCount = 1, totalCount = 1;
+  try {
+    const resp = await fetch(API_BASE + '/fingerprint/collect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fullHash, canvasHash, fontHash, webglHash,
+        screenInfo, timezone: tz, language: lang, platform,
+        hardwareConcurrency: hwc, deviceMemory: mem,
+        touchSupport: touch, colorDepth, pixelRatio,
+        entropyBits: totalEntropy
+      })
+    });
+    const json = await resp.json();
+    if (json.status === 200) {
+      sameCount  = json.data.sameHashCount || 1;
+      totalCount = json.data.total || 1;
+    }
+  } catch (e) { console.warn('上报失败', e); }
+
+  document.getElementById('insightBox').innerHTML =
+    '你的浏览器指纹由 <strong>' + dims.length + ' 个维度</strong>组成，总熵值 <strong>' + totalEntropy.toFixed(1) + ' bits</strong>。<br><br>' +
+    '理论上，在 <strong>' + uniqueCount.toLocaleString() + ' 个</strong>随机用户中，才会有一个和你指纹完全相同的人。<br><br>' +
+    '在本站已采集的 <strong>' + totalCount.toLocaleString() + ' 条</strong>指纹中，和你完全相同的有 <strong>' + sameCount + ' 条</strong>。<br><br>' +
+    '这就是为什么你换了 IP、清了 Cookie，注册的新号还是会被封：<strong>你的设备本身就是你的身份证</strong>。平台不需要知道你是谁，只需要知道「这台设备之前注册过」。';
+
+  loadStats();
+}
+
+async function loadStats() {
+  try {
+    const resp = await fetch(API_BASE + '/fingerprint/stats');
+    const json = await resp.json();
+    if (json.status === 200) {
+      const d = json.data;
+      document.getElementById('sTotal').textContent   = d.total.toLocaleString();
+      document.getElementById('sUnique').textContent  = d.uniqueFull.toLocaleString();
+      document.getElementById('sRate').textContent    = d.uniqueRate + '%';
+      document.getElementById('sCanvas').textContent  = d.uniqueCanvas.toLocaleString();
+      document.getElementById('sFont').textContent    = d.uniqueFont.toLocaleString();
+      document.getElementById('sEntropy').textContent = d.avgEntropy + ' bits';
+    }
+  } catch (e) { console.warn('stats 加载失败', e); }
+}
+
+document.getElementById('btnConsent').addEventListener('click', function() {
+  document.getElementById('privacyModal').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'block';
+  collectAndDisplay();
+});
+
+document.getElementById('btnDecline').addEventListener('click', function() {
+  document.getElementById('privacyModal').style.display = 'none';
+  document.getElementById('declinedMsg').style.display = 'block';
+});
+</script>
+</body>
+</html>

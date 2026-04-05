@@ -3,6 +3,7 @@ package com.example.demo_mock_server.config;
 import com.example.demo_mock_server.generator.ChineseNameGenerator;
 import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.BlockIpHandler;
+import com.example.demo_mock_server.handler.BrowserFingerprintHandler;
 import com.example.demo_mock_server.handler.ChineseNameHandler;
 import com.example.demo_mock_server.handler.MemoryLeaderboardHandler;
 import com.example.demo_mock_server.handler.MockHandler;
@@ -16,6 +17,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CorsHandler;
 import io.vertx.ext.web.handler.StaticHandler;
+import io.vertx.mysqlclient.MySQLPool;
 
 /**
  * 路由配置
@@ -23,9 +25,11 @@ import io.vertx.ext.web.handler.StaticHandler;
 public class RouterConfig {
 
     private final Vertx vertx;
+    private final MySQLPool mysqlPool;
 
-    public RouterConfig(Vertx vertx) {
+    public RouterConfig(Vertx vertx, MySQLPool mysqlPool) {
         this.vertx = vertx;
+        this.mysqlPool = mysqlPool;
     }
 
     public Router createRouter() {
@@ -86,6 +90,11 @@ public class RouterConfig {
         MemoryLeaderboardHandler memoryLeaderboardHandler = new MemoryLeaderboardHandler();
         router.get("/memory-challenge/leaderboard").handler(memoryLeaderboardHandler);
         router.post("/memory-challenge/leaderboard").handler(memoryLeaderboardHandler);
+
+        // 浏览器指纹接口
+        BrowserFingerprintHandler fingerprintHandler = new BrowserFingerprintHandler(vertx, mysqlPool);
+        router.post("/fingerprint/collect").handler(fingerprintHandler);
+        router.get("/fingerprint/stats").handler(fingerprintHandler);
 
         // Static handler for pages and components
         router.route("/pages/*").handler(StaticHandler.create("pages"));

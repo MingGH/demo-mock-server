@@ -8,18 +8,17 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.*;
 
 /**
  * 量子随机数 Handler
- * 代理调用 ANU 量子随机数生成器 API
- * 数据来源：https://qrng.anu.edu.au/
- * 
- * 这些随机数是通过测量真空的量子涨落实时生成的。
- * 在量子物理学中，即使是完全的真空也存在零点能量，
- * 电磁场在所有频率上都表现出相位和振幅的随机波动。
  */
 public class QuantumRandomHandler implements Handler<RoutingContext> {
+
+    private static final Logger log = LoggerFactory.getLogger(QuantumRandomHandler.class);
 
     private final WebClient webClient;
     private final String apiToken;
@@ -36,7 +35,7 @@ public class QuantumRandomHandler implements Handler<RoutingContext> {
         // 从环境变量读取 API Token
         this.apiToken = System.getenv("NINJA_API_TOKEN");
         if (this.apiToken == null || this.apiToken.isEmpty()) {
-            System.err.println("Warning: NINJA_API_TOKEN environment variable not set!");
+            log.warn("NINJA_API_TOKEN environment variable not set");
         }
     }
 
@@ -118,7 +117,7 @@ public class QuantumRandomHandler implements Handler<RoutingContext> {
                 }
             })
             .onFailure(err -> {
-                System.err.println("Quantum API error: " + err.getMessage());
+                log.error("Quantum API error: {}", err.getMessage());
                 // 降级到伪随机数
                 fallbackToPseudoRandom(ctx, count, min, max, unique);
             });

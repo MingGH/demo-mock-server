@@ -6,12 +6,15 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 统计代理 Handler
- * 代理调用 996.ninja 的计数器 API，隐藏 API Token
  */
 public class StatsProxyHandler implements Handler<RoutingContext> {
+
+    private static final Logger log = LoggerFactory.getLogger(StatsProxyHandler.class);
 
     private final WebClient webClient;
     private final String apiToken;
@@ -65,7 +68,7 @@ public class StatsProxyHandler implements Handler<RoutingContext> {
         // 从环境变量读取 API Token
         this.apiToken = System.getenv("NINJA_API_TOKEN");
         if (this.apiToken == null || this.apiToken.isEmpty()) {
-            System.err.println("Warning: NINJA_API_TOKEN environment variable not set!");
+            log.warn("NINJA_API_TOKEN environment variable not set");
         }
     }
 

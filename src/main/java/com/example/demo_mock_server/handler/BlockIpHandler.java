@@ -1,9 +1,6 @@
 package com.example.demo_mock_server.handler;
 
-import com.maxmind.geoip2.DatabaseReader;
-import com.maxmind.geoip2.model.CityResponse;
-import com.maxmind.geoip2.record.Country;
-import com.maxmind.geoip2.record.Location;
+import com.example.demo_mock_server.service.GeoLocationService;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
@@ -11,358 +8,167 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * BlockIP 代理处理器，带缓存、预处理统计和IP地理位置
+ * BlockIP 代理处理器（带 5 分钟缓存）
+ * GET /blockip/stats
  */
 public class BlockIpHandler implements Handler<RoutingContext> {
 
-    private static final String API_URL = "https://api.996.ninja/blockip/list";
-    private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5分钟缓存
-    
-    private static final String CITY_DB_URL = "https://fileshare.runnable.run/GeoLite2/GeoLite2-City.mmdb";
-    private static final String COUNTRY_DB_URL = "https://fileshare.runnable.run/GeoLite2/GeoLite2-Country.mmdb";
-    private static final String DATA_DIR = "data/GeoLite2";
+    private static final Logger log = LoggerFactory.getLogger(BlockIpHandler.class);
+
+    private static final String API_URL     = "https://api.996.ninja/blockip/list";
+    private static final long   CACHE_TTL   = 5 * 60 * 1000L;
 
     private final WebClient webClient;
-    private DatabaseReader geoReader;
-    private boolean isCityDb = false;
-    
-    // 缓存
-    private volatile JsonObject cachedResponse = null;
-    private volatile long cacheTimestamp = 0;
-    private volatile boolean isLoading = false;
+    private final GeoLocationService geoService;
 
-    public BlockIpHandler(Vertx vertx) {
-        WebClientOptions options = new WebClientOptions()
-            .setConnectTimeout(30000)
-            .setIdleTimeout(60);
-        this.webClient = WebClient.create(vertx, options);
-        
-        // 启动时异步下载并初始化数据库
-        vertx.executeBlocking(promise -> {
-            try {
-                ensureGeoDbExists();
-                promise.complete();
-            } catch (Exception e) {
-                promise.fail(e);
-            }
-        }, res -> {
-            if (res.succeeded()) {
-                initGeoDatabase();
-            } else {
-                System.err.println("Failed to download GeoIP databases: " + res.cause().getMessage());
-            }
-        });
-    }
+    private volatile JsonObject cachedResponse;
+    private volatile long       cacheTimestamp;
+    private volatile boolean    loading;
 
-    private void ensureGeoDbExists() throws Exception {
-        Path dir = Paths.get(DATA_DIR);
-        if (!Files.exists(dir)) {
-            Files.createDirectories(dir);
-        }
-        
-        downloadIfMissing(dir.resolve("GeoLite2-City.mmdb"), CITY_DB_URL);
-        downloadIfMissing(dir.resolve("GeoLite2-Country.mmdb"), COUNTRY_DB_URL);
-    }
-
-    private void downloadIfMissing(Path path, String url) throws IOException {
-        if (!Files.exists(path)) {
-            System.out.println("Downloading " + path.getFileName() + " from " + url + "...");
-            try (InputStream in = new URL(url).openStream()) {
-                Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
-            }
-            System.out.println("Downloaded " + path.getFileName());
-        }
-    }
-
-    private void initGeoDatabase() {
-        try {
-            // 优先尝试 City 数据库
-            File cityFile = new File(DATA_DIR, "GeoLite2-City.mmdb");
-            if (cityFile.exists()) {
-                geoReader = new DatabaseReader.Builder(cityFile).build();
-                isCityDb = true;
-                System.out.println("GeoIP City database loaded from " + cityFile.getAbsolutePath());
-                return;
-            }
-            
-            // 回退到 Country 数据库
-            File countryFile = new File(DATA_DIR, "GeoLite2-Country.mmdb");
-            if (countryFile.exists()) {
-                geoReader = new DatabaseReader.Builder(countryFile).build();
-                isCityDb = false;
-                System.out.println("GeoIP Country database loaded from " + countryFile.getAbsolutePath());
-            } else {
-                System.out.println("GeoIP database not found in " + DATA_DIR + ", geolocation will be disabled");
-            }
-        } catch (Exception e) {
-            System.err.println("Failed to load GeoIP database: " + e.getMessage());
-        }
+    public BlockIpHandler(Vertx vertx, GeoLocationService geoService) {
+        this.webClient  = WebClient.create(vertx, new WebClientOptions()
+            .setConnectTimeout(30_000).setIdleTimeout(60));
+        this.geoService = geoService;
     }
 
     @Override
     public void handle(RoutingContext ctx) {
         long now = System.currentTimeMillis();
-        
-        // 检查缓存是否有效
-        if (cachedResponse != null && (now - cacheTimestamp) < CACHE_TTL_MS) {
-            sendResponse(ctx, cachedResponse);
+        if (cachedResponse != null && (now - cacheTimestamp) < CACHE_TTL) {
+            sendOk(ctx, cachedResponse);
             return;
         }
-
-        // 避免并发请求
-        if (isLoading && cachedResponse != null) {
-            sendResponse(ctx, cachedResponse);
+        if (loading && cachedResponse != null) {
+            sendOk(ctx, cachedResponse);
             return;
         }
-
-        isLoading = true;
-        
-        // 请求上游API
-        webClient.getAbs(API_URL)
-            .timeout(30000)
-            .send()
-            .onSuccess(response -> {
+        loading = true;
+        webClient.getAbs(API_URL).timeout(30_000).send()
+            .onSuccess(resp -> {
                 try {
-                    JsonArray rawData = response.bodyAsJsonArray();
-                    JsonObject processed = processData(rawData);
-                    
-                    cachedResponse = processed;
+                    cachedResponse = process(resp.bodyAsJsonArray());
                     cacheTimestamp = System.currentTimeMillis();
-                    isLoading = false;
-                    
-                    sendResponse(ctx, processed);
                 } catch (Exception e) {
-                    isLoading = false;
-                    handleError(ctx, e);
+                    log.error("Failed to process blockip data", e);
+                } finally {
+                    loading = false;
                 }
+                sendOk(ctx, cachedResponse);
             })
             .onFailure(err -> {
-                isLoading = false;
+                loading = false;
                 if (cachedResponse != null) {
-                    sendResponse(ctx, cachedResponse);
+                    sendOk(ctx, cachedResponse);
                 } else {
-                    handleError(ctx, err);
+                    log.error("BlockIP upstream error: {}", err.getMessage());
+                    ctx.response().setStatusCode(500)
+                        .putHeader("Content-Type", "application/json")
+                        .end(new JsonObject().put("error", err.getMessage()).encode());
                 }
             });
     }
 
-    /**
-     * 预处理数据，生成统计信息和地理位置
-     */
-    private JsonObject processData(JsonArray rawData) {
-        int totalIPs = rawData.size();
+    private JsonObject process(JsonArray raw) {
+        String today = LocalDate.now().toString();
         long totalAttempts = 0;
         int todayCount = 0;
-        
-        String today = LocalDate.now().toString();
-        
-        // 最近30天统计
-        Map<String, Integer> dailyCounts = new LinkedHashMap<>();
-        for (int i = 29; i >= 0; i--) {
-            String date = LocalDate.now().minusDays(i).toString();
-            dailyCounts.put(date, 0);
-        }
-        
-        // 国家统计
+
+        Map<String, Integer> dailyCounts   = new LinkedHashMap<>();
         Map<String, Integer> countryCounts = new HashMap<>();
-        
-        // 地图标记点（聚合同一位置的IP）
         Map<String, JsonObject> locationMap = new HashMap<>();
-        
-        // IP列表
-        List<JsonObject> sortedList = new ArrayList<>();
-        
-        for (int i = 0; i < rawData.size(); i++) {
-            JsonObject item = rawData.getJsonObject(i);
-            
-            String ipAddress = item.getString("ipAddress");
-            int attemptCount = item.getInteger("attemptCount", 1);
-            totalAttempts += attemptCount;
-            
+        List<JsonObject> list = new ArrayList<>();
+
+        for (int i = 29; i >= 0; i--) {
+            dailyCounts.put(LocalDate.now().minusDays(i).toString(), 0);
+        }
+
+        for (int i = 0; i < raw.size(); i++) {
+            JsonObject item = raw.getJsonObject(i);
+            String ip = item.getString("ipAddress");
+            int attempts = item.getInteger("attemptCount", 1);
+            totalAttempts += attempts;
+
             String createdAt = item.getString("createdAt", "");
             if (createdAt.length() >= 10) {
                 String dateKey = createdAt.substring(0, 10);
-                if (dateKey.equals(today)) {
-                    todayCount++;
-                }
-                if (dailyCounts.containsKey(dateKey)) {
-                    dailyCounts.put(dateKey, dailyCounts.get(dateKey) + 1);
-                }
+                if (dateKey.equals(today)) todayCount++;
+                dailyCounts.computeIfPresent(dateKey, (k, v) -> v + 1);
             }
-            
-            // 获取地理位置
-            JsonObject geoInfo = getGeoLocation(ipAddress);
-            String country = geoInfo.getString("country", "Unknown");
-            
-            // 国家统计
-            countryCounts.put(country, countryCounts.getOrDefault(country, 0) + 1);
-            
-            // 聚合地图标记（如果有经纬度）
-            Double lat = geoInfo.getDouble("lat");
-            Double lng = geoInfo.getDouble("lng");
+
+            JsonObject geo = geoService.lookup(ip);
+            String country = geo.getString("country", "Unknown");
+            countryCounts.merge(country, 1, Integer::sum);
+
+            Double lat = geo.getDouble("lat");
+            Double lng = geo.getDouble("lng");
             if (lat != null && lng != null) {
-                // 按经纬度四舍五入聚合（精度1度）
-                String locKey = String.format("%.0f,%.0f", lat, lng);
-                
-                if (locationMap.containsKey(locKey)) {
-                    JsonObject loc = locationMap.get(locKey);
-                    loc.put("count", loc.getInteger("count") + 1);
-                    loc.put("attempts", loc.getInteger("attempts") + attemptCount);
-                } else {
-                    locationMap.put(locKey, new JsonObject()
-                        .put("lat", lat)
-                        .put("lng", lng)
-                        .put("country", country)
-                        .put("count", 1)
-                        .put("attempts", attemptCount));
-                }
+                String key = String.format("%.0f,%.0f", lat, lng);
+                locationMap.compute(key, (k, v) -> {
+                    if (v == null) return new JsonObject()
+                        .put("lat", lat).put("lng", lng)
+                        .put("country", country).put("count", 1).put("attempts", attempts);
+                    return v.put("count", v.getInteger("count") + 1)
+                            .put("attempts", v.getInteger("attempts") + attempts);
+                });
             }
-            
-            // 简化数据结构
-            JsonObject simplified = new JsonObject()
-                .put("ip", ipAddress)
-                .put("count", attemptCount)
-                .put("first", formatDateTime(item.getString("firstSeen")))
-                .put("last", formatDateTime(item.getString("lastSeen")))
+
+            list.add(new JsonObject()
+                .put("ip", ip)
+                .put("count", attempts)
+                .put("first", fmt(item.getString("firstSeen")))
+                .put("last",  fmt(item.getString("lastSeen")))
                 .put("country", country)
-                .put("countryCode", geoInfo.getString("countryCode", ""));
-            
-            sortedList.add(simplified);
+                .put("countryCode", geo.getString("countryCode", "")));
         }
-        
-        // 按尝试次数降序排序
-        sortedList.sort((a, b) -> b.getInteger("count") - a.getInteger("count"));
-        
-        // 构建每日统计数组
-        JsonArray dailyStats = new JsonArray();
-        for (Map.Entry<String, Integer> entry : dailyCounts.entrySet()) {
-            dailyStats.add(new JsonObject()
-                .put("date", entry.getKey())
-                .put("count", entry.getValue()));
-        }
-        
-        // 构建国家排行（前15）
+
+        list.sort((a, b) -> b.getInteger("count") - a.getInteger("count"));
+
+        JsonArray daily = new JsonArray();
+        dailyCounts.forEach((d, c) -> daily.add(new JsonObject().put("date", d).put("count", c)));
+
         JsonArray countryRank = new JsonArray();
         countryCounts.entrySet().stream()
             .sorted((a, b) -> b.getValue() - a.getValue())
             .limit(15)
             .forEach(e -> countryRank.add(new JsonObject()
-                .put("country", e.getKey())
-                .put("count", e.getValue())));
-        
-        // 构建地图标记数组
-        JsonArray mapMarkers = new JsonArray();
-        locationMap.values().forEach(mapMarkers::add);
-        
-        // 构建响应
+                .put("country", e.getKey()).put("count", e.getValue())));
+
+        JsonArray markers = new JsonArray();
+        locationMap.values().forEach(markers::add);
+
+        int total = raw.size();
         return new JsonObject()
             .put("stats", new JsonObject()
-                .put("totalIPs", totalIPs)
+                .put("totalIPs", total)
                 .put("totalAttempts", totalAttempts)
-                .put("avgAttempts", totalIPs > 0 ? Math.round(totalAttempts * 10.0 / totalIPs) / 10.0 : 0)
+                .put("avgAttempts", total > 0 ? Math.round(totalAttempts * 10.0 / total) / 10.0 : 0)
                 .put("todayCount", todayCount)
                 .put("countryCount", countryCounts.size()))
-            .put("daily", dailyStats)
+            .put("daily", daily)
             .put("countryRank", countryRank)
-            .put("markers", mapMarkers)
-            .put("list", new JsonArray(sortedList))
+            .put("markers", markers)
+            .put("list", new JsonArray(list))
             .put("cacheTime", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     }
 
-    /**
-     * 获取IP地理位置
-     */
-    private JsonObject getGeoLocation(String ipAddress) {
-        JsonObject result = new JsonObject();
-        
-        if (geoReader == null) {
-            return result.put("country", "Unknown");
-        }
-        
-        try {
-            InetAddress ip = InetAddress.getByName(ipAddress);
-            
-            if (isCityDb) {
-                // City 数据库，可以获取经纬度
-                CityResponse response = geoReader.city(ip);
-                
-                Country country = response.getCountry();
-                if (country != null && country.getName() != null) {
-                    result.put("country", country.getName());
-                    result.put("countryCode", country.getIsoCode());
-                }
-                
-                Location location = response.getLocation();
-                if (location != null) {
-                    if (location.getLatitude() != null) {
-                        result.put("lat", location.getLatitude());
-                    }
-                    if (location.getLongitude() != null) {
-                        result.put("lng", location.getLongitude());
-                    }
-                }
-                
-                if (response.getCity() != null && response.getCity().getName() != null) {
-                    result.put("city", response.getCity().getName());
-                }
-            } else {
-                // Country 数据库，只有国家信息
-                com.maxmind.geoip2.model.CountryResponse response = geoReader.country(ip);
-                Country country = response.getCountry();
-                if (country != null && country.getName() != null) {
-                    result.put("country", country.getName());
-                    result.put("countryCode", country.getIsoCode());
-                }
-            }
-            
-            if (!result.containsKey("country")) {
-                result.put("country", "Unknown");
-            }
-            
-        } catch (Exception e) {
-            result.put("country", "Unknown");
-        }
-        
-        return result;
+    private String fmt(String iso) {
+        if (iso == null || iso.length() < 16) return "-";
+        return iso.substring(5, 10) + " " + iso.substring(11, 16);
     }
 
-    private String formatDateTime(String isoString) {
-        if (isoString == null || isoString.length() < 16) {
-            return "-";
-        }
-        return isoString.substring(5, 10) + " " + isoString.substring(11, 16);
-    }
-
-    private void sendResponse(RoutingContext ctx, JsonObject data) {
+    private void sendOk(RoutingContext ctx, JsonObject data) {
         ctx.response()
             .putHeader("Content-Type", "application/json")
             .putHeader("Cache-Control", "public, max-age=300")
             .end(data.encode());
-    }
-
-    private void handleError(RoutingContext ctx, Throwable err) {
-        ctx.response()
-            .setStatusCode(500)
-            .putHeader("Content-Type", "application/json")
-            .end(new JsonObject()
-                .put("error", "Failed to fetch data")
-                .put("message", err.getMessage())
-                .encode());
     }
 }

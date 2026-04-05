@@ -144,10 +144,12 @@ public class BrowserFingerprintHandler implements Handler<RoutingContext> {
                             ? countAr.result().iterator().next().getLong("total") : memTotal.incrementAndGet();
 
                         pool.preparedQuery(
-                            "SELECT COUNT(*) AS same FROM browser_fingerprints WHERE full_hash = ?")
+                            "SELECT COUNT(*) AS same, MIN(created_at) AS first_seen FROM browser_fingerprints WHERE full_hash = ?")
                             .execute(io.vertx.sqlclient.Tuple.of(fullHash), sameAr -> {
                                 long same = sameAr.succeeded()
                                     ? sameAr.result().iterator().next().getLong("same") : 1;
+                                Long firstSeen = sameAr.succeeded()
+                                    ? sameAr.result().iterator().next().getLong("first_seen") : null;
 
                                 ctx.response()
                                     .putHeader("Content-Type", "application/json")
@@ -156,6 +158,7 @@ public class BrowserFingerprintHandler implements Handler<RoutingContext> {
                                         .put("data", new JsonObject()
                                             .put("total", total)
                                             .put("sameHashCount", same)
+                                            .put("firstSeenAt", firstSeen)
                                             .put("source", "mysql"))
                                         .encode());
                             });

@@ -102,7 +102,7 @@
       <div class="stats-grid">
         <div class="stat-item"><div class="stat-num" id="sTotal">—</div><div class="stat-lbl">累计采集指纹</div></div>
         <div class="stat-item"><div class="stat-num" id="sUnique">—</div><div class="stat-lbl">不重复指纹数</div></div>
-        <div class="stat-item"><div class="stat-num" id="sRate">—</div><div class="stat-lbl">唯一率（仅出现1次）</div></div>
+        <div class="stat-item"><div class="stat-num" id="sAvgVisits">—</div><div class="stat-lbl">平均访问次数</div></div>
       </div>
       <div class="stats-grid">
         <div class="stat-item"><div class="stat-num" id="sCanvas">—</div><div class="stat-lbl">Canvas 唯一数</div></div>
@@ -336,7 +336,7 @@ async function loadStats() {
       const d = json.data;
       document.getElementById('sTotal').textContent   = d.total.toLocaleString();
       document.getElementById('sUnique').textContent  = d.uniqueFull.toLocaleString();
-      document.getElementById('sRate').textContent    = d.uniqueRate + '%';
+      document.getElementById('sAvgVisits').textContent = d.avgVisits + ' 次';
       document.getElementById('sCanvas').textContent  = d.uniqueCanvas.toLocaleString();
       document.getElementById('sFont').textContent    = d.uniqueFont.toLocaleString();
       document.getElementById('sEntropy').textContent = d.avgEntropy + ' bits';

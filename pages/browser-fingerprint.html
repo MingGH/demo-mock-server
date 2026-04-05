@@ -101,8 +101,8 @@
       <div class="card-title"><i class="ti ti-chart-bar"></i>全站统计（真实数据）</div>
       <div class="stats-grid">
         <div class="stat-item"><div class="stat-num" id="sTotal">—</div><div class="stat-lbl">累计采集指纹</div></div>
-        <div class="stat-item"><div class="stat-num" id="sUnique">—</div><div class="stat-lbl">完全唯一指纹</div></div>
-        <div class="stat-item"><div class="stat-num" id="sRate">—</div><div class="stat-lbl">唯一率</div></div>
+        <div class="stat-item"><div class="stat-num" id="sUnique">—</div><div class="stat-lbl">不重复指纹数</div></div>
+        <div class="stat-item"><div class="stat-num" id="sRate">—</div><div class="stat-lbl">唯一率（仅出现1次）</div></div>
       </div>
       <div class="stats-grid">
         <div class="stat-item"><div class="stat-num" id="sCanvas">—</div><div class="stat-lbl">Canvas 唯一数</div></div>
@@ -345,6 +345,7 @@ async function loadStats() {
 }
 
 document.getElementById('btnConsent').addEventListener('click', function() {
+  localStorage.setItem('fp_consent', '1');
   document.getElementById('privacyModal').style.display = 'none';
   document.getElementById('mainContent').style.display = 'block';
   collectAndDisplay();
@@ -354,6 +355,13 @@ document.getElementById('btnDecline').addEventListener('click', function() {
   document.getElementById('privacyModal').style.display = 'none';
   document.getElementById('declinedMsg').style.display = 'block';
 });
+
+// 已同意过则直接跳过弹窗
+if (localStorage.getItem('fp_consent') === '1') {
+  document.getElementById('privacyModal').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'block';
+  collectAndDisplay();
+}
 </script>
 </body>
 </html>

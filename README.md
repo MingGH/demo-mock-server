@@ -116,6 +116,7 @@
 ## 🔧 技术栈
 
 - **后端：** Java 17 + Vert.x 4.5 + MySQL（阿里云 RDS）
+- **限流：** Caffeine 内存限流，全局 200次/IP/分钟，写接口 60次/IP/分钟
 - **前端：** 原生 HTML/CSS/JavaScript + Chart.js
 - **数据：** MaxMind GeoIP2 (IP地理定位)、结巴分词
 - **部署：** Docker + K3s，密钥通过 k3s Secret 注入

@@ -317,7 +317,7 @@ async function collectAndDisplay() {
     if (json.status === 200) {
       sameCount  = json.data.sameHashCount || 1;
       totalCount = json.data.total || 1;
-      firstSeenAt = json.data.firstSeenAt || null;
+      firstSeenAt = json.data.lastSeenAt || null;
     }
   } catch (e) { console.warn('上报失败', e); }
 

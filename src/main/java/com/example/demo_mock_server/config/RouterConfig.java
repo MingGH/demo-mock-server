@@ -9,6 +9,7 @@ import com.example.demo_mock_server.handler.MemoryLeaderboardHandler;
 import com.example.demo_mock_server.handler.MockHandler;
 import com.example.demo_mock_server.handler.QuantumAvailableHandler;
 import com.example.demo_mock_server.handler.QuantumRandomHandler;
+import com.example.demo_mock_server.handler.RateLimitHandler;
 import com.example.demo_mock_server.handler.StatsProxyHandler;
 import com.example.demo_mock_server.handler.WordCloudHandler;
 import io.vertx.core.Vertx;
@@ -58,6 +59,13 @@ public class RouterConfig {
     private void configureRoutes(Router router) {
         router.route().handler(BodyHandler.create());
 
+        // 全局限流：每 IP 每分钟 60 次
+        RateLimitHandler globalLimit = new RateLimitHandler(60, 60);
+        // 指纹收集接口单独收紧：每 IP 每分钟 10 次
+        RateLimitHandler fingerprintLimit = new RateLimitHandler(10, 60);
+
+        router.route().handler(globalLimit);
+
         FakeDataGenerator dataGenerator = new FakeDataGenerator();
         MockHandler mockHandler = new MockHandler(dataGenerator);
         router.get("/mock").handler(mockHandler);
@@ -93,7 +101,7 @@ public class RouterConfig {
 
         // 浏览器指纹接口
         BrowserFingerprintHandler fingerprintHandler = new BrowserFingerprintHandler(vertx, mysqlPool);
-        router.post("/fingerprint/collect").handler(fingerprintHandler);
+        router.post("/fingerprint/collect").handler(fingerprintLimit).handler(fingerprintHandler);
         router.get("/fingerprint/stats").handler(fingerprintHandler);
 
         // Static handler for pages and components

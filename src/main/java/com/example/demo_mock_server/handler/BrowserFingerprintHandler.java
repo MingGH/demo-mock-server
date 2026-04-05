@@ -144,23 +144,37 @@ public class BrowserFingerprintHandler implements Handler<RoutingContext> {
                             ? countAr.result().iterator().next().getLong("total") : memTotal.incrementAndGet();
 
                         pool.preparedQuery(
-                            "SELECT COUNT(*) AS same, MIN(created_at) AS first_seen FROM browser_fingerprints WHERE full_hash = ?")
+                            "SELECT COUNT(*) AS same_total, created_at FROM browser_fingerprints WHERE full_hash = ? ORDER BY created_at DESC LIMIT 2")
                             .execute(io.vertx.sqlclient.Tuple.of(fullHash), sameAr -> {
-                                long same = sameAr.succeeded()
-                                    ? sameAr.result().iterator().next().getLong("same") : 1;
-                                Long firstSeen = sameAr.succeeded()
-                                    ? sameAr.result().iterator().next().getLong("first_seen") : null;
+                                long same = 1;
+                                Long lastSeenAt = null;
+                                if (sameAr.succeeded()) {
+                                    var rows = sameAr.result();
+                                    // 取倒数第二条作为「上次来访」时间（第一条是本次刚插入的）
+                                    if (rows.size() >= 2) {
+                                        var iter = rows.iterator();
+                                        iter.next(); // 跳过本次
+                                        lastSeenAt = iter.next().getLong("created_at");
+                                    }
+                                }
+                                final Long lastSeenAtFinal = lastSeenAt;
+                                // 单独查该 hash 的总访问次数
+                                pool.preparedQuery("SELECT COUNT(*) AS cnt FROM browser_fingerprints WHERE full_hash = ?")
+                                    .execute(io.vertx.sqlclient.Tuple.of(fullHash), cntAr -> {
+                                        long visitCount = cntAr.succeeded()
+                                            ? cntAr.result().iterator().next().getLong("cnt") : 1;
 
-                                ctx.response()
-                                    .putHeader("Content-Type", "application/json")
-                                    .end(new JsonObject()
-                                        .put("status", 200)
-                                        .put("data", new JsonObject()
-                                            .put("total", total)
-                                            .put("sameHashCount", same)
-                                            .put("firstSeenAt", firstSeen)
-                                            .put("source", "mysql"))
-                                        .encode());
+                                        ctx.response()
+                                            .putHeader("Content-Type", "application/json")
+                                            .end(new JsonObject()
+                                                .put("status", 200)
+                                                .put("data", new JsonObject()
+                                                    .put("total", total)
+                                                    .put("sameHashCount", visitCount)
+                                                    .put("lastSeenAt", lastSeenAtFinal)
+                                                    .put("source", "mysql"))
+                                                .encode());
+                                    });
                             });
                     });
             });

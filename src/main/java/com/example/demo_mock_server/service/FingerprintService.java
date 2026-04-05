@@ -104,11 +104,17 @@ public class FingerprintService {
                     .execute(Tuple.of(record.fullHash()))
                     .compose(lastRows -> {
                         Long lastSeenAt = null;
-                        if (lastRows.size() >= 2) {
-                            var iter = lastRows.iterator();
-                            iter.next(); // 跳过本次
-                            lastSeenAt = iter.next().getLong("created_at");
+                        var iter = lastRows.iterator();
+                        int rowCount = 0;
+                        Long firstTs = null, secondTs = null;
+                        while (iter.hasNext()) {
+                            var row = iter.next();
+                            rowCount++;
+                            if (rowCount == 1) firstTs = row.getLong("created_at");
+                            else if (rowCount == 2) secondTs = row.getLong("created_at");
                         }
+                        // 有两条记录时，第二条是上次来访
+                        if (rowCount >= 2) lastSeenAt = secondTs;
                         final Long lastSeenAtFinal = lastSeenAt;
                         return pool.preparedQuery(SQL_VISIT_COUNT)
                             .execute(Tuple.of(record.fullHash()))

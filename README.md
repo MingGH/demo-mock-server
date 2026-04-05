@@ -6,7 +6,7 @@
 
 **主站：** https://numfeel.996.ninja
 
-**后端 API：** https://demo-api-mockserver.runnable.run
+**后端 API：** https://numfeel-api.996.ninja
 
 ![](https://img.996.ninja/ninjutsu/b1f009ded7c9aaf02c6974abbe0f4dcd.png)
 
@@ -108,16 +108,17 @@
 - [科技热词生命周期](https://numfeel.996.ninja/pages/tech-hype-cycle.html) - OpenClaw 是下一个元宇宙，还是下一个互联网？对比历史热词曲线，用参数评估...
 - [AI 工具值不值得付费](https://numfeel.996.ninja/pages/ai-tools-value.html) - 把工作拆成起草、检索、润色和核验返工，算清你的付费阈值、盈亏平衡点和ROI区间。
 - [隐形水印实验室](https://numfeel.996.ninja/pages/invisible-watermark.html) - APP截图真的藏着暗水印？亲手体验空间域（LSB）和频域（DCT）两种隐形水印技...
+- [为什么你的推特号、GitHub新号一注册就被封](https://numfeel.996.ninja/pages/browser-fingerprint.html) - 浏览器指纹实验室：不用Cookie，平台如何通过Canvas、字体、WebGL等...
 ## 🎯 项目目标
 
 通过交互式演示回答知乎上的技术问题，让复杂概念变得易懂。
 
 ## 🔧 技术栈
 
-- **后端：** Java 17 + Vert.x 4.5
+- **后端：** Java 17 + Vert.x 4.5 + MySQL（阿里云 RDS）
 - **前端：** 原生 HTML/CSS/JavaScript + Chart.js
 - **数据：** MaxMind GeoIP2 (IP地理定位)、结巴分词
-- **部署：** Docker + K3s
+- **部署：** Docker + K3s，密钥通过 k3s Secret 注入
 
 ## 📁 项目结构
 
@@ -126,12 +127,14 @@
 ├── components/             # 公共组件
 ├── images/                 # 静态资源
 ├── data/                   # 数据文件 (GeoLite2 等)
+├── sql/                    # 数据库建表语句备份
 ├── src/main/java/          # 后端 Java 代码
 │   └── com/example/demo_mock_server/
 │       ├── handler/        # API 处理器
 │       ├── service/        # 业务服务
 │       ├── generator/      # 数据生成器
 │       └── config/         # 配置类
+├── scripts/                # 工具脚本（sync.py 等）
 ├── Dockerfile              # Docker 构建文件
 ├── k3s-deployment-prod.yaml # K3s 部署配置
 └── pom.xml                 # Maven 配置
@@ -143,8 +146,25 @@
 # 编译打包
 ./mvnw clean package
 
-# 运行
-java -jar target/demo-mock-server-1.0.0-SNAPSHOT-fat.jar
+# 运行（MySQL 相关环境变量可选，不配置则指纹功能降级为内存模式）
+MYSQL_HOST=localhost MYSQL_PORT=3306 MYSQL_DB=demo MYSQL_USER=root MYSQL_PASSWORD=xxx \
+  java -jar target/demo-mock-server-1.0.0-SNAPSHOT-fat.jar
+```
+
+## 🗄️ 数据库
+
+需要 MySQL 5.7+，建表语句见 `sql/` 目录。
+
+生产环境通过 k3s Secret 注入连接信息：
+
+```bash
+kubectl create secret generic mysql-secret \
+  --namespace runnable-run \
+  --from-literal=host=<host> \
+  --from-literal=port=3306 \
+  --from-literal=db=<db> \
+  --from-literal=user=<user> \
+  --from-literal=password=<password>
 ```
 
 ## 👤 作者

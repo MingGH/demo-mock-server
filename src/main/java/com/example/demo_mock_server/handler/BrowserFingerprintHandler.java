@@ -95,20 +95,20 @@ public class BrowserFingerprintHandler implements Handler<RoutingContext> {
         });
     }
 
-    // ── 输入清洗工具 ───────────────────────────────────────────────────────
-    private String sanitize(String val, int maxLen) {
+    // ── 输入清洗工具（protected 供测试访问） ──────────────────────────────
+    protected String sanitize(String val, int maxLen) {
         if (val == null) return null;
         val = val.trim();
         if (val.isEmpty()) return null;
         return val.length() > maxLen ? val.substring(0, maxLen) : val;
     }
 
-    private Integer clampInt(Integer val, int min, int max) {
+    protected Integer clampInt(Integer val, int min, int max) {
         if (val == null) return null;
         return Math.max(min, Math.min(max, val));
     }
 
-    private Double clampDouble(Double val, double min, double max) {
+    protected Double clampDouble(Double val, double min, double max) {
         if (val == null) return null;
         return Math.max(min, Math.min(max, val));
     }

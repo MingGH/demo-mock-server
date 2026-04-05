@@ -51,7 +51,7 @@ public class RateLimitHandler implements Handler<RoutingContext> {
         ctx.next();
     }
 
-    private String resolveIp(RoutingContext ctx) {
+    protected String resolveIp(RoutingContext ctx) {
         // 优先取反代透传的真实 IP
         String forwarded = ctx.request().getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {

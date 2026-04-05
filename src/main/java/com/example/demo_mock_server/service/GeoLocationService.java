@@ -64,7 +64,7 @@ public class GeoLocationService {
                 log.warn("GeoIP database not found in {}, geolocation disabled", DATA_DIR);
             }
         } catch (Exception e) {
-            log.error("Failed to load GeoIP database: {}", e.getMessage());
+            log.error("Failed to load GeoIP database: {}", e.getMessage(), e);
         }
     }
 

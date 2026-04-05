@@ -59,10 +59,10 @@ public class RouterConfig {
     private void configureRoutes(Router router) {
         router.route().handler(BodyHandler.create());
 
-        // 全局限流：每 IP 每分钟 60 次
-        RateLimitHandler globalLimit = new RateLimitHandler(60, 60);
-        // 指纹收集接口单独收紧：每 IP 每分钟 10 次
-        RateLimitHandler fingerprintLimit = new RateLimitHandler(10, 60);
+        // 全局限流：每 IP 每分钟 200 次
+        RateLimitHandler globalLimit = new RateLimitHandler(200, 60);
+        // 指纹收集接口单独收紧：每 IP 每分钟 60 次
+        RateLimitHandler fingerprintLimit = new RateLimitHandler(60, 60);
 
         router.route().handler(globalLimit);
 

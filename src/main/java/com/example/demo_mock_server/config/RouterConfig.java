@@ -2,16 +2,10 @@ package com.example.demo_mock_server.config;
 
 import com.example.demo_mock_server.generator.ChineseNameGenerator;
 import com.example.demo_mock_server.generator.FakeDataGenerator;
-import com.example.demo_mock_server.handler.BlockIpHandler;
-import com.example.demo_mock_server.handler.BrowserFingerprintHandler;
-import com.example.demo_mock_server.handler.ChineseNameHandler;
-import com.example.demo_mock_server.handler.MemoryLeaderboardHandler;
-import com.example.demo_mock_server.handler.MockHandler;
-import com.example.demo_mock_server.handler.QuantumAvailableHandler;
-import com.example.demo_mock_server.handler.QuantumRandomHandler;
-import com.example.demo_mock_server.handler.RateLimitHandler;
-import com.example.demo_mock_server.handler.StatsProxyHandler;
-import com.example.demo_mock_server.handler.WordCloudHandler;
+import com.example.demo_mock_server.handler.*;
+import com.example.demo_mock_server.service.FingerprintService;
+import com.example.demo_mock_server.service.GeoLocationService;
+import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
@@ -27,18 +21,21 @@ public class RouterConfig {
 
     private final Vertx vertx;
     private final MySQLPool mysqlPool;
+    private final GeoLocationService geoService;
+    private final WordCloudService wordCloudService;
 
-    public RouterConfig(Vertx vertx, MySQLPool mysqlPool) {
+    public RouterConfig(Vertx vertx, MySQLPool mysqlPool,
+                        GeoLocationService geoService, WordCloudService wordCloudService) {
         this.vertx = vertx;
         this.mysqlPool = mysqlPool;
+        this.geoService = geoService;
+        this.wordCloudService = wordCloudService;
     }
 
     public Router createRouter() {
         Router router = Router.router(vertx);
-        
         configureCors(router);
         configureRoutes(router);
-        
         return router;
     }
 
@@ -60,53 +57,43 @@ public class RouterConfig {
         router.route().handler(BodyHandler.create());
 
         // 全局限流：每 IP 每分钟 200 次
-        RateLimitHandler globalLimit = new RateLimitHandler(200, 60);
-        // 指纹收集接口单独收紧：每 IP 每分钟 60 次
-        RateLimitHandler fingerprintLimit = new RateLimitHandler(60, 60);
+        router.route().handler(new RateLimitHandler(200, 60));
 
-        router.route().handler(globalLimit);
+        // Mock 数据
+        router.get("/mock").handler(new MockHandler(new FakeDataGenerator()));
 
-        FakeDataGenerator dataGenerator = new FakeDataGenerator();
-        MockHandler mockHandler = new MockHandler(dataGenerator);
-        router.get("/mock").handler(mockHandler);
+        // 中文名生成
+        router.get("/chinese-names").handler(new ChineseNameHandler(new ChineseNameGenerator()));
 
-        ChineseNameGenerator nameGenerator = new ChineseNameGenerator();
-        ChineseNameHandler nameHandler = new ChineseNameHandler(nameGenerator);
-        router.get("/chinese-names").handler(nameHandler);
+        // 词云
+        router.get("/word-cloud").handler(new WordCloudHandler(vertx, wordCloudService));
 
-        // Word Cloud
-        WordCloudHandler wordCloudHandler = new WordCloudHandler(vertx);
-        router.get("/word-cloud").handler(wordCloudHandler);
+        // BlockIP 代理（带缓存）
+        router.get("/blockip/stats").handler(new BlockIpHandler(vertx, geoService));
 
-        // BlockIP 代理接口（带缓存和预处理）
-        BlockIpHandler blockIpHandler = new BlockIpHandler(vertx);
-        router.get("/blockip/stats").handler(blockIpHandler);
+        // 统计代理
+        StatsProxyHandler statsProxy = new StatsProxyHandler(vertx);
+        router.get("/stats").handler(statsProxy);
+        router.post("/stats").handler(statsProxy);
 
-        // 统计代理接口
-        StatsProxyHandler statsProxyHandler = new StatsProxyHandler(vertx);
-        router.get("/stats").handler(statsProxyHandler);
-        router.post("/stats").handler(statsProxyHandler);
+        // 量子随机数
+        router.get("/quantum/numbers").handler(new QuantumRandomHandler(vertx));
+        router.get("/quantum/available").handler(new QuantumAvailableHandler(vertx));
 
-        // 量子随机数接口
-        QuantumRandomHandler quantumRandomHandler = new QuantumRandomHandler(vertx);
-        router.get("/quantum/numbers").handler(quantumRandomHandler);
-        
-        // 量子随机数可用量查询
-        QuantumAvailableHandler quantumAvailableHandler = new QuantumAvailableHandler(vertx);
-        router.get("/quantum/available").handler(quantumAvailableHandler);
+        // 记忆挑战排行榜
+        MemoryLeaderboardHandler leaderboard = new MemoryLeaderboardHandler();
+        router.get("/memory-challenge/leaderboard").handler(leaderboard);
+        router.post("/memory-challenge/leaderboard").handler(leaderboard);
 
-        MemoryLeaderboardHandler memoryLeaderboardHandler = new MemoryLeaderboardHandler();
-        router.get("/memory-challenge/leaderboard").handler(memoryLeaderboardHandler);
-        router.post("/memory-challenge/leaderboard").handler(memoryLeaderboardHandler);
-
-        // 浏览器指纹接口
-        BrowserFingerprintHandler fingerprintHandler = new BrowserFingerprintHandler(vertx, mysqlPool);
-        router.post("/fingerprint/collect").handler(fingerprintLimit).handler(fingerprintHandler);
+        // 浏览器指纹（写接口单独收紧限流）
+        FingerprintService fingerprintService = new FingerprintService(mysqlPool);
+        BrowserFingerprintHandler fingerprintHandler = new BrowserFingerprintHandler(fingerprintService);
+        router.post("/fingerprint/collect").handler(new RateLimitHandler(60, 60)).handler(fingerprintHandler);
         router.get("/fingerprint/stats").handler(fingerprintHandler);
 
-        // Static handler for pages and components
+        // 静态资源
         router.route("/pages/*").handler(StaticHandler.create("pages"));
         router.route("/components/*").handler(StaticHandler.create("components"));
-        router.route("/*").handler(StaticHandler.create("pages")); // Fallback to pages for root access
+        router.route("/*").handler(StaticHandler.create("pages"));
     }
 }

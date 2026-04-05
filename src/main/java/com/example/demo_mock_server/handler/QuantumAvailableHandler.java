@@ -6,12 +6,15 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 量子随机数可用量查询 Handler
- * 查询当前持有的量子随机数总量
  */
 public class QuantumAvailableHandler implements Handler<RoutingContext> {
+
+    private static final Logger log = LoggerFactory.getLogger(QuantumAvailableHandler.class);
 
     private final WebClient webClient;
     private final String apiToken;
@@ -27,7 +30,7 @@ public class QuantumAvailableHandler implements Handler<RoutingContext> {
         
         this.apiToken = System.getenv("NINJA_API_TOKEN");
         if (this.apiToken == null || this.apiToken.isEmpty()) {
-            System.err.println("Warning: NINJA_API_TOKEN environment variable not set!");
+            log.warn("NINJA_API_TOKEN environment variable not set");
         }
     }
 

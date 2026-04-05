@@ -300,6 +300,7 @@ async function collectAndDisplay() {
   }).join('');
 
   let sameCount = 1, totalCount = 1;
+  let firstSeenAt = null;
   try {
     const resp = await fetch(API_BASE + '/fingerprint/collect', {
       method: 'POST',
@@ -316,8 +317,37 @@ async function collectAndDisplay() {
     if (json.status === 200) {
       sameCount  = json.data.sameHashCount || 1;
       totalCount = json.data.total || 1;
+      firstSeenAt = json.data.firstSeenAt || null;
     }
   } catch (e) { console.warn('上报失败', e); }
+
+  // 「认出你了」提示
+  let recognitionHtml = '';
+  if (sameCount > 1 && firstSeenAt) {
+    const firstDate = new Date(firstSeenAt);
+    const now = new Date();
+    const diffMs = now - firstDate;
+    const diffDays = Math.floor(diffMs / 86400000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffMins = Math.floor(diffMs / 60000);
+    let timeDesc;
+    if (diffDays > 0) timeDesc = diffDays + ' 天前';
+    else if (diffHours > 0) timeDesc = diffHours + ' 小时前';
+    else if (diffMins > 0) timeDesc = diffMins + ' 分钟前';
+    else timeDesc = '刚刚';
+
+    recognitionHtml = '<div style="background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.4);border-radius:10px;padding:.9rem 1.2rem;margin-bottom:1.2rem;font-size:.9rem;line-height:1.7;color:#ffd700;">' +
+      '<i class="ti ti-eye" style="margin-right:.4rem"></i>' +
+      '<strong>我认出你了。</strong>你上次来访是 ' + timeDesc + '，这是你第 ' + sameCount + ' 次访问。' +
+      '<br><span style="color:#a0aec0;font-size:.82rem">你没有登录，没有 Cookie，但我还是认出了你——这就是浏览器指纹。</span>' +
+      '</div>';
+  }
+
+  // 插入到 mainContent 顶部（notice-bar 之后）
+  if (recognitionHtml) {
+    const noticeBar = document.querySelector('.notice-bar');
+    if (noticeBar) noticeBar.insertAdjacentHTML('afterend', recognitionHtml);
+  }
 
   document.getElementById('insightBox').innerHTML =
     '你的浏览器指纹由 <strong>' + dims.length + ' 个维度</strong>组成，总熵值 <strong>' + totalEntropy.toFixed(1) + ' bits</strong>。<br><br>' +

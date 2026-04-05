@@ -169,6 +169,7 @@ public class BrowserFingerprintHandler implements Handler<RoutingContext> {
             SELECT
               COUNT(*) AS total,
               COUNT(DISTINCT full_hash) AS unique_full,
+              SUM(CASE WHEN cnt = 1 THEN 1 ELSE 0 END) AS truly_unique,
               COUNT(DISTINCT canvas_hash) AS unique_canvas,
               COUNT(DISTINCT font_hash) AS unique_font,
               COUNT(DISTINCT webgl_hash) AS unique_webgl,
@@ -176,7 +177,12 @@ public class BrowserFingerprintHandler implements Handler<RoutingContext> {
               COUNT(DISTINCT screen_info) AS unique_screen,
               COUNT(DISTINCT platform) AS unique_platform,
               AVG(entropy_bits) AS avg_entropy
-            FROM browser_fingerprints
+            FROM (
+              SELECT full_hash, canvas_hash, font_hash, webgl_hash,
+                     timezone, screen_info, platform, entropy_bits,
+                     COUNT(*) OVER (PARTITION BY full_hash) AS cnt
+              FROM browser_fingerprints
+            ) t
             """)
             .execute(ar -> {
                 if (ar.failed()) {
@@ -186,11 +192,18 @@ public class BrowserFingerprintHandler implements Handler<RoutingContext> {
                 var row = ar.result().iterator().next();
                 long total = row.getLong("total");
                 long uniqueFull = row.getLong("unique_full");
+                long trulyUnique = row.getLong("truly_unique");
+
+                // 唯一率 = 只出现1次的hash数 / 总唯一hash数
+                double uniqueRate = uniqueFull > 0
+                    ? Math.round(trulyUnique * 10000.0 / uniqueFull) / 100.0
+                    : 0;
 
                 JsonObject data = new JsonObject()
                     .put("total", total)
                     .put("uniqueFull", uniqueFull)
-                    .put("uniqueRate", total > 0 ? Math.round(uniqueFull * 10000.0 / total) / 100.0 : 0)
+                    .put("trulyUnique", trulyUnique)
+                    .put("uniqueRate", uniqueRate)
                     .put("uniqueCanvas", row.getLong("unique_canvas"))
                     .put("uniqueFont", row.getLong("unique_font"))
                     .put("uniqueWebgl", row.getLong("unique_webgl"))

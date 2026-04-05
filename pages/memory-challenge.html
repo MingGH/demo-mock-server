@@ -780,7 +780,7 @@
         this.dom.leaderboardStatus.textContent = '提交中...';
 
         try {
-          const response = await fetch('https://demo-api-mockserver.runnable.run/memory-challenge/leaderboard', {
+          const response = await fetch('https://numfeel-api.996.ninja/memory-challenge/leaderboard', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -809,7 +809,7 @@
         this.dom.leaderboardBody.innerHTML = '<tr><td colspan="5" class="leaderboard-empty">加载中...</td></tr>';
 
         try {
-          const response = await fetch('https://demo-api-mockserver.runnable.run/memory-challenge/leaderboard?limit=20');
+          const response = await fetch('https://numfeel-api.996.ninja/memory-challenge/leaderboard?limit=20');
           const result = await response.json();
           if (result.status !== 200) {
             throw new Error(result.message || '加载失败');

@@ -5,12 +5,16 @@ import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.ext.web.RoutingContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 /**
  * 流式响应处理器基类
  */
 public abstract class AbstractStreamHandler<T> implements Handler<RoutingContext> {
+
+    private static final Logger log = LoggerFactory.getLogger(AbstractStreamHandler.class);
 
     private final int minCount;
     private final int maxCount;
@@ -55,7 +59,7 @@ public abstract class AbstractStreamHandler<T> implements Handler<RoutingContext
             .subscribe(
                 items -> {
                     long duration = System.currentTimeMillis() - start;
-                    System.out.println(getLogPrefix() + items.size() + " records in " + duration + " ms");
+                    log.debug("{}{} records in {} ms", getLogPrefix(), items.size(), duration);
                     
                     String json = "[" + String.join(",", items) + "]";
                     vertx.runOnContext(v -> response.end(json));

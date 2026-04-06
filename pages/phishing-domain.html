@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="钓鱼链接识别挑战：Unicode同形字攻击、域名混淆、视觉欺骗——测测你能识破几个假域名，理解黑客如何让假网址看起来和真的一模一样。">
+  <title>钓鱼域名识别挑战 | 数字直觉</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+    }
+    .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; padding: 40px 20px; margin-bottom: 30px; }
+    .header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; animation: shimmer 3s linear infinite; margin-bottom: 15px;
+    }
+    @keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+    .header p { font-size: 1.1rem; color: #a0a0a0; max-width: 700px; margin: 0 auto; }
+    .section {
+      background: rgba(255,255,255,0.05); border-radius: 16px; padding: 30px;
+      margin-bottom: 30px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .section h2 { font-size: 1.4rem; margin-bottom: 20px; color: #ffd700; display: flex; align-items: center; gap: 10px; }
+    .insight-box {
+      background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,183,0,0.1));
+      border-left: 4px solid #ffd700; padding: 20px; border-radius: 0 12px 12px 0; margin: 20px 0;
+    }
+    .insight-box h3 { color: #ffd700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .insight-box p { color: #c0c0c0; line-height: 1.8; }
+    .insight-box.red { background: linear-gradient(135deg, rgba(255,68,68,0.1), rgba(255,0,0,0.1)); border-left-color: #ff4444; }
+    .insight-box.red h3 { color: #ff4444; }
+    .insight-box.green { background: linear-gradient(135deg, rgba(76,175,80,0.1), rgba(0,200,0,0.1)); border-left-color: #4CAF50; }
+    .insight-box.green h3 { color: #4CAF50; }
+    .btn {
+      padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem;
+      cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-primary { background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 600; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.3); }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.2); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+    .score-board { display: flex; gap: 20px; flex-wrap: wrap; }
+    .score-item { text-align: center; }
+    .score-item .val { font-size: 1.8rem; font-weight: bold; color: #ffd700; }
+    .score-item .lbl { font-size: 0.8rem; color: #a0a0a0; }
+    .progress-wrap { background: rgba(255,255,255,0.1); border-radius: 4px; height: 6px; margin-bottom: 20px; }
+    .progress-fill { height: 6px; border-radius: 4px; background: linear-gradient(90deg, #ffd700, #ffb700); transition: width 0.4s ease; }
+    .question-card {
+      background: rgba(0,0,0,0.3); border-radius: 14px; padding: 28px;
+      border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;
+    }
+    .q-meta { font-size: 0.85rem; color: #a0a0a0; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .q-prompt { font-size: 1.05rem; color: #c0c0c0; margin-bottom: 20px; line-height: 1.7; }
+    .domain-options { display: flex; flex-direction: column; gap: 12px; }
+    .domain-opt {
+      background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 16px 20px; cursor: pointer;
+      transition: all 0.25s ease; display: flex; align-items: center; gap: 14px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 1.05rem;
+    }
+    .domain-opt:hover { border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.05); }
+    .domain-opt.correct { border-color: #4CAF50; background: rgba(76,175,80,0.12); }
+    .domain-opt.wrong { border-color: #ff4444; background: rgba(255,68,68,0.12); }
+    .domain-opt.reveal { border-color: #4CAF50; background: rgba(76,175,80,0.08); }
+    .domain-opt.disabled { pointer-events: none; }
+    .opt-idx {
+      width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; font-family: sans-serif; flex-shrink: 0; color: #a0a0a0;
+    }
+    .domain-opt.correct .opt-idx { background: #4CAF50; color: #fff; }
+    .domain-opt.wrong .opt-idx { background: #ff4444; color: #fff; }
+    .domain-opt.reveal .opt-idx { background: #4CAF50; color: #fff; }
+    .opt-label { flex: 1; word-break: break-all; }
+    .opt-badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 4px; font-family: sans-serif; flex-shrink: 0; }
+    .badge-fake { background: rgba(255,68,68,0.2); color: #ff6666; }
+    .badge-real { background: rgba(76,175,80,0.2); color: #66bb6a; }
+    .explain-box {
+      background: rgba(0,0,0,0.25); border-radius: 10px; padding: 18px;
+      margin-top: 16px; border: 1px solid rgba(255,255,255,0.08); display: none;
+    }
+    .explain-box.show { display: block; }
+    .explain-box .exp-title { color: #ffd700; font-size: 0.9rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .explain-box p { color: #b0b0b0; font-size: 0.92rem; line-height: 1.7; }
+    .explain-box code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #ffd700; font-size: 0.9em; }
+    .result-screen { display: none; text-align: center; padding: 20px; }
+    .result-screen.show { display: block; }
+    .result-big { font-size: 4rem; font-weight: bold; color: #ffd700; margin: 20px 0; }
+    .result-grade { font-size: 1.3rem; color: #e8e8e8; margin-bottom: 10px; }
+    .result-sub { color: #a0a0a0; margin-bottom: 30px; }
+    .result-breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin: 24px 0; }
+    .rb-card { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 16px; border: 1px solid rgba(255,255,255,0.1); }
+    .rb-card .rv { font-size: 1.6rem; font-weight: bold; color: #ffd700; }
+    .rb-card .rl { font-size: 0.8rem; color: #a0a0a0; margin-top: 4px; }
+    .technique-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .tech-card {
+      background: rgba(0,0,0,0.25); border-radius: 12px; padding: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .tech-card h4 { color: #ffd700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 1rem; }
+    .tech-card p { color: #a0a0a0; font-size: 0.88rem; line-height: 1.7; }
+    .tech-card .example { margin-top: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 10px; font-family: monospace; font-size: 0.9rem; }
+    .tech-card .fake { color: #ff6666; }
+    .tech-card .real { color: #66bb6a; }
+    .detector-input {
+      width: 100%; padding: 14px 18px; border-radius: 10px;
+      border: 2px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.07);
+      color: #e8e8e8; font-size: 1.05rem; font-family: 'SF Mono', 'Fira Code', monospace;
+      outline: none; transition: border-color 0.3s;
+    }
+    .detector-input:focus { border-color: #ffd700; }
+    .detector-result { margin-top: 16px; min-height: 60px; }
+    .risk-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 20px; font-size: 0.88rem; margin: 4px;
+    }
+    .risk-high { background: rgba(255,68,68,0.2); color: #ff6666; border: 1px solid rgba(255,68,68,0.3); }
+    .risk-mid { background: rgba(255,183,0,0.2); color: #ffb700; border: 1px solid rgba(255,183,0,0.3); }
+    .risk-low { background: rgba(76,175,80,0.2); color: #66bb6a; border: 1px solid rgba(76,175,80,0.3); }
+    .char-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .char-table th { text-align: left; padding: 8px; color: #ffd700; border-bottom: 1px solid rgba(255,255,255,0.15); font-size: 0.85rem; }
+    .char-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; color: #c0c0c0; }
+    .char-table .highlight { color: #ff6666; font-weight: bold; }
+    .toast { position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 15px 25px; border-radius: 8px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; z-index: 1001; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .copy-btn { position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #ffd700, #ffb700); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 4px 20px rgba(255,215,0,0.3); transition: all 0.3s ease; z-index: 1000; }
+    .copy-btn:hover { transform: scale(1.1); }
+    @media (max-width: 768px) {
+      .container { padding: 12px; }
+      .header { padding: 24px 12px; }
+      .header h1 { font-size: 1.6rem; }
+      .section { padding: 18px; }
+      .domain-opt { font-size: 0.88rem; padding: 12px 14px; }
+      .result-big { font-size: 3rem; }
+      .technique-grid { grid-template-columns: 1fr; }
+      .score-board { gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-fish-hook"></i> 钓鱼域名识别挑战</h1>
+    <p>黑客发的钓鱼链接，为什么那么多人上当？测测你能识破几个假域名，顺便搞懂 Unicode 同形字攻击的原理</p>
+  </div>
+
+  <!-- 挑战区域 -->
+  <div class="section" id="challengeSection">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+      <h2><i class="ti ti-target-arrow"></i> 找出真域名</h2>
+      <div class="score-board">
+        <div class="score-item"><div class="val" id="scoreCorrect">0</div><div class="lbl">正确</div></div>
+        <div class="score-item"><div class="val" id="scoreTotal">0</div><div class="lbl">/ 总题数</div></div>
+      </div>
+    </div>
+    <div class="progress-wrap"><div class="progress-fill" id="progressBar" style="width:0%"></div></div>
+    <div id="questionArea"></div>
+    <div style="text-align:center; margin-top:20px;">
+      <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()" style="display:none"><i class="ti ti-arrow-right"></i> 下一题</button>
+    </div>
+  </div>
+
+  <!-- 结果页 -->
+  <div class="section result-screen" id="resultScreen">
+    <h2><i class="ti ti-chart-bar"></i> 挑战结果</h2>
+    <div class="result-big" id="resultScore">0%</div>
+    <div class="result-grade" id="resultGrade"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="result-breakdown" id="resultBreakdown"></div>
+    <button class="btn btn-primary" onclick="restartChallenge()" style="margin-top:20px"><i class="ti ti-refresh"></i> 再来一次</button>
+  </div>
+
+  <!-- 域名检测器 -->
+  <div class="section">
+    <h2><i class="ti ti-search"></i> 域名安全检测器</h2>
+    <p style="color:#a0a0a0; margin-bottom:16px;">粘贴任意域名或 URL，实时分析可疑特征</p>
+    <input class="detector-input" id="detectorInput" placeholder="输入域名，如 paypal.com 或 pаypal.com" oninput="analyzeDomain(this.value)">
+    <div class="detector-result" id="detectorResult"></div>
+  </div>
+
+  <!-- 攻击技术解析 -->
+  <div class="section">
+    <h2><i class="ti ti-shield-lock"></i> 六种钓鱼域名攻击手法</h2>
+    <div class="technique-grid">
+      <div class="tech-card">
+        <h4><i class="ti ti-language"></i> Unicode 同形字攻击</h4>
+        <p>用长得一模一样的 Unicode 字符替换 ASCII 字母。西里尔字母 а（U+0430）和拉丁字母 a（U+0061）肉眼完全无法区分。</p>
+        <div class="example"><span class="fake">pаypal.com</span> ← 西里尔 а<br><span class="real">paypal.com</span> ← 拉丁 a</div>
+      </div>
+      <div class="tech-card">
+        <h4><i class="ti ti-switch-horizontal"></i> 字符替换</h4>
+        <p>用数字或相似字母替换：l→1、O→0、rn→m。在小字号或移动端尤其难分辨。</p>
+        <div class="example"><span class="fake">paypa1.com</span> ← 数字 1<br><span class="real">paypal.com</span> ← 字母 l</div>
+      </div>
+      <div class="tech-card">
+        <h4><i class="ti ti-arrows-shuffle"></i> 字母调换（Typosquatting）</h4>
+        <p>交换相邻字母的位置，利用人脑自动纠错的特性。你的大脑会「看到」正确的拼写。</p>
+        <div class="example"><span class="fake">googel.com</span><br><span class="real">google.com</span></div>
+      </div>
+      <div class="tech-card">
+        <h4><i class="ti ti-plus"></i> 添加/删除字符</h4>
+        <p>多加一个字母或少一个字母，快速扫一眼很难发现。</p>
+        <div class="example"><span class="fake">gooogle.com</span> ← 多一个 o<br><span class="real">google.com</span></div>
+      </div>
+      <div class="tech-card">
+        <h4><i class="ti ti-dots"></i> 子域名伪装</h4>
+        <p>把真域名放在子域名位置，实际控制的是后面的主域名。浏览器地址栏太短时，真域名可能被截断。</p>
+        <div class="example"><span class="fake">apple.com.verify-id.net</span><br>实际域名是 <span class="real">verify-id.net</span></div>
+      </div>
+      <div class="tech-card">
+        <h4><i class="ti ti-world"></i> TLD 混淆</h4>
+        <p>使用不同的顶级域名，如 .net/.org/.cc 替代 .com，或使用国家域名 .co 冒充 .com。</p>
+        <div class="example"><span class="fake">amazon.co</span> ← 哥伦比亚域名<br><span class="real">amazon.com</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unicode 字符对照表 -->
+  <div class="section">
+    <h2><i class="ti ti-table"></i> 同形字对照表</h2>
+    <p style="color:#a0a0a0; margin-bottom:16px;">这些字符对肉眼看起来完全一样，但 Unicode 编码完全不同</p>
+    <div style="overflow-x:auto;">
+      <table class="char-table">
+        <thead><tr><th>拉丁字母</th><th>Unicode</th><th>同形字</th><th>Unicode</th><th>来源</th></tr></thead>
+        <tbody>
+          <tr><td>a</td><td>U+0061</td><td class="highlight">а</td><td>U+0430</td><td>西里尔字母</td></tr>
+          <tr><td>e</td><td>U+0065</td><td class="highlight">е</td><td>U+0435</td><td>西里尔字母</td></tr>
+          <tr><td>o</td><td>U+006F</td><td class="highlight">о</td><td>U+043E</td><td>西里尔字母</td></tr>
+          <tr><td>p</td><td>U+0070</td><td class="highlight">р</td><td>U+0440</td><td>西里尔字母</td></tr>
+          <tr><td>c</td><td>U+0063</td><td class="highlight">с</td><td>U+0441</td><td>西里尔字母</td></tr>
+          <tr><td>x</td><td>U+0078</td><td class="highlight">х</td><td>U+0445</td><td>西里尔字母</td></tr>
+          <tr><td>y</td><td>U+0079</td><td class="highlight">у</td><td>U+0443</td><td>西里尔字母</td></tr>
+          <tr><td>i</td><td>U+0069</td><td class="highlight">і</td><td>U+0456</td><td>乌克兰字母</td></tr>
+          <tr><td>s</td><td>U+0073</td><td class="highlight">ѕ</td><td>U+0455</td><td>马其顿字母</td></tr>
+          <tr><td>a</td><td>U+0061</td><td class="highlight">ɑ</td><td>U+0251</td><td>IPA 音标</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><i class="ti ti-shield-check"></i> 如何防范</h2>
+    <div class="insight-box green">
+      <h3><i class="ti ti-bulb"></i> 实用建议</h3>
+      <p>1. 手动输入网址，不要点击来路不明的链接<br>
+      2. 检查浏览器地址栏是否显示 Punycode（xn-- 开头），这说明域名包含非 ASCII 字符<br>
+      3. 使用密码管理器——它只会在真正的域名上自动填充密码<br>
+      4. 留意浏览器的安全警告，不要随意忽略证书错误<br>
+      5. 对「紧急」「限时」「账号异常」等措辞保持警惕，这是钓鱼邮件的经典话术</p>
+    </div>
+    <div class="insight-box red">
+      <h3><i class="ti ti-alert-triangle"></i> 一个残酷的事实</h3>
+      <p>Google 的研究显示，即使是安全专家，在时间压力下也有约 4% 的概率点击钓鱼链接。普通用户的中招率在 20%-30% 之间。钓鱼攻击之所以长盛不衰，是因为它攻击的是人的认知弱点，而非技术漏洞。</p>
+    </div>
+  </div>
+</div>
+
+<button class="copy-btn" onclick="copyShareLink()" title="复制分享链接"><i class="ti ti-link"></i></button>
+<div class="toast" id="toast">链接已复制到剪贴板</div>
+
+<script>
+// ===== 题库 =====
+const QUESTIONS = [
+  {
+    type: 'homograph',
+    prompt: '以下哪个是真正的 PayPal 域名？',
+    options: [
+      { domain: 'p\u0430ypal.com', real: false },
+      { domain: 'paypal.com', real: true },
+      { domain: 'payp\u0430l.com', real: false }
+    ],
+    explanation: '选项 A 的第二个字母是西里尔字母 а（U+0430），选项 C 的第五个字母也是西里尔 а。它们和拉丁字母 a（U+0061）在屏幕上完全一样，但编码不同。浏览器会将含非 ASCII 字符的域名转为 Punycode（<code>xn--pypal-4ve.com</code>）。'
+  },
+  {
+    type: 'substitution',
+    prompt: '哪个是真正的 Apple 官网？',
+    options: [
+      { domain: 'apple.com', real: true },
+      { domain: 'appIe.com', real: false },
+      { domain: 'app1e.com', real: false }
+    ],
+    explanation: '选项 B 把小写 l 换成了大写 I，选项 C 把 l 换成了数字 1。在很多无衬线字体中，I / l / 1 几乎无法区分。这是最经典的字符替换攻击。'
+  },
+  {
+    type: 'typosquatting',
+    prompt: '哪个是真正的 Google？',
+    options: [
+      { domain: 'gooogle.com', real: false },
+      { domain: 'googel.com', real: false },
+      { domain: 'google.com', real: true }
+    ],
+    explanation: '选项 A 多了一个 o，选项 B 交换了 l 和 e 的位置。人脑有强大的自动纠错能力——你读这句话时可能根本没注意到拼写差异。攻击者正是利用了这一点。'
+  },
+  {
+    type: 'subdomain',
+    prompt: '哪个域名真正属于 Apple？',
+    options: [
+      { domain: 'apple.com.account-verify.net', real: false },
+      { domain: 'support.apple.com', real: true },
+      { domain: 'apple-id.support.com', real: false }
+    ],
+    explanation: '域名从右往左读：<code>apple.com.account-verify.net</code> 的实际主域名是 <code>account-verify.net</code>，apple.com 只是子域名。<code>apple-id.support.com</code> 的主域名是 <code>support.com</code>。只有 <code>support.apple.com</code> 真正属于 apple.com。'
+  },
+  {
+    type: 'homograph',
+    prompt: '哪个是真正的 Microsoft 域名？',
+    options: [
+      { domain: 'micr\u043Esoft.com', real: false },
+      { domain: 'microsoft.com', real: true },
+      { domain: 'micro\u0455oft.com', real: false }
+    ],
+    explanation: '选项 A 的 o 是西里尔字母 о（U+043E），选项 C 的 s 是马其顿字母 ѕ（U+0455）。这两个同形字和拉丁原版在视觉上完全相同。'
+  },
+  {
+    type: 'tld',
+    prompt: '哪个是真正的 Amazon 购物网站？',
+    options: [
+      { domain: 'amazon.co', real: false },
+      { domain: 'amazon.com', real: true },
+      { domain: 'amazon.org', real: false }
+    ],
+    explanation: '<code>amazon.co</code> 是哥伦比亚的国家域名，<code>amazon.org</code> 不是 Amazon 官方域名。攻击者经常注册目标品牌的其他 TLD 来实施钓鱼。'
+  },
+  {
+    type: 'substitution',
+    prompt: '哪个是真正的 Netflix？',
+    options: [
+      { domain: 'netfIix.com', real: false },
+      { domain: 'netflix.com', real: true },
+      { domain: 'netfl1x.com', real: false }
+    ],
+    explanation: '选项 A 把第二个 l 换成了大写 I，选项 C 把 i 换成了数字 1。Netflix 这个词里有 l 和 i 紧挨着，是字符替换攻击的完美目标。'
+  },
+  {
+    type: 'homograph',
+    prompt: '哪个是真正的 Facebook？',
+    options: [
+      { domain: 'fac\u0435book.com', real: false },
+      { domain: 'fa\u0441ebook.com', real: false },
+      { domain: 'facebook.com', real: true }
+    ],
+    explanation: '选项 A 的 e 是西里尔字母 е（U+0435），选项 B 的 c 是西里尔字母 с（U+0441）。两个假域名各替换了一个字符，肉眼完全看不出来。'
+  },
+  {
+    type: 'subdomain',
+    prompt: '哪个链接真正来自 GitHub？',
+    options: [
+      { domain: 'github.com.login-auth.io', real: false },
+      { domain: 'github-login.com', real: false },
+      { domain: 'gist.github.com', real: true }
+    ],
+    explanation: '<code>github.com.login-auth.io</code> 的主域名是 <code>login-auth.io</code>。<code>github-login.com</code> 是一个独立域名，和 GitHub 无关。只有 <code>gist.github.com</code> 是 github.com 的子域名。'
+  },
+  {
+    type: 'typosquatting',
+    prompt: '哪个是真正的 YouTube？',
+    options: [
+      { domain: 'youtube.com', real: true },
+      { domain: 'youtueb.com', real: false },
+      { domain: 'yuotube.com', real: false }
+    ],
+    explanation: '选项 B 交换了 b 和 e，选项 C 交换了 o 和 u。这类「手滑域名」（typosquatting）专门针对打字时的常见错误，每天有大量用户因为打错一个字母而访问到钓鱼网站。'
+  },
+  {
+    type: 'homograph',
+    prompt: '哪个是真正的 Taobao？',
+    options: [
+      { domain: 'ta\u043Ebao.com', real: false },
+      { domain: 'taobao.com', real: true },
+      { domain: 'tao\u0432ao.com', real: false }
+    ],
+    explanation: '选项 A 的第三个字母 o 是西里尔 о（U+043E），选项 C 的 b 是西里尔 в（U+0432，看起来很像 b 的某些字体渲染）。中国用户常用的域名同样是同形字攻击的目标。'
+  },
+  {
+    type: 'substitution',
+    prompt: '哪个是真正的 Bilibili？',
+    options: [
+      { domain: 'bi1ibili.com', real: false },
+      { domain: 'biiibili.com', real: false },
+      { domain: 'bilibili.com', real: true }
+    ],
+    explanation: '选项 A 把第三个字母 l 换成了数字 1，选项 B 把 l 换成了 i（多了一个 i 少了一个 l）。bilibili 这种 l 和 i 交替出现的域名，是字符替换攻击的重灾区。'
+  }
+];
+
+// ===== 状态 =====
+let currentIndex = 0;
+let correctCount = 0;
+let answered = [];
+let shuffledQuestions = [];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startChallenge() {
+  shuffledQuestions = shuffle(QUESTIONS);
+  currentIndex = 0;
+  correctCount = 0;
+  answered = [];
+  document.getElementById('resultScreen').classList.remove('show');
+  document.getElementById('challengeSection').style.display = '';
+  document.getElementById('scoreCorrect').textContent = '0';
+  document.getElementById('scoreTotal').textContent = '/ ' + shuffledQuestions.length;
+  renderQuestion();
+}
+
+function renderQuestion() {
+  if (currentIndex >= shuffledQuestions.length) { showResult(); return; }
+  const q = shuffledQuestions[currentIndex];
+  const opts = shuffle(q.options);
+  const pct = ((currentIndex) / shuffledQuestions.length * 100).toFixed(0);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('nextBtn').style.display = 'none';
+
+  const labels = ['A', 'B', 'C', 'D'];
+  let html = '<div class="question-card">';
+  html += '<div class="q-meta"><i class="ti ti-hash"></i> 第 ' + (currentIndex + 1) + ' / ' + shuffledQuestions.length + ' 题';
+  const typeMap = { homograph: 'Unicode 同形字', substitution: '字符替换', typosquatting: '拼写混淆', subdomain: '子域名伪装', tld: 'TLD 混淆' };
+  html += ' · <span style="color:#ffd700">' + (typeMap[q.type] || q.type) + '</span></div>';
+  html += '<div class="q-prompt">' + q.prompt + '</div>';
+  html += '<div class="domain-options" id="optionsArea">';
+  opts.forEach((o, i) => {
+    html += '<div class="domain-opt" data-real="' + o.real + '" onclick="selectAnswer(this,' + JSON.stringify(o.real) + ')">';
+    html += '<div class="opt-idx">' + labels[i] + '</div>';
+    html += '<div class="opt-label">' + escapeHtml(o.domain) + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<div class="explain-box" id="explainBox"><div class="exp-title"><i class="ti ti-info-circle"></i> 解析</div><p>' + q.explanation + '</p></div>';
+  html += '</div>';
+  document.getElementById('questionArea').innerHTML = html;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function selectAnswer(el, isReal) {
+  const opts = document.querySelectorAll('#optionsArea .domain-opt');
+  if (el.classList.contains('disabled')) return;
+  opts.forEach(o => o.classList.add('disabled'));
+
+  const isCorrect = isReal === true;
+  if (isCorrect) {
+    el.classList.add('correct');
+    correctCount++;
+  } else {
+    el.classList.add('wrong');
+    opts.forEach(o => { if (o.dataset.real === 'true') o.classList.add('reveal'); });
+  }
+
+  // 显示 badge
+  opts.forEach(o => {
+    const badge = document.createElement('span');
+    badge.className = 'opt-badge ' + (o.dataset.real === 'true' ? 'badge-real' : 'badge-fake');
+    badge.textContent = o.dataset.real === 'true' ? '真' : '假';
+    o.appendChild(badge);
+  });
+
+  answered.push({ question: shuffledQuestions[currentIndex], correct: isCorrect });
+  document.getElementById('scoreCorrect').textContent = correctCount;
+  document.getElementById('explainBox').classList.add('show');
+  document.getElementById('nextBtn').style.display = '';
+}
+
+function nextQuestion() {
+  currentIndex++;
+  renderQuestion();
+}
+
+function showResult() {
+  document.getElementById('challengeSection').style.display = 'none';
+  const screen = document.getElementById('resultScreen');
+  screen.classList.add('show');
+  const pct = Math.round(correctCount / shuffledQuestions.length * 100);
+  document.getElementById('resultScore').textContent = pct + '%';
+  document.getElementById('progressBar').style.width = '100%';
+
+  let grade, sub;
+  if (pct === 100) { grade = '完美通关'; sub = '你对钓鱼域名有极强的辨别力，攻击者很难骗到你。'; }
+  else if (pct >= 80) { grade = '安全意识很强'; sub = '大部分钓鱼链接骗不了你，但仍有少数高级手法需要警惕。'; }
+  else if (pct >= 60) { grade = '及格，但有风险'; sub = '你能识破一些常见手法，但面对 Unicode 同形字等高级攻击时容易中招。'; }
+  else if (pct >= 40) { grade = '容易上当'; sub = '你对钓鱼域名的辨别力偏弱，建议仔细阅读下方的攻击手法解析。'; }
+  else { grade = '高危用户'; sub = '你很可能在真实场景中点击钓鱼链接。好消息是，看完这个页面你会安全很多。'; }
+  document.getElementById('resultGrade').textContent = grade;
+  document.getElementById('resultSub').textContent = sub;
+
+  // 按类型统计
+  const typeStats = {};
+  answered.forEach(a => {
+    const t = a.question.type;
+    if (!typeStats[t]) typeStats[t] = { total: 0, correct: 0 };
+    typeStats[t].total++;
+    if (a.correct) typeStats[t].correct++;
+  });
+  const typeMap = { homograph: 'Unicode 同形字', substitution: '字符替换', typosquatting: '拼写混淆', subdomain: '子域名伪装', tld: 'TLD 混淆' };
+  let bhtml = '';
+  for (const [type, s] of Object.entries(typeStats)) {
+    bhtml += '<div class="rb-card"><div class="rv">' + s.correct + '/' + s.total + '</div><div class="rl">' + (typeMap[type] || type) + '</div></div>';
+  }
+  document.getElementById('resultBreakdown').innerHTML = bhtml;
+}
+
+function restartChallenge() { startChallenge(); }
+
+// ===== 域名检测器 =====
+const HOMOGLYPHS = {
+  '\u0430': { latin: 'a', name: '西里尔 а', code: 'U+0430' },
+  '\u0435': { latin: 'e', name: '西里尔 е', code: 'U+0435' },
+  '\u043E': { latin: 'o', name: '西里尔 о', code: 'U+043E' },
+  '\u0440': { latin: 'p', name: '西里尔 р', code: 'U+0440' },
+  '\u0441': { latin: 'c', name: '西里尔 с', code: 'U+0441' },
+  '\u0445': { latin: 'x', name: '西里尔 х', code: 'U+0445' },
+  '\u0443': { latin: 'y', name: '西里尔 у', code: 'U+0443' },
+  '\u0456': { latin: 'i', name: '乌克兰 і', code: 'U+0456' },
+  '\u0455': { latin: 's', name: '马其顿 ѕ', code: 'U+0455' },
+  '\u0432': { latin: 'b', name: '西里尔 в', code: 'U+0432' },
+  '\u0251': { latin: 'a', name: 'IPA ɑ', code: 'U+0251' }
+};
+
+function analyzeDomain(input) {
+  const container = document.getElementById('detectorResult');
+  if (!input.trim()) { container.innerHTML = ''; return; }
+
+  // 清理 URL
+  let domain = input.trim().replace(/^https?:\/\//, '').split('/')[0].split('?')[0].toLowerCase();
+  const risks = [];
+
+  // 1. 检测同形字
+  const foundHomoglyphs = [];
+  for (let i = 0; i < domain.length; i++) {
+    const ch = domain[i];
+    if (HOMOGLYPHS[ch]) {
+      foundHomoglyphs.push({ pos: i, char: ch, ...HOMOGLYPHS[ch] });
+    }
+  }
+  if (foundHomoglyphs.length > 0) {
+    risks.push({ level: 'high', tag: 'Unicode 同形字', detail: '发现 ' + foundHomoglyphs.length + ' 个非 ASCII 同形字符：' + foundHomoglyphs.map(h => '<code>' + h.char + '</code>（' + h.name + '，对应拉丁 ' + h.latin + '）').join('、') });
+  }
+
+  // 2. 检测非 ASCII
+  const nonAscii = [];
+  for (let i = 0; i < domain.length; i++) {
+    if (domain.charCodeAt(i) > 127 && !HOMOGLYPHS[domain[i]]) {
+      nonAscii.push(domain[i]);
+    }
+  }
+  if (nonAscii.length > 0) {
+    risks.push({ level: 'mid', tag: '非 ASCII 字符', detail: '包含非标准字符：' + nonAscii.map(c => '<code>' + c + '</code> (U+' + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0') + ')').join('、') });
+  }
+
+  // 3. 子域名伪装
+  const knownBrands = ['google', 'apple', 'amazon', 'microsoft', 'facebook', 'paypal', 'netflix', 'github', 'twitter', 'instagram', 'taobao', 'alipay', 'wechat', 'bilibili', 'baidu', 'qq'];
+  const parts = domain.split('.');
+  if (parts.length >= 3) {
+    const mainDomain = parts.slice(-2).join('.');
+    const subParts = parts.slice(0, -2).join('.');
+    for (const brand of knownBrands) {
+      if (subParts.includes(brand) && !mainDomain.includes(brand)) {
+        risks.push({ level: 'high', tag: '子域名伪装', detail: '「' + brand + '」出现在子域名中，但主域名是 <code>' + mainDomain + '</code>。这是经典的子域名伪装手法。' });
+        break;
+      }
+    }
+  }
+
+  // 4. 数字替换
+  const digitSubs = { '0': 'o', '1': 'l/i', '3': 'e', '5': 's', '8': 'b' };
+  const foundDigitSubs = [];
+  const domainBase = parts.slice(0, -1).join('.');
+  for (const [digit, letter] of Object.entries(digitSubs)) {
+    if (domainBase.includes(digit)) foundDigitSubs.push(digit + ' → ' + letter);
+  }
+  if (foundDigitSubs.length > 0) {
+    risks.push({ level: 'mid', tag: '可疑数字替换', detail: '域名中的数字可能是字母替换：' + foundDigitSubs.join('、') });
+  }
+
+  // 5. 连字符过多
+  const hyphens = (domainBase.match(/-/g) || []).length;
+  if (hyphens >= 2) {
+    risks.push({ level: 'mid', tag: '连字符过多', detail: '域名包含 ' + hyphens + ' 个连字符，正规品牌域名很少使用多个连字符。' });
+  }
+
+  // 渲染
+  let html = '<div style="margin-bottom:12px;">';
+  if (risks.length === 0) {
+    html += '<span class="risk-tag risk-low"><i class="ti ti-shield-check"></i> 未发现明显可疑特征</span>';
+  } else {
+    risks.forEach(r => {
+      const cls = r.level === 'high' ? 'risk-high' : r.level === 'mid' ? 'risk-mid' : 'risk-low';
+      const icon = r.level === 'high' ? 'ti-alert-triangle' : 'ti-alert-circle';
+      html += '<span class="risk-tag ' + cls + '"><i class="ti ' + icon + '"></i> ' + r.tag + '</span>';
+    });
+  }
+  html += '</div>';
+
+  // 风险分数
+  let score = 0;
+  risks.forEach(r => { score += r.level === 'high' ? 40 : r.level === 'mid' ? 20 : 5; });
+  score = Math.min(score, 100);
+  const barColor = score >= 60 ? '#ff4444' : score >= 30 ? '#ffb700' : '#4CAF50';
+  html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">';
+  html += '<span style="color:#a0a0a0;font-size:0.85rem;">风险评分</span>';
+  html += '<div style="flex:1;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;">';
+  html += '<div style="height:100%;width:' + score + '%;background:' + barColor + ';border-radius:4px;transition:width 0.5s"></div></div>';
+  html += '<span style="color:' + barColor + ';font-weight:bold;">' + score + '</span>';
+  html += '</div>';
+
+  // 详情
+  if (risks.length > 0) {
+    risks.forEach(r => {
+      html += '<div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;margin-bottom:8px;font-size:0.88rem;">';
+      html += '<span style="color:#ffd700;">' + r.tag + '：</span><span style="color:#b0b0b0;">' + r.detail + '</span></div>';
+    });
+  }
+
+  // Punycode 提示
+  if (foundHomoglyphs.length > 0) {
+    try {
+      html += '<div style="background:rgba(255,215,0,0.08);border-radius:8px;padding:12px;margin-top:8px;font-size:0.85rem;color:#a0a0a0;">';
+      html += '<i class="ti ti-info-circle" style="color:#ffd700;"></i> 浏览器会将此域名显示为 Punycode 编码，地址栏会出现 <code style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;color:#ffd700;">xn--</code> 前缀</div>';
+    } catch(e) {}
+  }
+
+  container.innerHTML = html;
+}
+
+// ===== 工具 =====
+function copyShareLink() {
+  const url = 'https://numfeel.996.ninja/pages/phishing-domain.html';
+  navigator.clipboard.writeText(url).then(() => {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  });
+}
+
+// 启动
+document.addEventListener('DOMContentLoaded', startChallenge);
+</script>
+</body>
+</html>

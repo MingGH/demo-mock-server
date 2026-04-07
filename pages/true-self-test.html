@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="基于Bowen自我分化理论与Winnicott真假自我概念，测测你有几成是真正的自己，几成是父母期待的你。">
+  <title>你有几成是真正的自己 | 数字直觉</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);min-height:100vh;color:#e8e8e8;line-height:1.6}
+    .container{max-width:860px;margin:0 auto;padding:20px}
+    .header{text-align:center;padding:40px 20px 30px}
+    .header h1{font-size:2.2rem;background:linear-gradient(90deg,#ffd700,#ffec8b,#ffd700);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 3s linear infinite;margin-bottom:14px}
+    @keyframes shimmer{0%{background-position:0% center}100%{background-position:200% center}}
+    .header p{font-size:1rem;color:#a0a0a0;max-width:640px;margin:0 auto}
+    .section{background:rgba(255,255,255,0.05);border-radius:16px;padding:28px;margin-bottom:24px;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1)}
+    .section h2{font-size:1.3rem;margin-bottom:18px;color:#ffd700;display:flex;align-items:center;gap:10px}
+    .progress-wrap{background:rgba(255,255,255,0.1);border-radius:4px;height:5px;margin-bottom:22px}
+    .progress-fill{height:5px;border-radius:4px;background:linear-gradient(90deg,#ffd700,#ffb700);transition:width 0.4s ease}
+    .q-card{background:rgba(0,0,0,0.25);border-radius:14px;padding:26px;border:1px solid rgba(255,255,255,0.08)}
+    .q-meta{font-size:0.82rem;color:#888;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .q-text{font-size:1.08rem;color:#ddd;line-height:1.75;margin-bottom:22px}
+    .q-dimension{display:inline-block;font-size:0.78rem;padding:3px 10px;border-radius:12px;background:rgba(255,215,0,0.12);color:#ffd700;border:1px solid rgba(255,215,0,0.25);margin-bottom:14px}
+    .options{display:flex;flex-direction:column;gap:10px}
+    .opt{background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 18px;cursor:pointer;transition:all 0.22s ease;display:flex;align-items:flex-start;gap:12px}
+    .opt:hover{border-color:rgba(255,215,0,0.4);background:rgba(255,215,0,0.05)}
+    .opt.selected{border-color:#ffd700;background:rgba(255,215,0,0.1)}
+    .opt-dot{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.25);flex-shrink:0;margin-top:2px;transition:all 0.2s}
+    .opt.selected .opt-dot{background:#ffd700;border-color:#ffd700}
+    .opt-text{font-size:0.95rem;color:#ccc;line-height:1.6}
+    .opt.selected .opt-text{color:#fff}
+    .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:12px}
+    .btn{padding:11px 22px;border:none;border-radius:8px;font-size:0.95rem;cursor:pointer;transition:all 0.25s ease;display:inline-flex;align-items:center;gap:7px}
+    .btn-primary{background:linear-gradient(135deg,#ffd700,#ffb700);color:#1a1a2e;font-weight:600}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 5px 18px rgba(255,215,0,0.3)}
+    .btn-primary:disabled{opacity:0.4;cursor:not-allowed;transform:none;box-shadow:none}
+    .btn-ghost{background:rgba(255,255,255,0.08);color:#ccc;border:1px solid rgba(255,255,255,0.15)}
+    .btn-ghost:hover{background:rgba(255,255,255,0.13)}
+    .result-wrap{display:none}
+    .result-wrap.show{display:block}
+    .gauge-container{display:flex;justify-content:center;margin:10px 0 24px}
+    .gauge-svg{width:220px;height:130px}
+    .result-title{font-size:1.4rem;color:#fff;text-align:center;margin:10px 0 6px}
+    .result-desc{color:#b0b0b0;text-align:center;line-height:1.8;max-width:560px;margin:0 auto 24px;font-size:0.95rem}
+    .dim-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
+    .dim-card{background:rgba(0,0,0,0.25);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.08)}
+    .dim-card .dim-name{font-size:0.85rem;color:#a0a0a0;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+    .dim-card .dim-score{font-size:1.5rem;font-weight:bold;color:#ffd700;margin-bottom:6px}
+    .dim-bar-wrap{background:rgba(255,255,255,0.08);border-radius:3px;height:5px}
+    .dim-bar{height:5px;border-radius:3px;background:linear-gradient(90deg,#ffd700,#ffb700);transition:width 0.8s ease}
+    .dim-hint{font-size:0.8rem;color:#888;margin-top:6px;line-height:1.5}
+    .insight{background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,183,0,0.06));border-left:3px solid #ffd700;padding:18px 20px;border-radius:0 12px 12px 0;margin:16px 0}
+    .insight h4{color:#ffd700;margin-bottom:8px;font-size:0.95rem;display:flex;align-items:center;gap:7px}
+    .insight p{color:#b8b8b8;font-size:0.9rem;line-height:1.75}
+    .insight.blue{border-left-color:#64b5f6;background:linear-gradient(135deg,rgba(100,181,246,0.08),rgba(33,150,243,0.05))}
+    .insight.blue h4{color:#64b5f6}
+    .insight.green{border-left-color:#81c784;background:linear-gradient(135deg,rgba(129,199,132,0.08),rgba(76,175,80,0.05))}
+    .insight.green h4{color:#81c784}
+    .theory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+    .theory-card{background:rgba(0,0,0,0.22);border-radius:12px;padding:18px;border:1px solid rgba(255,255,255,0.07)}
+    .theory-card h4{color:#ffd700;font-size:0.92rem;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+    .theory-card p{color:#999;font-size:0.85rem;line-height:1.7}
+    .theory-card .source{font-size:0.78rem;color:#666;margin-top:8px;font-style:italic}
+    .dist-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+    .dist-label{font-size:0.82rem;color:#999;width:80px;flex-shrink:0;text-align:right}
+    .dist-bar-bg{flex:1;background:rgba(255,255,255,0.07);border-radius:3px;height:18px;overflow:hidden}
+    .dist-bar-fill{height:100%;border-radius:3px;transition:width 1s ease;display:flex;align-items:center;padding-left:6px}
+    .dist-bar-fill span{font-size:0.75rem;color:#1a1a2e;font-weight:600;white-space:nowrap}
+    .toast{position:fixed;top:20px;right:20px;background:#4CAF50;color:white;padding:13px 22px;border-radius:8px;opacity:0;transform:translateY(-16px);transition:all 0.3s ease;z-index:1001;font-size:0.9rem}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .copy-btn{position:fixed;bottom:28px;right:28px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#ffd700,#ffb700);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(255,215,0,0.3);transition:all 0.3s ease;z-index:1000}
+    .copy-btn:hover{transform:scale(1.1)}
+    @media(max-width:640px){.header h1{font-size:1.6rem}.section{padding:18px}.q-text{font-size:1rem}.nav-row{flex-wrap:wrap}}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-user-heart"></i> 你有几成是真正的自己</h1>
+    <p>基于 Bowen 自我分化理论与 Winnicott 真假自我概念，测测你的行为、选择和情绪里，有多少来自内心，有多少来自父母的期待</p>
+  </div>
+
+  <!-- 测试区 -->
+  <div class="section" id="testSection">
+    <h2><i class="ti ti-clipboard-list"></i> 自我分化测评</h2>
+    <div class="progress-wrap"><div class="progress-fill" id="progressBar" style="width:0%"></div></div>
+    <div id="questionArea"></div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" id="prevBtn" onclick="prevQ()" style="visibility:hidden"><i class="ti ti-arrow-left"></i> 上一题</button>
+      <span id="qCounter" style="color:#888;font-size:0.85rem;"></span>
+      <button class="btn btn-primary" id="nextBtn" onclick="nextQ()" disabled><i class="ti ti-arrow-right"></i> 下一题</button>
+    </div>
+  </div>
+
+  <!-- 结果区 -->
+  <div class="result-wrap" id="resultWrap">
+    <div class="section">
+      <h2><i class="ti ti-chart-donut"></i> 你的自我分化报告</h2>
+      <div class="gauge-container">
+        <svg class="gauge-svg" viewBox="0 0 220 130" id="gaugeSvg">
+          <defs><linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ff4444"/><stop offset="50%" style="stop-color:#ffd700"/><stop offset="100%" style="stop-color:#4CAF50"/></linearGradient></defs>
+          <path d="M 20 110 A 90 90 0 0 1 200 110" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="14" stroke-linecap="round"/>
+          <path id="gaugeArc" d="M 20 110 A 90 90 0 0 1 200 110" fill="none" stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283" style="transition:stroke-dashoffset 1.2s ease;"/>
+          <text x="110" y="100" text-anchor="middle" fill="#ffd700" font-size="28" font-weight="bold" id="gaugeText">0%</text>
+          <text x="110" y="120" text-anchor="middle" fill="#888" font-size="11">真实自我占比</text>
+          <text x="22" y="128" fill="#ff6666" font-size="10">他人期待</text>
+          <text x="168" y="128" fill="#66bb6a" font-size="10">真实自我</text>
+        </svg>
+      </div>
+      <div class="result-title" id="resultTitle"></div>
+      <div class="result-desc" id="resultDesc"></div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-layout-grid"></i> 五个维度的分析</h2>
+      <div class="dim-grid" id="dimGrid"></div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-users"></i> 你在哪个区间</h2>
+      <p style="color:#888;font-size:0.88rem;margin-bottom:16px;">基于 Bowen 自我分化量表（DSI-R）的研究样本分布</p>
+      <div id="distChart"></div>
+      <div class="insight blue" style="margin-top:16px;">
+        <h4><i class="ti ti-info-circle"></i> 关于这个分布</h4>
+        <p>Skowron & Friedlander（1998）对 DSI-R 量表的标准化研究显示，大多数成年人的自我分化得分集中在中等偏低区间。完全分化（100%）在理论上是一个理想状态，现实中不存在。Bowen 本人认为，大多数人的分化水平在 25–50 分（满分100）之间。</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-book"></i> 这背后的心理学</h2>
+      <div class="theory-grid">
+        <div class="theory-card">
+          <h4><i class="ti ti-dna"></i> Bowen 自我分化理论</h4>
+          <p>Murray Bowen 在家庭系统理论中提出，「自我分化」是指一个人在情感上与原生家庭保持独立的能力——既能与家人保持亲密，又不被家庭情绪系统淹没。分化程度低的人更容易把父母的焦虑内化为自己的行为准则。</p>
+          <div class="source">Bowen, M. (1978). Family Therapy in Clinical Practice.</div>
+        </div>
+        <div class="theory-card">
+          <h4><i class="ti ti-masks-theater"></i> Winnicott 真假自我</h4>
+          <p>英国精神分析师 D.W. Winnicott 区分了「真自我」（True Self）和「假自我」（False Self）。假自我是为了适应外部期待而建立的顺从性人格，它保护真自我不受伤害，但代价是真自我逐渐沉默。</p>
+          <div class="source">Winnicott, D.W. (1960). Ego distortion in terms of true and false self.</div>
+        </div>
+        <div class="theory-card">
+          <h4><i class="ti ti-compass"></i> ACT 价值澄清</h4>
+          <p>接受与承诺疗法（ACT）中，区分「选择的价值观」和「服从的价值观」是核心工作之一。当一个人的行动是由内在价值驱动时，他体验到的是意义感；当行动是由规避惩罚或获得认可驱动时，他体验到的是空洞感。</p>
+          <div class="source">Hayes, S.C. et al. (2012). Acceptance and Commitment Therapy, 2nd ed.</div>
+        </div>
+        <div class="theory-card">
+          <h4><i class="ti ti-chart-line"></i> 自我决定理论</h4>
+          <p>Deci & Ryan 的自我决定理论（SDT）将动机分为内在动机、内化动机和外在动机。研究显示，以「认同调节」（自己认同这件事的价值）为主的人，比以「外部调节」（为了奖惩）为主的人，在心理健康指标上显著更好。</p>
+          <div class="source">Deci, E.L. & Ryan, R.M. (2000). Self-Determination Theory. Psychological Inquiry.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="insightSection">
+      <h2><i class="ti ti-bulb"></i> 个性化洞察</h2>
+      <div id="insightContent"></div>
+    </div>
+
+    <div class="section" style="text-align:center;">
+      <button class="btn btn-primary" onclick="restart()" style="margin-right:12px;"><i class="ti ti-refresh"></i> 重新测试</button>
+    </div>
+  </div>
+</div>
+
+<button class="copy-btn" onclick="copyLink()" title="复制链接"><i class="ti ti-link"></i></button>
+<div class="toast" id="toast">链接已复制</div>
+
+<script>
+// ===== 题库：5维度 x 4题 = 20题 =====
+// 维度：情绪独立、决策自主、价值内化、边界意识、自我认同
+// 每题4个选项，分值 1-4（1=高度受外部影响，4=高度自主）
+const DIMENSIONS = [
+  { id:'emotional', name:'情绪独立', icon:'ti-heart', desc:'你的情绪在多大程度上独立于父母/重要他人的情绪' },
+  { id:'decision', name:'决策自主', icon:'ti-route', desc:'你做重大决定时，内在声音和外部声音的比例' },
+  { id:'values', name:'价值内化', icon:'ti-compass', desc:'你的价值观是自己选择的，还是被灌输后未经审视的' },
+  { id:'boundary', name:'边界意识', icon:'ti-shield', desc:'你能否在亲密关系中维持清晰的心理边界' },
+  { id:'identity', name:'自我认同', icon:'ti-fingerprint', desc:'你对「我是谁」的回答，有多少来自自己的体验' }
+];
+
+const QUESTIONS = [
+  // 情绪独立 x4
+  { dim:'emotional', text:'父母对你的某个决定表示失望时，你通常的反应是：',
+    opts:[
+      {text:'内疚到失眠，反复想是不是自己做错了',score:1},
+      {text:'心里不舒服，会考虑改变决定来让他们高兴',score:2},
+      {text:'有些难受，但能区分「他们失望」和「我做错了」是两回事',score:3},
+      {text:'理解他们的感受，但不会因此动摇自己的判断',score:4}
+    ]},
+  { dim:'emotional', text:'家庭聚会上，亲戚们因为某件事争吵起来，你会：',
+    opts:[
+      {text:'浑身不自在，想赶紧平息冲突或者逃离现场',score:1},
+      {text:'焦虑地试图调解，觉得自己有责任让大家和好',score:2},
+      {text:'有点不舒服，但能意识到这是他们之间的事',score:3},
+      {text:'保持平静，不被卷入情绪漩涡，需要时才介入',score:4}
+    ]},
+  { dim:'emotional', text:'你取得了一个成就（升职/考上/获奖），但父母反应冷淡，你会：',
+    opts:[
+      {text:'成就感瞬间消失，觉得这件事好像没那么值得高兴了',score:1},
+      {text:'有些失落，开始怀疑这个成就是不是真的有价值',score:2},
+      {text:'有点遗憾他们不理解，但自己知道这件事的意义',score:3},
+      {text:'为自己感到高兴，他们的反应不影响这件事本身的价值',score:4}
+    ]},
+  { dim:'emotional', text:'父母心情不好的时候，你会：',
+    opts:[
+      {text:'自己的心情也跟着变差，好像他们的情绪会传染给我',score:1},
+      {text:'努力让他们开心，如果做不到会觉得是自己的问题',score:2},
+      {text:'关心他们，但能保持自己的情绪稳定',score:3},
+      {text:'共情但不共溺，能区分「关心」和「被情绪绑架」',score:4}
+    ]},
+  // 决策自主 x4
+  { dim:'decision', text:'面临一个重大人生选择（换城市/转行/结婚）时，你的决策过程是：',
+    opts:[
+      {text:'先问父母的意见，他们反对的话基本不会做',score:1},
+      {text:'自己有想法，但如果父母强烈反对会放弃',score:2},
+      {text:'听取父母意见作为参考，最终自己决定',score:3},
+      {text:'独立分析利弊后做决定，之后再告知父母',score:4}
+    ]},
+  { dim:'decision', text:'你选择现在的职业/专业，最主要的原因是：',
+    opts:[
+      {text:'父母替我选的，或者他们强烈建议的方向',score:1},
+      {text:'综合考虑了父母期望和就业前景，自己的兴趣排在后面',score:2},
+      {text:'主要基于自己的兴趣，也考虑了现实因素',score:3},
+      {text:'完全出于自己的热情和判断，即使父母不理解',score:4}
+    ]},
+  { dim:'decision', text:'买一件比较贵的东西（手机/衣服/课程），你会：',
+    opts:[
+      {text:'先想「爸妈会不会觉得浪费」，他们会反对就不买',score:1},
+      {text:'买了之后如果被父母说「乱花钱」会后悔',score:2},
+      {text:'自己觉得值就买，被说了会解释但不会退货',score:3},
+      {text:'自己的钱自己做主，不需要向任何人解释消费决定',score:4}
+    ]},
+  { dim:'decision', text:'关于「什么时候该结婚/生孩子」这件事，你的态度是：',
+    opts:[
+      {text:'父母催就开始着急，觉得到了年龄就应该做',score:1},
+      {text:'内心不着急，但父母一催就焦虑，会加快节奏',score:2},
+      {text:'有自己的时间表，能承受父母的催促而不动摇',score:3},
+      {text:'这完全是我自己的人生节奏，外部压力不会改变我的计划',score:4}
+    ]},
+  // 价值内化 x4
+  { dim:'values', text:'关于「稳定的工作最重要」这个观念，你的看法是：',
+    opts:[
+      {text:'深信不疑，这就是正确的人生道路',score:1},
+      {text:'觉得有道理，虽然偶尔会想是不是还有别的可能',score:2},
+      {text:'理解这个观念的来源（父母那代人的经历），但不完全认同',score:3},
+      {text:'审视过这个观念，有自己独立的判断——它可能适合某些人，但不一定适合我',score:4}
+    ]},
+  { dim:'values', text:'如果你内心想做一件「不体面」的事（比如辞职去摆摊/学一个冷门技能），你会：',
+    opts:[
+      {text:'想都不敢想，这种事说出去丢人',score:1},
+      {text:'偷偷想过，但觉得不现实，主要是怕别人的眼光',score:2},
+      {text:'认真评估过可行性，如果合理会去做，但会有些在意别人看法',score:3},
+      {text:'「体面」是别人的标准，我更在意这件事对我有没有意义',score:4}
+    ]},
+  { dim:'values', text:'你对「孝顺」的理解是：',
+    opts:[
+      {text:'听父母的话，让他们满意，不让他们操心',score:1},
+      {text:'尽量满足父母的期望，实在做不到的时候会内疚',score:2},
+      {text:'关心和尊重父母，但不等于事事顺从',score:3},
+      {text:'真正的孝顺是成为一个独立的人，而不是一个听话的孩子',score:4}
+    ]},
+  { dim:'values', text:'回想你现在持有的核心信念（关于成功、幸福、对错），有多少是你主动选择的？',
+    opts:[
+      {text:'说实话，大部分是从小被教的，我没怎么质疑过',score:1},
+      {text:'有些开始动摇了，但还没形成自己的替代版本',score:2},
+      {text:'经历过一些事之后，重新审视了不少，保留了认同的，放弃了不认同的',score:3},
+      {text:'我的大部分核心信念都经过了自己的思考和体验验证',score:4}
+    ]},
+  // 边界意识 x4
+  { dim:'boundary', text:'父母未经你同意翻看你的手机/日记/房间，你的反应是：',
+    opts:[
+      {text:'觉得他们是关心我，虽然不舒服但不会说什么',score:1},
+      {text:'有点生气，但说了怕伤害关系，就算了',score:2},
+      {text:'会明确告诉他们这让我不舒服，希望以后先问我',score:3},
+      {text:'这是不可接受的边界侵犯，会认真沟通并设立规则',score:4}
+    ]},
+  { dim:'boundary', text:'父母对你的伴侣/朋友有意见，要求你疏远对方，你会：',
+    opts:[
+      {text:'听父母的，他们看人比我准',score:1},
+      {text:'很纠结，夹在中间两头为难，可能会减少和对方来往',score:2},
+      {text:'认真听父母的理由，但最终根据自己的判断决定',score:3},
+      {text:'我的社交关系由我自己负责，会礼貌但坚定地表达这一点',score:4}
+    ]},
+  { dim:'boundary', text:'过年回家，亲戚问你工资多少/有没有对象/什么时候生孩子，你会：',
+    opts:[
+      {text:'老实回答，虽然不想说但觉得不回答不礼貌',score:1},
+      {text:'含糊应付，心里很烦但不敢表现出来',score:2},
+      {text:'微笑转移话题，不正面回答也不觉得亏欠',score:3},
+      {text:'温和但清楚地表示「这是我的私事」，不觉得需要解释',score:4}
+    ]},
+  { dim:'boundary', text:'父母说「我这都是为你好」来要求你做某件事时，你的内心反应是：',
+    opts:[
+      {text:'他们确实是为我好，我应该听',score:1},
+      {text:'知道他们出发点是好的，但这句话让我很有压力',score:2},
+      {text:'能区分「善意的出发点」和「合理的要求」——出发点好不代表要求就合理',score:3},
+      {text:'「为你好」不是越界的通行证，我会根据事情本身判断要不要做',score:4}
+    ]},
+  // 自我认同 x4
+  { dim:'identity', text:'如果有人问你「你是一个什么样的人」，你的回答会：',
+    opts:[
+      {text:'用角色来定义：我是某某的孩子/某公司的员工/某人的伴侣',score:1},
+      {text:'说一些别人对我的评价：大家都说我很乖/很靠谱/很听话',score:2},
+      {text:'混合了自我认知和外部评价，但以自我感受为主',score:3},
+      {text:'能清晰描述自己的特质、热情和价值观，不依赖外部标签',score:4}
+    ]},
+  { dim:'identity', text:'独处的时候（没有社交、没有工作、没有任务），你的感受是：',
+    opts:[
+      {text:'空虚、焦虑，不知道该做什么，急需找人聊天或找事做',score:1},
+      {text:'有点不安，会习惯性刷手机来填充时间',score:2},
+      {text:'还行，偶尔享受，偶尔无聊',score:3},
+      {text:'很自在，独处是我充电和与自己对话的时间',score:4}
+    ]},
+  { dim:'identity', text:'你有没有一件事，是「所有人都觉得不适合你，但你就是想做」的？',
+    opts:[
+      {text:'没有，我的选择基本都在别人的预期范围内',score:1},
+      {text:'有过这种念头，但从来没付诸行动',score:2},
+      {text:'有，而且我正在做或者认真计划过',score:3},
+      {text:'有，而且我已经在做了，不管别人怎么看',score:4}
+    ]},
+  { dim:'identity', text:'回顾过去五年，你觉得自己活出了多少「自己想要的样子」？',
+    opts:[
+      {text:'很少，大部分时间在满足别人的期待',score:1},
+      {text:'有一些自己的选择，但整体方向还是被外部力量推着走',score:2},
+      {text:'大方向是自己选的，细节上有妥协',score:3},
+      {text:'大部分时间都在按自己的节奏生活，虽然不完美但很真实',score:4}
+    ]}
+];
+
+// ===== 状态 =====
+let curIdx = 0;
+let answers = new Array(QUESTIONS.length).fill(null);
+
+function renderQ() {
+  const q = QUESTIONS[curIdx];
+  const dim = DIMENSIONS.find(d => d.id === q.dim);
+  const pct = (curIdx / QUESTIONS.length * 100).toFixed(0);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('qCounter').textContent = (curIdx+1) + ' / ' + QUESTIONS.length;
+  document.getElementById('prevBtn').style.visibility = curIdx === 0 ? 'hidden' : 'visible';
+
+  const isLast = curIdx === QUESTIONS.length - 1;
+  const nb = document.getElementById('nextBtn');
+  nb.innerHTML = isLast ? '<i class="ti ti-check"></i> 查看结果' : '<i class="ti ti-arrow-right"></i> 下一题';
+  nb.disabled = answers[curIdx] === null;
+
+  let h = '<div class="q-card">';
+  h += '<div class="q-meta"><i class="ti ti-hash"></i> 第 '+(curIdx+1)+' 题</div>';
+  h += '<div class="q-dimension"><i class="ti '+dim.icon+'"></i> '+dim.name+'</div>';
+  h += '<div class="q-text">'+q.text+'</div>';
+  h += '<div class="options">';
+  q.opts.forEach((o,i) => {
+    const sel = answers[curIdx] === i ? ' selected' : '';
+    h += '<div class="opt'+sel+'" onclick="pick('+i+')"><div class="opt-dot"></div><div class="opt-text">'+o.text+'</div></div>';
+  });
+  h += '</div></div>';
+  document.getElementById('questionArea').innerHTML = h;
+}
+
+function pick(i) {
+  answers[curIdx] = i;
+  renderQ();
+}
+
+function nextQ() {
+  if (answers[curIdx] === null) return;
+  if (curIdx === QUESTIONS.length - 1) { showResult(); return; }
+  curIdx++;
+  renderQ();
+  document.getElementById('questionArea').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function prevQ() {
+  if (curIdx > 0) { curIdx--; renderQ(); }
+}
+
+function restart() {
+  curIdx = 0;
+  answers = new Array(QUESTIONS.length).fill(null);
+  document.getElementById('testSection').style.display = '';
+  document.getElementById('resultWrap').classList.remove('show');
+  renderQ();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+
+<script>
+// ===== 计算与结果 =====
+function calcScores() {
+  const dimScores = {};
+  DIMENSIONS.forEach(d => { dimScores[d.id] = { total:0, count:0 }; });
+  QUESTIONS.forEach((q,i) => {
+    if (answers[i] !== null) {
+      dimScores[q.dim].total += q.opts[answers[i]].score;
+      dimScores[q.dim].count++;
+    }
+  });
+  const result = {};
+  DIMENSIONS.forEach(d => {
+    const s = dimScores[d.id];
+    result[d.id] = s.count > 0 ? Math.round((s.total / (s.count * 4)) * 100) : 0;
+  });
+  return result;
+}
+
+function overallScore(dimPcts) {
+  const vals = Object.values(dimPcts);
+  return Math.round(vals.reduce((a,b)=>a+b,0) / vals.length);
+}
+
+function showResult() {
+  document.getElementById('testSection').style.display = 'none';
+  document.getElementById('resultWrap').classList.add('show');
+  window.scrollTo({top:0,behavior:'smooth'});
+
+  const dimPcts = calcScores();
+  const score = overallScore(dimPcts);
+
+  // 仪表盘动画
+  setTimeout(() => {
+    const offset = 283 - (283 * score / 100);
+    document.getElementById('gaugeArc').style.strokeDashoffset = offset;
+    document.getElementById('gaugeText').textContent = score + '%';
+  }, 200);
+
+  // 标题和描述
+  let title, desc;
+  if (score >= 80) {
+    title = '高度分化：你活得很「自己」';
+    desc = '你的行为和选择主要由内在价值驱动，能在亲密关系中保持清晰的自我边界。Bowen 认为这个水平的人能同时做到「亲密」和「独立」——既不疏离，也不融合。';
+  } else if (score >= 60) {
+    title = '中高分化：大方向是自己的';
+    desc = '你在大多数情境下能坚持自己的判断，但在某些特定维度上仍会受到外部期待的牵引。这是一个很健康的状态——完全不受他人影响既不现实也不必要。';
+  } else if (score >= 40) {
+    title = '中等分化：内外声音各占一半';
+    desc = '你的内心存在两套系统：一套是自己的声音，一套是内化的父母期待。在压力较小时你能做自己，但在重大决策或家庭冲突中，外部声音往往会占上风。';
+  } else if (score >= 25) {
+    title = '中低分化：父母的影子比较重';
+    desc = '你的很多行为模式、价值判断和情绪反应，仍然深受原生家庭的影响。这不是你的错——Bowen 指出，分化水平在很大程度上是代际传递的，改变需要有意识的努力。';
+  } else {
+    title = '低分化：大部分在为别人活';
+    desc = '你的自我边界比较模糊，很难区分「我想要的」和「别人期待我要的」。Winnicott 会说，你的「假自我」承担了太多功能，「真自我」被保护性地藏了起来。好消息是，意识到这一点本身就是改变的开始。';
+  }
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultDesc').textContent = desc;
+
+  // 维度卡片
+  const dimHints = {
+    emotional: [
+      '你的情绪高度依赖重要他人的状态，Bowen 称之为「情绪融合」',
+      '你能感知他人情绪但容易被卷入，边界还在建立中',
+      '你在大多数时候能保持情绪独立，偶尔会被触发',
+      '你有很强的情绪自主性，能共情但不共溺'
+    ],
+    decision: [
+      '你的重大决策主要由外部声音主导，自己的声音比较微弱',
+      '你有自己的想法，但在压力下容易让步',
+      '你的决策以自我判断为主，会参考但不依赖他人意见',
+      '你有很强的决策自主性，能为自己的选择负责'
+    ],
+    values: [
+      '你的核心价值观大多是未经审视的「继承品」',
+      '你开始质疑一些被灌输的观念，但还没形成完整的替代体系',
+      '你经历过价值观的重新审视，保留了认同的部分',
+      '你的价值体系是经过独立思考和体验验证的'
+    ],
+    boundary: [
+      '你的心理边界比较模糊，容易被他人的需求和期待入侵',
+      '你意识到边界的重要性，但在实践中经常妥协',
+      '你能在大多数情境下维持清晰的边界',
+      '你有健康而灵活的边界——既能保护自己，也能保持亲密'
+    ],
+    identity: [
+      '你的自我认同主要建立在外部角色和他人评价上',
+      '你在探索「我是谁」的过程中，但还没有清晰的答案',
+      '你对自己有比较清晰的认知，不太依赖外部标签',
+      '你有稳定而清晰的自我认同，独处时也很自在'
+    ]
+  };
+
+  let dh = '';
+  DIMENSIONS.forEach(d => {
+    const pct = dimPcts[d.id];
+    const level = pct >= 75 ? 3 : pct >= 50 ? 2 : pct >= 30 ? 1 : 0;
+    dh += '<div class="dim-card">';
+    dh += '<div class="dim-name"><i class="ti '+d.icon+'"></i> '+d.name+'</div>';
+    dh += '<div class="dim-score">'+pct+'%</div>';
+    dh += '<div class="dim-bar-wrap"><div class="dim-bar" style="width:'+pct+'%"></div></div>';
+    dh += '<div class="dim-hint">'+dimHints[d.id][level]+'</div>';
+    dh += '</div>';
+  });
+  document.getElementById('dimGrid').innerHTML = dh;
+
+  // 分布图
+  renderDist(score);
+
+  // 个性化洞察
+  renderInsights(dimPcts, score);
+}
+
+function renderDist(score) {
+  // 基于 DSI-R 研究的近似分布
+  const ranges = [
+    {label:'0-25%', pct:12, color:'#ff4444'},
+    {label:'25-40%', pct:28, color:'#ff8844'},
+    {label:'40-60%', pct:35, color:'#ffd700'},
+    {label:'60-80%', pct:19, color:'#88cc44'},
+    {label:'80-100%', pct:6, color:'#4CAF50'}
+  ];
+  const userRange = score < 25 ? 0 : score < 40 ? 1 : score < 60 ? 2 : score < 80 ? 3 : 4;
+
+  let h = '';
+  ranges.forEach((r,i) => {
+    const isUser = i === userRange;
+    h += '<div class="dist-bar-row">';
+    h += '<div class="dist-label" style="'+(isUser?'color:#ffd700;font-weight:bold':'')+'">'+r.label+'</div>';
+    h += '<div class="dist-bar-bg">';
+    h += '<div class="dist-bar-fill" style="width:'+r.pct+'%;background:'+r.color+(isUser?';box-shadow:0 0 8px '+r.color:'')+'">';
+    h += '<span>'+r.pct+'%'+(isUser?' ← 你在这里':'')+'</span>';
+    h += '</div></div></div>';
+  });
+  document.getElementById('distChart').innerHTML = h;
+}
+
+function renderInsights(dimPcts, score) {
+  let h = '';
+  // 找最高和最低维度
+  let maxDim = null, minDim = null, maxVal = -1, minVal = 101;
+  DIMENSIONS.forEach(d => {
+    if (dimPcts[d.id] > maxVal) { maxVal = dimPcts[d.id]; maxDim = d; }
+    if (dimPcts[d.id] < minVal) { minVal = dimPcts[d.id]; minDim = d; }
+  });
+
+  h += '<div class="insight green"><h4><i class="ti ti-trophy"></i> 你的优势维度：'+maxDim.name+'（'+maxVal+'%）</h4>';
+  h += '<p>'+maxDim.desc+'。在这个维度上你表现出较高的自主性，这是你的心理资源。</p></div>';
+
+  h += '<div class="insight"><h4><i class="ti ti-alert-circle"></i> 值得关注的维度：'+minDim.name+'（'+minVal+'%）</h4>';
+  h += '<p>'+minDim.desc+'。这个维度上外部影响较大，可能是你感到「不像自己」的主要来源。Bowen 的理论认为，分化水平最低的维度往往与原生家庭中最核心的情感议题有关。</p></div>';
+
+  // 差异分析
+  const gap = maxVal - minVal;
+  if (gap > 30) {
+    h += '<div class="insight blue"><h4><i class="ti ti-arrows-diff"></i> 维度差异较大（'+gap+'分）</h4>';
+    h += '<p>你在不同维度上的分化程度差异明显。这意味着你在某些领域已经建立了独立的自我，但在另一些领域仍然受到较强的外部牵引。这种不均衡在临床上很常见——人们往往在「最被允许独立」的领域先完成分化，而在家庭情感核心议题上最后才松动。</p></div>';
+  }
+
+  // 总体建议
+  h += '<div class="insight"><h4><i class="ti ti-bulb"></i> 一个提醒</h4>';
+  h += '<p>这个测试的目的不是给你贴标签，也不是说「分化越高越好」。Bowen 自己说过，完全分化是一个理论上的理想状态，现实中没有人能达到。重要的是觉察——当你能看见「这个想法是我的」和「这个想法是被植入的」之间的区别时，你就已经在分化的路上了。</p></div>';
+
+  document.getElementById('insightContent').innerHTML = h;
+}
+
+// ===== 工具函数 =====
+function copyLink() {
+  const url = 'https://numfeel.996.ninja/pages/true-self-test.html';
+  navigator.clipboard.writeText(url).then(() => {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  });
+}
+
+// 初始化
+renderQ();
+</script>
+</body>
+</html>

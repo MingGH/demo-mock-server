@@ -291,11 +291,15 @@ function renderStats(data) {
   const el = document.getElementById('globalStats');
   if (!el) return;
   const g = data.global;
-  if (!g || !g.totalSessions) return;
+  if (!g) return;
 
-  const fooledPct = g.totalSessions > 0
-    ? (100 - (g.perfectSessions / g.totalSessions * 100)).toFixed(1)
-    : 0;
+  if (!g.totalSessions) {
+    el.innerHTML = '<div style="color:#666;font-size:0.9rem">暂无数据，完成答题后刷新查看</div>';
+    return;
+  }
+
+  const perfectSessions = g.perfectSessions ?? 0;
+  const fooledPct = ((1 - perfectSessions / g.totalSessions) * 100).toFixed(1);
 
   el.innerHTML = `
     <div class="stats-grid">
@@ -304,7 +308,7 @@ function renderStats(data) {
         <div class="stat-lbl">参与人数</div>
       </div>
       <div class="stat-item">
-        <div class="stat-val">${g.perfectSessions.toLocaleString()}</div>
+        <div class="stat-val">${perfectSessions.toLocaleString()}</div>
         <div class="stat-lbl">全对人数</div>
       </div>
       <div class="stat-item">

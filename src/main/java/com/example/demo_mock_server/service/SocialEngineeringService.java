@@ -55,11 +55,11 @@ public class SocialEngineeringService {
 
     private static final String SQL_GLOBAL_STATS = """
         SELECT
-          COUNT(*)                                    AS total_sessions,
-          SUM(all_correct)                            AS perfect_sessions,
-          SUM(correct)                                AS total_correct_answers,
-          SUM(total - correct)                        AS total_wrong_answers,
-          ROUND(AVG(correct * 100.0 / total), 1)      AS avg_score_pct
+          COUNT(*)                                         AS total_sessions,
+          COALESCE(SUM(all_correct), 0)                   AS perfect_sessions,
+          COALESCE(SUM(correct), 0)                       AS total_correct_answers,
+          COALESCE(SUM(total - correct), 0)               AS total_wrong_answers,
+          ROUND(AVG(correct * 100.0 / total), 1)          AS avg_score_pct
         FROM se_sessions
         """;
 

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="社会工程学防骗挑战：12道真实场景题，测测你能识破几种骗局。覆盖AI换脸、杀猪盘、冒充公检法、屏幕共享诈骗等6种高发手法。">
+  <title>社会工程学防骗挑战 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-shield-exclamation"></i> 社会工程学防骗挑战</h1>
+    <p>骗局从不攻击技术，只攻击人。12道真实场景，测测你能识破几种手法</p>
+  </div>
+
+  <!-- 挑战区域 -->
+  <div class="section" id="challengeSection">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      <h2><i class="ti ti-target-arrow"></i> 判断真假</h2>
+      <div class="score-board">
+        <div class="score-item"><div class="val" id="scoreCorrect">0</div><div class="lbl">正确</div></div>
+        <div class="score-item"><div class="val" id="scoreTotal">/ 12</div><div class="lbl">总题数</div></div>
+      </div>
+    </div>
+    <div class="progress-wrap"><div class="progress-fill" id="progressBar" style="width:0%"></div></div>
+    <div id="questionArea"></div>
+    <div style="text-align:center;margin-top:20px;">
+      <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()" style="display:none">
+        <i class="ti ti-arrow-right"></i> 下一题
+      </button>
+    </div>
+  </div>
+
+  <!-- 结果页 -->
+  <div class="section result-screen" id="resultScreen">
+    <h2><i class="ti ti-chart-bar"></i> 挑战结果</h2>
+    <div class="result-big" id="resultScore">0%</div>
+    <div class="result-grade" id="resultGrade"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="result-breakdown" id="resultBreakdown"></div>
+    <div style="margin:20px 0 10px;color:#ffd700;font-size:1rem;display:flex;align-items:center;gap:8px;">
+      <i class="ti ti-alert-triangle"></i> 你的弱点分析
+    </div>
+    <div id="weaknessArea"></div>
+    <button class="btn btn-primary" onclick="startChallenge()" style="margin-top:24px">
+      <i class="ti ti-refresh"></i> 再来一次
+    </button>
+  </div>
+
+  <!-- 全站统计 -->
+  <div class="section" id="statsSection">
+    <h2><i class="ti ti-chart-dots"></i> 全站数据</h2>
+    <div id="globalStats">
+      <div style="color:#666;font-size:0.9rem">加载中…</div>
+    </div>
+  </div>
+
+  <!-- 六种手法解析 -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 六种社会工程学手法</h2>
+    <div class="tactic-grid">
+      <div class="tactic-card">
+        <h4><i class="ti ti-building-bank"></i> 权威恐吓</h4>
+        <p>冒充公安、银行、税务等权威机构，用「立案」「冻结账户」「违规」等词汇制造恐惧，让你在慌乱中失去判断力。</p>
+        <div class="stat">2025年冒充公检法诈骗损失超 120 亿元</div>
+      </div>
+      <div class="tactic-card">
+        <h4><i class="ti ti-clock-exclamation"></i> 紧迫感制造</h4>
+        <p>「24小时内」「本月底失效」「立即操作」——人在时间压力下会跳过理性分析，直接行动。这是所有骗局的标配。</p>
+        <div class="stat">加入时间限制后，点击率提升 3-5 倍</div>
+      </div>
+      <div class="tactic-card">
+        <h4><i class="ti ti-user-x"></i> 身份伪造</h4>
+        <p>短信发件人名称、邮件发件人显示名、微信头像昵称都可以伪造。真正需要核实的是域名、电话号码等底层信息。</p>
+        <div class="stat">95% 的钓鱼邮件伪造了发件人显示名</div>
+      </div>
+      <div class="tactic-card">
+        <h4><i class="ti ti-robot"></i> AI 身份克隆</h4>
+        <p>用 3 秒音频克隆声音，用几张照片生成视频。2026 年 AI 换脸/声音克隆诈骗增长超 400%，「看到」「听到」已不足以证明真实。</p>
+        <div class="stat">全球 deepfake 诈骗损失预计 260 亿美元</div>
+      </div>
+      <div class="tactic-card">
+        <h4><i class="ti ti-heart-handshake"></i> 情感操控</h4>
+        <p>杀猪盘先建立信任关系（有时长达数月），再推荐投资。朋友借钱骗局利用熟人信任。情感投入越深，判断力越弱。</p>
+        <div class="stat">杀猪盘平均「养猪」周期 47 天</div>
+      </div>
+      <div class="tactic-card">
+        <h4><i class="ti ti-qrcode"></i> 二维码钓鱼</h4>
+        <p>二维码内容肉眼无法识别，扫码前无法判断跳转目标。快递、停车缴费、餐厅点餐等场景都出现过调包二维码的案例。</p>
+        <div class="stat">2025 年二维码诈骗举报量同比增长 230%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 防骗建议 -->
+  <div class="section">
+    <h2><i class="ti ti-shield-check"></i> 实用防骗原则</h2>
+    <div class="insight-box green">
+      <h3><i class="ti ti-bulb"></i> 四个核心原则</h3>
+      <p>
+        1. <strong>慢下来</strong>：任何要求「立即」「马上」操作的，先停三秒钟想一想<br>
+        2. <strong>换渠道核实</strong>：收到转账请求，挂断电话，用另一个号码打给本人<br>
+        3. <strong>不开屏幕共享</strong>：任何客服都不需要远程控制你的手机<br>
+        4. <strong>看域名不看显示名</strong>：邮件发件人显示名可以随意伪造，域名才是真相
+      </p>
+    </div>
+    <div class="insight-box red">
+      <h3><i class="ti ti-alert-triangle"></i> 一个残酷的数据</h3>
+      <p>斯坦福研究显示，即使是网络安全专业人员，在模拟社工攻击中也有约 17% 的中招率。骗局攻击的是人类共有的认知弱点——对权威的服从、对损失的恐惧、对熟人的信任——这些弱点无法通过「更聪明」来消除，只能通过建立固定的核实流程来防范。</p>
+    </div>
+  </div>
+</div>
+
+<script src="questions.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@ import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.*;
 import com.example.demo_mock_server.service.FingerprintService;
 import com.example.demo_mock_server.service.GeoLocationService;
+import com.example.demo_mock_server.service.SocialEngineeringService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
@@ -90,6 +91,12 @@ public class RouterConfig {
         BrowserFingerprintHandler fingerprintHandler = new BrowserFingerprintHandler(fingerprintService);
         router.post("/fingerprint/collect").handler(new RateLimitHandler(60, 60)).handler(fingerprintHandler);
         router.get("/fingerprint/stats").handler(fingerprintHandler);
+
+        // 社会工程学防骗挑战
+        SocialEngineeringService seService = new SocialEngineeringService(mysqlPool);
+        SocialEngineeringHandler seHandler = new SocialEngineeringHandler(seService);
+        router.post("/social-engineering/submit").handler(new RateLimitHandler(30, 60)).handler(seHandler);
+        router.get("/social-engineering/stats").handler(seHandler);
 
         // 静态资源
         router.route("/pages/*").handler(StaticHandler.create("pages"));

@@ -1,0 +1,213 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px; margin-bottom: 30px; }
+.header h1 {
+  font-size: 2.5rem;
+  background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: shimmer 3s linear infinite; margin-bottom: 15px;
+}
+@keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+.header p { font-size: 1.1rem; color: #a0a0a0; max-width: 700px; margin: 0 auto; }
+
+/* ── Section card ── */
+.section {
+  background: rgba(255,255,255,0.05); border-radius: 16px; padding: 30px;
+  margin-bottom: 30px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+}
+.section h2 { font-size: 1.4rem; margin-bottom: 20px; color: #ffd700; display: flex; align-items: center; gap: 10px; }
+
+/* ── Buttons ── */
+.btn {
+  padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem;
+  cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-primary { background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 600; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.3); }
+.btn-secondary { background: rgba(255,255,255,0.1); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.2); }
+.btn-secondary:hover { background: rgba(255,255,255,0.15); }
+
+/* ── Progress ── */
+.score-board { display: flex; gap: 20px; flex-wrap: wrap; }
+.score-item { text-align: center; }
+.score-item .val { font-size: 1.8rem; font-weight: bold; color: #ffd700; }
+.score-item .lbl { font-size: 0.8rem; color: #a0a0a0; }
+.progress-wrap { background: rgba(255,255,255,0.1); border-radius: 4px; height: 6px; margin-bottom: 20px; }
+.progress-fill { height: 6px; border-radius: 4px; background: linear-gradient(90deg, #ffd700, #ffb700); transition: width 0.4s ease; }
+
+/* ── Question card ── */
+.question-card { background: rgba(0,0,0,0.3); border-radius: 14px; padding: 28px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+.q-meta { font-size: 0.85rem; color: #a0a0a0; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.q-meta .tag { background: rgba(255,215,0,0.15); color: #ffd700; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+.q-prompt { font-size: 1rem; color: #c0c0c0; margin-bottom: 20px; line-height: 1.7; }
+
+/* ── Scene card (email / sms / call) ── */
+.scene-card {
+  border-radius: 12px; margin-bottom: 20px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.scene-email { background: #1e2433; }
+.scene-sms   { background: #1a2a1a; }
+.scene-call  { background: #2a1a1a; }
+.scene-wechat { background: #1a2a1a; }
+
+.scene-topbar {
+  padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+  font-size: 0.82rem; color: #888; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.scene-topbar .dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot-red { background: #ff5f57; }
+.dot-yellow { background: #febc2e; }
+.dot-green { background: #28c840; }
+
+.scene-body { padding: 20px; }
+.email-from { font-size: 0.82rem; color: #888; margin-bottom: 4px; }
+.email-from span { color: #e8e8e8; }
+.email-subject { font-size: 1rem; font-weight: 600; color: #e8e8e8; margin-bottom: 14px; }
+.email-content { font-size: 0.9rem; color: #b0b0b0; line-height: 1.8; }
+.email-link { color: #4a9eff; text-decoration: underline; cursor: default; word-break: break-all; }
+
+.sms-bubble {
+  background: rgba(255,255,255,0.08); border-radius: 12px 12px 12px 2px;
+  padding: 14px 18px; font-size: 0.92rem; color: #d0d0d0; line-height: 1.8; max-width: 85%;
+}
+.sms-sender { font-size: 0.8rem; color: #888; margin-bottom: 8px; }
+.sms-link { color: #4a9eff; text-decoration: underline; }
+
+.call-avatar {
+  width: 64px; height: 64px; border-radius: 50%; background: rgba(255,100,100,0.2);
+  display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 14px;
+}
+.call-number { text-align: center; font-size: 1.1rem; color: #e8e8e8; margin-bottom: 6px; }
+.call-label { text-align: center; font-size: 0.82rem; color: #888; margin-bottom: 16px; }
+.call-script { font-size: 0.9rem; color: #b0b0b0; line-height: 1.8; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 14px; }
+
+.wechat-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.wechat-avatar { width: 40px; height: 40px; border-radius: 8px; background: #07c160; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+.wechat-name { font-size: 0.9rem; color: #e8e8e8; }
+.wechat-bubble { background: rgba(255,255,255,0.1); border-radius: 2px 12px 12px 12px; padding: 12px 16px; font-size: 0.9rem; color: #d0d0d0; line-height: 1.8; max-width: 85%; }
+
+/* ── Answer options ── */
+.answer-options { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.answer-opt {
+  flex: 1; min-width: 120px; padding: 14px 20px; border-radius: 10px; cursor: pointer;
+  border: 2px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05);
+  text-align: center; font-size: 0.95rem; transition: all 0.25s ease; color: #e8e8e8;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.answer-opt:hover { border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.05); }
+.answer-opt.correct { border-color: #4CAF50; background: rgba(76,175,80,0.15); }
+.answer-opt.wrong   { border-color: #ff4444; background: rgba(255,68,68,0.15); }
+.answer-opt.disabled { pointer-events: none; opacity: 0.7; }
+
+/* ── Highlight suspicious points ── */
+.suspicious { position: relative; display: inline; }
+.suspicious .sus-text {
+  background: rgba(255,68,68,0.25); border-bottom: 2px solid #ff4444;
+  border-radius: 2px; cursor: help; padding: 0 2px;
+  transition: background 0.2s;
+}
+.suspicious .sus-text:hover { background: rgba(255,68,68,0.4); }
+.sus-tooltip {
+  display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: #2a1a1a; border: 1px solid #ff4444; border-radius: 8px; padding: 10px 14px;
+  font-size: 0.82rem; color: #ffb0b0; white-space: nowrap; z-index: 100; pointer-events: none;
+  max-width: 260px; white-space: normal; line-height: 1.5;
+}
+.sus-tooltip::after {
+  content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 6px solid transparent; border-top-color: #ff4444;
+}
+.suspicious:hover .sus-tooltip { display: block; }
+
+/* ── Explain box ── */
+.explain-box {
+  background: rgba(0,0,0,0.25); border-radius: 10px; padding: 18px;
+  margin-top: 16px; border: 1px solid rgba(255,255,255,0.08); display: none;
+}
+.explain-box.show { display: block; }
+.explain-title { color: #ffd700; font-size: 0.9rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.explain-box p { color: #b0b0b0; font-size: 0.92rem; line-height: 1.7; margin-bottom: 8px; }
+.explain-box p:last-child { margin-bottom: 0; }
+.explain-box strong { color: #ffd700; }
+.explain-box .tactic-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(255,215,0,0.12); color: #ffd700; border: 1px solid rgba(255,215,0,0.3);
+  padding: 3px 10px; border-radius: 20px; font-size: 0.8rem; margin: 4px 4px 4px 0;
+}
+.sus-count { font-size: 0.85rem; color: #ff8888; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+
+/* ── Result screen ── */
+.result-screen { display: none; text-align: center; padding: 20px; }
+.result-screen.show { display: block; }
+.result-big { font-size: 4rem; font-weight: bold; color: #ffd700; margin: 20px 0; }
+.result-grade { font-size: 1.3rem; color: #e8e8e8; margin-bottom: 10px; }
+.result-sub { color: #a0a0a0; margin-bottom: 30px; line-height: 1.7; }
+.result-breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin: 24px 0; }
+.rb-card { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 16px; border: 1px solid rgba(255,255,255,0.1); }
+.rb-card .rv { font-size: 1.6rem; font-weight: bold; color: #ffd700; }
+.rb-card .rl { font-size: 0.8rem; color: #a0a0a0; margin-top: 4px; }
+
+/* ── Tactic grid ── */
+.tactic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.tactic-card { background: rgba(0,0,0,0.25); border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.08); }
+.tactic-card h4 { color: #ffd700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 1rem; }
+.tactic-card p { color: #a0a0a0; font-size: 0.88rem; line-height: 1.7; }
+.tactic-card .stat { margin-top: 10px; font-size: 0.82rem; color: #ff8888; background: rgba(255,68,68,0.1); border-radius: 6px; padding: 6px 10px; }
+
+/* ── Insight boxes ── */
+.insight-box {
+  background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,183,0,0.1));
+  border-left: 4px solid #ffd700; padding: 20px; border-radius: 0 12px 12px 0; margin: 20px 0;
+}
+.insight-box h3 { color: #ffd700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.insight-box p { color: #c0c0c0; line-height: 1.8; }
+.insight-box.red { background: linear-gradient(135deg, rgba(255,68,68,0.1), rgba(255,0,0,0.1)); border-left-color: #ff4444; }
+.insight-box.red h3 { color: #ff4444; }
+.insight-box.green { background: linear-gradient(135deg, rgba(76,175,80,0.1), rgba(0,200,0,0.1)); border-left-color: #4CAF50; }
+.insight-box.green h3 { color: #4CAF50; }
+
+/* ── Weakness radar ── */
+.weakness-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.weakness-item { display: flex; align-items: center; gap: 12px; }
+.weakness-label { width: 100px; font-size: 0.85rem; color: #a0a0a0; flex-shrink: 0; }
+.weakness-bar-wrap { flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+.weakness-bar { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+.weakness-val { width: 36px; text-align: right; font-size: 0.85rem; color: #ffd700; flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  .container { padding: 12px; }
+  .header { padding: 24px 12px; }
+  .header h1 { font-size: 1.6rem; }
+  .section { padding: 18px; }
+  .result-big { font-size: 3rem; }
+  .tactic-grid { grid-template-columns: 1fr; }
+  .answer-options { flex-direction: column; }
+  .answer-opt { min-width: unset; }
+  .sus-tooltip { max-width: 200px; }
+}
+
+/* ── Global stats ── */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px;
+}
+.stat-item { text-align: center; background: rgba(255,255,255,0.05); border-radius: 10px; padding: 16px; border: 1px solid rgba(255,255,255,0.08); }
+.stat-val { font-size: 1.8rem; font-weight: bold; color: #ffd700; }
+.stat-lbl { font-size: 0.8rem; color: #a0a0a0; margin-top: 4px; }
+
+/* ── Per-question stats ── */
+.q-stats-list { display: flex; flex-direction: column; gap: 8px; }
+.q-stat-row { display: flex; align-items: center; gap: 10px; }
+.q-stat-label { width: 90px; font-size: 0.85rem; color: #c0c0c0; flex-shrink: 0; }
+.q-stat-bar-wrap { flex: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+.q-stat-bar { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+.q-stat-val { width: 40px; text-align: right; font-size: 0.85rem; font-weight: bold; flex-shrink: 0; }
+.q-stat-attempts { width: 36px; text-align: right; flex-shrink: 0; }

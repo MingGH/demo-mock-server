@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="四种强化时间表对比模拟：固定比率、可变比率、固定间隔、可变间隔。实时响应率曲线，揭示变比强化为何是最强成瘾机制。">
+  <title>变比强化：最强成瘾机制 | 数字直觉</title>
+  <script src="../components/header.js" defer></script>
+  <link rel="stylesheet" href="../components/header.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    .header { text-align: center; padding: 40px 20px 30px; }
+    .header h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      background: linear-gradient(90deg, #ffd700, #ffaa00, #ffd700);
+      background-size: 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s infinite;
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0%} 50%{background-position:100%} }
+    .header p { color: #aaa; margin-top: 10px; font-size: 1rem; }
+
+    .section {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .section h2 {
+      font-size: 1.1rem;
+      color: #ffd700;
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* 四格卡片 */
+    .schedules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .schedule-card {
+      background: rgba(255,255,255,0.04);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .schedule-card:hover { border-color: rgba(255,215,0,0.4); transform: translateY(-2px); }
+    .schedule-card.active { border-color: var(--color); background: rgba(255,255,255,0.08); }
+    .schedule-card .card-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .schedule-card .dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--color); flex-shrink: 0;
+    }
+    .schedule-card .card-title { font-size: 1rem; font-weight: 600; color: #fff; }
+    .schedule-card .card-abbr { font-size: 0.75rem; color: #888; margin-left: auto; }
+    .schedule-card .card-desc { font-size: 0.82rem; color: #aaa; line-height: 1.5; }
+    .schedule-card .card-example {
+      margin-top: 10px; font-size: 0.78rem;
+      color: #888; border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 8px;
+    }
+    .schedule-card .rate-badge {
+      position: absolute; top: 12px; right: 12px;
+      font-size: 0.7rem; padding: 2px 8px; border-radius: 20px;
+      background: rgba(0,0,0,0.3); color: var(--color);
+      border: 1px solid var(--color);
+    }
+
+    /* 模拟控制 */
+    .sim-controls {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 20px;
+    }
+    .btn {
+      padding: 9px 20px; border-radius: 8px; border: none;
+      cursor: pointer; font-size: 0.9rem; font-weight: 600;
+      display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .btn-primary { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #1a1a2e; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.08); color: #ccc;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.12); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .speed-label { color: #aaa; font-size: 0.85rem; }
+    input[type=range] { accent-color: #ffd700; width: 100px; }
+
+    /* 图表区 */
+    .chart-wrap { position: relative; height: 300px; }
+    canvas { border-radius: 8px; }
+
+    /* 实时统计 */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    @media(max-width:600px){ .stats-row { grid-template-columns: repeat(2,1fr); } }
+    .stat-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px; padding: 12px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .stat-box .val {
+      font-size: 1.5rem; font-weight: 700;
+      color: var(--color, #ffd700);
+    }
+    .stat-box .lbl { font-size: 0.72rem; color: #888; margin-top: 4px; }
+
+    /* 对比表 */
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .compare-table th {
+      background: rgba(255,215,0,0.1); color: #ffd700;
+      padding: 10px 12px; text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .compare-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      color: #ccc;
+    }
+    .compare-table tr:hover td { background: rgba(255,255,255,0.03); }
+    .tag {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 0.72rem; font-weight: 600;
+    }
+    .tag-high { background: rgba(255,80,80,0.2); color: #ff8080; }
+    .tag-med  { background: rgba(255,200,0,0.2); color: #ffd700; }
+    .tag-low  { background: rgba(100,200,100,0.2); color: #80e080; }
+
+    /* 原理说明 */
+    .insight-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 14px;
+    }
+    .insight-card {
+      background: rgba(0,0,0,0.2); border-radius: 10px; padding: 16px;
+      border-left: 3px solid var(--color, #ffd700);
+    }
+    .insight-card .ic-title { font-size: 0.9rem; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .insight-card .ic-body { font-size: 0.8rem; color: #aaa; line-height: 1.6; }
+
+    /* 引导步骤 */
+    .guide-steps { display: flex; flex-direction: column; gap: 14px; }
+    .guide-step { display: flex; gap: 14px; align-items: flex-start; }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      color: #1a1a2e; font-weight: 700; font-size: 0.85rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-title { font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 4px; }
+    .step-desc { font-size: 0.82rem; color: #aaa; line-height: 1.6; }
+
+    /* 实时解读 */
+    .live-insight {
+      margin-top: 14px; padding: 12px 16px;
+      background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.2);
+      border-radius: 8px; font-size: 0.85rem; color: #ffb3b3;
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+
+    /* 响应式 */
+    @media(max-width:500px){
+      .schedules-grid { grid-template-columns: 1fr 1fr; }
+      .schedule-card { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-brain"></i> 变比强化：最强成瘾机制</h1>
+    <p>四种强化时间表对比模拟 · 揭示短视频、游戏、盲盒背后的同一个心理机制</p>
+  </div>
+
+  <!-- 步骤引导 -->
+  <div class="section" style="background:rgba(255,215,0,0.05);border-color:rgba(255,215,0,0.2)">
+    <h2><i class="ti ti-map"></i> 怎么玩这个演示</h2>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">点「开始模拟」，观察四条曲线的高低</div>
+          <div class="step-desc">纵轴是响应率——代表动物（或用户）每20个时间单位内做了多少次行为。<span style="color:#ff6b6b">红线（变比率）</span>会跑在最上面，<span style="color:#69db7c">绿线（固定间隔）</span>会在最下面锯齿抖动。</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">注意绿线（固定间隔）的锯齿形状</div>
+          <div class="step-desc">它每隔一段时间就会先跌到谷底、再爬升——这叫<strong>扇贝效应</strong>。刚拿到奖励后动物会停下来，快到下次奖励时间才重新努力。这就是为什么月薪制员工在发薪日前一周才突然勤快。</div>
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">点「消退实验」，看停止奖励后谁先放弃</div>
+          <div class="step-desc">奖励全部停止后，四条线会陆续下跌。<span style="color:#ff6b6b">红线（变比率）</span>下跌最慢——因为大脑已经习惯了「没有奖励也是正常的」，不会立刻放弃。这就是老虎机让人戒不掉的数学原因。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 四种时间表选择 -->
+  <div class="section">
+    <h2><i class="ti ti-layout-grid"></i> 四种强化时间表 <span style="font-size:0.8rem;color:#888;font-weight:400">（点击卡片可单独显示）</span></h2>
+    <div class="schedules-grid" id="scheduleCards"></div>
+  </div>
+
+  <!-- 模拟器 -->
+  <div class="section">
+    <h2><i class="ti ti-chart-line"></i> 实时响应率曲线</h2>
+    <div class="sim-controls">
+      <button class="btn btn-primary" id="btnStart" onclick="startSim()">
+        <i class="ti ti-player-play"></i> 开始模拟
+      </button>
+      <button class="btn btn-secondary" id="btnExtinction" onclick="startExtinction()">
+        <i class="ti ti-player-stop"></i> 消退实验（停止所有奖励）
+      </button>
+      <button class="btn btn-secondary" id="btnReset" onclick="resetSim()">
+        <i class="ti ti-refresh"></i> 重置
+      </button>
+      <label class="speed-label">
+        <i class="ti ti-gauge"></i> 速度
+        <input type="range" id="speedSlider" min="1" max="10" value="5" oninput="updateSpeed(this.value)">
+        <span id="speedVal">5x</span>
+      </label>
+    </div>
+
+    <!-- 消退提示横幅 -->
+    <div id="extinctionBanner" style="display:none;background:rgba(255,100,100,0.1);border:1px solid rgba(255,100,100,0.3);border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:0.85rem;color:#ff9999;display:none;align-items:center;gap:8px">
+      <i class="ti ti-player-stop"></i> 消退阶段：奖励已全部停止。观察哪条线最后才降下来。
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="mainChart"></canvas>
+    </div>
+    <div class="stats-row" id="statsRow"></div>
+
+    <!-- 实时解读 -->
+    <div id="liveInsight" class="live-insight" style="display:none"></div>
+  </div>
+
+  <!-- 对比表 -->
+  <div class="section">
+    <h2><i class="ti ti-table"></i> 四种时间表对比</h2>
+    <div style="overflow-x:auto">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>时间表</th>
+            <th>奖励规则</th>
+            <th>响应率</th>
+            <th>消退抵抗</th>
+            <th>现实中的对应物</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span style="color:#4fc3f7">■</span> 固定比率 (FR)</td>
+            <td>每 5 次响应给一次奖励</td>
+            <td><span class="tag tag-high">高</span></td>
+            <td><span class="tag tag-low">弱，停奖励很快放弃</span></td>
+            <td>计件工资、打卡集章</td>
+          </tr>
+          <tr style="background:rgba(255,107,107,0.06)">
+            <td><span style="color:#ff6b6b">■</span> 变比率 (VR) ⭐</td>
+            <td>平均 5 次，但哪次给完全随机</td>
+            <td><span class="tag tag-high">最高，几乎不停</span></td>
+            <td><span class="tag tag-high">最强，停奖励也坚持很久</span></td>
+            <td>老虎机、短视频、盲盒、赌博</td>
+          </tr>
+          <tr>
+            <td><span style="color:#69db7c">■</span> 固定间隔 (FI)</td>
+            <td>每隔 20 个时间单位给一次</td>
+            <td><span class="tag tag-low">低，有明显锯齿（扇贝效应）</span></td>
+            <td><span class="tag tag-low">弱</span></td>
+            <td>月薪、定时推送</td>
+          </tr>
+          <tr>
+            <td><span style="color:#ffd43b">■</span> 变间隔 (VI)</td>
+            <td>平均 20 个时间单位，但随机</td>
+            <td><span class="tag tag-med">中，比较平稳</span></td>
+            <td><span class="tag tag-med">中</span></td>
+            <td>刷新邮件、等外卖通知</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:12px;font-size:0.82rem;color:#888"><i class="ti ti-info-circle"></i> 四种时间表的奖励频率相同（平均每5次或每20个时间单位一次），差别只在于「是否可预测」。</p>
+  </div>
+
+  <!-- 原理洞察 -->
+  <div class="section">
+    <h2><i class="ti ti-bulb"></i> 为什么变比率最强</h2>
+    <div class="insight-grid">
+      <div class="insight-card" style="--color:#ff6b6b">
+        <div class="ic-title"><i class="ti ti-chart-line"></i> 曲线最高：不确定性激活多巴胺</div>
+        <div class="ic-body">模拟里红线跑在最上面，因为大脑对「可能有奖励」的反应比「确定有奖励」更强烈。多巴胺在预期阶段就开始分泌，不确定性让它持续高位。</div>
+      </div>
+      <div class="insight-card" style="--color:#69db7c">
+        <div class="ic-title"><i class="ti ti-wave-sine"></i> 绿线锯齿：扇贝效应</div>
+        <div class="ic-body">固定间隔的绿线呈锯齿状——刚拿到奖励后响应率跌到谷底，快到下次奖励时间才爬升。变比率没有这个停顿，因为下一次奖励永远「可能就是下一次」。</div>
+      </div>
+      <div class="insight-card" style="--color:#ff6b6b">
+        <div class="ic-title"><i class="ti ti-player-stop"></i> 消退最慢：戒不掉的数学原因</div>
+        <div class="ic-body">点消退实验后，红线下降最慢。大脑已经习惯了「没有奖励也是正常状态」，不会立刻放弃。这就是老虎机、短视频让人戒不掉的底层逻辑。</div>
+      </div>
+      <div class="insight-card" style="--color:#ffd43b">
+        <div class="ic-title"><i class="ti ti-device-mobile"></i> 产品设计的刻意应用</div>
+        <div class="ic-body">下拉刷新 = 拉老虎机摇臂（变比率）。点赞通知延迟推送 = 变间隔。盲盒 = 变比率。这些设计不是巧合，是行为心理学的精准复刻。</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ── 配置 ──────────────────────────────────────────────────
+const SCHEDULES = [
+  {
+    id: 'FR', name: '固定比率', abbr: 'Fixed Ratio',
+    color: '#4fc3f7',
+    desc: '每完成固定次数的行为，给予一次奖励。规律可预测。',
+    example: '打卡集10次送一杯咖啡、计件工资',
+    rateLabel: '高但有停顿',
+    // 每 N 次响应奖励一次
+    shouldReward(state) {
+      return state.responses % state.param === 0;
+    },
+    // 扇贝效应：刚拿到奖励后短暂停顿
+    responseProb(state) {
+      const sinceReward = state.responses - state.lastReward;
+      if (sinceReward < 2) return 0.2; // 刚拿到奖励，短暂停顿
+      return 0.9;
+    },
+    param: 5,
+  },
+  {
+    id: 'VR', name: '变比率', abbr: 'Variable Ratio',
+    color: '#ff6b6b',
+    desc: '平均每 N 次给一次奖励，但每次具体在第几次完全随机。',
+    example: '老虎机、短视频点赞、盲盒、赌博',
+    rateLabel: '最高且持续',
+    shouldReward(state) {
+      // 每次响应有 1/param 概率奖励
+      return Math.random() < 1 / state.param;
+    },
+    responseProb(state) {
+      return 0.95; // 几乎不停，因为下一次可能就有奖励
+    },
+    param: 5,
+  },
+  {
+    id: 'FI', name: '固定间隔', abbr: 'Fixed Interval',
+    color: '#69db7c',
+    desc: '每隔固定时间给一次奖励，时间到了才有效。',
+    example: '月薪发放、定时推送通知、每日签到',
+    rateLabel: '低，临近时间才高',
+    shouldReward(state) {
+      return state.tick - state.lastRewardTick >= state.param;
+    },
+    // 扇贝效应：刚拿到奖励后响应率低，临近下次奖励时升高
+    responseProb(state) {
+      const elapsed = state.tick - state.lastRewardTick;
+      const ratio = Math.min(elapsed / state.param, 1); // clamp ratio，避免超过1
+      return 0.1 + 0.85 * Math.pow(ratio, 2);
+    },
+    param: 20, // ticks
+  },
+  {
+    id: 'VI', name: '变间隔', abbr: 'Variable Interval',
+    color: '#ffd43b',
+    desc: '平均每 N 秒给一次奖励，但具体时间随机。',
+    example: '刷新邮件、等外卖、社交媒体通知',
+    rateLabel: '中等且稳定',
+    shouldReward(state) {
+      return state.tick - state.lastRewardTick >= state.nextInterval;
+    },
+    responseProb(state) {
+      return 0.6; // 稳定中等响应率
+    },
+    param: 20,
+    nextInterval(param) { return param * 0.5 + Math.random() * param; },
+  },
+];
+
+// ── 状态 ──────────────────────────────────────────────────
+const simStates = {};
+const historyLen = 200;
+let chart = null;
+let running = false;
+let speed = 5;
+let tickInterval = null;
+let extinctionMode = false;
+let extinctionStartTick = 0; // 消退开始时的 tick
+let totalTicks = 0;
+
+// 消退衰减速率：VR 最慢，FI/FR 较快，VI 中等
+// 值越小衰减越慢（每tick乘以这个系数）
+const EXTINCTION_DECAY = { FR: 0.994, VR: 0.999, FI: 0.992, VI: 0.996 };
+
+function initState(s) {
+  return {
+    responses: 0,
+    rewards: 0,
+    lastReward: 0,
+    lastRewardTick: 0,
+    tick: 0,
+    param: s.param,
+    nextInterval: s.nextInterval ? s.nextInterval(s.param) : s.param,
+    windowResponses: 0,
+    windowStart: 0,
+    rateHistory: [],
+    extinctionProb: null, // 消退开始时锁定的初始响应概率，之后持续衰减
+  };
+}
+
+// ── 渲染卡片 ──────────────────────────────────────────────
+function renderCards() {
+  const container = document.getElementById('scheduleCards');
+  container.innerHTML = SCHEDULES.map(s => `
+    <div class="schedule-card active" id="card-${s.id}" style="--color:${s.color}"
+         onclick="toggleSchedule('${s.id}')">
+      <div class="rate-badge">${s.rateLabel}</div>
+      <div class="card-header">
+        <div class="dot"></div>
+        <div class="card-title">${s.name}</div>
+        <div class="card-abbr">${s.abbr}</div>
+      </div>
+      <div class="card-desc">${s.desc}</div>
+      <div class="card-example"><i class="ti ti-tag"></i> ${s.example}</div>
+    </div>
+  `).join('');
+}
+
+const activeSchedules = new Set(SCHEDULES.map(s => s.id));
+function toggleSchedule(id) {
+  if (activeSchedules.has(id)) {
+    if (activeSchedules.size === 1) return;
+    activeSchedules.delete(id);
+    document.getElementById(`card-${id}`).classList.remove('active');
+  } else {
+    activeSchedules.add(id);
+    document.getElementById(`card-${id}`).classList.add('active');
+  }
+  renderChart();
+}
+
+// ── 实时解读 ──────────────────────────────────────────────
+function updateLiveInsight() {
+  const el = document.getElementById('liveInsight');
+  if (totalTicks < 40) { el.style.display = 'none'; return; }
+
+  const rates = {};
+  SCHEDULES.forEach(s => {
+    const h = simStates[s.id].rateHistory;
+    rates[s.id] = h.length > 0 ? h[h.length - 1].rate : 0;
+  });
+
+  let msg = '';
+  if (extinctionMode) {
+    const vrRate = rates['VR'];
+    const frRate = rates['FR'];
+    if (vrRate > frRate * 1.3) {
+      msg = `<i class="ti ti-player-stop"></i> 消退中：变比率（红线）响应率 ${vrRate.toFixed(0)} 次，固定比率（蓝线）${frRate.toFixed(0)} 次。红线还在坚持——大脑已经习惯了「没奖励也正常」，这就是老虎机戒不掉的原因。`;
+    } else {
+      msg = `<i class="ti ti-player-stop"></i> 消退进行中，继续观察各条线的下降速度……`;
+    }
+  } else {
+    const vrRate = rates['VR'];
+    const fiRate = rates['FI'];
+    if (vrRate > 0 && fiRate >= 0) {
+      const ratio = fiRate > 0 ? (vrRate / fiRate).toFixed(1) : '∞';
+      msg = `<i class="ti ti-eye"></i> 当前变比率（红线）响应率是固定间隔（绿线）的 <strong style="color:#ff6b6b">${ratio}x</strong>。注意绿线的锯齿——那是扇贝效应，刚拿到奖励后动物会停下来休息。`;
+    }
+  }
+
+  if (msg) { el.innerHTML = msg; el.style.display = 'flex'; }
+}
+
+// ── 图表初始化 ────────────────────────────────────────────
+function initChart() {
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets: [] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: {
+          type: 'linear',
+          title: { display: true, text: '时间（ticks）', color: '#888' },
+          ticks: { color: '#888' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+        },
+        y: {
+          title: { display: true, text: '响应率（次/20ticks）', color: '#888' },
+          ticks: { color: '#888' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          min: 0, max: 20,
+        }
+      },
+      plugins: {
+        legend: { labels: { color: '#ccc', boxWidth: 12 } },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          titleColor: '#ffd700',
+          bodyColor: '#ccc',
+        }
+      }
+    }
+  });
+}
+
+function renderChart() {
+  chart.data.datasets = SCHEDULES
+    .filter(s => activeSchedules.has(s.id))
+    .map(s => {
+      const state = simStates[s.id];
+      const data = state ? state.rateHistory.map(p => ({ x: p.tick, y: p.rate })) : [];
+      return {
+        label: s.name,
+        data,
+        borderColor: s.color,
+        backgroundColor: s.color + '22',
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: false,
+      };
+    });
+  chart.update('none');
+}
+
+// ── 统计面板 ──────────────────────────────────────────────
+function renderStats() {
+  const container = document.getElementById('statsRow');
+  container.innerHTML = SCHEDULES.map(s => {
+    const state = simStates[s.id];
+    const rate = state && state.responses > 0
+      ? ((state.rewards / state.responses) * 100).toFixed(1)
+      : '0.0';
+    const lastRate = state && state.rateHistory.length > 0
+      ? state.rateHistory[state.rateHistory.length - 1].rate.toFixed(1)
+      : '0';
+    return `
+      <div class="stat-box" style="--color:${s.color}">
+        <div class="val">${lastRate}</div>
+        <div class="lbl">${s.name}<br>响应率/20t</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── 模拟逻辑 ──────────────────────────────────────────────
+const WINDOW = 20; // 滑动窗口大小
+
+function tick() {
+  SCHEDULES.forEach(s => {
+    const state = simStates[s.id];
+    state.tick++;
+
+    // 消退模式：用衰减概率替代原始 responseProb
+    let prob;
+    if (extinctionMode) {
+      // 消退开始时锁定当前概率，之后每 tick 按各自速率衰减
+      if (state.extinctionProb === null) {
+        state.extinctionProb = Math.min(s.responseProb(state), 1); // clamp，防止带入超1的概率
+      }
+      state.extinctionProb *= EXTINCTION_DECAY[s.id];
+      prob = state.extinctionProb;
+    } else {
+      prob = s.responseProb(state);
+    }
+
+    const responded = Math.random() < prob;
+
+    if (responded) {
+      state.responses++;
+      state.windowResponses++;
+
+      // 判断是否给奖励（消退模式下不给）
+      if (!extinctionMode && s.shouldReward(state)) {
+        state.rewards++;
+        state.lastReward = state.responses;
+        state.lastRewardTick = state.tick;
+        // 变间隔：重新生成下一个间隔
+        if (s.nextInterval) {
+          state.nextInterval = s.nextInterval(s.param);
+        }
+      }
+    }
+
+    // 每 WINDOW ticks 记录一次响应率
+    if (state.tick - state.windowStart >= WINDOW) {
+      state.rateHistory.push({ tick: state.tick, rate: state.windowResponses });
+      if (state.rateHistory.length > historyLen) state.rateHistory.shift();
+      state.windowResponses = 0;
+      state.windowStart = state.tick;
+    }
+  });
+
+  totalTicks++;
+  renderChart();
+  renderStats();
+  updateLiveInsight();
+}
+
+// ── 控制 ──────────────────────────────────────────────────
+function startSim() {
+  if (running) {
+    // 暂停
+    clearInterval(tickInterval);
+    running = false;
+    document.getElementById('btnStart').innerHTML = '<i class="ti ti-player-play"></i> 继续';
+    return;
+  }
+
+  running = true;
+  document.getElementById('btnStart').innerHTML = '<i class="ti ti-player-pause"></i> 暂停';
+
+  const msPerTick = Math.max(10, 200 / speed);
+  tickInterval = setInterval(tick, msPerTick);
+}
+
+function startExtinction() {
+  if (!running) startSim();
+  extinctionMode = true;
+  extinctionStartTick = totalTicks;
+  // 重置各 state 的消退概率，让它从当前值开始衰减
+  SCHEDULES.forEach(s => { simStates[s.id].extinctionProb = null; });
+  const banner = document.getElementById('extinctionBanner');
+  banner.style.display = 'flex';
+  document.getElementById('btnExtinction').disabled = true;
+}
+
+function resetSim() {
+  clearInterval(tickInterval);
+  running = false;
+  extinctionMode = false;
+  totalTicks = 0;
+  document.getElementById('btnStart').innerHTML = '<i class="ti ti-player-play"></i> 开始模拟';
+  document.getElementById('btnExtinction').disabled = false;
+  document.getElementById('extinctionBanner').style.display = 'none';
+  document.getElementById('liveInsight').style.display = 'none';
+  SCHEDULES.forEach(s => { simStates[s.id] = initState(s); });
+  renderChart();
+  renderStats();
+}
+
+function updateSpeed(val) {
+  speed = parseInt(val);
+  document.getElementById('speedVal').textContent = val + 'x';
+  if (running) {
+    clearInterval(tickInterval);
+    const msPerTick = Math.max(10, 200 / speed);
+    tickInterval = setInterval(tick, msPerTick);
+  }
+}
+
+// ── 初始化 ────────────────────────────────────────────────
+renderCards();
+SCHEDULES.forEach(s => { simStates[s.id] = initState(s); });
+initChart();
+renderStats();</script>
+</body>
+</html>

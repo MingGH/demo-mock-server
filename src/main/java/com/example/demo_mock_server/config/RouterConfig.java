@@ -5,6 +5,7 @@ import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.*;
 import com.example.demo_mock_server.service.FingerprintService;
 import com.example.demo_mock_server.service.GeoLocationService;
+import com.example.demo_mock_server.service.InferenceLeaderboardService;
 import com.example.demo_mock_server.service.SocialEngineeringService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
@@ -97,6 +98,12 @@ public class RouterConfig {
         SocialEngineeringHandler seHandler = new SocialEngineeringHandler(seService);
         router.post("/social-engineering/submit").handler(new RateLimitHandler(30, 60)).handler(seHandler);
         router.get("/social-engineering/stats").handler(seHandler);
+
+        // 统计侦探排行榜
+        InferenceLeaderboardService inferenceService = new InferenceLeaderboardService(mysqlPool);
+        InferenceLeaderboardHandler inferenceHandler = new InferenceLeaderboardHandler(inferenceService);
+        router.post("/inference/leaderboard").handler(new RateLimitHandler(10, 60)).handler(inferenceHandler);
+        router.get("/inference/leaderboard").handler(inferenceHandler);
 
         // 静态资源
         router.route("/pages/*").handler(StaticHandler.create("pages"));

@@ -38,7 +38,7 @@ public class InferenceLeaderboardService {
         "SELECT id, name, score, rounds, wins, grade, created_at FROM inference_leaderboard ORDER BY score DESC, created_at ASC LIMIT ?";
 
     private static final String SQL_RANK =
-        "SELECT COUNT(*) + 1 AS rank FROM inference_leaderboard WHERE score > ?";
+        "SELECT COUNT(*) + 1 AS `rank` FROM inference_leaderboard WHERE score > ?";
 
     private static final String SQL_TOTAL =
         "SELECT COUNT(*) AS total FROM inference_leaderboard";

@@ -104,6 +104,7 @@ public class RouterConfig {
         InferenceLeaderboardHandler inferenceHandler = new InferenceLeaderboardHandler(inferenceService);
         router.post("/inference/leaderboard").handler(new RateLimitHandler(10, 60)).handler(inferenceHandler);
         router.get("/inference/leaderboard").handler(inferenceHandler);
+        router.delete("/inference/leaderboard").handler(inferenceHandler);
 
         // 静态资源
         router.route("/pages/*").handler(StaticHandler.create("pages"));

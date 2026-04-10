@@ -28,6 +28,7 @@ public class InferenceLeaderboardHandler implements Handler<RoutingContext> {
         String method = ctx.request().method().name();
         if ("POST".equals(method)) handlePost(ctx);
         else if ("GET".equals(method)) handleGet(ctx);
+        else if ("DELETE".equals(method)) handleDelete(ctx);
         else ctx.response().setStatusCode(405).end();
     }
 
@@ -61,6 +62,12 @@ public class InferenceLeaderboardHandler implements Handler<RoutingContext> {
         service.top(limit)
             .onSuccess(data -> ok(ctx, data))
             .onFailure(err -> { log.error("top error", err); sendError(ctx, 500, "Internal error"); });
+    }
+
+    private void handleDelete(RoutingContext ctx) {
+        service.clear()
+            .onSuccess(v -> ok(ctx, new JsonObject().put("cleared", true)))
+            .onFailure(err -> { log.error("clear error", err); sendError(ctx, 500, "Internal error"); });
     }
 
     private String sanitize(String raw) {

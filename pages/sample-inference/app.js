@@ -469,24 +469,13 @@ function loadLeaderboard(myName) {
         list.innerHTML = '<div class="lb-loading">排行榜加载失败</div>';
         return;
       }
-      const { leaders, total } = res.data;
-      document.getElementById('lbTotal').textContent = total > 0 ? '共 ' + total + ' 人参与' : '';
-
-      if (!leaders || leaders.length === 0) {
-        list.innerHTML = '<div class="lb-loading" style="color:#ffd700;">还没有人上榜，你来当第一个！</div>';
-        return;
-      }
-      list.innerHTML = leaders.map(r => {
-        const rankClass = r.rank === 1 ? 'top1' : r.rank === 2 ? 'top2' : r.rank === 3 ? 'top3' : '';
-        const rankIcon = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank;
-        const isMe = myName && r.name === myName;
-        return `<div class="lb-row${isMe ? ' me' : ''}">
-          <span class="lb-rank ${rankClass}">${rankIcon}</span>
-          <span class="lb-name">${escHtml(r.name)}${isMe ? ' 👈' : ''}</span>
-          <span class="lb-score">${r.score}</span>
-          <span class="lb-grade">${r.grade}</span>
-        </div>`;
-      }).join('');
+      renderLbRows(res.data.leaders, myName, list, document.getElementById('lbTotal'), res.data.total);
+      // 同步刷新页面底部的全局榜
+      renderLbRows(res.data.leaders, myName,
+        document.getElementById('globalLbList'),
+        document.getElementById('globalLbTotal'),
+        res.data.total
+      );
     })
     .catch(() => {
       list.innerHTML = '<div class="lb-loading">排行榜加载失败，请刷新重试</div>';
@@ -497,5 +486,44 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function renderLbRows(leaders, myName, listEl, totalEl, total) {
+  if (totalEl) totalEl.textContent = total > 0 ? '共 ' + total + ' 人参与' : '';
+  if (!leaders || leaders.length === 0) {
+    listEl.innerHTML = '<div class="lb-loading" style="color:#ffd700;">还没有人上榜，你来当第一个！</div>';
+    return;
+  }
+  listEl.innerHTML = leaders.map(r => {
+    const rankClass = r.rank === 1 ? 'top1' : r.rank === 2 ? 'top2' : r.rank === 3 ? 'top3' : '';
+    const rankIcon = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank;
+    const isMe = myName && r.name === myName;
+    return `<div class="lb-row${isMe ? ' me' : ''}">
+      <span class="lb-rank ${rankClass}">${rankIcon}</span>
+      <span class="lb-name">${escHtml(r.name)}${isMe ? ' 👈' : ''}</span>
+      <span class="lb-score">${r.score}</span>
+      <span class="lb-grade">${r.grade}</span>
+    </div>`;
+  }).join('');
+}
+
+// 页面加载时的全局排行榜
+function loadGlobalLeaderboard() {
+  fetch(API + '?limit=20')
+    .then(r => r.json())
+    .then(res => {
+      if (res.status !== 200) return;
+      renderLbRows(
+        res.data.leaders, null,
+        document.getElementById('globalLbList'),
+        document.getElementById('globalLbTotal'),
+        res.data.total
+      );
+    })
+    .catch(() => {
+      const el = document.getElementById('globalLbList');
+      if (el) el.innerHTML = '<div class="lb-loading">加载失败</div>';
+    });
+}
+
 // 启动
 initGame();
+loadGlobalLeaderboard();

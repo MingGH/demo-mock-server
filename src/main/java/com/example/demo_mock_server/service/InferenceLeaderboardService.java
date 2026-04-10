@@ -43,6 +43,9 @@ public class InferenceLeaderboardService {
     private static final String SQL_TOTAL =
         "SELECT COUNT(*) AS total FROM inference_leaderboard";
 
+    private static final String SQL_CLEAR =
+        "DELETE FROM inference_leaderboard";
+
     private final MySQLPool pool;
 
     public InferenceLeaderboardService(MySQLPool pool) {
@@ -103,5 +106,10 @@ public class InferenceLeaderboardService {
                 .put("leaders", cf.<JsonArray>resultAt(0))
                 .put("total", cf.<Long>resultAt(1))
         );
+    }
+
+    /** 清空排行榜 */
+    public Future<Void> clear() {
+        return pool.query(SQL_CLEAR).execute().mapEmpty();
     }
 }

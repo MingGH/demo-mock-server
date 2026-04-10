@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="为什么有人看几眼就能判断准？用统计推断游戏训练你的直觉，从几个数据点推测总体分布，看你能打败贝叶斯估计吗。">
+  <title>统计侦探：小样本推断大真相 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-search"></i> 统计侦探</h1>
+    <p>为什么有人看几眼就能判断准？因为他们在无意识地做统计推断。来测测你的直觉，看能不能从几个线索推测出全貌。</p>
+  </div>
+
+  <!-- ── 游戏区域 ── -->
+  <div class="section" id="gameSection">
+    <h2><i class="ti ti-target-arrow"></i> 侦探模式</h2>
+
+    <div class="round-header">
+      <span class="round-label">关卡 <strong id="roundNum">1</strong> / <span id="totalRounds">6</span></span>
+      <span class="score-badge"><i class="ti ti-trophy"></i> 总分：<span id="totalScore">0</span></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+    <div class="scenario-info">
+      <h3 id="scenarioTitle"></h3>
+      <p id="scenarioDesc"></p>
+    </div>
+
+    <div class="game-board">
+      <!-- 左：线索 -->
+      <div class="panel">
+        <div class="panel-title"><i class="ti ti-eye"></i> 已揭示的数据点</div>
+        <div class="data-points" id="dataPoints"></div>
+        <div class="reveal-row">
+          <button class="btn btn-secondary btn-sm" id="revealBtn" onclick="revealNext()">
+            <i class="ti ti-plus"></i> 再看一个（-5分）
+          </button>
+          <span class="reveal-count" id="revealCount">已看 0 / 10</span>
+        </div>
+        <div class="chart-wrap" style="height:200px;">
+          <canvas id="clueChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 右：猜测 -->
+      <div class="panel">
+        <div class="panel-title"><i class="ti ti-adjustments"></i> 你的猜测</div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>你猜的平均值是多少？</span>
+            <span class="val" id="guessAvgVal">—</span>
+          </div>
+          <input type="range" id="guessAvg" min="0" max="100" value="50" step="1" oninput="updateGuessDisplay()">
+        </div>
+
+        <div class="chart-wrap" style="height:160px;margin-bottom:16px;">
+          <canvas id="guessChart"></canvas>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="submitBtn" onclick="submitGuess()">
+          <i class="ti ti-check"></i> 提交猜测
+        </button>
+      </div>
+    </div>
+
+    <!-- 单轮结果（提交后显示） -->
+    <div id="roundResult" style="display:none;">
+      <div class="result-compare">
+        <div class="result-card you">
+          <span class="tag">你的猜测</span>
+          <div class="big" id="resYouAvg">—</div>
+          <div class="sub" id="resYouSub">—</div>
+        </div>
+        <div class="result-card mle">
+          <span class="tag">MLE 估计</span>
+          <div class="big" id="resMleAvg">—</div>
+          <div class="sub" id="resMleSub">—</div>
+        </div>
+        <div class="result-card true">
+          <span class="tag">真实均值</span>
+          <div class="big" id="resTrueAvg">—</div>
+          <div class="sub" id="resTrueSub">—</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap" style="height:260px;margin:16px 0;">
+        <canvas id="resultChart"></canvas>
+      </div>
+
+      <div id="roundInsight" class="insight-box">
+        <h3><i class="ti ti-bulb"></i> 本轮分析</h3>
+        <p id="roundInsightText"></p>
+      </div>
+
+      <div style="text-align:center;margin-top:16px;">
+        <button class="btn btn-primary" id="nextBtn" onclick="nextRound()">
+          <i class="ti ti-arrow-right"></i> 下一关
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 最终成绩 ── -->
+  <div class="section" id="finalSection" style="display:none;">
+    <h2><i class="ti ti-trophy"></i> 最终成绩</h2>
+    <div class="stats-grid" id="finalStats"></div>
+
+    <div class="chart-wrap" style="height:260px;margin:16px 0;">
+      <canvas id="finalChart"></canvas>
+    </div>
+
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>#</th><th>场景</th><th>你的均值</th><th>真实均值</th>
+          <th class="col-std">误差</th><th>得分</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+
+    <div id="finalInsight" class="insight-box green">
+      <h3><i class="ti ti-award"></i> 总评</h3>
+      <p id="finalInsightText"></p>
+    </div>
+
+    <!-- 提交排行榜 -->
+    <div class="leaderboard-submit" id="submitArea">
+      <div class="submit-prompt">
+        <i class="ti ti-trophy"></i>
+        <span>留下你的知乎大名，上排行榜</span>
+      </div>
+      <div class="submit-row">
+        <input type="text" id="playerName" class="name-input" placeholder="你的名字（最多12字）" maxlength="12">
+        <button class="btn btn-primary" id="submitScoreBtn" onclick="submitScore()">
+          <i class="ti ti-send"></i> 提交
+        </button>
+      </div>
+      <div id="submitResult" class="submit-result" style="display:none;"></div>
+    </div>
+
+    <!-- 排行榜 -->
+    <div class="leaderboard-section" id="leaderboardSection">
+      <div class="lb-header">
+        <span><i class="ti ti-list-numbers"></i> 排行榜</span>
+        <span class="lb-total" id="lbTotal"></span>
+      </div>
+      <div id="lbList" class="lb-list">
+        <div class="lb-loading">加载中…</div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:16px;">
+      <button class="btn btn-primary" onclick="restartGame()">
+        <i class="ti ti-refresh"></i> 再来一局
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么有人判断特别准？</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>新手：只看数据</h4>
+        <p>看到3个月薪数据就取平均值。这是最大似然估计（MLE），纯粹依赖眼前数据，样本少时误差很大。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>老手：数据 + 经验</h4>
+        <p>同样3个数据，老手会结合「这是哪个城市、什么行业」来调整判断。这就是贝叶斯推断——先验知识 × 数据。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>高手：知道自己不确定</h4>
+        <p>高手不只给出估计，还知道估计有多不可靠。样本越少越谨慎，信息够了才果断。这是元认知。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 关键洞察</h3>
+      <p>「判断准」不是天赋，而是：① 积累先验知识（见多识广）② 从少量信号提取信息（统计直觉）③ 知道何时果断、何时保守（元认知）。这三点恰好对应统计学三大支柱：<strong>先验分布、似然函数、后验更新</strong>。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="scenarios.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

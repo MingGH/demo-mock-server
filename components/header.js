@@ -1,8 +1,20 @@
 (function() {
-  const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-  const isInPages = window.location.pathname.includes('/pages/');
-  const isHome = currentPage === 'index.html';
-  const prefix = isInPages ? '../' : '';
+  const pathname = window.location.pathname;
+  const currentPage = pathname.split('/').pop() || 'index.html';
+  const isHome = currentPage === 'index.html' && !pathname.includes('/pages/');
+
+  // 计算到根目录的相对路径深度
+  // 根目录页面: prefix = ''
+  // pages/xxx.html: prefix = '../'
+  // pages/xxx/index.html: prefix = '../../'
+  const pagesIdx = pathname.indexOf('/pages/');
+  let prefix = '';
+  if (pagesIdx !== -1) {
+    const afterPages = pathname.slice(pagesIdx + '/pages/'.length);
+    // afterPages 形如 'foo.html' 或 'foo/index.html'
+    const depth = afterPages.split('/').length; // 1 = 直接在pages下, 2 = 子目录
+    prefix = depth >= 2 ? '../../' : '../';
+  }
   const accentMap = {
     probability: '别赌直觉',
     finance: '别被数字哄',
@@ -608,6 +620,10 @@
       .then(r => r.json())
       .then(data => {
         const currentFile = currentPage; // e.g. benfords-law.html
+        // 子目录页面的路径片段，如 'pages/sample-inference/'
+        const currentHrefSuffix = pathname.includes('/pages/')
+          ? pathname.slice(pathname.indexOf('/pages/') + 1)
+          : '';
         let currentCat = null;
         let allDemos = [];
 
@@ -615,12 +631,24 @@
           cat.demos.forEach(demo => {
             const file = demo.href.split('/').pop();
             allDemos.push({ ...demo, catId: cat.id, catName: cat.name, file });
-            if (file === currentFile) currentCat = cat.id;
+            // 优先完整路径匹配（子目录），fallback 文件名匹配
+            const matched = currentHrefSuffix
+              ? demo.href.replace(/\/?$/, '/') === currentHrefSuffix.replace(/\/?$/, '/') || file === currentFile
+              : file === currentFile;
+            if (matched) currentCat = cat.id;
           });
         });
 
         // 排除当前页
-        const others = allDemos.filter(d => d.file !== currentFile);
+        const others = allDemos.filter(d => {
+          const hrefSuffix = pathname.includes('/pages/')
+            ? pathname.slice(pathname.indexOf('/pages/') + 1)
+            : '';
+          if (hrefSuffix) {
+            return d.href.replace(/\/?$/, '/') !== hrefSuffix.replace(/\/?$/, '/') && d.file !== currentFile;
+          }
+          return d.file !== currentFile;
+        });
 
         // 同分类优先：取同分类随机2个 + 其他分类随机1个
         const sameCat  = shuffle(others.filter(d => d.catId === currentCat));

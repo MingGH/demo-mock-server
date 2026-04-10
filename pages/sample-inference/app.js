@@ -459,15 +459,21 @@ function showSubmitResult(msg, ok) {
 }
 
 function loadLeaderboard(myName) {
+  const list = document.getElementById('lbList');
+  list.innerHTML = '<div class="lb-loading">加载中…</div>';
+
   fetch(API + '?limit=20')
     .then(r => r.json())
     .then(res => {
-      if (res.status !== 200) return;
+      if (res.status !== 200) {
+        list.innerHTML = '<div class="lb-loading">排行榜加载失败</div>';
+        return;
+      }
       const { leaders, total } = res.data;
-      document.getElementById('lbTotal').textContent = '共 ' + total + ' 人参与';
-      const list = document.getElementById('lbList');
+      document.getElementById('lbTotal').textContent = total > 0 ? '共 ' + total + ' 人参与' : '';
+
       if (!leaders || leaders.length === 0) {
-        list.innerHTML = '<div class="lb-loading">还没有人上榜，你是第一个！</div>';
+        list.innerHTML = '<div class="lb-loading" style="color:#ffd700;">还没有人上榜，你来当第一个！</div>';
         return;
       }
       list.innerHTML = leaders.map(r => {
@@ -483,7 +489,7 @@ function loadLeaderboard(myName) {
       }).join('');
     })
     .catch(() => {
-      document.getElementById('lbList').innerHTML = '<div class="lb-loading">排行榜加载失败</div>';
+      list.innerHTML = '<div class="lb-loading">排行榜加载失败，请刷新重试</div>';
     });
 }
 

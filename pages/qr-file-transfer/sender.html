@@ -45,9 +45,9 @@
     <div class="slider-group">
       <div class="slider-label">
         <span>分片大小</span>
-        <span class="val" id="chunkSizeVal">500 字节</span>
+        <span class="val" id="chunkSizeVal">400 字节</span>
       </div>
-      <input type="range" id="chunkSize" min="200" max="800" value="500" step="50">
+      <input type="range" id="chunkSize" min="200" max="600" value="400" step="50">
       <div style="font-size:0.8rem;color:#666;margin-top:4px;">越大传输越快，但二维码越密集，可能影响识别</div>
     </div>
 
@@ -69,7 +69,7 @@
 
     <div class="qr-area">
       <div class="qr-container">
-        <canvas id="qrCanvas" width="300" height="300"></canvas>
+        <canvas id="qrCanvas" width="320" height="320"></canvas>
       </div>
       <div class="chunk-indicator">
         <span id="currentChunk">1</span> / <span id="totalChunks">1</span>

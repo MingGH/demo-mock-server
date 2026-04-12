@@ -11,9 +11,9 @@ let fileName = null;
 let totalChunks = 0;
 let receivedChunks = new Map(); // index -> data
 let startTime = null;
-let lastScanTime = null;
 let scanCount = 0;
-let scanAttempts = 0; // 总扫描次数（包括失败）
+let scanAttempts = 0; // 总扫描次数
+let lastDetectedTime = 0; // 上次检测到二维码的时间
 
 // ========== 初始化 ==========
 async function init() {
@@ -23,6 +23,12 @@ async function init() {
   
   document.getElementById('downloadBtn').addEventListener('click', downloadFile);
   document.getElementById('resetBtn').addEventListener('click', resetReceiver);
+  
+  // 检查 jsQR 是否加载
+  if (typeof jsQR === 'undefined') {
+    showError('二维码识别库加载失败，请刷新页面重试');
+    return;
+  }
   
   try {
     await startCamera();
@@ -34,29 +40,31 @@ async function init() {
 
 // ========== 摄像头 ==========
 async function startCamera() {
+  // 使用较低分辨率，提高处理速度
   const stream = await navigator.mediaDevices.getUserMedia({
     video: {
-      facingMode: 'environment', // 优先后置摄像头
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
+      facingMode: 'environment',
+      width: { ideal: 640 },
+      height: { ideal: 480 }
     }
   });
   
   video.srcObject = stream;
-  await video.play();
   
-  // 等待视频尺寸确定
-  await new Promise(resolve => {
-    if (video.videoWidth > 0) {
-      resolve();
-    } else {
-      video.addEventListener('loadedmetadata', resolve, { once: true });
-    }
+  // 等待视频准备好
+  await new Promise((resolve, reject) => {
+    video.onloadedmetadata = () => {
+      video.play().then(resolve).catch(reject);
+    };
+    video.onerror = reject;
   });
   
+  // 再等一下确保尺寸确定
+  await new Promise(r => setTimeout(r, 500));
+  
   // 设置 canvas 尺寸
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
   console.log('摄像头尺寸:', canvas.width, 'x', canvas.height);
 }
 
@@ -65,35 +73,53 @@ function startScanning() {
   scanning = true;
   showStatus('正在扫描，请对准电脑屏幕上的二维码...', 'scanning');
   
-  // 使用 setInterval 而不是 requestAnimationFrame，确保稳定的扫描频率
-  // 每 50ms 扫描一次（20fps），给 jsQR 足够的处理时间
-  scanIntervalId = setInterval(scanFrame, 50);
+  // 每 80ms 扫描一次（约 12fps），平衡速度和性能
+  scanIntervalId = setInterval(scanFrame, 80);
 }
 
 function scanFrame() {
   if (!scanning) return;
-  
-  if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-    return;
-  }
+  if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
   
   scanAttempts++;
   
-  // 绘制视频帧到 canvas
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  
-  // 识别二维码
   try {
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+    // 绘制视频帧到 canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    
+    // 识别二维码 - 尝试多种模式
+    let code = jsQR(imageData.data, imageData.width, imageData.height, {
       inversionAttempts: 'dontInvert'
     });
     
+    // 如果失败，尝试反色模式
+    if (!code) {
+      code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'onlyInvert'
+      });
+    }
+    
     if (code && code.data) {
+      lastDetectedTime = Date.now();
       handleQRCode(code.data);
     }
+    
+    // 更新扫描状态指示
+    updateScanIndicator();
+    
   } catch (e) {
-    console.error('jsQR 错误:', e);
+    console.error('扫描错误:', e);
+  }
+}
+
+function updateScanIndicator() {
+  const now = Date.now();
+  const timeSinceLastDetect = now - lastDetectedTime;
+  
+  // 如果超过 3 秒没检测到二维码，提示用户
+  if (lastDetectedTime > 0 && timeSinceLastDetect > 3000 && receivedChunks.size < totalChunks) {
+    showStatus(`已接收 ${receivedChunks.size}/${totalChunks}，等待下一个二维码...（请保持对准）`, 'scanning');
   }
 }
 
@@ -101,10 +127,7 @@ function scanFrame() {
 function handleQRCode(data) {
   const packet = decodePacket(data);
   
-  if (!packet) {
-    // 不是我们的协议，可能是其他二维码
-    return;
-  }
+  if (!packet) return;
   
   if (packet.error === 'checksum_mismatch') {
     console.log('校验失败，忽略');
@@ -122,15 +145,12 @@ function handleQRCode(data) {
     document.getElementById('fileMeta').textContent = `共 ${totalChunks} 个分片`;
     document.getElementById('statTotal').textContent = totalChunks;
     
-    // 创建分片指示器（限制最大显示数量）
     createChunkGrid(totalChunks);
-    
-    console.log('开始接收文件:', fileName, '总分片:', totalChunks);
+    console.log('开始接收:', fileName, '总分片:', totalChunks);
   }
   
   // 检查是否是同一个文件
   if (packet.fileName !== fileName || packet.totalChunks !== totalChunks) {
-    // 不同文件，忽略
     return;
   }
   
@@ -138,13 +158,16 @@ function handleQRCode(data) {
   if (!receivedChunks.has(packet.index)) {
     receivedChunks.set(packet.index, packet.data);
     scanCount++;
-    lastScanTime = Date.now();
     
     console.log('收到分片:', packet.index + 1, '/', totalChunks);
     
-    // 更新 UI
     updateProgress();
     markChunkReceived(packet.index);
+    
+    // 震动反馈（如果支持）
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
     
     // 检查是否完成
     if (receivedChunks.size === totalChunks) {
@@ -158,22 +181,20 @@ function createChunkGrid(total) {
   const grid = document.getElementById('chunkGrid');
   grid.innerHTML = '';
   
-  // 如果分片太多，只显示前 200 个 + 省略提示
-  const maxDisplay = 200;
+  const maxDisplay = 100;
   const displayCount = Math.min(total, maxDisplay);
   
   for (let i = 0; i < displayCount; i++) {
     const dot = document.createElement('div');
     dot.className = 'chunk-dot';
     dot.id = 'chunk-' + i;
-    dot.title = '分片 ' + (i + 1);
     grid.appendChild(dot);
   }
   
   if (total > maxDisplay) {
     const more = document.createElement('div');
-    more.style.cssText = 'width:100%;text-align:center;color:#666;font-size:0.8rem;margin-top:8px;';
-    more.textContent = `... 共 ${total} 个分片，仅显示前 ${maxDisplay} 个`;
+    more.style.cssText = 'width:100%;text-align:center;color:#666;font-size:0.75rem;margin-top:8px;';
+    more.textContent = `共 ${total} 个，显示前 ${maxDisplay} 个`;
     grid.appendChild(more);
   }
 }
@@ -193,14 +214,13 @@ function updateProgress() {
   document.getElementById('progressFill').style.width = progress + '%';
   document.getElementById('statReceived').textContent = received;
   
-  // 计算扫描速度
-  if (startTime && scanCount > 1) {
+  if (startTime && scanCount > 0) {
     const elapsed = (Date.now() - startTime) / 1000;
     const rate = (scanCount / elapsed).toFixed(1);
     document.getElementById('statSpeed').textContent = rate + '/s';
   }
   
-  showStatus(`已接收 ${received}/${totalChunks} 个分片 (${progress}%)`, 'scanning');
+  showStatus(`已接收 ${received}/${totalChunks} (${progress}%)`, 'scanning');
 }
 
 function showStatus(msg, type) {
@@ -223,6 +243,11 @@ function completeTransfer() {
     stream.getTracks().forEach(track => track.stop());
   }
   
+  // 震动反馈
+  if (navigator.vibrate) {
+    navigator.vibrate([100, 50, 100]);
+  }
+  
   // 合并数据
   const fileData = mergeChunks(receivedChunks, totalChunks);
   if (!fileData) {
@@ -230,16 +255,13 @@ function completeTransfer() {
     return;
   }
   
-  // 保存到全局供下载
   window.receivedFileData = fileData;
   window.receivedFileName = fileName;
   
-  // 计算统计
   const duration = ((Date.now() - startTime) / 1000).toFixed(1);
   const fileSize = fileData.length;
   const rate = (fileSize / 1024 / parseFloat(duration)).toFixed(1);
   
-  // 切换界面
   document.getElementById('scanSection').style.display = 'none';
   document.getElementById('completeSection').style.display = '';
   
@@ -263,7 +285,6 @@ function downloadFile() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  
   URL.revokeObjectURL(url);
 }
 
@@ -280,6 +301,7 @@ function resetReceiver() {
   startTime = null;
   scanCount = 0;
   scanAttempts = 0;
+  lastDetectedTime = 0;
   
   window.receivedFileData = null;
   window.receivedFileName = null;
@@ -293,7 +315,6 @@ function resetReceiver() {
   document.getElementById('statTotal').textContent = '-';
   document.getElementById('statSpeed').textContent = '-';
   
-  // 重新启动摄像头
   init();
 }
 

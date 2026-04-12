@@ -4,7 +4,7 @@ let video = null;
 let canvas = null;
 let ctx = null;
 let scanning = false;
-let animationId = null;
+let scanIntervalId = null;
 
 // 接收状态
 let fileName = null;
@@ -13,6 +13,7 @@ let receivedChunks = new Map(); // index -> data
 let startTime = null;
 let lastScanTime = null;
 let scanCount = 0;
+let scanAttempts = 0; // 总扫描次数（包括失败）
 
 // ========== 初始化 ==========
 async function init() {
@@ -44,27 +45,46 @@ async function startCamera() {
   video.srcObject = stream;
   await video.play();
   
+  // 等待视频尺寸确定
+  await new Promise(resolve => {
+    if (video.videoWidth > 0) {
+      resolve();
+    } else {
+      video.addEventListener('loadedmetadata', resolve, { once: true });
+    }
+  });
+  
   // 设置 canvas 尺寸
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
+  console.log('摄像头尺寸:', canvas.width, 'x', canvas.height);
 }
 
 // ========== 扫描循环 ==========
 function startScanning() {
   scanning = true;
   showStatus('正在扫描，请对准电脑屏幕上的二维码...', 'scanning');
-  scanFrame();
+  
+  // 使用 setInterval 而不是 requestAnimationFrame，确保稳定的扫描频率
+  // 每 50ms 扫描一次（20fps），给 jsQR 足够的处理时间
+  scanIntervalId = setInterval(scanFrame, 50);
 }
 
 function scanFrame() {
   if (!scanning) return;
   
-  if (video.readyState === video.HAVE_ENOUGH_DATA) {
-    // 绘制视频帧到 canvas
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    
-    // 识别二维码
+  if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+    return;
+  }
+  
+  scanAttempts++;
+  
+  // 绘制视频帧到 canvas
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  
+  // 识别二维码
+  try {
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
       inversionAttempts: 'dontInvert'
     });
@@ -72,19 +92,22 @@ function scanFrame() {
     if (code && code.data) {
       handleQRCode(code.data);
     }
+  } catch (e) {
+    console.error('jsQR 错误:', e);
   }
-  
-  animationId = requestAnimationFrame(scanFrame);
 }
 
 // ========== 处理二维码数据 ==========
 function handleQRCode(data) {
   const packet = decodePacket(data);
   
-  if (!packet) return; // 不是我们的协议
+  if (!packet) {
+    // 不是我们的协议，可能是其他二维码
+    return;
+  }
   
   if (packet.error === 'checksum_mismatch') {
-    // 校验失败，忽略
+    console.log('校验失败，忽略');
     return;
   }
   
@@ -99,21 +122,25 @@ function handleQRCode(data) {
     document.getElementById('fileMeta').textContent = `共 ${totalChunks} 个分片`;
     document.getElementById('statTotal').textContent = totalChunks;
     
-    // 创建分片指示器
+    // 创建分片指示器（限制最大显示数量）
     createChunkGrid(totalChunks);
+    
+    console.log('开始接收文件:', fileName, '总分片:', totalChunks);
   }
   
   // 检查是否是同一个文件
   if (packet.fileName !== fileName || packet.totalChunks !== totalChunks) {
-    // 不同文件，忽略（或可以提示用户）
+    // 不同文件，忽略
     return;
   }
   
-  // 记录分片
+  // 记录分片（去重）
   if (!receivedChunks.has(packet.index)) {
     receivedChunks.set(packet.index, packet.data);
     scanCount++;
     lastScanTime = Date.now();
+    
+    console.log('收到分片:', packet.index + 1, '/', totalChunks);
     
     // 更新 UI
     updateProgress();
@@ -131,12 +158,23 @@ function createChunkGrid(total) {
   const grid = document.getElementById('chunkGrid');
   grid.innerHTML = '';
   
-  for (let i = 0; i < total; i++) {
+  // 如果分片太多，只显示前 200 个 + 省略提示
+  const maxDisplay = 200;
+  const displayCount = Math.min(total, maxDisplay);
+  
+  for (let i = 0; i < displayCount; i++) {
     const dot = document.createElement('div');
     dot.className = 'chunk-dot';
     dot.id = 'chunk-' + i;
     dot.title = '分片 ' + (i + 1);
     grid.appendChild(dot);
+  }
+  
+  if (total > maxDisplay) {
+    const more = document.createElement('div');
+    more.style.cssText = 'width:100%;text-align:center;color:#666;font-size:0.8rem;margin-top:8px;';
+    more.textContent = `... 共 ${total} 个分片，仅显示前 ${maxDisplay} 个`;
+    grid.appendChild(more);
   }
 }
 
@@ -174,7 +212,10 @@ function showStatus(msg, type) {
 // ========== 传输完成 ==========
 function completeTransfer() {
   scanning = false;
-  cancelAnimationFrame(animationId);
+  if (scanIntervalId) {
+    clearInterval(scanIntervalId);
+    scanIntervalId = null;
+  }
   
   // 停止摄像头
   const stream = video.srcObject;
@@ -228,11 +269,17 @@ function downloadFile() {
 
 // ========== 重置 ==========
 function resetReceiver() {
+  if (scanIntervalId) {
+    clearInterval(scanIntervalId);
+    scanIntervalId = null;
+  }
+  
   fileName = null;
   totalChunks = 0;
   receivedChunks.clear();
   startTime = null;
   scanCount = 0;
+  scanAttempts = 0;
   
   window.receivedFileData = null;
   window.receivedFileName = null;
@@ -252,6 +299,10 @@ function resetReceiver() {
 
 // ========== 错误处理 ==========
 function showError(msg) {
+  if (scanIntervalId) {
+    clearInterval(scanIntervalId);
+    scanIntervalId = null;
+  }
   document.getElementById('scanSection').style.display = 'none';
   document.getElementById('errorSection').style.display = '';
   document.getElementById('errorMsg').textContent = msg;

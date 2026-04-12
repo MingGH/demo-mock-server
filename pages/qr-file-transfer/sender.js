@@ -6,7 +6,7 @@ let currentIndex = 0;
 let isPlaying = false;
 let playInterval = null;
 let loopCount = 1;
-let playSpeed = 200;
+let playSpeed = 300; // 默认 300ms，给手机更多识别时间
 
 // ========== 初始化 ==========
 function init() {

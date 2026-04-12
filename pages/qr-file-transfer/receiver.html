@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="手机端扫描二维码接收文件，配合电脑端发送使用。">
+  <title>二维码传文件 - 接收端 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="receiver.css">
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-scan"></i> 接收文件</h1>
+    <p>对准电脑屏幕上的二维码，自动扫描接收。</p>
+  </div>
+
+  <!-- 扫描区域 -->
+  <div class="section" id="scanSection">
+    <h2><i class="ti ti-camera"></i> 扫描中</h2>
+    
+    <div class="camera-area">
+      <video id="video" playsinline></video>
+      <canvas id="scanCanvas" hidden></canvas>
+      <div class="scan-overlay">
+        <div class="scan-frame"></div>
+      </div>
+    </div>
+
+    <div class="file-info" id="fileInfo" style="display:none;">
+      <div class="name" id="fileName">等待扫描...</div>
+      <div class="meta" id="fileMeta"></div>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-val" id="statReceived">0</div>
+        <div class="stat-label">已接收</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="statTotal">-</div>
+        <div class="stat-label">总分片</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="statSpeed">-</div>
+        <div class="stat-label">扫描速度</div>
+      </div>
+    </div>
+
+    <div class="chunk-grid" id="chunkGrid"></div>
+
+    <div id="statusMsg" class="status-msg"></div>
+  </div>
+
+  <!-- 完成区域 -->
+  <div class="section" id="completeSection" style="display:none;">
+    <h2><i class="ti ti-circle-check"></i> 接收完成</h2>
+    
+    <div class="success-icon">
+      <i class="ti ti-file-download"></i>
+    </div>
+
+    <div class="file-info">
+      <div class="name" id="completeFileName"></div>
+      <div class="meta" id="completeFileMeta"></div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-val" id="statTotalChunks">-</div>
+        <div class="stat-label">分片数</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="statDuration">-</div>
+        <div class="stat-label">耗时</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val" id="statRate">-</div>
+        <div class="stat-label">传输速率</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-primary btn-full" id="downloadBtn">
+        <i class="ti ti-download"></i> 下载文件
+      </button>
+    </div>
+
+    <div style="margin-top:16px;text-align:center;">
+      <button class="btn btn-secondary" id="resetBtn">
+        <i class="ti ti-refresh"></i> 接收新文件
+      </button>
+    </div>
+  </div>
+
+  <!-- 错误提示 -->
+  <div class="section" id="errorSection" style="display:none;">
+    <h2 style="color:#ef9a9a;"><i class="ti ti-alert-triangle"></i> 出错了</h2>
+    <p id="errorMsg" style="color:#a0a0a0;"></p>
+    <div style="margin-top:16px;text-align:center;">
+      <button class="btn btn-primary" onclick="location.reload()">
+        <i class="ti ti-refresh"></i> 重试
+      </button>
+    </div>
+  </div>
+
+  <!-- 使用说明 -->
+  <div class="section">
+    <h2><i class="ti ti-help"></i> 使用说明</h2>
+    
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>电脑端选择文件</h4>
+          <p>在电脑浏览器打开发送端，选择要传输的文件</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>对准屏幕扫描</h4>
+          <p>将手机摄像头对准电脑屏幕上的二维码</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>等待接收完成</h4>
+          <p>保持对准，直到进度条走完，点击下载</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box green">
+      <h3><i class="ti ti-bulb"></i> 小技巧</h3>
+      <p>保持手机稳定，距离屏幕 15-30cm 效果最佳。如果识别慢，可以在发送端降低播放速度。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="protocol.js"></script>
+<script src="receiver.js"></script>
+</body>
+</html>

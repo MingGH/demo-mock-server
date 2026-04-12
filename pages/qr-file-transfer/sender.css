@@ -1,0 +1,124 @@
+/* ========== 发送端专用样式 ========== */
+
+/* ── Upload area ── */
+.upload-area {
+  border: 2px dashed rgba(255,215,0,0.3);
+  border-radius: 16px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(255,215,0,0.02);
+}
+.upload-area:hover, .upload-area.dragover {
+  border-color: rgba(255,215,0,0.6);
+  background: rgba(255,215,0,0.05);
+}
+.upload-area i {
+  font-size: 3rem;
+  color: #ffd700;
+  margin-bottom: 12px;
+  display: block;
+}
+.upload-area p {
+  color: #e8e8e8;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+.upload-area .hint {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+/* ── Chunk indicator ── */
+.chunk-indicator {
+  margin-top: 16px;
+  font-size: 1.2rem;
+  color: #ffd700;
+  font-weight: 700;
+}
+.chunk-indicator span:first-child {
+  font-size: 1.8rem;
+}
+
+/* ── Principle cards ── */
+.principle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.principle-card {
+  background: rgba(0,0,0,0.2);
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.principle-card .num {
+  font-size: 2rem;
+  font-weight: 700;
+  color: rgba(255,215,0,0.3);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.principle-card h4 {
+  color: #ffd700;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+.principle-card p {
+  color: #a0a0a0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* ── Receiver link section ── */
+.receiver-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.link-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0,0,0,0.25);
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  max-width: 100%;
+  overflow: hidden;
+}
+.link-box span {
+  color: #81c784;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+.qr-small {
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+}
+.qr-small canvas {
+  display: block;
+  width: 120px !important;
+  height: 120px !important;
+}
+
+/* ── Mobile ── */
+@media (max-width: 680px) {
+  .upload-area {
+    padding: 30px 16px;
+  }
+  .upload-area i {
+    font-size: 2.5rem;
+  }
+  .principle-grid {
+    grid-template-columns: 1fr;
+  }
+  .link-box {
+    flex-direction: column;
+    text-align: center;
+  }
+}

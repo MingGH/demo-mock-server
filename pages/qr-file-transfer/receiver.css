@@ -1,0 +1,148 @@
+/* ========== 接收端专用样式 ========== */
+
+/* ── Camera area ── */
+.camera-area {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto 20px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 1;
+}
+.camera-area video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scan-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.scan-frame {
+  width: 70%;
+  height: 70%;
+  border: 3px solid rgba(255,215,0,0.8);
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { border-color: rgba(255,215,0,0.8); }
+  50% { border-color: rgba(255,215,0,0.4); }
+}
+
+/* ── Chunk grid ── */
+.chunk-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  margin: 16px 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.chunk-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.1);
+  transition: all 0.2s ease;
+}
+.chunk-dot.received {
+  background: #ffd700;
+  box-shadow: 0 0 6px rgba(255,215,0,0.5);
+}
+.chunk-dot.latest {
+  animation: pop 0.3s ease;
+}
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.5); }
+  100% { transform: scale(1); }
+}
+
+/* ── Status message ── */
+.status-msg {
+  text-align: center;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-top: 16px;
+}
+.status-msg.scanning {
+  background: rgba(255,215,0,0.1);
+  color: #ffd700;
+}
+.status-msg.error {
+  background: rgba(255,68,68,0.1);
+  color: #ef9a9a;
+}
+
+/* ── Success icon ── */
+.success-icon {
+  text-align: center;
+  margin: 20px 0;
+}
+.success-icon i {
+  font-size: 4rem;
+  color: #81c784;
+  animation: bounce 0.6s ease;
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ── Steps ── */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffd700, #ffb700);
+  color: #1a1a2e;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.step-content h4 {
+  color: #e8e8e8;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+.step-content p {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+/* ── Mobile optimizations ── */
+@media (max-width: 680px) {
+  .camera-area {
+    max-width: 100%;
+    border-radius: 12px;
+  }
+  .chunk-dot {
+    width: 10px;
+    height: 10px;
+  }
+  .success-icon i {
+    font-size: 3rem;
+  }
+}

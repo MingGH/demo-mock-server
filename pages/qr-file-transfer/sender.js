@@ -182,14 +182,10 @@ function showCurrentChunk() {
   const canvas = document.getElementById('qrCanvas');
   const data = chunks[currentIndex];
   
-  // 清空 canvas
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
   QRCode.toCanvas(canvas, data, {
-    width: 300,
-    margin: 2,
-    errorCorrectionLevel: 'L', // 低纠错，容量更大
+    width: 320,  // 稍大一点，更容易识别
+    margin: 3,   // 增加边距
+    errorCorrectionLevel: 'M', // 中等纠错，更可靠
     color: {
       dark: '#000000',
       light: '#ffffff'
@@ -197,13 +193,6 @@ function showCurrentChunk() {
   }, function(err) {
     if (err) {
       console.error('QR生成失败:', err.message || err);
-      console.error('数据长度:', data.length, '字符');
-      // 显示错误提示
-      ctx.fillStyle = '#ff4444';
-      ctx.font = '14px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('数据过长，请减小分片大小', 150, 140);
-      ctx.fillText('当前: ' + data.length + ' 字符', 150, 160);
     }
   });
   

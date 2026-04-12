@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="第2名只值第1名的一半，第10名只值1/10。Zipf定律揭示了词频、城市人口、财富分布背后的宇宙级不公平。输入文本验证，或探索真实数据。">
+  <title>第2名只值第1名的一半：宇宙级不公平定律 | 数字直觉</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e4e4e4; padding: 30px 20px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 40px; }
+    .header h1 {
+      font-size: 2rem; font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text; -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .header p { color: rgba(255,255,255,0.5); margin-top: 12px; font-size: 15px; }
+
+    .card {
+      background: rgba(255,255,255,0.03); border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08); padding: 25px; margin-bottom: 25px;
+    }
+    .card-title {
+      color: #fbbf24; font-size: 16px; margin-bottom: 20px;
+      padding-left: 10px; border-left: 3px solid #fbbf24;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .formula-box {
+      background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px;
+      text-align: center; margin: 15px 0;
+    }
+    .formula { font-size: 1.5rem; color: #fbbf24; font-family: 'Times New Roman', serif; }
+    .formula-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 10px; }
+
+    .rank-demo {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+      gap: 10px; margin: 20px 0;
+    }
+    .rank-item {
+      background: rgba(0,0,0,0.2); border-radius: 10px; padding: 12px 8px;
+      text-align: center; transition: all 0.3s;
+    }
+    .rank-item:hover { background: rgba(251,191,36,0.1); transform: translateY(-2px); }
+    .rank-num { font-size: 1.2rem; font-weight: 700; color: #fbbf24; }
+    .rank-val { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+    .rank-bar { height: 4px; background: rgba(251,191,36,0.2); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+    .rank-bar-fill { height: 100%; background: #fbbf24; border-radius: 2px; }
+
+    .chart-box { position: relative; height: 300px; margin: 20px 0; }
+
+    .btn {
+      padding: 12px 28px; font-size: 14px; font-weight: 600; border: none;
+      border-radius: 25px; cursor: pointer; transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(251,191,36,0.3); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1); color: #e4e4e4;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); box-shadow: none; }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 15px 0; }
+
+    .dataset-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .ds-btn {
+      padding: 10px 18px; font-size: 13px; border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px; background: rgba(255,255,255,0.05); color: #e4e4e4;
+      cursor: pointer; transition: all 0.3s;
+    }
+    .ds-btn:hover { background: rgba(251,191,36,0.15); border-color: rgba(251,191,36,0.3); }
+    .ds-btn.active { background: rgba(251,191,36,0.2); border-color: #fbbf24; color: #fbbf24; }
+
+    textarea {
+      width: 100%; height: 150px; background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+      padding: 15px; color: #e4e4e4; font-size: 14px; resize: vertical;
+      font-family: inherit; outline: none;
+    }
+    textarea:focus { border-color: rgba(251,191,36,0.5); }
+    textarea::placeholder { color: rgba(255,255,255,0.3); }
+
+    .result-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px; margin: 20px 0;
+    }
+    .result-item {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 15px; text-align: center;
+    }
+    .result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+    .result-item .value { font-size: 1.3rem; font-weight: 700; color: #fbbf24; }
+    .result-item.green .value { color: #4ade80; }
+    .result-item.red .value { color: #f87171; }
+
+    .word-list {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px; max-height: 300px; overflow-y: auto; margin: 15px 0;
+      padding-right: 10px;
+    }
+    .word-list::-webkit-scrollbar { width: 6px; }
+    .word-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
+    .word-list::-webkit-scrollbar-thumb { background: rgba(251,191,36,0.3); border-radius: 3px; }
+    .word-item {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px 12px;
+    }
+    .word-rank {
+      min-width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(251,191,36,0.2); color: #fbbf24;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .word-text { flex: 1; font-size: 14px; color: #e4e4e4; }
+    .word-count { color: rgba(255,255,255,0.5); font-size: 13px; }
+
+    .insight-box {
+      background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+      border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+      padding: 20px; line-height: 1.8; font-size: 14px; color: rgba(255,255,255,0.7);
+    }
+
+    .example-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px; margin: 20px 0;
+    }
+    .example-card {
+      background: rgba(0,0,0,0.2); border-radius: 12px; padding: 18px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .example-card h4 { color: #fbbf24; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .example-card p { color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1.6; }
+
+    .scale-toggle {
+      display: flex; gap: 8px; margin-bottom: 15px;
+    }
+    .scale-btn {
+      padding: 6px 14px; font-size: 12px; border-radius: 15px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.3s;
+    }
+    .scale-btn.active {
+      background: rgba(251,191,36,0.2); border-color: #fbbf24; color: #fbbf24;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.4rem; }
+      .rank-demo { grid-template-columns: repeat(5, 1fr); }
+      .formula { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-chart-dots-3"></i> 第2名只值第1名的一半</h1>
+    <p>Zipf's Law — 宇宙级不公平定律：排名第 n 的价值 ≈ 第1名的 1/n</p>
+  </div>
+
+  <!-- 核心公式 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-math-function"></i> 一个公式统治一切</div>
+    <div class="formula-box">
+      <div class="formula">f(r) ≈ C / r<sup>α</sup></div>
+      <div class="formula-desc">第 r 名的频率/数量 ≈ 常数 C ÷ 排名 r 的 α 次方（α 通常接近 1）</div>
+    </div>
+    <p style="color:rgba(255,255,255,0.6);font-size:14px;line-height:1.8;margin-top:15px">
+      翻译成人话：<span style="color:#fbbf24">第2名只有第1名的一半，第10名只有1/10，第100名只有1/100</span>。<br>
+      这个规律出现在词频、城市人口、网站流量、收入分布、论文引用...几乎所有「排名」场景。
+    </p>
+    
+    <div class="rank-demo" id="rankDemo"></div>
+  </div>
+
+  <!-- 文本分析 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-file-text"></i> 验证：粘贴任意文本</div>
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:15px">
+      粘贴一段中文或英文文本，看看词频分布是否符合 Zipf 定律
+    </p>
+    <textarea id="textInput" placeholder="粘贴文本到这里...&#10;&#10;可以是新闻、小说、论文、聊天记录...&#10;文本越长效果越明显（建议 500 字以上）"></textarea>
+    <div class="btn-row">
+      <button class="btn" onclick="analyzeText()"><i class="ti ti-analyze"></i> 分析词频</button>
+      <button class="btn btn-secondary" onclick="loadSampleText()"><i class="ti ti-file-import"></i> 加载示例文本</button>
+    </div>
+    
+    <div id="textResults" style="display:none">
+      <div class="result-grid" id="textStats"></div>
+      <div class="scale-toggle">
+        <button class="scale-btn active" data-scale="log" onclick="setScale('text', 'log')">对数坐标</button>
+        <button class="scale-btn" data-scale="linear" onclick="setScale('text', 'linear')">线性坐标</button>
+      </div>
+      <div class="chart-box"><canvas id="textChart"></canvas></div>
+      <div class="word-list" id="wordList"></div>
+    </div>
+  </div>
+
+  <!-- 预设数据集 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-database"></i> 真实世界的 Zipf 定律</div>
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:15px">
+      选择不同数据集，看看 Zipf 定律如何统治现实世界
+    </p>
+    <div class="dataset-btns" id="datasetBtns"></div>
+    <div class="result-grid" id="datasetStats"></div>
+    <div class="scale-toggle">
+      <button class="scale-btn active" data-scale="log" onclick="setScale('dataset', 'log')">对数坐标</button>
+      <button class="scale-btn" data-scale="linear" onclick="setScale('dataset', 'linear')">线性坐标</button>
+    </div>
+    <div class="chart-box"><canvas id="datasetChart"></canvas></div>
+    <div class="word-list" id="datasetList"></div>
+  </div>
+
+  <!-- 为什么会这样 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-bulb"></i> 为什么会这样？</div>
+    <div class="insight-box">
+      <strong style="color:#fbbf24">三种解释：</strong><br><br>
+      
+      <strong>1. 最省力原则（Principle of Least Effort）</strong><br>
+      人类天生懒惰。说话时倾向于重复使用少数常用词，写作时倾向于引用已经出名的论文，买东西时倾向于选头部品牌。<br><br>
+      
+      <strong>2. 优先连接（Preferential Attachment）</strong><br>
+      「富者愈富」的数学表达。已经有 1000 粉丝的账号比 10 粉丝的更容易涨粉，因为曝光机会本身就和现有粉丝数成正比。<br><br>
+      
+      <strong>3. 随机乘法过程</strong><br>
+      如果增长率是随机的百分比（比如每年收入增长 -10% 到 +30%），长期累积后自然形成幂律分布。<br><br>
+      
+      <span style="color:rgba(255,255,255,0.5)">这三种机制在不同场景下起作用，但结果惊人地一致：幂律分布无处不在。</span>
+    </div>
+  </div>
+
+  <!-- 现实例子 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-world"></i> Zipf 定律的现实应用</div>
+    <div class="example-grid">
+      <div class="example-card">
+        <h4><i class="ti ti-building-skyscraper"></i> 城市人口</h4>
+        <p>中国第1大城市上海（2400万）约是第2大北京（2100万）的1.14倍，是第10大武汉（1100万）的2.2倍。全球城市人口分布高度符合 Zipf 定律。</p>
+      </div>
+      <div class="example-card">
+        <h4><i class="ti ti-coin"></i> 财富分布</h4>
+        <p>全球最富的1%人口拥有约45%的财富。前10名富豪的财富总和超过后面几十亿人。这就是幂律分布的残酷。</p>
+      </div>
+      <div class="example-card">
+        <h4><i class="ti ti-brand-twitter"></i> 社交媒体</h4>
+        <p>1%的账号产生50%的内容，1%的帖子获得50%的互动。头部效应在算法推荐时代被进一步放大。</p>
+      </div>
+      <div class="example-card">
+        <h4><i class="ti ti-book"></i> 学术引用</h4>
+        <p>少数论文被引用上万次，大多数论文引用为0。诺贝尔奖得主的论文引用量可能是普通教授的1000倍。</p>
+      </div>
+      <div class="example-card">
+        <h4><i class="ti ti-music"></i> 音乐播放</h4>
+        <p>Spotify 上前1%的歌曲占据90%的播放量。大多数歌曲一年播放不到1000次，而头部歌曲播放数十亿次。</p>
+      </div>
+      <div class="example-card">
+        <h4><i class="ti ti-bug"></i> 软件Bug</h4>
+        <p>20%的代码产生80%的Bug，少数模块贡献大部分崩溃。这就是为什么「重点测试核心模块」是有效的策略。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 启示 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-lightbulb"></i> 对你的启示</div>
+    <div class="insight-box">
+      <strong style="color:#fbbf24">接受不公平，利用不公平：</strong><br><br>
+      
+      <strong>1. 争第一，别争第二</strong><br>
+      第2名的回报只有第1名的一半。在任何领域，要么做到头部，要么换赛道。「差不多」在幂律世界里意味着「差很多」。<br><br>
+      
+      <strong>2. 找到你的长尾</strong><br>
+      头部被占据了？去找那些被忽视的细分领域。1000个小众市场的第1名，可能比1个大众市场的第100名更有价值。<br><br>
+      
+      <strong>3. 复利思维</strong><br>
+      幂律分布是时间的朋友。早期的微小优势会被放大。今天多学1%，十年后可能领先100倍。<br><br>
+      
+      <span style="color:rgba(255,255,255,0.5)">Zipf 定律告诉我们：世界本来就不公平，但理解规则的人可以利用规则。</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 数据集 ==========
+const DATASETS = {
+  chineseWords: {
+    name: '中文常用词',
+    icon: 'ti-writing',
+    data: [
+      { name: '的', value: 7922 },
+      { name: '是', value: 3328 },
+      { name: '不', value: 2778 },
+      { name: '了', value: 2666 },
+      { name: '在', value: 2145 },
+      { name: '有', value: 1971 },
+      { name: '我', value: 1914 },
+      { name: '他', value: 1823 },
+      { name: '这', value: 1519 },
+      { name: '个', value: 1285 },
+      { name: '们', value: 1150 },
+      { name: '中', value: 1089 },
+      { name: '来', value: 1052 },
+      { name: '上', value: 987 },
+      { name: '大', value: 956 },
+      { name: '为', value: 912 },
+      { name: '和', value: 878 },
+      { name: '国', value: 845 },
+      { name: '地', value: 823 },
+      { name: '到', value: 798 }
+    ],
+    unit: '频次/万字'
+  },
+  englishWords: {
+    name: '英文常用词',
+    icon: 'ti-language',
+    data: [
+      { name: 'the', value: 69971 },
+      { name: 'of', value: 36411 },
+      { name: 'and', value: 28852 },
+      { name: 'to', value: 28765 },
+      { name: 'a', value: 23199 },
+      { name: 'in', value: 21341 },
+      { name: 'that', value: 10594 },
+      { name: 'is', value: 10102 },
+      { name: 'was', value: 9815 },
+      { name: 'he', value: 9543 },
+      { name: 'for', value: 9489 },
+      { name: 'it', value: 8760 },
+      { name: 'with', value: 7289 },
+      { name: 'as', value: 7253 },
+      { name: 'his', value: 6996 },
+      { name: 'on', value: 6742 },
+      { name: 'be', value: 6377 },
+      { name: 'at', value: 5372 },
+      { name: 'by', value: 5306 },
+      { name: 'I', value: 5164 }
+    ],
+    unit: '频次/百万词'
+  },
+  chinaCities: {
+    name: '中国城市人口',
+    icon: 'ti-building-skyscraper',
+    data: [
+      { name: '上海', value: 2489 },
+      { name: '北京', value: 2154 },
+      { name: '成都', value: 2119 },
+      { name: '重庆', value: 2087 },
+      { name: '广州', value: 1881 },
+      { name: '深圳', value: 1768 },
+      { name: '天津', value: 1373 },
+      { name: '武汉', value: 1373 },
+      { name: '东莞', value: 1047 },
+      { name: '西安', value: 1295 },
+      { name: '杭州', value: 1237 },
+      { name: '佛山', value: 961 },
+      { name: '南京', value: 942 },
+      { name: '沈阳', value: 911 },
+      { name: '青岛', value: 1026 },
+      { name: '济南', value: 920 },
+      { name: '长沙', value: 1024 },
+      { name: '哈尔滨', value: 988 },
+      { name: '郑州', value: 1274 },
+      { name: '昆明', value: 846 }
+    ],
+    unit: '万人'
+  },
+  websites: {
+    name: '网站流量排名',
+    icon: 'ti-world-www',
+    data: [
+      { name: 'Google', value: 89200 },
+      { name: 'YouTube', value: 74800 },
+      { name: 'Facebook', value: 56300 },
+      { name: 'Instagram', value: 47200 },
+      { name: 'Twitter/X', value: 38100 },
+      { name: 'Wikipedia', value: 35600 },
+      { name: 'TikTok', value: 32400 },
+      { name: 'Reddit', value: 28900 },
+      { name: 'Amazon', value: 25100 },
+      { name: 'Yahoo', value: 21300 },
+      { name: 'LinkedIn', value: 18700 },
+      { name: 'Netflix', value: 15200 },
+      { name: 'Bing', value: 13800 },
+      { name: 'Pinterest', value: 11200 },
+      { name: 'Twitch', value: 9800 },
+      { name: 'Discord', value: 8500 },
+      { name: 'eBay', value: 7200 },
+      { name: 'Quora', value: 6100 },
+      { name: 'Spotify', value: 5400 },
+      { name: 'CNN', value: 4800 }
+    ],
+    unit: '百万访问/月'
+  },
+  billionaires: {
+    name: '全球富豪财富',
+    icon: 'ti-coin',
+    data: [
+      { name: 'Elon Musk', value: 2510 },
+      { name: 'Jeff Bezos', value: 2050 },
+      { name: 'Bernard Arnault', value: 1890 },
+      { name: 'Mark Zuckerberg', value: 1770 },
+      { name: 'Larry Ellison', value: 1580 },
+      { name: 'Warren Buffett', value: 1420 },
+      { name: 'Bill Gates', value: 1380 },
+      { name: 'Steve Ballmer', value: 1210 },
+      { name: 'Larry Page', value: 1150 },
+      { name: 'Sergey Brin', value: 1100 },
+      { name: 'Jensen Huang', value: 1060 },
+      { name: 'Amancio Ortega', value: 980 },
+      { name: 'Michael Dell', value: 920 },
+      { name: 'Jim Walton', value: 870 },
+      { name: 'Rob Walton', value: 850 },
+      { name: 'Alice Walton', value: 830 },
+      { name: 'Mukesh Ambani', value: 810 },
+      { name: 'Carlos Slim', value: 780 },
+      { name: 'Francoise Meyers', value: 750 },
+      { name: 'Michael Bloomberg', value: 720 }
+    ],
+    unit: '亿美元'
+  }
+};
+
+// ========== 全局变量 ==========
+let textChart = null;
+let datasetChart = null;
+let currentTextData = null;
+let currentDatasetData = null;
+let textScale = 'log';
+let datasetScale = 'log';
+
+// ========== 初始化 ==========
+function init() {
+  renderRankDemo();
+  renderDatasetBtns();
+  selectDataset('chineseWords');
+}
+
+// ========== 排名演示 ==========
+function renderRankDemo() {
+  const container = document.getElementById('rankDemo');
+  let html = '';
+  for (let i = 1; i <= 10; i++) {
+    const val = (100 / i).toFixed(1);
+    const barWidth = 100 / i;
+    html += `
+      <div class="rank-item">
+        <div class="rank-num">#${i}</div>
+        <div class="rank-val">${val}%</div>
+        <div class="rank-bar"><div class="rank-bar-fill" style="width:${barWidth}%"></div></div>
+      </div>
+    `;
+  }
+  container.innerHTML = html;
+}
+
+// ========== 文本分析 ==========
+function analyzeText() {
+  const text = document.getElementById('textInput').value.trim();
+  if (!text) return alert('请先输入文本');
+  
+  // 分词（简单实现：中文按字符，英文按空格）
+  const words = tokenize(text);
+  if (words.length < 20) return alert('文本太短，请输入更多内容');
+  
+  // 统计词频
+  const freq = {};
+  words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+  
+  // 排序
+  const sorted = Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 50)
+    .map(([name, value], i) => ({ name, value, rank: i + 1 }));
+  
+  currentTextData = sorted;
+  
+  // 计算拟合度
+  const fit = calculateZipfFit(sorted);
+  
+  // 显示结果
+  document.getElementById('textResults').style.display = 'block';
+  document.getElementById('textStats').innerHTML = `
+    <div class="result-item"><div class="label">总词数</div><div class="value">${words.length}</div></div>
+    <div class="result-item"><div class="label">不同词数</div><div class="value">${Object.keys(freq).length}</div></div>
+    <div class="result-item"><div class="label">最高频词</div><div class="value">${sorted[0].name}</div></div>
+    <div class="result-item ${fit.r2 > 0.9 ? 'green' : fit.r2 > 0.7 ? '' : 'red'}">
+      <div class="label">Zipf 拟合度 R²</div><div class="value">${fit.r2.toFixed(3)}</div>
+    </div>
+  `;
+  
+  renderTextChart(sorted);
+  renderWordList('wordList', sorted);
+}
+
+function tokenize(text) {
+  // 判断是否主要是中文
+  const chineseRatio = (text.match(/[\u4e00-\u9fa5]/g) || []).length / text.length;
+  
+  if (chineseRatio > 0.3) {
+    // 中文：按2-4字词切分（简化版）
+    const words = [];
+    const cleaned = text.replace(/[^\u4e00-\u9fa5]/g, '');
+    // 简单的2字词切分
+    for (let i = 0; i < cleaned.length - 1; i++) {
+      words.push(cleaned.slice(i, i + 2));
+    }
+    return words.filter(w => w.length === 2);
+  } else {
+    // 英文：按空格切分
+    return text.toLowerCase()
+      .replace(/[^a-z\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 1);
+  }
+}
+
+function loadSampleText() {
+  const sample = `人工智能正在改变我们的生活方式。从智能手机到自动驾驶汽车，从语音助手到医疗诊断，人工智能技术已经渗透到社会的各个角落。
+
+机器学习是人工智能的核心技术之一。通过大量数据的训练，机器可以学会识别模式、做出预测和决策。深度学习作为机器学习的一个分支，使用多层神经网络来处理复杂的任务，如图像识别和自然语言处理。
+
+然而，人工智能的发展也带来了一些挑战。数据隐私、算法偏见、就业影响等问题引发了广泛的讨论。如何在推动技术进步的同时，确保人工智能的安全和公平使用，是我们需要认真思考的问题。
+
+未来，人工智能将继续发展和演进。通用人工智能、量子计算与人工智能的结合、人机协作等方向都充满了可能性。我们正站在一个技术变革的关键时刻，人工智能将如何塑造我们的未来，值得每个人关注和思考。
+
+教育领域也在积极拥抱人工智能。个性化学习、智能辅导、自动评分等应用正在改变传统的教学模式。学生可以根据自己的学习进度和风格获得定制化的学习内容，教师则可以借助人工智能工具更好地了解学生的学习情况。
+
+在医疗健康领域，人工智能的应用同样令人瞩目。从医学影像分析到药物研发，从疾病预测到健康管理，人工智能正在帮助医生做出更准确的诊断，为患者提供更好的治疗方案。`;
+  
+  document.getElementById('textInput').value = sample;
+  analyzeText();
+}
+
+// ========== 数据集分析 ==========
+function renderDatasetBtns() {
+  const container = document.getElementById('datasetBtns');
+  container.innerHTML = Object.entries(DATASETS).map(([id, ds]) => 
+    `<button class="ds-btn" data-id="${id}" onclick="selectDataset('${id}')">
+      <i class="ti ${ds.icon}"></i> ${ds.name}
+    </button>`
+  ).join('');
+}
+
+function selectDataset(id) {
+  document.querySelectorAll('.ds-btn').forEach(b => 
+    b.classList.toggle('active', b.dataset.id === id)
+  );
+  
+  const ds = DATASETS[id];
+  const data = ds.data.map((d, i) => ({ ...d, rank: i + 1 }));
+  currentDatasetData = data;
+  
+  const fit = calculateZipfFit(data);
+  
+  document.getElementById('datasetStats').innerHTML = `
+    <div class="result-item"><div class="label">数据量</div><div class="value">${data.length}</div></div>
+    <div class="result-item"><div class="label">第1名</div><div class="value">${data[0].name}</div></div>
+    <div class="result-item"><div class="label">第1/第10比值</div><div class="value">${(data[0].value / data[9].value).toFixed(1)}x</div></div>
+    <div class="result-item ${fit.r2 > 0.9 ? 'green' : fit.r2 > 0.7 ? '' : 'red'}">
+      <div class="label">Zipf 拟合度 R²</div><div class="value">${fit.r2.toFixed(3)}</div>
+    </div>
+  `;
+  
+  renderDatasetChart(data, ds.unit);
+  renderWordList('datasetList', data, ds.unit);
+}
+
+// ========== 图表渲染 ==========
+function renderTextChart(data) {
+  const ctx = document.getElementById('textChart').getContext('2d');
+  if (textChart) textChart.destroy();
+  
+  const isLog = textScale === 'log';
+  const ranks = data.map(d => d.rank);
+  const values = data.map(d => d.value);
+  const zipfIdeal = ranks.map(r => values[0] / r);
+  
+  textChart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: '实际词频',
+          data: ranks.map((r, i) => ({ x: r, y: values[i] })),
+          backgroundColor: 'rgba(96,165,250,0.7)',
+          pointRadius: 5
+        },
+        {
+          label: 'Zipf 理论值',
+          data: ranks.map((r, i) => ({ x: r, y: zipfIdeal[i] })),
+          type: 'line',
+          borderColor: '#fbbf24',
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false
+        }
+      ]
+    },
+    options: getChartOptions(isLog, '排名', '词频')
+  });
+}
+
+function renderDatasetChart(data, unit) {
+  const ctx = document.getElementById('datasetChart').getContext('2d');
+  if (datasetChart) datasetChart.destroy();
+  
+  const isLog = datasetScale === 'log';
+  const ranks = data.map(d => d.rank);
+  const values = data.map(d => d.value);
+  const zipfIdeal = ranks.map(r => values[0] / r);
+  
+  datasetChart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: '实际数据',
+          data: ranks.map((r, i) => ({ x: r, y: values[i] })),
+          backgroundColor: 'rgba(74,222,128,0.7)',
+          pointRadius: 6
+        },
+        {
+          label: 'Zipf 理论值',
+          data: ranks.map((r, i) => ({ x: r, y: zipfIdeal[i] })),
+          type: 'line',
+          borderColor: '#fbbf24',
+          borderWidth: 2,
+          pointRadius: 0,
+          fill: false
+        }
+      ]
+    },
+    options: getChartOptions(isLog, '排名', unit || '数值')
+  });
+}
+
+function getChartOptions(isLog, xLabel, yLabel) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: 'rgba(255,255,255,0.6)', font: { size: 12 } } },
+      tooltip: {
+        callbacks: {
+          label: item => `排名 ${item.raw.x}: ${item.raw.y.toLocaleString()}`
+        }
+      }
+    },
+    scales: {
+      x: {
+        type: isLog ? 'logarithmic' : 'linear',
+        title: { display: true, text: xLabel + (isLog ? ' (对数)' : ''), color: 'rgba(255,255,255,0.5)' },
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: 'rgba(255,255,255,0.5)' }
+      },
+      y: {
+        type: isLog ? 'logarithmic' : 'linear',
+        title: { display: true, text: yLabel + (isLog ? ' (对数)' : ''), color: 'rgba(255,255,255,0.5)' },
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: 'rgba(255,255,255,0.5)' }
+      }
+    }
+  };
+}
+
+function setScale(type, scale) {
+  if (type === 'text') {
+    textScale = scale;
+    document.querySelectorAll('#textResults .scale-btn').forEach(b => 
+      b.classList.toggle('active', b.dataset.scale === scale)
+    );
+    if (currentTextData) renderTextChart(currentTextData);
+  } else {
+    datasetScale = scale;
+    document.querySelectorAll('#datasetStats + .scale-toggle .scale-btn').forEach(b => 
+      b.classList.toggle('active', b.dataset.scale === scale)
+    );
+    if (currentDatasetData) {
+      const activeBtn = document.querySelector('.ds-btn.active');
+      if (activeBtn) {
+        const ds = DATASETS[activeBtn.dataset.id];
+        renderDatasetChart(currentDatasetData, ds.unit);
+      }
+    }
+  }
+}
+
+// ========== 词列表 ==========
+function renderWordList(containerId, data, unit = '') {
+  const container = document.getElementById(containerId);
+  container.innerHTML = data.slice(0, 30).map(d => `
+    <div class="word-item">
+      <div class="word-rank">${d.rank}</div>
+      <div class="word-text">${d.name}</div>
+      <div class="word-count">${d.value.toLocaleString()}${unit ? ' ' + unit : ''}</div>
+    </div>
+  `).join('');
+}
+
+// ========== Zipf 拟合度计算 ==========
+function calculateZipfFit(data) {
+  // 使用对数线性回归计算 R²
+  const n = data.length;
+  const logRanks = data.map(d => Math.log(d.rank));
+  const logValues = data.map(d => Math.log(d.value));
+  
+  const meanLogRank = logRanks.reduce((a, b) => a + b, 0) / n;
+  const meanLogValue = logValues.reduce((a, b) => a + b, 0) / n;
+  
+  let ssTotal = 0, ssResidual = 0;
+  let sumXY = 0, sumXX = 0;
+  
+  for (let i = 0; i < n; i++) {
+    sumXY += (logRanks[i] - meanLogRank) * (logValues[i] - meanLogValue);
+    sumXX += (logRanks[i] - meanLogRank) ** 2;
+    ssTotal += (logValues[i] - meanLogValue) ** 2;
+  }
+  
+  const slope = sumXY / sumXX;
+  const intercept = meanLogValue - slope * meanLogRank;
+  
+  for (let i = 0; i < n; i++) {
+    const predicted = intercept + slope * logRanks[i];
+    ssResidual += (logValues[i] - predicted) ** 2;
+  }
+  
+  const r2 = 1 - ssResidual / ssTotal;
+  
+  return { r2, alpha: -slope };
+}
+
+// 初始化
+init();
+</script>
+</body>
+</html>

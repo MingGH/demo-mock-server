@@ -143,9 +143,22 @@ if (typeof window !== 'undefined') {
 
     // ---------- 初始化 ----------
     document.addEventListener('DOMContentLoaded', () => {
+      // 自动分配一个随机 ID 并写入（模拟"你访问网站时 ID 就已经被写进去了"）
+      const autoId = Math.floor(Math.random() * maxUsers(BITS));
+      const bits = numToBits(autoId, BITS);
+      for (let i = 0; i < BITS; i++) {
+        cacheState[i] = bits[i] === 1;
+      }
+      currentId = autoId;
       renderBitGrid();
       updateIdDisplay();
       updateStats();
+      addLog('info', `页面加载时自动写入追踪 ID: ${autoId}`);
+      addLog('write', `二进制: ${bits.join('')}`);
+      addLog('info', '你还没做任何操作，ID 就已经在你的 F-Cache 里了。');
+      // 同步到输入框
+      const input = document.getElementById('inputId');
+      if (input) input.value = autoId;
     });
 
     // ---------- 生成随机 favicon 颜色 ----------

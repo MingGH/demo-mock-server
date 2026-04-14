@@ -7,6 +7,7 @@ import com.example.demo_mock_server.service.FingerprintService;
 import com.example.demo_mock_server.service.GeoLocationService;
 import com.example.demo_mock_server.service.InferenceLeaderboardService;
 import com.example.demo_mock_server.service.SocialEngineeringService;
+import com.example.demo_mock_server.service.SupercookieService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
@@ -105,6 +106,14 @@ public class RouterConfig {
         router.post("/inference/leaderboard").handler(new RateLimitHandler(10, 60)).handler(inferenceHandler);
         router.get("/inference/leaderboard").handler(inferenceHandler);
         router.delete("/inference/leaderboard").handler(inferenceHandler);
+
+        // Favicon 超级 Cookie 演示
+        SupercookieService supercookieService = new SupercookieService();
+        SupercookieHandler supercookieHandler = new SupercookieHandler(supercookieService);
+        router.post("/supercookie/assign").handler(new RateLimitHandler(30, 60)).handler(supercookieHandler);
+        router.get("/supercookie/identify").handler(supercookieHandler);
+        router.get("/supercookie/stats").handler(supercookieHandler);
+        router.delete("/supercookie/evict").handler(supercookieHandler);
 
         // 静态资源
         router.route("/pages/*").handler(StaticHandler.create("pages"));

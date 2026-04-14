@@ -143,23 +143,27 @@ if (typeof window !== 'undefined') {
 
     // ---------- 初始化 ----------
     document.addEventListener('DOMContentLoaded', () => {
-      // 自动分配一个随机 ID 并写入（模拟"你访问网站时 ID 就已经被写进去了"）
-      const autoId = Math.floor(Math.random() * maxUsers(BITS));
-      const bits = numToBits(autoId, BITS);
-      for (let i = 0; i < BITS; i++) {
-        cacheState[i] = bits[i] === 1;
-      }
-      currentId = autoId;
+      // 先渲染空状态，等真实追踪写入后同步
       renderBitGrid();
       updateIdDisplay();
       updateStats();
-      addLog('info', `页面加载时自动写入追踪 ID: ${autoId}`);
-      addLog('write', `二进制: ${bits.join('')}`);
-      addLog('info', '你还没做任何操作，ID 就已经在你的 F-Cache 里了。');
-      // 同步到输入框
-      const input = document.getElementById('inputId');
-      if (input) input.value = autoId;
     });
+
+    // 供真实追踪部分调用，同步 ID 到交互演示
+    function syncSimulationId(id) {
+      const bits = numToBits(id, BITS);
+      for (let i = 0; i < BITS; i++) {
+        cacheState[i] = bits[i] === 1;
+      }
+      currentId = id;
+      renderBitGrid();
+      updateIdDisplay();
+      updateStats();
+      addLog('info', `同步真实追踪 ID: ${id}`);
+      addLog('write', `二进制: ${bits.join('')}`);
+      const input = document.getElementById('inputId');
+      if (input) input.value = id;
+    }
 
     // ---------- 生成随机 favicon 颜色 ----------
     function faviconColor(index) {
@@ -391,6 +395,7 @@ if (typeof window !== 'undefined') {
     function addRealLog(type, msg) {
       const now = new Date();
       const ts = now.toLocaleTimeString('zh-CN', { hour12: false });
+      console.log(`[F-Cache ${type}] ${msg}`);
       realLogLines.push({ ts, type, msg });
       if (realLogLines.length > 50) realLogLines.shift();
       const box = $('#realLogBox');
@@ -444,77 +449,106 @@ if (typeof window !== 'undefined') {
       }
     }
 
-    /** 写入阶段：用 img 请求所有子域名的 favicon，触发浏览器缓存 */
-    function writeFaviconBits(token, bits) {
+    /** 写入阶段：只请求 bit=1 的子域名的固定 favicon URL */
+    function writeFaviconBits(bits) {
       return new Promise((resolve) => {
+        const oneBits = bits.reduce((s, b) => s + b, 0);
+        if (oneBits === 0) { resolve(); return; }
         let loaded = 0;
         for (let i = 0; i < BITS; i++) {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          const idx = i;
-          img.onload = img.onerror = () => {
-            loaded++;
-            if (bits[idx] === 1) {
-              addRealLog('write', `→ ${bitDomain(idx)}/favicon  [缓存写入, bit=1]`);
-            } else {
-              addRealLog('miss', `→ ${bitDomain(idx)}/favicon  [不缓存, bit=0]`);
-            }
-            if (loaded === BITS) resolve();
-          };
-          // 固定 URL（无 cache buster），这样读取时能命中缓存
-          img.src = `https://${bitDomain(i)}/supercookie/favicon/${i}?token=${token}`;
+          if (bits[i] === 1) {
+            const img = new Image();
+            const idx = i;
+            img.onload = img.onerror = () => {
+              addRealLog('write', `→ ${bitDomain(idx)}/favicon.ico  [缓存写入, bit=1]`);
+              if (++loaded === oneBits) resolve();
+            };
+            img.src = `https://${bitDomain(i)}/supercookie/pixel`;
+          } else {
+            addRealLog('miss', `  bit${i} = 0，跳过（不请求 = 不缓存）`);
+          }
         }
       });
     }
 
     /**
-     * 读取阶段：请求同一个 URL，通过 Resource Timing API 判断是否命中缓存。
-     * transferSize === 0 表示来自缓存（bit=1），> 0 表示网络请求（bit=0）。
+     * 读取阶段：串行请求所有 16 个子域名，收集耗时，
+     * 然后用最大间隔法自动分成"快组(缓存=1)"和"慢组(网络=0)"。
      */
-    function readFaviconBits(token) {
-      return new Promise((resolve) => {
-        const results = new Array(BITS).fill(-1);
-        let loaded = 0;
+    function readFaviconBits() {
+      return new Promise(async (resolve) => {
+        const timings = []; // { index, elapsed }
 
-        if (performance.clearResourceTiming) performance.clearResourceTiming();
-
+        // 串行请求，收集每个 bit 的耗时
         for (let i = 0; i < BITS; i++) {
-          const idx = i;
-          const url = `https://${bitDomain(i)}/supercookie/favicon/${i}?token=${token}`;
-
-          fetch(url, { mode: 'cors', cache: 'default' }).then(resp => {
-            // 检查 Resource Timing
-            const entries = performance.getEntriesByName(url);
-            const entry = entries.length > 0 ? entries[entries.length - 1] : null;
-            if (entry && entry.transferSize !== undefined && entry.transferSize === 0) {
-              results[idx] = 1;
-              addRealLog('read', `← ${bitDomain(idx)}  [缓存命中 → 1]`);
-            } else {
-              results[idx] = 0;
-              addRealLog('miss', `← ${bitDomain(idx)}  [未命中 → 0]`);
-            }
-          }).catch(() => {
-            results[idx] = 0;
-            addRealLog('miss', `← ${bitDomain(idx)}  [请求失败 → 0]`);
-          }).finally(() => {
-            loaded++;
-            if (loaded === BITS) setTimeout(() => resolve(results), 200);
+          const elapsed = await new Promise((res) => {
+            const img = new Image();
+            const start = performance.now();
+            let settled = false;
+            const done = () => { if (!settled) { settled = true; res(performance.now() - start); } };
+            img.onload = img.onerror = done;
+            setTimeout(() => done(), 10000);
+            img.src = `https://${bitDomain(i)}/supercookie/pixel`;
           });
+          timings.push({ index: i, elapsed });
+          addRealLog('read', `← ${bitDomain(i)}  [${elapsed.toFixed(1)}ms]`);
         }
+
+        // 分析耗时，自动区分缓存命中和网络请求
+        const sorted = [...timings].sort((a, b) => a.elapsed - b.elapsed);
+        const fastest = sorted[0].elapsed;
+        const slowest = sorted[sorted.length - 1].elapsed;
+        const results = new Array(BITS).fill(0);
+
+        const CACHE_CEIL = 15; // 缓存命中通常 < 15ms
+
+        // 情况1：所有请求都很快 → 全部缓存命中
+        if (slowest < CACHE_CEIL) {
+          addRealLog('info', `所有请求 < ${CACHE_CEIL}ms（最慢 ${slowest.toFixed(1)}ms），全部缓存命中。`);
+          for (let i = 0; i < BITS; i++) results[i] = 1;
+          resolve(results);
+          return;
+        }
+
+        // 情况2：所有请求都慢 → 全部未缓存
+        if (fastest > CACHE_CEIL) {
+          addRealLog('info', `所有请求 > ${CACHE_CEIL}ms（最快 ${fastest.toFixed(1)}ms），全部未缓存。`);
+          resolve(results);
+          return;
+        }
+
+        // 情况3：有快有慢，找分界点
+        // 缓存命中 < 15ms，网络请求 > 15ms，找第一个跨越 15ms 的间隔
+        let splitAt = -1;
+        for (let i = 0; i < sorted.length - 1; i++) {
+          if (sorted[i].elapsed < CACHE_CEIL && sorted[i + 1].elapsed >= CACHE_CEIL) {
+            splitAt = i;
+            break;
+          }
+        }
+        if (splitAt < 0) {
+          // fallback: 用最大间隔
+          let maxGap = 0;
+          for (let i = 0; i < sorted.length - 1; i++) {
+            const gap = sorted[i + 1].elapsed - sorted[i].elapsed;
+            if (gap > maxGap) { maxGap = gap; splitAt = i; }
+          }
+        }
+        const threshold = (sorted[splitAt].elapsed + sorted[splitAt + 1].elapsed) / 2;
+        addRealLog('info', `分界: ${threshold.toFixed(1)}ms（快组 ≤${sorted[splitAt].elapsed.toFixed(1)}ms，慢组 ≥${sorted[splitAt+1].elapsed.toFixed(1)}ms）`);
+
+        for (const t of timings) {
+          results[t.index] = t.elapsed <= threshold ? 1 : 0;
+        }
+        resolve(results);
       });
     }
 
-    /** 从 bit 数组还原 ID */
     function bitsArrayToId(bits) {
       let id = 0;
-      for (let i = 0; i < bits.length; i++) {
-        id = (id << 1) | (bits[i] === 1 ? 1 : 0);
-      }
+      for (let i = 0; i < bits.length; i++) id = (id << 1) | (bits[i] === 1 ? 1 : 0);
       return id >>> 0;
     }
-
-    // 保存写入时的 token，读取时复用
-    let writeToken = null;
 
     window.realTrack = {
       async writeId() {
@@ -523,34 +557,32 @@ if (typeof window !== 'undefined') {
           const res = await fetch(`${API_BASE}/supercookie/session`, { method: 'POST' });
           const json = await res.json();
           const data = json.data;
-          writeToken = data.token;
           addRealLog('write', `← 分配 ID: ${data.trackingId} (${data.binary})`);
-          addRealLog('info', `开始向 ${BITS} 个子域名写入 favicon 缓存...`);
-          await writeFaviconBits(data.token, data.bits);
+          addRealLog('info', '开始写入：只请求 bit=1 的子域名...');
+          await writeFaviconBits(data.bits);
           addRealLog('info', 'F-Cache 写入完成！');
           showTrackingResult(data, false);
+          syncSimulationId(data.trackingId);
         } catch (e) {
           addRealLog('miss', `请求失败: ${e.message}`);
         }
       },
 
       async probe() {
-        if (!writeToken) {
-          addRealLog('miss', '还没有写入过 F-Cache，先点「写入」按钮。');
-          return;
-        }
-        addRealLog('info', `开始读取 ${BITS} 个子域名的缓存状态...`);
+        addRealLog('info', '开始从 F-Cache 还原追踪 ID...');
         try {
-          const bits = await readFaviconBits(writeToken);
+          const bits = await readFaviconBits();
           const trackingId = bitsArrayToId(bits);
-          const binary = bits.map(b => b === 1 ? '1' : '0').join('');
+          const binary = bits.map(b => String(b)).join('');
           addRealLog('read', `← 还原 ID: ${trackingId} (${binary})`);
-          if (trackingId === 0 && binary === '0'.repeat(BITS)) {
-            addRealLog('info', '所有 bit 都是 0，F-Cache 可能已被清除或浏览器不支持。');
+          if (trackingId === 0) {
+            addRealLog('info', 'F-Cache 为空，首次访问。写入新 ID...');
+            await this.writeId();
           } else {
-            addRealLog('info', '你被追踪了。清 Cookie 也没用。');
+            addRealLog('info', '你被追踪了。没有 Cookie，没有登录，但服务器认出了你。');
+            showTrackingResult({ trackingId, binary }, true);
+            syncSimulationId(trackingId);
           }
-          showTrackingResult({ trackingId, binary }, true);
         } catch (e) {
           addRealLog('miss', `探测失败: ${e.message}`);
         }
@@ -576,11 +608,11 @@ if (typeof window !== 'undefined') {
       },
     };
 
-    // 页面加载时自动写入 + 探测
+    // 页面加载：先写入再立即读取（5秒缓存窗口内）
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(async () => {
         await window.realTrack.writeId();
-        await sleep(1000);
+        await sleep(500);
         addRealLog('info', '--- 现在用 F-Cache 反向还原你的 ID ---');
         await window.realTrack.probe();
       }, 800);

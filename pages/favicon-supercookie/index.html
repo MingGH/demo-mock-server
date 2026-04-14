@@ -16,6 +16,53 @@
     <p>你清了 Cookie、开了无痕、挂了 VPN，网站照样认出你。<br>因为你浏览器里有个缓存，你根本不知道它存在。</p>
   </div>
 
+  <!-- ===== 真实追踪演示（第一屏） ===== -->
+  <div class="card" id="realTrackingCard">
+    <h2><i class="ti ti-alert-circle"></i> 你打开这个页面的瞬间，服务器就已经记住你了</h2>
+
+    <div id="trackingResult" style="display:none;">
+      <div class="id-display" id="realIdDisplay">
+        <div class="id-label" id="realIdLabel">你的追踪 ID</div>
+        <div class="id-value" id="realIdValue">-</div>
+        <div class="id-decimal" id="realIdDecimal"></div>
+      </div>
+
+      <div class="stats-row" id="realStats">
+        <div class="stat-card"><div class="val" id="realVisits">-</div><div class="lbl">访问次数</div></div>
+        <div class="stat-card"><div class="val" id="realFirstSeen">-</div><div class="lbl">首次出现</div></div>
+        <div class="stat-card"><div class="val" id="realTracked">-</div><div class="lbl">全站被追踪用户</div></div>
+      </div>
+
+      <div class="insight red" id="realInsight" style="display:none;">
+        <h3><i class="ti ti-alert-triangle"></i> <span id="realInsightTitle"></span></h3>
+        <p id="realInsightText"></p>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-danger" onclick="realTrack.clearAndRetry()" id="btnClearRetry">
+        <i class="ti ti-trash"></i> 不信？清除 Cookie 后再试
+      </button>
+      <button class="btn btn-secondary" onclick="realTrack.probe()" id="btnProbe">
+        <i class="ti ti-radar-2"></i> 重新探测
+      </button>
+    </div>
+
+    <div class="log-box" id="realLogBox">
+      <div class="log-line"><span class="log-info">正在联系服务器...</span></div>
+    </div>
+
+    <div class="insight" style="margin-top:16px;">
+      <h3><i class="ti ti-info-circle"></i> 说明</h3>
+      <p>
+        本演示用你的 IP 地址模拟 F-Cache 追踪效果（真正的 F-Cache 追踪需要配置多个子域名）。<br>
+        效果一样：你清了 Cookie、换了浏览器，服务器照样认出你。<br>
+        真实的 Favicon 追踪甚至不需要知道你的 IP——它只看你浏览器的缓存状态。<br>
+        想知道原理？往下看。
+      </p>
+    </div>
+  </div>
+
   <!-- ===== 原理 ===== -->
   <div class="card">
     <h2><i class="ti ti-bulb"></i> 什么是 Favicon？</h2>
@@ -261,56 +308,6 @@
       <p>
         Brave 浏览器从 v1.19 开始已修复此漏洞。Firefox 84+ 在无痕模式下使用独立的 F-Cache。<br>
         但在普通模式下，大多数浏览器仍然存在这个问题。
-      </p>
-    </div>
-  </div>
-
-  <!-- ===== 真实追踪演示 ===== -->
-  <div class="card" id="realTrackingCard">
-    <h2><i class="ti ti-alert-circle"></i> 真实追踪演示：我们已经记住你了</h2>
-    <p style="color:#a0a0a0; margin-bottom:16px; font-size:0.9rem;">
-      上面是原理模拟。下面是真的——我们的服务器正在用类似的方式追踪你。<br>
-      点击下方按钮，看看服务器对你了解多少。
-    </p>
-
-    <div class="btn-row">
-      <button class="btn btn-danger" onclick="realTrack.probe()" id="btnProbe">
-        <i class="ti ti-radar-2"></i> 服务器认识我吗？
-      </button>
-      <button class="btn btn-secondary" onclick="realTrack.clearAndRetry()" id="btnClearRetry">
-        <i class="ti ti-trash"></i> 清除 Cookie 后再试
-      </button>
-    </div>
-
-    <div id="trackingResult" style="display:none;">
-      <div class="id-display" id="realIdDisplay">
-        <div class="id-label" id="realIdLabel">服务器返回</div>
-        <div class="id-value" id="realIdValue">-</div>
-        <div class="id-decimal" id="realIdDecimal"></div>
-      </div>
-
-      <div class="stats-row" id="realStats">
-        <div class="stat-card"><div class="val" id="realVisits">-</div><div class="lbl">访问次数</div></div>
-        <div class="stat-card"><div class="val" id="realFirstSeen">-</div><div class="lbl">首次出现</div></div>
-        <div class="stat-card"><div class="val" id="realTracked">-</div><div class="lbl">全站被追踪用户</div></div>
-      </div>
-
-      <div class="insight red" id="realInsight" style="display:none;">
-        <h3><i class="ti ti-alert-triangle"></i> <span id="realInsightTitle"></span></h3>
-        <p id="realInsightText"></p>
-      </div>
-    </div>
-
-    <div class="log-box" id="realLogBox">
-      <div class="log-line"><span class="log-info">等待操作...</span></div>
-    </div>
-
-    <div class="insight" style="margin-top:16px;">
-      <h3><i class="ti ti-info-circle"></i> 说明</h3>
-      <p>
-        本演示用你的 IP 地址模拟 F-Cache 追踪效果（因为真正的 F-Cache 追踪需要配置多个子域名）。<br>
-        效果是一样的：你清了 Cookie、换了浏览器，服务器照样认出你。<br>
-        真实的 Favicon 追踪甚至不需要知道你的 IP——它只看你浏览器的缓存状态。
       </p>
     </div>
   </div>

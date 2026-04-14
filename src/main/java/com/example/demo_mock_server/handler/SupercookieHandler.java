@@ -9,9 +9,11 @@ import io.vertx.core.json.JsonObject;
 /**
  * Favicon Supercookie 处理器。
  *
- * POST /supercookie/session     → 分配 ID
- * GET  /supercookie/pixel → 长缓存 favicon
- * GET  /supercookie/stats       → 统计
+ * POST /supercookie/session          → 分配 ID
+ * GET  /supercookie/pixel            → bit 位 favicon（短缓存）
+ * GET  /supercookie/control-cached   → 校准用缓存样本
+ * GET  /supercookie/control-network  → 校准用网络样本
+ * GET  /supercookie/stats            → 统计
  */
 public class SupercookieHandler implements Handler<RoutingContext> {
 
@@ -40,6 +42,21 @@ public class SupercookieHandler implements Handler<RoutingContext> {
 
         if ("POST".equals(method) && path.endsWith("/session")) {
             sendJson(ctx, 200, service.createWriteSession());
+        } else if ("GET".equals(method) && path.endsWith("/control-cached")) {
+            ctx.response()
+                .putHeader("Content-Type", "image/png")
+                .putHeader("Cache-Control", "public, max-age=300")
+                .putHeader("CDN-Cache-Control", "no-store")
+                .putHeader("Access-Control-Allow-Origin", "*")
+                .end(Buffer.buffer(FAVICON_BYTES));
+        } else if ("GET".equals(method) && path.endsWith("/control-network")) {
+            ctx.response()
+                .putHeader("Content-Type", "image/png")
+                .putHeader("Cache-Control", "no-store, max-age=0")
+                .putHeader("CDN-Cache-Control", "no-store")
+                .putHeader("Pragma", "no-cache")
+                .putHeader("Access-Control-Allow-Origin", "*")
+                .end(Buffer.buffer(FAVICON_BYTES));
         } else if ("GET".equals(method) && path.endsWith("/pixel")) {
             ctx.response()
                 .putHeader("Content-Type", "image/png")

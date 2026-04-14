@@ -112,6 +112,8 @@ public class RouterConfig {
         SupercookieHandler supercookieHandler = new SupercookieHandler(supercookieService);
         router.post("/supercookie/session").handler(new RateLimitHandler(30, 60)).handler(supercookieHandler);
         router.get("/supercookie/pixel").handler(supercookieHandler);
+        router.get("/supercookie/control-cached").handler(supercookieHandler);
+        router.get("/supercookie/control-network").handler(supercookieHandler);
         router.get("/supercookie/stats").handler(supercookieHandler);
 
         // 静态资源

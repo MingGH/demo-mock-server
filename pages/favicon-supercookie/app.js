@@ -384,7 +384,8 @@ if (typeof window !== 'undefined') {
 
     // ========== 真实追踪演示（F-Cache 实现） ==========
     const API_BASE = 'https://numfeel-api.996.ninja';
-    const SUBDOMAIN_BASE = 'numfeel.996.ninja';
+    const SUBDOMAIN_BASE = '996.ninja';
+    function bitDomain(i) { return `bit${i}-numfeel.${SUBDOMAIN_BASE}`; }
     const realLogLines = [];
 
     function addRealLog(type, msg) {
@@ -453,13 +454,13 @@ if (typeof window !== 'undefined') {
           img.onload = img.onerror = () => {
             loaded++;
             if (bits[idx] === 1) {
-              addRealLog('write', `→ bit${idx}.${SUBDOMAIN_BASE}/favicon  [缓存写入, bit=1]`);
+              addRealLog('write', `→ ${bitDomain(idx)}/favicon  [缓存写入, bit=1]`);
             } else {
-              addRealLog('miss', `→ bit${idx}.${SUBDOMAIN_BASE}/favicon  [不缓存, bit=0]`);
+              addRealLog('miss', `→ ${bitDomain(idx)}/favicon  [不缓存, bit=0]`);
             }
             if (loaded === BITS) resolve();
           };
-          img.src = `https://bit${i}.${SUBDOMAIN_BASE}/supercookie/favicon/${i}?token=${token}&t=${Date.now()}`;
+          img.src = `https://${bitDomain(i)}/supercookie/favicon/${i}?token=${token}&t=${Date.now()}`;
         }
       });
     }
@@ -473,10 +474,10 @@ if (typeof window !== 'undefined') {
           const idx = i;
           img.onload = img.onerror = () => {
             loaded++;
-            addRealLog('read', `← bit${idx}.${SUBDOMAIN_BASE}/probe  [探测完成]`);
+            addRealLog('read', `← ${bitDomain(idx)}/probe  [探测完成]`);
             if (loaded === BITS) setTimeout(resolve, 500);
           };
-          img.src = `https://bit${i}.${SUBDOMAIN_BASE}/supercookie/probe/${i}?token=${token}&t=${Date.now()}`;
+          img.src = `https://${bitDomain(i)}/supercookie/probe/${i}?token=${token}&t=${Date.now()}`;
         }
       });
     }

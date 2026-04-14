@@ -50,7 +50,8 @@ public class BrowserFingerprintHandler implements Handler<RoutingContext> {
             return;
         }
 
-        String ipHint = ctx.request().getHeader("X-Forwarded-For");
+        String ipHint = ctx.request().getHeader("CF-Connecting-IP");
+        if (ipHint == null) ipHint = ctx.request().getHeader("X-Forwarded-For");
         if (ipHint != null) ipHint = ipHint.split(",")[0].trim();
         if (ipHint == null && ctx.request().remoteAddress() != null) {
             ipHint = ctx.request().remoteAddress().host();

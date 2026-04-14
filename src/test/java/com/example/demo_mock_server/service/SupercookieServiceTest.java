@@ -1,5 +1,6 @@
 package com.example.demo_mock_server.service;
 
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,59 +44,73 @@ class SupercookieServiceTest {
     }
 
     @Test
-    void testAssignNewUser() {
-        JsonObject result = service.assign("10.0.0.1");
+    void testCreateWriteSession() {
+        JsonObject result = service.createWriteSession();
+        assertNotNull(result.getString("token"));
         assertNotNull(result.getInteger("trackingId"));
-        assertEquals(16, result.getInteger("bits"));
         assertEquals(16, result.getString("binary").length());
-        assertEquals(1, result.getInteger("visitCount"));
-        assertFalse(result.getBoolean("returning"));
+        JsonArray bits = result.getJsonArray("bits");
+        assertEquals(16, bits.size());
+        // bits should be 0 or 1
+        for (int i = 0; i < 16; i++) {
+            int b = bits.getInteger(i);
+            assertTrue(b == 0 || b == 1);
+        }
     }
 
     @Test
-    void testAssignReturningUser() {
-        service.assign("10.0.0.2");
-        JsonObject second = service.assign("10.0.0.2");
-        assertTrue(second.getBoolean("returning"));
-        assertEquals(2, second.getInteger("visitCount"));
+    void testGetFaviconBit() {
+        JsonObject session = service.createWriteSession();
+        String token = session.getString("token");
+        JsonArray bits = session.getJsonArray("bits");
+
+        for (int i = 0; i < 16; i++) {
+            assertEquals(bits.getInteger(i).intValue(), service.getFaviconBit(token, i));
+        }
+        // invalid token
+        assertEquals(-1, service.getFaviconBit("invalid", 0));
+        // invalid index
+        assertEquals(-1, service.getFaviconBit(token, -1));
+        assertEquals(-1, service.getFaviconBit(token, 16));
     }
 
     @Test
-    void testAssignSameIdForSameIp() {
-        JsonObject first = service.assign("10.0.0.3");
-        JsonObject second = service.assign("10.0.0.3");
-        assertEquals(first.getInteger("trackingId"), second.getInteger("trackingId"));
+    void testProbeSessionAndResolve() {
+        // Create a write session to know the ID
+        JsonObject writeSession = service.createWriteSession();
+        int trackingId = writeSession.getInteger("trackingId");
+        JsonArray bits = writeSession.getJsonArray("bits");
+
+        // Create probe session
+        JsonObject probeSession = service.createProbeSession();
+        String probeToken = probeSession.getString("token");
+
+        // Simulate: for bits that are 0, the request reaches the server (no cache)
+        // For bits that are 1, the request does NOT reach the server (cached)
+        for (int i = 0; i < 16; i++) {
+            if (bits.getInteger(i) == 0) {
+                // bit=0 means no cache, request reaches server
+                assertTrue(service.recordProbeHit(probeToken, i));
+            }
+            // bit=1 means cached, request does NOT reach server → no recordProbeHit call
+        }
+
+        // Resolve
+        JsonObject result = service.resolveProbe(probeToken);
+        assertTrue(result.getBoolean("found"));
+        assertEquals(trackingId, result.getInteger("trackingId").intValue());
     }
 
     @Test
-    void testIdentifyUnknown() {
-        JsonObject result = service.identify("192.168.99.99");
-        assertFalse(result.getBoolean("found"));
-    }
-
-    @Test
-    void testIdentifyKnown() {
-        JsonObject assigned = service.assign("10.0.0.4");
-        int id = assigned.getInteger("trackingId");
-
-        JsonObject identified = service.identify("10.0.0.4");
-        assertTrue(identified.getBoolean("found"));
-        assertEquals(id, identified.getInteger("trackingId"));
-    }
-
-    @Test
-    void testEvict() {
-        service.assign("10.0.0.5");
-        service.evict("10.0.0.5");
-        JsonObject result = service.identify("10.0.0.5");
+    void testProbeSessionExpired() {
+        JsonObject result = service.resolveProbe("nonexistent");
         assertFalse(result.getBoolean("found"));
     }
 
     @Test
     void testStats() {
-        // 分配几个不同 IP
-        service.assign("10.1.0.1");
-        service.assign("10.1.0.2");
+        service.createWriteSession();
+        service.createWriteSession();
         JsonObject stats = service.stats();
         assertTrue(stats.getLong("trackedUsers") >= 2);
         assertEquals(16, stats.getInteger("bits"));

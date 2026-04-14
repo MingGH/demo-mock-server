@@ -53,12 +53,12 @@
     </div>
 
     <div class="insight" style="margin-top:16px;">
-      <h3><i class="ti ti-info-circle"></i> 说明</h3>
+      <h3><i class="ti ti-info-circle"></i> 这是真正的 F-Cache 追踪</h3>
       <p>
-        本演示用你的 IP 地址模拟 F-Cache 追踪效果（真正的 F-Cache 追踪需要配置多个子域名）。<br>
-        效果一样：你清了 Cookie、换了浏览器，服务器照样认出你。<br>
-        真实的 Favicon 追踪甚至不需要知道你的 IP——它只看你浏览器的缓存状态。<br>
-        想知道原理？往下看。
+        本演示配置了 16 个子域名（bit0~bit15.numfeel.996.ninja），每个子域名对应一个二进制位。<br>
+        写入时，服务器根据你的 ID 的二进制编码，控制每个子域名的 favicon 是否被浏览器缓存。<br>
+        读取时，浏览器对有缓存的子域名不会发请求到服务器，服务器通过「哪些请求到达了」还原你的 ID。<br>
+        <strong>不依赖 Cookie、不依赖 IP、不依赖任何登录信息。</strong>
       </p>
     </div>
   </div>

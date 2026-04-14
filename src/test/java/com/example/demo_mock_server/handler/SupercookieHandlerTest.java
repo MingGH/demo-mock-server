@@ -3,6 +3,7 @@ package com.example.demo_mock_server.handler;
 import com.example.demo_mock_server.service.SupercookieService;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.client.WebClient;
@@ -19,18 +20,19 @@ class SupercookieHandlerTest {
     private static int port;
     private static HttpServer server;
     private static WebClient client;
-    private static SupercookieService service;
 
     @BeforeAll
     static void setup(Vertx vertx, VertxTestContext ctx) {
-        service = new SupercookieService();
+        SupercookieService service = new SupercookieService();
         SupercookieHandler handler = new SupercookieHandler(service);
 
         Router router = Router.router(vertx);
-        router.post("/supercookie/assign").handler(handler);
-        router.get("/supercookie/identify").handler(handler);
+        router.post("/supercookie/session").handler(handler);
+        router.get("/supercookie/favicon/:bit").handler(handler);
+        router.post("/supercookie/probe-session").handler(handler);
+        router.get("/supercookie/probe/:bit").handler(handler);
+        router.get("/supercookie/resolve").handler(handler);
         router.get("/supercookie/stats").handler(handler);
-        router.delete("/supercookie/evict").handler(handler);
 
         server = vertx.createHttpServer();
         client = WebClient.create(vertx);
@@ -55,24 +57,38 @@ class SupercookieHandlerTest {
     }
 
     @Test
-    void testAssignNewUser(Vertx vertx, VertxTestContext ctx) {
-        // 先清除，确保是新用户
-        client.delete(port, "localhost", "/supercookie/evict")
-                .send(evictAr -> {
-                    client.post(port, "localhost", "/supercookie/assign")
+    void testCreateSession(Vertx vertx, VertxTestContext ctx) {
+        client.post(port, "localhost", "/supercookie/session")
+                .send(ar -> {
+                    ctx.verify(() -> {
+                        assertTrue(ar.succeeded());
+                        assertEquals(200, ar.result().statusCode());
+                        JsonObject data = ar.result().bodyAsJsonObject().getJsonObject("data");
+                        assertNotNull(data.getString("token"));
+                        assertNotNull(data.getInteger("trackingId"));
+                        assertEquals(16, data.getString("binary").length());
+                        assertEquals(16, data.getJsonArray("bits").size());
+                    });
+                    ctx.completeNow();
+                });
+    }
+
+    @Test
+    void testFaviconWithValidToken(Vertx vertx, VertxTestContext ctx) {
+        client.post(port, "localhost", "/supercookie/session")
+                .send(sessionAr -> {
+                    ctx.verify(() -> assertTrue(sessionAr.succeeded()));
+                    String token = sessionAr.result().bodyAsJsonObject()
+                            .getJsonObject("data").getString("token");
+
+                    client.get(port, "localhost", "/supercookie/favicon/0?token=" + token)
                             .send(ar -> {
                                 ctx.verify(() -> {
                                     assertTrue(ar.succeeded());
                                     assertEquals(200, ar.result().statusCode());
-                                    JsonObject body = ar.result().bodyAsJsonObject();
-                                    JsonObject data = body.getJsonObject("data");
-                                    assertNotNull(data);
-                                    assertNotNull(data.getInteger("trackingId"));
-                                    assertEquals(16, data.getInteger("bits"));
-                                    assertNotNull(data.getString("binary"));
-                                    assertEquals(16, data.getString("binary").length());
-                                    assertEquals(1, data.getInteger("visitCount"));
-                                    assertFalse(data.getBoolean("returning"));
+                                    assertEquals("image/png", ar.result().getHeader("Content-Type"));
+                                    // Should have cache control header
+                                    assertNotNull(ar.result().getHeader("Cache-Control"));
                                 });
                                 ctx.completeNow();
                             });
@@ -80,49 +96,78 @@ class SupercookieHandlerTest {
     }
 
     @Test
-    void testIdentifyUnknownUser(Vertx vertx, VertxTestContext ctx) {
-        // 先清除，确保是新用户
-        client.delete(port, "localhost", "/supercookie/evict")
-                .send(evictAr -> {
-                    client.get(port, "localhost", "/supercookie/identify")
-                            .send(ar -> {
-                                ctx.verify(() -> {
-                                    assertTrue(ar.succeeded());
-                                    JsonObject data = ar.result().bodyAsJsonObject().getJsonObject("data");
-                                    // identify 对未知用户也可能返回 found:false 或 found:true
-                                    // 取决于 assign 是否被调用过（同 IP）
-                                    assertNotNull(data);
-                                });
-                                ctx.completeNow();
-                            });
+    void testFaviconWithInvalidToken(Vertx vertx, VertxTestContext ctx) {
+        client.get(port, "localhost", "/supercookie/favicon/0?token=invalid")
+                .send(ar -> {
+                    ctx.verify(() -> {
+                        assertTrue(ar.succeeded());
+                        assertEquals(404, ar.result().statusCode());
+                    });
+                    ctx.completeNow();
                 });
     }
 
     @Test
-    void testAssignThenIdentify(Vertx vertx, VertxTestContext ctx) {
-        // 先清除旧数据
-        client.delete(port, "localhost", "/supercookie/evict")
-                .send(evictAr -> {
-                    // 分配 ID
-                    client.post(port, "localhost", "/supercookie/assign")
-                            .send(assignAr -> {
-                                ctx.verify(() -> assertTrue(assignAr.succeeded()));
-                                JsonObject assignData = assignAr.result().bodyAsJsonObject().getJsonObject("data");
-                                int assignedId = assignData.getInteger("trackingId");
+    void testProbeAndResolve(Vertx vertx, VertxTestContext ctx) {
+        // Create write session first
+        client.post(port, "localhost", "/supercookie/session")
+                .send(sessionAr -> {
+                    JsonObject sessionData = sessionAr.result().bodyAsJsonObject().getJsonObject("data");
+                    int trackingId = sessionData.getInteger("trackingId");
+                    JsonArray bits = sessionData.getJsonArray("bits");
 
-                                // 识别
-                                client.get(port, "localhost", "/supercookie/identify")
-                                        .send(identifyAr -> {
-                                            ctx.verify(() -> {
-                                                assertTrue(identifyAr.succeeded());
-                                                JsonObject data = identifyAr.result().bodyAsJsonObject().getJsonObject("data");
-                                                assertTrue(data.getBoolean("found"));
-                                                assertEquals(assignedId, data.getInteger("trackingId"));
-                                                assertTrue(data.getInteger("visitCount") >= 2);
+                    // Create probe session
+                    client.post(port, "localhost", "/supercookie/probe-session")
+                            .send(probeAr -> {
+                                String probeToken = probeAr.result().bodyAsJsonObject()
+                                        .getJsonObject("data").getString("token");
+
+                                // Simulate probe hits for bit=0 positions
+                                // (requests that reach server = no cache = bit 0)
+                                int[] zeroBits = new int[16];
+                                int count = 0;
+                                for (int i = 0; i < 16; i++) {
+                                    if (bits.getInteger(i) == 0) {
+                                        zeroBits[count++] = i;
+                                    }
+                                }
+
+                                // Send probe requests for zero bits
+                                final int totalZeros = count;
+                                if (totalZeros == 0) {
+                                    // All bits are 1, resolve directly
+                                    resolveAndVerify(ctx, probeToken, trackingId);
+                                    return;
+                                }
+
+                                final int[] completed = {0};
+                                for (int j = 0; j < totalZeros; j++) {
+                                    int bitIdx = zeroBits[j];
+                                    client.get(port, "localhost",
+                                                    "/supercookie/probe/" + bitIdx + "?token=" + probeToken)
+                                            .send(pAr -> {
+                                                synchronized (completed) {
+                                                    completed[0]++;
+                                                    if (completed[0] == totalZeros) {
+                                                        resolveAndVerify(ctx, probeToken, trackingId);
+                                                    }
+                                                }
                                             });
-                                            ctx.completeNow();
-                                        });
+                                }
                             });
+                });
+    }
+
+    private void resolveAndVerify(VertxTestContext ctx, String probeToken, int expectedId) {
+        client.get(port, "localhost", "/supercookie/resolve?token=" + probeToken)
+                .send(resolveAr -> {
+                    ctx.verify(() -> {
+                        assertTrue(resolveAr.succeeded());
+                        JsonObject data = resolveAr.result().bodyAsJsonObject().getJsonObject("data");
+                        assertTrue(data.getBoolean("found"));
+                        assertEquals(expectedId, data.getInteger("trackingId").intValue());
+                    });
+                    ctx.completeNow();
                 });
     }
 
@@ -143,72 +188,15 @@ class SupercookieHandlerTest {
     }
 
     @Test
-    void testEvict(Vertx vertx, VertxTestContext ctx) {
-        // 先分配
-        client.post(port, "localhost", "/supercookie/assign")
-                .send(assignAr -> {
-                    // 清除
-                    client.delete(port, "localhost", "/supercookie/evict")
-                            .send(evictAr -> {
-                                ctx.verify(() -> {
-                                    assertTrue(evictAr.succeeded());
-                                    JsonObject data = evictAr.result().bodyAsJsonObject().getJsonObject("data");
-                                    assertTrue(data.getBoolean("evicted"));
-                                });
-                                // 再识别应该找不到
-                                client.get(port, "localhost", "/supercookie/identify")
-                                        .send(identifyAr -> {
-                                            ctx.verify(() -> {
-                                                JsonObject data = identifyAr.result().bodyAsJsonObject().getJsonObject("data");
-                                                assertFalse(data.getBoolean("found"));
-                                            });
-                                            ctx.completeNow();
-                                        });
-                            });
-                });
-    }
-
-    @Test
-    void testAssignReturnsBinaryOf16Chars(Vertx vertx, VertxTestContext ctx) {
-        client.delete(port, "localhost", "/supercookie/evict")
-                .send(evictAr -> {
-                    client.post(port, "localhost", "/supercookie/assign")
-                            .send(ar -> {
-                                ctx.verify(() -> {
-                                    JsonObject data = ar.result().bodyAsJsonObject().getJsonObject("data");
-                                    String binary = data.getString("binary");
-                                    assertEquals(16, binary.length());
-                                    // 每个字符都是 0 或 1
-                                    for (char c : binary.toCharArray()) {
-                                        assertTrue(c == '0' || c == '1');
-                                    }
-                                });
-                                ctx.completeNow();
-                            });
-                });
-    }
-
-    @Test
-    void testReturningUser(Vertx vertx, VertxTestContext ctx) {
-        // 清除 → 分配 → 再分配（应该是 returning=true）
-        client.delete(port, "localhost", "/supercookie/evict")
-                .send(evictAr -> {
-                    client.post(port, "localhost", "/supercookie/assign")
-                            .send(firstAr -> {
-                                int firstId = firstAr.result().bodyAsJsonObject()
-                                        .getJsonObject("data").getInteger("trackingId");
-
-                                client.post(port, "localhost", "/supercookie/assign")
-                                        .send(secondAr -> {
-                                            ctx.verify(() -> {
-                                                JsonObject data = secondAr.result().bodyAsJsonObject().getJsonObject("data");
-                                                assertTrue(data.getBoolean("returning"));
-                                                assertEquals(firstId, data.getInteger("trackingId"));
-                                                assertEquals(2, data.getInteger("visitCount"));
-                                            });
-                                            ctx.completeNow();
-                                        });
-                            });
+    void testResolveWithExpiredToken(Vertx vertx, VertxTestContext ctx) {
+        client.get(port, "localhost", "/supercookie/resolve?token=nonexistent")
+                .send(ar -> {
+                    ctx.verify(() -> {
+                        assertTrue(ar.succeeded());
+                        JsonObject data = ar.result().bodyAsJsonObject().getJsonObject("data");
+                        assertFalse(data.getBoolean("found"));
+                    });
+                    ctx.completeNow();
                 });
     }
 }

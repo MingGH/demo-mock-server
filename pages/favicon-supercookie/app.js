@@ -389,7 +389,15 @@ if (typeof window !== 'undefined') {
     // ========== 真实追踪演示（F-Cache 实现） ==========
     const API_BASE = 'https://numfeel-api.996.ninja';
     const SUBDOMAIN_BASE = '996.ninja';
+    const CONTROL_CACHED_URL = `${API_BASE}/supercookie/control-cached`;
+    const CONTROL_NETWORK_URL = `${API_BASE}/supercookie/control-network`;
+    const CONTROL_SAMPLE_COUNT = 3;
+    const MIN_CONTROL_GAP_MS = 8;
+    const MIN_GRAY_BAND_MS = 2;
+    const GRAY_BAND_RATIO = 0.2;
+    const UNKNOWN_RETRY_WAIT_MS = 5500;
     function bitDomain(i) { return `bit${i}-numfeel.${SUBDOMAIN_BASE}`; }
+    function bitPixelUrl(i) { return `https://${bitDomain(i)}/supercookie/pixel`; }
     const realLogLines = [];
 
     function addRealLog(type, msg) {
@@ -449,6 +457,108 @@ if (typeof window !== 'undefined') {
       }
     }
 
+    function measureImageLoad(url) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        const start = performance.now();
+        let settled = false;
+        const done = () => {
+          if (!settled) {
+            settled = true;
+            resolve(performance.now() - start);
+          }
+        };
+        img.onload = img.onerror = done;
+        setTimeout(done, 10000);
+        img.src = url;
+      });
+    }
+
+    function median(values) {
+      const sorted = [...values].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 === 0
+        ? (sorted[mid - 1] + sorted[mid]) / 2
+        : sorted[mid];
+    }
+
+    async function seedCachedControl() {
+      const elapsed = await measureImageLoad(CONTROL_CACHED_URL);
+      addRealLog('write', `→ control-cached  [校准缓存写入, ${elapsed.toFixed(1)}ms]`);
+    }
+
+    async function collectCalibration(roundLabel) {
+      const cachedSamples = [];
+      const networkSamples = [];
+
+      for (let i = 0; i < CONTROL_SAMPLE_COUNT; i++) {
+        const cachedElapsed = await measureImageLoad(CONTROL_CACHED_URL);
+        cachedSamples.push(cachedElapsed);
+        addRealLog('read', `← control-cached  [${roundLabel} #${i + 1}: ${cachedElapsed.toFixed(1)}ms]`);
+
+        const networkElapsed = await measureImageLoad(CONTROL_NETWORK_URL);
+        networkSamples.push(networkElapsed);
+        addRealLog('read', `← control-network  [${roundLabel} #${i + 1}: ${networkElapsed.toFixed(1)}ms]`);
+      }
+
+      const cachedMedian = median(cachedSamples);
+      const networkMedian = median(networkSamples);
+      const gap = networkMedian - cachedMedian;
+      const threshold = (cachedMedian + networkMedian) / 2;
+      const grayBand = Math.max(MIN_GRAY_BAND_MS, gap * GRAY_BAND_RATIO);
+      const reliable = gap >= MIN_CONTROL_GAP_MS;
+      const reason = reliable ? '' : `控制样本差距仅 ${gap.toFixed(1)}ms，无法可靠区分缓存与网络`;
+
+      addRealLog(
+        reliable ? 'info' : 'miss',
+        `校准(${roundLabel}): cached≈${cachedMedian.toFixed(1)}ms, network≈${networkMedian.toFixed(1)}ms, gap=${gap.toFixed(1)}ms, midpoint=${threshold.toFixed(1)}ms, gray=±${grayBand.toFixed(1)}ms`
+      );
+
+      return {
+        reliable,
+        reason,
+        cachedMedian,
+        networkMedian,
+        gap,
+        threshold,
+        grayBand,
+      };
+    }
+
+    async function measureBitTimings(indices) {
+      const timings = [];
+      for (const i of indices) {
+        const elapsed = await measureImageLoad(bitPixelUrl(i));
+        timings.push({ index: i, elapsed });
+        addRealLog('read', `← ${bitDomain(i)}  [${elapsed.toFixed(1)}ms]`);
+      }
+      return timings;
+    }
+
+    function classifyTimings(timings, calibration) {
+      const bits = {};
+      const unknownIndices = [];
+      const cacheUpperBound = calibration.threshold - calibration.grayBand;
+      const networkLowerBound = calibration.threshold + calibration.grayBand;
+
+      addRealLog(
+        'info',
+        `判定窗口: 缓存 <=${cacheUpperBound.toFixed(1)}ms；网络 >=${networkLowerBound.toFixed(1)}ms；灰区 ${cacheUpperBound.toFixed(1)}-${networkLowerBound.toFixed(1)}ms`
+      );
+
+      for (const timing of timings) {
+        if (timing.elapsed <= cacheUpperBound) {
+          bits[timing.index] = 1;
+        } else if (timing.elapsed >= networkLowerBound) {
+          bits[timing.index] = 0;
+        } else {
+          unknownIndices.push(timing.index);
+        }
+      }
+
+      return { bits, unknownIndices, cacheUpperBound, networkLowerBound };
+    }
+
     /** 写入阶段：只请求 bit=1 的子域名的固定 favicon URL */
     function writeFaviconBits(bits) {
       return new Promise((resolve) => {
@@ -463,7 +573,7 @@ if (typeof window !== 'undefined') {
               addRealLog('write', `→ ${bitDomain(idx)}/favicon.ico  [缓存写入, bit=1]`);
               if (++loaded === oneBits) resolve();
             };
-            img.src = `https://${bitDomain(i)}/supercookie/pixel`;
+            img.src = bitPixelUrl(i);
           } else {
             addRealLog('miss', `  bit${i} = 0，跳过（不请求 = 不缓存）`);
           }
@@ -472,75 +582,62 @@ if (typeof window !== 'undefined') {
     }
 
     /**
-     * 读取阶段：串行请求所有 16 个子域名，收集耗时，
-     * 然后用最大间隔法自动分成"快组(缓存=1)"和"慢组(网络=0)"。
+     * 读取阶段：
+     * 1. 先用 control-cached / control-network 建立本轮参考系
+     * 2. 再读取 16 个 bit 的耗时
+     * 3. 对灰区 bit 等待 5.5 秒后重试一次，避免 0 位被第一次读取污染
      */
     function readFaviconBits() {
       return new Promise(async (resolve) => {
-        const timings = []; // { index, elapsed }
-
-        // 串行请求，收集每个 bit 的耗时
-        for (let i = 0; i < BITS; i++) {
-          const elapsed = await new Promise((res) => {
-            const img = new Image();
-            const start = performance.now();
-            let settled = false;
-            const done = () => { if (!settled) { settled = true; res(performance.now() - start); } };
-            img.onload = img.onerror = done;
-            setTimeout(() => done(), 10000);
-            img.src = `https://${bitDomain(i)}/supercookie/pixel`;
-          });
-          timings.push({ index: i, elapsed });
-          addRealLog('read', `← ${bitDomain(i)}  [${elapsed.toFixed(1)}ms]`);
-        }
-
-        // 分析耗时，自动区分缓存命中和网络请求
-        const sorted = [...timings].sort((a, b) => a.elapsed - b.elapsed);
-        const fastest = sorted[0].elapsed;
-        const slowest = sorted[sorted.length - 1].elapsed;
         const results = new Array(BITS).fill(0);
+        const allIndices = Array.from({ length: BITS }, (_, i) => i);
 
-        const CACHE_CEIL = 15; // 缓存命中通常 < 15ms
-
-        // 情况1：所有请求都很快 → 全部缓存命中
-        if (slowest < CACHE_CEIL) {
-          addRealLog('info', `所有请求 < ${CACHE_CEIL}ms（最慢 ${slowest.toFixed(1)}ms），全部缓存命中。`);
-          for (let i = 0; i < BITS; i++) results[i] = 1;
-          resolve(results);
+        const firstCalibration = await collectCalibration('初判');
+        if (!firstCalibration.reliable) {
+          resolve({ status: 'uncertain', reason: firstCalibration.reason });
           return;
         }
 
-        // 情况2：所有请求都慢 → 全部未缓存
-        if (fastest > CACHE_CEIL) {
-          addRealLog('info', `所有请求 > ${CACHE_CEIL}ms（最快 ${fastest.toFixed(1)}ms），全部未缓存。`);
-          resolve(results);
+        const firstTimings = await measureBitTimings(allIndices);
+        const firstPass = classifyTimings(firstTimings, firstCalibration);
+        for (const [idx, bit] of Object.entries(firstPass.bits)) {
+          results[Number(idx)] = bit;
+        }
+
+        if (firstPass.unknownIndices.length === 0) {
+          resolve({ status: 'ok', bits: results });
           return;
         }
 
-        // 情况3：有快有慢，找分界点
-        // 缓存命中 < 15ms，网络请求 > 15ms，找第一个跨越 15ms 的间隔
-        let splitAt = -1;
-        for (let i = 0; i < sorted.length - 1; i++) {
-          if (sorted[i].elapsed < CACHE_CEIL && sorted[i + 1].elapsed >= CACHE_CEIL) {
-            splitAt = i;
-            break;
-          }
-        }
-        if (splitAt < 0) {
-          // fallback: 用最大间隔
-          let maxGap = 0;
-          for (let i = 0; i < sorted.length - 1; i++) {
-            const gap = sorted[i + 1].elapsed - sorted[i].elapsed;
-            if (gap > maxGap) { maxGap = gap; splitAt = i; }
-          }
-        }
-        const threshold = (sorted[splitAt].elapsed + sorted[splitAt + 1].elapsed) / 2;
-        addRealLog('info', `分界: ${threshold.toFixed(1)}ms（快组 ≤${sorted[splitAt].elapsed.toFixed(1)}ms，慢组 ≥${sorted[splitAt+1].elapsed.toFixed(1)}ms）`);
+        addRealLog('info', `${firstPass.unknownIndices.length} 个 bit 落在灰区，等待 ${(UNKNOWN_RETRY_WAIT_MS / 1000).toFixed(1)}s 后重试这些位。`);
+        await sleep(UNKNOWN_RETRY_WAIT_MS);
 
-        for (const t of timings) {
-          results[t.index] = t.elapsed <= threshold ? 1 : 0;
+        const retryCalibration = await collectCalibration('重试');
+        if (!retryCalibration.reliable) {
+          resolve({
+            status: 'uncertain',
+            reason: `重试阶段失败：${retryCalibration.reason}`,
+            unknownIndices: firstPass.unknownIndices,
+          });
+          return;
         }
-        resolve(results);
+
+        const retryTimings = await measureBitTimings(firstPass.unknownIndices);
+        const retryPass = classifyTimings(retryTimings, retryCalibration);
+        for (const [idx, bit] of Object.entries(retryPass.bits)) {
+          results[Number(idx)] = bit;
+        }
+
+        if (retryPass.unknownIndices.length > 0) {
+          resolve({
+            status: 'uncertain',
+            reason: `${retryPass.unknownIndices.length} 个 bit 在重试后仍落在灰区`,
+            unknownIndices: retryPass.unknownIndices,
+          });
+          return;
+        }
+
+        resolve({ status: 'ok', bits: results });
       });
     }
 
@@ -558,33 +655,46 @@ if (typeof window !== 'undefined') {
           const json = await res.json();
           const data = json.data;
           addRealLog('write', `← 分配 ID: ${data.trackingId} (${data.binary})`);
+          await seedCachedControl();
           addRealLog('info', '开始写入：只请求 bit=1 的子域名...');
           await writeFaviconBits(data.bits);
           addRealLog('info', 'F-Cache 写入完成！');
           showTrackingResult(data, false);
           syncSimulationId(data.trackingId);
+          return { status: 'written', trackingId: data.trackingId, binary: data.binary };
         } catch (e) {
           addRealLog('miss', `请求失败: ${e.message}`);
+          return { status: 'error', error: e };
         }
       },
 
       async probe() {
         addRealLog('info', '开始从 F-Cache 还原追踪 ID...');
         try {
-          const bits = await readFaviconBits();
+          const probeResult = await readFaviconBits();
+          if (probeResult.status !== 'ok') {
+            addRealLog('miss', `探测结果不可靠：${probeResult.reason}`);
+            addRealLog('info', '本轮不写入新 ID，避免把误判当成真实缓存状态。');
+            return probeResult;
+          }
+
+          const bits = probeResult.bits;
           const trackingId = bitsArrayToId(bits);
           const binary = bits.map(b => String(b)).join('');
           addRealLog('read', `← 还原 ID: ${trackingId} (${binary})`);
           if (trackingId === 0) {
             addRealLog('info', 'F-Cache 为空，首次访问。写入新 ID...');
-            await this.writeId();
+            const writeResult = await this.writeId();
+            return { status: 'empty', trackingId: 0, binary, writeResult };
           } else {
             addRealLog('info', '你被追踪了。没有 Cookie，没有登录，但服务器认出了你。');
             showTrackingResult({ trackingId, binary }, true);
             syncSimulationId(trackingId);
+            return { status: 'found', trackingId, binary };
           }
         } catch (e) {
           addRealLog('miss', `探测失败: ${e.message}`);
+          return { status: 'error', error: e };
         }
       },
 
@@ -608,12 +718,10 @@ if (typeof window !== 'undefined') {
       },
     };
 
-    // 页面加载：先写入再立即读取（5秒缓存窗口内）
+    // 页面加载：先探测，只有空缓存时才写入新 ID。
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(async () => {
-        await window.realTrack.writeId();
-        await sleep(500);
-        addRealLog('info', '--- 现在用 F-Cache 反向还原你的 ID ---');
+        addRealLog('info', '页面初始化：先探测现有 F-Cache...');
         await window.realTrack.probe();
       }, 800);
     });

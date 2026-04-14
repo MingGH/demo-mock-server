@@ -107,13 +107,15 @@ public class RouterConfig {
         router.get("/inference/leaderboard").handler(inferenceHandler);
         router.delete("/inference/leaderboard").handler(inferenceHandler);
 
-        // Favicon 超级 Cookie 演示
+        // Favicon 超级 Cookie 演示（真实 F-Cache）
         SupercookieService supercookieService = new SupercookieService();
         SupercookieHandler supercookieHandler = new SupercookieHandler(supercookieService);
-        router.post("/supercookie/assign").handler(new RateLimitHandler(30, 60)).handler(supercookieHandler);
-        router.get("/supercookie/identify").handler(supercookieHandler);
+        router.post("/supercookie/session").handler(new RateLimitHandler(30, 60)).handler(supercookieHandler);
+        router.get("/supercookie/favicon/:bit").handler(supercookieHandler);
+        router.post("/supercookie/probe-session").handler(new RateLimitHandler(30, 60)).handler(supercookieHandler);
+        router.get("/supercookie/probe/:bit").handler(supercookieHandler);
+        router.get("/supercookie/resolve").handler(supercookieHandler);
         router.get("/supercookie/stats").handler(supercookieHandler);
-        router.delete("/supercookie/evict").handler(supercookieHandler);
 
         // 静态资源
         router.route("/pages/*").handler(StaticHandler.create("pages"));

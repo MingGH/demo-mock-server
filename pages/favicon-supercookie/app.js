@@ -382,8 +382,9 @@ if (typeof window !== 'undefined') {
       }
     };
 
-    // ========== 真实追踪演示 ==========
+    // ========== 真实追踪演示（F-Cache 实现） ==========
     const API_BASE = 'https://numfeel-api.996.ninja';
+    const SUBDOMAIN_BASE = 'numfeel.996.ninja';
     const realLogLines = [];
 
     function addRealLog(type, msg) {
@@ -410,15 +411,11 @@ if (typeof window !== 'undefined') {
       if (idDec) idDec.textContent = `追踪 ID: ${formatNumber(data.trackingId)}`;
 
       const visits = $('#realVisits');
-      if (visits) visits.textContent = data.visitCount || '-';
+      if (visits) visits.textContent = isReturning ? '回访用户' : '新用户';
 
       const firstSeen = $('#realFirstSeen');
-      if (firstSeen && data.firstSeen) {
-        const d = new Date(data.firstSeen);
-        firstSeen.textContent = d.toLocaleTimeString('zh-CN', { hour12: false });
-      }
+      if (firstSeen) firstSeen.textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
 
-      // 获取全站统计
       fetch(`${API_BASE}/supercookie/stats`)
         .then(r => r.json())
         .then(j => {
@@ -427,7 +424,6 @@ if (typeof window !== 'undefined') {
         })
         .catch(() => {});
 
-      // 显示震撼提示
       const insight = $('#realInsight');
       const title = $('#realInsightTitle');
       const text = $('#realInsightText');
@@ -435,83 +431,129 @@ if (typeof window !== 'undefined') {
         insight.style.display = 'block';
         if (isReturning) {
           title.textContent = '我们认出你了';
-          text.innerHTML = `你已经是第 <strong style="color:#ffd700">${data.visitCount}</strong> 次访问了。` +
-            `你的追踪 ID 是 <strong style="color:#ffd700">${data.trackingId}</strong>。<br>` +
-            `你没有登录、没有填任何信息，但服务器记得你。<br>` +
-            `试试清除 Cookie 后再点一次——你会发现没有任何变化。`;
+          text.innerHTML = `你的追踪 ID 是 <strong style="color:#ffd700">${data.trackingId}</strong>（二进制: ${data.binary}）。<br>` +
+            `你没有登录、没有填任何信息，但服务器通过 F-Cache 还原了你的身份。<br>` +
+            `试试清除 Cookie 后再点一次——你会发现 ID 没有变化。`;
         } else {
-          title.textContent = '追踪 ID 已写入';
+          title.textContent = '追踪 ID 已写入你的 F-Cache';
           text.innerHTML = `服务器刚刚给你分配了追踪 ID: <strong style="color:#ffd700">${data.trackingId}</strong>。<br>` +
-            `现在试试：清除浏览器 Cookie，然后再点「服务器认识我吗？」——你会发现 ID 没变。`;
+            `${BITS} 个子域名的 favicon 已经按照二进制编码写入了你的浏览器缓存。<br>` +
+            `现在试试：清除浏览器 Cookie，然后再点「重新探测」——你会发现 ID 没变。`;
         }
       }
     }
 
+    /** 用 img 标签请求所有子域名的 favicon，触发浏览器缓存写入 */
+    function writeFaviconBits(token, bits) {
+      return new Promise((resolve) => {
+        let loaded = 0;
+        for (let i = 0; i < BITS; i++) {
+          const img = new Image();
+          const idx = i;
+          img.onload = img.onerror = () => {
+            loaded++;
+            if (bits[idx] === 1) {
+              addRealLog('write', `→ bit${idx}.${SUBDOMAIN_BASE}/favicon  [缓存写入, bit=1]`);
+            } else {
+              addRealLog('miss', `→ bit${idx}.${SUBDOMAIN_BASE}/favicon  [不缓存, bit=0]`);
+            }
+            if (loaded === BITS) resolve();
+          };
+          img.src = `https://bit${i}.${SUBDOMAIN_BASE}/supercookie/favicon/${i}?token=${token}&t=${Date.now()}`;
+        }
+      });
+    }
+
+    /** 用 img 标签探测所有子域名：有缓存的不会到达服务器，没缓存的会到达 */
+    function probeFaviconBits(token) {
+      return new Promise((resolve) => {
+        let loaded = 0;
+        for (let i = 0; i < BITS; i++) {
+          const img = new Image();
+          const idx = i;
+          img.onload = img.onerror = () => {
+            loaded++;
+            addRealLog('read', `← bit${idx}.${SUBDOMAIN_BASE}/probe  [探测完成]`);
+            if (loaded === BITS) setTimeout(resolve, 500);
+          };
+          img.src = `https://bit${i}.${SUBDOMAIN_BASE}/supercookie/probe/${i}?token=${token}&t=${Date.now()}`;
+        }
+      });
+    }
+
     window.realTrack = {
-      async probe() {
-        addRealLog('info', '正在联系服务器...');
-
+      async writeId() {
+        addRealLog('info', '正在向服务器申请追踪 ID...');
         try {
-          // 先尝试 identify
-          addRealLog('read', '→ GET /supercookie/identify');
-          const identifyRes = await fetch(`${API_BASE}/supercookie/identify`);
-          const identifyData = await identifyRes.json();
+          const res = await fetch(`${API_BASE}/supercookie/session`, { method: 'POST' });
+          const json = await res.json();
+          const data = json.data;
+          addRealLog('write', `← 分配 ID: ${data.trackingId} (${data.binary})`);
+          addRealLog('info', `开始向 ${BITS} 个子域名写入 favicon 缓存...`);
+          await writeFaviconBits(data.token, data.bits);
+          addRealLog('info', 'F-Cache 写入完成！');
+          showTrackingResult(data, false);
+        } catch (e) {
+          addRealLog('miss', `请求失败: ${e.message}`);
+        }
+      },
 
-          if (identifyData.data && identifyData.data.found) {
-            addRealLog('read', `← 服务器返回: 找到了！ID = ${identifyData.data.trackingId}`);
-            addRealLog('write', `← 二进制: ${identifyData.data.binary}`);
-            addRealLog('read', `← 访问次数: ${identifyData.data.visitCount}`);
-            addRealLog('info', '你被追踪了。清 Cookie 也没用。');
-            showTrackingResult(identifyData.data, true);
-            return;
-          }
-
-          // 新用户，分配 ID
-          addRealLog('miss', '← 服务器: 没见过你，正在分配 ID...');
-          const assignRes = await fetch(`${API_BASE}/supercookie/assign`, { method: 'POST' });
-          const assignData = await assignRes.json();
-
-          if (assignData.data) {
-            addRealLog('write', `← 分配 ID: ${assignData.data.trackingId}`);
-            addRealLog('write', `← 二进制: ${assignData.data.binary}`);
-            addRealLog('info', '追踪 ID 已写入。试试清除 Cookie 后再来。');
-            showTrackingResult(assignData.data, false);
+      async probe() {
+        addRealLog('info', '正在创建探测 session...');
+        try {
+          const res = await fetch(`${API_BASE}/supercookie/probe-session`, { method: 'POST' });
+          const json = await res.json();
+          const token = json.data.token;
+          addRealLog('info', `开始探测 ${BITS} 个子域名的缓存状态...`);
+          await probeFaviconBits(token);
+          addRealLog('info', '探测完成，正在还原 ID...');
+          const resolveRes = await fetch(`${API_BASE}/supercookie/resolve?token=${token}`);
+          const resolveJson = await resolveRes.json();
+          const data = resolveJson.data;
+          if (data.found) {
+            addRealLog('read', `← 还原 ID: ${data.trackingId} (${data.binary})`);
+            if (data.trackingId === 0 && data.binary === '0'.repeat(BITS)) {
+              addRealLog('info', '所有 bit 都是 0，说明没有写入过 F-Cache。先写入一个 ID 吧。');
+              showTrackingResult(data, false);
+            } else {
+              addRealLog('info', '你被追踪了。清 Cookie 也没用。');
+              showTrackingResult(data, true);
+            }
+          } else {
+            addRealLog('miss', '探测 session 已过期，请重试');
           }
         } catch (e) {
           addRealLog('miss', `请求失败: ${e.message}`);
-          addRealLog('info', '（可能是网络问题或服务器未启动）');
         }
       },
 
       async clearAndRetry() {
-        addRealLog('info', '模拟「清除浏览数据」...');
-        // 真的清除本页面的所有 Cookie 和 Storage
+        addRealLog('info', '用户执行「清除浏览数据」...');
         document.cookie.split(';').forEach(c => {
           document.cookie = c.trim().split('=')[0] + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
         });
         try { localStorage.clear(); } catch(e) {}
         try { sessionStorage.clear(); } catch(e) {}
-
         await sleep(500);
         addRealLog('miss', '✗ Cookie → 已清除');
         addRealLog('miss', '✗ LocalStorage → 已清除');
         addRealLog('miss', '✗ SessionStorage → 已清除');
-        await sleep(500);
-        addRealLog('write', '✓ F-Cache → 无法清除（浏览器不提供此功能）');
-        addRealLog('write', '✓ 服务器端追踪 → 不受影响');
-        await sleep(500);
-        addRealLog('info', '重新探测...');
         await sleep(300);
-
-        // 重新探测
+        addRealLog('write', '✓ F-Cache (Favicon 缓存) → 无法清除！');
+        await sleep(500);
+        addRealLog('info', '重新探测 F-Cache...');
+        await sleep(300);
         await this.probe();
       },
     };
 
-    // 页面加载时自动探测一次
+    // 页面加载时自动写入 + 探测
     document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-        window.realTrack.probe();
+      setTimeout(async () => {
+        await window.realTrack.writeId();
+        await sleep(800);
+        addRealLog('info', '--- 现在用 F-Cache 反向还原你的 ID ---');
+        await window.realTrack.probe();
       }, 800);
     });
   })();

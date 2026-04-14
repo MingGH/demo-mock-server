@@ -52,7 +52,11 @@ public class RateLimitHandler implements Handler<RoutingContext> {
     }
 
     protected String resolveIp(RoutingContext ctx) {
-        // 优先取反代透传的真实 IP
+        // Cloudflare 设置的真实客户端 IP（最可靠）
+        String cfIp = ctx.request().getHeader("CF-Connecting-IP");
+        if (cfIp != null && !cfIp.isBlank()) {
+            return cfIp.trim();
+        }
         String forwarded = ctx.request().getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
             return forwarded.split(",")[0].trim();

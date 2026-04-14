@@ -444,12 +444,13 @@ if (typeof window !== 'undefined') {
       }
     }
 
-    /** 用 img 标签请求所有子域名的 favicon，触发浏览器缓存写入 */
+    /** 写入阶段：用 img 请求所有子域名的 favicon，触发浏览器缓存 */
     function writeFaviconBits(token, bits) {
       return new Promise((resolve) => {
         let loaded = 0;
         for (let i = 0; i < BITS; i++) {
           const img = new Image();
+          img.crossOrigin = 'anonymous';
           const idx = i;
           img.onload = img.onerror = () => {
             loaded++;
@@ -460,27 +461,60 @@ if (typeof window !== 'undefined') {
             }
             if (loaded === BITS) resolve();
           };
-          img.src = `https://${bitDomain(i)}/supercookie/favicon/${i}?token=${token}&t=${Date.now()}`;
+          // 固定 URL（无 cache buster），这样读取时能命中缓存
+          img.src = `https://${bitDomain(i)}/supercookie/favicon/${i}?token=${token}`;
         }
       });
     }
 
-    /** 用 img 标签探测所有子域名：有缓存的不会到达服务器，没缓存的会到达 */
-    function probeFaviconBits(token) {
+    /**
+     * 读取阶段：请求同一个 URL，通过 Resource Timing API 判断是否命中缓存。
+     * transferSize === 0 表示来自缓存（bit=1），> 0 表示网络请求（bit=0）。
+     */
+    function readFaviconBits(token) {
       return new Promise((resolve) => {
+        const results = new Array(BITS).fill(-1);
         let loaded = 0;
+
+        if (performance.clearResourceTiming) performance.clearResourceTiming();
+
         for (let i = 0; i < BITS; i++) {
-          const img = new Image();
           const idx = i;
-          img.onload = img.onerror = () => {
+          const url = `https://${bitDomain(i)}/supercookie/favicon/${i}?token=${token}`;
+
+          fetch(url, { mode: 'cors', cache: 'default' }).then(resp => {
+            // 检查 Resource Timing
+            const entries = performance.getEntriesByName(url);
+            const entry = entries.length > 0 ? entries[entries.length - 1] : null;
+            if (entry && entry.transferSize !== undefined && entry.transferSize === 0) {
+              results[idx] = 1;
+              addRealLog('read', `← ${bitDomain(idx)}  [缓存命中 → 1]`);
+            } else {
+              results[idx] = 0;
+              addRealLog('miss', `← ${bitDomain(idx)}  [未命中 → 0]`);
+            }
+          }).catch(() => {
+            results[idx] = 0;
+            addRealLog('miss', `← ${bitDomain(idx)}  [请求失败 → 0]`);
+          }).finally(() => {
             loaded++;
-            addRealLog('read', `← ${bitDomain(idx)}/probe  [探测完成]`);
-            if (loaded === BITS) setTimeout(resolve, 500);
-          };
-          img.src = `https://${bitDomain(i)}/supercookie/probe/${i}?token=${token}&t=${Date.now()}`;
+            if (loaded === BITS) setTimeout(() => resolve(results), 200);
+          });
         }
       });
     }
+
+    /** 从 bit 数组还原 ID */
+    function bitsArrayToId(bits) {
+      let id = 0;
+      for (let i = 0; i < bits.length; i++) {
+        id = (id << 1) | (bits[i] === 1 ? 1 : 0);
+      }
+      return id >>> 0;
+    }
+
+    // 保存写入时的 token，读取时复用
+    let writeToken = null;
 
     window.realTrack = {
       async writeId() {
@@ -489,6 +523,7 @@ if (typeof window !== 'undefined') {
           const res = await fetch(`${API_BASE}/supercookie/session`, { method: 'POST' });
           const json = await res.json();
           const data = json.data;
+          writeToken = data.token;
           addRealLog('write', `← 分配 ID: ${data.trackingId} (${data.binary})`);
           addRealLog('info', `开始向 ${BITS} 个子域名写入 favicon 缓存...`);
           await writeFaviconBits(data.token, data.bits);
@@ -500,31 +535,24 @@ if (typeof window !== 'undefined') {
       },
 
       async probe() {
-        addRealLog('info', '正在创建探测 session...');
+        if (!writeToken) {
+          addRealLog('miss', '还没有写入过 F-Cache，先点「写入」按钮。');
+          return;
+        }
+        addRealLog('info', `开始读取 ${BITS} 个子域名的缓存状态...`);
         try {
-          const res = await fetch(`${API_BASE}/supercookie/probe-session`, { method: 'POST' });
-          const json = await res.json();
-          const token = json.data.token;
-          addRealLog('info', `开始探测 ${BITS} 个子域名的缓存状态...`);
-          await probeFaviconBits(token);
-          addRealLog('info', '探测完成，正在还原 ID...');
-          const resolveRes = await fetch(`${API_BASE}/supercookie/resolve?token=${token}`);
-          const resolveJson = await resolveRes.json();
-          const data = resolveJson.data;
-          if (data.found) {
-            addRealLog('read', `← 还原 ID: ${data.trackingId} (${data.binary})`);
-            if (data.trackingId === 0 && data.binary === '0'.repeat(BITS)) {
-              addRealLog('info', '所有 bit 都是 0，说明没有写入过 F-Cache。先写入一个 ID 吧。');
-              showTrackingResult(data, false);
-            } else {
-              addRealLog('info', '你被追踪了。清 Cookie 也没用。');
-              showTrackingResult(data, true);
-            }
+          const bits = await readFaviconBits(writeToken);
+          const trackingId = bitsArrayToId(bits);
+          const binary = bits.map(b => b === 1 ? '1' : '0').join('');
+          addRealLog('read', `← 还原 ID: ${trackingId} (${binary})`);
+          if (trackingId === 0 && binary === '0'.repeat(BITS)) {
+            addRealLog('info', '所有 bit 都是 0，F-Cache 可能已被清除或浏览器不支持。');
           } else {
-            addRealLog('miss', '探测 session 已过期，请重试');
+            addRealLog('info', '你被追踪了。清 Cookie 也没用。');
           }
+          showTrackingResult({ trackingId, binary }, true);
         } catch (e) {
-          addRealLog('miss', `请求失败: ${e.message}`);
+          addRealLog('miss', `探测失败: ${e.message}`);
         }
       },
 
@@ -552,7 +580,7 @@ if (typeof window !== 'undefined') {
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(async () => {
         await window.realTrack.writeId();
-        await sleep(800);
+        await sleep(1000);
         addRealLog('info', '--- 现在用 F-Cache 反向还原你的 ID ---');
         await window.realTrack.probe();
       }, 800);

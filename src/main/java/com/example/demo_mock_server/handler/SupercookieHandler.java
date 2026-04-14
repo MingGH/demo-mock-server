@@ -89,7 +89,8 @@ public class SupercookieHandler implements Handler<RoutingContext> {
 
         ctx.response()
                 .putHeader("Content-Type", "image/png")
-                .putHeader("Access-Control-Allow-Origin", "*");
+                .putHeader("Access-Control-Allow-Origin", "*")
+                .putHeader("Timing-Allow-Origin", "*");
 
         if (bitValue == 1) {
             // 缓存：浏览器会缓存这个 favicon

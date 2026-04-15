@@ -107,14 +107,16 @@ public class SupercookieHandler implements Handler<RoutingContext> {
 
         if (cacheable) {
             response.putHeader("Cache-Control", "public, max-age=31536000, immutable");
+            response.end(Buffer.buffer(FAVICON_BYTES));
         } else {
             response
+                    .setStatusCode(404)
                     .putHeader("Cache-Control", "no-store, max-age=0")
                     .putHeader("Pragma", "no-cache")
-                    .putHeader("Expires", "0");
+                    .putHeader("Expires", "0")
+                    .putHeader("X-Robots-Tag", "noindex");
+            response.end();
         }
-
-        response.end(Buffer.buffer(FAVICON_BYTES));
     }
 
     private void sendHtml(RoutingContext ctx, String html) {

@@ -22,8 +22,7 @@ import java.util.regex.Pattern;
  * GET  /supercookie/write        → 创建 WRITE 会话并跳到首个 bit 页面
  * GET  /supercookie/read         → 创建 READ 会话并跳到首个 bit 页面
  * GET  /supercookie/finalize     → 汇总结果并跳回主页面
- * GET  /supercookie/write-page   → 在 bit 子域名上加载写入页
- * GET  /supercookie/read-page    → 在 bit 子域名上加载读取页
+ * GET  /supercookie/step         → 在 bit 子域名上加载读/写共用 worker 页
  * GET  /favicon.ico              → 真正的 favicon 入口（bit 子域名）
  * GET  /supercookie/stats        → 统计
  */
@@ -87,45 +86,36 @@ public class SupercookieHandler implements Handler<RoutingContext> {
                 redirect(ctx, buildFinalizeUrl(returnTo));
                 return;
             }
-            redirect(ctx, writePageUrl(firstBitIndex, returnTo));
+            redirect(ctx, stepPageUrl(firstBitIndex, returnTo));
         } else if ("GET".equals(method) && path.endsWith("/read")) {
             JsonObject data = service.beginReadFlow();
             String uid = data.getString("uid");
             String returnTo = sanitizeReturnTo(ctx.request().getParam("returnTo"));
             setCookie(ctx, SESSION_COOKIE, uid, SESSION_COOKIE_MAX_AGE_SECONDS, true);
-            redirect(ctx, readPageUrl(0, returnTo));
+            redirect(ctx, stepPageUrl(0, returnTo));
         } else if ("GET".equals(method) && path.endsWith("/finalize")) {
             String uid = cookieValue(ctx, SESSION_COOKIE);
             String returnTo = sanitizeReturnTo(ctx.request().getParam("returnTo"));
             JsonObject result = service.finalizeSession(uid);
             clearCookie(ctx, SESSION_COOKIE, true);
             redirect(ctx, buildReturnUrl(returnTo, result));
-        } else if ("GET".equals(method) && path.endsWith("/write-page")) {
+        } else if ("GET".equals(method) && (path.endsWith("/step") || path.endsWith("/write-page") || path.endsWith("/read-page"))) {
             if (bitIndex == null) {
-                ctx.response().setStatusCode(400).end("write-page must be loaded on bit subdomain");
+                ctx.response().setStatusCode(400).end("step page must be loaded on bit subdomain");
                 return;
             }
             String uid = cookieValue(ctx, SESSION_COOKIE);
-            JsonObject data = service.registerWritePageVisit(uid, bitIndex, host);
+            SupercookieService.SessionMode mode = service.getSessionMode(uid);
+            JsonObject data = service.registerStepVisit(uid, bitIndex, host);
             if (data == null) {
-                ctx.response().setStatusCode(400).end("invalid write session");
+                ctx.response().setStatusCode(400).end("invalid step session");
                 return;
             }
             String returnTo = sanitizeReturnTo(ctx.request().getParam("returnTo"));
-            sendHtml(ctx, renderWorkerPage("write", bitIndex, buildNextWriteUrl(data, returnTo)));
-        } else if ("GET".equals(method) && path.endsWith("/read-page")) {
-            if (bitIndex == null) {
-                ctx.response().setStatusCode(400).end("read-page must be loaded on bit subdomain");
-                return;
-            }
-            String uid = cookieValue(ctx, SESSION_COOKIE);
-            JsonObject data = service.registerReadPageVisit(uid, bitIndex, host);
-            if (data == null) {
-                ctx.response().setStatusCode(400).end("invalid read session");
-                return;
-            }
-            String returnTo = sanitizeReturnTo(ctx.request().getParam("returnTo"));
-            sendHtml(ctx, renderWorkerPage("read", bitIndex, buildNextReadUrl(data, returnTo)));
+            String nextUrl = mode == SupercookieService.SessionMode.WRITE
+                    ? buildNextWriteUrl(data, returnTo)
+                    : buildNextReadUrl(data, returnTo);
+            sendHtml(ctx, renderWorkerPage(mode == SupercookieService.SessionMode.WRITE ? "write" : "read", bitIndex, nextUrl));
         } else if ("GET".equals(method) && "/favicon.ico".equals(path)) {
             if (bitIndex == null) {
                 ctx.next();
@@ -314,7 +304,7 @@ public class SupercookieHandler implements Handler<RoutingContext> {
         if (nextBitIndex < 0) {
             return buildFinalizeUrl(returnTo);
         }
-        return writePageUrl(nextBitIndex, returnTo);
+        return stepPageUrl(nextBitIndex, returnTo);
     }
 
     private static String buildNextReadUrl(JsonObject data, String returnTo) {
@@ -322,19 +312,15 @@ public class SupercookieHandler implements Handler<RoutingContext> {
         if (nextBitIndex < 0) {
             return buildFinalizeUrl(returnTo);
         }
-        return readPageUrl(nextBitIndex, returnTo);
+        return stepPageUrl(nextBitIndex, returnTo);
     }
 
     private static String buildFinalizeUrl(String returnTo) {
         return API_BASE + "/supercookie/finalize?returnTo=" + encode(returnTo);
     }
 
-    private static String writePageUrl(int bitIndex, String returnTo) {
-        return "https://bit" + bitIndex + "-numfeel.996.ninja/supercookie/write-page?returnTo=" + encode(returnTo);
-    }
-
-    private static String readPageUrl(int bitIndex, String returnTo) {
-        return "https://bit" + bitIndex + "-numfeel.996.ninja/supercookie/read-page?returnTo=" + encode(returnTo);
+    private static String stepPageUrl(int bitIndex, String returnTo) {
+        return "https://bit" + bitIndex + "-numfeel.996.ninja/supercookie/step?returnTo=" + encode(returnTo);
     }
 
     private static String buildReturnUrl(String returnTo, JsonObject result) {

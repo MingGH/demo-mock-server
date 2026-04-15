@@ -31,6 +31,7 @@ class SupercookieHandlerTest {
         router.get("/supercookie/write").handler(handler);
         router.get("/supercookie/read").handler(handler);
         router.get("/supercookie/finalize").handler(handler);
+        router.get("/supercookie/step").handler(handler);
         router.get("/supercookie/write-page").handler(handler);
         router.get("/supercookie/read-page").handler(handler);
         router.get("/favicon.ico").handler(handler);
@@ -85,7 +86,7 @@ class SupercookieHandlerTest {
             }
 
             String sessionCookie = cookieHeader(readAr.result().getHeader("Set-Cookie"));
-            client.get(port, "bit0-numfeel.996.ninja", "/supercookie/read-page?returnTo=http://localhost/demo")
+            client.get(port, "bit0-numfeel.996.ninja", "/supercookie/step?returnTo=http://localhost/demo")
                     .putHeader("Cookie", sessionCookie)
                     .send(pageAr -> {
                 if (pageAr.failed()) {

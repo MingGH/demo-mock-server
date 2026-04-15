@@ -115,6 +115,7 @@ public class RouterConfig {
         router.get("/supercookie/write").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
         router.get("/supercookie/read").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
         router.get("/supercookie/finalize").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
+        router.get("/supercookie/step").handler(supercookieHandler);
         router.get("/supercookie/write-page").handler(supercookieHandler);
         router.get("/supercookie/read-page").handler(supercookieHandler);
         router.get("/supercookie/pixel").handler(supercookieHandler);

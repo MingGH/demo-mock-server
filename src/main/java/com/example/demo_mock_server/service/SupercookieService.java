@@ -95,6 +95,22 @@ public class SupercookieService {
                 .put("bits", session.bitsJson());
     }
 
+    public SessionMode getSessionMode(String uid) {
+        VisitorSession session = getSession(uid, null);
+        return session != null ? session.mode : null;
+    }
+
+    public JsonObject registerStepVisit(String uid, int bitIndex, String host) {
+        SessionMode mode = getSessionMode(uid);
+        if (mode == SessionMode.WRITE) {
+            return registerWritePageVisit(uid, bitIndex, host);
+        }
+        if (mode == SessionMode.READ) {
+            return registerReadPageVisit(uid, bitIndex, host);
+        }
+        return null;
+    }
+
     public JsonObject registerReadPageVisit(String uid, int bitIndex, String host) {
         VisitorSession session = getSession(uid, SessionMode.READ);
         if (session == null || bitIndex < 0 || bitIndex >= BITS) return null;

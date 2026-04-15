@@ -393,6 +393,16 @@ if (typeof window !== 'undefined') {
     function bitDomain(i) { return `bit${i}-numfeel.${SUBDOMAIN_BASE}`; }
     const realLogLines = [];
 
+    function showNotice() {
+      const modal = $('#demoNoticeModal');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function hideNotice() {
+      const modal = $('#demoNoticeModal');
+      if (modal) modal.style.display = 'none';
+    }
+
     function addRealLog(type, msg) {
       const now = new Date();
       const ts = now.toLocaleTimeString('zh-CN', { hour12: false });
@@ -525,6 +535,16 @@ if (typeof window !== 'undefined') {
     }
 
     window.realTrack = {
+      dismissNotice() {
+        hideNotice();
+      },
+
+      async startDemo() {
+        hideNotice();
+        addRealLog('info', '用户已确认开始真实演示。');
+        return this.probe();
+      },
+
       async writeId() {
         try {
           return await startWriteFlow();
@@ -644,8 +664,8 @@ if (typeof window !== 'undefined') {
       setTimeout(async () => {
         const resumed = await window.realTrack.resumeFlowIfNeeded();
         if (!resumed) {
-          addRealLog('info', '页面初始化：先探测现有 F-Cache...');
-          await window.realTrack.probe();
+          addRealLog('info', '演示待启动：点击“开始真实演示”后，页面会短暂跨子域名跳转。');
+          showNotice();
         }
       }, 800);
     });

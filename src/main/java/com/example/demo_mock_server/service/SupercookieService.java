@@ -305,10 +305,12 @@ public class SupercookieService {
             int visitedCount = 0;
             int networkRequestCount = 0;
             int reconstructedId = 0;
+            int expectedVisitedCount = 0;
 
             for (int i = 0; i < BITS; i++) {
                 if (visited[i]) visitedCount++;
                 int bit = mode == SessionMode.WRITE ? bits[i] : (observedRequests[i] ? 0 : 1);
+                if (mode == SessionMode.WRITE && bits[i] == 1) expectedVisitedCount++;
                 if (observedRequests[i]) networkRequestCount++;
 
                 bitArray.add(bit);
@@ -317,11 +319,16 @@ public class SupercookieService {
                 reconstructedId = (reconstructedId << 1) | bit;
             }
 
+            boolean complete = mode == SessionMode.WRITE
+                    ? visitedCount == expectedVisitedCount
+                    : visitedCount == BITS;
+
             return new JsonObject()
                     .put("uid", uid)
                     .put("mode", mode.name())
-                    .put("complete", visitedCount == BITS)
+                    .put("complete", complete)
                     .put("visitedCount", visitedCount)
+                    .put("expectedVisitedCount", mode == SessionMode.WRITE ? expectedVisitedCount : BITS)
                     .put("networkRequestCount", networkRequestCount)
                     .put("trackingId", mode == SessionMode.WRITE ? trackingId : reconstructedId)
                     .put("binary", mode == SessionMode.WRITE ? binary : toBinaryString(reconstructedId, BITS))

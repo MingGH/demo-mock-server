@@ -547,6 +547,11 @@ if (typeof window !== 'undefined') {
 
         if (action === 'error') {
           addRealLog('miss', `流程失败：${params.get('reason') || '未知错误'}`);
+          const visited = params.get('visitedCount');
+          const expected = params.get('expectedVisitedCount');
+          if (visited || expected) {
+            addRealLog('info', `诊断信息：visited=${visited || '-'} / expected=${expected || '-'}`);
+          }
           return true;
         }
 

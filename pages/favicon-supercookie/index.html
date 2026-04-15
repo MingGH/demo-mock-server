@@ -18,7 +18,15 @@
 
   <!-- ===== 真实追踪演示（第一屏） ===== -->
   <div class="card" id="realTrackingCard">
-    <h2><i class="ti ti-alert-circle"></i> 真实 F-Cache 追踪演示：你打开页面的瞬间，ID 就写进了你的浏览器</h2>
+    <h2><i class="ti ti-alert-circle"></i> 真实 F-Cache 追踪演示：点击开始后，页面会短暂跨子域名跳转</h2>
+    <p class="demo-lead">
+      为了尽量接近经典论文里的 favicon supercookie 行为，这个演示会在当前标签页里依次访问多个
+      `bitN-numfeel.996.ninja` 子域名页面。地址栏连续切换是演示的一部分，不是页面故障。
+    </p>
+    <div class="demo-warning">
+      <i class="ti ti-route"></i>
+      <span>开始后页面会连续跳转十几次，约持续 10~30 秒；流程结束后会自动回到当前页显示结果。</span>
+    </div>
 
     <div id="trackingResult" style="display:none;">
       <div class="id-display" id="realIdDisplay">
@@ -44,20 +52,20 @@
         <i class="ti ti-trash"></i> 不信？清除 Cookie 后再试
       </button>
       <button class="btn btn-secondary" onclick="realTrack.probe()" id="btnProbe">
-        <i class="ti ti-radar-2"></i> 重新探测
+        <i class="ti ti-radar-2"></i> 开始 / 重新探测
       </button>
     </div>
 
     <div class="log-box" id="realLogBox">
-      <div class="log-line"><span class="log-info">正在联系服务器...</span></div>
+      <div class="log-line"><span class="log-info">等待你点击“开始真实演示”。</span></div>
     </div>
 
     <div class="insight" style="margin-top:16px;">
       <h3><i class="ti ti-info-circle"></i> 这不是模拟，这是真正的 F-Cache 追踪</h3>
       <p>
         本页面部署了 16 个真实子域名（bit0~bit15-numfeel.996.ninja），每个子域名对应追踪 ID 的一个二进制位。<br>
-        <strong>写入：</strong>服务器根据你的 ID 的二进制编码，对 bit=1 的子域名返回长期缓存的 favicon，bit=0 的不缓存。<br>
-        <strong>读取：</strong>浏览器对有缓存的子域名不会发请求到服务器，服务器通过「哪些请求到达了、哪些没到达」还原你的 ID。<br>
+        <strong>写入：</strong>页面会依次访问 bit=1 对应的子域名页面，让浏览器为这些子域名写入真实 favicon 缓存。<br>
+        <strong>读取：</strong>页面会再次依次访问所有 bit 子域名，服务器通过「哪些 favicon 请求到达了、哪些没到达」还原你的 ID。<br>
         <strong>不依赖 Cookie、不依赖 IP、不依赖任何登录信息。纯粹利用浏览器 favicon 缓存机制。</strong>
       </p>
     </div>
@@ -322,6 +330,26 @@
         更关键的是：用户<strong>完全无法感知</strong>这个过程。没有弹窗、没有提示、没有权限请求。浏览器在后台默默完成了一切。<br><br>
         Chromium 团队在 2020 年收到了相关的安全报告（Issue #1096660），但截至目前 Chrome 仍未完全修复。
       </p>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="demoNoticeModal" style="display:none;">
+    <div class="modal-card">
+      <h3><i class="ti ti-info-circle"></i> 开始前提示</h3>
+      <p>
+        这个演示会为了复现经典 favicon supercookie，短暂依次访问 16 个真实子域名页面。
+        在这段时间里地址栏会切换，看起来像连续跳转，这是<strong>预期行为</strong>。
+      </p>
+      <p>
+        如果你不想立刻开始，可以先关闭这个提示阅读页面说明；准备好后，再点击上面的“开始 / 重新探测”。
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="realTrack.dismissNotice()">
+          <i class="ti ti-eye"></i> 先看说明
+        </button>
+        <button class="btn btn-primary" onclick="realTrack.startDemo()">
+          <i class="ti ti-player-play"></i> 开始真实演示
+        </button>
+      </div>
     </div>
   </div>
 </div>

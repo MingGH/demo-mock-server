@@ -37,39 +37,48 @@ class SupercookieServiceTest {
 
     @Test
     void testCreateWriteSession() {
-        JsonObject result = service.createWriteSession();
+        String token = service.issueWriteToken();
+        JsonObject result = service.beginWriteFlow(token);
+
+        assertNotNull(result);
         int id = result.getInteger("trackingId");
+        assertTrue(id > 0);
+        assertTrue(id < 65535);
+        assertEquals("WRITE", result.getString("mode"));
         assertEquals(16, result.getString("binary").length());
-        JsonArray bits = result.getJsonArray("bits");
-        assertEquals(16, bits.size());
-        for (int i = 0; i < 16; i++) {
-            assertEquals((id >>> (15 - i)) & 1, bits.getInteger(i).intValue());
-        }
+        assertEquals(16, result.getJsonArray("bits").size());
+        assertNotNull(result.getString("uid"));
+        assertTrue(result.getInteger("firstBitIndex") >= 0);
+        assertNull(service.beginWriteFlow(token), "写入 token 应该只能消费一次");
     }
 
     @Test
     void testStats() {
-        service.createWriteSession();
+        service.beginWriteFlow(service.issueWriteToken());
         JsonObject stats = service.stats();
         assertTrue(stats.getLong("trackedUsers") >= 1);
+        assertTrue(stats.getLong("activeSessions") >= 1);
         assertEquals(16, stats.getInteger("bits"));
         assertEquals(65536, stats.getInteger("maxCapacity"));
     }
 
     @Test
     void testReadProbeReconstructsBitPatternFromObservedRequests() {
-        String probeId = service.startProbeSession().getString("probeId");
+        JsonObject start = service.beginReadFlow();
+        String uid = start.getString("uid");
 
         for (int i = 0; i < SupercookieService.BITS; i++) {
             String host = "bit" + i + "-numfeel.996.ninja";
-            service.registerReadPageVisit(probeId, i, host);
+            service.registerReadPageVisit(uid, i, host);
             if (i == 1 || i == 3) {
-                assertFalse(service.handleFaviconRequest(host));
+                assertEquals(SupercookieService.FaviconDecision.NOT_FOUND,
+                        service.handleFaviconRequest(uid, host, i));
             }
         }
 
-        JsonObject result = service.finishProbeSession(probeId);
+        JsonObject result = service.finalizeSession(uid);
         assertTrue(result.getBoolean("complete"));
+        assertEquals("READ", result.getString("mode"));
         assertEquals(5, result.getInteger("trackingId"));
         assertEquals("0000000000000101", result.getString("binary"));
         assertFalse(result.getBoolean("allOne"));
@@ -77,17 +86,37 @@ class SupercookieServiceTest {
 
     @Test
     void testRepeatedReadRequestsStayInReadMode() {
-        String probeId = service.startProbeSession().getString("probeId");
+        String uid = service.beginReadFlow().getString("uid");
         String host = "bit0-numfeel.996.ninja";
 
-        service.registerReadPageVisit(probeId, 0, host);
+        service.registerReadPageVisit(uid, 0, host);
 
-        assertFalse(service.handleFaviconRequest(host));
-        assertFalse(service.handleFaviconRequest(host));
+        assertEquals(SupercookieService.FaviconDecision.NOT_FOUND,
+                service.handleFaviconRequest(uid, host, 0));
+        assertEquals(SupercookieService.FaviconDecision.NOT_FOUND,
+                service.handleFaviconRequest(uid, host, 0));
 
-        JsonObject result = service.finishProbeSession(probeId);
+        JsonObject result = service.finalizeSession(uid);
         assertEquals(1, result.getInteger("networkRequestCount"));
         assertEquals(0, result.getInteger("trackingId"));
         assertFalse(result.getBoolean("allOne"));
+    }
+
+    @Test
+    void testWriteModeFaviconDecisionMatchesAssignedBits() {
+        JsonObject start = service.beginWriteFlow(service.issueWriteToken());
+        String uid = start.getString("uid");
+        JsonArray bits = start.getJsonArray("bits");
+
+        for (int i = 0; i < SupercookieService.BITS; i++) {
+            String host = "bit" + i + "-numfeel.996.ninja";
+            service.registerWritePageVisit(uid, i, host);
+            SupercookieService.FaviconDecision decision = service.handleFaviconRequest(uid, host, i);
+            if (bits.getInteger(i) == 1) {
+                assertEquals(SupercookieService.FaviconDecision.CACHEABLE, decision);
+            } else {
+                assertEquals(SupercookieService.FaviconDecision.NOT_FOUND, decision);
+            }
+        }
     }
 }

@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
  * 负责：
  * 1. 分配追踪 ID
  * 2. 管理读取 probe 会话
- * 3. 关联 "读取页面访问" 和 "favicon 请求是否到达"
+ * 3. 关联 "页面访问上下文" 和 "favicon 请求是否到达"
  */
 public class SupercookieService {
 
@@ -28,7 +28,7 @@ public class SupercookieService {
 
     private final Cache<String, Boolean> assignedIds;
     private final Cache<String, ProbeSession> probeSessions;
-    private final Cache<String, PendingVisit> pendingVisitsByHost;
+    private final Cache<String, PageContext> pageContextsByHost;
 
     public SupercookieService() {
         this.assignedIds = Caffeine.newBuilder()
@@ -39,7 +39,7 @@ public class SupercookieService {
                 .expireAfterWrite(5, TimeUnit.MINUTES)
                 .maximumSize(10_000)
                 .build();
-        this.pendingVisitsByHost = Caffeine.newBuilder()
+        this.pageContextsByHost = Caffeine.newBuilder()
                 .expireAfterWrite(PROBE_WINDOW_MS, TimeUnit.MILLISECONDS)
                 .maximumSize(10_000)
                 .build();
@@ -75,25 +75,42 @@ public class SupercookieService {
 
         String normalizedHost = normalizeHost(host);
         session.markVisited(bitIndex, normalizedHost);
-        pendingVisitsByHost.put(normalizedHost, new PendingVisit(probeId, bitIndex, System.currentTimeMillis()));
+        pageContextsByHost.put(normalizedHost, new PageContext(PageMode.READ, probeId, bitIndex, System.currentTimeMillis()));
         log.info("supercookie probe page visit: probeId={}, host={}, bit={}", probeId, normalizedHost, bitIndex);
     }
 
-    public void recordFaviconRequest(String host) {
+    public void registerWritePageVisit(int bitIndex, String host) {
         String normalizedHost = normalizeHost(host);
-        PendingVisit visit = pendingVisitsByHost.getIfPresent(normalizedHost);
-        if (visit == null) return;
+        if (bitIndex < 0 || bitIndex >= BITS) return;
+        pageContextsByHost.put(normalizedHost, new PageContext(PageMode.WRITE, null, bitIndex, System.currentTimeMillis()));
+        log.info("supercookie write page visit: host={}, bit={}", normalizedHost, bitIndex);
+    }
 
-        if (System.currentTimeMillis() - visit.timestampMs > PROBE_WINDOW_MS) {
-            pendingVisitsByHost.invalidate(normalizedHost);
-            return;
+    public boolean handleFaviconRequest(String host) {
+        String normalizedHost = normalizeHost(host);
+        PageContext context = pageContextsByHost.getIfPresent(normalizedHost);
+        if (context == null) {
+            return true;
         }
 
-        ProbeSession session = probeSessions.getIfPresent(visit.probeId);
-        if (session == null) return;
+        if (System.currentTimeMillis() - context.timestampMs > PROBE_WINDOW_MS) {
+            pageContextsByHost.invalidate(normalizedHost);
+            return true;
+        }
 
-        session.markFaviconRequested(visit.bitIndex);
-        log.info("supercookie favicon hit: probeId={}, host={}, bit={}", visit.probeId, normalizedHost, visit.bitIndex);
+        pageContextsByHost.invalidate(normalizedHost);
+
+        if (context.mode == PageMode.READ) {
+            ProbeSession session = probeSessions.getIfPresent(context.probeId);
+            if (session != null) {
+                session.markFaviconRequested(context.bitIndex);
+                log.info("supercookie favicon read hit: probeId={}, host={}, bit={}", context.probeId, normalizedHost, context.bitIndex);
+            }
+            return false;
+        }
+
+        log.info("supercookie favicon write hit: host={}, bit={}", normalizedHost, context.bitIndex);
+        return true;
     }
 
     public JsonObject finishProbeSession(String probeId) {
@@ -138,12 +155,19 @@ public class SupercookieService {
         return colon >= 0 ? normalized.substring(0, colon) : normalized;
     }
 
-    private static final class PendingVisit {
+    private enum PageMode {
+        READ,
+        WRITE
+    }
+
+    private static final class PageContext {
+        final PageMode mode;
         final String probeId;
         final int bitIndex;
         final long timestampMs;
 
-        PendingVisit(String probeId, int bitIndex, long timestampMs) {
+        PageContext(PageMode mode, String probeId, int bitIndex, long timestampMs) {
+            this.mode = mode;
             this.probeId = probeId;
             this.bitIndex = bitIndex;
             this.timestampMs = timestampMs;

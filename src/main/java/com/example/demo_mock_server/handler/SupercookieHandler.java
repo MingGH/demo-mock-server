@@ -10,6 +10,9 @@ import io.vertx.ext.web.RoutingContext;
 
 import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -141,7 +144,9 @@ public class SupercookieHandler implements Handler<RoutingContext> {
             .putHeader("Access-Control-Allow-Origin", "*");
 
         if (cacheable) {
-            response.putHeader("Cache-Control", "public, max-age=31536000, immutable");
+            response.putHeader("Cache-Control", "public, max-age=31536000, immutable")
+                    .putHeader("Expires", DateTimeFormatter.RFC_1123_DATE_TIME.format(
+                            Instant.ofEpochMilli(System.currentTimeMillis() + 31536000_000L).atOffset(ZoneOffset.UTC)));
             response.end(Buffer.buffer(FAVICON_BYTES));
         } else {
             response
@@ -261,6 +266,7 @@ public class SupercookieHandler implements Handler<RoutingContext> {
                 "  setTimeout(function () {\n" +
                 "    var midMatch = document.cookie.match(/(?:^|; )sc_mid=([^;]+)/);\n" +
                 "    var mid = midMatch ? decodeURIComponent(midMatch[1]) : '';\n" +
+                "    document.cookie = 'sc_mid=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';\n" +
                 "    var target = mid\n" +
                 "      ? '/supercookie/write?mid=' + encodeURIComponent(mid) + '&returnTo=' + encodeURIComponent(\"" + safeReturnTo + "\")\n" +
                 "      : '/supercookie/read?returnTo=' + encodeURIComponent(\"" + safeReturnTo + "\");\n" +

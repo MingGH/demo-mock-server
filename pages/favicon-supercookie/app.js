@@ -388,9 +388,7 @@ if (typeof window !== 'undefined') {
 
     // ========== 真实追踪演示（F-Cache 实现） ==========
     const API_BASE = 'https://numfeel-api.996.ninja';
-    const SUBDOMAIN_BASE = '996.ninja';
     const ACTION_PARAM = 'sc_action';
-    function bitDomain(i) { return `bit${i}-numfeel.${SUBDOMAIN_BASE}`; }
     const realLogLines = [];
 
     function showNotice() {
@@ -473,65 +471,23 @@ if (typeof window !== 'undefined') {
       window.history.replaceState({}, document.title, cleanUrl);
     }
 
-    function writePageUrl(bitIndex, bitsBinary, returnTo) {
-      return `https://${bitDomain(bitIndex)}/supercookie/write-page?bits=${encodeURIComponent(bitsBinary)}&returnTo=${encodeURIComponent(returnTo)}`;
-    }
-
-    function readPageUrl(bitIndex, probeId, returnTo) {
-      return `https://${bitDomain(bitIndex)}/supercookie/read-page?probeId=${encodeURIComponent(probeId)}&returnTo=${encodeURIComponent(returnTo)}`;
-    }
-
     function redirectTo(url) {
       window.location.replace(url);
     }
 
-    async function beginWriteFlowFromSession(data) {
-      addRealLog('write', `← 分配 ID: ${data.trackingId} (${data.binary})`);
-      addRealLog('info', '开始顶级跳转写入：仅访问 bit=1 的子域名页面...');
+    function buildLaunchUrl() {
+      const returnTo = buildReturnUrl({});
+      return `${API_BASE}/supercookie/launch?returnTo=${encodeURIComponent(returnTo)}`;
+    }
 
-      const firstBit = data.bits.findIndex((b) => b === 1);
-      if (firstBit < 0) {
-        addRealLog('miss', '分配结果没有任何 bit=1，视为无效写入');
-        return { status: 'error', reason: 'empty bitset' };
-      }
+    function parseBoolParam(params, key) {
+      return params.get(key) === 'true';
+    }
 
-      const returnTo = buildReturnUrl({
-        [ACTION_PARAM]: 'written',
-        trackingId: data.trackingId,
-        binary: data.binary,
-      });
-      redirectTo(writePageUrl(firstBit, data.binary, returnTo));
+    function startLaunchFlow(logMessage) {
+      if (logMessage) addRealLog('info', logMessage);
+      redirectTo(buildLaunchUrl());
       return { status: 'redirecting' };
-    }
-
-    async function startWriteFlow() {
-      addRealLog('info', '正在向服务器申请追踪 ID...');
-      const res = await fetch(`${API_BASE}/supercookie/session`, { method: 'POST' });
-      const json = await res.json();
-      return beginWriteFlowFromSession(json.data);
-    }
-
-    async function startProbeFlow() {
-      const startRes = await fetch(`${API_BASE}/supercookie/probe/start`, { method: 'POST' });
-      const startJson = await startRes.json();
-      const probeData = startJson.data;
-      const probeId = probeData.probeId;
-
-      addRealLog('info', `服务器已开始读取会话 probeId=${probeId}`);
-      addRealLog('info', '开始顶级跳转读取：顺序访问 16 个 bit 子域名页面...');
-
-      const returnTo = buildReturnUrl({
-        [ACTION_PARAM]: 'probed',
-        probeId,
-      });
-      redirectTo(readPageUrl(0, probeId, returnTo));
-      return { status: 'redirecting', probeId };
-    }
-
-    function bitsArrayToId(bits) {
-      let id = 0;
-      for (let i = 0; i < bits.length; i++) id = (id << 1) | (bits[i] === 1 ? 1 : 0);
-      return id >>> 0;
     }
 
     window.realTrack = {
@@ -541,23 +497,16 @@ if (typeof window !== 'undefined') {
 
       async startDemo() {
         hideNotice();
-        addRealLog('info', '用户已确认开始真实演示。');
-        return this.probe();
+        return startLaunchFlow('用户已确认开始真实演示，正在进入 launch 页面...');
       },
 
       async writeId() {
-        try {
-          return await startWriteFlow();
-        } catch (e) {
-          addRealLog('miss', `请求失败: ${e.message}`);
-          return { status: 'error', error: e };
-        }
+        return this.probe();
       },
 
       async probe() {
-        addRealLog('info', '开始从 F-Cache 还原追踪 ID...');
         try {
-          return await startProbeFlow();
+          return startLaunchFlow('开始真实 F-Cache 链路：launch favicon 会先判断你是首次还是回访...');
         } catch (e) {
           addRealLog('miss', `探测失败: ${e.message}`);
           return { status: 'error', error: e };
@@ -578,9 +527,7 @@ if (typeof window !== 'undefined') {
         await sleep(300);
         addRealLog('write', '✓ F-Cache (Favicon 缓存) → 无法清除！');
         await sleep(500);
-        addRealLog('info', '重新探测 F-Cache...');
-        await sleep(300);
-        await this.probe();
+        return startLaunchFlow('Cookie 已清除，重新进入 launch 页面读取 F-Cache...');
       },
 
       async resumeFlowIfNeeded() {
@@ -590,9 +537,20 @@ if (typeof window !== 'undefined') {
 
         clearFlowParams();
 
+        const trackingId = Number(params.get('trackingId') || 0);
+        const binary = params.get('binary') || '';
+        const mode = params.get('mode') || '';
+        const visitedCount = Number(params.get('visitedCount') || 0);
+        const networkRequestCount = Number(params.get('networkRequestCount') || 0);
+        const allOne = parseBoolParam(params, 'allOne');
+        const allZero = parseBoolParam(params, 'allZero');
+
+        if (action === 'error') {
+          addRealLog('miss', `流程失败：${params.get('reason') || '未知错误'}`);
+          return true;
+        }
+
         if (action === 'written') {
-          const trackingId = Number(params.get('trackingId') || 0);
-          const binary = params.get('binary') || '';
           addRealLog('info', '写入跳转链已完成，已回到主页面。');
           addRealLog('write', `← 分配 ID: ${trackingId} (${binary})`);
           addRealLog('info', 'F-Cache 写入完成！');
@@ -601,54 +559,25 @@ if (typeof window !== 'undefined') {
           return true;
         }
 
-        if (action === 'probed') {
-          const probeId = params.get('probeId');
-          if (!probeId) {
-            addRealLog('miss', '回到主页面时缺少 probeId');
+        if (action === 'read') {
+          addRealLog('info', `读取跳转链已完成：visited=${visitedCount}/${BITS}, network=${networkRequestCount}`);
+
+          if (allOne) {
+            addRealLog('miss', '探测结果不可靠：读到了保留态 1111111111111111，说明当前浏览器缓存环境不稳定。');
             return true;
           }
 
-          addRealLog('info', `读取跳转链已完成，正在向服务器拉取 probe 结果（probeId=${probeId}）...`);
-          const finishRes = await fetch(`${API_BASE}/supercookie/probe/finish`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ probeId }),
-          });
-          const finishJson = await finishRes.json();
-          const result = finishJson.data;
-
-          if (!result.complete) {
-            addRealLog('miss', `探测结果不完整：visited=${result.visitedCount || 0}/${BITS}`);
+          if (allZero || trackingId === 0) {
+            addRealLog('miss', '这次没有恢复出稳定 ID，当前浏览器可能没有复现出经典 F-Cache 行为。');
             return true;
           }
 
-          for (let i = 0; i < BITS; i++) {
-            const networkSeen = Array.isArray(result.observedRequests) ? result.observedRequests[i] : false;
-            if (networkSeen) {
-              addRealLog('miss', `← ${bitDomain(i)}/favicon.ico  [请求到达服务器 → 0]`);
-            } else {
-              addRealLog('read', `← ${bitDomain(i)}/favicon.ico  [未到达服务器 → 1]`);
-            }
-          }
-
-          if (result.allOne) {
-            addRealLog('miss', '探测结果不可靠：读到了保留态 1111111111111111，视为不可靠结果');
+          if (mode && mode !== 'READ') {
+            addRealLog('miss', `返回模式异常：${mode}`);
             return true;
           }
 
-          const bits = result.bits || [];
-          const trackingId = typeof result.trackingId === 'number'
-            ? result.trackingId
-            : bitsArrayToId(bits);
-          const binary = result.binary || bits.map(b => String(b)).join('');
           addRealLog('read', `← 还原 ID: ${trackingId} (${binary})`);
-
-          if (trackingId === 0) {
-            addRealLog('info', 'F-Cache 为空，首次访问。开始写入新 ID...');
-            await startWriteFlow();
-            return true;
-          }
-
           addRealLog('info', '你被追踪了。没有 Cookie，没有登录，但服务器认出了你。');
           showTrackingResult({ trackingId, binary }, true);
           syncSimulationId(trackingId);

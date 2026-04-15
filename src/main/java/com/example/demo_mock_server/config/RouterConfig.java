@@ -110,9 +110,11 @@ public class RouterConfig {
         // Favicon 超级 Cookie 演示（真实 F-Cache）
         SupercookieService supercookieService = new SupercookieService();
         SupercookieHandler supercookieHandler = new SupercookieHandler(supercookieService);
-        router.post("/supercookie/session").handler(new RateLimitHandler(30, 60)).handler(supercookieHandler);
-        router.post("/supercookie/probe/start").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
-        router.post("/supercookie/probe/finish").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
+        router.get("/supercookie/launch").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
+        router.get("/supercookie/launch-icon").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
+        router.get("/supercookie/write").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
+        router.get("/supercookie/read").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
+        router.get("/supercookie/finalize").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
         router.get("/supercookie/write-page").handler(supercookieHandler);
         router.get("/supercookie/read-page").handler(supercookieHandler);
         router.get("/supercookie/pixel").handler(supercookieHandler);

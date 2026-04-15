@@ -13,10 +13,10 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Favicon Supercookie 追踪服务。
- * 负责：
- * 1. 分配追踪 ID
- * 2. 管理读取 probe 会话
- * 3. 关联 "页面访问上下文" 和 "favicon 请求是否到达"
+ * 参考开源 demo 的状态机设计，统一管理：
+ * 1. launch favicon 触发的写入 token
+ * 2. 跨子域共享的访客会话（READ / WRITE）
+ * 3. bit 页面访问与 favicon 请求观测结果
  */
 public class SupercookieService {
 
@@ -24,114 +24,162 @@ public class SupercookieService {
     public static final int BITS = 16;
     private static final int MAX_CAPACITY = 1 << BITS;
     private static final int MAX_TRACKING_ID = MAX_CAPACITY - 2; // 保留 0 和全 1
-    private static final long PROBE_WINDOW_MS = 4_000L;
+    private static final long SESSION_TTL_MS = 5 * 60_000L;
+    private static final long WRITE_TOKEN_TTL_MS = 2 * 60_000L;
 
     private final Cache<String, Boolean> assignedIds;
-    private final Cache<String, ProbeSession> probeSessions;
-    private final Cache<String, PageContext> pageContextsByHost;
+    private final Cache<String, Boolean> writeTokens;
+    private final Cache<String, VisitorSession> visitorSessions;
 
     public SupercookieService() {
         this.assignedIds = Caffeine.newBuilder()
                 .expireAfterWrite(24, TimeUnit.HOURS)
                 .maximumSize(100_000)
                 .build();
-        this.probeSessions = Caffeine.newBuilder()
-                .expireAfterWrite(5, TimeUnit.MINUTES)
+        this.writeTokens = Caffeine.newBuilder()
+                .expireAfterWrite(WRITE_TOKEN_TTL_MS, TimeUnit.MILLISECONDS)
                 .maximumSize(10_000)
                 .build();
-        this.pageContextsByHost = Caffeine.newBuilder()
-                .expireAfterWrite(PROBE_WINDOW_MS, TimeUnit.MILLISECONDS)
+        this.visitorSessions = Caffeine.newBuilder()
+                .expireAfterWrite(SESSION_TTL_MS, TimeUnit.MILLISECONDS)
                 .maximumSize(10_000)
                 .build();
         log.info("SupercookieService initialized ({} bits)", BITS);
     }
 
-    public JsonObject createWriteSession() {
-        int trackingId = ThreadLocalRandom.current().nextInt(1, MAX_TRACKING_ID + 1);
-        String binary = toBinaryString(trackingId, BITS);
-        JsonArray bitsArray = new JsonArray();
-        for (int i = 0; i < BITS; i++) {
-            bitsArray.add((trackingId >>> (BITS - 1 - i)) & 1);
+    public String issueWriteToken() {
+        String token = UUID.randomUUID().toString();
+        writeTokens.put(token, true);
+        return token;
+    }
+
+    public JsonObject beginWriteFlow(String token) {
+        if (token == null || writeTokens.getIfPresent(token) == null) {
+            return null;
         }
+        writeTokens.invalidate(token);
+
+        int trackingId = allocateTrackingId();
+        String uid = UUID.randomUUID().toString();
+        VisitorSession session = VisitorSession.forWrite(uid, trackingId);
+        visitorSessions.put(uid, session);
         assignedIds.put(String.valueOf(trackingId), true);
-        return new JsonObject()
-                .put("trackingId", trackingId)
-                .put("binary", binary)
-                .put("bits", bitsArray);
+
+        log.info("supercookie write flow started: uid={}, trackingId={}", uid, trackingId);
+        return session.toStartJson();
     }
 
-    public JsonObject startProbeSession() {
-        String probeId = UUID.randomUUID().toString();
-        probeSessions.put(probeId, new ProbeSession(probeId));
-        return new JsonObject()
-                .put("probeId", probeId)
-                .put("bits", BITS)
-                .put("windowMs", PROBE_WINDOW_MS);
+    public JsonObject beginReadFlow() {
+        String uid = UUID.randomUUID().toString();
+        VisitorSession session = VisitorSession.forRead(uid);
+        visitorSessions.put(uid, session);
+        log.info("supercookie read flow started: uid={}", uid);
+        return session.toStartJson();
     }
 
-    public void registerReadPageVisit(String probeId, int bitIndex, String host) {
-        ProbeSession session = probeSessions.getIfPresent(probeId);
-        if (session == null || bitIndex < 0 || bitIndex >= BITS) return;
+    public JsonObject registerWritePageVisit(String uid, int bitIndex, String host) {
+        VisitorSession session = getSession(uid, SessionMode.WRITE);
+        if (session == null || bitIndex < 0 || bitIndex >= BITS) return null;
 
         String normalizedHost = normalizeHost(host);
+        session.touch();
         session.markVisited(bitIndex, normalizedHost);
-        pageContextsByHost.put(normalizedHost, new PageContext(PageMode.READ, probeId, bitIndex, System.currentTimeMillis()));
-        log.info("supercookie probe page visit: probeId={}, host={}, bit={}", probeId, normalizedHost, bitIndex);
+        log.info("supercookie write page visit: uid={}, host={}, bit={}", uid, normalizedHost, bitIndex);
+
+        return new JsonObject()
+                .put("mode", session.mode.name())
+                .put("bitIndex", bitIndex)
+                .put("nextBitIndex", session.nextWriteBitIndex(bitIndex))
+                .put("trackingId", session.trackingId)
+                .put("binary", session.binary)
+                .put("bits", session.bitsJson());
     }
 
-    public void registerWritePageVisit(int bitIndex, String host) {
+    public JsonObject registerReadPageVisit(String uid, int bitIndex, String host) {
+        VisitorSession session = getSession(uid, SessionMode.READ);
+        if (session == null || bitIndex < 0 || bitIndex >= BITS) return null;
+
         String normalizedHost = normalizeHost(host);
-        if (bitIndex < 0 || bitIndex >= BITS) return;
-        pageContextsByHost.put(normalizedHost, new PageContext(PageMode.WRITE, null, bitIndex, System.currentTimeMillis()));
-        log.info("supercookie write page visit: host={}, bit={}", normalizedHost, bitIndex);
+        session.touch();
+        session.markVisited(bitIndex, normalizedHost);
+        log.info("supercookie read page visit: uid={}, host={}, bit={}", uid, normalizedHost, bitIndex);
+
+        int nextBitIndex = bitIndex >= BITS - 1 ? -1 : bitIndex + 1;
+        return new JsonObject()
+                .put("mode", session.mode.name())
+                .put("bitIndex", bitIndex)
+                .put("nextBitIndex", nextBitIndex)
+                .put("routeCount", BITS);
     }
 
-    public boolean handleFaviconRequest(String host) {
+    public FaviconDecision handleFaviconRequest(String uid, String host, int bitIndex) {
+        VisitorSession session = getSession(uid, null);
+        if (session == null || bitIndex < 0 || bitIndex >= BITS) {
+            return FaviconDecision.NOT_FOUND;
+        }
+
         String normalizedHost = normalizeHost(host);
-        PageContext context = pageContextsByHost.getIfPresent(normalizedHost);
-        if (context == null) {
-            return true;
+        session.touch();
+
+        if (session.mode == SessionMode.READ) {
+            session.markObservedRequest(bitIndex, normalizedHost);
+            log.info("supercookie favicon read hit: uid={}, host={}, bit={}", uid, normalizedHost, bitIndex);
+            return FaviconDecision.NOT_FOUND;
         }
 
-        if (System.currentTimeMillis() - context.timestampMs > PROBE_WINDOW_MS) {
-            pageContextsByHost.invalidate(normalizedHost);
-            return true;
+        if (session.bitAt(bitIndex) == 1) {
+            log.info("supercookie favicon write hit: uid={}, host={}, bit={}", uid, normalizedHost, bitIndex);
+            return FaviconDecision.CACHEABLE;
         }
 
-        if (context.mode == PageMode.READ) {
-            ProbeSession session = probeSessions.getIfPresent(context.probeId);
-            if (session != null) {
-                session.markFaviconRequested(context.bitIndex);
-                log.info("supercookie favicon read hit: probeId={}, host={}, bit={}", context.probeId, normalizedHost, context.bitIndex);
-            }
-            return false;
-        }
-
-        pageContextsByHost.invalidate(normalizedHost);
-        log.info("supercookie favicon write hit: host={}, bit={}", normalizedHost, context.bitIndex);
-        return true;
+        log.info("supercookie favicon write miss: uid={}, host={}, bit={}", uid, normalizedHost, bitIndex);
+        return FaviconDecision.NOT_FOUND;
     }
 
-    public JsonObject finishProbeSession(String probeId) {
-        ProbeSession session = probeSessions.getIfPresent(probeId);
+    public JsonObject finalizeSession(String uid) {
+        VisitorSession session = getSession(uid, null);
         if (session == null) {
             return new JsonObject()
-                    .put("probeId", probeId)
                     .put("complete", false)
-                    .put("error", "probe session expired or not found");
+                    .put("error", "session expired or not found");
         }
 
-        JsonObject result = session.toJson();
-        probeSessions.invalidate(probeId);
+        JsonObject result = session.toResultJson();
+        visitorSessions.invalidate(uid);
         return result;
     }
 
     public JsonObject stats() {
         return new JsonObject()
                 .put("trackedUsers", assignedIds.estimatedSize())
+                .put("activeSessions", visitorSessions.estimatedSize())
                 .put("bits", BITS)
                 .put("maxCapacity", MAX_CAPACITY)
                 .put("usableCapacity", MAX_TRACKING_ID);
+    }
+
+    private int allocateTrackingId() {
+        for (int i = 0; i < 8; i++) {
+            int candidate = ThreadLocalRandom.current().nextInt(1, MAX_TRACKING_ID + 1);
+            if (assignedIds.getIfPresent(String.valueOf(candidate)) == null) {
+                return candidate;
+            }
+        }
+        return ThreadLocalRandom.current().nextInt(1, MAX_TRACKING_ID + 1);
+    }
+
+    private VisitorSession getSession(String uid, SessionMode expectedMode) {
+        if (uid == null || uid.isBlank()) return null;
+        VisitorSession session = visitorSessions.getIfPresent(uid);
+        if (session == null) return null;
+        if (System.currentTimeMillis() - session.lastTouchedMs > SESSION_TTL_MS) {
+            visitorSessions.invalidate(uid);
+            return null;
+        }
+        if (expectedMode != null && session.mode != expectedMode) {
+            return null;
+        }
+        return session;
     }
 
     protected static String toBinaryString(int num, int bits) {
@@ -154,33 +202,51 @@ public class SupercookieService {
         return colon >= 0 ? normalized.substring(0, colon) : normalized;
     }
 
-    private enum PageMode {
+    public enum SessionMode {
         READ,
         WRITE
     }
 
-    private static final class PageContext {
-        final PageMode mode;
-        final String probeId;
-        final int bitIndex;
-        final long timestampMs;
-
-        PageContext(PageMode mode, String probeId, int bitIndex, long timestampMs) {
-            this.mode = mode;
-            this.probeId = probeId;
-            this.bitIndex = bitIndex;
-            this.timestampMs = timestampMs;
-        }
+    public enum FaviconDecision {
+        CACHEABLE,
+        NOT_FOUND
     }
 
-    private static final class ProbeSession {
-        final String probeId;
+    private static final class VisitorSession {
+        final String uid;
+        final SessionMode mode;
+        final int trackingId;
+        final String binary;
+        final int[] bits;
         final boolean[] visited = new boolean[BITS];
-        final boolean[] faviconRequested = new boolean[BITS];
+        final boolean[] observedRequests = new boolean[BITS];
         final String[] hosts = new String[BITS];
+        long lastTouchedMs;
 
-        ProbeSession(String probeId) {
-            this.probeId = probeId;
+        private VisitorSession(String uid, SessionMode mode, int trackingId) {
+            this.uid = uid;
+            this.mode = mode;
+            this.trackingId = trackingId;
+            this.binary = mode == SessionMode.WRITE ? toBinaryString(trackingId, BITS) : "";
+            this.bits = new int[BITS];
+            if (mode == SessionMode.WRITE) {
+                for (int i = 0; i < BITS; i++) {
+                    bits[i] = (trackingId >>> (BITS - 1 - i)) & 1;
+                }
+            }
+            this.lastTouchedMs = System.currentTimeMillis();
+        }
+
+        static VisitorSession forWrite(String uid, int trackingId) {
+            return new VisitorSession(uid, SessionMode.WRITE, trackingId);
+        }
+
+        static VisitorSession forRead(String uid) {
+            return new VisitorSession(uid, SessionMode.READ, 0);
+        }
+
+        synchronized void touch() {
+            lastTouchedMs = System.currentTimeMillis();
         }
 
         synchronized void markVisited(int bitIndex, String host) {
@@ -188,42 +254,83 @@ public class SupercookieService {
             hosts[bitIndex] = host;
         }
 
-        synchronized void markFaviconRequested(int bitIndex) {
-            faviconRequested[bitIndex] = true;
+        synchronized void markObservedRequest(int bitIndex, String host) {
+            observedRequests[bitIndex] = true;
+            hosts[bitIndex] = host;
         }
 
-        synchronized JsonObject toJson() {
+        synchronized int bitAt(int bitIndex) {
+            return bits[bitIndex];
+        }
+
+        synchronized int nextWriteBitIndex(int currentBitIndex) {
+            for (int i = currentBitIndex + 1; i < BITS; i++) {
+                if (bits[i] == 1) return i;
+            }
+            return -1;
+        }
+
+        synchronized int firstWriteBitIndex() {
+            return nextWriteBitIndex(-1);
+        }
+
+        synchronized JsonArray bitsJson() {
             JsonArray bits = new JsonArray();
-            JsonArray observedRequests = new JsonArray();
+            for (int bit : this.bits) bits.add(bit);
+            return bits;
+        }
+
+        synchronized JsonObject toStartJson() {
+            JsonObject json = new JsonObject()
+                    .put("uid", uid)
+                    .put("mode", mode.name())
+                    .put("routeCount", BITS);
+
+            if (mode == SessionMode.WRITE) {
+                json.put("trackingId", trackingId)
+                        .put("binary", binary)
+                        .put("bits", bitsJson())
+                        .put("firstBitIndex", firstWriteBitIndex());
+            } else {
+                json.put("firstBitIndex", 0);
+            }
+            return json;
+        }
+
+        synchronized JsonObject toResultJson() {
+            JsonArray bitArray = new JsonArray();
+            JsonArray observedArray = new JsonArray();
             JsonArray visitedBits = new JsonArray();
 
             int visitedCount = 0;
             int networkRequestCount = 0;
-            int trackingId = 0;
+            int reconstructedId = 0;
 
             for (int i = 0; i < BITS; i++) {
                 if (visited[i]) visitedCount++;
-                int bit = faviconRequested[i] ? 0 : 1;
-                if (faviconRequested[i]) networkRequestCount++;
+                int bit = mode == SessionMode.WRITE ? bits[i] : (observedRequests[i] ? 0 : 1);
+                if (observedRequests[i]) networkRequestCount++;
 
-                bits.add(bit);
-                observedRequests.add(faviconRequested[i]);
+                bitArray.add(bit);
+                observedArray.add(observedRequests[i]);
                 visitedBits.add(visited[i]);
-                trackingId = (trackingId << 1) | bit;
+                reconstructedId = (reconstructedId << 1) | bit;
             }
 
             return new JsonObject()
-                    .put("probeId", probeId)
+                    .put("uid", uid)
+                    .put("mode", mode.name())
                     .put("complete", visitedCount == BITS)
                     .put("visitedCount", visitedCount)
                     .put("networkRequestCount", networkRequestCount)
-                    .put("trackingId", trackingId)
-                    .put("binary", toBinaryString(trackingId, BITS))
-                    .put("bits", bits)
+                    .put("trackingId", mode == SessionMode.WRITE ? trackingId : reconstructedId)
+                    .put("binary", mode == SessionMode.WRITE ? binary : toBinaryString(reconstructedId, BITS))
+                    .put("bits", bitArray)
                     .put("visitedBits", visitedBits)
-                    .put("observedRequests", observedRequests)
-                    .put("allZero", trackingId == 0)
-                    .put("allOne", trackingId == (MAX_CAPACITY - 1));
+                    .put("observedRequests", observedArray)
+                    .put("firstVisit", mode == SessionMode.WRITE)
+                    .put("allZero", (mode == SessionMode.WRITE ? trackingId : reconstructedId) == 0)
+                    .put("allOne", (mode == SessionMode.WRITE ? trackingId : reconstructedId) == (MAX_CAPACITY - 1));
         }
     }
 }

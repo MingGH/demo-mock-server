@@ -7,6 +7,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 
 import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,7 +24,7 @@ import java.util.regex.Pattern;
  */
 public class SupercookieHandler implements Handler<RoutingContext> {
     private static final Pattern BIT_HOST_PATTERN = Pattern.compile("^bit(\\d+)-numfeel\\.996\\.ninja$");
-    private static final int PAGE_ACK_DELAY_MS = 250;
+    private static final int PAGE_REDIRECT_DELAY_MS = 700;
 
     private final SupercookieService service;
 
@@ -67,7 +68,7 @@ public class SupercookieHandler implements Handler<RoutingContext> {
                 ctx.response().setStatusCode(400).end("write-page must be loaded on bit subdomain");
                 return;
             }
-            sendHtml(ctx, renderWorkerPage("write", bitIndex, null));
+            sendHtml(ctx, renderWorkerPage("write", bitIndex, buildNextWriteUrl(ctx, bitIndex)));
         } else if ("GET".equals(method) && path.endsWith("/read-page")) {
             if (bitIndex == null) {
                 ctx.response().setStatusCode(400).end("read-page must be loaded on bit subdomain");
@@ -79,7 +80,7 @@ public class SupercookieHandler implements Handler<RoutingContext> {
                 return;
             }
             service.registerReadPageVisit(probeId, bitIndex, host);
-            sendHtml(ctx, renderWorkerPage("read", bitIndex, probeId));
+            sendHtml(ctx, renderWorkerPage("read", bitIndex, buildNextReadUrl(ctx, bitIndex, probeId)));
         } else if ("GET".equals(method) && "/favicon.ico".equals(path)) {
             if (bitIndex == null) {
                 ctx.next();
@@ -134,8 +135,8 @@ public class SupercookieHandler implements Handler<RoutingContext> {
         return Integer.parseInt(matcher.group(1));
     }
 
-    private static String renderWorkerPage(String mode, int bitIndex, String probeId) {
-        String safeProbeId = probeId == null ? "" : probeId.replace("\\", "\\\\").replace("\"", "\\\"");
+    private static String renderWorkerPage(String mode, int bitIndex, String nextUrl) {
+        String safeNextUrl = nextUrl.replace("\\", "\\\\").replace("\"", "\\\"");
         return "<!DOCTYPE html>\n" +
                 "<html lang=\"zh-CN\">\n" +
                 "<head>\n" +
@@ -150,20 +151,45 @@ public class SupercookieHandler implements Handler<RoutingContext> {
                 "<body>\n" +
                 "bit" + bitIndex + " " + mode + "\n" +
                 "<script>\n" +
+                "console.log('[F-Cache info] " + mode + "-page bit" + bitIndex + " loaded');\n" +
                 "window.addEventListener('load', function () {\n" +
                 "  setTimeout(function () {\n" +
-                "    if (window.parent && window.parent !== window) {\n" +
-                "      window.parent.postMessage({\n" +
-                "        source: 'favicon-supercookie-frame',\n" +
-                "        mode: '" + mode + "',\n" +
-                "        bit: " + bitIndex + ",\n" +
-                "        probeId: \"" + safeProbeId + "\"\n" +
-                "      }, '*');\n" +
-                "    }\n" +
-                "  }, " + PAGE_ACK_DELAY_MS + ");\n" +
+                "    window.location.replace(\"" + safeNextUrl + "\");\n" +
+                "  }, " + PAGE_REDIRECT_DELAY_MS + ");\n" +
                 "});\n" +
                 "</script>\n" +
                 "</body>\n" +
                 "</html>\n";
+    }
+
+    private static String buildNextWriteUrl(RoutingContext ctx, int bitIndex) {
+        String bits = ctx.request().getParam("bits");
+        String returnTo = ctx.request().getParam("returnTo");
+        if (bits == null || returnTo == null) return returnTo != null ? returnTo : "https://numfeel.996.ninja/pages/favicon-supercookie/";
+
+        for (int i = bitIndex + 1; i < bits.length(); i++) {
+            if (bits.charAt(i) == '1') {
+                return "https://bit" + i + "-numfeel.996.ninja/supercookie/write-page?bits=" +
+                        encode(bits) + "&returnTo=" + encode(returnTo);
+            }
+        }
+        return returnTo;
+    }
+
+    private static String buildNextReadUrl(RoutingContext ctx, int bitIndex, String probeId) {
+        String returnTo = ctx.request().getParam("returnTo");
+        if (returnTo == null || returnTo.isBlank()) {
+            returnTo = "https://numfeel.996.ninja/pages/favicon-supercookie/";
+        }
+        if (bitIndex >= SupercookieService.BITS - 1) {
+            return returnTo;
+        }
+        int nextBit = bitIndex + 1;
+        return "https://bit" + nextBit + "-numfeel.996.ninja/supercookie/read-page?probeId=" +
+                encode(probeId) + "&returnTo=" + encode(returnTo);
+    }
+
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }

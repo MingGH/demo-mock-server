@@ -7,7 +7,6 @@ import com.example.demo_mock_server.service.FingerprintService;
 import com.example.demo_mock_server.service.GeoLocationService;
 import com.example.demo_mock_server.service.InferenceLeaderboardService;
 import com.example.demo_mock_server.service.SocialEngineeringService;
-import com.example.demo_mock_server.service.SupercookieService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
@@ -106,21 +105,6 @@ public class RouterConfig {
         router.post("/inference/leaderboard").handler(new RateLimitHandler(10, 60)).handler(inferenceHandler);
         router.get("/inference/leaderboard").handler(inferenceHandler);
         router.delete("/inference/leaderboard").handler(inferenceHandler);
-
-        // Favicon 超级 Cookie 演示（真实 F-Cache）
-        SupercookieService supercookieService = new SupercookieService();
-        SupercookieHandler supercookieHandler = new SupercookieHandler(supercookieService);
-        router.get("/supercookie/launch").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
-        router.get("/supercookie/launch-icon").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
-        router.get("/supercookie/write").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
-        router.get("/supercookie/read").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
-        router.get("/supercookie/finalize").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
-        router.get("/supercookie/step").handler(supercookieHandler);
-        router.get("/supercookie/write-page").handler(supercookieHandler);
-        router.get("/supercookie/read-page").handler(supercookieHandler);
-        router.get("/supercookie/pixel").handler(supercookieHandler);
-        router.get("/supercookie/stats").handler(supercookieHandler);
-        router.get("/favicon.ico").handler(supercookieHandler);
 
         // 静态资源
         router.route("/pages/*").handler(StaticHandler.create("pages"));

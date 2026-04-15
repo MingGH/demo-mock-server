@@ -98,8 +98,6 @@ public class SupercookieService {
             return true;
         }
 
-        pageContextsByHost.invalidate(normalizedHost);
-
         if (context.mode == PageMode.READ) {
             ProbeSession session = probeSessions.getIfPresent(context.probeId);
             if (session != null) {
@@ -109,6 +107,7 @@ public class SupercookieService {
             return false;
         }
 
+        pageContextsByHost.invalidate(normalizedHost);
         log.info("supercookie favicon write hit: host={}, bit={}", normalizedHost, context.bitIndex);
         return true;
     }

@@ -55,4 +55,39 @@ class SupercookieServiceTest {
         assertEquals(16, stats.getInteger("bits"));
         assertEquals(65536, stats.getInteger("maxCapacity"));
     }
+
+    @Test
+    void testReadProbeReconstructsBitPatternFromObservedRequests() {
+        String probeId = service.startProbeSession().getString("probeId");
+
+        for (int i = 0; i < SupercookieService.BITS; i++) {
+            String host = "bit" + i + "-numfeel.996.ninja";
+            service.registerReadPageVisit(probeId, i, host);
+            if (i == 1 || i == 3) {
+                assertFalse(service.handleFaviconRequest(host));
+            }
+        }
+
+        JsonObject result = service.finishProbeSession(probeId);
+        assertTrue(result.getBoolean("complete"));
+        assertEquals(5, result.getInteger("trackingId"));
+        assertEquals("0000000000000101", result.getString("binary"));
+        assertFalse(result.getBoolean("allOne"));
+    }
+
+    @Test
+    void testRepeatedReadRequestsStayInReadMode() {
+        String probeId = service.startProbeSession().getString("probeId");
+        String host = "bit0-numfeel.996.ninja";
+
+        service.registerReadPageVisit(probeId, 0, host);
+
+        assertFalse(service.handleFaviconRequest(host));
+        assertFalse(service.handleFaviconRequest(host));
+
+        JsonObject result = service.finishProbeSession(probeId);
+        assertEquals(1, result.getInteger("networkRequestCount"));
+        assertEquals(0, result.getInteger("trackingId"));
+        assertFalse(result.getBoolean("allOne"));
+    }
 }

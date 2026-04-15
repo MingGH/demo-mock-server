@@ -111,10 +111,13 @@ public class RouterConfig {
         SupercookieService supercookieService = new SupercookieService();
         SupercookieHandler supercookieHandler = new SupercookieHandler(supercookieService);
         router.post("/supercookie/session").handler(new RateLimitHandler(30, 60)).handler(supercookieHandler);
+        router.post("/supercookie/probe/start").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
+        router.post("/supercookie/probe/finish").handler(new RateLimitHandler(60, 60)).handler(supercookieHandler);
+        router.get("/supercookie/write-page").handler(supercookieHandler);
+        router.get("/supercookie/read-page").handler(supercookieHandler);
         router.get("/supercookie/pixel").handler(supercookieHandler);
-        router.get("/supercookie/control-cached").handler(supercookieHandler);
-        router.get("/supercookie/control-network").handler(supercookieHandler);
         router.get("/supercookie/stats").handler(supercookieHandler);
+        router.get("/favicon.ico").handler(supercookieHandler);
 
         // 静态资源
         router.route("/pages/*").handler(StaticHandler.create("pages"));

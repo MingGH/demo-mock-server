@@ -40,8 +40,7 @@ def build_runner_source(url: str, iterations: int, wait_ms: int, headless: bool)
         function summarize(logs) {{
           const assigned = [];
           const restored = [];
-          const thresholds = [];
-          const bitTimings = [];
+          const uncertain = [];
 
           for (const line of logs) {{
             const m1 = line.match(/分配 ID: (\\d+) \\(([01]+)\\)/);
@@ -50,30 +49,19 @@ def build_runner_source(url: str, iterations: int, wait_ms: int, headless: bool)
             const m2 = line.match(/还原 ID: (\\d+) \\(([01]+)\\)/);
             if (m2) restored.push({{ id: Number(m2[1]), binary: m2[2] }});
 
-            const m3 = line.match(/分界: ([0-9.]+)ms/);
-            if (m3) thresholds.push(Number(m3[1]));
-
-            const m4 = line.match(/← (bit\\d+-numfeel\\.996\\.ninja)  \\[([0-9.]+)ms\\]/);
-            if (m4) bitTimings.push({{ host: m4[1], ms: Number(m4[2]) }});
+            const m3 = line.match(/探测结果不可靠：(.*)$/);
+            if (m3) uncertain.push(m3[1]);
           }}
 
           const assignedLast = assigned.length ? assigned[assigned.length - 1] : null;
           const restoredLast = restored.length ? restored[restored.length - 1] : null;
-          const matched = Boolean(
-            assignedLast &&
-            restoredLast &&
-            assignedLast.id === restoredLast.id &&
-            assignedLast.binary === restoredLast.binary
-          );
 
           return {{
             assigned,
             restored,
-            thresholds,
-            bitTimings,
+            uncertain,
             assignedLast,
             restoredLast,
-            matched,
           }};
         }}
 
@@ -224,34 +212,47 @@ def print_final_report(results: list[dict]) -> int:
         print("No summary data was captured.", file=sys.stderr)
         return 2
 
-    mismatches = []
+    failures = []
+    expected_id = None
     print("\nProbe Report")
     print("-" * 72)
     for idx, item in enumerate(results, start=1):
         assigned = item.get("assignedLast")
         restored = item.get("restoredLast")
-        threshold = item.get("thresholds", [])
-        threshold_text = ", ".join(str(x) for x in threshold) if threshold else "-"
-        matched = item.get("matched", False)
+        uncertain = item.get("uncertain", [])
 
         assigned_text = assigned["id"] if assigned else "-"
         restored_text = restored["id"] if restored else "-"
-        status = "MATCH" if matched else "MISMATCH"
+        uncertain_text = " | ".join(uncertain) if uncertain else "-"
+
+        if expected_id is None:
+            if restored and restored["id"] == 0 and assigned and assigned["id"] > 0:
+                status = "BOOTSTRAP_OK"
+                expected_id = assigned["id"]
+            else:
+                status = "FAIL"
+                failures.append(idx)
+        else:
+            if restored and restored["id"] == expected_id and not assigned:
+                status = "STABLE_OK"
+            elif restored and restored["id"] == expected_id and assigned and assigned["id"] == expected_id:
+                status = "STABLE_OK"
+            else:
+                status = "FAIL"
+                failures.append(idx)
+
         print(
             f"Iteration {idx}: assigned={assigned_text} restored={restored_text} "
-            f"thresholds={threshold_text} status={status}"
+            f"uncertain={uncertain_text} status={status}"
         )
 
-        if not matched:
-            mismatches.append(idx)
-
     print("-" * 72)
-    print(f"Matched: {len(results) - len(mismatches)}/{len(results)}")
-    if mismatches:
-        print(f"Mismatched iterations: {', '.join(str(x) for x in mismatches)}")
+    print(f"Passed: {len(results) - len(failures)}/{len(results)}")
+    if failures:
+        print(f"Failed iterations: {', '.join(str(x) for x in failures)}")
         return 1
 
-    print("All iterations matched.")
+    print("Bootstrap and stable rereads look correct.")
     return 0
 
 

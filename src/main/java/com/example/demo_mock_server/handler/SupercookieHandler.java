@@ -3,19 +3,27 @@ package com.example.demo_mock_server.handler;
 import com.example.demo_mock_server.service.SupercookieService;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.ext.web.RoutingContext;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.RoutingContext;
+
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Favicon Supercookie 处理器。
  *
- * POST /supercookie/session          → 分配 ID
- * GET  /supercookie/pixel            → bit 位 favicon（短缓存）
- * GET  /supercookie/control-cached   → 校准用缓存样本
- * GET  /supercookie/control-network  → 校准用网络样本
- * GET  /supercookie/stats            → 统计
+ * POST /supercookie/session      → 分配 ID
+ * POST /supercookie/probe/start  → 开始一次读取会话
+ * POST /supercookie/probe/finish → 结束读取会话，返回恢复结果
+ * GET  /supercookie/write-page   → 在 bit 子域名上加载写入页
+ * GET  /supercookie/read-page    → 在 bit 子域名上加载读取页
+ * GET  /favicon.ico              → 真正的 favicon 入口（bit 子域名）
+ * GET  /supercookie/stats        → 统计
  */
 public class SupercookieHandler implements Handler<RoutingContext> {
+    private static final Pattern BIT_HOST_PATTERN = Pattern.compile("^bit(\\d+)-numfeel\\.996\\.ninja$");
+    private static final int PAGE_ACK_DELAY_MS = 250;
 
     private final SupercookieService service;
 
@@ -39,31 +47,49 @@ public class SupercookieHandler implements Handler<RoutingContext> {
     public void handle(RoutingContext ctx) {
         String method = ctx.request().method().name();
         String path = ctx.request().path();
+        String host = normalizeHost(ctx.request().host());
+        Integer bitIndex = bitIndexFromHost(host);
 
         if ("POST".equals(method) && path.endsWith("/session")) {
             sendJson(ctx, 200, service.createWriteSession());
-        } else if ("GET".equals(method) && path.endsWith("/control-cached")) {
-            ctx.response()
-                .putHeader("Content-Type", "image/png")
-                .putHeader("Cache-Control", "public, max-age=300")
-                .putHeader("CDN-Cache-Control", "no-store")
-                .putHeader("Access-Control-Allow-Origin", "*")
-                .end(Buffer.buffer(FAVICON_BYTES));
-        } else if ("GET".equals(method) && path.endsWith("/control-network")) {
-            ctx.response()
-                .putHeader("Content-Type", "image/png")
-                .putHeader("Cache-Control", "no-store, max-age=0")
-                .putHeader("CDN-Cache-Control", "no-store")
-                .putHeader("Pragma", "no-cache")
-                .putHeader("Access-Control-Allow-Origin", "*")
-                .end(Buffer.buffer(FAVICON_BYTES));
+        } else if ("POST".equals(method) && path.endsWith("/probe/start")) {
+            sendJson(ctx, 200, service.startProbeSession());
+        } else if ("POST".equals(method) && path.endsWith("/probe/finish")) {
+            JsonObject body = ctx.body().asJsonObject();
+            String probeId = body != null ? body.getString("probeId") : null;
+            if (probeId == null || probeId.isBlank()) {
+                ctx.response().setStatusCode(400).end("missing probeId");
+                return;
+            }
+            sendJson(ctx, 200, service.finishProbeSession(probeId));
+        } else if ("GET".equals(method) && path.endsWith("/write-page")) {
+            if (bitIndex == null) {
+                ctx.response().setStatusCode(400).end("write-page must be loaded on bit subdomain");
+                return;
+            }
+            sendHtml(ctx, renderWorkerPage("write", bitIndex, null));
+        } else if ("GET".equals(method) && path.endsWith("/read-page")) {
+            if (bitIndex == null) {
+                ctx.response().setStatusCode(400).end("read-page must be loaded on bit subdomain");
+                return;
+            }
+            String probeId = ctx.request().getParam("probeId");
+            if (probeId == null || probeId.isBlank()) {
+                ctx.response().setStatusCode(400).end("missing probeId");
+                return;
+            }
+            service.registerReadPageVisit(probeId, bitIndex, host);
+            sendHtml(ctx, renderWorkerPage("read", bitIndex, probeId));
+        } else if ("GET".equals(method) && "/favicon.ico".equals(path)) {
+            if (bitIndex == null) {
+                ctx.next();
+                return;
+            }
+            service.recordFaviconRequest(host);
+            sendFavicon(ctx);
         } else if ("GET".equals(method) && path.endsWith("/pixel")) {
-            ctx.response()
-                .putHeader("Content-Type", "image/png")
-                .putHeader("Cache-Control", "public, max-age=5")
-                .putHeader("CDN-Cache-Control", "no-store")
-                .putHeader("Access-Control-Allow-Origin", "*")
-                .end(Buffer.buffer(FAVICON_BYTES));
+            // 兼容旧版脚本；新方案不再依赖这个端点。
+            sendFavicon(ctx);
         } else if ("GET".equals(method) && path.endsWith("/stats")) {
             sendJson(ctx, 200, service.stats());
         } else {
@@ -71,10 +97,73 @@ public class SupercookieHandler implements Handler<RoutingContext> {
         }
     }
 
+    private void sendFavicon(RoutingContext ctx) {
+        ctx.response()
+            .putHeader("Content-Type", "image/png")
+            .putHeader("Cache-Control", "public, max-age=31536000, immutable")
+            .putHeader("CDN-Cache-Control", "no-store")
+            .putHeader("Access-Control-Allow-Origin", "*")
+            .end(Buffer.buffer(FAVICON_BYTES));
+    }
+
+    private void sendHtml(RoutingContext ctx, String html) {
+        ctx.response()
+            .putHeader("Content-Type", "text/html; charset=UTF-8")
+            .putHeader("Cache-Control", "no-store, max-age=0")
+            .putHeader("Pragma", "no-cache")
+            .end(Buffer.buffer(html, StandardCharsets.UTF_8.name()));
+    }
+
     private void sendJson(RoutingContext ctx, int status, JsonObject data) {
         ctx.response()
             .setStatusCode(status)
             .putHeader("Content-Type", "application/json")
             .end(new JsonObject().put("status", status).put("data", data).encode());
+    }
+
+    private static String normalizeHost(String host) {
+        if (host == null) return "";
+        String normalized = host.toLowerCase();
+        int colon = normalized.indexOf(':');
+        return colon >= 0 ? normalized.substring(0, colon) : normalized;
+    }
+
+    private static Integer bitIndexFromHost(String host) {
+        Matcher matcher = BIT_HOST_PATTERN.matcher(host);
+        if (!matcher.matches()) return null;
+        return Integer.parseInt(matcher.group(1));
+    }
+
+    private static String renderWorkerPage(String mode, int bitIndex, String probeId) {
+        String safeProbeId = probeId == null ? "" : probeId.replace("\\", "\\\\").replace("\"", "\\\"");
+        return "<!DOCTYPE html>\n" +
+                "<html lang=\"zh-CN\">\n" +
+                "<head>\n" +
+                "  <meta charset=\"UTF-8\">\n" +
+                "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
+                "  <meta http-equiv=\"Cache-Control\" content=\"no-store\">\n" +
+                "  <link rel=\"icon\" href=\"/favicon.ico\">\n" +
+                "  <link rel=\"shortcut icon\" href=\"/favicon.ico\">\n" +
+                "  <title>F-Cache " + mode + " bit" + bitIndex + "</title>\n" +
+                "  <style>body{font-family:sans-serif;background:#111;color:#ddd;margin:0;padding:8px;font-size:12px}</style>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "bit" + bitIndex + " " + mode + "\n" +
+                "<script>\n" +
+                "window.addEventListener('load', function () {\n" +
+                "  setTimeout(function () {\n" +
+                "    if (window.parent && window.parent !== window) {\n" +
+                "      window.parent.postMessage({\n" +
+                "        source: 'favicon-supercookie-frame',\n" +
+                "        mode: '" + mode + "',\n" +
+                "        bit: " + bitIndex + ",\n" +
+                "        probeId: \"" + safeProbeId + "\"\n" +
+                "      }, '*');\n" +
+                "    }\n" +
+                "  }, " + PAGE_ACK_DELAY_MS + ");\n" +
+                "});\n" +
+                "</script>\n" +
+                "</body>\n" +
+                "</html>\n";
     }
 }

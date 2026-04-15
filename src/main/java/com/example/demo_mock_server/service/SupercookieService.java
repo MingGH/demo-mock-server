@@ -7,30 +7,47 @@ import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Favicon Supercookie 追踪服务。
- * 只负责分配 ID 和统计，读取逻辑完全在前端完成。
+ * 负责：
+ * 1. 分配追踪 ID
+ * 2. 管理读取 probe 会话
+ * 3. 关联 "读取页面访问" 和 "favicon 请求是否到达"
  */
 public class SupercookieService {
 
     private static final Logger log = LoggerFactory.getLogger(SupercookieService.class);
-    static final int BITS = 16;
+    public static final int BITS = 16;
+    private static final int MAX_CAPACITY = 1 << BITS;
+    private static final int MAX_TRACKING_ID = MAX_CAPACITY - 2; // 保留 0 和全 1
+    private static final long PROBE_WINDOW_MS = 4_000L;
 
     private final Cache<String, Boolean> assignedIds;
+    private final Cache<String, ProbeSession> probeSessions;
+    private final Cache<String, PendingVisit> pendingVisitsByHost;
 
     public SupercookieService() {
         this.assignedIds = Caffeine.newBuilder()
                 .expireAfterWrite(24, TimeUnit.HOURS)
                 .maximumSize(100_000)
                 .build();
+        this.probeSessions = Caffeine.newBuilder()
+                .expireAfterWrite(5, TimeUnit.MINUTES)
+                .maximumSize(10_000)
+                .build();
+        this.pendingVisitsByHost = Caffeine.newBuilder()
+                .expireAfterWrite(PROBE_WINDOW_MS, TimeUnit.MILLISECONDS)
+                .maximumSize(10_000)
+                .build();
         log.info("SupercookieService initialized ({} bits)", BITS);
     }
 
     public JsonObject createWriteSession() {
-        int trackingId = ThreadLocalRandom.current().nextInt(0, (1 << BITS));
+        int trackingId = ThreadLocalRandom.current().nextInt(1, MAX_TRACKING_ID + 1);
         String binary = toBinaryString(trackingId, BITS);
         JsonArray bitsArray = new JsonArray();
         for (int i = 0; i < BITS; i++) {
@@ -43,11 +60,62 @@ public class SupercookieService {
                 .put("bits", bitsArray);
     }
 
+    public JsonObject startProbeSession() {
+        String probeId = UUID.randomUUID().toString();
+        probeSessions.put(probeId, new ProbeSession(probeId));
+        return new JsonObject()
+                .put("probeId", probeId)
+                .put("bits", BITS)
+                .put("windowMs", PROBE_WINDOW_MS);
+    }
+
+    public void registerReadPageVisit(String probeId, int bitIndex, String host) {
+        ProbeSession session = probeSessions.getIfPresent(probeId);
+        if (session == null || bitIndex < 0 || bitIndex >= BITS) return;
+
+        String normalizedHost = normalizeHost(host);
+        session.markVisited(bitIndex, normalizedHost);
+        pendingVisitsByHost.put(normalizedHost, new PendingVisit(probeId, bitIndex, System.currentTimeMillis()));
+        log.info("supercookie probe page visit: probeId={}, host={}, bit={}", probeId, normalizedHost, bitIndex);
+    }
+
+    public void recordFaviconRequest(String host) {
+        String normalizedHost = normalizeHost(host);
+        PendingVisit visit = pendingVisitsByHost.getIfPresent(normalizedHost);
+        if (visit == null) return;
+
+        if (System.currentTimeMillis() - visit.timestampMs > PROBE_WINDOW_MS) {
+            pendingVisitsByHost.invalidate(normalizedHost);
+            return;
+        }
+
+        ProbeSession session = probeSessions.getIfPresent(visit.probeId);
+        if (session == null) return;
+
+        session.markFaviconRequested(visit.bitIndex);
+        log.info("supercookie favicon hit: probeId={}, host={}, bit={}", visit.probeId, normalizedHost, visit.bitIndex);
+    }
+
+    public JsonObject finishProbeSession(String probeId) {
+        ProbeSession session = probeSessions.getIfPresent(probeId);
+        if (session == null) {
+            return new JsonObject()
+                    .put("probeId", probeId)
+                    .put("complete", false)
+                    .put("error", "probe session expired or not found");
+        }
+
+        JsonObject result = session.toJson();
+        probeSessions.invalidate(probeId);
+        return result;
+    }
+
     public JsonObject stats() {
         return new JsonObject()
                 .put("trackedUsers", assignedIds.estimatedSize())
                 .put("bits", BITS)
-                .put("maxCapacity", 1 << BITS);
+                .put("maxCapacity", MAX_CAPACITY)
+                .put("usableCapacity", MAX_TRACKING_ID);
     }
 
     protected static String toBinaryString(int num, int bits) {
@@ -61,5 +129,78 @@ public class SupercookieService {
         for (int i = 0; i < binary.length(); i++)
             result = (result << 1) | (binary.charAt(i) == '1' ? 1 : 0);
         return result;
+    }
+
+    private static String normalizeHost(String host) {
+        if (host == null) return "";
+        String normalized = host.toLowerCase();
+        int colon = normalized.indexOf(':');
+        return colon >= 0 ? normalized.substring(0, colon) : normalized;
+    }
+
+    private static final class PendingVisit {
+        final String probeId;
+        final int bitIndex;
+        final long timestampMs;
+
+        PendingVisit(String probeId, int bitIndex, long timestampMs) {
+            this.probeId = probeId;
+            this.bitIndex = bitIndex;
+            this.timestampMs = timestampMs;
+        }
+    }
+
+    private static final class ProbeSession {
+        final String probeId;
+        final boolean[] visited = new boolean[BITS];
+        final boolean[] faviconRequested = new boolean[BITS];
+        final String[] hosts = new String[BITS];
+
+        ProbeSession(String probeId) {
+            this.probeId = probeId;
+        }
+
+        synchronized void markVisited(int bitIndex, String host) {
+            visited[bitIndex] = true;
+            hosts[bitIndex] = host;
+        }
+
+        synchronized void markFaviconRequested(int bitIndex) {
+            faviconRequested[bitIndex] = true;
+        }
+
+        synchronized JsonObject toJson() {
+            JsonArray bits = new JsonArray();
+            JsonArray observedRequests = new JsonArray();
+            JsonArray visitedBits = new JsonArray();
+
+            int visitedCount = 0;
+            int networkRequestCount = 0;
+            int trackingId = 0;
+
+            for (int i = 0; i < BITS; i++) {
+                if (visited[i]) visitedCount++;
+                int bit = faviconRequested[i] ? 0 : 1;
+                if (faviconRequested[i]) networkRequestCount++;
+
+                bits.add(bit);
+                observedRequests.add(faviconRequested[i]);
+                visitedBits.add(visited[i]);
+                trackingId = (trackingId << 1) | bit;
+            }
+
+            return new JsonObject()
+                    .put("probeId", probeId)
+                    .put("complete", visitedCount == BITS)
+                    .put("visitedCount", visitedCount)
+                    .put("networkRequestCount", networkRequestCount)
+                    .put("trackingId", trackingId)
+                    .put("binary", toBinaryString(trackingId, BITS))
+                    .put("bits", bits)
+                    .put("visitedBits", visitedBits)
+                    .put("observedRequests", observedRequests)
+                    .put("allZero", trackingId == 0)
+                    .put("allOne", trackingId == (MAX_CAPACITY - 1));
+        }
     }
 }

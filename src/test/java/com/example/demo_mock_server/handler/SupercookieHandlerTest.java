@@ -11,6 +11,8 @@ import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.net.URI;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(VertxExtension.class)
@@ -24,9 +26,11 @@ class SupercookieHandlerTest {
     static void setup(Vertx vertx, VertxTestContext ctx) {
         SupercookieHandler handler = new SupercookieHandler(new SupercookieService());
         Router router = Router.router(vertx);
-        router.post("/supercookie/session").handler(handler);
-        router.post("/supercookie/probe/start").handler(handler);
-        router.post("/supercookie/probe/finish").handler(handler);
+        router.get("/supercookie/launch").handler(handler);
+        router.get("/supercookie/launch-icon").handler(handler);
+        router.get("/supercookie/write").handler(handler);
+        router.get("/supercookie/read").handler(handler);
+        router.get("/supercookie/finalize").handler(handler);
         router.get("/supercookie/write-page").handler(handler);
         router.get("/supercookie/read-page").handler(handler);
         router.get("/favicon.ico").handler(handler);
@@ -48,26 +52,25 @@ class SupercookieHandlerTest {
     }
 
     @Test
-    void testCreateSession(Vertx vertx, VertxTestContext ctx) {
-        client.post(port, "localhost", "/supercookie/session").send(ar -> {
+    void testLaunchPageContainsLaunchIcon(Vertx vertx, VertxTestContext ctx) {
+        client.get(port, "localhost", "/supercookie/launch?returnTo=http://localhost/demo").send(ar -> {
             ctx.verify(() -> {
                 assertEquals(200, ar.result().statusCode());
-                JsonObject data = ar.result().bodyAsJsonObject().getJsonObject("data");
-                assertNotNull(data.getInteger("trackingId"));
-                assertEquals(16, data.getString("binary").length());
-                assertEquals(16, data.getJsonArray("bits").size());
+                assertTrue(ar.result().bodyAsString().contains("/supercookie/launch-icon"));
             });
             ctx.completeNow();
         });
     }
 
     @Test
-    void testFaviconReturnsLongCache(Vertx vertx, VertxTestContext ctx) {
-        client.get(port, "localhost", "/supercookie/pixel").send(ar -> {
+    void testLaunchIconSetsCookieAndReturnsLongCache(Vertx vertx, VertxTestContext ctx) {
+        client.get(port, "localhost", "/supercookie/launch-icon").send(ar -> {
             ctx.verify(() -> {
                 assertEquals(200, ar.result().statusCode());
                 assertEquals("image/png", ar.result().getHeader("Content-Type"));
                 assertTrue(ar.result().getHeader("Cache-Control").contains("max-age=31536000"));
+                assertNotNull(ar.result().getHeader("Set-Cookie"));
+                assertTrue(ar.result().getHeader("Set-Cookie").contains("sc_mid="));
             });
             ctx.completeNow();
         });
@@ -75,20 +78,24 @@ class SupercookieHandlerTest {
 
     @Test
     void testReadModeFaviconReturns404NoStore(Vertx vertx, VertxTestContext ctx) {
-        client.post(port, "localhost", "/supercookie/probe/start").send(startAr -> {
-            if (startAr.failed()) {
-                ctx.failNow(startAr.cause());
+        client.get(port, "localhost", "/supercookie/read?returnTo=http://localhost/demo").followRedirects(false).send(readAr -> {
+            if (readAr.failed()) {
+                ctx.failNow(readAr.cause());
                 return;
             }
 
-            String probeId = startAr.result().bodyAsJsonObject().getJsonObject("data").getString("probeId");
-            client.get(port, "bit0-numfeel.996.ninja", "/supercookie/read-page?probeId=" + probeId).send(pageAr -> {
+            String sessionCookie = cookieHeader(readAr.result().getHeader("Set-Cookie"));
+            client.get(port, "bit0-numfeel.996.ninja", "/supercookie/read-page?returnTo=http://localhost/demo")
+                    .putHeader("Cookie", sessionCookie)
+                    .send(pageAr -> {
                 if (pageAr.failed()) {
                     ctx.failNow(pageAr.cause());
                     return;
                 }
 
-                client.get(port, "bit0-numfeel.996.ninja", "/favicon.ico").send(iconAr -> {
+                client.get(port, "bit0-numfeel.996.ninja", "/favicon.ico")
+                        .putHeader("Cookie", sessionCookie)
+                        .send(iconAr -> {
                     ctx.verify(() -> {
                         assertEquals(404, iconAr.result().statusCode());
                         assertEquals("no-store, max-age=0", iconAr.result().getHeader("Cache-Control"));
@@ -101,18 +108,71 @@ class SupercookieHandlerTest {
 
     @Test
     void testWriteModeFaviconReturnsCacheableIcon(Vertx vertx, VertxTestContext ctx) {
-        client.get(port, "bit2-numfeel.996.ninja", "/supercookie/write-page").send(pageAr -> {
-            if (pageAr.failed()) {
-                ctx.failNow(pageAr.cause());
+        client.get(port, "localhost", "/supercookie/launch-icon").send(iconAr -> {
+            if (iconAr.failed()) {
+                ctx.failNow(iconAr.cause());
                 return;
             }
 
-            client.get(port, "bit2-numfeel.996.ninja", "/favicon.ico").send(iconAr -> {
-                ctx.verify(() -> {
-                    assertEquals(200, iconAr.result().statusCode());
-                    assertTrue(iconAr.result().getHeader("Cache-Control").contains("immutable"));
+            String mid = cookieValue(iconAr.result().getHeader("Set-Cookie"));
+            client.get(port, "localhost", "/supercookie/write?mid=" + mid + "&returnTo=http://localhost/demo").followRedirects(false).send(writeAr -> {
+                if (writeAr.failed()) {
+                    ctx.failNow(writeAr.cause());
+                    return;
+                }
+
+                String sessionCookie = cookieHeader(writeAr.result().getHeader("Set-Cookie"));
+                URI location = URI.create(writeAr.result().getHeader("Location"));
+                String bitHost = location.getHost();
+                String bitPath = location.getRawPath() + (location.getRawQuery() != null ? "?" + location.getRawQuery() : "");
+
+                client.get(port, bitHost, bitPath).putHeader("Cookie", sessionCookie).send(pageAr -> {
+                    if (pageAr.failed()) {
+                        ctx.failNow(pageAr.cause());
+                        return;
+                    }
+
+                    client.get(port, bitHost, "/favicon.ico").putHeader("Cookie", sessionCookie).send(faviconAr -> {
+                        ctx.verify(() -> {
+                            assertEquals(200, faviconAr.result().statusCode());
+                            assertTrue(faviconAr.result().getHeader("Cache-Control").contains("immutable"));
+                        });
+                        ctx.completeNow();
+                    });
                 });
-                ctx.completeNow();
+            });
+        });
+    }
+
+    @Test
+    void testFinalizeRedirectsBackWithTrackingId(Vertx vertx, VertxTestContext ctx) {
+        client.get(port, "localhost", "/supercookie/launch-icon").send(iconAr -> {
+            if (iconAr.failed()) {
+                ctx.failNow(iconAr.cause());
+                return;
+            }
+
+            String mid = cookieValue(iconAr.result().getHeader("Set-Cookie"));
+            client.get(port, "localhost", "/supercookie/write?mid=" + mid + "&returnTo=http://localhost/demo").followRedirects(false).send(writeAr -> {
+                if (writeAr.failed()) {
+                    ctx.failNow(writeAr.cause());
+                    return;
+                }
+
+                String sessionCookie = cookieHeader(writeAr.result().getHeader("Set-Cookie"));
+                client.get(port, "localhost", "/supercookie/finalize?returnTo=http://localhost/demo")
+                        .followRedirects(false)
+                        .putHeader("Cookie", sessionCookie)
+                        .send(finalAr -> {
+                    ctx.verify(() -> {
+                        assertEquals(302, finalAr.result().statusCode());
+                        String location = finalAr.result().getHeader("Location");
+                        assertTrue(location.startsWith("http://localhost/demo"));
+                        assertTrue(location.contains("sc_action=written"));
+                        assertTrue(location.contains("trackingId="));
+                    });
+                    ctx.completeNow();
+                });
             });
         });
     }
@@ -128,5 +188,14 @@ class SupercookieHandlerTest {
             });
             ctx.completeNow();
         });
+    }
+
+    private static String cookieHeader(String setCookie) {
+        assertNotNull(setCookie);
+        return setCookie.split(";", 2)[0];
+    }
+
+    private static String cookieValue(String setCookie) {
+        return cookieHeader(setCookie).split("=", 2)[1];
     }
 }

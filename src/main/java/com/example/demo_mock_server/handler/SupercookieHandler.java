@@ -3,20 +3,25 @@ package com.example.demo_mock_server.handler;
 import com.example.demo_mock_server.service.SupercookieService;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.Cookie;
+import io.vertx.core.http.CookieSameSite;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 
 import java.nio.charset.StandardCharsets;
 import java.net.URLEncoder;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Favicon Supercookie 处理器。
  *
- * POST /supercookie/session      → 分配 ID
- * POST /supercookie/probe/start  → 开始一次读取会话
- * POST /supercookie/probe/finish → 结束读取会话，返回恢复结果
+ * GET  /supercookie/launch       → launch 页面，通过 launch favicon 判断读/写
+ * GET  /supercookie/launch-icon  → launch favicon，首次请求时发放写入 token
+ * GET  /supercookie/write        → 创建 WRITE 会话并跳到首个 bit 页面
+ * GET  /supercookie/read         → 创建 READ 会话并跳到首个 bit 页面
+ * GET  /supercookie/finalize     → 汇总结果并跳回主页面
  * GET  /supercookie/write-page   → 在 bit 子域名上加载写入页
  * GET  /supercookie/read-page    → 在 bit 子域名上加载读取页
  * GET  /favicon.ico              → 真正的 favicon 入口（bit 子域名）
@@ -24,7 +29,15 @@ import java.util.regex.Pattern;
  */
 public class SupercookieHandler implements Handler<RoutingContext> {
     private static final Pattern BIT_HOST_PATTERN = Pattern.compile("^bit(\\d+)-numfeel\\.996\\.ninja$");
+    private static final String API_BASE = "https://numfeel-api.996.ninja";
+    private static final String DEFAULT_RETURN_TO = "https://numfeel.996.ninja/pages/favicon-supercookie/";
+    private static final String ACTION_PARAM = "sc_action";
+    private static final String MODE_WRITE = "WRITE";
+    private static final String LAUNCH_COOKIE = "sc_mid";
+    private static final String SESSION_COOKIE = "sc_uid";
     private static final int PAGE_REDIRECT_DELAY_MS = 700;
+    private static final long SESSION_COOKIE_MAX_AGE_SECONDS = 5 * 60L;
+    private static final long LAUNCH_COOKIE_MAX_AGE_SECONDS = 2 * 60L;
 
     private final SupercookieService service;
 
@@ -51,44 +64,76 @@ public class SupercookieHandler implements Handler<RoutingContext> {
         String host = normalizeHost(ctx.request().host());
         Integer bitIndex = bitIndexFromHost(host);
 
-        if ("POST".equals(method) && path.endsWith("/session")) {
-            sendJson(ctx, 200, service.createWriteSession());
-        } else if ("POST".equals(method) && path.endsWith("/probe/start")) {
-            sendJson(ctx, 200, service.startProbeSession());
-        } else if ("POST".equals(method) && path.endsWith("/probe/finish")) {
-            JsonObject body = ctx.body().asJsonObject();
-            String probeId = body != null ? body.getString("probeId") : null;
-            if (probeId == null || probeId.isBlank()) {
-                ctx.response().setStatusCode(400).end("missing probeId");
+        if ("GET".equals(method) && path.endsWith("/launch")) {
+            sendHtml(ctx, renderLaunchPage(sanitizeReturnTo(ctx.request().getParam("returnTo"))));
+        } else if ("GET".equals(method) && path.endsWith("/launch-icon")) {
+            setCookie(ctx, LAUNCH_COOKIE, service.issueWriteToken(), LAUNCH_COOKIE_MAX_AGE_SECONDS, false);
+            sendFavicon(ctx, true);
+        } else if ("GET".equals(method) && path.endsWith("/write")) {
+            String token = firstNonBlank(ctx.request().getParam("mid"), cookieValue(ctx, LAUNCH_COOKIE));
+            clearCookie(ctx, LAUNCH_COOKIE, false);
+            JsonObject data = service.beginWriteFlow(token);
+            if (data == null) {
+                redirect(ctx, API_BASE + "/supercookie/launch?returnTo=" + encode(sanitizeReturnTo(ctx.request().getParam("returnTo"))));
                 return;
             }
-            sendJson(ctx, 200, service.finishProbeSession(probeId));
+
+            String uid = data.getString("uid");
+            int firstBitIndex = data.getInteger("firstBitIndex", -1);
+            String returnTo = sanitizeReturnTo(ctx.request().getParam("returnTo"));
+            setCookie(ctx, SESSION_COOKIE, uid, SESSION_COOKIE_MAX_AGE_SECONDS, true);
+
+            if (firstBitIndex < 0) {
+                redirect(ctx, buildFinalizeUrl(returnTo));
+                return;
+            }
+            redirect(ctx, writePageUrl(firstBitIndex, returnTo));
+        } else if ("GET".equals(method) && path.endsWith("/read")) {
+            JsonObject data = service.beginReadFlow();
+            String uid = data.getString("uid");
+            String returnTo = sanitizeReturnTo(ctx.request().getParam("returnTo"));
+            setCookie(ctx, SESSION_COOKIE, uid, SESSION_COOKIE_MAX_AGE_SECONDS, true);
+            redirect(ctx, readPageUrl(0, returnTo));
+        } else if ("GET".equals(method) && path.endsWith("/finalize")) {
+            String uid = cookieValue(ctx, SESSION_COOKIE);
+            String returnTo = sanitizeReturnTo(ctx.request().getParam("returnTo"));
+            JsonObject result = service.finalizeSession(uid);
+            clearCookie(ctx, SESSION_COOKIE, true);
+            redirect(ctx, buildReturnUrl(returnTo, result));
         } else if ("GET".equals(method) && path.endsWith("/write-page")) {
             if (bitIndex == null) {
                 ctx.response().setStatusCode(400).end("write-page must be loaded on bit subdomain");
                 return;
             }
-            service.registerWritePageVisit(bitIndex, host);
-            sendHtml(ctx, renderWorkerPage("write", bitIndex, buildNextWriteUrl(ctx, bitIndex)));
+            String uid = cookieValue(ctx, SESSION_COOKIE);
+            JsonObject data = service.registerWritePageVisit(uid, bitIndex, host);
+            if (data == null) {
+                ctx.response().setStatusCode(400).end("invalid write session");
+                return;
+            }
+            String returnTo = sanitizeReturnTo(ctx.request().getParam("returnTo"));
+            sendHtml(ctx, renderWorkerPage("write", bitIndex, buildNextWriteUrl(data, returnTo)));
         } else if ("GET".equals(method) && path.endsWith("/read-page")) {
             if (bitIndex == null) {
                 ctx.response().setStatusCode(400).end("read-page must be loaded on bit subdomain");
                 return;
             }
-            String probeId = ctx.request().getParam("probeId");
-            if (probeId == null || probeId.isBlank()) {
-                ctx.response().setStatusCode(400).end("missing probeId");
+            String uid = cookieValue(ctx, SESSION_COOKIE);
+            JsonObject data = service.registerReadPageVisit(uid, bitIndex, host);
+            if (data == null) {
+                ctx.response().setStatusCode(400).end("invalid read session");
                 return;
             }
-            service.registerReadPageVisit(probeId, bitIndex, host);
-            sendHtml(ctx, renderWorkerPage("read", bitIndex, buildNextReadUrl(ctx, bitIndex, probeId)));
+            String returnTo = sanitizeReturnTo(ctx.request().getParam("returnTo"));
+            sendHtml(ctx, renderWorkerPage("read", bitIndex, buildNextReadUrl(data, returnTo)));
         } else if ("GET".equals(method) && "/favicon.ico".equals(path)) {
             if (bitIndex == null) {
                 ctx.next();
                 return;
             }
-            boolean cacheable = service.handleFaviconRequest(host);
-            sendFavicon(ctx, cacheable);
+            String uid = cookieValue(ctx, SESSION_COOKIE);
+            SupercookieService.FaviconDecision decision = service.handleFaviconRequest(uid, host, bitIndex);
+            sendFavicon(ctx, decision == SupercookieService.FaviconDecision.CACHEABLE);
         } else if ("GET".equals(method) && path.endsWith("/pixel")) {
             // 兼容旧版脚本；新方案不再依赖这个端点。
             sendFavicon(ctx, true);
@@ -119,6 +164,13 @@ public class SupercookieHandler implements Handler<RoutingContext> {
         }
     }
 
+    private void redirect(RoutingContext ctx, String url) {
+        ctx.response()
+                .setStatusCode(302)
+                .putHeader("Location", url)
+                .end();
+    }
+
     private void sendHtml(RoutingContext ctx, String html) {
         ctx.response()
             .putHeader("Content-Type", "text/html; charset=UTF-8")
@@ -141,10 +193,93 @@ public class SupercookieHandler implements Handler<RoutingContext> {
         return colon >= 0 ? normalized.substring(0, colon) : normalized;
     }
 
+    private static String sanitizeReturnTo(String returnTo) {
+        if (returnTo == null || returnTo.isBlank()) return DEFAULT_RETURN_TO;
+        if (returnTo.startsWith("https://numfeel.996.ninja/")) return returnTo;
+        if (returnTo.startsWith("http://localhost")) return returnTo;
+        if (returnTo.startsWith("https://localhost")) return returnTo;
+        return DEFAULT_RETURN_TO;
+    }
+
+    private void setCookie(RoutingContext ctx, String name, String value, long maxAgeSeconds, boolean sharedAcrossSubdomains) {
+        Cookie cookie = Cookie.cookie(name, value)
+                .setPath("/")
+                .setHttpOnly(false)
+                .setMaxAge(maxAgeSeconds)
+                .setSameSite(CookieSameSite.LAX);
+
+        String domain = sharedAcrossSubdomains ? sharedCookieDomain(ctx.request().host()) : null;
+        if (domain != null) {
+            cookie.setDomain(domain);
+        }
+        if (isSecureHost(ctx.request().host())) {
+            cookie.setSecure(true);
+        }
+        ctx.addCookie(cookie);
+    }
+
+    private void clearCookie(RoutingContext ctx, String name, boolean sharedAcrossSubdomains) {
+        setCookie(ctx, name, "", 0, sharedAcrossSubdomains);
+    }
+
+    private static String cookieValue(RoutingContext ctx, String name) {
+        Cookie cookie = ctx.getCookie(name);
+        return cookie != null ? cookie.getValue() : null;
+    }
+
+    private static String sharedCookieDomain(String host) {
+        String normalizedHost = normalizeHost(host);
+        if (normalizedHost.endsWith(".996.ninja") || Objects.equals(normalizedHost, "996.ninja")) {
+            return "996.ninja";
+        }
+        return null;
+    }
+
+    private static boolean isSecureHost(String host) {
+        String normalizedHost = normalizeHost(host);
+        return normalizedHost.endsWith(".996.ninja") || Objects.equals(normalizedHost, "996.ninja");
+    }
+
+    private static String firstNonBlank(String a, String b) {
+        if (a != null && !a.isBlank()) return a;
+        return b;
+    }
+
     private static Integer bitIndexFromHost(String host) {
         Matcher matcher = BIT_HOST_PATTERN.matcher(host);
         if (!matcher.matches()) return null;
         return Integer.parseInt(matcher.group(1));
+    }
+
+    private static String renderLaunchPage(String returnTo) {
+        String safeReturnTo = returnTo.replace("\\", "\\\\").replace("\"", "\\\"");
+        return "<!DOCTYPE html>\n" +
+                "<html lang=\"zh-CN\">\n" +
+                "<head>\n" +
+                "  <meta charset=\"UTF-8\">\n" +
+                "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
+                "  <meta http-equiv=\"Cache-Control\" content=\"no-store\">\n" +
+                "  <link rel=\"icon\" href=\"/supercookie/launch-icon\">\n" +
+                "  <link rel=\"shortcut icon\" href=\"/supercookie/launch-icon\">\n" +
+                "  <title>F-Cache launch</title>\n" +
+                "  <style>body{font-family:sans-serif;background:#111;color:#ddd;margin:0;padding:8px;font-size:12px}</style>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "launch\n" +
+                "<script>\n" +
+                "window.addEventListener('load', function () {\n" +
+                "  setTimeout(function () {\n" +
+                "    var midMatch = document.cookie.match(/(?:^|; )sc_mid=([^;]+)/);\n" +
+                "    var mid = midMatch ? decodeURIComponent(midMatch[1]) : '';\n" +
+                "    var target = mid\n" +
+                "      ? '/supercookie/write?mid=' + encodeURIComponent(mid) + '&returnTo=' + encodeURIComponent(\"" + safeReturnTo + "\")\n" +
+                "      : '/supercookie/read?returnTo=' + encodeURIComponent(\"" + safeReturnTo + "\");\n" +
+                "    window.location.replace(target);\n" +
+                "  }, 500);\n" +
+                "});\n" +
+                "</script>\n" +
+                "</body>\n" +
+                "</html>\n";
     }
 
     private static String renderWorkerPage(String mode, int bitIndex, String nextUrl) {
@@ -174,31 +309,61 @@ public class SupercookieHandler implements Handler<RoutingContext> {
                 "</html>\n";
     }
 
-    private static String buildNextWriteUrl(RoutingContext ctx, int bitIndex) {
-        String bits = ctx.request().getParam("bits");
-        String returnTo = ctx.request().getParam("returnTo");
-        if (bits == null || returnTo == null) return returnTo != null ? returnTo : "https://numfeel.996.ninja/pages/favicon-supercookie/";
-
-        for (int i = bitIndex + 1; i < bits.length(); i++) {
-            if (bits.charAt(i) == '1') {
-                return "https://bit" + i + "-numfeel.996.ninja/supercookie/write-page?bits=" +
-                        encode(bits) + "&returnTo=" + encode(returnTo);
-            }
+    private static String buildNextWriteUrl(JsonObject data, String returnTo) {
+        int nextBitIndex = data.getInteger("nextBitIndex", -1);
+        if (nextBitIndex < 0) {
+            return buildFinalizeUrl(returnTo);
         }
-        return returnTo;
+        return writePageUrl(nextBitIndex, returnTo);
     }
 
-    private static String buildNextReadUrl(RoutingContext ctx, int bitIndex, String probeId) {
-        String returnTo = ctx.request().getParam("returnTo");
-        if (returnTo == null || returnTo.isBlank()) {
-            returnTo = "https://numfeel.996.ninja/pages/favicon-supercookie/";
+    private static String buildNextReadUrl(JsonObject data, String returnTo) {
+        int nextBitIndex = data.getInteger("nextBitIndex", -1);
+        if (nextBitIndex < 0) {
+            return buildFinalizeUrl(returnTo);
         }
-        if (bitIndex >= SupercookieService.BITS - 1) {
-            return returnTo;
+        return readPageUrl(nextBitIndex, returnTo);
+    }
+
+    private static String buildFinalizeUrl(String returnTo) {
+        return API_BASE + "/supercookie/finalize?returnTo=" + encode(returnTo);
+    }
+
+    private static String writePageUrl(int bitIndex, String returnTo) {
+        return "https://bit" + bitIndex + "-numfeel.996.ninja/supercookie/write-page?returnTo=" + encode(returnTo);
+    }
+
+    private static String readPageUrl(int bitIndex, String returnTo) {
+        return "https://bit" + bitIndex + "-numfeel.996.ninja/supercookie/read-page?returnTo=" + encode(returnTo);
+    }
+
+    private static String buildReturnUrl(String returnTo, JsonObject result) {
+        String action;
+        if (!result.getBoolean("complete", false) || result.getString("error") != null) {
+            action = "error";
+        } else if (MODE_WRITE.equals(result.getString("mode"))) {
+            action = "written";
+        } else {
+            action = "read";
         }
-        int nextBit = bitIndex + 1;
-        return "https://bit" + nextBit + "-numfeel.996.ninja/supercookie/read-page?probeId=" +
-                encode(probeId) + "&returnTo=" + encode(returnTo);
+
+        StringBuilder url = new StringBuilder(returnTo);
+        url.append(returnTo.contains("?") ? "&" : "?");
+        url.append(ACTION_PARAM).append("=").append(encode(action));
+
+        if (result.getString("error") != null) {
+            url.append("&reason=").append(encode(result.getString("error")));
+            return url.toString();
+        }
+
+        url.append("&trackingId=").append(encode(String.valueOf(result.getInteger("trackingId", 0))));
+        url.append("&binary=").append(encode(result.getString("binary", "")));
+        url.append("&mode=").append(encode(result.getString("mode", "")));
+        url.append("&visitedCount=").append(encode(String.valueOf(result.getInteger("visitedCount", 0))));
+        url.append("&networkRequestCount=").append(encode(String.valueOf(result.getInteger("networkRequestCount", 0))));
+        url.append("&allOne=").append(encode(String.valueOf(result.getBoolean("allOne", false))));
+        url.append("&allZero=").append(encode(String.valueOf(result.getBoolean("allZero", false))));
+        return url.toString();
     }
 
     private static String encode(String value) {

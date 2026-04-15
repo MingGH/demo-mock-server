@@ -146,7 +146,7 @@ class SupercookieHandlerTest {
     }
 
     @Test
-    void testFinalizeRedirectsBackWithTrackingId(Vertx vertx, VertxTestContext ctx) {
+    void testFinalizeBeforeWorkerStepsReturnsError(Vertx vertx, VertxTestContext ctx) {
         client.get(port, "localhost", "/supercookie/launch-icon").send(iconAr -> {
             if (iconAr.failed()) {
                 ctx.failNow(iconAr.cause());
@@ -169,8 +169,8 @@ class SupercookieHandlerTest {
                         assertEquals(302, finalAr.result().statusCode());
                         String location = finalAr.result().getHeader("Location");
                         assertTrue(location.startsWith("http://localhost/demo"));
-                        assertTrue(location.contains("sc_action=written"));
-                        assertTrue(location.contains("trackingId="));
+                        assertTrue(location.contains("sc_action=error"));
+                        assertTrue(location.contains("reason=flow+incomplete"));
                     });
                     ctx.completeNow();
                 });

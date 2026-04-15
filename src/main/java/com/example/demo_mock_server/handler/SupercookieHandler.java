@@ -68,6 +68,7 @@ public class SupercookieHandler implements Handler<RoutingContext> {
                 ctx.response().setStatusCode(400).end("write-page must be loaded on bit subdomain");
                 return;
             }
+            service.registerWritePageVisit(bitIndex, host);
             sendHtml(ctx, renderWorkerPage("write", bitIndex, buildNextWriteUrl(ctx, bitIndex)));
         } else if ("GET".equals(method) && path.endsWith("/read-page")) {
             if (bitIndex == null) {
@@ -86,11 +87,11 @@ public class SupercookieHandler implements Handler<RoutingContext> {
                 ctx.next();
                 return;
             }
-            service.recordFaviconRequest(host);
-            sendFavicon(ctx);
+            boolean cacheable = service.handleFaviconRequest(host);
+            sendFavicon(ctx, cacheable);
         } else if ("GET".equals(method) && path.endsWith("/pixel")) {
             // 兼容旧版脚本；新方案不再依赖这个端点。
-            sendFavicon(ctx);
+            sendFavicon(ctx, true);
         } else if ("GET".equals(method) && path.endsWith("/stats")) {
             sendJson(ctx, 200, service.stats());
         } else {
@@ -98,13 +99,22 @@ public class SupercookieHandler implements Handler<RoutingContext> {
         }
     }
 
-    private void sendFavicon(RoutingContext ctx) {
-        ctx.response()
+    private void sendFavicon(RoutingContext ctx, boolean cacheable) {
+        var response = ctx.response()
             .putHeader("Content-Type", "image/png")
-            .putHeader("Cache-Control", "public, max-age=31536000, immutable")
             .putHeader("CDN-Cache-Control", "no-store")
-            .putHeader("Access-Control-Allow-Origin", "*")
-            .end(Buffer.buffer(FAVICON_BYTES));
+            .putHeader("Access-Control-Allow-Origin", "*");
+
+        if (cacheable) {
+            response.putHeader("Cache-Control", "public, max-age=31536000, immutable");
+        } else {
+            response
+                    .putHeader("Cache-Control", "no-store, max-age=0")
+                    .putHeader("Pragma", "no-cache")
+                    .putHeader("Expires", "0");
+        }
+
+        response.end(Buffer.buffer(FAVICON_BYTES));
     }
 
     private void sendHtml(RoutingContext ctx, String html) {

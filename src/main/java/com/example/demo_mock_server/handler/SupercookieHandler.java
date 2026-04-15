@@ -356,10 +356,15 @@ public class SupercookieHandler implements Handler<RoutingContext> {
             return url.toString();
         }
 
+        if (!result.getBoolean("complete", false)) {
+            url.append("&reason=").append(encode("flow incomplete"));
+        }
+
         url.append("&trackingId=").append(encode(String.valueOf(result.getInteger("trackingId", 0))));
         url.append("&binary=").append(encode(result.getString("binary", "")));
         url.append("&mode=").append(encode(result.getString("mode", "")));
         url.append("&visitedCount=").append(encode(String.valueOf(result.getInteger("visitedCount", 0))));
+        url.append("&expectedVisitedCount=").append(encode(String.valueOf(result.getInteger("expectedVisitedCount", 0))));
         url.append("&networkRequestCount=").append(encode(String.valueOf(result.getInteger("networkRequestCount", 0))));
         url.append("&allOne=").append(encode(String.valueOf(result.getBoolean("allOne", false))));
         url.append("&allZero=").append(encode(String.valueOf(result.getBoolean("allZero", false))));

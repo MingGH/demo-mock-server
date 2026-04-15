@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="为什么有些图片故意做旧，反而更高级？上传图片，切换颜色数量、抖动算法和调色板，实时生成复古风、像素风和报纸风效果。">
+  <title>图片做旧实验室 | 数字直觉</title>
+  <script src="../components/header.js" defer></script>
+  <script src="./image-retro-lab-logic.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e8e8e8;
+      line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; padding: 40px 20px; margin-bottom: 30px; }
+    .header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+      margin-bottom: 15px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+    .header p { font-size: 1.08rem; color: #a0a0a0; max-width: 780px; margin: 0 auto; }
+    .section {
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .section h2 {
+      font-size: 1.45rem;
+      margin-bottom: 18px;
+      color: #ffd700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .intro-grid, .stats-grid, .swatch-grid, .recipe-grid {
+      display: grid;
+      gap: 16px;
+    }
+    .intro-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .recipe-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .stats-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+    .swatch-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    .note-box, .stat-card, .recipe-card, .panel, .swatch-card {
+      background: rgba(0,0,0,0.25);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .note-box {
+      padding: 18px;
+      border-left: 4px solid #ffd700;
+      background: linear-gradient(135deg, rgba(255,215,0,0.09), rgba(255,183,0,0.08));
+    }
+    .note-box h3 {
+      color: #ffd700;
+      font-size: 1rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .note-box p { color: #c0c0c0; font-size: 0.95rem; }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .input-group { display: flex; flex-direction: column; gap: 6px; }
+    .input-group label { color: #a0a0a0; font-size: 0.9rem; }
+    .input-group select, .input-group input[type="file"] {
+      padding: 11px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.08);
+      color: #e8e8e8;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .btn {
+      padding: 11px 18px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd700, #ffb700);
+      color: #1a1a2e;
+      font-weight: 700;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #e8e8e8;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .upload-zone {
+      border: 2px dashed rgba(255,215,0,0.35);
+      border-radius: 14px;
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      margin-bottom: 20px;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: #ffd700;
+      background: rgba(255,215,0,0.05);
+    }
+    .upload-zone i {
+      font-size: 2rem;
+      color: #ffd700;
+      display: block;
+      margin-bottom: 10px;
+    }
+    .upload-zone p { color: #a0a0a0; }
+    .canvas-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .canvas-grid.bottom { grid-template-columns: 1.1fr 0.9fr; }
+    .panel { padding: 14px; }
+    .panel h3 {
+      color: #cfcfcf;
+      font-size: 0.95rem;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .panel small { color: #8f8f8f; font-weight: normal; }
+    canvas {
+      width: 100%;
+      max-height: 440px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 10px;
+      display: block;
+      image-rendering: pixelated;
+      cursor: crosshair;
+    }
+    #processedCanvas { image-rendering: pixelated; }
+    .zoom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .palette-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .swatch {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.14);
+      position: relative;
+      overflow: hidden;
+    }
+    .swatch span {
+      position: absolute;
+      inset: auto 0 0 0;
+      font-size: 0.65rem;
+      text-align: center;
+      background: rgba(0,0,0,0.42);
+      color: #fff;
+      padding: 1px 0;
+    }
+    .stat-card, .recipe-card, .swatch-card { padding: 18px; }
+    .stat-card .value {
+      font-size: 1.7rem;
+      font-weight: bold;
+      color: #ffd700;
+      margin-bottom: 4px;
+    }
+    .stat-card .label { color: #a0a0a0; font-size: 0.85rem; }
+    .stat-card .sub { color: #7f7f7f; font-size: 0.78rem; margin-top: 6px; }
+    .recipe-card h3, .swatch-card h3 {
+      color: #ffd700;
+      font-size: 1rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .recipe-card p, .swatch-card p {
+      color: #b8b8b8;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+    }
+    .mini-palette {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .mini-palette span {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .recipe-card button { width: 100%; justify-content: center; }
+    .insight {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 12px;
+      background: rgba(255,215,0,0.08);
+      border: 1px solid rgba(255,215,0,0.18);
+      color: #d7d7d7;
+      line-height: 1.8;
+    }
+    .insight strong { color: #ffd700; }
+    .meta-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: #9a9a9a;
+      font-size: 0.88rem;
+      margin-top: 10px;
+    }
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4CAF50;
+      color: white;
+      padding: 15px 25px;
+      border-radius: 8px;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: all 0.3s ease;
+      z-index: 1001;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .copy-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ffd700, #ffb700);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 20px rgba(255,215,0,0.3);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    .copy-btn:hover { transform: scale(1.06); }
+    @media (max-width: 768px) {
+      .container { padding: 12px; }
+      .header { padding: 24px 12px; margin-bottom: 20px; }
+      .header h1 { font-size: 1.65rem; }
+      .header p { font-size: 0.95rem; }
+      .section { padding: 18px; }
+      .canvas-grid, .canvas-grid.bottom, .zoom-grid { grid-template-columns: 1fr; }
+      .btn-row { flex-direction: column; align-items: stretch; }
+      .btn { justify-content: center; }
+      .upload-zone { padding: 22px 14px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-photo-spark"></i> 图片做旧实验室</h1>
+      <p>为什么有些图片颜色更少、颗粒更重，观感反而更统一？上传一张图，切换颜色数量、抖动算法和调色板，亲手看见“做旧感”是怎么出来的。</p>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-bulb"></i> 这页能看什么</h2>
+      <div class="intro-grid">
+        <div class="note-box">
+          <h3><i class="ti ti-palette"></i> 颜色减少以后会发生什么</h3>
+          <p>颜色变少，画面会被迫合并相近色块。信息减少了，层次也会重排。很多人感受到的“复古感”，就来自这种取舍。</p>
+        </div>
+        <div class="note-box">
+          <h3><i class="ti ti-grid-dots"></i> 抖动会把断层变成纹理</h3>
+          <p>直接降色容易出现一块一块的断层。抖动会把误差分散到邻近像素，于是你看到的是颗粒、网点、像素味，而不是生硬色带。</p>
+        </div>
+        <div class="note-box">
+          <h3><i class="ti ti-photo-edit"></i> 同一张图，调色板就能改气质</h3>
+          <p>暖色板会让画面更像旧海报，冷色板更像胶片夜景，黑白板更接近报纸印刷。风格变化不靠滤镜，先靠色彩规则。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-adjustments"></i> 开始实验</h2>
+
+      <div class="upload-zone" id="uploadZone">
+        <i class="ti ti-upload"></i>
+        <p>点击或拖拽上传图片。也可以先用下方样图试试。</p>
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="loadSample('portrait')"><i class="ti ti-user"></i> 花园人像</button>
+        <button class="btn btn-secondary" onclick="loadSample('street')"><i class="ti ti-building-skyscraper"></i> 夜景街头</button>
+        <button class="btn btn-secondary" onclick="loadSample('poster')"><i class="ti ti-sun"></i> 复古海报</button>
+        <button class="btn btn-secondary" onclick="loadSample('still-life')"><i class="ti ti-camera"></i> 室内静物</button>
+        <button class="btn btn-secondary" onclick="loadSample('autumn')"><i class="ti ti-leaf"></i> 秋天街景</button>
+        <button class="btn btn-primary" onclick="downloadProcessed()"><i class="ti ti-download"></i> 下载处理结果</button>
+      </div>
+
+      <div class="controls-grid">
+        <div class="input-group">
+          <label for="colorCount">目标颜色数</label>
+          <select id="colorCount" onchange="rerender()">
+            <option value="2">2 色</option>
+            <option value="4">4 色</option>
+            <option value="8">8 色</option>
+            <option value="16" selected>16 色</option>
+            <option value="32">32 色</option>
+            <option value="64">64 色</option>
+            <option value="128">128 色</option>
+            <option value="256">256 色</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="ditherSelect">抖动算法</label>
+          <select id="ditherSelect" onchange="rerender()">
+            <option value="none">无抖动</option>
+            <option value="ordered">有序抖动</option>
+            <option value="floyd-steinberg" selected>Floyd-Steinberg</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label for="paletteSelect">调色板</label>
+          <select id="paletteSelect" onchange="handlePaletteChange()">
+            <option value="adaptive" selected>原图自适应</option>
+            <option value="gameboy">Game Boy</option>
+            <option value="warm-retro">暖复古</option>
+            <option value="cool-film">冷胶片</option>
+            <option value="newspaper">黑白报纸</option>
+            <option value="vaporwave">霓虹像素</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label>当前样图 / 来源</label>
+          <select id="sampleLabel" disabled>
+            <option>示例图：花园人像</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="meta-line" id="metaLine"></div>
+
+      <div class="canvas-grid">
+        <div class="panel">
+          <h3>原图 <small>点击画面可以移动放大区域</small></h3>
+          <canvas id="originalCanvas" width="320" height="320"></canvas>
+        </div>
+        <div class="panel">
+          <h3>处理后</h3>
+          <canvas id="processedCanvas" width="320" height="320"></canvas>
+        </div>
+      </div>
+
+      <div class="canvas-grid bottom">
+        <div class="panel">
+          <h3>局部放大对比</h3>
+          <div class="zoom-grid">
+            <div>
+              <small style="color:#9a9a9a; display:block; margin-bottom:8px;">原图局部</small>
+              <canvas id="zoomOriginalCanvas" width="160" height="160"></canvas>
+            </div>
+            <div>
+              <small style="color:#9a9a9a; display:block; margin-bottom:8px;">处理后局部</small>
+              <canvas id="zoomProcessedCanvas" width="160" height="160"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>当前调色板</h3>
+          <div class="palette-strip" id="paletteStrip"></div>
+        </div>
+      </div>
+
+      <div class="insight" id="insightBox"></div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-chart-bar"></i> 这次量化后的数据</h2>
+      <div class="stats-grid" id="statsGrid"></div>
+      <p style="color:#8d8d8d; font-size:0.84rem; margin-top:14px;">这里的“理论像素体积”按索引色图的像素位数和调色板大小估算，用来比较方向，不等于 PNG 或 JPEG 的实际文件大小。</p>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-magic-wand"></i> 三套常用配方</h2>
+      <div class="recipe-grid">
+        <div class="recipe-card">
+          <h3><i class="ti ti-mood-smile"></i> 头像复古</h3>
+          <p>适合自拍、插画头像和封面。保留皮肤层次，压低颜色数量，画面会更像旧海报。</p>
+          <div class="mini-palette">
+            <span style="background:#2a1a12"></span>
+            <span style="background:#6f3b28"></span>
+            <span style="background:#b26a3d"></span>
+            <span style="background:#f0d7a1"></span>
+          </div>
+          <button class="btn btn-secondary" onclick="applyRecipe('portrait')"><i class="ti ti-player-play"></i> 套用这套参数</button>
+        </div>
+        <div class="recipe-card">
+          <h3><i class="ti ti-device-gamepad-2"></i> 像素游戏</h3>
+          <p>颜色少，边界硬，颗粒感明显。适合头像、表情包、像素风物料。</p>
+          <div class="mini-palette">
+            <span style="background:#0f380f"></span>
+            <span style="background:#306230"></span>
+            <span style="background:#8bac0f"></span>
+            <span style="background:#9bbc0f"></span>
+          </div>
+          <button class="btn btn-secondary" onclick="applyRecipe('gameboy')"><i class="ti ti-player-play"></i> 套用这套参数</button>
+        </div>
+        <div class="recipe-card">
+          <h3><i class="ti ti-news"></i> 报纸印刷</h3>
+          <p>颜色极少，抖动比原图更关键。适合头像、封面和视觉海报里的“旧刊物感”。</p>
+          <div class="mini-palette">
+            <span style="background:#161616"></span>
+            <span style="background:#565656"></span>
+            <span style="background:#a5a5a5"></span>
+            <span style="background:#f2f2f2"></span>
+          </div>
+          <button class="btn btn-secondary" onclick="applyRecipe('newspaper')"><i class="ti ti-player-play"></i> 套用这套参数</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-brush"></i> 页面里用到的几个概念</h2>
+      <div class="swatch-grid">
+        <div class="swatch-card">
+          <h3><i class="ti ti-palette"></i> 调色板</h3>
+          <p>原图可能有成千上万种颜色。调色板会把这些颜色压到一个更小的集合里，比如 16 色或 32 色。</p>
+        </div>
+        <div class="swatch-card">
+          <h3><i class="ti ti-grid-4x4"></i> 有序抖动</h3>
+          <p>把规则网格叠在画面上，用固定阈值制造颗粒。优点是图案稳定，缺点是规律感明显。</p>
+        </div>
+        <div class="swatch-card">
+          <h3><i class="ti ti-wave-sine"></i> Floyd-Steinberg</h3>
+          <p>把当前像素的误差扩散给后面的像素，所以画面更像细颗粒，更接近很多人熟悉的“复古数码味”。</p>
+        </div>
+        <div class="swatch-card">
+          <h3><i class="ti ti-file-analytics"></i> 平均误差</h3>
+          <p>这里统计的是原图和处理后图像在 RGB 三个通道上的平均偏差。值越低，颜色保真越高。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button class="copy-btn" onclick="copyShareLink()" title="复制分享链接"><i class="ti ti-link"></i></button>
+  <div class="toast" id="toast">链接已复制到剪贴板</div>
+
+  <script>
+    const state = {
+      original: null,
+      processed: null,
+      focusX: 0.5,
+      focusY: 0.5,
+      sourceLabel: '示例图：花园人像'
+    };
+
+    const SAMPLE_IMAGE_PATHS = {
+      portrait: '../data/image-retro-lab/花园人像.png',
+      street: '../data/image-retro-lab/夜景街头.png',
+      poster: '../data/image-retro-lab/复古海报感场景.png',
+      'still-life': '../data/image-retro-lab/室内静物.png',
+      autumn: '../data/image-retro-lab/秋天街景.png'
+    };
+
+    const SAMPLE_NAMES = {
+      portrait: '示例图：花园人像',
+      street: '示例图：夜景街头',
+      poster: '示例图：复古海报感场景',
+      'still-life': '示例图：室内静物',
+      autumn: '示例图：秋天街景'
+    };
+
+    const SAMPLE_FALLBACKS = {
+      portrait: 'portrait',
+      street: 'street',
+      poster: 'poster',
+      'still-life': 'poster',
+      autumn: 'street'
+    };
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+    }
+
+    function drawPixelsToCanvas(canvas, pixels, width, height) {
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      const imageData = new ImageData(new Uint8ClampedArray(pixels), width, height);
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    function renderZoom(sourcePixels, targetCanvas) {
+      const size = 36;
+      const outSize = 160;
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = state.original.width;
+      srcCanvas.height = state.original.height;
+      const srcCtx = srcCanvas.getContext('2d');
+      const img = new ImageData(new Uint8ClampedArray(sourcePixels), state.original.width, state.original.height);
+      srcCtx.putImageData(img, 0, 0);
+
+      const cx = Math.floor(state.focusX * state.original.width);
+      const cy = Math.floor(state.focusY * state.original.height);
+      const sx = Math.max(0, Math.min(state.original.width - size, cx - Math.floor(size / 2)));
+      const sy = Math.max(0, Math.min(state.original.height - size, cy - Math.floor(size / 2)));
+
+      targetCanvas.width = outSize;
+      targetCanvas.height = outSize;
+      const ctx = targetCanvas.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, outSize, outSize);
+      ctx.drawImage(srcCanvas, sx, sy, size, size, 0, 0, outSize, outSize);
+    }
+
+    function renderPalette(palette, usage) {
+      const strip = document.getElementById('paletteStrip');
+      strip.innerHTML = '';
+      const total = usage.reduce((sum, value) => sum + value, 0) || 1;
+      palette.forEach((color, index) => {
+        const node = document.createElement('div');
+        node.className = 'swatch';
+        node.style.background = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+        const usagePercent = Math.round(usage[index] / total * 100);
+        const label = document.createElement('span');
+        label.textContent = usagePercent + '%';
+        node.appendChild(label);
+        strip.appendChild(node);
+      });
+    }
+
+    function updateMetaLine() {
+      const paletteId = document.getElementById('paletteSelect').value;
+      const dither = document.getElementById('ditherSelect').value;
+      const colorCount = document.getElementById('colorCount').value;
+      const paletteLabel = document.getElementById('paletteSelect').selectedOptions[0].textContent;
+      const ditherLabel = document.getElementById('ditherSelect').selectedOptions[0].textContent;
+      document.getElementById('metaLine').innerHTML = [
+        `来源：${state.sourceLabel}`,
+        `目标颜色数：${colorCount}`,
+        `调色板：${paletteLabel}`,
+        `抖动：${ditherLabel}`,
+        paletteId === 'adaptive' ? '算法：自适应调色板切分' : '算法：固定色板映射'
+      ].map((text) => `<span>${text}</span>`).join('');
+    }
+
+    function updateStats(result) {
+      const stats = result.stats;
+      const cards = [
+        {
+          value: stats.uniqueBefore.toLocaleString(),
+          label: '原始颜色数',
+          sub: '图中实际出现过的 RGB 颜色'
+        },
+        {
+          value: stats.uniqueAfter.toLocaleString(),
+          label: '输出颜色数',
+          sub: '量化后实际保留下来的颜色'
+        },
+        {
+          value: stats.meanAbsoluteError.toFixed(1),
+          label: '平均误差',
+          sub: 'RGB 三通道平均偏差'
+        },
+        {
+          value: Math.round(stats.reductionRatio * 100) + '%',
+          label: '颜色压缩幅度',
+          sub: '颜色种类减少的比例'
+        },
+        {
+          value: formatBytes(stats.rawSizeBytes),
+          label: '原始理论像素体积',
+          sub: '按 24 位 RGB 估算'
+        },
+        {
+          value: formatBytes(stats.indexedSizeBytes),
+          label: '索引色理论像素体积',
+          sub: '按调色板 + 像素索引估算'
+        },
+        {
+          value: Math.round(stats.indexedSavings * 100) + '%',
+          label: '理论像素节省',
+          sub: '这里只看颜色编码开销'
+        },
+        {
+          value: result.palette.length,
+          label: '调色板大小',
+          sub: '当前真正参与映射的颜色'
+        }
+      ];
+      document.getElementById('statsGrid').innerHTML = cards.map((card) => `
+        <div class="stat-card">
+          <div class="value">${card.value}</div>
+          <div class="label">${card.label}</div>
+          <div class="sub">${card.sub}</div>
+        </div>
+      `).join('');
+    }
+
+    function updateInsight(result) {
+      const paletteName = document.getElementById('paletteSelect').selectedOptions[0].textContent;
+      const dither = document.getElementById('ditherSelect').value;
+      const stats = result.stats;
+      let tone = '画面更像在做“整理”：相近颜色被合并，大块关系会更明确。';
+      if (stats.reductionRatio > 0.95) {
+        tone = '颜色压缩很激进，画面的层次已经大幅重排。这个区间最容易出现“风格感”。';
+      } else if (stats.meanAbsoluteError < 10) {
+        tone = '颜色误差不高，说明画面结构还很稳，风格变化主要来自调色板和纹理。';
+      }
+
+      let ditherLine = '当前没有抖动，色带会更干净，边界也更硬。';
+      if (dither === 'ordered') {
+        ditherLine = '当前是有序抖动，颗粒分布带有规则感，适合故意做出印刷网点和像素风。';
+      } else if (dither === 'floyd-steinberg') {
+        ditherLine = '当前是 Floyd-Steinberg，误差会继续传给后面的像素，纹理更松，很多人熟悉的“老数码味”就从这里来。';
+      }
+
+      document.getElementById('insightBox').innerHTML = `
+        <strong>这次结果怎么看</strong><br>
+        ${tone}<br>
+        ${ditherLine}<br>
+        这次用的是 <strong>${paletteName}</strong>。如果你想让头像更像旧海报，优先试暖色板；想把夜景做得更像像素游戏，可以把颜色压到 8~16 色，再配合抖动。
+      `;
+    }
+
+    function rerender() {
+      if (!state.original) return;
+      const colorCount = parseInt(document.getElementById('colorCount').value, 10);
+      const dither = document.getElementById('ditherSelect').value;
+      const paletteId = document.getElementById('paletteSelect').value;
+
+      const result = ImageRetroLabLogic.quantizeImage(
+        state.original.pixels,
+        state.original.width,
+        state.original.height,
+        { colorCount, dither, paletteId }
+      );
+      state.processed = result;
+
+      drawPixelsToCanvas(document.getElementById('originalCanvas'), state.original.pixels, state.original.width, state.original.height);
+      drawPixelsToCanvas(document.getElementById('processedCanvas'), result.pixels, result.width, result.height);
+      renderZoom(state.original.pixels, document.getElementById('zoomOriginalCanvas'));
+      renderZoom(result.pixels, document.getElementById('zoomProcessedCanvas'));
+      renderPalette(result.palette, result.usage);
+      updateStats(result);
+      updateMetaLine();
+      updateInsight(result);
+    }
+
+    function handlePaletteChange() {
+      const isAdaptive = document.getElementById('paletteSelect').value === 'adaptive';
+      document.getElementById('colorCount').disabled = !isAdaptive;
+      rerender();
+    }
+
+    function setOriginalPixels(pixels, width, height, label) {
+      state.original = { pixels: new Uint8ClampedArray(pixels), width, height };
+      state.sourceLabel = label;
+      const sampleSelect = document.getElementById('sampleLabel');
+      sampleSelect.innerHTML = `<option>${label}</option>`;
+      state.focusX = 0.5;
+      state.focusY = 0.5;
+      rerender();
+    }
+
+    function loadSample(kind) {
+      const imagePath = SAMPLE_IMAGE_PATHS[kind];
+      if (imagePath) {
+        const img = new Image();
+        const resolvedUrl = new URL(imagePath, window.location.href).toString();
+        img.onload = () => {
+          const scaled = scaleImageToPixels(img);
+          setOriginalPixels(scaled.pixels, scaled.width, scaled.height, SAMPLE_NAMES[kind]);
+        };
+        img.onerror = () => {
+          const width = 320;
+          const height = 320;
+          const fallbackKind = SAMPLE_FALLBACKS[kind] || 'portrait';
+          const pixels = ImageRetroLabLogic.generateSampleScene(width, height, fallbackKind);
+          setOriginalPixels(pixels, width, height, SAMPLE_NAMES[kind] + '（加载失败时回退）');
+        };
+        img.src = resolvedUrl;
+        return;
+      }
+      const width = 320;
+      const height = 320;
+      const pixels = ImageRetroLabLogic.generateSampleScene(width, height, kind);
+      setOriginalPixels(pixels, width, height, SAMPLE_NAMES[kind]);
+    }
+
+    function scaleImageToPixels(image) {
+      const maxSide = 420;
+      let width = image.naturalWidth || image.width;
+      let height = image.naturalHeight || image.height;
+      const scale = Math.min(1, maxSide / Math.max(width, height));
+      width = Math.max(32, Math.round(width * scale));
+      height = Math.max(32, Math.round(height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, width, height);
+      return {
+        pixels: ctx.getImageData(0, 0, width, height).data,
+        width,
+        height
+      };
+    }
+
+    function loadFile(file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const scaled = scaleImageToPixels(img);
+          setOriginalPixels(scaled.pixels, scaled.width, scaled.height, `用户上传：${file.name}`);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function updateFocusFromEvent(event, canvas) {
+      if (!state.original) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+      const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+      state.focusX = x;
+      state.focusY = y;
+      renderZoom(state.original.pixels, document.getElementById('zoomOriginalCanvas'));
+      if (state.processed) {
+        renderZoom(state.processed.pixels, document.getElementById('zoomProcessedCanvas'));
+      }
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function downloadProcessed() {
+      if (!state.processed) return;
+      const canvas = document.getElementById('processedCanvas');
+      const link = document.createElement('a');
+      link.download = 'retro-image.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function applyRecipe(recipe) {
+      if (recipe === 'portrait') {
+        document.getElementById('paletteSelect').value = 'warm-retro';
+        document.getElementById('ditherSelect').value = 'floyd-steinberg';
+        document.getElementById('colorCount').value = '16';
+      } else if (recipe === 'gameboy') {
+        document.getElementById('paletteSelect').value = 'gameboy';
+        document.getElementById('ditherSelect').value = 'ordered';
+        document.getElementById('colorCount').value = '4';
+      } else if (recipe === 'newspaper') {
+        document.getElementById('paletteSelect').value = 'newspaper';
+        document.getElementById('ditherSelect').value = 'floyd-steinberg';
+        document.getElementById('colorCount').value = '4';
+      }
+      handlePaletteChange();
+    }
+
+    function copyShareLink() {
+      const url = 'https://numfeel.996.ninja/pages/image-retro-lab.html';
+      navigator.clipboard.writeText(url).then(() => {
+        const toast = document.getElementById('toast');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+      });
+    }
+
+    function initEvents() {
+      const uploadZone = document.getElementById('uploadZone');
+      const fileInput = document.getElementById('fileInput');
+
+      uploadZone.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (event) => {
+        const file = event.target.files && event.target.files[0];
+        if (file) loadFile(file);
+      });
+
+      ['dragenter', 'dragover'].forEach((type) => {
+        uploadZone.addEventListener(type, (event) => {
+          event.preventDefault();
+          uploadZone.classList.add('dragover');
+        });
+      });
+      ['dragleave', 'drop'].forEach((type) => {
+        uploadZone.addEventListener(type, (event) => {
+          event.preventDefault();
+          uploadZone.classList.remove('dragover');
+        });
+      });
+      uploadZone.addEventListener('drop', (event) => {
+        const file = event.dataTransfer.files && event.dataTransfer.files[0];
+        if (file) loadFile(file);
+      });
+
+      ['originalCanvas', 'processedCanvas'].forEach((id) => {
+        const canvas = document.getElementById(id);
+        canvas.addEventListener('click', (event) => updateFocusFromEvent(event, canvas));
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initEvents();
+      handlePaletteChange();
+      loadSample('portrait');
+    });
+  </script>
+</body>
+</html>

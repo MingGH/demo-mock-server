@@ -79,8 +79,8 @@ class SupercookieServiceTest {
         JsonObject result = service.finalizeSession(uid);
         assertTrue(result.getBoolean("complete"));
         assertEquals("READ", result.getString("mode"));
-        assertEquals(5, result.getInteger("trackingId"));
-        assertEquals("0000000000000101", result.getString("binary"));
+        assertEquals(45055, result.getInteger("trackingId"));
+        assertEquals("1010111111111111", result.getString("binary"));
         assertFalse(result.getBoolean("allOne"));
     }
 
@@ -97,8 +97,10 @@ class SupercookieServiceTest {
                 service.handleFaviconRequest(uid, host, 0));
 
         JsonObject result = service.finalizeSession(uid);
+        assertFalse(result.getBoolean("complete"));
         assertEquals(1, result.getInteger("networkRequestCount"));
-        assertEquals(0, result.getInteger("trackingId"));
+        assertEquals(32767, result.getInteger("trackingId"));
+        assertEquals("0111111111111111", result.getString("binary"));
         assertFalse(result.getBoolean("allOne"));
     }
 

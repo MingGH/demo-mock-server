@@ -155,6 +155,16 @@
       });
     }
 
+    const techCategory = demosData.categories.find(cat => cat.id === 'tech');
+    if (techCategory && !techCategory.demos.some(demo => demo.href === 'pages/image-retro-lab.html')) {
+      techCategory.demos.splice(9, 0, {
+        href: 'pages/image-retro-lab.html',
+        icon: 'ti-photo-spark',
+        title: '图片做旧实验室',
+        desc: '为什么有些图片故意做旧，反而更高级？上传图片，切换颜色数量、抖动算法和调色板，实时生成复古风、像素风和报纸风效果。'
+      });
+    }
+
     function init() {
       renderFilterTags();
       renderCategories();

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="IPv6 还没活明白，IPv8 就来了。用一个前端实验室把 IPv8 草案里的地址格式、出站验证和迁移诱惑讲清楚。">
+  <title>IPv6 还没活明白，IPv8 就来了 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="hero">
+    <span class="eyebrow"><i class="ti ti-world-question"></i> IPv8 草案实验室</span>
+    <h1>IPv6 还没活明白，IPv8 就来了</h1>
+    <p>
+      这不是“下一代互联网已经定了”的页面。
+      这是一个按 <code>draft-thain-ipv8-01</code> 核心文案做出来的实验室。
+      我们挑了地址格式、出站验证和迁移叙事这三块做可视化。
+      你可以现场看地址怎么写、连接怎么被拦、这套方案为什么会让人心动，也为什么会让人犹豫。
+    </p>
+  </div>
+
+  <section class="card fact-card">
+    <div class="section-head">
+      <h2><i class="ti ti-report-analytics"></i> 先看四个关键信息</h2>
+      <p>只放两类数字：`draft-thain-ipv8-01` 里写明的，或者公开资料能对上的。</p>
+    </div>
+    <div class="fact-grid" id="factGrid"></div>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <h2><i class="ti ti-route-square"></i> 地址实验</h2>
+      <p>IPv8 草案最抓眼球的一点，是把地址写成 <code>r.r.r.r.n.n.n.n</code>。前半段是 ASN 路由前缀，后半段保留 IPv4 风格主机地址。</p>
+    </div>
+
+    <div class="proto-grid" id="protocolGrid"></div>
+
+    <div class="lab-grid">
+      <div class="panel">
+        <div class="panel-title">输入参数</div>
+        <label class="field">
+          <span>IPv4 地址</span>
+          <input id="ipv4Input" type="text" value="192.168.5.1" spellcheck="false">
+        </label>
+        <label class="field">
+          <span>ASN</span>
+          <input id="asnInput" type="number" min="0" max="4294967295" value="64496">
+        </label>
+        <div class="hint">
+          草案里的示例会把 ASN 64496 写成 <code>0.0.251.240</code>。
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">实时结果</div>
+        <div class="address-result">
+          <div class="address-row">
+            <span class="label">ASN 前缀</span>
+            <code id="asnPrefixOutput"></code>
+          </div>
+          <div class="address-row">
+            <span class="label">IPv4 作为子集</span>
+            <code id="ipv4SubsetOutput"></code>
+          </div>
+          <div class="address-row">
+            <span class="label">完整 IPv8 表达</span>
+            <code id="ipv8Output"></code>
+          </div>
+          <div class="address-row">
+            <span class="label">ASN 点分表示</span>
+            <code id="asnDotOutput"></code>
+          </div>
+        </div>
+        <div class="callout" id="addressInsight"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <h2><i class="ti ti-shield-lock"></i> 出站流程模拟</h2>
+      <p>草案里最有戏剧性的设定，是每次出站都要先过 DNS8 和 WHOIS8。你把某个条件关掉，连接就会卡在中间。</p>
+    </div>
+
+    <div class="lab-grid">
+      <div class="panel">
+        <div class="panel-title">连接条件</div>
+        <div class="toggle-list">
+          <label class="toggle-item"><input type="checkbox" id="dhcpToggle" checked> <span>设备拿到 DHCP8 租约</span></label>
+          <label class="toggle-item"><input type="checkbox" id="tokenToggle" checked> <span>设备本地能验证 JWT / OAuth8</span></label>
+          <label class="toggle-item"><input type="checkbox" id="dnsToggle" checked> <span>这次连接先做了 DNS8 查询</span></label>
+          <label class="toggle-item"><input type="checkbox" id="whoisToggle" checked> <span>目标路由通过 WHOIS8 验证</span></label>
+          <label class="toggle-item"><input type="checkbox" id="literalIpToggle"> <span>用户直接连硬编码 IP</span></label>
+        </div>
+
+        <div class="stack-switch">
+          <button class="stack-btn active" data-stack="ipv4-app" type="button">老应用 / AF_INET</button>
+          <button class="stack-btn" data-stack="inet8-app" type="button">新应用 / AF_INET8</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">流程结果</div>
+        <div class="flow-list" id="flowList"></div>
+        <div class="callout" id="flowSummary"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <h2><i class="ti ti-scale-outline"></i> 迁移算账器</h2>
+      <p>这部分不是预测真实世界，只是把草案最吸引人的点和最容易卡住的点放到一把尺子上。结果全部来自页面当前参数。</p>
+    </div>
+
+    <div class="score-layout">
+      <div class="slider-panel" id="migrationSliderPanel"></div>
+      <div class="panel">
+        <div class="panel-title">计算结果</div>
+        <div class="score-block">
+          <div class="score-item">
+            <div class="score-label">兼容诱惑</div>
+            <div class="score-bar">
+              <div class="score-fill gold" id="attractionBar"></div>
+            </div>
+            <div class="score-value" id="attractionValue"></div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">落地阻力</div>
+            <div class="score-bar">
+              <div class="score-fill blue" id="frictionBar"></div>
+            </div>
+            <div class="score-value" id="frictionValue"></div>
+          </div>
+        </div>
+        <div class="verdict-panel" id="migrationVerdict">
+          <div class="verdict-title" id="migrationTitle"></div>
+          <p id="migrationDesc"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <h2><i class="ti ti-table-options"></i> 看完以后最容易留下的三个印象</h2>
+      <p>这页不替你站队，只把你看完草案后最该记住的三件事压缩在一张表里。</p>
+    </div>
+
+    <div class="summary-table">
+      <div class="summary-row summary-head">
+        <div>主题</div>
+        <div>草案会让人兴奋的地方</div>
+        <div>现实里最容易吵起来的地方</div>
+      </div>
+      <div class="summary-row">
+        <div>地址表达</div>
+        <div>IPv4 写法还能看懂，过渡叙事很顺。</div>
+        <div>世界已经花了很多年推 IPv6，再来一套新语义，协调成本惊人。</div>
+      </div>
+      <div class="summary-row">
+        <div>安全出口</div>
+        <div>硬编码 IP、假路由、散装出口策略，都能被统一拦一遍。</div>
+        <div>每次出站都加验证，工程复杂度和性能争议会立刻出现。</div>
+      </div>
+      <div class="summary-row">
+        <div>迁移叙事</div>
+        <div>“IPv4 是子集”这句话很会打动运维和产品经理。</div>
+        <div>真要部署，设备、协议栈、DNS、路由、认证链全都要一起变。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <h2><i class="ti ti-link"></i> 信息来源</h2>
+      <p>文章和页面里的外部数字，只来自下面这些入口。本页按 `draft-thain-ipv8-01` 的核心文案实现，没有覆盖整份草案的全部协议细节。算账器和流程模拟的结论，以页面实时计算为准。</p>
+    </div>
+    <ul class="source-list" id="sourceList"></ul>
+  </section>
+</div>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

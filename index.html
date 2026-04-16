@@ -164,6 +164,14 @@
         desc: '为什么有些图片故意做旧，反而更高级？上传图片，切换颜色数量、抖动算法和调色板，实时生成复古风、像素风和报纸风效果。'
       });
     }
+    if (techCategory && !techCategory.demos.some(demo => demo.href === 'pages/ipv8-lab/')) {
+      techCategory.demos.splice(7, 0, {
+        href: 'pages/ipv8-lab/',
+        icon: 'ti-world-question',
+        title: 'IPv6 还没活明白，IPv8 就来了',
+        desc: '把 IPv8 草案拆成地址格式、出站验证和迁移算账三个实验，看看它为什么让人心动，也为什么会吵起来。'
+      });
+    }
 
     function init() {
       renderFilterTags();

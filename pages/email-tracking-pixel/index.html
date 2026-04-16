@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Email Tracking Pixel 演示：1x1 像素图片如何携带用户 ID、记录邮件打开时间，并观察 Gmail 代理、Apple Mail 隐私保护和企业安全网关对数据的影响。">
+  <title>Email Tracking Pixel Demo | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page-shell">
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>Email Tracking Pixel Demo</h1>
+        <p>
+          在 HTML 邮件里塞一张 1x1 像素图，URL 上带上 `uid` 和 `campaign`，服务端就能知道“图片什么时候被请求过”。
+          这个 demo 把真实像素接口、事件记录和常见误差场景都摆到台面上，方便你看清楚邮件打开统计到底能信到什么程度。
+        </p>
+        <div class="hero-tags">
+          <span>1x1 像素</span>
+          <span>打开时间</span>
+          <span>UID 追踪</span>
+          <span>IP 位置</span>
+          <span>Gmail 代理</span>
+          <span>Apple Mail MPP</span>
+        </div>
+      </div>
+      <div class="hero-side">
+        <div class="hero-card">
+          <strong>你能在这里看到什么</strong>
+          <ul>
+            <li>像素 URL 如何携带 `uid`、`campaign`、`recipient`</li>
+            <li>服务端收到请求后，能记录到哪些字段</li>
+            <li>Gmail 代理、Apple Mail 和安全网关会怎样扰动数据</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="status-bar info" id="statusBar">页面加载中...</div>
+
+    <section class="lab-grid">
+      <aside class="panel">
+        <div class="panel-header">
+          <h2>发件配置</h2>
+        </div>
+        <p class="panel-subtitle">左边生成邮件参数和像素地址，右边立刻看服务端能收到什么。</p>
+        <div class="panel-body">
+          <div class="mailbox-cards" id="mailboxCards"></div>
+
+          <form id="composeForm">
+            <div class="field-grid two-col">
+              <label class="field">
+                <span>Campaign</span>
+                <input id="campaignId" type="text" placeholder="例如 spring-launch-2026">
+              </label>
+              <label class="field">
+                <span>用户 ID</span>
+                <input id="uid" type="text" placeholder="例如 user-1024">
+              </label>
+            </div>
+
+            <div class="field-grid two-col">
+              <label class="field">
+                <span>收件人</span>
+                <input id="recipient" type="email" placeholder="reader@example.com">
+              </label>
+              <label class="field">
+                <span>发件人</span>
+                <input id="sender" type="email" placeholder="growth@demo.local">
+              </label>
+            </div>
+
+            <div class="field-grid two-col">
+              <label class="field">
+                <span>邮箱环境</span>
+                <select id="mailbox">
+                  <option value="gmail">Gmail</option>
+                  <option value="apple-mail">Apple Mail</option>
+                  <option value="outlook">Outlook / 常规客户端</option>
+                  <option value="corp-gateway">企业安全网关</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>请求路径</span>
+                <select id="mode">
+                  <option value="direct">本地直连打开</option>
+                  <option value="gmail-proxy">Gmail 图片代理</option>
+                  <option value="apple-mpp">Apple Mail 隐私保护</option>
+                  <option value="security-gateway">企业安全网关预检</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>邮件主题</span>
+                <input id="subject" type="text" placeholder="邮件主题">
+              </label>
+              <label class="field">
+                <span>像素标签</span>
+                <input id="pixelLabel" type="text" placeholder="open-pixel">
+              </label>
+            </div>
+
+            <div class="mode-box">
+              <strong id="modeTitle"></strong>
+              <p id="modeSummary"></p>
+              <div class="mode-meta">
+                <span>可靠度：<strong id="modeRisk"></strong></span>
+                <span id="modeServerView"></span>
+              </div>
+            </div>
+
+            <label class="field">
+              <span>像素 URL</span>
+              <input id="pixelUrl" type="text" readonly>
+            </label>
+
+            <label class="field">
+              <span>可嵌入邮件的 HTML</span>
+              <textarea id="emailHtml" readonly></textarea>
+            </label>
+
+            <div class="action-row">
+              <button class="btn btn-secondary" id="copyPixelBtn" type="button">复制像素 URL</button>
+              <button class="btn btn-secondary" id="copyHtmlBtn" type="button">复制邮件 HTML</button>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-primary" id="simulateBtn" type="button">模拟当前模式打开</button>
+              <button class="btn btn-secondary" id="batchBtn" type="button">运行内置批量脚本</button>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-secondary" id="refreshBtn" type="button">刷新统计</button>
+              <button class="btn btn-danger" id="resetBtn" type="button">清空记录</button>
+            </div>
+          </form>
+        </div>
+      </aside>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>邮件预览</h2>
+        </div>
+        <p class="panel-subtitle">正文看起来很普通，真正的跟踪点藏在 HTML 里的那张 1x1 图片。</p>
+        <div class="panel-body">
+          <div class="mail-preview">
+            <div class="mail-head">
+              <div><span>From</span><strong id="previewFrom"></strong></div>
+              <div><span>To</span><strong id="previewTo"></strong></div>
+              <div><span>Subject</span><strong id="previewSubject"></strong></div>
+            </div>
+            <div class="mail-body" id="previewBody"></div>
+            <div class="pixel-note">
+              <div class="pixel-dot"></div>
+              <div>
+                <strong>隐藏像素参数</strong>
+                <p>UID：<span id="previewUid"></span></p>
+                <p>Campaign：<span id="previewCampaign"></span></p>
+                <p>Pixel ID：<span id="previewPixel"></span></p>
+              </div>
+            </div>
+            <div class="url-note">
+              <strong>实际图片地址</strong>
+              <code id="previewUrl"></code>
+            </div>
+          </div>
+
+          <div class="explain-grid">
+            <div class="explain-card">
+              <strong>服务端能拿到</strong>
+              <p>请求时间、URL 参数、请求 IP、粗略 GeoIP 位置，以及 User-Agent。</p>
+            </div>
+            <div class="explain-card">
+              <strong>服务端拿不到</strong>
+              <p>用户是否真正把内容读完、是否停留很久、是否因为预取才触发请求。</p>
+            </div>
+            <div class="explain-card">
+              <strong>最容易误判的地方</strong>
+              <p>Apple Mail 后台预取和企业网关扫描都会让“已打开”看上去偏高。</p>
+            </div>
+          </div>
+
+          <div class="script-panel">
+            <div class="script-head">
+              <strong>内置批量脚本</strong>
+              <span id="batchSummary"></span>
+            </div>
+            <div id="batchScript" class="script-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="panel-header">
+          <h2>事件看板</h2>
+        </div>
+        <p class="panel-subtitle">这里展示后端实时收到的像素请求。数据来自当前 demo 的内存服务。</p>
+        <div class="panel-body">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <strong id="statOpenEvents">0</strong>
+              <span>像素请求次数</span>
+            </div>
+            <div class="stat-card">
+              <strong id="statRecipients">0</strong>
+              <span>唯一收件人</span>
+            </div>
+            <div class="stat-card">
+              <strong id="statDirectEvents">0</strong>
+              <span>直连请求</span>
+            </div>
+            <div class="stat-card">
+              <strong id="statProxyEvents">0</strong>
+              <span>代理或预取</span>
+            </div>
+            <div class="stat-card">
+              <strong id="statPrefetch">0</strong>
+              <span>需谨慎解读</span>
+            </div>
+            <div class="stat-card wide">
+              <strong id="statLatest">还没有请求</strong>
+              <span>最近一次打开</span>
+            </div>
+          </div>
+
+          <div class="narrative-box">
+            <strong id="resultHeadline">还没有触发像素请求</strong>
+            <p id="resultNarrative">点一次“模拟打开”，或者运行内置批量脚本，右侧就会开始出现真实事件。</p>
+          </div>
+
+          <div class="breakdown-box">
+            <div class="box-title">请求路径分布</div>
+            <div id="modeBreakdown"></div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="panel table-panel">
+      <div class="panel-header">
+        <h2>收件人视角</h2>
+      </div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>收件人</th>
+              <th>UID</th>
+              <th>打开次数</th>
+              <th>最近路径</th>
+              <th>位置</th>
+              <th>解读</th>
+            </tr>
+          </thead>
+          <tbody id="recipientTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel table-panel">
+      <div class="panel-header">
+        <h2>原始事件流</h2>
+      </div>
+      <div class="panel-body table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>打开时间</th>
+              <th>收件人</th>
+              <th>路径</th>
+              <th>IP</th>
+              <th>位置</th>
+              <th>判断</th>
+            </tr>
+          </thead>
+          <tbody id="eventTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel source-panel">
+      <div class="panel-header">
+        <h2>几个关键限制</h2>
+      </div>
+      <div class="panel-body source-grid">
+        <div class="source-card">
+          <strong>Gmail 图片代理</strong>
+          <p>Gmail 官方博客写得很直接：图片会通过 Google 自己的安全代理服务器转发，请求不再直接从原始主机发出。</p>
+        </div>
+        <div class="source-card">
+          <strong>Apple Mail 隐私保护</strong>
+          <p>Apple 的说明也很明确：收到邮件后，Mail 可以在后台默认下载远程内容，而不是等你真正点开再下载。</p>
+        </div>
+        <div class="source-card">
+          <strong>安全网关和纯文本</strong>
+          <p>企业安全网关可能预取图片；纯文本邮件没有 HTML 图片，就谈不上打开像素。</p>
+        </div>
+        <div class="source-card">
+          <strong>更稳的判断方式</strong>
+          <p>打开率适合看趋势，不适合当唯一真相。对业务判断更稳的指标通常还是点击、注册、付费和后续行为。</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="logic.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -4,6 +4,7 @@ import com.example.demo_mock_server.generator.ChineseNameGenerator;
 import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.*;
 import com.example.demo_mock_server.service.FingerprintService;
+import com.example.demo_mock_server.service.EmailTrackingPixelService;
 import com.example.demo_mock_server.service.GeoLocationService;
 import com.example.demo_mock_server.service.InferenceLeaderboardService;
 import com.example.demo_mock_server.service.SocialEngineeringService;
@@ -92,6 +93,13 @@ public class RouterConfig {
         BrowserFingerprintHandler fingerprintHandler = new BrowserFingerprintHandler(fingerprintService);
         router.post("/fingerprint/collect").handler(new RateLimitHandler(60, 60)).handler(fingerprintHandler);
         router.get("/fingerprint/stats").handler(fingerprintHandler);
+
+        // Email Tracking Pixel demo
+        EmailTrackingPixelService emailTrackingService = new EmailTrackingPixelService(geoService);
+        EmailTrackingPixelHandler emailTrackingHandler = new EmailTrackingPixelHandler(emailTrackingService);
+        router.get("/email-tracking/pixel.gif").handler(new RateLimitHandler(120, 60)).handler(emailTrackingHandler);
+        router.get("/email-tracking/stats").handler(emailTrackingHandler);
+        router.post("/email-tracking/reset").handler(new RateLimitHandler(20, 60)).handler(emailTrackingHandler);
 
         // 社会工程学防骗挑战
         SocialEngineeringService seService = new SocialEngineeringService(mysqlPool);

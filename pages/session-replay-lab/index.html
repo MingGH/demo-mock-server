@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="会话回放实验室：填几道问题，现场看见页面记录了哪些点击、滚动、焦点和输入操作，并回放你的整段行为。">
+  <title>会话回放实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="privacy-modal" id="privacyModal">
+  <div class="privacy-card">
+    <h2><i class="ti ti-player-record"></i> 开始前先说明白</h2>
+    <p>这个页面会在你同意后记录一段简化的会话事件流，包括焦点切换、输入、点击、选择和滚动深度。</p>
+    <ul>
+      <li>只用于演示“会话回放”怎么工作</li>
+      <li>问题内容请尽量用日常、非敏感信息</li>
+      <li>提交后会生成一段可播放的时间轴回放</li>
+    </ul>
+    <div class="privacy-actions">
+      <button class="btn btn-primary" id="consentBtn">我知道了，开始录制</button>
+      <button class="btn btn-ghost" id="declineBtn">先看内置示例</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-movie"></i> 会话回放实验室</h1>
+    <p>给你几道看似普通的问题，顺手填一遍，再看系统到底记下了什么。很多平台看到的，往往比你以为的更多。</p>
+  </div>
+
+  <div class="section intro-banner">
+    <div>
+      <h2><i class="ti ti-eye-search"></i> 这页会演示什么</h2>
+      <p>会话回放的核心不在“截图”，而在一串持续上报的行为事件。你每次聚焦、输入、滚动和点击，组合起来就足够还原一段相当完整的浏览过程。</p>
+    </div>
+    <div class="intro-actions">
+      <button class="btn btn-primary" id="startOwnBtn">
+        <i class="ti ti-player-record"></i> 录我自己的一段
+      </button>
+      <button class="btn btn-secondary" id="loadSampleBtn">
+        <i class="ti ti-player-play"></i> 先看内置示例
+      </button>
+      <button class="btn btn-ghost" id="copyLinkBtn">
+        <i class="ti ti-link"></i> 复制当前页链接
+      </button>
+    </div>
+  </div>
+
+  <div class="section live-layout" id="liveSection" style="display:none">
+    <div class="live-main">
+      <div class="section-title-row">
+        <h2><i class="ti ti-forms"></i> 隐私小问卷</h2>
+        <div class="recording-badge"><span class="dot"></span> 录制中</div>
+      </div>
+      <div class="hint-box">
+        问题都偏生活化，别填账号、密码、住址、手机号这类真实敏感信息。
+      </div>
+      <form id="replayForm" novalidate>
+        <div class="question-card" data-track-wrapper="dailyApp">
+          <div class="question-index">01</div>
+          <label class="question-label" for="dailyApp">你今天第一个打开的 App 是什么？</label>
+          <input class="text-input" id="dailyApp" name="dailyApp" data-track="dailyApp" maxlength="40" placeholder="例如：微信、地图、相机" required>
+          <div class="microcopy">文本框最适合演示输入过程的逐步记录。</div>
+        </div>
+
+        <div class="question-card" data-track-wrapper="videoTime">
+          <div class="question-index">02</div>
+          <div class="question-label">你通常在哪个时间段最容易刷短视频？</div>
+          <div class="option-grid">
+            <label class="option-pill"><input type="radio" name="videoTime" value="早上通勤" data-track="videoTime"><span>早上通勤</span></label>
+            <label class="option-pill"><input type="radio" name="videoTime" value="午休碎片" data-track="videoTime"><span>午休碎片</span></label>
+            <label class="option-pill"><input type="radio" name="videoTime" value="晚上躺床" data-track="videoTime"><span>晚上躺床</span></label>
+            <label class="option-pill"><input type="radio" name="videoTime" value="睡前停不下" data-track="videoTime"><span>睡前停不下</span></label>
+          </div>
+        </div>
+
+        <div class="question-card tall-card" data-track-wrapper="hesitation">
+          <div class="question-index">03</div>
+          <div class="question-label">填各类表单时，你最容易在哪一步犹豫？</div>
+          <div class="checkbox-list">
+            <label><input type="checkbox" name="hesitation" value="是否留手机号" data-track="hesitation"><span>是否留手机号</span></label>
+            <label><input type="checkbox" name="hesitation" value="是否开定位权限" data-track="hesitation"><span>是否开定位权限</span></label>
+            <label><input type="checkbox" name="hesitation" value="推荐算法标签" data-track="hesitation"><span>推荐算法标签</span></label>
+            <label><input type="checkbox" name="hesitation" value="授权通讯录" data-track="hesitation"><span>授权通讯录</span></label>
+          </div>
+          <p class="microcopy">这块故意做得更长一点，好让滚动轨迹更明显。</p>
+        </div>
+
+        <div class="question-card" data-track-wrapper="purchaseNote">
+          <div class="question-index">04</div>
+          <label class="question-label" for="purchaseNote">最近一次让你犹豫很久才下单的东西是什么？</label>
+          <textarea class="text-input textarea-input" id="purchaseNote" name="purchaseNote" data-track="purchaseNote" maxlength="140" placeholder="例如：一把人体工学椅、一副耳机、一张课程年卡"></textarea>
+        </div>
+
+        <div class="question-card" data-track-wrapper="shareScore">
+          <div class="question-index">05</div>
+          <label class="question-label" for="shareScore">如果要把这页发给朋友，你愿意打几分？</label>
+          <div class="slider-row">
+            <input type="range" id="shareScore" name="shareScore" min="0" max="10" step="1" value="6" data-track="shareScore">
+            <div class="slider-value"><span id="shareScoreValue">6</span> / 10</div>
+          </div>
+        </div>
+
+        <div class="submit-row">
+          <button type="submit" class="btn btn-primary btn-large" id="submitBtn">
+            <i class="ti ti-device-floppy"></i> 结束录制并回放
+          </button>
+          <div class="submit-tip">提交后会优先读取服务端保存的同一条会话，再做回放。</div>
+        </div>
+      </form>
+    </div>
+
+    <aside class="live-side">
+      <div class="side-card">
+        <div class="side-title"><i class="ti ti-pulse"></i> 实时计数</div>
+        <div class="metric-grid" id="liveMetrics">
+          <div class="metric"><div class="metric-value" id="metricEvents">0</div><div class="metric-label">事件数</div></div>
+          <div class="metric"><div class="metric-value" id="metricTyped">0</div><div class="metric-label">输入字符</div></div>
+          <div class="metric"><div class="metric-value" id="metricFocus">0</div><div class="metric-label">焦点切换</div></div>
+          <div class="metric"><div class="metric-value" id="metricScroll">0%</div><div class="metric-label">最大滚动</div></div>
+        </div>
+      </div>
+
+      <div class="side-card">
+        <div class="side-title"><i class="ti ti-radar-2"></i> 刚刚记录了什么</div>
+        <div class="event-feed" id="eventFeed">
+          <div class="placeholder">开始操作后，这里会滚动显示最近的事件。</div>
+        </div>
+      </div>
+
+      <div class="side-card">
+        <div class="side-title"><i class="ti ti-server"></i> 全站统计</div>
+        <div class="server-stats" id="serverStats">
+          <div class="placeholder">等待加载…</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="section replay-section" id="replaySection">
+    <div class="section-title-row">
+      <h2><i class="ti ti-history-toggle"></i> 回放结果</h2>
+      <div class="replay-source" id="replaySource">还没有回放记录</div>
+    </div>
+
+    <div class="summary-grid" id="summaryGrid">
+      <div class="summary-card"><div class="summary-value">-</div><div class="summary-label">录制时长</div></div>
+      <div class="summary-card"><div class="summary-value">-</div><div class="summary-label">总事件数</div></div>
+      <div class="summary-card"><div class="summary-value">-</div><div class="summary-label">输入字符</div></div>
+      <div class="summary-card"><div class="summary-value">-</div><div class="summary-label">最大滚动</div></div>
+    </div>
+
+    <div class="replay-layout">
+      <div class="replay-panel">
+        <div class="replay-toolbar">
+          <button class="btn btn-primary btn-sm" id="playBtn" disabled><i class="ti ti-player-play-filled"></i> 播放</button>
+          <button class="btn btn-secondary btn-sm" id="restartBtn" disabled><i class="ti ti-rotate-clockwise-2"></i> 重置</button>
+          <label class="speed-select">速度
+            <select id="speedSelect">
+              <option value="1">1x</option>
+              <option value="2">2x</option>
+              <option value="4">4x</option>
+            </select>
+          </label>
+          <div class="progress-text" id="progressText">等待数据</div>
+        </div>
+
+        <div class="scroll-progress">
+          <div class="scroll-progress-fill" id="scrollProgressFill"></div>
+        </div>
+
+        <div class="replay-phone">
+          <div class="phone-topbar">
+            <span>回放视图</span>
+            <span id="playbackClock">00:00</span>
+          </div>
+          <div class="phone-content">
+            <div class="replay-question" data-replay-wrapper="dailyApp">
+              <div class="replay-label">今天第一个打开的 App</div>
+              <div class="replay-value" id="replay-dailyApp">未填写</div>
+            </div>
+            <div class="replay-question" data-replay-wrapper="videoTime">
+              <div class="replay-label">最容易刷短视频的时间段</div>
+              <div class="chip-group" id="replay-videoTime">
+                <span class="chip">早上通勤</span>
+                <span class="chip">午休碎片</span>
+                <span class="chip">晚上躺床</span>
+                <span class="chip">睡前停不下</span>
+              </div>
+            </div>
+            <div class="replay-question" data-replay-wrapper="hesitation">
+              <div class="replay-label">最容易犹豫的授权项</div>
+              <div class="checkbox-replay" id="replay-hesitation">
+                <span>是否留手机号</span>
+                <span>是否开定位权限</span>
+                <span>推荐算法标签</span>
+                <span>授权通讯录</span>
+              </div>
+            </div>
+            <div class="replay-question" data-replay-wrapper="purchaseNote">
+              <div class="replay-label">犹豫很久才下单的东西</div>
+              <div class="replay-value multiline" id="replay-purchaseNote">未填写</div>
+            </div>
+            <div class="replay-question" data-replay-wrapper="shareScore">
+              <div class="replay-label">愿意打给这页的分数</div>
+              <div class="score-replay">
+                <div class="score-bar"><div class="score-bar-fill" id="replay-scoreFill"></div></div>
+                <span id="replay-shareScore">6 / 10</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="timeline-panel">
+        <div class="side-title"><i class="ti ti-list-details"></i> 事件时间轴</div>
+        <div class="timeline-list" id="timelineList">
+          <div class="placeholder">提交一条记录，或者先加载内置示例。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

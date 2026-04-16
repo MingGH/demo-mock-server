@@ -6,6 +6,7 @@ import com.example.demo_mock_server.handler.*;
 import com.example.demo_mock_server.service.FingerprintService;
 import com.example.demo_mock_server.service.GeoLocationService;
 import com.example.demo_mock_server.service.InferenceLeaderboardService;
+import com.example.demo_mock_server.service.SessionReplayService;
 import com.example.demo_mock_server.service.SocialEngineeringService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
@@ -98,6 +99,13 @@ public class RouterConfig {
         SocialEngineeringHandler seHandler = new SocialEngineeringHandler(seService);
         router.post("/social-engineering/submit").handler(new RateLimitHandler(30, 60)).handler(seHandler);
         router.get("/social-engineering/stats").handler(seHandler);
+
+        // 会话回放实验室
+        SessionReplayService replayService = new SessionReplayService(mysqlPool);
+        SessionReplayHandler replayHandler = new SessionReplayHandler(replayService);
+        router.post("/session-replay/submit").handler(new RateLimitHandler(20, 60)).handler(replayHandler);
+        router.get("/session-replay/stats").handler(replayHandler);
+        router.get("/session-replay/session/:sessionId").handler(replayHandler);
 
         // 统计侦探排行榜
         InferenceLeaderboardService inferenceService = new InferenceLeaderboardService(mysqlPool);

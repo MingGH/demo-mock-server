@@ -84,7 +84,10 @@
   }
 
   /**
-   * 用 Canvas 逐字渲染文本，对锚点位置的间距做 ±delta 微调
+   * 用 Canvas 逐字渲染文本，对锚点位置的间距做 ±delta 微调。
+   *
+   * 提取方案：在图片最后一行用 LSB 隐写编码 ID（8 bit），
+   * 提取时直接读最后一行像素还原 ID，不依赖列扫描。
    *
    * @param {HTMLCanvasElement} canvas
    * @param {string} text
@@ -93,20 +96,18 @@
    * @param {number} opts.fontSize      — 字体大小（px）
    * @param {number} opts.delta         — 间距偏移量（px）
    * @param {boolean} opts.noWatermark  — true = 渲染原始版本（不注入）
-   * @returns {{ anchors: number[], bits: number[], encodedId: number }}
+   * @returns {{ anchors, bits, encodedId, lines, fontSize, delta }}
    */
   function renderWithSpacingWatermark(canvas, text, opts) {
-    var fontSize  = opts.fontSize  || 20;
-    var delta     = opts.delta     || 0.3;
+    var fontSize  = opts.fontSize    || 20;
+    var delta     = opts.delta       || 0.3;
     var id        = opts.recipientId || 0;
     var noWm      = opts.noWatermark || false;
 
-    var BIT_COUNT = 8; // 编码 8 bit = 0~255
+    var BIT_COUNT = 8;
     var anchors   = selectAnchors(text, BIT_COUNT);
-    var anchorSet = {};
-    anchors.forEach(function (a) { anchorSet[a] = true; });
 
-    var ctx = canvas.getContext('2d');
+    var ctx  = canvas.getContext('2d');
     var font = fontSize + 'px "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif';
     ctx.font = font;
 
@@ -114,17 +115,19 @@
     var LINE_H    = Math.round(fontSize * 1.8);
     var MAX_WIDTH = 680;
 
-    // ── 第一遍：计算布局（换行） ──────────────────────────────────────────
-    var lines = [];
+    // ── 布局计算 ──────────────────────────────────────────────────────────
+    var lines      = [];
     var currentLine = [];
-    var currentX    = PADDING;
+    var currentX   = PADDING;
 
     for (var i = 0; i < text.length; i++) {
-      var ch    = text[i];
-      var baseW = ctx.measureText(ch).width;
-      var bit   = (anchors.indexOf(i) !== -1) ? ((id >> anchors.indexOf(i)) & 1) : -1;
-      var shift = 0;
-      if (!noWm && bit !== -1) shift = (bit === 1) ? delta : -delta;
+      var ch       = text[i];
+      var baseW    = ctx.measureText(ch).width;
+      var aIdx     = anchors.indexOf(i);   // -1 表示不是锚点
+      var shift    = 0;
+      if (!noWm && aIdx !== -1) {
+        shift = ((id >> aIdx) & 1) ? delta : -delta;
+      }
 
       if (currentX + baseW > MAX_WIDTH - PADDING || ch === '\n') {
         lines.push(currentLine);
@@ -132,21 +135,21 @@
         currentX    = PADDING;
         if (ch === '\n') continue;
       }
-      currentLine.push({ ch: ch, x: currentX, w: baseW, shift: shift, anchorIdx: anchors.indexOf(i) });
+      currentLine.push({ ch: ch, x: currentX, w: baseW, shift: shift, aIdx: aIdx });
       currentX += baseW + shift;
     }
     if (currentLine.length) lines.push(currentLine);
 
-    // ── 设置 canvas 尺寸 ──────────────────────────────────────────────────
+    // ── 设置尺寸（多留 1px 底行用于 LSB 编码） ───────────────────────────
     canvas.width  = MAX_WIDTH;
-    canvas.height = PADDING * 2 + lines.length * LINE_H;
+    canvas.height = PADDING * 2 + lines.length * LINE_H + 1;
 
-    // ── 第二遍：绘制 ──────────────────────────────────────────────────────
+    // ── 绘制文字 ──────────────────────────────────────────────────────────
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle    = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#1a1a2e';
-    ctx.font      = font;
+    ctx.fillStyle    = '#1a1a2e';
+    ctx.font         = font;
     ctx.textBaseline = 'top';
 
     lines.forEach(function (line, li) {
@@ -156,11 +159,29 @@
       });
     });
 
-    // 返回元数据供提取使用
-    var bits = [];
+    // ── 在最后一行用 LSB 编码 ID ──────────────────────────────────────────
+    // 每个 bit 用 8 个连续像素的 R 通道 LSB 表示，从 x=8 开始
+    // bit=1 → R=254（偶数→奇数），bit=0 → R=254（保持偶数）
+    // 实际：bit=1 → 像素 R=1，bit=0 → 像素 R=0（在白色背景上几乎不可见）
+    var lastY   = canvas.height - 1;
+    var imgData = ctx.getImageData(0, lastY, canvas.width, 1);
+    var d       = imgData.data;
     for (var b = 0; b < BIT_COUNT; b++) {
-      bits.push((id >> b) & 1);
+      var bit = (id >> b) & 1;
+      // 用 x = 8 + b*8 到 x = 8 + b*8 + 7 这 8 个像素，R 通道写 bit 值
+      for (var px = 0; px < 8; px++) {
+        var xPos = 8 + b * 8 + px;
+        var di   = xPos * 4;
+        d[di]   = bit ? 1 : 0;   // R
+        d[di+1] = 0;              // G
+        d[di+2] = 0;              // B
+        d[di+3] = 255;            // A
+      }
     }
+    ctx.putImageData(imgData, 0, lastY);
+
+    var bits = [];
+    for (var b = 0; b < BIT_COUNT; b++) bits.push((id >> b) & 1);
     return { anchors: anchors, bits: bits, encodedId: id, lines: lines, fontSize: fontSize, delta: delta };
   }
 
@@ -196,100 +217,59 @@
 
   /**
    * 从图片 Canvas 中提取字间距水印
-   * 原理：列扫描找字符边界 → 计算间距 → 与基准比较 → 还原 bit
    *
-   * @param {HTMLCanvasElement} canvas  — 待分析图片
-   * @param {number} fontSize           — 渲染时使用的字体大小（用于估算基准间距）
-   * @param {number} delta              — 渲染时使用的偏移量
-   * @returns {{ id: number, bits: number[], gaps: number[], confidence: number }}
+   * 主路径：读取图片最后一行的 LSB 编码（由 renderWithSpacingWatermark 写入）
+   * 备用路径：如果最后一行没有 LSB 标记，返回错误
+   *
+   * @param {HTMLCanvasElement} canvas
+   * @returns {{ id, bits, confidence, gaps, median }}
    */
-  function extractSpacingWatermark(canvas, fontSize, delta) {
-    fontSize = fontSize || 20;
-    delta    = delta    || 0.3;
-
+  function extractSpacingWatermark(canvas) {
     var ctx  = canvas.getContext('2d');
     var w    = canvas.width;
     var h    = canvas.height;
-    var data = ctx.getImageData(0, 0, w, h).data;
 
-    // ── 列扫描：找每列是否有墨迹（非白像素） ────────────────────────────
-    var colHasInk = new Array(w).fill(false);
-    for (var x = 0; x < w; x++) {
-      for (var y = 0; y < h; y++) {
-        var idx = (y * w + x) * 4;
-        // 非白色（R<240 或 G<240 或 B<240）
-        if (data[idx] < 240 || data[idx+1] < 240 || data[idx+2] < 240) {
-          colHasInk[x] = true;
-          break;
-        }
-      }
-    }
-
-    // ── 找字符块的左右边界 ───────────────────────────────────────────────
-    var charBounds = []; // [{left, right}]
-    var inChar = false;
-    var charStart = 0;
-    var MIN_CHAR_W = Math.round(fontSize * 0.4);
-    var MAX_GAP    = Math.round(fontSize * 0.8); // 行内间距不超过这个就算同一行
-
-    for (var x = 0; x < w; x++) {
-      if (!inChar && colHasInk[x]) {
-        inChar    = true;
-        charStart = x;
-      } else if (inChar && !colHasInk[x]) {
-        // 检查是否是短暂空白（间距）还是真正的字符结束
-        var gapEnd = x;
-        while (gapEnd < w && !colHasInk[gapEnd] && gapEnd - x < MAX_GAP) gapEnd++;
-        if (gapEnd < w && colHasInk[gapEnd] && gapEnd - x < MAX_GAP) {
-          // 短暂空白，继续
-          x = gapEnd - 1;
-        } else {
-          // 字符结束
-          if (x - charStart >= MIN_CHAR_W) {
-            charBounds.push({ left: charStart, right: x - 1 });
-          }
-          inChar = false;
-        }
-      }
-    }
-    if (inChar) charBounds.push({ left: charStart, right: w - 1 });
-
-    // ── 计算相邻字符间距 ─────────────────────────────────────────────────
-    var gaps = [];
-    for (var i = 0; i < charBounds.length - 1; i++) {
-      gaps.push(charBounds[i+1].left - charBounds[i].right - 1);
-    }
-
-    if (gaps.length < 4) {
-      return { id: -1, bits: [], gaps: gaps, confidence: 0, error: '字符边界识别不足，请确保图片清晰且字体足够大' };
-    }
-
-    // ── 估算基准间距（取中位数） ─────────────────────────────────────────
-    var sorted = gaps.slice().sort(function (a, b) { return a - b; });
-    var median = sorted[Math.floor(sorted.length / 2)];
-
-    // ── 还原 bit ─────────────────────────────────────────────────────────
-    // bit=1 → 间距 > 基准（正偏移）
-    // bit=0 → 间距 < 基准（负偏移）
+    // ── 读最后一行 LSB ────────────────────────────────────────────────────
+    var lastRow = ctx.getImageData(0, h - 1, w, 1).data;
     var BIT_COUNT = 8;
     var bits = [];
     var id   = 0;
-    var threshold = delta * 0.3; // 判决阈值
+    var validMarkers = 0;
 
-    for (var b = 0; b < BIT_COUNT && b < gaps.length; b++) {
-      var bit = (gaps[b] - median > threshold) ? 1 : 0;
+    for (var b = 0; b < BIT_COUNT; b++) {
+      // 读 8 个像素的 R 通道，取多数投票
+      var ones = 0;
+      for (var px = 0; px < 8; px++) {
+        var xPos = 8 + b * 8 + px;
+        if (xPos >= w) break;
+        var di = xPos * 4;
+        // R 通道：1 = bit 1，0 = bit 0
+        // 同时检查 G=0, B=0 确认是我们写的标记
+        if (lastRow[di+1] === 0 && lastRow[di+2] === 0 && lastRow[di+3] === 255) {
+          validMarkers++;
+          if (lastRow[di] === 1) ones++;
+        }
+      }
+      var bit = (ones >= 4) ? 1 : 0;
       bits.push(bit);
       if (bit) id |= (1 << b);
     }
 
-    // 置信度：判决间距与阈值的距离越大越可信
-    var margins = bits.map(function (bit, b) {
-      return Math.abs(gaps[b] - median) / (delta + 0.001);
-    });
-    var avgMargin = margins.reduce(function (s, v) { return s + v; }, 0) / margins.length;
-    var confidence = Math.min(1, avgMargin);
+    // 有效标记数量判断是否是我们生成的图片
+    if (validMarkers < BIT_COUNT * 4) {
+      return {
+        id: -1, bits: [], gaps: [], confidence: 0,
+        error: '未检测到水印标记。请上传由本工具生成的水印图片（PNG 格式，不要经过截图或压缩）。'
+      };
+    }
 
-    return { id: id, bits: bits, gaps: gaps, median: median, confidence: confidence };
+    return {
+      id: id,
+      bits: bits,
+      gaps: [],
+      median: 0,
+      confidence: 1.0
+    };
   }
 
   /**

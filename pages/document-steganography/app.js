@@ -4,11 +4,19 @@
 (function () {
   'use strict';
 
-  var lab = window.DocStegoLab;
+  var lab;
   function $(id) { return document.getElementById(id); }
   function escHtml(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    lab = window.DocStegoLab;
+    if (!lab) { console.error('DocStegoLab not loaded'); return; }
+    init();
+  });
+
+  function init() {
 
   // ── Tab 切换 ──────────────────────────────────────────────────────────────
   document.querySelectorAll('.tab-btn').forEach(function (btn) {
@@ -325,5 +333,7 @@
 
   // ── 初始化 ────────────────────────────────────────────────────────────────
   renderRecipientList();
+
+  } // end init()
 
 })();

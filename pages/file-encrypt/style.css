@@ -1,0 +1,202 @@
+/* ── 基础 ── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 20px; }
+.header h1 {
+  font-size: 2rem;
+  background: linear-gradient(135deg, #f5af19, #f12711, #f5af19);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer { 0%,100% { background-position: 0% center; } 50% { background-position: 200% center; } }
+.header p { color: #94a3b8; margin-top: 8px; font-size: 0.95rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+
+/* ── Tab ── */
+.tab-bar {
+  display: flex; gap: 4px; justify-content: center;
+  background: rgba(255,255,255,0.05); border-radius: 12px;
+  padding: 4px; margin: 20px auto; max-width: 500px;
+}
+.tab-btn {
+  flex: 1; padding: 10px 16px; border: none; border-radius: 10px;
+  background: transparent; color: #94a3b8; cursor: pointer;
+  font-size: 0.9rem; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.tab-btn:hover { color: #e0e0e0; background: rgba(255,255,255,0.05); }
+.tab-btn.active { background: rgba(255,255,255,0.1); color: #fff; font-weight: 600; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── 布局 ── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+@media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+/* ── 卡片 ── */
+.card {
+  background: rgba(255,255,255,0.05); border-radius: 16px;
+  padding: 24px; border: 1px solid rgba(255,255,255,0.08);
+}
+.card-header { margin-bottom: 16px; }
+.card-header h2 { font-size: 1.1rem; color: #fff; display: flex; align-items: center; gap: 8px; }
+
+/* ── 上传区 ── */
+.upload-zone {
+  border: 2px dashed rgba(255,255,255,0.15); border-radius: 12px;
+  padding: 32px 20px; text-align: center; cursor: pointer;
+  transition: all 0.2s; margin-bottom: 16px;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: #f5af19; background: rgba(245,175,25,0.05);
+}
+.upload-icon { font-size: 2rem; color: #64748b; display: block; margin-bottom: 8px; }
+.upload-text { font-size: 0.95rem; color: #94a3b8; }
+.upload-sub { font-size: 0.8rem; color: #64748b; margin-top: 4px; }
+
+/* ── 文件信息 ── */
+.file-info {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(245,175,25,0.08); border-radius: 10px;
+  padding: 12px 16px; margin-bottom: 16px;
+  border: 1px solid rgba(245,175,25,0.2);
+}
+.file-info > i { font-size: 1.5rem; color: #f5af19; }
+.file-detail { flex: 1; }
+.file-name { display: block; font-weight: 600; color: #fff; font-size: 0.9rem; word-break: break-all; }
+.file-size { font-size: 0.8rem; color: #94a3b8; }
+
+/* ── 表单 ── */
+.field-group { margin-bottom: 16px; }
+.field-group label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 6px; }
+.password-row { display: flex; gap: 8px; }
+.password-row input {
+  flex: 1; padding: 10px 14px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06);
+  color: #fff; font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+}
+.password-row input:focus { border-color: #f5af19; }
+.password-row input::placeholder { color: #64748b; }
+
+/* ── 按钮 ── */
+.btn-icon {
+  width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06); color: #94a3b8; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+}
+.btn-icon:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.btn-icon.btn-danger:hover { background: rgba(239,68,68,0.2); color: #ef4444; }
+
+.btn { border: none; border-radius: 10px; cursor: pointer; font-size: 0.95rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.btn-primary { background: linear-gradient(135deg, #f5af19, #f12711); color: #fff; padding: 12px 24px; font-weight: 600; }
+.btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-full { width: 100%; }
+
+/* ── 密码强度 ── */
+.strength-bar {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px; height: 24px;
+}
+.strength-fill {
+  height: 4px; border-radius: 2px; transition: all 0.3s;
+  width: 0; flex-shrink: 0;
+}
+.strength-fill.strength-weak { background: #ef4444; width: 30%; }
+.strength-fill.strength-medium { background: #f59e0b; width: 50%; }
+.strength-fill.strength-strong { background: #22c55e; width: 75%; }
+.strength-fill.strength-very-strong { background: #06b6d4; width: 100%; }
+.strength-text { font-size: 0.8rem; color: #94a3b8; white-space: nowrap; }
+
+/* ── 进度 ── */
+.progress-section {
+  background: rgba(255,255,255,0.05); border-radius: 12px;
+  padding: 20px; margin-top: 20px; border: 1px solid rgba(255,255,255,0.08);
+}
+.progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+.progress-bar-wrap { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+.progress-bar-fill {
+  height: 100%; background: linear-gradient(90deg, #f5af19, #22c55e);
+  border-radius: 3px; transition: width 0.3s; width: 0;
+}
+.progress-bar-fill.error { background: #ef4444; }
+.progress-detail { font-size: 0.8rem; color: #94a3b8; margin-top: 8px; }
+
+/* ── 安全说明 ── */
+.security-points { display: flex; flex-direction: column; gap: 16px; }
+.security-point { display: flex; gap: 12px; }
+.security-point > i { font-size: 1.3rem; color: #22c55e; flex-shrink: 0; margin-top: 2px; }
+.security-point strong { display: block; color: #fff; font-size: 0.9rem; margin-bottom: 2px; }
+.security-point p { font-size: 0.8rem; color: #94a3b8; line-height: 1.5; }
+
+/* ── FAQ ── */
+.faq-list { display: flex; flex-direction: column; gap: 16px; }
+.faq-item { border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 14px; }
+.faq-item:last-child { border-bottom: none; padding-bottom: 0; }
+.faq-q { font-weight: 600; color: #fff; font-size: 0.9rem; margin-bottom: 6px; }
+.faq-a { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+
+/* ── 原理说明 ── */
+.explain-card {
+  background: rgba(255,255,255,0.05); border-radius: 16px;
+  padding: 24px; margin-top: 20px; border: 1px solid rgba(255,255,255,0.08);
+}
+.explain-card h3 { font-size: 1.1rem; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.explain-intro { font-size: 0.9rem; color: #94a3b8; margin-bottom: 16px; }
+.explain-grid { display: flex; flex-direction: column; gap: 16px; }
+.explain-step { display: flex; gap: 14px; }
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, #f5af19, #f12711);
+  color: #fff; font-weight: 700; font-size: 0.85rem;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.explain-step strong { display: block; color: #fff; font-size: 0.9rem; margin-bottom: 4px; }
+.explain-step p { font-size: 0.8rem; color: #94a3b8; line-height: 1.5; }
+.explain-step code {
+  background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;
+  font-size: 0.8rem; color: #f5af19;
+}
+
+/* ── 破解时间表 ── */
+.crack-table-wrap { overflow-x: auto; }
+.crack-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.crack-table th {
+  text-align: left; padding: 10px 12px; color: #94a3b8;
+  border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 600;
+}
+.crack-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.crack-table code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #e0e0e0; }
+.crack-fast { color: #ef4444; font-weight: 600; }
+.crack-medium { color: #f59e0b; font-weight: 600; }
+.crack-slow { color: #22c55e; font-weight: 600; }
+.crack-impossible { color: #06b6d4; font-weight: 600; }
+.crack-note {
+  display: flex; gap: 8px; margin-top: 12px; padding: 10px 14px;
+  background: rgba(255,255,255,0.03); border-radius: 8px;
+  font-size: 0.8rem; color: #64748b;
+}
+.crack-note i { color: #64748b; flex-shrink: 0; }
+
+/* ── 工具推荐 ── */
+.tool-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.tool-card {
+  background: rgba(255,255,255,0.04); border-radius: 12px;
+  padding: 16px; border: 1px solid rgba(255,255,255,0.06);
+}
+.tool-name { font-weight: 600; color: #fff; font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.tool-card p { font-size: 0.8rem; color: #94a3b8; line-height: 1.5; margin-bottom: 8px; }
+.tool-tag {
+  display: inline-block; font-size: 0.75rem; padding: 3px 10px;
+  background: rgba(245,175,25,0.1); color: #f5af19;
+  border-radius: 20px; border: 1px solid rgba(245,175,25,0.2);
+}

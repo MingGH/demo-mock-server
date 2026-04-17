@@ -1,521 +1,358 @@
 /**
- * logic.js — 文档隐写泄露体检
- * 职责：
- *   1. SCENARIOS：预设场景数据
- *   2. generateDocx(scenarioId)：在浏览器里生成真实 .docx（OOXML + JSZip）
- *   3. scanDocx(arrayBuffer)：解析上传的 .docx，提取敏感字段
+ * logic.js — 文档隐写实验室
+ *
+ * 1. generateTrackingPdf(opts)  — 生成带追踪像素的 PDF（纯文本 PDF 格式）
+ * 2. WatermarkEngine            — 文字指纹水印：注入 / 提取
  */
 (function (global) {
   'use strict';
 
-  // ─── 场景数据 ────────────────────────────────────────────────────────────────
+  var API_BASE = 'https://numfeel-api.996.ninja';
 
-  var SCENARIOS = [
-    {
-      id: 'sales-quote',
-      name: '销售报价单',
-      badge: '高风险',
-      badgeLevel: 'high',
-      summary: '修订记录里藏着底价，批注里有内部口径，文档属性暴露了作者和机器名。',
-      risks: ['元数据', '修订记录', '批注'],
-      meta: {
-        creator: 'Chen Wei',
-        lastModifiedBy: 'Liu Yan',
-        created: '2026-04-02T09:10:00Z',
-        modified: '2026-04-15T22:43:00Z',
-        company: 'Xinghuo Tech',
-        machineName: 'WEI-LAPTOP-07'
-      },
-      content: {
-        title: '华北区渠道报价单',
-        recipient: '星河科技',
-        fileName: '2026-Q2-客户报价单.docx',
-        visibleText: [
-          '感谢贵司对本次合作的关注。根据项目需求，我司提供以下报价方案：',
-          '项目总价：人民币 61 万元整（含税）',
-          '交付周期：合同签署后 90 个工作日内完成',
-          '售后支持：提供 12 个月免费运维服务',
-          '如有疑问，请联系我司销售代表。'
-        ],
-        whiteText: null,
-        revisions: [
-          { author: 'Chen Wei', date: '2026-04-10T14:22:00Z', deleted: '人民币 68 万元整', inserted: '人民币 61 万元整' },
-          { author: 'Liu Yan', date: '2026-04-14T09:05:00Z', deleted: '120 个工作日', inserted: '90 个工作日' }
-        ],
-        comments: [
-          { author: 'Liu Yan', date: '2026-04-14T09:10:00Z', text: '客户预算紧，再压 2 个点也许能签。低于 60 万就别接了。' },
-          { author: 'Chen Wei', date: '2026-04-15T11:30:00Z', text: '已和老板确认，61 万是底线，不能再动。' }
-        ]
-      }
-    },
-    {
-      id: 'hr-notice',
-      name: '人事通知（白色文字）',
-      badge: '高风险',
-      badgeLevel: 'high',
-      summary: '页面看着干净，全选复制却能捞出白色文字层里的薪资和试用期信息。',
-      risks: ['元数据', '白色文字'],
-      meta: {
-        creator: 'Zhang Min',
-        lastModifiedBy: 'Zhang Min',
-        created: '2026-03-28T10:15:00Z',
-        modified: '2026-04-14T18:06:00Z',
-        company: 'HR Dept',
-        machineName: 'HR-SHARE-03'
-      },
-      content: {
-        title: '合作方驻场安排',
-        recipient: '东湖数据',
-        fileName: '人事通知-对外版.docx',
-        visibleText: [
-          '根据双方合作协议，现安排以下驻场人员：',
-          '驻场时间：2026 年 5 月 1 日起，为期 6 个月',
-          '驻场地点：东湖数据园区 B 栋 3 楼',
-          '联系人：王经理，电话请通过内部系统查询',
-          '如有问题请联系 HR 部门。'
-        ],
-        whiteText: '【内部备注，请勿对外披露】该顾问为试用期，月薪 23,000 元，试用期 3 个月，转正需部门主管审批。',
-        revisions: [],
-        comments: []
-      }
-    },
-    {
-      id: 'tender-plan',
-      name: '投标方案（修订+批注）',
-      badge: '中风险',
-      badgeLevel: 'medium',
-      summary: '修订记录里有删掉的内部成本数字，批注里有团队讨论的应对策略。',
-      risks: ['元数据', '修订记录', '批注'],
-      meta: {
-        creator: 'Lin Hao',
-        lastModifiedBy: 'Lin Hao',
-        created: '2026-04-01T14:25:00Z',
-        modified: '2026-04-12T23:18:00Z',
-        company: 'BidTeam',
-        machineName: 'BID-WS-19'
-      },
-      content: {
-        title: '政企项目交付方案',
-        recipient: '华辰城投',
-        fileName: '政企项目解决方案.docx',
-        visibleText: [
-          '本方案针对华辰城投智慧园区项目，提供完整的系统集成与运维服务。',
-          '实施周期：12 个月，分三个阶段交付',
-          '验收标准：按照甲方提供的验收规范执行',
-          '项目总报价：人民币 320 万元（含税）'
-        ],
-        whiteText: null,
-        revisions: [
-          { author: 'Lin Hao', date: '2026-04-08T16:40:00Z', deleted: '人民币 280 万元', inserted: '人民币 320 万元' },
-          { author: 'Lin Hao', date: '2026-04-10T10:15:00Z', deleted: '服务器成本 48 万，第三方采购 17 万，毛利红线 22%。', inserted: '' }
-        ],
-        comments: [
-          { author: 'Lin Hao', date: '2026-04-10T10:20:00Z', text: '成本那段删掉，不能让客户看到我们的毛利空间。' },
-          { author: 'Lin Hao', date: '2026-04-12T22:00:00Z', text: '如果客户砍价超过 10%，就说硬件成本涨价，不要松口。' }
-        ]
-      }
+  // ─── 工具 ────────────────────────────────────────────────────────────────────
+
+  function randomToken() {
+    var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    var result = '';
+    for (var i = 0; i < 24; i++) {
+      result += chars[Math.floor(Math.random() * chars.length)];
     }
+    return result;
+  }
+
+  // ─── PDF 生成 ────────────────────────────────────────────────────────────────
+  // 手写最小化 PDF，不依赖任何库
+  // 包含：文档信息（作者、创建时间）、正文文字、1×1 追踪像素图片
+
+  function pdfEscape(str) {
+    return String(str || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
+  }
+
+  /**
+   * 生成追踪 PDF 的字节内容
+   * @param {object} opts
+   * @param {string} opts.title
+   * @param {string} opts.recipient
+   * @param {string} opts.token
+   * @param {string} opts.trackUrl  — 追踪像素 URL
+   * @returns {string} PDF 文本内容
+   */
+  function generateTrackingPdf(opts) {
+    var title = opts.title || '合作方案';
+    var recipient = opts.recipient || '收件方';
+    var token = opts.token || randomToken();
+    var trackUrl = opts.trackUrl || (API_BASE + '/doc-track/pixel?id=' + token);
+
+    var now = new Date();
+    var dateStr = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日';
+
+    // PDF 使用 UTF-16BE BOM + 内容，中文需要特殊处理
+    // 为简化，正文用 Latin-1 可表示的内容 + 单独的中文用 Unicode escape
+    // 实际上最简单的方式：用 PDFDocEncoding 写 ASCII，中文另行处理
+    // 这里采用：正文全部转为 Unicode code points，用 \uXXXX 写入 PDF 字符串
+
+    function toPdfUnicode(str) {
+      // PDF Unicode 字符串：BOM + UTF-16BE
+      var result = '\xFE\xFF'; // BOM
+      for (var i = 0; i < str.length; i++) {
+        var code = str.charCodeAt(i);
+        result += String.fromCharCode((code >> 8) & 0xFF, code & 0xFF);
+      }
+      return result;
+    }
+
+    function pdfUnicodeStr(str) {
+      return '(' + pdfEscape(toPdfUnicode(str)) + ')';
+    }
+
+    // 构建 PDF 对象
+    var objects = [];
+    var offsets = [];
+
+    function addObj(id, content) {
+      objects[id] = content;
+    }
+
+    // Object 1: Catalog
+    addObj(1, '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj');
+
+    // Object 2: Pages
+    addObj(2, '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj');
+
+    // Object 3: Page
+    // 页面包含内容流（4）和图片资源（5）
+    addObj(3,
+      '3 0 obj\n' +
+      '<< /Type /Page /Parent 2 0 R\n' +
+      '   /MediaBox [0 0 595 842]\n' +
+      '   /Contents 4 0 R\n' +
+      '   /Resources << /Font << /F1 6 0 R >> /XObject << /Img1 5 0 R >> >>\n' +
+      '>>\nendobj'
+    );
+
+    // Object 4: 内容流
+    // 用 PDF 操作符绘制文字，并在页面某处放置追踪图片（1×1，放在页面右上角不显眼处）
+    var lines = [
+      title,
+      '',
+      '收件方：' + recipient,
+      '日期：' + dateStr,
+      '',
+      '本文件为保密文件，仅供指定收件方查阅。',
+      '未经授权，请勿转发或复制。',
+      '',
+      '如有疑问，请联系发件方。'
+    ];
+
+    // 构建内容流：先画文字，再放追踪图片
+    var streamLines = ['BT', '/F1 14 Tf'];
+    var y = 750;
+    lines.forEach(function (line, i) {
+      if (i === 0) {
+        streamLines.push('/F1 18 Tf');
+      } else if (i === 1) {
+        streamLines.push('/F1 12 Tf');
+      }
+      streamLines.push('50 ' + y + ' Td');
+      // 用 Unicode 字符串
+      streamLines.push(pdfUnicodeStr(line) + ' Tj');
+      streamLines.push('-50 -' + (i === 0 ? 30 : 20) + ' Td');
+      y -= (i === 0 ? 30 : 20);
+    });
+    streamLines.push('ET');
+
+    // 放追踪图片：1×1 像素，放在页面右上角（590, 838），几乎不可见
+    streamLines.push('q');
+    streamLines.push('1 0 0 1 590 838 cm');
+    streamLines.push('1 1 Do');  // 注意：这里用 /Img1，但 Do 操作符需要 /Img1
+    streamLines.push('Q');
+
+    // 修正：Do 操作符需要 /Name Do
+    // 重新构建
+    streamLines = ['BT', '/F1 18 Tf'];
+    y = 750;
+    lines.forEach(function (line, i) {
+      if (i === 1) streamLines.push('/F1 12 Tf');
+      streamLines.push('50 ' + y + ' Td');
+      streamLines.push(pdfUnicodeStr(line) + ' Tj');
+      var dy = (i === 0) ? 30 : 20;
+      streamLines.push('-50 -' + dy + ' Td');
+      y -= dy;
+    });
+    streamLines.push('ET');
+    // 追踪图片（1×1，右上角）
+    streamLines.push('q 1 0 0 1 590 838 cm /Img1 Do Q');
+
+    var streamContent = streamLines.join('\n');
+    addObj(4,
+      '4 0 obj\n' +
+      '<< /Length ' + streamContent.length + ' >>\n' +
+      'stream\n' +
+      streamContent + '\n' +
+      'endstream\nendobj'
+    );
+
+    // Object 5: 追踪像素图片（外部 URL 引用）
+    // PDF 支持通过 /URI action 或 /F (file) 引用外部资源
+    // 更可靠的方式：用 /Subtype /Image + /URL（部分阅读器支持）
+    // 最广泛支持的方式：嵌入一个 1×1 PNG，同时在 /AA（Additional Actions）里触发 URI
+    // 实际上最可靠的追踪方式是：在 /OpenAction 里触发一个 /URI action
+    // 这样文件一打开就会请求 URL
+
+    // Object 5: 1×1 白色 PNG（内嵌，作为页面装饰）
+    var png1x1 = '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82';
+    // 用十六进制流更可靠
+    var pngHex = '89504e470d0a1a0a0000000d49484452000000010000000108020000009077' +
+                 '53de0000000c4944415478' + '9c63f80f000000010100051' + '8d84e000000000049454e44ae426082';
+
+    addObj(5,
+      '5 0 obj\n' +
+      '<< /Type /XObject /Subtype /Image\n' +
+      '   /Width 1 /Height 1\n' +
+      '   /ColorSpace /DeviceRGB /BitsPerComponent 8\n' +
+      '   /Filter /ASCIIHexDecode\n' +
+      '   /Length ' + pngHex.length + '\n' +
+      '>>\n' +
+      'stream\n' +
+      pngHex + '\n' +
+      'endstream\nendobj'
+    );
+
+    // Object 6: 字体（使用内置 Helvetica，不支持中文，但我们用 Unicode 字符串）
+    addObj(6,
+      '6 0 obj\n' +
+      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica\n' +
+      '   /Encoding /WinAnsiEncoding\n' +
+      '>>\nendobj'
+    );
+
+    // Object 7: 文档信息
+    addObj(7,
+      '7 0 obj\n' +
+      '<< /Title ' + pdfUnicodeStr(title) + '\n' +
+      '   /Author ' + pdfUnicodeStr('文档隐写实验室') + '\n' +
+      '   /CreationDate (D:' + now.getFullYear() +
+        pad(now.getMonth() + 1) + pad(now.getDate()) +
+        pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) + '+08\'00\')\n' +
+      '>>\nendobj'
+    );
+
+    // Object 8: OpenAction — 文件打开时触发 URI 请求（追踪核心）
+    addObj(8,
+      '8 0 obj\n' +
+      '<< /Type /Action /S /URI /URI (' + pdfEscape(trackUrl) + ') >>\n' +
+      'endobj'
+    );
+
+    // 更新 Catalog，加入 OpenAction 和 Info
+    objects[1] = '1 0 obj\n<< /Type /Catalog /Pages 2 0 R /OpenAction 8 0 R >>\nendobj';
+
+    // 构建 PDF 文件
+    var pdf = '%PDF-1.4\n';
+    pdf += '%\xe2\xe3\xcf\xd3\n'; // 二进制标记
+
+    var objOrder = [1, 2, 3, 4, 5, 6, 7, 8];
+    var xrefOffsets = {};
+
+    objOrder.forEach(function (id) {
+      xrefOffsets[id] = pdf.length;
+      pdf += objects[id] + '\n';
+    });
+
+    // xref 表
+    var xrefOffset = pdf.length;
+    pdf += 'xref\n';
+    pdf += '0 9\n';
+    pdf += '0000000000 65535 f \n';
+    objOrder.forEach(function (id) {
+      pdf += pad10(xrefOffsets[id]) + ' 00000 n \n';
+    });
+
+    // trailer
+    pdf += 'trailer\n';
+    pdf += '<< /Size 9 /Root 1 0 R /Info 7 0 R >>\n';
+    pdf += 'startxref\n';
+    pdf += xrefOffset + '\n';
+    pdf += '%%EOF';
+
+    return pdf;
+  }
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function pad10(n) { return ('0000000000' + n).slice(-10); }
+
+  // ─── 文字指纹水印引擎 ────────────────────────────────────────────────────────
+
+  // 同义词替换规则：[原词, 替换词]
+  // 每对是一个 bit：原词=0，替换词=1
+  var SYNONYM_RULES = [
+    ['总金额', '总价款'],
+    ['交付', '完成'],
+    ['保证', '确保'],
+    ['合同', '协议'],
+    ['支付', '缴纳'],
+    ['验收', '检收'],
+    ['违约金', '赔偿金'],
+    ['管辖', '适用'],
+    ['首期', '第一期'],
+    ['百分之', '百分之']  // 占位，实际用标点变体
   ];
 
-  // ─── OOXML 生成工具 ──────────────────────────────────────────────────────────
+  // 标点变体规则（额外的 bit 来源）
+  var PUNCT_RULES = [
+    ['，', '\uff0c'],   // 全角逗号的两种写法（实际上一样，用零宽空格区分）
+    ['。', '。\u200b'] // 句号后加零宽空格
+  ];
 
-  function xmlEscape(str) {
-    return String(str || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
-  }
+  /**
+   * 注入水印
+   * @param {string} text 原始文本
+   * @param {number} recipientId 收件方 ID（0-based）
+   * @returns {string} 注入水印后的文本
+   */
+  function injectWatermark(text, recipientId) {
+    var bits = recipientId;
+    var result = text;
 
-  function buildCoreXml(meta) {
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      '<cp:coreProperties\n' +
-      '  xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"\n' +
-      '  xmlns:dc="http://purl.org/dc/elements/1.1/"\n' +
-      '  xmlns:dcterms="http://purl.org/dc/terms/"\n' +
-      '  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' +
-      '  <dc:creator>' + xmlEscape(meta.creator) + '</dc:creator>\n' +
-      '  <cp:lastModifiedBy>' + xmlEscape(meta.lastModifiedBy) + '</cp:lastModifiedBy>\n' +
-      '  <cp:revision>3</cp:revision>\n' +
-      '  <dcterms:created xsi:type="dcterms:W3CDTF">' + xmlEscape(meta.created) + '</dcterms:created>\n' +
-      '  <dcterms:modified xsi:type="dcterms:W3CDTF">' + xmlEscape(meta.modified) + '</dcterms:modified>\n' +
-      '</cp:coreProperties>';
-  }
-
-  function buildAppXml(meta) {
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">\n' +
-      '  <Application>Microsoft Office Word</Application>\n' +
-      '  <Company>' + xmlEscape(meta.company) + '</Company>\n' +
-      '  <Manager>' + xmlEscape(meta.machineName) + '</Manager>\n' +
-      '  <DocSecurity>0</DocSecurity>\n' +
-      '</Properties>';
-  }
-
-  function buildCommentsXml(comments) {
-    if (!comments || !comments.length) {
-      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-        '<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>';
-    }
-    var items = comments.map(function (c, i) {
-      return '  <w:comment w:id="' + i + '" w:author="' + xmlEscape(c.author) + '" w:date="' + xmlEscape(c.date) + '" w:initials="' + xmlEscape(c.author.charAt(0)) + '">\n' +
-        '    <w:p><w:r><w:t>' + xmlEscape(c.text) + '</w:t></w:r></w:p>\n' +
-        '  </w:comment>';
-    }).join('\n');
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      '<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">\n' +
-      items + '\n' +
-      '</w:comments>';
-  }
-
-  function buildParagraph(text, opts) {
-    opts = opts || {};
-    var rPr = '';
-    if (opts.white) {
-      rPr = '<w:rPr><w:color w:val="FFFFFF"/></w:rPr>';
-    }
-    if (opts.bold) {
-      rPr = '<w:rPr><w:b/><w:sz w:val="32"/></w:rPr>';
-    }
-    var pPr = '';
-    if (opts.heading) {
-      pPr = '<w:pPr><w:pStyle w:val="Heading1"/></w:pPr>';
-    }
-    return '<w:p>' + pPr + '<w:r>' + rPr + '<w:t xml:space="preserve">' + xmlEscape(text) + '</w:t></w:r></w:p>';
-  }
-
-  function buildRevisionParagraph(rev, idx) {
-    // 段落包含删除内容（w:del）和插入内容（w:ins）
-    var parts = [];
-    if (rev.deleted) {
-      parts.push(
-        '<w:del w:id="' + (idx * 2) + '" w:author="' + xmlEscape(rev.author) + '" w:date="' + xmlEscape(rev.date) + '">' +
-        '<w:r><w:rPr><w:strike/></w:rPr><w:delText xml:space="preserve">' + xmlEscape(rev.deleted) + '</w:delText></w:r>' +
-        '</w:del>'
-      );
-    }
-    if (rev.inserted) {
-      parts.push(
-        '<w:ins w:id="' + (idx * 2 + 1) + '" w:author="' + xmlEscape(rev.author) + '" w:date="' + xmlEscape(rev.date) + '">' +
-        '<w:r><w:t xml:space="preserve">' + xmlEscape(rev.inserted) + '</w:t></w:r>' +
-        '</w:ins>'
-      );
-    }
-    return '<w:p>' + parts.join('') + '</w:p>';
-  }
-
-  function buildCommentRefParagraph(commentIdx, anchorText) {
-    return '<w:p>' +
-      '<w:r><w:t xml:space="preserve">' + xmlEscape(anchorText) + ' </w:t></w:r>' +
-      '<w:commentRangeStart w:id="' + commentIdx + '"/>' +
-      '<w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr>' +
-      '<w:commentReference w:id="' + commentIdx + '"/>' +
-      '</w:r>' +
-      '<w:commentRangeEnd w:id="' + commentIdx + '"/>' +
-      '</w:p>';
-  }
-
-  function buildDocumentXml(content) {
-    var W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
-    var paragraphs = [];
-
-    // 标题
-    paragraphs.push(buildParagraph(content.title, { heading: true }));
-    // 收件方
-    paragraphs.push(buildParagraph('收件方：' + content.recipient, { bold: false }));
-    paragraphs.push(buildParagraph(''));
-
-    // 正文
-    content.visibleText.forEach(function (t) {
-      paragraphs.push(buildParagraph(t));
+    // 同义词替换
+    SYNONYM_RULES.forEach(function (rule, i) {
+      var bit = (bits >> i) & 1;
+      if (bit === 1) {
+        result = result.split(rule[0]).join(rule[1]);
+      }
     });
 
-    // 白色文字（如果有）
-    if (content.whiteText) {
-      paragraphs.push(buildParagraph(''));
-      paragraphs.push(buildParagraph(content.whiteText, { white: true }));
+    // 零宽字符编码（在特定位置插入零宽空格来编码额外 bit）
+    // 在第一个句号后插入零宽字符序列
+    var zwBits = (bits >> SYNONYM_RULES.length);
+    var zwStr = '';
+    for (var i = 0; i < 4; i++) {
+      zwStr += ((zwBits >> i) & 1) ? '\u200b' : '\u200c'; // 零宽空格 vs 零宽非连接符
     }
+    result = result.replace('。', '。' + zwStr);
 
-    // 修订记录段落
-    if (content.revisions && content.revisions.length) {
-      paragraphs.push(buildParagraph(''));
-      paragraphs.push(buildParagraph('— 以下为修订历史（审阅模式可见）—', { bold: false }));
-      content.revisions.forEach(function (rev, i) {
-        paragraphs.push(buildRevisionParagraph(rev, i));
-      });
-    }
-
-    // 批注锚点段落
-    if (content.comments && content.comments.length) {
-      paragraphs.push(buildParagraph(''));
-      content.comments.forEach(function (c, i) {
-        paragraphs.push(buildCommentRefParagraph(i, '[批注 ' + (i + 1) + ']'));
-      });
-    }
-
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      '<w:document ' + W + '>\n' +
-      '<w:body>\n' +
-      paragraphs.join('\n') + '\n' +
-      '<w:sectPr/>\n' +
-      '</w:body>\n' +
-      '</w:document>';
-  }
-
-  function buildRelsXml(hasComments) {
-    var commentRel = hasComments
-      ? '  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="comments.xml"/>\n'
-      : '';
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n' +
-      '  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>\n' +
-      commentRel +
-      '</Relationships>';
-  }
-
-  function buildStylesXml() {
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">\n' +
-      '  <w:style w:type="paragraph" w:styleId="Heading1">\n' +
-      '    <w:name w:val="heading 1"/>\n' +
-      '    <w:rPr><w:b/><w:sz w:val="36"/></w:rPr>\n' +
-      '  </w:style>\n' +
-      '  <w:style w:type="character" w:styleId="CommentReference">\n' +
-      '    <w:name w:val="Comment Reference"/>\n' +
-      '  </w:style>\n' +
-      '</w:styles>';
-  }
-
-  function buildContentTypesXml(hasComments) {
-    var commentOverride = hasComments
-      ? '  <Override PartName="/word/comments.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"/>\n'
-      : '';
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n' +
-      '  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n' +
-      '  <Default Extension="xml" ContentType="application/xml"/>\n' +
-      '  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>\n' +
-      '  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>\n' +
-      '  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>\n' +
-      '  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>\n' +
-      commentOverride +
-      '</Types>';
-  }
-
-  function buildPackageRels() {
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
-      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n' +
-      '  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>\n' +
-      '  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>\n' +
-      '  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>\n' +
-      '</Relationships>';
+    return result;
   }
 
   /**
-   * 生成 .docx 的 ArrayBuffer
-   * @param {string} scenarioId
-   * @returns {Promise<{buffer: ArrayBuffer, fileName: string}>}
+   * 提取水印，返回 recipientId
+   * @param {string} text 疑似泄露文本
+   * @returns {{id: number, confidence: number, bits: string}}
    */
-  function generateDocx(scenarioId) {
-    var scenario = SCENARIOS.find(function (s) { return s.id === scenarioId; });
-    if (!scenario) return Promise.reject(new Error('未知场景：' + scenarioId));
+  function extractWatermark(text) {
+    var bits = 0;
+    var matchCount = 0;
 
-    var meta = scenario.meta;
-    var content = scenario.content;
-    var hasComments = content.comments && content.comments.length > 0;
+    // 同义词检测
+    SYNONYM_RULES.forEach(function (rule, i) {
+      if (text.indexOf(rule[1]) !== -1) {
+        bits |= (1 << i);
+        matchCount++;
+      } else if (text.indexOf(rule[0]) !== -1) {
+        matchCount++;
+      }
+    });
 
-    var zip = new JSZip();
-
-    zip.file('[Content_Types].xml', buildContentTypesXml(hasComments));
-    zip.file('_rels/.rels', buildPackageRels());
-    zip.file('docProps/core.xml', buildCoreXml(meta));
-    zip.file('docProps/app.xml', buildAppXml(meta));
-    zip.file('word/document.xml', buildDocumentXml(content));
-    zip.file('word/styles.xml', buildStylesXml());
-    zip.file('word/_rels/document.xml.rels', buildRelsXml(hasComments));
-
-    if (hasComments) {
-      zip.file('word/comments.xml', buildCommentsXml(content.comments));
+    // 零宽字符检测
+    var zwBits = 0;
+    var zwMatch = text.match(/。([\u200b\u200c]{1,4})/);
+    if (zwMatch) {
+      var zwStr = zwMatch[1];
+      for (var i = 0; i < zwStr.length; i++) {
+        if (zwStr[i] === '\u200b') zwBits |= (1 << i);
+      }
+      bits |= (zwBits << SYNONYM_RULES.length);
+      matchCount++;
     }
 
-    return zip.generateAsync({ type: 'arraybuffer', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-      .then(function (buffer) {
-        return { buffer: buffer, fileName: content.fileName };
-      });
-  }
+    var confidence = matchCount / (SYNONYM_RULES.length + 1);
+    var bitStr = bits.toString(2).padStart(14, '0');
 
-  // ─── 解析上传的 .docx ────────────────────────────────────────────────────────
-
-  function getXmlText(zip, path) {
-    var file = zip.file(path);
-    if (!file) return Promise.resolve(null);
-    return file.async('string');
-  }
-
-  function parseXml(xmlStr) {
-    if (!xmlStr) return null;
-    try {
-      return new DOMParser().parseFromString(xmlStr, 'application/xml');
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function getText(doc, selector) {
-    if (!doc) return '';
-    var el = doc.querySelector(selector);
-    return el ? (el.textContent || '').trim() : '';
-  }
-
-  function getAll(doc, selector) {
-    if (!doc) return [];
-    return Array.from(doc.querySelectorAll(selector));
+    return { id: bits, confidence: confidence, bitStr: bitStr };
   }
 
   /**
-   * 扫描 .docx 文件
-   * @param {ArrayBuffer} arrayBuffer
-   * @returns {Promise<ScanResult>}
+   * 获取追踪事件
+   * @param {string} token
+   * @returns {Promise}
    */
-  function scanDocx(arrayBuffer) {
-    return JSZip.loadAsync(arrayBuffer).then(function (zip) {
-      return Promise.all([
-        getXmlText(zip, 'docProps/core.xml'),
-        getXmlText(zip, 'docProps/app.xml'),
-        getXmlText(zip, 'word/document.xml'),
-        getXmlText(zip, 'word/comments.xml')
-      ]);
-    }).then(function (results) {
-      var coreXml = results[0];
-      var appXml = results[1];
-      var docXml = results[2];
-      var commentsXml = results[3];
-
-      var coreDoc = parseXml(coreXml);
-      var appDoc = parseXml(appXml);
-      var docDoc = parseXml(docXml);
-      var commentsDoc = parseXml(commentsXml);
-
-      var findings = [];
-
-      // ── 元数据 ──
-      var creator = getText(coreDoc, 'creator');
-      var lastModifiedBy = getText(coreDoc, 'lastModifiedBy');
-      var created = getText(coreDoc, 'created');
-      var modified = getText(coreDoc, 'modified');
-      var revision = getText(coreDoc, 'revision');
-      var company = getText(appDoc, 'Company');
-      var manager = getText(appDoc, 'Manager');
-      var application = getText(appDoc, 'Application');
-
-      var metaFields = [];
-      if (creator) metaFields.push({ label: '作者', value: creator });
-      if (lastModifiedBy) metaFields.push({ label: '最后保存者', value: lastModifiedBy });
-      if (created) metaFields.push({ label: '创建时间', value: created.replace('T', ' ').replace('Z', '') });
-      if (modified) metaFields.push({ label: '修改时间', value: modified.replace('T', ' ').replace('Z', '') });
-      if (revision) metaFields.push({ label: '修订版本号', value: revision });
-      if (company) metaFields.push({ label: '公司', value: company });
-      if (manager) metaFields.push({ label: '机器名/管理者', value: manager });
-      if (application) metaFields.push({ label: '创建软件', value: application });
-
-      if (metaFields.length > 0) {
-        findings.push({
-          type: 'metadata',
-          severity: 'high',
-          title: '文档元数据可读',
-          fields: metaFields,
-          tip: '在 Word 里：文件 → 信息 → 检查问题 → 检查文档，可以一键清除。'
-        });
-      }
-
-      // ── 修订记录 ──
-      var insNodes = getAll(docDoc, 'ins');
-      var delNodes = getAll(docDoc, 'del');
-      var revCount = insNodes.length + delNodes.length;
-
-      if (revCount > 0) {
-        var revSamples = [];
-        delNodes.slice(0, 3).forEach(function (node) {
-          var author = node.getAttribute('w:author') || node.getAttribute('author') || '';
-          var text = node.textContent.trim();
-          if (text) revSamples.push({ type: '删除', author: author, text: text });
-        });
-        insNodes.slice(0, 3).forEach(function (node) {
-          var author = node.getAttribute('w:author') || node.getAttribute('author') || '';
-          var text = node.textContent.trim();
-          if (text) revSamples.push({ type: '插入', author: author, text: text });
-        });
-
-        findings.push({
-          type: 'revisions',
-          severity: 'high',
-          title: '修订记录未清除（共 ' + revCount + ' 处）',
-          samples: revSamples,
-          tip: '在 Word 里：审阅 → 接受所有修订，然后再次检查。'
-        });
-      }
-
-      // ── 批注 ──
-      var commentNodes = getAll(commentsDoc, 'comment');
-      if (commentNodes.length > 0) {
-        var commentSamples = commentNodes.slice(0, 5).map(function (node) {
-          var author = node.getAttribute('w:author') || node.getAttribute('author') || '';
-          var text = node.textContent.trim();
-          return { author: author, text: text };
-        });
-
-        findings.push({
-          type: 'comments',
-          severity: 'medium',
-          title: '批注未删除（共 ' + commentNodes.length + ' 条）',
-          samples: commentSamples,
-          tip: '在 Word 里：审阅 → 删除 → 删除文档中的所有批注。'
-        });
-      }
-
-      // ── 白色文字 ──
-      // 用正则直接在原始 XML 里检测，兼容自闭合标签和各种命名空间前缀
-      var whiteColorRe = /<w:color\s[^>]*w:val="(?:FFFFFF|ffffff|white)"[^>]*\/?>/gi;
-      var whiteMatches = docXml ? (docXml.match(whiteColorRe) || []) : [];
-
-      if (whiteMatches.length > 0) {
-        // 提取白色文字的文本内容：找 <w:color w:val="FFFFFF"/> 所在的 <w:rPr> 的父 <w:r>，再取 <w:t>
-        var whiteTexts = [];
-        var runRe = /<w:r\b[^>]*>([\s\S]*?)<\/w:r>/gi;
-        var runMatch;
-        while ((runMatch = runRe.exec(docXml || '')) !== null) {
-          var runContent = runMatch[1];
-          if (/<w:color\s[^>]*w:val="(?:FFFFFF|ffffff|white)"/i.test(runContent)) {
-            var tMatch = runContent.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/i);
-            if (tMatch && tMatch[1].trim()) {
-              whiteTexts.push(tMatch[1].trim());
-            }
-          }
-        }
-
-        findings.push({
-          type: 'whiteText',
-          severity: 'high',
-          title: '发现白色文字（共 ' + whiteMatches.length + ' 处）',
-          samples: whiteTexts.slice(0, 3),
-          tip: '全选文字（Ctrl+A），将字体颜色改为黑色，就能看到隐藏内容。发送前请彻底删除。'
-        });
-      }
-
-      return {
-        findings: findings,
-        clean: findings.length === 0
-      };
-    });
+  function fetchEvents(token) {
+    return fetch(API_BASE + '/doc-track/events?id=' + encodeURIComponent(token))
+      .then(function (r) { return r.json(); });
   }
 
   // ─── 导出 ────────────────────────────────────────────────────────────────────
 
   var api = {
-    SCENARIOS: SCENARIOS,
-    generateDocx: generateDocx,
-    scanDocx: scanDocx
+    randomToken: randomToken,
+    generateTrackingPdf: generateTrackingPdf,
+    injectWatermark: injectWatermark,
+    extractWatermark: extractWatermark,
+    fetchEvents: fetchEvents,
+    API_BASE: API_BASE
   };
 
   if (typeof module !== 'undefined' && module.exports) {

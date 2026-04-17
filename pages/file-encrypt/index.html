@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="浏览器端文件加密解密工具，AES-256-GCM加密，文件不上传服务器，纯本地处理。支持流式处理大文件。">
+  <title>浏览器端文件加密 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-lock"></i> 浏览器端文件加密</h1>
+    <p>文件不上传服务器，全程浏览器本地处理。AES-256-GCM 加密，选文件 → 输密码 → 下载加密文件。</p>
+  </div>
+
+  <!-- ── Tab 切换 ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="encrypt">
+      <i class="ti ti-lock"></i> 加密文件
+    </button>
+    <button class="tab-btn" data-tab="decrypt">
+      <i class="ti ti-lock-open"></i> 解密文件
+    </button>
+    <button class="tab-btn" data-tab="explain">
+      <i class="ti ti-info-circle"></i> 原理说明
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       Tab 1：加密
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-encrypt">
+    <div class="two-col">
+
+      <section class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-file-plus"></i> 选择文件</h2>
+        </div>
+        <div class="upload-zone" id="encryptUploadZone">
+          <i class="ti ti-cloud-upload upload-icon"></i>
+          <div class="upload-text">拖拽文件到这里</div>
+          <div class="upload-sub">或点击选择，支持任意文件类型</div>
+          <input type="file" id="encryptFileInput" style="display:none">
+        </div>
+        <div class="file-info" id="encryptFileInfo" style="display:none"></div>
+
+        <div class="field-group">
+          <label>加密密码</label>
+          <div class="password-row">
+            <input type="password" id="encryptPassword" placeholder="输入密码（建议8位以上）" autocomplete="off">
+            <button class="btn-icon" id="toggleEncPwd" title="显示/隐藏密码"><i class="ti ti-eye"></i></button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label>确认密码</label>
+          <div class="password-row">
+            <input type="password" id="encryptPasswordConfirm" placeholder="再输一次" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="strength-bar" id="strengthBar" style="display:none">
+          <div class="strength-fill" id="strengthFill"></div>
+          <span class="strength-text" id="strengthText"></span>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="encryptBtn" disabled>
+          <i class="ti ti-lock"></i> 加密并下载
+        </button>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-shield-check"></i> 安全说明</h2>
+        </div>
+        <div class="security-points">
+          <div class="security-point">
+            <i class="ti ti-server-off"></i>
+            <div>
+              <strong>零上传</strong>
+              <p>文件全程在浏览器处理，不经过任何服务器。你可以断网后使用。</p>
+            </div>
+          </div>
+          <div class="security-point">
+            <i class="ti ti-key"></i>
+            <div>
+              <strong>AES-256-GCM</strong>
+              <p>军事级加密标准。密码通过 PBKDF2 派生密钥，10万次迭代，暴力破解不现实。</p>
+            </div>
+          </div>
+          <div class="security-point">
+            <i class="ti ti-fingerprint"></i>
+            <div>
+              <strong>完整性校验</strong>
+              <p>GCM 模式自带认证标签，篡改过的文件解密时会直接报错，不会给你一个损坏的文件。</p>
+            </div>
+          </div>
+          <div class="security-point">
+            <i class="ti ti-code"></i>
+            <div>
+              <strong>开源可审计</strong>
+              <p>所有代码公开在 GitHub，用的是浏览器原生 Web Crypto API，没有第三方加密库。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-section" id="encryptProgress" style="display:none">
+      <div class="progress-header">
+        <span id="encryptProgressLabel">加密中…</span>
+        <span id="encryptProgressPct">0%</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="encryptProgressFill"></div>
+      </div>
+      <div class="progress-detail" id="encryptProgressDetail"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       Tab 2：解密
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-decrypt">
+    <div class="two-col">
+
+      <section class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-file-search"></i> 选择加密文件</h2>
+        </div>
+        <div class="upload-zone" id="decryptUploadZone">
+          <i class="ti ti-cloud-upload upload-icon"></i>
+          <div class="upload-text">拖拽 .enc 文件到这里</div>
+          <div class="upload-sub">或点击选择</div>
+          <input type="file" id="decryptFileInput" accept=".enc" style="display:none">
+        </div>
+        <div class="file-info" id="decryptFileInfo" style="display:none"></div>
+
+        <div class="field-group">
+          <label>解密密码</label>
+          <div class="password-row">
+            <input type="password" id="decryptPassword" placeholder="输入加密时使用的密码" autocomplete="off">
+            <button class="btn-icon" id="toggleDecPwd" title="显示/隐藏密码"><i class="ti ti-eye"></i></button>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="decryptBtn" disabled>
+          <i class="ti ti-lock-open"></i> 解密并下载
+        </button>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-help-circle"></i> 常见问题</h2>
+        </div>
+        <div class="faq-list">
+          <div class="faq-item">
+            <div class="faq-q">忘记密码怎么办？</div>
+            <div class="faq-a">没有任何办法恢复。密码是唯一的密钥来源，我们不存储任何信息。这也是安全的代价。</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">.enc 文件能在其他工具打开吗？</div>
+            <div class="faq-a">不能。这是本工具的自定义格式（包含 salt、IV 和密文）。只能用本页面解密。</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">加密后文件会变大吗？</div>
+            <div class="faq-a">会增加约 24 字节头部 + 每 16MB 块增加 28 字节（12字节 IV + 16字节认证标签）。1GB 文件大约增加 1.8KB，可以忽略。</div>
+          </div>
+          <div class="faq-item">
+            <div class="faq-q">支持多大的文件？</div>
+            <div class="faq-a">采用 16MB 分块加密，内存占用恒定约 32MB，理论上支持任意大小。实测几个 GB 没问题，速度取决于你的设备性能。</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-section" id="decryptProgress" style="display:none">
+      <div class="progress-header">
+        <span id="decryptProgressLabel">解密中…</span>
+        <span id="decryptProgressPct">0%</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="decryptProgressFill"></div>
+      </div>
+      <div class="progress-detail" id="decryptProgressDetail"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       Tab 3：原理说明
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-explain">
+    <section class="explain-card">
+      <h3><i class="ti ti-info-circle"></i> 加密流程</h3>
+      <div class="explain-grid">
+        <div class="explain-step">
+          <div class="step-num">1</div>
+          <div>
+            <strong>生成随机盐值（Salt）</strong>
+            <p>16 字节的随机数据。即使两次用相同密码加密同一个文件，产生的密文也完全不同。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">2</div>
+          <div>
+            <strong>密码派生密钥（PBKDF2）</strong>
+            <p>把你的密码和 Salt 一起，经过 100,000 次 SHA-256 哈希迭代，生成 256 位的 AES 密钥。迭代次数越多，暴力破解越慢。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">3</div>
+          <div>
+            <strong>生成初始化向量（IV）</strong>
+            <p>12 字节的随机数据。GCM 模式要求每次加密使用不同的 IV，否则安全性会被破坏。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">4</div>
+          <div>
+            <strong>AES-256-GCM 加密</strong>
+            <p>用密钥和 IV 对文件内容进行加密。GCM 模式同时生成 16 字节的认证标签（Auth Tag），用于验证密文是否被篡改。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">5</div>
+          <div>
+            <strong>分块打包输出</strong>
+            <p>文件被分成 16MB 的块，每块独立加密。格式：<code>[Magic "ENC2"] [Salt 16B] [ChunkSize 4B]</code> + 每块 <code>[IV 12B] [密文+AuthTag]</code>。内存占用恒定，支持 GB 级大文件。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="explain-card">
+      <h3><i class="ti ti-shield-lock"></i> 暴力破解要多久</h3>
+      <div class="crack-table-wrap">
+        <table class="crack-table">
+          <thead>
+            <tr>
+              <th>密码类型</th>
+              <th>示例</th>
+              <th>密钥空间</th>
+              <th>暴力破解时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>6位纯数字</td>
+              <td><code>123456</code></td>
+              <td>10⁶</td>
+              <td class="crack-fast">约 10 秒</td>
+            </tr>
+            <tr>
+              <td>8位小写字母</td>
+              <td><code>password</code></td>
+              <td>26⁸ ≈ 2×10¹¹</td>
+              <td class="crack-medium">约 6 年</td>
+            </tr>
+            <tr>
+              <td>10位混合</td>
+              <td><code>P@ssw0rd!2</code></td>
+              <td>95¹⁰ ≈ 6×10¹⁹</td>
+              <td class="crack-slow">约 190 亿年</td>
+            </tr>
+            <tr>
+              <td>16位混合</td>
+              <td><code>My$ecure_Pass!16</code></td>
+              <td>95¹⁶ ≈ 4×10³¹</td>
+              <td class="crack-impossible">宇宙热寂也破不完</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="crack-note">
+          <i class="ti ti-info-circle"></i>
+          <span>假设攻击者有 10 万个 GPU 并行，每秒尝试 10 亿次 PBKDF2。实际上 PBKDF2 的 10 万次迭代让每次尝试都很慢，真实速度远低于此。</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="explain-card">
+      <h3><i class="ti ti-tool"></i> 更专业的工具推荐</h3>
+      <p class="explain-intro">浏览器加密适合偶尔用一下。如果你经常需要加密文件上传网盘，这些桌面工具更合适：</p>
+      <div class="tool-grid">
+        <div class="tool-card">
+          <div class="tool-name"><i class="ti ti-lock-square"></i> Cryptomator</div>
+          <p>开源，跨平台。创建一个加密保险库，里面的文件自动加密，同步到网盘后别人看到的全是乱码。支持 Dropbox、OneDrive、Google Drive。</p>
+          <span class="tool-tag">推荐日常使用</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name"><i class="ti ti-terminal"></i> rclone crypt</div>
+          <p>命令行工具，支持 40+ 种云存储。可以把任何网盘变成加密网盘，上传时自动加密，下载时自动解密。适合技术用户。</p>
+          <span class="tool-tag">适合技术用户</span>
+        </div>
+        <div class="tool-card">
+          <div class="tool-name"><i class="ti ti-shield"></i> VeraCrypt</div>
+          <p>创建加密虚拟磁盘，挂载后像普通硬盘一样使用。支持隐藏卷（plausible deniability）。适合高安全需求场景。</p>
+          <span class="tool-tag">高安全需求</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+</div> <!-- /.container -->
+
+<script src="crypto-engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -3,256 +3,119 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="文档隐写泄露体检：模拟 Word 和 PDF 里的白色文字层、元数据、修订记录、注释与隐藏图层，发送给客户前先扫一遍。">
+  <meta name="description" content="文档隐写泄露体检：下载一份真实的 Word 模拟文件，里面藏着元数据、修订记录和批注；或上传你自己的 .docx，纯前端扫描，文件不会离开你的设备。">
   <title>文档隐写泄露体检 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="page-shell">
-    <section class="hero">
-      <h1 class="hero-title"><i class="ti ti-file-search"></i>文档隐写泄露体检</h1>
-      <p class="hero-desc">
-        Word 和 PDF 里藏信息并不稀奇。白色文字层、作者和机器名、修订记录、批注、PDF 隐藏图层，
-        都可能跟着导出件一起发给客户。这个 demo 不去讲玄学，直接用模拟导出件把风险摊开给你看。
+<div class="page-shell">
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1 class="hero-title"><i class="ti ti-file-search"></i>文档隐写泄露体检</h1>
+    <p class="hero-desc">
+      你发给客户的 Word 文件，可能比你以为的透明得多。<br>
+      下载一份模拟文件，用 Word 亲眼看看里面藏着什么——或者上传你自己的 .docx，扫一遍再发出去。
+    </p>
+    <div class="hero-tags">
+      <span><i class="ti ti-id-badge-2"></i>元数据与机器名</span>
+      <span><i class="ti ti-git-branch"></i>修订记录</span>
+      <span><i class="ti ti-message-dots"></i>批注</span>
+      <span><i class="ti ti-eye-off"></i>白色文字层</span>
+      <span><i class="ti ti-lock"></i>文件不上传服务器</span>
+    </div>
+  </section>
+
+  <!-- 两栏主区域 -->
+  <div class="main-grid">
+
+    <!-- 左栏：生成模拟文件 -->
+    <section class="card">
+      <div class="card-header">
+        <h2><i class="ti ti-file-download"></i>下载模拟文件</h2>
+      </div>
+      <p class="card-desc">
+        选一个场景，生成一份真实的 <code>.docx</code> 文件。用 Microsoft Word 或 WPS 打开，
+        在「审阅」菜单里看修订记录和批注，在「文件 → 属性」里看元数据。
       </p>
-      <div class="hero-tags">
-        <span><i class="ti ti-eye-off"></i> 白色文字层</span>
-        <span><i class="ti ti-id-badge-2"></i> 元数据与机器名</span>
-        <span><i class="ti ti-message-dots"></i> 修订与批注</span>
-        <span><i class="ti ti-layers-subtract"></i> PDF 隐藏图层</span>
+
+      <div class="scenario-list" id="scenarioList">
+        <!-- 由 JS 渲染 -->
+      </div>
+
+      <div class="selected-scenario-info" id="selectedInfo">
+        <!-- 由 JS 渲染 -->
+      </div>
+
+      <button class="btn btn-primary btn-full" id="generateBtn">
+        <i class="ti ti-download"></i>生成并下载 .docx
+      </button>
+
+      <div class="how-to-check">
+        <div class="how-title"><i class="ti ti-bulb"></i>下载后怎么看</div>
+        <ol>
+          <li>用 <strong>Microsoft Word</strong> 打开文件</li>
+          <li>点顶部「<strong>审阅</strong>」选项卡 → 「显示标记」→ 勾选「修订」和「批注」</li>
+          <li>点「<strong>文件</strong>」→「<strong>信息</strong>」→「<strong>属性</strong>」查看元数据</li>
+          <li>全选文字（Ctrl+A），看看能复制出什么</li>
+        </ol>
       </div>
     </section>
 
-    <section class="lab-grid">
-      <aside class="panel">
-        <div class="panel-header">
-          <h2>模拟导出件</h2>
-        </div>
-        <p class="panel-subtitle">先加载一个预设场景，再按你的习惯改字段和开关，看看这份文件会漏出什么。</p>
-        <div class="panel-body">
-          <div class="preset-list" id="presetList"></div>
-
-          <form id="controlsForm">
-            <div class="form-section">
-              <div class="form-title"><i class="ti ti-file-description"></i>文件外观</div>
-              <div class="field-grid two-col">
-                <div class="field">
-                  <label for="exportFormat">导出格式</label>
-                  <select id="exportFormat">
-                    <option value="word">Word</option>
-                    <option value="pdf">PDF</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="clientName">收件方</label>
-                  <input id="clientName" type="text" placeholder="客户名称">
-                </div>
-              </div>
-              <div class="field-grid">
-                <div class="field">
-                  <label for="fileName">文件名</label>
-                  <input id="fileName" type="text" placeholder="文件名">
-                </div>
-                <div class="field">
-                  <label for="title">文档标题</label>
-                  <input id="title" type="text" placeholder="正文标题">
-                </div>
-              </div>
-            </div>
-
-            <div class="form-section">
-              <div class="form-title"><i class="ti ti-id"></i>元数据</div>
-              <div class="toggle-row">
-                <span>保留文档属性</span>
-                <input id="metadataEnabled" type="checkbox">
-              </div>
-              <div class="field-grid two-col" style="margin-top:12px;">
-                <div class="field">
-                  <label for="author">作者</label>
-                  <input id="author" type="text" placeholder="作者">
-                </div>
-                <div class="field">
-                  <label for="lastEditor">最后保存者</label>
-                  <input id="lastEditor" type="text" placeholder="最后保存者">
-                </div>
-                <div class="field">
-                  <label for="machineName">机器名</label>
-                  <input id="machineName" type="text" placeholder="机器名">
-                </div>
-                <div class="field">
-                  <label for="createdAt">创建时间</label>
-                  <input id="createdAt" type="text" placeholder="YYYY-MM-DD HH:mm">
-                </div>
-                <div class="field" style="grid-column: 1 / -1;">
-                  <label for="modifiedAt">修改时间</label>
-                  <input id="modifiedAt" type="text" placeholder="YYYY-MM-DD HH:mm">
-                </div>
-              </div>
-            </div>
-
-            <div class="form-section">
-              <div class="form-title"><i class="ti ti-eye-off"></i>隐藏内容</div>
-              <div class="field-grid">
-                <div class="toggle-row">
-                  <span>保留白色文字层</span>
-                  <input id="whiteTextEnabled" type="checkbox">
-                </div>
-                <div class="field">
-                  <label for="whiteTextContent">白色文字层内容</label>
-                  <textarea id="whiteTextContent" placeholder="这里模拟复制文本时还能被捞出来的内容"></textarea>
-                </div>
-
-                <div class="toggle-row">
-                  <span>保留修订历史</span>
-                  <input id="trackChangesEnabled" type="checkbox">
-                </div>
-                <div class="field-grid two-col">
-                  <div class="field">
-                    <label for="trackChangesCount">修订条数</label>
-                    <input id="trackChangesCount" type="number" min="0" step="1">
-                  </div>
-                  <div class="field">
-                    <label for="commentsCount">批注条数</label>
-                    <input id="commentsCount" type="number" min="0" step="1">
-                  </div>
-                </div>
-                <div class="field">
-                  <label for="trackChangesSample">修订示例</label>
-                  <textarea id="trackChangesSample" placeholder="修订记录里还能看到什么"></textarea>
-                </div>
-
-                <div class="toggle-row">
-                  <span>保留批注</span>
-                  <input id="commentsEnabled" type="checkbox">
-                </div>
-                <div class="field">
-                  <label for="commentsSample">批注示例</label>
-                  <textarea id="commentsSample" placeholder="批注里常常写着内部口径"></textarea>
-                </div>
-
-                <div class="toggle-row">
-                  <span>保留 PDF 隐藏图层</span>
-                  <input id="pdfLayerEnabled" type="checkbox">
-                </div>
-                <div class="field">
-                  <label for="pdfLayerName">图层名称</label>
-                  <input id="pdfLayerName" type="text" placeholder="例如：内部成本测算">
-                </div>
-                <div class="field">
-                  <label for="pdfLayerContent">图层内容</label>
-                  <textarea id="pdfLayerContent" placeholder="图层里还能读出哪些内容"></textarea>
-                </div>
-              </div>
-
-              <div class="action-row">
-                <button class="btn btn-primary" id="sanitizeBtn" type="button">一键清理</button>
-                <button class="btn btn-secondary" id="resetBtn" type="button">恢复当前预设</button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </aside>
-
-      <section class="panel">
-        <div class="panel-header">
-          <h2>文档预览</h2>
-          <button class="btn btn-secondary" id="forensicToggle" type="button">切到取证视角</button>
-        </div>
-        <p class="panel-subtitle">客户看到的页面通常很正常。切到取证视角，白字层、隐藏图层和属性信息会立刻浮出来。</p>
-        <div class="panel-body">
-          <div class="preview-toolbar">
-            <div class="mode-chip"><i class="ti ti-scan-eye"></i><span id="modeLabel">客户视角</span></div>
-          </div>
-          <div class="doc-stage" id="previewDoc"></div>
-          <div class="metadata-panel" id="metadataPanel"></div>
-        </div>
-      </section>
-
-      <aside class="panel">
-        <div class="panel-header">
-          <h2>扫描结果</h2>
-        </div>
-        <p class="panel-subtitle">这里模拟你在发送前做的一次导出检查。分数越高，越不适合直接发出去。</p>
-        <div class="panel-body">
-          <div class="score-card">
-            <div class="score-top">
-              <div>
-                <div class="score-number" id="riskScore">0</div>
-                <div class="score-label">风险分数 / 100</div>
-              </div>
-              <div class="score-side">
-                <strong id="riskLevel">低风险</strong>
-                <span>共 <span id="findingCount">0</span> 项可见问题</span>
-              </div>
-            </div>
-            <div class="meter">
-              <div class="meter-fill meter-低风险" id="riskMeterFill" style="width:0%"></div>
-            </div>
-          </div>
-
-          <div class="finding-stack" id="findingsList"></div>
-
-          <div class="form-section">
-            <div class="form-title"><i class="ti ti-checklist"></i>发送前处理建议</div>
-            <ul class="checklist" id="checklist"></ul>
-          </div>
-        </div>
-      </aside>
-    </section>
-
-    <section class="stats-strip">
-      <div class="stat-card">
-        <strong id="presetTotal">0</strong>
-        <span>内置模拟导出件</span>
-        <small>这些数字只统计当前 demo 预设，不对应真实业务样本。</small>
+    <!-- 右栏：上传扫描 -->
+    <section class="card">
+      <div class="card-header">
+        <h2><i class="ti ti-scan"></i>扫描你的文件</h2>
+        <span class="privacy-badge"><i class="ti ti-shield-lock"></i>纯前端，不上传</span>
       </div>
-      <div class="stat-card">
-        <strong id="presetMetadata">0</strong>
-        <span>份保留元数据</span>
-        <small>作者、最近保存者、时间戳和机器名最容易跟着走。</small>
+      <p class="card-desc">
+        上传任意 <code>.docx</code> 文件，在你的浏览器里完成解析。
+        文件不会发送到任何服务器，离线也能用。
+      </p>
+
+      <div class="upload-zone" id="uploadZone">
+        <i class="ti ti-file-upload upload-icon"></i>
+        <div class="upload-text">拖拽 .docx 文件到这里</div>
+        <div class="upload-sub">或者点击选择文件</div>
+        <input type="file" id="fileInput" accept=".docx" style="display:none">
       </div>
-      <div class="stat-card">
-        <strong id="presetWhiteText">0</strong>
-        <span>份带白色文字层</span>
-        <small>页面干净，不等于文本层真的干净。</small>
-      </div>
-      <div class="stat-card">
-        <strong id="presetReviewTrail">0</strong>
-        <span>份带修订或批注</span>
-        <small>团队讨论痕迹往往比正文更敏感。</small>
-      </div>
-      <div class="stat-card">
-        <strong id="presetPdfLayer">0</strong>
-        <span>份带隐藏图层</span>
-        <small>默认隐藏只是没展示，内容还在文件里。</small>
+
+      <div class="scan-result" id="scanResult" style="display:none">
+        <!-- 由 JS 渲染 -->
       </div>
     </section>
 
-    <section class="panel tips-panel">
-      <div class="panel-header">
-        <h2>三条底线</h2>
-      </div>
-      <div class="panel-body">
-        <div class="tips-grid">
-          <div class="tip-box">
-            <h3>先删再导出</h3>
-            <p>把敏感内容改成白色、移到角落、关掉图层，都属于“藏起来”。对外稿件要做的是彻底删除，再重新检查。</p>
-          </div>
-          <div class="tip-box">
-            <h3>导出后复检</h3>
-            <p>Word 清过一次，不代表 PDF 也干净。最终发出去的是导出件，复查动作也要落在导出件上。</p>
-          </div>
-          <div class="tip-box">
-            <h3>流程要固化</h3>
-            <p>把“检查元数据、修订、批注、隐藏层”写进对外发送清单，比临时提醒更可靠。</p>
-          </div>
-        </div>
-      </div>
-    </section>
   </div>
 
-  <script src="logic.js"></script>
-  <script src="app.js"></script>
+  <!-- 知识卡片 -->
+  <section class="knowledge-strip">
+    <div class="knowledge-card">
+      <div class="k-icon"><i class="ti ti-id-badge-2"></i></div>
+      <h3>元数据</h3>
+      <p>作者名、机器名、创建时间、最后保存者——这些字段默认全部保留在文件里，导出 PDF 时也会一起带走。</p>
+    </div>
+    <div class="knowledge-card">
+      <div class="k-icon"><i class="ti ti-git-branch"></i></div>
+      <h3>修订记录</h3>
+      <p>接受修订后正文看起来干净，但历史改动还在文件里。接收方可以在「审阅」菜单里把所有改动翻出来。</p>
+    </div>
+    <div class="knowledge-card">
+      <div class="k-icon"><i class="ti ti-message-dots"></i></div>
+      <h3>批注</h3>
+      <p>批注气泡在打印预览里可以隐藏，但文件里还在。批注里常常写着内部讨论口径，比正文更敏感。</p>
+    </div>
+    <div class="knowledge-card">
+      <div class="k-icon"><i class="ti ti-eye-off"></i></div>
+      <h3>白色文字</h3>
+      <p>把字体改成白色，页面上看不见，但文本层还在。全选复制，或者换个背景色，内容就出来了。</p>
+    </div>
+  </section>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="logic.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

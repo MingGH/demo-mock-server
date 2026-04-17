@@ -1,322 +1,51 @@
 /**
  * logic.js — 文档隐写实验室
  *
- * 1. generateTrackingPdf(opts)  — 生成带追踪像素的 PDF（纯文本 PDF 格式）
- * 2. WatermarkEngine            — 文字指纹水印：注入 / 提取
+ * 模块一：TextWatermark  — 同义词替换 + 零宽字符文字指纹
+ * 模块二：SpacingWatermark — Canvas 字间距印刷水印（注入 + 提取）
  */
 (function (global) {
   'use strict';
 
-  var API_BASE = 'https://numfeel-api.996.ninja';
+  // ══════════════════════════════════════════════════════════════════════════
+  // 模块一：文字指纹水印
+  // ══════════════════════════════════════════════════════════════════════════
 
-  // ─── 工具 ────────────────────────────────────────────────────────────────────
-
-  function randomToken() {
-    var chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    var result = '';
-    for (var i = 0; i < 24; i++) {
-      result += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return result;
-  }
-
-  // ─── PDF 生成 ────────────────────────────────────────────────────────────────
-  // 手写最小化 PDF，不依赖任何库
-  // 包含：文档信息（作者、创建时间）、正文文字、1×1 追踪像素图片
-
-  function pdfEscape(str) {
-    return String(str || '')
-      .replace(/\\/g, '\\\\')
-      .replace(/\(/g, '\\(')
-      .replace(/\)/g, '\\)');
-  }
-
-  /**
-   * 生成追踪 PDF 的字节内容
-   * @param {object} opts
-   * @param {string} opts.title
-   * @param {string} opts.recipient
-   * @param {string} opts.token
-   * @param {string} opts.trackUrl  — 追踪像素 URL
-   * @returns {string} PDF 文本内容
-   */
-  function generateTrackingPdf(opts) {
-    var title = opts.title || '合作方案';
-    var recipient = opts.recipient || '收件方';
-    var token = opts.token || randomToken();
-    var trackUrl = opts.trackUrl || (API_BASE + '/doc-track/pixel?id=' + token);
-
-    var now = new Date();
-    var dateStr = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日';
-
-    // PDF 使用 UTF-16BE BOM + 内容，中文需要特殊处理
-    // 为简化，正文用 Latin-1 可表示的内容 + 单独的中文用 Unicode escape
-    // 实际上最简单的方式：用 PDFDocEncoding 写 ASCII，中文另行处理
-    // 这里采用：正文全部转为 Unicode code points，用 \uXXXX 写入 PDF 字符串
-
-    function toPdfUnicode(str) {
-      // PDF Unicode 字符串：BOM + UTF-16BE
-      var result = '\xFE\xFF'; // BOM
-      for (var i = 0; i < str.length; i++) {
-        var code = str.charCodeAt(i);
-        result += String.fromCharCode((code >> 8) & 0xFF, code & 0xFF);
-      }
-      return result;
-    }
-
-    function pdfUnicodeStr(str) {
-      return '(' + pdfEscape(toPdfUnicode(str)) + ')';
-    }
-
-    // 构建 PDF 对象
-    var objects = [];
-    var offsets = [];
-
-    function addObj(id, content) {
-      objects[id] = content;
-    }
-
-    // Object 1: Catalog
-    addObj(1, '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj');
-
-    // Object 2: Pages
-    addObj(2, '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj');
-
-    // Object 3: Page
-    // 页面包含内容流（4）和图片资源（5）
-    addObj(3,
-      '3 0 obj\n' +
-      '<< /Type /Page /Parent 2 0 R\n' +
-      '   /MediaBox [0 0 595 842]\n' +
-      '   /Contents 4 0 R\n' +
-      '   /Resources << /Font << /F1 6 0 R >> /XObject << /Img1 5 0 R >> >>\n' +
-      '>>\nendobj'
-    );
-
-    // Object 4: 内容流
-    // 用 PDF 操作符绘制文字，并在页面某处放置追踪图片（1×1，放在页面右上角不显眼处）
-    var lines = [
-      title,
-      '',
-      '收件方：' + recipient,
-      '日期：' + dateStr,
-      '',
-      '本文件为保密文件，仅供指定收件方查阅。',
-      '未经授权，请勿转发或复制。',
-      '',
-      '如有疑问，请联系发件方。'
-    ];
-
-    // 构建内容流：先画文字，再放追踪图片
-    var streamLines = ['BT', '/F1 14 Tf'];
-    var y = 750;
-    lines.forEach(function (line, i) {
-      if (i === 0) {
-        streamLines.push('/F1 18 Tf');
-      } else if (i === 1) {
-        streamLines.push('/F1 12 Tf');
-      }
-      streamLines.push('50 ' + y + ' Td');
-      // 用 Unicode 字符串
-      streamLines.push(pdfUnicodeStr(line) + ' Tj');
-      streamLines.push('-50 -' + (i === 0 ? 30 : 20) + ' Td');
-      y -= (i === 0 ? 30 : 20);
-    });
-    streamLines.push('ET');
-
-    // 放追踪图片：1×1 像素，放在页面右上角（590, 838），几乎不可见
-    streamLines.push('q');
-    streamLines.push('1 0 0 1 590 838 cm');
-    streamLines.push('1 1 Do');  // 注意：这里用 /Img1，但 Do 操作符需要 /Img1
-    streamLines.push('Q');
-
-    // 修正：Do 操作符需要 /Name Do
-    // 重新构建
-    streamLines = ['BT', '/F1 18 Tf'];
-    y = 750;
-    lines.forEach(function (line, i) {
-      if (i === 1) streamLines.push('/F1 12 Tf');
-      streamLines.push('50 ' + y + ' Td');
-      streamLines.push(pdfUnicodeStr(line) + ' Tj');
-      var dy = (i === 0) ? 30 : 20;
-      streamLines.push('-50 -' + dy + ' Td');
-      y -= dy;
-    });
-    streamLines.push('ET');
-    // 追踪图片（1×1，右上角）
-    streamLines.push('q 1 0 0 1 590 838 cm /Img1 Do Q');
-
-    var streamContent = streamLines.join('\n');
-    addObj(4,
-      '4 0 obj\n' +
-      '<< /Length ' + streamContent.length + ' >>\n' +
-      'stream\n' +
-      streamContent + '\n' +
-      'endstream\nendobj'
-    );
-
-    // Object 5: 追踪像素图片（外部 URL 引用）
-    // PDF 支持通过 /URI action 或 /F (file) 引用外部资源
-    // 更可靠的方式：用 /Subtype /Image + /URL（部分阅读器支持）
-    // 最广泛支持的方式：嵌入一个 1×1 PNG，同时在 /AA（Additional Actions）里触发 URI
-    // 实际上最可靠的追踪方式是：在 /OpenAction 里触发一个 /URI action
-    // 这样文件一打开就会请求 URL
-
-    // Object 5: 1×1 白色 PNG（内嵌，作为页面装饰）
-    var png1x1 = '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82';
-    // 用十六进制流更可靠
-    var pngHex = '89504e470d0a1a0a0000000d49484452000000010000000108020000009077' +
-                 '53de0000000c4944415478' + '9c63f80f000000010100051' + '8d84e000000000049454e44ae426082';
-
-    addObj(5,
-      '5 0 obj\n' +
-      '<< /Type /XObject /Subtype /Image\n' +
-      '   /Width 1 /Height 1\n' +
-      '   /ColorSpace /DeviceRGB /BitsPerComponent 8\n' +
-      '   /Filter /ASCIIHexDecode\n' +
-      '   /Length ' + pngHex.length + '\n' +
-      '>>\n' +
-      'stream\n' +
-      pngHex + '\n' +
-      'endstream\nendobj'
-    );
-
-    // Object 6: 字体（使用内置 Helvetica，不支持中文，但我们用 Unicode 字符串）
-    addObj(6,
-      '6 0 obj\n' +
-      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica\n' +
-      '   /Encoding /WinAnsiEncoding\n' +
-      '>>\nendobj'
-    );
-
-    // Object 7: 文档信息
-    addObj(7,
-      '7 0 obj\n' +
-      '<< /Title ' + pdfUnicodeStr(title) + '\n' +
-      '   /Author ' + pdfUnicodeStr('文档隐写实验室') + '\n' +
-      '   /CreationDate (D:' + now.getFullYear() +
-        pad(now.getMonth() + 1) + pad(now.getDate()) +
-        pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds()) + '+08\'00\')\n' +
-      '>>\nendobj'
-    );
-
-    // Object 8: OpenAction — 文件打开时触发 URI 请求（追踪核心）
-    addObj(8,
-      '8 0 obj\n' +
-      '<< /Type /Action /S /URI /URI (' + pdfEscape(trackUrl) + ') >>\n' +
-      'endobj'
-    );
-
-    // 更新 Catalog，加入 OpenAction 和 Info
-    objects[1] = '1 0 obj\n<< /Type /Catalog /Pages 2 0 R /OpenAction 8 0 R >>\nendobj';
-
-    // 构建 PDF 文件
-    var pdf = '%PDF-1.4\n';
-    pdf += '%\xe2\xe3\xcf\xd3\n'; // 二进制标记
-
-    var objOrder = [1, 2, 3, 4, 5, 6, 7, 8];
-    var xrefOffsets = {};
-
-    objOrder.forEach(function (id) {
-      xrefOffsets[id] = pdf.length;
-      pdf += objects[id] + '\n';
-    });
-
-    // xref 表
-    var xrefOffset = pdf.length;
-    pdf += 'xref\n';
-    pdf += '0 9\n';
-    pdf += '0000000000 65535 f \n';
-    objOrder.forEach(function (id) {
-      pdf += pad10(xrefOffsets[id]) + ' 00000 n \n';
-    });
-
-    // trailer
-    pdf += 'trailer\n';
-    pdf += '<< /Size 9 /Root 1 0 R /Info 7 0 R >>\n';
-    pdf += 'startxref\n';
-    pdf += xrefOffset + '\n';
-    pdf += '%%EOF';
-
-    return pdf;
-  }
-
-  function pad(n) { return n < 10 ? '0' + n : '' + n; }
-  function pad10(n) { return ('0000000000' + n).slice(-10); }
-
-  // ─── 文字指纹水印引擎 ────────────────────────────────────────────────────────
-
-  // 同义词替换规则：[原词, 替换词]
-  // 每对是一个 bit：原词=0，替换词=1
   var SYNONYM_RULES = [
     ['总金额', '总价款'],
-    ['交付', '完成'],
-    ['保证', '确保'],
-    ['合同', '协议'],
-    ['支付', '缴纳'],
-    ['验收', '检收'],
+    ['交付',   '完成'],
+    ['保证',   '确保'],
+    ['合同',   '协议'],
+    ['支付',   '缴纳'],
+    ['验收',   '检收'],
     ['违约金', '赔偿金'],
-    ['管辖', '适用'],
-    ['首期', '第一期'],
-    ['百分之', '百分之']  // 占位，实际用标点变体
+    ['管辖',   '适用'],
+    ['首期',   '第一期']
   ];
 
-  // 标点变体规则（额外的 bit 来源）
-  var PUNCT_RULES = [
-    ['，', '\uff0c'],   // 全角逗号的两种写法（实际上一样，用零宽空格区分）
-    ['。', '。\u200b'] // 句号后加零宽空格
-  ];
-
-  /**
-   * 注入水印
-   * @param {string} text 原始文本
-   * @param {number} recipientId 收件方 ID（0-based）
-   * @returns {string} 注入水印后的文本
-   */
   function injectWatermark(text, recipientId) {
     var bits = recipientId;
     var result = text;
-
-    // 同义词替换
     SYNONYM_RULES.forEach(function (rule, i) {
-      var bit = (bits >> i) & 1;
-      if (bit === 1) {
-        result = result.split(rule[0]).join(rule[1]);
-      }
+      if ((bits >> i) & 1) result = result.split(rule[0]).join(rule[1]);
     });
-
-    // 零宽字符编码（在特定位置插入零宽空格来编码额外 bit）
-    // 在第一个句号后插入零宽字符序列
-    var zwBits = (bits >> SYNONYM_RULES.length);
+    // 零宽字符编码高位
+    var zwBits = bits >> SYNONYM_RULES.length;
     var zwStr = '';
     for (var i = 0; i < 4; i++) {
-      zwStr += ((zwBits >> i) & 1) ? '\u200b' : '\u200c'; // 零宽空格 vs 零宽非连接符
+      zwStr += ((zwBits >> i) & 1) ? '\u200b' : '\u200c';
     }
     result = result.replace('。', '。' + zwStr);
-
     return result;
   }
 
-  /**
-   * 提取水印，返回 recipientId
-   * @param {string} text 疑似泄露文本
-   * @returns {{id: number, confidence: number, bits: string}}
-   */
   function extractWatermark(text) {
     var bits = 0;
     var matchCount = 0;
-
-    // 同义词检测
     SYNONYM_RULES.forEach(function (rule, i) {
-      if (text.indexOf(rule[1]) !== -1) {
-        bits |= (1 << i);
-        matchCount++;
-      } else if (text.indexOf(rule[0]) !== -1) {
-        matchCount++;
-      }
+      if (text.indexOf(rule[1]) !== -1) { bits |= (1 << i); matchCount++; }
+      else if (text.indexOf(rule[0]) !== -1) { matchCount++; }
     });
-
-    // 零宽字符检测
     var zwBits = 0;
     var zwMatch = text.match(/。([\u200b\u200c]{1,4})/);
     if (zwMatch) {
@@ -327,37 +56,290 @@
       bits |= (zwBits << SYNONYM_RULES.length);
       matchCount++;
     }
+    return {
+      id: bits,
+      confidence: matchCount / (SYNONYM_RULES.length + 1),
+      bitStr: bits.toString(2).padStart(14, '0')
+    };
+  }
 
-    var confidence = matchCount / (SYNONYM_RULES.length + 1);
-    var bitStr = bits.toString(2).padStart(14, '0');
+  // ══════════════════════════════════════════════════════════════════════════
+  // 模块二：字间距印刷水印
+  // ══════════════════════════════════════════════════════════════════════════
 
-    return { id: bits, confidence: confidence, bitStr: bitStr };
+  /**
+   * 从文本中选取编码锚点（相邻汉字对之间的间距）
+   * 选取规则：跳过标点，取前 N 对相邻汉字
+   */
+  function selectAnchors(text, count) {
+    var anchors = [];
+    for (var i = 0; i < text.length - 1 && anchors.length < count; i++) {
+      var c1 = text[i], c2 = text[i + 1];
+      // 只选汉字对
+      if (/[\u4e00-\u9fff]/.test(c1) && /[\u4e00-\u9fff]/.test(c2)) {
+        anchors.push(i); // 锚点 = 字符 i 和 i+1 之间的间距
+      }
+    }
+    return anchors;
   }
 
   /**
-   * 获取追踪事件
-   * @param {string} token
-   * @returns {Promise}
+   * 用 Canvas 逐字渲染文本，对锚点位置的间距做 ±delta 微调
+   *
+   * @param {HTMLCanvasElement} canvas
+   * @param {string} text
+   * @param {object} opts
+   * @param {number} opts.recipientId   — 要编码的 ID（0~255）
+   * @param {number} opts.fontSize      — 字体大小（px）
+   * @param {number} opts.delta         — 间距偏移量（px）
+   * @param {boolean} opts.noWatermark  — true = 渲染原始版本（不注入）
+   * @returns {{ anchors: number[], bits: number[], encodedId: number }}
    */
-  function fetchEvents(token) {
-    return fetch(API_BASE + '/doc-track/events?id=' + encodeURIComponent(token))
-      .then(function (r) { return r.json(); });
+  function renderWithSpacingWatermark(canvas, text, opts) {
+    var fontSize  = opts.fontSize  || 20;
+    var delta     = opts.delta     || 0.3;
+    var id        = opts.recipientId || 0;
+    var noWm      = opts.noWatermark || false;
+
+    var BIT_COUNT = 8; // 编码 8 bit = 0~255
+    var anchors   = selectAnchors(text, BIT_COUNT);
+    var anchorSet = {};
+    anchors.forEach(function (a) { anchorSet[a] = true; });
+
+    var ctx = canvas.getContext('2d');
+    var font = fontSize + 'px "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif';
+    ctx.font = font;
+
+    var PADDING   = 24;
+    var LINE_H    = Math.round(fontSize * 1.8);
+    var MAX_WIDTH = 680;
+
+    // ── 第一遍：计算布局（换行） ──────────────────────────────────────────
+    var lines = [];
+    var currentLine = [];
+    var currentX    = PADDING;
+
+    for (var i = 0; i < text.length; i++) {
+      var ch    = text[i];
+      var baseW = ctx.measureText(ch).width;
+      var bit   = (anchors.indexOf(i) !== -1) ? ((id >> anchors.indexOf(i)) & 1) : -1;
+      var shift = 0;
+      if (!noWm && bit !== -1) shift = (bit === 1) ? delta : -delta;
+
+      if (currentX + baseW > MAX_WIDTH - PADDING || ch === '\n') {
+        lines.push(currentLine);
+        currentLine = [];
+        currentX    = PADDING;
+        if (ch === '\n') continue;
+      }
+      currentLine.push({ ch: ch, x: currentX, w: baseW, shift: shift, anchorIdx: anchors.indexOf(i) });
+      currentX += baseW + shift;
+    }
+    if (currentLine.length) lines.push(currentLine);
+
+    // ── 设置 canvas 尺寸 ──────────────────────────────────────────────────
+    canvas.width  = MAX_WIDTH;
+    canvas.height = PADDING * 2 + lines.length * LINE_H;
+
+    // ── 第二遍：绘制 ──────────────────────────────────────────────────────
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.font      = font;
+    ctx.textBaseline = 'top';
+
+    lines.forEach(function (line, li) {
+      var y = PADDING + li * LINE_H;
+      line.forEach(function (item) {
+        ctx.fillText(item.ch, item.x, y);
+      });
+    });
+
+    // 返回元数据供提取使用
+    var bits = [];
+    for (var b = 0; b < BIT_COUNT; b++) {
+      bits.push((id >> b) & 1);
+    }
+    return { anchors: anchors, bits: bits, encodedId: id, lines: lines, fontSize: fontSize, delta: delta };
   }
 
-  // ─── 导出 ────────────────────────────────────────────────────────────────────
+  /**
+   * 生成差异放大图（原始 vs 水印，差异 ×50）
+   */
+  function renderDiffCanvas(canvasDiff, canvasOrig, canvasWm) {
+    var w = canvasOrig.width, h = canvasOrig.height;
+    canvasDiff.width  = w;
+    canvasDiff.height = h;
+
+    var ctxO  = canvasOrig.getContext('2d');
+    var ctxW  = canvasWm.getContext('2d');
+    var ctxD  = canvasDiff.getContext('2d');
+
+    var dataO = ctxO.getImageData(0, 0, w, h).data;
+    var dataW = ctxW.getImageData(0, 0, w, h).data;
+    var outD  = ctxD.createImageData(w, h);
+
+    for (var i = 0; i < dataO.length; i += 4) {
+      var dr = Math.abs(dataO[i]   - dataW[i])   * 50;
+      var dg = Math.abs(dataO[i+1] - dataW[i+1]) * 50;
+      var db = Math.abs(dataO[i+2] - dataW[i+2]) * 50;
+      var diff = Math.min(255, Math.max(dr, dg, db));
+      // 差异用红色显示，背景白色
+      outD.data[i]   = 255;
+      outD.data[i+1] = Math.max(0, 255 - diff * 3);
+      outD.data[i+2] = Math.max(0, 255 - diff * 3);
+      outD.data[i+3] = 255;
+    }
+    ctxD.putImageData(outD, 0, 0);
+  }
+
+  /**
+   * 从图片 Canvas 中提取字间距水印
+   * 原理：列扫描找字符边界 → 计算间距 → 与基准比较 → 还原 bit
+   *
+   * @param {HTMLCanvasElement} canvas  — 待分析图片
+   * @param {number} fontSize           — 渲染时使用的字体大小（用于估算基准间距）
+   * @param {number} delta              — 渲染时使用的偏移量
+   * @returns {{ id: number, bits: number[], gaps: number[], confidence: number }}
+   */
+  function extractSpacingWatermark(canvas, fontSize, delta) {
+    fontSize = fontSize || 20;
+    delta    = delta    || 0.3;
+
+    var ctx  = canvas.getContext('2d');
+    var w    = canvas.width;
+    var h    = canvas.height;
+    var data = ctx.getImageData(0, 0, w, h).data;
+
+    // ── 列扫描：找每列是否有墨迹（非白像素） ────────────────────────────
+    var colHasInk = new Array(w).fill(false);
+    for (var x = 0; x < w; x++) {
+      for (var y = 0; y < h; y++) {
+        var idx = (y * w + x) * 4;
+        // 非白色（R<240 或 G<240 或 B<240）
+        if (data[idx] < 240 || data[idx+1] < 240 || data[idx+2] < 240) {
+          colHasInk[x] = true;
+          break;
+        }
+      }
+    }
+
+    // ── 找字符块的左右边界 ───────────────────────────────────────────────
+    var charBounds = []; // [{left, right}]
+    var inChar = false;
+    var charStart = 0;
+    var MIN_CHAR_W = Math.round(fontSize * 0.4);
+    var MAX_GAP    = Math.round(fontSize * 0.8); // 行内间距不超过这个就算同一行
+
+    for (var x = 0; x < w; x++) {
+      if (!inChar && colHasInk[x]) {
+        inChar    = true;
+        charStart = x;
+      } else if (inChar && !colHasInk[x]) {
+        // 检查是否是短暂空白（间距）还是真正的字符结束
+        var gapEnd = x;
+        while (gapEnd < w && !colHasInk[gapEnd] && gapEnd - x < MAX_GAP) gapEnd++;
+        if (gapEnd < w && colHasInk[gapEnd] && gapEnd - x < MAX_GAP) {
+          // 短暂空白，继续
+          x = gapEnd - 1;
+        } else {
+          // 字符结束
+          if (x - charStart >= MIN_CHAR_W) {
+            charBounds.push({ left: charStart, right: x - 1 });
+          }
+          inChar = false;
+        }
+      }
+    }
+    if (inChar) charBounds.push({ left: charStart, right: w - 1 });
+
+    // ── 计算相邻字符间距 ─────────────────────────────────────────────────
+    var gaps = [];
+    for (var i = 0; i < charBounds.length - 1; i++) {
+      gaps.push(charBounds[i+1].left - charBounds[i].right - 1);
+    }
+
+    if (gaps.length < 4) {
+      return { id: -1, bits: [], gaps: gaps, confidence: 0, error: '字符边界识别不足，请确保图片清晰且字体足够大' };
+    }
+
+    // ── 估算基准间距（取中位数） ─────────────────────────────────────────
+    var sorted = gaps.slice().sort(function (a, b) { return a - b; });
+    var median = sorted[Math.floor(sorted.length / 2)];
+
+    // ── 还原 bit ─────────────────────────────────────────────────────────
+    // bit=1 → 间距 > 基准（正偏移）
+    // bit=0 → 间距 < 基准（负偏移）
+    var BIT_COUNT = 8;
+    var bits = [];
+    var id   = 0;
+    var threshold = delta * 0.3; // 判决阈值
+
+    for (var b = 0; b < BIT_COUNT && b < gaps.length; b++) {
+      var bit = (gaps[b] - median > threshold) ? 1 : 0;
+      bits.push(bit);
+      if (bit) id |= (1 << b);
+    }
+
+    // 置信度：判决间距与阈值的距离越大越可信
+    var margins = bits.map(function (bit, b) {
+      return Math.abs(gaps[b] - median) / (delta + 0.001);
+    });
+    var avgMargin = margins.reduce(function (s, v) { return s + v; }, 0) / margins.length;
+    var confidence = Math.min(1, avgMargin);
+
+    return { id: id, bits: bits, gaps: gaps, median: median, confidence: confidence };
+  }
+
+  /**
+   * 在 canvas 上绘制间距热力图
+   */
+  function renderHeatmap(canvas, sourceCanvas, gaps, median, delta) {
+    var w = sourceCanvas.width, h = sourceCanvas.height;
+    canvas.width  = w;
+    canvas.height = h;
+    var ctx = canvas.getContext('2d');
+
+    // 先把原图画上去
+    ctx.drawImage(sourceCanvas, 0, 0);
+
+    // 在图片底部画热力条
+    var barH = 20;
+    var barY = h - barH - 4;
+    var barW = Math.floor(w / Math.max(gaps.length, 1));
+
+    gaps.forEach(function (gap, i) {
+      var diff = gap - median;
+      var intensity = Math.min(1, Math.abs(diff) / (delta * 2 + 0.001));
+      var x = i * barW;
+      if (diff > 0) {
+        ctx.fillStyle = 'rgba(255,' + Math.round(100 - intensity * 100) + ',0,' + (0.4 + intensity * 0.5) + ')';
+      } else {
+        ctx.fillStyle = 'rgba(0,' + Math.round(100 - intensity * 100) + ',255,' + (0.4 + intensity * 0.5) + ')';
+      }
+      ctx.fillRect(x, barY, barW - 1, barH);
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 导出
+  // ══════════════════════════════════════════════════════════════════════════
 
   var api = {
-    randomToken: randomToken,
-    generateTrackingPdf: generateTrackingPdf,
-    injectWatermark: injectWatermark,
+    // 文字指纹
+    injectWatermark:  injectWatermark,
     extractWatermark: extractWatermark,
-    fetchEvents: fetchEvents,
-    API_BASE: API_BASE
+    SYNONYM_RULES:    SYNONYM_RULES,
+    // 字间距水印
+    renderWithSpacingWatermark: renderWithSpacingWatermark,
+    renderDiffCanvas:           renderDiffCanvas,
+    extractSpacingWatermark:    extractSpacingWatermark,
+    renderHeatmap:              renderHeatmap,
+    selectAnchors:              selectAnchors
   };
 
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = api;
-  }
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.DocStegoLab = api;
 
 })(typeof window !== 'undefined' ? window : globalThis);

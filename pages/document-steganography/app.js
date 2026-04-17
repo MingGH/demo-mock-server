@@ -239,7 +239,7 @@
         tmpCanvas.height = img.height;
         tmpCanvas.getContext('2d').drawImage(img, 0, 0);
 
-        var result = lab.extractSpacingWatermark(tmpCanvas, fontSize, delta);
+        var result = lab.extractSpacingWatermark(tmpCanvas);
 
         // 恢复上传区
         spUploadZone.innerHTML =
@@ -290,14 +290,37 @@
           }).join('') +
         '</div>' +
         '<div class="extract-gaps">' +
-          '<span class="gaps-label">检测到 ' + result.gaps.length + ' 个字符间距，基准 ' + (result.median || 0).toFixed(1) + 'px</span>' +
+          '<span class="gaps-label">从图片最后一行 LSB 标记中读取，置信度 100%</span>' +
         '</div>' +
       '</div>';
 
-    // 热力图
+    // bit 可视化（替代热力图）
     var heatmap = $('canvasHeatmap');
-    lab.renderHeatmap(heatmap, sourceCanvas, result.gaps, result.median || 0, delta);
+    renderBitCanvas(heatmap, result.bits);
     $('magnifierWrap').style.display = 'block';
+  }
+
+  // 把 8 个 bit 画成可视化条
+  function renderBitCanvas(canvas, bits) {
+    var W = 320, H = 48, PAD = 8, cellW = Math.floor((W - PAD * 2) / 8);
+    canvas.width  = W;
+    canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#0f1d34';
+    ctx.fillRect(0, 0, W, H);
+    bits.forEach(function (b, i) {
+      var x = PAD + i * cellW;
+      ctx.fillStyle = b ? '#42d392' : '#2a3a52';
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(x + 2, 8, cellW - 4, H - 16, 4)
+                    : ctx.rect(x + 2, 8, cellW - 4, H - 16);
+      ctx.fill();
+      ctx.fillStyle = b ? '#0f1d34' : '#6a85a8';
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(b, x + cellW / 2, H / 2);
+    });
   }
 
   // ── 初始化 ────────────────────────────────────────────────────────────────

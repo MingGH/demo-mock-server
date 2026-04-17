@@ -92,7 +92,7 @@
           '<div class="wm-version-header">' +
             '<span class="wm-recipient">' + escHtml(r.name) + '</span>' +
             '<span class="wm-id">指纹 ID: <code>' + ex.id + '</code></span>' +
-            '<button class="btn-copy" data-wm="' + escHtml(wm) + '">复制</button>' +
+            '<button class="btn-copy" data-rid="' + r.id + '">复制</button>' +
           '</div>' +
           '<div class="wm-diff">' +
             (diffWords.length
@@ -104,9 +104,19 @@
       '</div>';
 
     result.innerHTML = html;
+
+    // 存储水印文本到 JS 对象，不依赖 HTML 属性（零宽字符在属性里可能丢失）
+    var wmTexts = {};
+    recipients.forEach(function (r) {
+      wmTexts[r.id] = lab.injectWatermark(text, r.id);
+    });
+
     result.querySelectorAll('.btn-copy').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        navigator.clipboard.writeText(btn.getAttribute('data-wm')).then(function () {
+        var rid = parseInt(btn.getAttribute('data-rid'));
+        var wmText = wmTexts[rid];
+        if (!wmText) return;
+        navigator.clipboard.writeText(wmText).then(function () {
           btn.textContent = '已复制';
           setTimeout(function () { btn.textContent = '复制'; }, 1500);
         });

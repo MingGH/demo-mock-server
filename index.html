@@ -156,8 +156,16 @@
     }
 
     const techCategory = demosData.categories.find(cat => cat.id === 'tech');
-    if (techCategory && !techCategory.demos.some(demo => demo.href === 'pages/image-retro-lab.html')) {
+    if (techCategory && !techCategory.demos.some(demo => demo.href === 'pages/document-steganography/')) {
       techCategory.demos.splice(9, 0, {
+        href: 'pages/document-steganography/',
+        icon: 'ti-file-search',
+        title: '文档隐写泄露体检',
+        desc: 'Word/PDF 里除了正文还能漏什么？用模拟导出件查看白色文字层、元数据、修订记录、批注和 PDF 隐藏图层。'
+      });
+    }
+    if (techCategory && !techCategory.demos.some(demo => demo.href === 'pages/image-retro-lab.html')) {
+      techCategory.demos.splice(10, 0, {
         href: 'pages/image-retro-lab.html',
         icon: 'ti-photo-spark',
         title: '图片做旧实验室',

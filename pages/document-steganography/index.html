@@ -3,114 +3,237 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="文档隐写泄露体检：下载一份真实的 Word 模拟文件，里面藏着元数据、修订记录和批注；或上传你自己的 .docx，纯前端扫描，文件不会离开你的设备。">
-  <title>文档隐写泄露体检 | 数字直觉</title>
+  <meta name="description" content="文档隐写实验室：PDF 追踪像素——文件一被打开服务器就知道；文字指纹水印——谁泄露了你的文档，一查便知。">
+  <title>文档隐写实验室 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="page-shell">
 
-  <!-- Hero -->
   <section class="hero">
-    <h1 class="hero-title"><i class="ti ti-file-search"></i>文档隐写泄露体检</h1>
+    <h1 class="hero-title"><i class="ti ti-spy"></i>文档隐写实验室</h1>
     <p class="hero-desc">
-      你发给客户的 Word 文件，可能比你以为的透明得多。<br>
-      下载一份模拟文件，用 Word 亲眼看看里面藏着什么——或者上传你自己的 .docx，扫一遍再发出去。
+      两种商业级文档追踪技术的真实演示。<br>
+      PDF 追踪像素：文件一被打开，服务器就知道是谁、在哪里、用什么设备。<br>
+      文字指纹水印：给不同人发不同版本，文件泄露后一查便知是谁干的。
     </p>
-    <div class="hero-tags">
-      <span><i class="ti ti-id-badge-2"></i>元数据与机器名</span>
-      <span><i class="ti ti-git-branch"></i>修订记录</span>
-      <span><i class="ti ti-message-dots"></i>批注</span>
-      <span><i class="ti ti-eye-off"></i>白色文字层</span>
-      <span><i class="ti ti-lock"></i>文件不上传服务器</span>
-    </div>
   </section>
 
-  <!-- 两栏主区域 -->
-  <div class="main-grid">
-
-    <!-- 左栏：生成模拟文件 -->
-    <section class="card">
-      <div class="card-header">
-        <h2><i class="ti ti-file-download"></i>下载模拟文件</h2>
-      </div>
-      <p class="card-desc">
-        选一个场景，生成一份真实的 <code>.docx</code> 文件。用 Microsoft Word 或 WPS 打开，
-        在「审阅」菜单里看修订记录和批注，在「文件 → 属性」里看元数据。
-      </p>
-
-      <div class="scenario-list" id="scenarioList">
-        <!-- 由 JS 渲染 -->
-      </div>
-
-      <div class="selected-scenario-info" id="selectedInfo">
-        <!-- 由 JS 渲染 -->
-      </div>
-
-      <button class="btn btn-primary btn-full" id="generateBtn">
-        <i class="ti ti-download"></i>生成并下载 .docx
-      </button>
-
-      <div class="how-to-check">
-        <div class="how-title"><i class="ti ti-bulb"></i>下载后怎么看</div>
-        <ol>
-          <li>用 <strong>Microsoft Word</strong> 打开文件</li>
-          <li>点顶部「<strong>审阅</strong>」选项卡 → 「显示标记」→ 勾选「修订」和「批注」</li>
-          <li>点「<strong>文件</strong>」→「<strong>信息</strong>」→「<strong>属性</strong>」查看元数据</li>
-          <li>全选文字（Ctrl+A），看看能复制出什么</li>
-        </ol>
-      </div>
-    </section>
-
-    <!-- 右栏：上传扫描 -->
-    <section class="card">
-      <div class="card-header">
-        <h2><i class="ti ti-scan"></i>扫描你的文件</h2>
-        <span class="privacy-badge"><i class="ti ti-shield-lock"></i>纯前端，不上传</span>
-      </div>
-      <p class="card-desc">
-        上传任意 <code>.docx</code> 文件，在你的浏览器里完成解析。
-        文件不会发送到任何服务器，离线也能用。
-      </p>
-
-      <div class="upload-zone" id="uploadZone">
-        <i class="ti ti-file-upload upload-icon"></i>
-        <div class="upload-text">拖拽 .docx 文件到这里</div>
-        <div class="upload-sub">或者点击选择文件</div>
-        <input type="file" id="fileInput" accept=".docx" style="display:none">
-      </div>
-
-      <div class="scan-result" id="scanResult" style="display:none">
-        <!-- 由 JS 渲染 -->
-      </div>
-    </section>
-
+  <!-- Tab 切换 -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="pixel">
+      <i class="ti ti-eye"></i>PDF 追踪像素
+    </button>
+    <button class="tab-btn" data-tab="watermark">
+      <i class="ti ti-fingerprint"></i>文字指纹水印
+    </button>
   </div>
 
-  <!-- 知识卡片 -->
-  <section class="knowledge-strip">
-    <div class="knowledge-card">
-      <div class="k-icon"><i class="ti ti-id-badge-2"></i></div>
-      <h3>元数据</h3>
-      <p>作者名、机器名、创建时间、最后保存者——这些字段默认全部保留在文件里，导出 PDF 时也会一起带走。</p>
+  <!-- ── Tab 1：PDF 追踪像素 ── -->
+  <div class="tab-panel active" id="tab-pixel">
+    <div class="two-col">
+
+      <!-- 左：生成 -->
+      <section class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-file-download"></i>生成追踪文档</h2>
+        </div>
+        <p class="card-desc">
+          生成一份看起来普通的 PDF。里面嵌入了一个 1×1 的透明追踪像素，
+          指向我们的服务器。收件方一打开，服务器就会收到请求。
+        </p>
+
+        <div class="field-group">
+          <label>文档标题</label>
+          <input type="text" id="pdfTitle" value="2026年Q2合作方案" maxlength="60">
+        </div>
+        <div class="field-group">
+          <label>收件方名称</label>
+          <input type="text" id="pdfRecipient" value="星河科技" maxlength="40">
+        </div>
+
+        <div class="token-display">
+          <span class="token-label">追踪 ID</span>
+          <code id="trackingToken">—</code>
+          <button class="btn-icon" id="refreshToken" title="重新生成"><i class="ti ti-refresh"></i></button>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="generatePdfBtn">
+          <i class="ti ti-download"></i>生成并下载 PDF
+        </button>
+
+        <div class="tip-box">
+          <i class="ti ti-bulb"></i>
+          <span>把这份 PDF 发给任何人，或者自己用 PDF 阅读器打开，右侧就会实时出现记录。</span>
+        </div>
+      </section>
+
+      <!-- 右：实时监控 -->
+      <section class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-activity"></i>实时打开记录</h2>
+          <div class="live-dot" id="liveDot"></div>
+        </div>
+        <p class="card-desc">
+          每隔 3 秒自动刷新。IP 已打码，仅显示前两段。
+        </p>
+
+        <div class="event-list" id="eventList">
+          <div class="event-empty">
+            <i class="ti ti-clock-pause"></i>
+            <span>等待文件被打开…</span>
+          </div>
+        </div>
+
+        <div class="event-stats" id="eventStats" style="display:none">
+          <span>共 <strong id="eventCount">0</strong> 次打开记录</span>
+          <button class="btn-text" id="clearEvents">清空</button>
+        </div>
+      </section>
+
     </div>
-    <div class="knowledge-card">
-      <div class="k-icon"><i class="ti ti-git-branch"></i></div>
-      <h3>修订记录</h3>
-      <p>接受修订后正文看起来干净，但历史改动还在文件里。接收方可以在「审阅」菜单里把所有改动翻出来。</p>
+
+    <!-- 原理说明 -->
+    <section class="explain-card">
+      <h3><i class="ti ti-info-circle"></i>这是怎么做到的</h3>
+      <div class="explain-grid">
+        <div class="explain-step">
+          <div class="step-num">1</div>
+          <div>
+            <strong>嵌入远程图片</strong>
+            <p>PDF 格式支持引用外部 URL 的图片。我们在文档里放一个 1×1 透明 PNG，地址指向追踪服务器，附带唯一 token。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">2</div>
+          <div>
+            <strong>阅读器自动请求</strong>
+            <p>Adobe Acrobat、Foxit、浏览器内置 PDF 阅读器在渲染页面时会自动加载图片资源，触发 HTTP 请求。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">3</div>
+          <div>
+            <strong>服务器记录信息</strong>
+            <p>服务器收到请求，记录 IP 地址、User-Agent（设备和系统信息）、打开时间，与 token 关联存储。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">4</div>
+          <div>
+            <strong>实时回传</strong>
+            <p>发件方的页面每 3 秒轮询一次，有新记录就立刻显示。你知道文件被打开了，对方完全不知道。</p>
+          </div>
+        </div>
+      </div>
+      <div class="explain-note">
+        <i class="ti ti-shield"></i>
+        <span>注意：部分 PDF 阅读器（如 iOS 自带预览）会拦截外部请求，或需要用户手动允许加载远程内容。企业级方案通常会把追踪像素伪装成文档 logo 或页眉图片，降低被拦截概率。</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ── Tab 2：文字指纹水印 ── -->
+  <div class="tab-panel" id="tab-watermark">
+    <div class="two-col">
+
+      <!-- 左：生成 -->
+      <section class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-pencil-plus"></i>注入文字指纹</h2>
+        </div>
+        <p class="card-desc">
+          输入一段文本，为不同收件方生成看起来完全一样、但指纹不同的版本。
+          文件泄露后，把泄露版本粘贴进来，就能知道是谁泄露的。
+        </p>
+
+        <div class="field-group">
+          <label>原始文本</label>
+          <textarea id="wmInput" rows="6" placeholder="粘贴你的合同、方案或报告内容…">本次合作项目总金额为人民币三百二十万元整，交付周期为十二个月，分三个阶段验收。甲方需在合同签署后五个工作日内支付首期款项，金额为合同总价的百分之三十。乙方保证按时交付，如有延误，每日按合同总价的千分之一计算违约金。双方同意本合同受中华人民共和国法律管辖。</textarea>
+        </div>
+
+        <div class="recipient-list" id="recipientList">
+          <!-- 由 JS 渲染 -->
+        </div>
+
+        <button class="btn btn-ghost btn-sm" id="addRecipient">
+          <i class="ti ti-plus"></i>添加收件方
+        </button>
+
+        <button class="btn btn-primary btn-full" id="generateWmBtn" style="margin-top:12px">
+          <i class="ti ti-wand"></i>生成各方专属版本
+        </button>
+      </section>
+
+      <!-- 右：结果 -->
+      <section class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-search"></i>指纹提取 / 溯源</h2>
+        </div>
+        <p class="card-desc">
+          把你收到的「疑似泄露版本」粘贴进来，系统会提取指纹并告诉你是哪个收件方泄露的。
+        </p>
+
+        <div class="wm-result" id="wmResult" style="display:none">
+          <!-- 由 JS 渲染 -->
+        </div>
+
+        <div class="field-group" style="margin-top:8px">
+          <label>粘贴疑似泄露文本</label>
+          <textarea id="wmDetectInput" rows="6" placeholder="把收到的文本粘贴到这里…"></textarea>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="detectWmBtn">
+          <i class="ti ti-fingerprint"></i>提取指纹 · 溯源
+        </button>
+
+        <div class="detect-result" id="detectResult" style="display:none">
+          <!-- 由 JS 渲染 -->
+        </div>
+      </section>
+
     </div>
-    <div class="knowledge-card">
-      <div class="k-icon"><i class="ti ti-message-dots"></i></div>
-      <h3>批注</h3>
-      <p>批注气泡在打印预览里可以隐藏，但文件里还在。批注里常常写着内部讨论口径，比正文更敏感。</p>
-    </div>
-    <div class="knowledge-card">
-      <div class="k-icon"><i class="ti ti-eye-off"></i></div>
-      <h3>白色文字</h3>
-      <p>把字体改成白色，页面上看不见，但文本层还在。全选复制，或者换个背景色，内容就出来了。</p>
-    </div>
-  </section>
+
+    <!-- 原理说明 -->
+    <section class="explain-card">
+      <h3><i class="ti ti-info-circle"></i>文字指纹是怎么工作的</h3>
+      <div class="explain-grid">
+        <div class="explain-step">
+          <div class="step-num">1</div>
+          <div>
+            <strong>同义词替换</strong>
+            <p>「总金额」↔「总价款」，「交付」↔「完成」，「保证」↔「确保」。每个替换点是一个 bit，0 或 1。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">2</div>
+          <div>
+            <strong>标点变体</strong>
+            <p>全角逗号「，」↔ 全角顿号「、」，句号「。」后加零宽空格。肉眼看不出差异，但字节不同。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">3</div>
+          <div>
+            <strong>编码为 ID</strong>
+            <p>N 个替换点可以编码 2ᴺ 个不同版本。10 个替换点 = 1024 个不同收件方，每人一份唯一版本。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">4</div>
+          <div>
+            <strong>提取溯源</strong>
+            <p>拿到泄露版本，逐个检查替换点的选择，还原出 ID，对应到具体收件方。</p>
+          </div>
+        </div>
+      </div>
+      <div class="explain-note">
+        <i class="ti ti-shield"></i>
+        <span>局限性：如果泄露方对文本做了大幅改写或翻译，指纹可能失效。商业级方案（如 Digimarc）会结合字间距微调、行高变化等更隐蔽的方式，抗改写能力更强。</span>
+      </div>
+    </section>
+  </div>
 
 </div>
 

@@ -1,302 +1,129 @@
 /**
  * document-steganography.test.js
  * 运行方式：node pages/document-steganography/document-steganography.test.js
- *
- * 测试 logic.js 的核心逻辑（不依赖浏览器 API）
  */
-
 'use strict';
 
-// ── 最小化 mock ──────────────────────────────────────────────────────────────
-
-// mock JSZip（仅测试 SCENARIOS 和 scanDocx 的 XML 解析路径）
-function JSZipMock() {
-  this._files = {};
-}
-JSZipMock.prototype.file = function (path, content) {
-  this._files[path] = content;
-  return this;
-};
-JSZipMock.prototype.generateAsync = function () {
-  return Promise.resolve(new ArrayBuffer(8));
-};
-JSZipMock.loadAsync = function (buf) {
-    // 返回一个模拟的 zip，包含 core.xml 和 comments.xml
-    var files = {
-      'docProps/core.xml': {
-        async: function () {
-          return Promise.resolve(
-            '<?xml version="1.0"?>' +
-            '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ' +
-            'xmlns:dc="http://purl.org/dc/elements/1.1/" ' +
-            'xmlns:dcterms="http://purl.org/dc/terms/" ' +
-            'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
-            '<dc:creator>Test Author</dc:creator>' +
-            '<cp:lastModifiedBy>Test Editor</cp:lastModifiedBy>' +
-            '<dcterms:created xsi:type="dcterms:W3CDTF">2026-01-01T00:00:00Z</dcterms:created>' +
-            '<dcterms:modified xsi:type="dcterms:W3CDTF">2026-04-01T00:00:00Z</dcterms:modified>' +
-            '</cp:coreProperties>'
-          );
-        }
-      },
-      'docProps/app.xml': {
-        async: function () {
-          return Promise.resolve(
-            '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">' +
-            '<Company>TestCo</Company>' +
-            '<Manager>TEST-PC-01</Manager>' +
-            '</Properties>'
-          );
-        }
-      },
-      'word/document.xml': {
-        async: function () {
-          return Promise.resolve(
-            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
-            '<w:body>' +
-            '<w:p><w:r><w:t>Hello</w:t></w:r></w:p>' +
-            '<w:p>' +
-            '<w:del w:id="0" w:author="Alice" w:date="2026-01-01T00:00:00Z">' +
-            '<w:r><w:delText>old text</w:delText></w:r>' +
-            '</w:del>' +
-            '<w:ins w:id="1" w:author="Alice" w:date="2026-01-01T00:00:00Z">' +
-            '<w:r><w:t>new text</w:t></w:r>' +
-            '</w:ins>' +
-            '</w:p>' +
-            '<w:p><w:r><w:rPr><w:color w:val="FFFFFF"/></w:rPr><w:t>hidden</w:t></w:r></w:p>' +
-            '</w:body>' +
-            '</w:document>'
-          );
-        }
-      },
-      'word/comments.xml': {
-        async: function () {
-          return Promise.resolve(
-            '<w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
-            '<w:comment w:id="0" w:author="Bob" w:date="2026-01-01T00:00:00Z">' +
-            '<w:p><w:r><w:t>This is a comment</w:t></w:r></w:p>' +
-            '</w:comment>' +
-            '</w:comments>'
-          );
-        }
-      }
-    };
-    return Promise.resolve({
-      file: function (path) { return files[path] || null; }
-    });
-};
-global.JSZip = JSZipMock;
-
-// mock DOMParser（Node.js 没有，用简单的正则提取）
-global.DOMParser = function () {};
-global.DOMParser.prototype.parseFromString = function (xmlStr) {
-  // 返回一个简单的 mock document，支持 querySelector 和 querySelectorAll
-  function findAll(tag) {
-    var results = [];
-    var re = new RegExp('<(?:[a-z]+:)?' + tag + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[a-z]+:)?' + tag + '>', 'gi');
-    var m;
-    while ((m = re.exec(xmlStr)) !== null) {
-      var content = m[1];
-      var attrStr = m[0].match(/<[^>]+>/)[0];
-      results.push({
-        textContent: content.replace(/<[^>]+>/g, '').trim(),
-        getAttribute: function (name) {
-          var attrMatch = attrStr.match(new RegExp(name.replace(':', '\\:') + '="([^"]*)"'));
-          return attrMatch ? attrMatch[1] : null;
-        },
-        querySelector: function (sel) {
-          var inner = findAllIn(content, sel.replace(/^[a-z]+:/, ''));
-          return inner[0] || null;
-        },
-        parentElement: {
-          querySelector: function (sel) {
-            var inner = findAllIn(content, sel.replace(/^[a-z]+:/, ''));
-            return inner[0] || null;
-          }
-        }
-      });
-    }
-    return results;
-  }
-
-  function findAllIn(str, tag) {
-    var results = [];
-    var re = new RegExp('<(?:[a-z]+:)?' + tag + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[a-z]+:)?' + tag + '>', 'gi');
-    var m;
-    while ((m = re.exec(str)) !== null) {
-      results.push({ textContent: m[1].replace(/<[^>]+>/g, '').trim() });
-    }
-    return results;
-  }
-
-  return {
-    querySelector: function (sel) {
-      var tag = sel.replace(/^[a-z]+:/, '');
-      var all = findAll(tag);
-      return all[0] || null;
-    },
-    querySelectorAll: function (sel) {
-      var tag = sel.replace(/^[a-z]+:/, '');
-      return findAll(tag);
-    }
-  };
-};
-
-// ── 加载 logic.js ────────────────────────────────────────────────────────────
+// mock fetch（Node.js 没有）
+global.fetch = function () { return Promise.resolve({ json: function () { return Promise.resolve({}); } }); };
 
 var path = require('path');
 require(path.join(__dirname, 'logic.js'));
 var lab = global.DocStegoLab;
 
-// ── 测试工具 ─────────────────────────────────────────────────────────────────
+var passed = 0, failed = 0;
 
-var passed = 0;
-var failed = 0;
-
-function assert(condition, message) {
-  if (condition) {
-    console.log('  ✓ ' + message);
-    passed++;
-  } else {
-    console.error('  ✗ ' + message);
-    failed++;
-  }
+function assert(cond, msg) {
+  if (cond) { console.log('  ✓ ' + msg); passed++; }
+  else { console.error('  ✗ ' + msg); failed++; }
 }
 
 function test(name, fn) {
   console.log('\n' + name);
   try {
-    var result = fn();
-    if (result && typeof result.then === 'function') {
-      return result.catch(function (err) {
-        console.error('  ✗ 异步测试失败：' + err.message);
-        failed++;
-      });
-    }
-  } catch (err) {
-    console.error('  ✗ 测试抛出异常：' + err.message);
-    failed++;
-  }
+    var r = fn();
+    if (r && typeof r.then === 'function') return r.catch(function (e) { console.error('  ✗ 异步失败：' + e.message); failed++; });
+  } catch (e) { console.error('  ✗ 抛出异常：' + e.message); failed++; }
 }
 
-// ── 测试用例 ─────────────────────────────────────────────────────────────────
+// ── randomToken ──────────────────────────────────────────────────────────────
 
-test('SCENARIOS 数据完整性', function () {
-  assert(Array.isArray(lab.SCENARIOS), 'SCENARIOS 是数组');
-  assert(lab.SCENARIOS.length >= 3, '至少有 3 个场景');
-
-  lab.SCENARIOS.forEach(function (s) {
-    assert(typeof s.id === 'string' && s.id.length > 0, s.id + ': id 存在');
-    assert(typeof s.name === 'string' && s.name.length > 0, s.id + ': name 存在');
-    assert(Array.isArray(s.risks) && s.risks.length > 0, s.id + ': risks 非空');
-    assert(s.meta && s.meta.creator, s.id + ': meta.creator 存在');
-    assert(s.content && s.content.fileName, s.id + ': content.fileName 存在');
-    assert(Array.isArray(s.content.visibleText), s.id + ': visibleText 是数组');
-    assert(Array.isArray(s.content.revisions), s.id + ': revisions 是数组');
-    assert(Array.isArray(s.content.comments), s.id + ': comments 是数组');
-  });
+test('randomToken 生成 24 位字母数字', function () {
+  var t = lab.randomToken();
+  assert(typeof t === 'string', '返回字符串');
+  assert(t.length === 24, '长度为 24');
+  assert(/^[a-z0-9]+$/.test(t), '只含小写字母和数字');
 });
 
-test('sales-quote 场景包含修订和批注', function () {
-  var s = lab.SCENARIOS.find(function (x) { return x.id === 'sales-quote'; });
-  assert(s !== undefined, '找到 sales-quote 场景');
-  assert(s.content.revisions.length >= 2, '至少 2 条修订记录');
-  assert(s.content.comments.length >= 2, '至少 2 条批注');
-  assert(s.content.whiteText === null, '无白色文字');
+test('randomToken 每次不同', function () {
+  var tokens = new Set();
+  for (var i = 0; i < 20; i++) tokens.add(lab.randomToken());
+  assert(tokens.size >= 18, '20 次生成至少 18 个不同值');
 });
 
-test('hr-notice 场景包含白色文字', function () {
-  var s = lab.SCENARIOS.find(function (x) { return x.id === 'hr-notice'; });
-  assert(s !== undefined, '找到 hr-notice 场景');
-  assert(typeof s.content.whiteText === 'string' && s.content.whiteText.length > 0, '有白色文字内容');
-  assert(s.content.revisions.length === 0, '无修订记录');
+// ── generateTrackingPdf ──────────────────────────────────────────────────────
+
+test('generateTrackingPdf 返回字符串', function () {
+  var pdf = lab.generateTrackingPdf({ title: '测试文档', recipient: '张总', token: 'abc123' });
+  assert(typeof pdf === 'string', '返回字符串');
+  assert(pdf.startsWith('%PDF'), '以 %PDF 开头');
+  assert(pdf.includes('%%EOF'), '包含 %%EOF');
 });
 
-test('generateDocx 返回 ArrayBuffer', function () {
-  return lab.generateDocx('sales-quote').then(function (result) {
-    assert(result.buffer instanceof ArrayBuffer, '返回 ArrayBuffer');
-    assert(result.buffer.byteLength > 0, 'buffer 非空');
-    assert(typeof result.fileName === 'string' && result.fileName.endsWith('.docx'), '文件名以 .docx 结尾');
-  });
+test('generateTrackingPdf 包含追踪 URL', function () {
+  var token = 'testtoken123456789012';
+  var pdf = lab.generateTrackingPdf({ title: 'T', recipient: 'R', token: token });
+  assert(pdf.includes(token), 'PDF 内容包含 token');
+  assert(pdf.includes('/doc-track/pixel'), '包含追踪路径');
 });
 
-test('generateDocx 未知场景返回 rejected Promise', function () {
-  return lab.generateDocx('nonexistent').then(function () {
-    assert(false, '应该 reject');
-  }).catch(function (err) {
-    assert(err instanceof Error, '返回 Error');
-    assert(err.message.indexOf('nonexistent') !== -1, '错误信息包含场景 id');
-  });
+test('generateTrackingPdf 包含 OpenAction', function () {
+  var pdf = lab.generateTrackingPdf({ title: 'T', recipient: 'R', token: 'tok' });
+  assert(pdf.includes('/OpenAction'), '包含 OpenAction');
+  assert(pdf.includes('/URI'), '包含 URI action');
 });
 
-test('scanDocx 解析元数据', function () {
-  return lab.scanDocx(new ArrayBuffer(0)).then(function (result) {
-    assert(Array.isArray(result.findings), 'findings 是数组');
-    assert(typeof result.clean === 'boolean', 'clean 是布尔值');
-
-    var metaFinding = result.findings.find(function (f) { return f.type === 'metadata'; });
-    assert(metaFinding !== undefined, '检测到元数据');
-    assert(Array.isArray(metaFinding.fields), 'fields 是数组');
-
-    var authorField = metaFinding.fields.find(function (f) { return f.label === '作者'; });
-    assert(authorField !== undefined, '包含作者字段');
-    assert(authorField.value === 'Test Author', '作者值正确');
-  });
+test('generateTrackingPdf 包含 xref 和 trailer', function () {
+  var pdf = lab.generateTrackingPdf({ title: 'T', recipient: 'R', token: 'tok' });
+  assert(pdf.includes('xref'), '包含 xref');
+  assert(pdf.includes('trailer'), '包含 trailer');
+  assert(pdf.includes('startxref'), '包含 startxref');
 });
 
-test('scanDocx 检测修订记录', function () {
-  return lab.scanDocx(new ArrayBuffer(0)).then(function (result) {
-    var revFinding = result.findings.find(function (f) { return f.type === 'revisions'; });
-    assert(revFinding !== undefined, '检测到修订记录');
-    assert(revFinding.severity === 'high', '修订记录为高风险');
-    assert(Array.isArray(revFinding.samples), 'samples 是数组');
-  });
+// ── injectWatermark ──────────────────────────────────────────────────────────
+
+var sampleText = '本次合作项目总金额为人民币三百二十万元整，交付周期为十二个月，分三个阶段验收。甲方需在合同签署后五个工作日内支付首期款项。乙方保证按时交付。';
+
+test('injectWatermark id=0 与原文相同（或仅有零宽字符差异）', function () {
+  var result = lab.injectWatermark(sampleText, 0);
+  // id=0 时所有 bit 为 0，同义词不替换，但可能有零宽字符
+  var stripped = result.replace(/[\u200b\u200c]/g, '');
+  assert(stripped === sampleText, 'id=0 去除零宽字符后与原文相同');
 });
 
-test('scanDocx 检测批注', function () {
-  return lab.scanDocx(new ArrayBuffer(0)).then(function (result) {
-    var commentFinding = result.findings.find(function (f) { return f.type === 'comments'; });
-    assert(commentFinding !== undefined, '检测到批注');
-    assert(commentFinding.samples.length >= 1, '至少 1 条批注样本');
-    assert(commentFinding.samples[0].author === 'Bob', '批注作者正确');
-    assert(commentFinding.samples[0].text === 'This is a comment', '批注内容正确');
-  });
+test('injectWatermark id=1 替换第一个同义词', function () {
+  var result = lab.injectWatermark(sampleText, 1);
+  // bit 0 = 1，替换「总金额」→「总价款」
+  assert(result.includes('总价款') || result !== sampleText, 'id=1 产生了差异');
 });
 
-test('scanDocx 检测白色文字', function () {
-  return lab.scanDocx(new ArrayBuffer(0)).then(function (result) {
-    var whiteFinding = result.findings.find(function (f) { return f.type === 'whiteText'; });
-    assert(whiteFinding !== undefined, '检测到白色文字');
-    assert(whiteFinding.severity === 'high', '白色文字为高风险');
-  });
+test('injectWatermark 不同 id 产生不同文本', function () {
+  var r0 = lab.injectWatermark(sampleText, 0);
+  var r1 = lab.injectWatermark(sampleText, 1);
+  var r2 = lab.injectWatermark(sampleText, 2);
+  var r3 = lab.injectWatermark(sampleText, 3);
+  assert(r0 !== r1 || r1 !== r2, '不同 id 产生不同文本');
+  assert(r2 !== r3, 'id=2 和 id=3 不同');
 });
 
-test('clean 文件返回 clean=true', function () {
-  // 临时替换 JSZip mock 为干净文件
-  var origLoadAsync = global.JSZip.loadAsync;
-  global.JSZip.loadAsync = function () {
-    return Promise.resolve({
-      file: function (path) {
-        if (path === 'docProps/core.xml') {
-          return {
-            async: function () {
-              return Promise.resolve(
-                '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties">' +
-                '</cp:coreProperties>'
-              );
-            }
-          };
-        }
-        return null;
-      }
-    });
-  };
+test('injectWatermark 保留原文主要内容', function () {
+  var result = lab.injectWatermark(sampleText, 7);
+  // 去除零宽字符后，长度应该接近原文
+  var stripped = result.replace(/[\u200b\u200c]/g, '');
+  assert(Math.abs(stripped.length - sampleText.length) < 20, '长度差异在 20 字以内');
+});
 
-  return lab.scanDocx(new ArrayBuffer(0)).then(function (result) {
-    assert(result.clean === true, '干净文件 clean=true');
-    assert(result.findings.length === 0, '无 findings');
-    global.JSZip.loadAsync = origLoadAsync;
-  });
+// ── extractWatermark ─────────────────────────────────────────────────────────
+
+test('extractWatermark 从注入文本中还原 id', function () {
+  for (var id = 0; id < 8; id++) {
+    var watermarked = lab.injectWatermark(sampleText, id);
+    var result = lab.extractWatermark(watermarked);
+    assert(result.id === id, 'id=' + id + ' 可以还原');
+  }
+});
+
+test('extractWatermark 返回 confidence 和 bitStr', function () {
+  var watermarked = lab.injectWatermark(sampleText, 5);
+  var result = lab.extractWatermark(watermarked);
+  assert(typeof result.confidence === 'number', 'confidence 是数字');
+  assert(result.confidence >= 0 && result.confidence <= 1, 'confidence 在 0-1 之间');
+  assert(typeof result.bitStr === 'string', 'bitStr 是字符串');
+});
+
+test('extractWatermark 对原始文本返回 id=0', function () {
+  var result = lab.extractWatermark(sampleText);
+  assert(result.id === 0, '原始文本 id=0');
 });
 
 // ── 汇总 ─────────────────────────────────────────────────────────────────────
@@ -305,4 +132,4 @@ setTimeout(function () {
   console.log('\n─────────────────────────────');
   console.log('通过：' + passed + '  失败：' + failed);
   if (failed > 0) process.exit(1);
-}, 500);
+}, 200);

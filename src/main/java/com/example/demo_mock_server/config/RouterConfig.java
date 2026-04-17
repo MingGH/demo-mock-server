@@ -106,6 +106,11 @@ public class RouterConfig {
         router.get("/inference/leaderboard").handler(inferenceHandler);
         router.delete("/inference/leaderboard").handler(inferenceHandler);
 
+        // 文档追踪像素
+        DocTrackHandler docTrackHandler = new DocTrackHandler();
+        router.get("/doc-track/pixel").handler(docTrackHandler);
+        router.get("/doc-track/events").handler(docTrackHandler);
+
         // 静态资源
         router.route("/pages/*").handler(StaticHandler.create("pages"));
         router.route("/components/*").handler(StaticHandler.create("components"));

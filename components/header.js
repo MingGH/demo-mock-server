@@ -411,6 +411,10 @@
       container.classList.add('page-shell');
     }
 
+    if (!rail) {
+      return;
+    }
+
     rail.innerHTML = `
       <div class="rail-card">
         <span class="rail-kicker"><iconify-icon icon="ph:cursor-click"></iconify-icon>这页玩法</span>

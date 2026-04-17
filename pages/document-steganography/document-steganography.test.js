@@ -74,8 +74,8 @@ test('selectAnchors 数量不足时返回实际数量', function () {
 
 // Node.js 没有 Canvas，用 mock 测试核心逻辑
 function makeMockCanvas(width, height, pixels) {
-  // pixels: Uint8ClampedArray，RGBA 格式
   var data = pixels || new Uint8ClampedArray(width * height * 4).fill(255);
+  var W = width, H = height;
   return {
     width: width,
     height: height,
@@ -88,7 +88,21 @@ function makeMockCanvas(width, height, pixels) {
         fillRect: function () {},
         fillText: function () {},
         clearRect: function () {},
-        getImageData: function (x, y, w, h) { return { data: data }; },
+        getImageData: function (x, y, w, h) {
+          // 正确裁剪：从 (x,y) 开始取 w×h 像素
+          var result = new Uint8ClampedArray(w * h * 4);
+          for (var row = 0; row < h; row++) {
+            for (var col = 0; col < w; col++) {
+              var srcIdx = ((y + row) * W + (x + col)) * 4;
+              var dstIdx = (row * w + col) * 4;
+              result[dstIdx]   = data[srcIdx]   || 0;
+              result[dstIdx+1] = data[srcIdx+1] || 0;
+              result[dstIdx+2] = data[srcIdx+2] || 0;
+              result[dstIdx+3] = data[srcIdx+3] !== undefined ? data[srcIdx+3] : 255;
+            }
+          }
+          return { data: result };
+        },
         putImageData: function () {},
         createImageData: function (w, h) {
           return { data: new Uint8ClampedArray(w * h * 4) };
@@ -130,16 +144,14 @@ test('renderWithSpacingWatermark id=0 所有锚点 shift=-delta', function () {
   var meta = lab.renderWithSpacingWatermark(canvas, sampleText, {
     recipientId: 0, fontSize: 20, delta: delta
   });
-  var anchorSet = {};
-  meta.anchors.forEach(function (a) { anchorSet[a] = true; });
-  var allNeg = meta.lines.every(function (line) {
-    return line.every(function (item) {
-      if (!anchorSet[item.anchorIdx === -1 ? -999 : meta.anchors[item.anchorIdx]]) return true;
-      return item.shift === -delta || item.shift === 0;
-    });
-  });
   assert(meta.encodedId === 0, 'encodedId = 0');
   assert(meta.bits.every(function (b) { return b === 0; }), 'id=0 所有 bit=0');
+  // 所有锚点位置的 shift 应该是 -delta
+  var anchorItems = [];
+  meta.lines.forEach(function(line){
+    line.forEach(function(item){ if(item.aIdx !== -1) anchorItems.push(item); });
+  });
+  assert(anchorItems.every(function(item){ return item.shift === -delta; }), 'id=0 所有锚点 shift=-delta');
 });
 
 test('renderWithSpacingWatermark id=255 所有 bit=1', function () {
@@ -151,11 +163,40 @@ test('renderWithSpacingWatermark id=255 所有 bit=1', function () {
 });
 
 // extractSpacingWatermark 需要真实像素数据，用模拟间距数据测试核心判决逻辑
-test('extractSpacingWatermark 错误处理：字符太少', function () {
-  // 构造一个几乎全白的图片（没有字符）
-  var canvas = makeMockCanvas(100, 50);
-  var result = lab.extractSpacingWatermark(canvas, 20, 0.3);
-  assert(result.id === -1 || result.gaps.length < 4, '字符不足时返回错误');
+test('extractSpacingWatermark 错误处理：无 LSB 标记', function () {
+  // 全白图片，没有 LSB 标记
+  var data = new Uint8ClampedArray(100 * 50 * 4).fill(255);
+  var canvas = makeMockCanvas(100, 50, data);
+  var result = lab.extractSpacingWatermark(canvas);
+  assert(result.id === -1, '无标记时返回 id=-1');
+  assert(result.confidence === 0, '置信度为 0');
+  assert(typeof result.error === 'string', '有错误信息');
+});
+
+test('extractSpacingWatermark 读取 LSB 标记还原 ID', function () {
+  // 构造一个带 LSB 标记的图片（最后一行写入 id=42 的标记）
+  var W = 200, H = 10;
+  var data = new Uint8ClampedArray(W * H * 4).fill(255);
+  var id = 42; // 00101010
+  var BIT_COUNT = 8;
+  // 写入最后一行
+  var lastY = H - 1;
+  for (var b = 0; b < BIT_COUNT; b++) {
+    var bit = (id >> b) & 1;
+    for (var px = 0; px < 8; px++) {
+      var xPos = 8 + b * 8 + px;
+      var di = (lastY * W + xPos) * 4;
+      data[di]   = bit ? 1 : 0;
+      data[di+1] = 0;
+      data[di+2] = 0;
+      data[di+3] = 255;
+    }
+  }
+  var canvas = makeMockCanvas(W, H, data);
+  var result = lab.extractSpacingWatermark(canvas);
+  assert(result.id === 42, '正确还原 id=42');
+  assert(result.confidence === 1.0, '置信度为 1.0');
+  assert(result.bits.length === 8, 'bits 长度为 8');
 });
 
 // ── 汇总 ─────────────────────────────────────────────────────────────────────

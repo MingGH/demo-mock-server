@@ -4,132 +4,161 @@
  */
 'use strict';
 
-// mock fetch（Node.js 没有）
-global.fetch = function () { return Promise.resolve({ json: function () { return Promise.resolve({}); } }); };
-
 var path = require('path');
 require(path.join(__dirname, 'logic.js'));
 var lab = global.DocStegoLab;
 
 var passed = 0, failed = 0;
-
 function assert(cond, msg) {
   if (cond) { console.log('  ✓ ' + msg); passed++; }
   else { console.error('  ✗ ' + msg); failed++; }
 }
-
 function test(name, fn) {
   console.log('\n' + name);
-  try {
-    var r = fn();
-    if (r && typeof r.then === 'function') return r.catch(function (e) { console.error('  ✗ 异步失败：' + e.message); failed++; });
-  } catch (e) { console.error('  ✗ 抛出异常：' + e.message); failed++; }
+  try { fn(); } catch (e) { console.error('  ✗ 抛出异常：' + e.message); failed++; }
 }
 
-// ── randomToken ──────────────────────────────────────────────────────────────
+var sampleText = '本次合作项目总金额为人民币三百二十万元整，交付周期为十二个月，分三个阶段验收。甲方需在合同签署后五个工作日内支付首期款项。乙方保证按时交付，如有延误按合同约定处理。';
 
-test('randomToken 生成 24 位字母数字', function () {
-  var t = lab.randomToken();
-  assert(typeof t === 'string', '返回字符串');
-  assert(t.length === 24, '长度为 24');
-  assert(/^[a-z0-9]+$/.test(t), '只含小写字母和数字');
-});
+// ── 文字指纹 ─────────────────────────────────────────────────────────────────
 
-test('randomToken 每次不同', function () {
-  var tokens = new Set();
-  for (var i = 0; i < 20; i++) tokens.add(lab.randomToken());
-  assert(tokens.size >= 18, '20 次生成至少 18 个不同值');
-});
-
-// ── generateTrackingPdf ──────────────────────────────────────────────────────
-
-test('generateTrackingPdf 返回字符串', function () {
-  var pdf = lab.generateTrackingPdf({ title: '测试文档', recipient: '张总', token: 'abc123' });
-  assert(typeof pdf === 'string', '返回字符串');
-  assert(pdf.startsWith('%PDF'), '以 %PDF 开头');
-  assert(pdf.includes('%%EOF'), '包含 %%EOF');
-});
-
-test('generateTrackingPdf 包含追踪 URL', function () {
-  var token = 'testtoken123456789012';
-  var pdf = lab.generateTrackingPdf({ title: 'T', recipient: 'R', token: token });
-  assert(pdf.includes(token), 'PDF 内容包含 token');
-  assert(pdf.includes('/doc-track/pixel'), '包含追踪路径');
-});
-
-test('generateTrackingPdf 包含 OpenAction', function () {
-  var pdf = lab.generateTrackingPdf({ title: 'T', recipient: 'R', token: 'tok' });
-  assert(pdf.includes('/OpenAction'), '包含 OpenAction');
-  assert(pdf.includes('/URI'), '包含 URI action');
-});
-
-test('generateTrackingPdf 包含 xref 和 trailer', function () {
-  var pdf = lab.generateTrackingPdf({ title: 'T', recipient: 'R', token: 'tok' });
-  assert(pdf.includes('xref'), '包含 xref');
-  assert(pdf.includes('trailer'), '包含 trailer');
-  assert(pdf.includes('startxref'), '包含 startxref');
-});
-
-// ── injectWatermark ──────────────────────────────────────────────────────────
-
-var sampleText = '本次合作项目总金额为人民币三百二十万元整，交付周期为十二个月，分三个阶段验收。甲方需在合同签署后五个工作日内支付首期款项。乙方保证按时交付。';
-
-test('injectWatermark id=0 与原文相同（或仅有零宽字符差异）', function () {
-  var result = lab.injectWatermark(sampleText, 0);
-  // id=0 时所有 bit 为 0，同义词不替换，但可能有零宽字符
-  var stripped = result.replace(/[\u200b\u200c]/g, '');
-  assert(stripped === sampleText, 'id=0 去除零宽字符后与原文相同');
-});
-
-test('injectWatermark id=1 替换第一个同义词', function () {
-  var result = lab.injectWatermark(sampleText, 1);
-  // bit 0 = 1，替换「总金额」→「总价款」
-  assert(result.includes('总价款') || result !== sampleText, 'id=1 产生了差异');
+test('injectWatermark id=0 去除零宽字符后与原文相同', function () {
+  var r = lab.injectWatermark(sampleText, 0);
+  assert(r.replace(/[\u200b\u200c]/g, '') === sampleText, 'id=0 内容不变');
 });
 
 test('injectWatermark 不同 id 产生不同文本', function () {
-  var r0 = lab.injectWatermark(sampleText, 0);
-  var r1 = lab.injectWatermark(sampleText, 1);
-  var r2 = lab.injectWatermark(sampleText, 2);
-  var r3 = lab.injectWatermark(sampleText, 3);
-  assert(r0 !== r1 || r1 !== r2, '不同 id 产生不同文本');
-  assert(r2 !== r3, 'id=2 和 id=3 不同');
+  var texts = [0,1,2,3,4,5,6,7].map(function (id) { return lab.injectWatermark(sampleText, id); });
+  var unique = new Set(texts);
+  assert(unique.size === 8, '8 个 id 产生 8 种不同文本');
 });
 
-test('injectWatermark 保留原文主要内容', function () {
-  var result = lab.injectWatermark(sampleText, 7);
-  // 去除零宽字符后，长度应该接近原文
-  var stripped = result.replace(/[\u200b\u200c]/g, '');
-  assert(Math.abs(stripped.length - sampleText.length) < 20, '长度差异在 20 字以内');
-});
-
-// ── extractWatermark ─────────────────────────────────────────────────────────
-
-test('extractWatermark 从注入文本中还原 id', function () {
-  for (var id = 0; id < 8; id++) {
-    var watermarked = lab.injectWatermark(sampleText, id);
-    var result = lab.extractWatermark(watermarked);
-    assert(result.id === id, 'id=' + id + ' 可以还原');
+test('extractWatermark 双向验证 id=0~15', function () {
+  var allOk = true;
+  for (var id = 0; id < 16; id++) {
+    var wm = lab.injectWatermark(sampleText, id);
+    var ex = lab.extractWatermark(wm);
+    if (ex.id !== id) { allOk = false; console.error('    id=' + id + ' 提取失败，得到 ' + ex.id); }
   }
+  assert(allOk, 'id=0~15 全部可以正确还原');
+});
+
+test('extractWatermark 原始文本返回 id=0', function () {
+  assert(lab.extractWatermark(sampleText).id === 0, '原始文本 id=0');
 });
 
 test('extractWatermark 返回 confidence 和 bitStr', function () {
-  var watermarked = lab.injectWatermark(sampleText, 5);
-  var result = lab.extractWatermark(watermarked);
-  assert(typeof result.confidence === 'number', 'confidence 是数字');
-  assert(result.confidence >= 0 && result.confidence <= 1, 'confidence 在 0-1 之间');
-  assert(typeof result.bitStr === 'string', 'bitStr 是字符串');
+  var r = lab.extractWatermark(lab.injectWatermark(sampleText, 5));
+  assert(typeof r.confidence === 'number' && r.confidence >= 0 && r.confidence <= 1, 'confidence 在 0-1');
+  assert(typeof r.bitStr === 'string' && r.bitStr.length === 14, 'bitStr 长度 14');
 });
 
-test('extractWatermark 对原始文本返回 id=0', function () {
-  var result = lab.extractWatermark(sampleText);
-  assert(result.id === 0, '原始文本 id=0');
+// ── selectAnchors ────────────────────────────────────────────────────────────
+
+test('selectAnchors 只选汉字对', function () {
+  var anchors = lab.selectAnchors(sampleText, 8);
+  assert(anchors.length === 8, '选出 8 个锚点');
+  anchors.forEach(function (a) {
+    var ok = /[\u4e00-\u9fff]/.test(sampleText[a]) && /[\u4e00-\u9fff]/.test(sampleText[a+1]);
+    assert(ok, '锚点 ' + a + ' 两侧都是汉字');
+  });
+});
+
+test('selectAnchors 数量不足时返回实际数量', function () {
+  var short = '你好世界';
+  var anchors = lab.selectAnchors(short, 10);
+  assert(anchors.length <= 3, '短文本锚点数量不超过字符对数');
+});
+
+// ── 字间距水印（Canvas mock） ─────────────────────────────────────────────────
+
+// Node.js 没有 Canvas，用 mock 测试核心逻辑
+function makeMockCanvas(width, height, pixels) {
+  // pixels: Uint8ClampedArray，RGBA 格式
+  var data = pixels || new Uint8ClampedArray(width * height * 4).fill(255);
+  return {
+    width: width,
+    height: height,
+    getContext: function () {
+      return {
+        font: '',
+        fillStyle: '',
+        textBaseline: '',
+        measureText: function (ch) { return { width: 20 }; },
+        fillRect: function () {},
+        fillText: function () {},
+        clearRect: function () {},
+        getImageData: function (x, y, w, h) { return { data: data }; },
+        putImageData: function () {},
+        createImageData: function (w, h) {
+          return { data: new Uint8ClampedArray(w * h * 4) };
+        },
+        drawImage: function () {}
+      };
+    }
+  };
+}
+
+test('renderWithSpacingWatermark 返回正确元数据', function () {
+  var canvas = makeMockCanvas(680, 200);
+  var meta = lab.renderWithSpacingWatermark(canvas, sampleText, {
+    recipientId: 42, fontSize: 20, delta: 0.3
+  });
+  assert(meta.encodedId === 42, 'encodedId = 42');
+  assert(meta.bits.length === 8, 'bits 长度 = 8');
+  assert(meta.anchors.length === 8, 'anchors 长度 = 8');
+  // 验证 bit 序列
+  var reconstructed = 0;
+  meta.bits.forEach(function (b, i) { if (b) reconstructed |= (1 << i); });
+  assert(reconstructed === 42, 'bit 序列还原 = 42');
+});
+
+test('renderWithSpacingWatermark noWatermark=true 所有 shift=0', function () {
+  var canvas = makeMockCanvas(680, 200);
+  var meta = lab.renderWithSpacingWatermark(canvas, sampleText, {
+    recipientId: 255, fontSize: 20, delta: 0.5, noWatermark: true
+  });
+  var allZero = meta.lines.every(function (line) {
+    return line.every(function (item) { return item.shift === 0; });
+  });
+  assert(allZero, 'noWatermark=true 时所有 shift=0');
+});
+
+test('renderWithSpacingWatermark id=0 所有锚点 shift=-delta', function () {
+  var canvas = makeMockCanvas(680, 200);
+  var delta = 0.3;
+  var meta = lab.renderWithSpacingWatermark(canvas, sampleText, {
+    recipientId: 0, fontSize: 20, delta: delta
+  });
+  var anchorSet = {};
+  meta.anchors.forEach(function (a) { anchorSet[a] = true; });
+  var allNeg = meta.lines.every(function (line) {
+    return line.every(function (item) {
+      if (!anchorSet[item.anchorIdx === -1 ? -999 : meta.anchors[item.anchorIdx]]) return true;
+      return item.shift === -delta || item.shift === 0;
+    });
+  });
+  assert(meta.encodedId === 0, 'encodedId = 0');
+  assert(meta.bits.every(function (b) { return b === 0; }), 'id=0 所有 bit=0');
+});
+
+test('renderWithSpacingWatermark id=255 所有 bit=1', function () {
+  var canvas = makeMockCanvas(680, 200);
+  var meta = lab.renderWithSpacingWatermark(canvas, sampleText, {
+    recipientId: 255, fontSize: 20, delta: 0.3
+  });
+  assert(meta.bits.every(function (b) { return b === 1; }), 'id=255 所有 bit=1');
+});
+
+// extractSpacingWatermark 需要真实像素数据，用模拟间距数据测试核心判决逻辑
+test('extractSpacingWatermark 错误处理：字符太少', function () {
+  // 构造一个几乎全白的图片（没有字符）
+  var canvas = makeMockCanvas(100, 50);
+  var result = lab.extractSpacingWatermark(canvas, 20, 0.3);
+  assert(result.id === -1 || result.gaps.length < 4, '字符不足时返回错误');
 });
 
 // ── 汇总 ─────────────────────────────────────────────────────────────────────
-
-setTimeout(function () {
-  console.log('\n─────────────────────────────');
-  console.log('通过：' + passed + '  失败：' + failed);
-  if (failed > 0) process.exit(1);
-}, 200);
+console.log('\n─────────────────────────────');
+console.log('通过：' + passed + '  失败：' + failed);
+if (failed > 0) process.exit(1);

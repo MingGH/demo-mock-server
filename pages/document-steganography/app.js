@@ -5,14 +5,12 @@
   'use strict';
 
   var lab = window.DocStegoLab;
-
   function $(id) { return document.getElementById(id); }
   function escHtml(s) {
     return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  // ─── Tab 切换 ────────────────────────────────────────────────────────────────
-
+  // ── Tab 切换 ──────────────────────────────────────────────────────────────
   document.querySelectorAll('.tab-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var tab = btn.getAttribute('data-tab');
@@ -24,144 +22,14 @@
     });
   });
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // Tab 1：PDF 追踪像素
-  // ════════════════════════════════════════════════════════════════════════════
-
-  var currentToken = lab.randomToken();
-  var pollTimer = null;
-  var knownEventCount = 0;
-  var localEvents = []; // 本地缓存，用于清空功能
-
-  function renderToken() {
-    $('trackingToken').textContent = currentToken;
-  }
-
-  function generateNewToken() {
-    currentToken = lab.randomToken();
-    knownEventCount = 0;
-    localEvents = [];
-    renderToken();
-    renderEventList([]);
-    $('eventStats').style.display = 'none';
-  }
-
-  $('refreshToken').addEventListener('click', generateNewToken);
-
-  // 生成 PDF
-  $('generatePdfBtn').addEventListener('click', function () {
-    var btn = $('generatePdfBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="ti ti-loader-2 spin"></i>生成中…';
-
-    var title = $('pdfTitle').value.trim() || '合作方案';
-    var recipient = $('pdfRecipient').value.trim() || '收件方';
-
-    try {
-      var pdfContent = lab.generateTrackingPdf({
-        title: title,
-        recipient: recipient,
-        token: currentToken
-      });
-
-      var blob = new Blob([pdfContent], { type: 'application/pdf' });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = title + '-' + recipient + '.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-
-      btn.innerHTML = '<i class="ti ti-check"></i>已下载，等待打开记录…';
-      startPolling();
-    } catch (e) {
-      btn.innerHTML = '<i class="ti ti-download"></i>生成并下载 PDF';
-      alert('生成失败：' + e.message);
-    }
-
-    btn.disabled = false;
-  });
-
-  // 轮询
-  function startPolling() {
-    if (pollTimer) clearInterval(pollTimer);
-    $('liveDot').classList.add('pulsing');
-    pollTimer = setInterval(pollEvents, 3000);
-    pollEvents(); // 立即执行一次
-  }
-
-  function pollEvents() {
-    lab.fetchEvents(currentToken).then(function (data) {
-      if (data && Array.isArray(data.events)) {
-        localEvents = data.events;
-        renderEventList(data.events);
-        if (data.events.length > 0) {
-          $('eventStats').style.display = 'flex';
-          $('eventCount').textContent = data.events.length;
-        }
-        // 新增事件时震动提示
-        if (data.events.length > knownEventCount && knownEventCount > 0) {
-          flashNewEvent();
-        }
-        knownEventCount = data.events.length;
-      }
-    }).catch(function () {
-      // 静默失败，继续轮询
-    });
-  }
-
-  function flashNewEvent() {
-    var list = $('eventList');
-    list.classList.add('flash');
-    setTimeout(function () { list.classList.remove('flash'); }, 600);
-  }
-
-  function renderEventList(events) {
-    var list = $('eventList');
-    if (!events || events.length === 0) {
-      list.innerHTML =
-        '<div class="event-empty">' +
-          '<i class="ti ti-clock-pause"></i>' +
-          '<span>等待文件被打开…</span>' +
-        '</div>';
-      return;
-    }
-
-    // 最新的在最上面
-    var reversed = events.slice().reverse();
-    list.innerHTML = reversed.map(function (ev, i) {
-      var isNew = i === 0 && events.length > knownEventCount - 1;
-      return '<div class="event-item' + (i === 0 && events.length > 1 ? ' event-new' : '') + '">' +
-        '<div class="event-row">' +
-          '<span class="event-time"><i class="ti ti-clock"></i>' + escHtml(ev.time) + '</span>' +
-          '<span class="event-device"><i class="ti ti-device-laptop"></i>' + escHtml(ev.device || '未知设备') + '</span>' +
-        '</div>' +
-        '<div class="event-row">' +
-          '<span class="event-ip"><i class="ti ti-map-pin"></i>IP: <code>' + escHtml(ev.ip) + '</code></span>' +
-          '<span class="event-os"><i class="ti ti-brand-windows"></i>' + escHtml(ev.os || '未知系统') + '</span>' +
-        '</div>' +
-        '<div class="event-ua">' + escHtml((ev.ua || '').substring(0, 80)) + (ev.ua && ev.ua.length > 80 ? '…' : '') + '</div>' +
-      '</div>';
-    }).join('');
-  }
-
-  $('clearEvents').addEventListener('click', function () {
-    localEvents = [];
-    knownEventCount = 0;
-    renderEventList([]);
-    $('eventStats').style.display = 'none';
-  });
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // Tab 2：文字指纹水印
-  // ════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
+  // Tab 1：文字指纹水印
+  // ══════════════════════════════════════════════════════════════════════════
 
   var recipients = [
     { name: '张总（竞争对手A）', id: 0 },
-    { name: '李总（合作方B）', id: 1 },
-    { name: '王总（投资人C）', id: 2 }
+    { name: '李总（合作方B）',   id: 1 },
+    { name: '王总（投资人C）',   id: 2 }
   ];
 
   function renderRecipientList() {
@@ -173,21 +41,14 @@
         '<button class="btn-icon btn-danger" data-remove="' + i + '" title="删除"><i class="ti ti-x"></i></button>' +
       '</div>';
     }).join('');
-
-    // 绑定输入
     container.querySelectorAll('.recipient-input').forEach(function (input) {
       input.addEventListener('input', function () {
-        var idx = parseInt(input.getAttribute('data-idx'));
-        recipients[idx].name = input.value;
+        recipients[parseInt(input.getAttribute('data-idx'))].name = input.value;
       });
     });
-
-    // 绑定删除
     container.querySelectorAll('[data-remove]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var idx = parseInt(btn.getAttribute('data-remove'));
-        recipients.splice(idx, 1);
-        // 重新分配 id
+        recipients.splice(parseInt(btn.getAttribute('data-remove')), 1);
         recipients.forEach(function (r, i) { r.id = i; });
         renderRecipientList();
       });
@@ -199,38 +60,45 @@
     renderRecipientList();
   });
 
-  // 生成各方版本
   $('generateWmBtn').addEventListener('click', function () {
     var text = $('wmInput').value.trim();
     if (!text) { alert('请输入原始文本'); return; }
-    if (recipients.length === 0) { alert('请至少添加一个收件方'); return; }
+    if (!recipients.length) { alert('请至少添加一个收件方'); return; }
 
     var result = $('wmResult');
     result.style.display = 'block';
 
-    var html = '<div class="wm-versions">';
-    recipients.forEach(function (r) {
-      var watermarked = lab.injectWatermark(text, r.id);
-      var extracted = lab.extractWatermark(watermarked);
-      html += '<div class="wm-version">' +
-        '<div class="wm-version-header">' +
-          '<span class="wm-recipient">' + escHtml(r.name) + '</span>' +
-          '<span class="wm-id">指纹 ID: <code>' + extracted.id + '</code></span>' +
-          '<button class="btn-copy btn-sm" data-text="' + escHtml(watermarked) + '">复制</button>' +
-        '</div>' +
-        '<div class="wm-preview">' + escHtml(watermarked.substring(0, 120)) + (watermarked.length > 120 ? '…' : '') + '</div>' +
-        '<div class="wm-diff">' + renderDiff(text, watermarked) + '</div>' +
+    var html = '<div class="wm-result-title"><i class="ti ti-check"></i>已生成 ' + recipients.length + ' 份专属版本</div>' +
+      '<div class="wm-versions">' +
+      recipients.map(function (r) {
+        var wm = lab.injectWatermark(text, r.id);
+        var ex = lab.extractWatermark(wm);
+        var diffWords = [];
+        lab.SYNONYM_RULES.forEach(function (rule) {
+          if (wm.indexOf(rule[1]) !== -1 && text.indexOf(rule[0]) !== -1) {
+            diffWords.push(rule[0] + ' → ' + rule[1]);
+          }
+        });
+        if (/[\u200b\u200c]/.test(wm)) diffWords.push('零宽字符（不可见）');
+        return '<div class="wm-version">' +
+          '<div class="wm-version-header">' +
+            '<span class="wm-recipient">' + escHtml(r.name) + '</span>' +
+            '<span class="wm-id">指纹 ID: <code>' + ex.id + '</code></span>' +
+            '<button class="btn-copy" data-wm="' + escHtml(wm) + '">复制</button>' +
+          '</div>' +
+          '<div class="wm-diff">' +
+            (diffWords.length
+              ? '<span class="diff-label">替换点：</span>' + diffWords.map(function (d) { return '<span class="diff-word">' + escHtml(d) + '</span>'; }).join('')
+              : '<span class="diff-same">与原文相同（ID=0）</span>') +
+          '</div>' +
+        '</div>';
+      }).join('') +
       '</div>';
-    });
-    html += '</div>';
 
-    result.innerHTML = '<div class="wm-result-title"><i class="ti ti-check"></i>已生成 ' + recipients.length + ' 份专属版本</div>' + html;
-
-    // 绑定复制按钮
+    result.innerHTML = html;
     result.querySelectorAll('.btn-copy').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var text = btn.getAttribute('data-text');
-        navigator.clipboard.writeText(text).then(function () {
+        navigator.clipboard.writeText(btn.getAttribute('data-wm')).then(function () {
           btn.textContent = '已复制';
           setTimeout(function () { btn.textContent = '复制'; }, 1500);
         });
@@ -238,91 +106,201 @@
     });
   });
 
-  // 渲染差异高亮（找出替换的词）
-  function renderDiff(original, watermarked) {
-    if (original === watermarked) return '<span class="diff-same">与原文相同（ID=0）</span>';
-
-    // 找出不同的字符位置
-    var result = '';
-    var i = 0, j = 0;
-    var oLen = original.length, wLen = watermarked.length;
-
-    // 简单的逐字符对比，找出替换区域
-    // 实际上因为同义词长度可能不同，用简单的方式：标注零宽字符
-    var hasZW = /[\u200b\u200c]/.test(watermarked);
-    var diffWords = [];
-
-    // 检查同义词替换
-    var SYNONYM_RULES = [
-      ['总金额', '总价款'], ['交付', '完成'], ['保证', '确保'],
-      ['合同', '协议'], ['支付', '缴纳'], ['验收', '检收'],
-      ['违约金', '赔偿金'], ['管辖', '适用'], ['首期', '第一期']
-    ];
-
-    SYNONYM_RULES.forEach(function (rule) {
-      if (watermarked.indexOf(rule[1]) !== -1 && original.indexOf(rule[0]) !== -1) {
-        diffWords.push(rule[0] + ' → ' + rule[1]);
-      }
-    });
-
-    if (hasZW) diffWords.push('零宽字符（不可见）');
-
-    if (diffWords.length === 0) return '<span class="diff-same">差异仅在不可见字符</span>';
-
-    return '<span class="diff-label">替换点：</span>' +
-      diffWords.map(function (d) {
-        return '<span class="diff-word">' + escHtml(d) + '</span>';
-      }).join('');
-  }
-
-  // 溯源检测
   $('detectWmBtn').addEventListener('click', function () {
     var text = $('wmDetectInput').value.trim();
     if (!text) { alert('请粘贴疑似泄露文本'); return; }
-
     var result = lab.extractWatermark(text);
-    var detectResult = $('detectResult');
-    detectResult.style.display = 'block';
-
-    // 找匹配的收件方
     var matched = recipients.find(function (r) { return r.id === result.id; });
-    var confidence = Math.round(result.confidence * 100);
-
-    var html = '';
-    if (matched && confidence > 30) {
-      html = '<div class="detect-match">' +
+    var conf = Math.round(result.confidence * 100);
+    var dr = $('detectResult');
+    dr.style.display = 'block';
+    if (matched && conf > 30) {
+      dr.innerHTML = '<div class="detect-match">' +
         '<div class="detect-icon"><i class="ti ti-user-search"></i></div>' +
         '<div class="detect-info">' +
           '<div class="detect-name">疑似来源：<strong>' + escHtml(matched.name) + '</strong></div>' +
           '<div class="detect-id">指纹 ID: <code>' + result.id + '</code>（二进制: ' + result.bitStr + '）</div>' +
-          '<div class="detect-conf">置信度：' + confidence + '%</div>' +
-        '</div>' +
-      '</div>';
-    } else if (confidence > 0) {
-      html = '<div class="detect-unknown">' +
-        '<i class="ti ti-question-mark"></i>' +
-        '<div>' +
-          '<strong>未找到匹配收件方</strong>' +
-          '<p>提取到指纹 ID: ' + result.id + '，但不在当前收件方列表中。' +
-          '可能是文本被大幅改写，或来自其他批次。</p>' +
-        '</div>' +
-      '</div>';
+          '<div class="detect-conf">置信度：' + conf + '%</div>' +
+        '</div></div>';
     } else {
-      html = '<div class="detect-unknown">' +
-        '<i class="ti ti-alert-triangle"></i>' +
-        '<div>' +
-          '<strong>未检测到水印</strong>' +
-          '<p>文本中没有找到水印特征。可能是原始文本（未注入水印），或水印已被破坏。</p>' +
-        '</div>' +
-      '</div>';
+      dr.innerHTML = '<div class="detect-unknown">' +
+        '<i class="ti ti-question-mark"></i>' +
+        '<div><strong>未找到匹配收件方</strong>' +
+        '<p>提取到 ID: ' + result.id + '，不在当前列表中，或文本已被大幅改写。</p></div></div>';
     }
-
-    detectResult.innerHTML = html;
   });
 
-  // ─── 初始化 ──────────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // Tab 2：字间距印刷水印
+  // ══════════════════════════════════════════════════════════════════════════
 
-  renderToken();
+  var lastWatermarkedCanvas = null;
+  var lastSpacingMeta = null;
+
+  // 滑块实时显示
+  $('spDelta').addEventListener('input', function () {
+    $('spDeltaVal').textContent = parseFloat($('spDelta').value).toFixed(1) + 'px';
+  });
+
+  $('spGenerateBtn').addEventListener('click', function () {
+    var text      = $('spInput').value.trim();
+    var id        = parseInt($('spRecipientId').value) || 0;
+    var fontSize  = parseInt($('spFontSize').value) || 20;
+    var delta     = parseFloat($('spDelta').value) || 0.3;
+
+    if (!text) { alert('请输入文本'); return; }
+    id = Math.max(0, Math.min(255, id));
+
+    var canvasOrig = $('canvasOriginal');
+    var canvasWm   = $('canvasWatermarked');
+    var canvasDiff = $('canvasDiff');
+
+    // 渲染原始版本
+    lab.renderWithSpacingWatermark(canvasOrig, text, {
+      recipientId: id, fontSize: fontSize, delta: delta, noWatermark: true
+    });
+
+    // 渲染水印版本
+    var meta = lab.renderWithSpacingWatermark(canvasWm, text, {
+      recipientId: id, fontSize: fontSize, delta: delta, noWatermark: false
+    });
+
+    // 差异图
+    lab.renderDiffCanvas(canvasDiff, canvasOrig, canvasWm);
+
+    lastWatermarkedCanvas = canvasWm;
+    lastSpacingMeta = meta;
+
+    // 显示区域
+    $('canvasCompare').style.display = 'grid';
+    $('spDownloadBtn').style.display = 'flex';
+
+    // 元数据
+    var bitsStr = meta.bits.map(function (b) { return b; }).join(' ');
+    $('spMeta').style.display = 'block';
+    $('spMeta').innerHTML =
+      '<div class="meta-row"><span>编码 ID</span><strong>' + id + '</strong></div>' +
+      '<div class="meta-row"><span>二进制</span><strong>' + id.toString(2).padStart(8, '0') + '</strong></div>' +
+      '<div class="meta-row"><span>锚点数量</span><strong>' + meta.anchors.length + ' 个</strong></div>' +
+      '<div class="meta-row"><span>偏移量 δ</span><strong>±' + delta + 'px</strong></div>' +
+      '<div class="meta-row"><span>bit 序列</span><strong>' + bitsStr + '</strong></div>';
+  });
+
+  $('spDownloadBtn').addEventListener('click', function () {
+    if (!lastWatermarkedCanvas) return;
+    var id = parseInt($('spRecipientId').value) || 0;
+    var a = document.createElement('a');
+    a.download = '水印文档-ID' + id + '.png';
+    a.href = lastWatermarkedCanvas.toDataURL('image/png');
+    a.click();
+  });
+
+  // ── 上传提取 ──────────────────────────────────────────────────────────────
+
+  var spUploadZone = $('spUploadZone');
+
+  spUploadZone.addEventListener('click', function () {
+    $('spFileInput').click();
+  });
+
+  spUploadZone.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    spUploadZone.classList.add('drag-over');
+  });
+  spUploadZone.addEventListener('dragleave', function () {
+    spUploadZone.classList.remove('drag-over');
+  });
+  spUploadZone.addEventListener('drop', function (e) {
+    e.preventDefault();
+    spUploadZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) handleSpFile(e.dataTransfer.files[0]);
+  });
+
+  $('spFileInput').addEventListener('change', function (e) {
+    if (e.target.files[0]) handleSpFile(e.target.files[0]);
+  });
+
+  function handleSpFile(file) {
+    var fontSize = parseInt($('spFontSize').value) || 20;
+    var delta    = parseFloat($('spDelta').value) || 0.3;
+
+    spUploadZone.innerHTML =
+      '<i class="ti ti-loader-2 upload-icon spin"></i>' +
+      '<div class="upload-text">分析中…</div>' +
+      '<div class="upload-sub">' + escHtml(file.name) + '</div>';
+
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var img = new Image();
+      img.onload = function () {
+        // 把图片画到临时 canvas
+        var tmpCanvas = document.createElement('canvas');
+        tmpCanvas.width  = img.width;
+        tmpCanvas.height = img.height;
+        tmpCanvas.getContext('2d').drawImage(img, 0, 0);
+
+        var result = lab.extractSpacingWatermark(tmpCanvas, fontSize, delta);
+
+        // 恢复上传区
+        spUploadZone.innerHTML =
+          '<i class="ti ti-photo-check upload-icon"></i>' +
+          '<div class="upload-text">' + escHtml(file.name) + '</div>' +
+          '<div class="upload-sub">点击重新选择</div>' +
+          '<input type="file" id="spFileInput" accept="image/*" style="display:none">';
+        document.getElementById('spFileInput').addEventListener('change', function (ev) {
+          if (ev.target.files[0]) handleSpFile(ev.target.files[0]);
+        });
+
+        renderExtractResult(result, tmpCanvas, delta);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function renderExtractResult(result, sourceCanvas, delta) {
+    var er = $('spExtractResult');
+    er.style.display = 'block';
+
+    if (result.error || result.id === -1) {
+      er.innerHTML = '<div class="detect-unknown">' +
+        '<i class="ti ti-alert-triangle"></i>' +
+        '<div><strong>提取失败</strong><p>' + escHtml(result.error || '无法识别字符边界') + '</p></div>' +
+        '</div>';
+      return;
+    }
+
+    var conf = Math.round(result.confidence * 100);
+    var confClass = conf >= 70 ? 'conf-high' : conf >= 40 ? 'conf-mid' : 'conf-low';
+
+    er.innerHTML =
+      '<div class="extract-result-card">' +
+        '<div class="extract-id">' +
+          '<span class="extract-id-label">提取到的 ID</span>' +
+          '<span class="extract-id-value">' + result.id + '</span>' +
+          '<span class="extract-id-bin">' + result.id.toString(2).padStart(8, '0') + '</span>' +
+        '</div>' +
+        '<div class="extract-conf ' + confClass + '">' +
+          '<div class="conf-bar"><div class="conf-fill" style="width:' + conf + '%"></div></div>' +
+          '<span>置信度 ' + conf + '%</span>' +
+        '</div>' +
+        '<div class="extract-bits">' +
+          result.bits.map(function (b, i) {
+            return '<span class="bit-cell bit-' + b + '">' + b + '</span>';
+          }).join('') +
+        '</div>' +
+        '<div class="extract-gaps">' +
+          '<span class="gaps-label">检测到 ' + result.gaps.length + ' 个字符间距，基准 ' + (result.median || 0).toFixed(1) + 'px</span>' +
+        '</div>' +
+      '</div>';
+
+    // 热力图
+    var heatmap = $('canvasHeatmap');
+    lab.renderHeatmap(heatmap, sourceCanvas, result.gaps, result.median || 0, delta);
+    $('magnifierWrap').style.display = 'block';
+  }
+
+  // ── 初始化 ────────────────────────────────────────────────────────────────
   renderRecipientList();
 
 })();

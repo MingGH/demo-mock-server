@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="文档隐写实验室：PDF 追踪像素——文件一被打开服务器就知道；文字指纹水印——谁泄露了你的文档，一查便知。">
+  <meta name="description" content="文档隐写实验室：文字指纹水印（同义词替换）与字间距印刷水印——两种商业级文档溯源技术的真实演示。">
   <title>文档隐写实验室 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="style.css">
@@ -14,131 +14,26 @@
   <section class="hero">
     <h1 class="hero-title"><i class="ti ti-spy"></i>文档隐写实验室</h1>
     <p class="hero-desc">
-      两种商业级文档追踪技术的真实演示。<br>
-      PDF 追踪像素：文件一被打开，服务器就知道是谁、在哪里、用什么设备。<br>
-      文字指纹水印：给不同人发不同版本，文件泄露后一查便知是谁干的。
+      文件泄露了，怎么知道是谁干的？两种商业级文档溯源技术的真实演示。<br>
+      文字指纹：同义词替换，文本层面的隐写。字间距水印：把 ID 藏进像素间距，截图也能提取。
     </p>
   </section>
 
-  <!-- Tab 切换 -->
   <div class="tab-bar">
-    <button class="tab-btn active" data-tab="pixel">
-      <i class="ti ti-eye"></i>PDF 追踪像素
-    </button>
-    <button class="tab-btn" data-tab="watermark">
+    <button class="tab-btn active" data-tab="watermark">
       <i class="ti ti-fingerprint"></i>文字指纹水印
     </button>
+    <button class="tab-btn" data-tab="spacing">
+      <i class="ti ti-letter-spacing"></i>字间距印刷水印
+    </button>
   </div>
 
-  <!-- ── Tab 1：PDF 追踪像素 ── -->
-  <div class="tab-panel active" id="tab-pixel">
+  <!-- ══════════════════════════════════════════════════════════════════════
+       Tab 1：文字指纹水印
+  ══════════════════════════════════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-watermark">
     <div class="two-col">
 
-      <!-- 左：生成 -->
-      <section class="card">
-        <div class="card-header">
-          <h2><i class="ti ti-file-download"></i>生成追踪文档</h2>
-        </div>
-        <p class="card-desc">
-          生成一份看起来普通的 PDF。里面嵌入了一个 1×1 的透明追踪像素，
-          指向我们的服务器。收件方一打开，服务器就会收到请求。
-        </p>
-
-        <div class="field-group">
-          <label>文档标题</label>
-          <input type="text" id="pdfTitle" value="2026年Q2合作方案" maxlength="60">
-        </div>
-        <div class="field-group">
-          <label>收件方名称</label>
-          <input type="text" id="pdfRecipient" value="星河科技" maxlength="40">
-        </div>
-
-        <div class="token-display">
-          <span class="token-label">追踪 ID</span>
-          <code id="trackingToken">—</code>
-          <button class="btn-icon" id="refreshToken" title="重新生成"><i class="ti ti-refresh"></i></button>
-        </div>
-
-        <button class="btn btn-primary btn-full" id="generatePdfBtn">
-          <i class="ti ti-download"></i>生成并下载 PDF
-        </button>
-
-        <div class="tip-box">
-          <i class="ti ti-bulb"></i>
-          <span>把这份 PDF 发给任何人，或者自己用 PDF 阅读器打开，右侧就会实时出现记录。</span>
-        </div>
-      </section>
-
-      <!-- 右：实时监控 -->
-      <section class="card">
-        <div class="card-header">
-          <h2><i class="ti ti-activity"></i>实时打开记录</h2>
-          <div class="live-dot" id="liveDot"></div>
-        </div>
-        <p class="card-desc">
-          每隔 3 秒自动刷新。IP 已打码，仅显示前两段。
-        </p>
-
-        <div class="event-list" id="eventList">
-          <div class="event-empty">
-            <i class="ti ti-clock-pause"></i>
-            <span>等待文件被打开…</span>
-          </div>
-        </div>
-
-        <div class="event-stats" id="eventStats" style="display:none">
-          <span>共 <strong id="eventCount">0</strong> 次打开记录</span>
-          <button class="btn-text" id="clearEvents">清空</button>
-        </div>
-      </section>
-
-    </div>
-
-    <!-- 原理说明 -->
-    <section class="explain-card">
-      <h3><i class="ti ti-info-circle"></i>这是怎么做到的</h3>
-      <div class="explain-grid">
-        <div class="explain-step">
-          <div class="step-num">1</div>
-          <div>
-            <strong>嵌入远程图片</strong>
-            <p>PDF 格式支持引用外部 URL 的图片。我们在文档里放一个 1×1 透明 PNG，地址指向追踪服务器，附带唯一 token。</p>
-          </div>
-        </div>
-        <div class="explain-step">
-          <div class="step-num">2</div>
-          <div>
-            <strong>阅读器自动请求</strong>
-            <p>Adobe Acrobat、Foxit、浏览器内置 PDF 阅读器在渲染页面时会自动加载图片资源，触发 HTTP 请求。</p>
-          </div>
-        </div>
-        <div class="explain-step">
-          <div class="step-num">3</div>
-          <div>
-            <strong>服务器记录信息</strong>
-            <p>服务器收到请求，记录 IP 地址、User-Agent（设备和系统信息）、打开时间，与 token 关联存储。</p>
-          </div>
-        </div>
-        <div class="explain-step">
-          <div class="step-num">4</div>
-          <div>
-            <strong>实时回传</strong>
-            <p>发件方的页面每 3 秒轮询一次，有新记录就立刻显示。你知道文件被打开了，对方完全不知道。</p>
-          </div>
-        </div>
-      </div>
-      <div class="explain-note">
-        <i class="ti ti-shield"></i>
-        <span>注意：部分 PDF 阅读器（如 iOS 自带预览）会拦截外部请求，或需要用户手动允许加载远程内容。企业级方案通常会把追踪像素伪装成文档 logo 或页眉图片，降低被拦截概率。</span>
-      </div>
-    </section>
-  </div>
-
-  <!-- ── Tab 2：文字指纹水印 ── -->
-  <div class="tab-panel" id="tab-watermark">
-    <div class="two-col">
-
-      <!-- 左：生成 -->
       <section class="card">
         <div class="card-header">
           <h2><i class="ti ti-pencil-plus"></i>注入文字指纹</h2>
@@ -147,26 +42,19 @@
           输入一段文本，为不同收件方生成看起来完全一样、但指纹不同的版本。
           文件泄露后，把泄露版本粘贴进来，就能知道是谁泄露的。
         </p>
-
         <div class="field-group">
           <label>原始文本</label>
-          <textarea id="wmInput" rows="6" placeholder="粘贴你的合同、方案或报告内容…">本次合作项目总金额为人民币三百二十万元整，交付周期为十二个月，分三个阶段验收。甲方需在合同签署后五个工作日内支付首期款项，金额为合同总价的百分之三十。乙方保证按时交付，如有延误，每日按合同总价的千分之一计算违约金。双方同意本合同受中华人民共和国法律管辖。</textarea>
+          <textarea id="wmInput" rows="6">本次合作项目总金额为人民币三百二十万元整，交付周期为十二个月，分三个阶段验收。甲方需在合同签署后五个工作日内支付首期款项，金额为合同总价的百分之三十。乙方保证按时交付，如有延误，每日按合同总价的千分之一计算违约金。双方同意本合同受中华人民共和国法律管辖。</textarea>
         </div>
-
-        <div class="recipient-list" id="recipientList">
-          <!-- 由 JS 渲染 -->
-        </div>
-
+        <div class="recipient-list" id="recipientList"></div>
         <button class="btn btn-ghost btn-sm" id="addRecipient">
           <i class="ti ti-plus"></i>添加收件方
         </button>
-
         <button class="btn btn-primary btn-full" id="generateWmBtn" style="margin-top:12px">
           <i class="ti ti-wand"></i>生成各方专属版本
         </button>
       </section>
 
-      <!-- 右：结果 -->
       <section class="card">
         <div class="card-header">
           <h2><i class="ti ti-search"></i>指纹提取 / 溯源</h2>
@@ -174,28 +62,19 @@
         <p class="card-desc">
           把你收到的「疑似泄露版本」粘贴进来，系统会提取指纹并告诉你是哪个收件方泄露的。
         </p>
-
-        <div class="wm-result" id="wmResult" style="display:none">
-          <!-- 由 JS 渲染 -->
-        </div>
-
-        <div class="field-group" style="margin-top:8px">
+        <div class="wm-result" id="wmResult" style="display:none"></div>
+        <div class="field-group">
           <label>粘贴疑似泄露文本</label>
           <textarea id="wmDetectInput" rows="6" placeholder="把收到的文本粘贴到这里…"></textarea>
         </div>
-
         <button class="btn btn-primary btn-full" id="detectWmBtn">
           <i class="ti ti-fingerprint"></i>提取指纹 · 溯源
         </button>
-
-        <div class="detect-result" id="detectResult" style="display:none">
-          <!-- 由 JS 渲染 -->
-        </div>
+        <div class="detect-result" id="detectResult" style="display:none"></div>
       </section>
 
     </div>
 
-    <!-- 原理说明 -->
     <section class="explain-card">
       <h3><i class="ti ti-info-circle"></i>文字指纹是怎么工作的</h3>
       <div class="explain-grid">
@@ -209,35 +88,176 @@
         <div class="explain-step">
           <div class="step-num">2</div>
           <div>
-            <strong>标点变体</strong>
-            <p>全角逗号「，」↔ 全角顿号「、」，句号「。」后加零宽空格。肉眼看不出差异，但字节不同。</p>
+            <strong>零宽字符编码</strong>
+            <p>在句号后插入不可见的零宽空格序列，编码额外的 bit。复制粘贴时会一起带走，肉眼完全看不到。</p>
           </div>
         </div>
         <div class="explain-step">
           <div class="step-num">3</div>
           <div>
             <strong>编码为 ID</strong>
-            <p>N 个替换点可以编码 2ᴺ 个不同版本。10 个替换点 = 1024 个不同收件方，每人一份唯一版本。</p>
+            <p>N 个替换点编码 2ᴺ 个版本。10 个替换点 = 1024 个不同收件方，每人一份唯一版本。</p>
           </div>
         </div>
         <div class="explain-step">
           <div class="step-num">4</div>
           <div>
             <strong>提取溯源</strong>
-            <p>拿到泄露版本，逐个检查替换点的选择，还原出 ID，对应到具体收件方。</p>
+            <p>拿到泄露版本，逐个检查替换点，还原出 ID，对应到具体收件方。</p>
           </div>
         </div>
       </div>
       <div class="explain-note">
         <i class="ti ti-shield"></i>
-        <span>局限性：如果泄露方对文本做了大幅改写或翻译，指纹可能失效。商业级方案（如 Digimarc）会结合字间距微调、行高变化等更隐蔽的方式，抗改写能力更强。</span>
+        <span>局限：文本被大幅改写或翻译后指纹可能失效。商业级方案（如 Digimarc）会结合字间距微调、行高变化等更隐蔽的方式，抗改写能力更强——这正是下一个 tab 演示的内容。</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
+       Tab 2：字间距印刷水印
+  ══════════════════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-spacing">
+    <div class="two-col">
+
+      <!-- 左：注入 -->
+      <section class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-letter-spacing"></i>注入字间距水印</h2>
+        </div>
+        <p class="card-desc">
+          文本渲染成图片时，对特定字符间距做 ±0.3px 的微调来编码 ID。
+          肉眼完全看不出差异，但像素分析能读出 bit 序列。截图转发后水印依然存在。
+        </p>
+
+        <div class="field-group">
+          <label>要渲染的文本</label>
+          <textarea id="spInput" rows="5">本次合作项目总金额为人民币三百二十万元整，交付周期为十二个月，分三个阶段验收。甲方需在合同签署后五个工作日内支付首期款项。乙方保证按时交付，如有延误按合同约定处理。</textarea>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group" style="flex:1">
+            <label>收件方 ID（0–255）</label>
+            <input type="number" id="spRecipientId" value="42" min="0" max="255">
+          </div>
+          <div class="field-group" style="flex:1">
+            <label>字体大小</label>
+            <select id="spFontSize">
+              <option value="16">16px（正文）</option>
+              <option value="20" selected>20px（推荐）</option>
+              <option value="24">24px（大字）</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label>偏移量（px）— 越大越容易提取，越小越隐蔽</label>
+          <div class="slider-row">
+            <input type="range" id="spDelta" min="0.1" max="1.0" step="0.1" value="0.3">
+            <span id="spDeltaVal">0.3px</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-full" id="spGenerateBtn">
+          <i class="ti ti-photo"></i>渲染并注入水印
+        </button>
+
+        <!-- 对比展示 -->
+        <div class="canvas-compare" id="canvasCompare" style="display:none">
+          <div class="compare-item">
+            <div class="compare-label">原始（无水印）</div>
+            <canvas id="canvasOriginal"></canvas>
+          </div>
+          <div class="compare-item">
+            <div class="compare-label">注入水印后</div>
+            <canvas id="canvasWatermarked"></canvas>
+          </div>
+          <div class="compare-item">
+            <div class="compare-label">差异放大 ×50</div>
+            <canvas id="canvasDiff"></canvas>
+          </div>
+        </div>
+
+        <div class="sp-meta" id="spMeta" style="display:none"></div>
+
+        <button class="btn btn-ghost btn-full" id="spDownloadBtn" style="display:none">
+          <i class="ti ti-download"></i>下载水印图片
+        </button>
+      </section>
+
+      <!-- 右：提取 -->
+      <section class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-scan"></i>提取字间距水印</h2>
+        </div>
+        <p class="card-desc">
+          上传一张用上面方法生成的图片，系统会分析每个字符间距，还原出隐藏的收件方 ID。
+        </p>
+
+        <div class="upload-zone" id="spUploadZone">
+          <i class="ti ti-photo-up upload-icon"></i>
+          <div class="upload-text">拖拽图片到这里</div>
+          <div class="upload-sub">或点击选择，支持 PNG / JPG</div>
+          <input type="file" id="spFileInput" accept="image/*" style="display:none">
+        </div>
+
+        <div class="sp-extract-result" id="spExtractResult" style="display:none"></div>
+
+        <!-- 放大镜视图 -->
+        <div class="magnifier-wrap" id="magnifierWrap" style="display:none">
+          <div class="compare-label">字间距热力图（红=正偏移 蓝=负偏移）</div>
+          <canvas id="canvasHeatmap"></canvas>
+        </div>
+
+        <div class="explain-note" style="margin-top:12px">
+          <i class="ti ti-bulb"></i>
+          <span>提示：先在左侧生成一张水印图片，下载后再上传到这里，验证提取是否准确。</span>
+        </div>
+      </section>
+
+    </div>
+
+    <section class="explain-card">
+      <h3><i class="ti ti-info-circle"></i>字间距水印是怎么工作的</h3>
+      <div class="explain-grid">
+        <div class="explain-step">
+          <div class="step-num">1</div>
+          <div>
+            <strong>选取编码位置</strong>
+            <p>从文本中选出 N 个「间距锚点」——相邻两个字符之间的空隙。N 个锚点可以编码 2ᴺ 个不同 ID。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">2</div>
+          <div>
+            <strong>微调间距</strong>
+            <p>ID 的第 i 位为 1，就把第 i 个锚点的间距加 +δ；为 0 就减 −δ。δ 通常取 0.2~0.5px，肉眼不可见。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">3</div>
+          <div>
+            <strong>Canvas 逐字渲染</strong>
+            <p>用 Canvas 2D API 逐字符绘制，精确控制每个字符的 x 坐标，实现亚像素级间距控制。</p>
+          </div>
+        </div>
+        <div class="explain-step">
+          <div class="step-num">4</div>
+          <div>
+            <strong>像素分析提取</strong>
+            <p>对图片做列扫描，找到每个字符的左右边界，计算实际间距，与基准间距比较，判断每个 bit 是 0 还是 1。</p>
+          </div>
+        </div>
+      </div>
+      <div class="explain-note">
+        <i class="ti ti-shield"></i>
+        <span>抗攻击性：截图、缩放（等比）后水印依然可提取。JPEG 压缩会引入噪声，但只要质量 ≥ 85%，通常仍可正确提取。大幅裁剪或旋转会破坏水印。企业级方案会在多行同时编码，用冗余纠错提高鲁棒性。</span>
       </div>
     </section>
   </div>
 
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="logic.js"></script>
 <script src="app.js"></script>
 </body>

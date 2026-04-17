@@ -1,246 +1,299 @@
-const labApi = window.DocumentSteganographyLab;
+/**
+ * app.js — UI 交互层
+ */
+(function () {
+  'use strict';
 
-const state = {
-  forensicMode: false,
-  presetId: labApi.PRESETS[0].id,
-  config: labApi.createInitialConfig()
-};
+  var lab = window.DocStegoLab;
+  var selectedScenarioId = lab.SCENARIOS[0].id;
 
-function $(id) {
-  return document.getElementById(id);
-}
+  function $(id) { return document.getElementById(id); }
 
-function setText(id, value) {
-  const node = $(id);
-  if (node) node.textContent = value;
-}
-
-function escapeHtml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function applyPreset(presetId) {
-  const preset = labApi.getPresetById(presetId);
-  if (!preset) return;
-  state.presetId = preset.id;
-  state.config = preset.config;
-  render();
-}
-
-function syncForm() {
-  const cfg = state.config;
-  $('exportFormat').value = cfg.exportFormat;
-  $('fileName').value = cfg.fileName;
-  $('title').value = cfg.title;
-  $('clientName').value = cfg.clientName;
-  $('author').value = cfg.author;
-  $('lastEditor').value = cfg.lastEditor;
-  $('machineName').value = cfg.machineName;
-  $('createdAt').value = cfg.createdAt;
-  $('modifiedAt').value = cfg.modifiedAt;
-
-  $('metadataEnabled').checked = cfg.metadata.enabled;
-  $('whiteTextEnabled').checked = cfg.whiteTextLayer.enabled;
-  $('whiteTextContent').value = cfg.whiteTextLayer.content;
-  $('trackChangesEnabled').checked = cfg.trackChanges.enabled;
-  $('trackChangesCount').value = cfg.trackChanges.count;
-  $('trackChangesSample').value = cfg.trackChanges.sample;
-  $('commentsEnabled').checked = cfg.comments.enabled;
-  $('commentsCount').value = cfg.comments.count;
-  $('commentsSample').value = cfg.comments.sample;
-  $('pdfLayerEnabled').checked = cfg.pdfLayer.enabled;
-  $('pdfLayerName').value = cfg.pdfLayer.name;
-  $('pdfLayerContent').value = cfg.pdfLayer.content;
-}
-
-function renderPresetCards() {
-  $('presetList').innerHTML = labApi.PRESETS.map(function(preset) {
-    const active = preset.id === state.presetId ? 'active' : '';
-    return (
-      '<button class="preset-card ' + active + '" data-preset-id="' + escapeHtml(preset.id) + '">' +
-        '<span class="preset-name">' + escapeHtml(preset.name) + '</span>' +
-        '<span class="preset-summary">' + escapeHtml(preset.summary) + '</span>' +
-      '</button>'
-    );
-  }).join('');
-}
-
-function renderPreview() {
-  const cfg = state.config;
-  const paragraphs = (cfg.visibleParagraphs && cfg.visibleParagraphs.length ? cfg.visibleParagraphs : labApi.BASE_PARAGRAPHS).map(function(text) {
-    return '<p>' + escapeHtml(text) + '</p>';
-  }).join('');
-
-  $('previewDoc').innerHTML =
-    '<div class="doc-topline">' +
-      '<span>' + escapeHtml(cfg.fileName) + '</span>' +
-      '<span>' + escapeHtml(cfg.exportFormat.toUpperCase()) + '</span>' +
-    '</div>' +
-    '<h2>' + escapeHtml(cfg.title) + '</h2>' +
-    '<div class="doc-meta-line">收件方：' + escapeHtml(cfg.clientName || '未填写') + '</div>' +
-    '<div class="doc-paragraphs">' + paragraphs + '</div>' +
-    renderOverlayBlocks();
-}
-
-function renderOverlayBlocks() {
-  const cfg = state.config;
-  const blocks = [];
-  const modeClass = state.forensicMode ? ' forensic-visible' : '';
-
-  if (cfg.whiteTextLayer.enabled && cfg.whiteTextLayer.content.trim()) {
-    blocks.push(
-      '<div class="overlay-block white-text' + modeClass + '">' +
-        '<div class="overlay-label">白色文字层</div>' +
-        '<div class="overlay-body">' + escapeHtml(cfg.whiteTextLayer.content) + '</div>' +
-      '</div>'
-    );
+  function escHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  if (cfg.exportFormat === 'pdf' && cfg.pdfLayer.enabled) {
-    blocks.push(
-      '<div class="overlay-block hidden-layer' + modeClass + '">' +
-        '<div class="overlay-label">隐藏 PDF 图层：' + escapeHtml(cfg.pdfLayer.name || '未命名图层') + '</div>' +
-        '<div class="overlay-body">' + escapeHtml(cfg.pdfLayer.content) + '</div>' +
-      '</div>'
-    );
+  // ─── 场景列表 ────────────────────────────────────────────────────────────────
+
+  function renderScenarios() {
+    var list = $('scenarioList');
+    list.innerHTML = lab.SCENARIOS.map(function (s) {
+      var active = s.id === selectedScenarioId ? ' active' : '';
+      var badgeClass = s.badgeLevel === 'high' ? 'badge-high' : 'badge-medium';
+      return '<button class="scenario-btn' + active + '" data-id="' + escHtml(s.id) + '">' +
+        '<div class="scenario-top">' +
+          '<span class="scenario-name">' + escHtml(s.name) + '</span>' +
+          '<span class="scenario-badge ' + badgeClass + '">' + escHtml(s.badge) + '</span>' +
+        '</div>' +
+        '<div class="scenario-summary">' + escHtml(s.summary) + '</div>' +
+        '<div class="scenario-risks">' +
+          s.risks.map(function (r) { return '<span class="risk-tag">' + escHtml(r) + '</span>'; }).join('') +
+        '</div>' +
+      '</button>';
+    }).join('');
   }
 
-  if (!blocks.length) {
-    blocks.push(
-      '<div class="overlay-clean">当前预览层没有额外隐藏内容。</div>'
-    );
+  function renderSelectedInfo() {
+    var s = lab.SCENARIOS.find(function (x) { return x.id === selectedScenarioId; });
+    if (!s) return;
+    var info = $('selectedInfo');
+    var meta = s.meta;
+    var content = s.content;
+
+    var rows = [
+      ['文件名', content.fileName],
+      ['作者', meta.creator],
+      ['最后保存者', meta.lastModifiedBy],
+      ['机器名', meta.machineName],
+      ['修订记录', content.revisions.length + ' 处'],
+      ['批注', content.comments.length + ' 条'],
+      ['白色文字', content.whiteText ? '有' : '无']
+    ];
+
+    info.innerHTML = '<div class="info-table">' +
+      rows.map(function (r) {
+        return '<div class="info-row"><span class="info-label">' + escHtml(r[0]) + '</span>' +
+          '<span class="info-value">' + escHtml(r[1]) + '</span></div>';
+      }).join('') +
+    '</div>';
   }
 
-  return '<div class="overlay-stack">' + blocks.join('') + '</div>';
-}
+  // ─── 生成下载 ────────────────────────────────────────────────────────────────
 
-function renderMetadata() {
-  const cfg = state.config;
-  const visible = state.forensicMode ? 'metadata-visible' : '';
-  $('metadataPanel').className = 'metadata-panel ' + visible;
-  $('metadataPanel').innerHTML =
-    '<div class="metadata-row"><span>作者</span><strong>' + escapeHtml(cfg.author || '已清空') + '</strong></div>' +
-    '<div class="metadata-row"><span>最后保存者</span><strong>' + escapeHtml(cfg.lastEditor || '已清空') + '</strong></div>' +
-    '<div class="metadata-row"><span>机器名</span><strong>' + escapeHtml(cfg.machineName || '已清空') + '</strong></div>' +
-    '<div class="metadata-row"><span>创建时间</span><strong>' + escapeHtml(cfg.createdAt || '已清空') + '</strong></div>' +
-    '<div class="metadata-row"><span>修改时间</span><strong>' + escapeHtml(cfg.modifiedAt || '已清空') + '</strong></div>';
-}
+  function handleGenerate() {
+    var btn = $('generateBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2 spin"></i>生成中…';
 
-function renderFindings() {
-  const summary = labApi.buildSummary(state.config);
-  const findings = summary.findings;
-  const counts = findings.length;
+    lab.generateDocx(selectedScenarioId).then(function (result) {
+      var blob = new Blob([result.buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = result.fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
 
-  setText('riskScore', String(summary.score));
-  setText('riskLevel', summary.level);
-  setText('findingCount', String(counts));
-  setText('modeLabel', state.forensicMode ? '取证视角' : '客户视角');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-check"></i>已下载，换个场景试试';
+      setTimeout(function () {
+        btn.innerHTML = '<i class="ti ti-download"></i>生成并下载 .docx';
+      }, 3000);
+    }).catch(function (err) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-download"></i>生成并下载 .docx';
+      alert('生成失败：' + err.message);
+    });
+  }
 
-  $('riskMeterFill').style.width = summary.score + '%';
-  $('riskMeterFill').className = 'meter-fill meter-' + summary.level;
+  // ─── 上传扫描 ────────────────────────────────────────────────────────────────
 
-  $('findingsList').innerHTML = findings.length
-    ? findings.map(function(item) {
-        return (
-          '<div class="finding-item">' +
-            '<div class="finding-head">' +
-              '<span class="finding-title">' + escapeHtml(item.title) + '</span>' +
-              '<span class="finding-severity severity-' + item.severity + '">' + escapeHtml(item.severity === 'high' ? '高' : '中') + '</span>' +
-            '</div>' +
-            '<div class="finding-detail">' + escapeHtml(item.detail) + '</div>' +
-            '<div class="finding-exposure">' + escapeHtml(item.exposure) + '</div>' +
-          '</div>'
-        );
-      }).join('')
-    : '<div class="empty-state">当前模拟件没有发现额外泄露项，仍建议发送前再做一次人工复查。</div>';
+  function renderScanResult(result) {
+    var container = $('scanResult');
+    container.style.display = 'block';
 
-  $('checklist').innerHTML = summary.checklist.map(function(item) {
-    return '<li>' + escapeHtml(item) + '</li>';
-  }).join('');
-}
+    if (result.clean) {
+      container.innerHTML =
+        '<div class="scan-clean">' +
+          '<i class="ti ti-circle-check"></i>' +
+          '<div>' +
+            '<strong>没有发现明显风险</strong>' +
+            '<p>未检测到元数据、修订记录、批注或白色文字。发送前仍建议人工复查一遍。</p>' +
+          '</div>' +
+        '</div>';
+      return;
+    }
 
-function renderPresetStats() {
-  const stats = labApi.getPresetStats();
-  setText('presetTotal', String(stats.total));
-  setText('presetMetadata', String(stats.metadata));
-  setText('presetWhiteText', String(stats.whiteText));
-  setText('presetReviewTrail', String(stats.reviewTrail));
-  setText('presetPdfLayer', String(stats.pdfLayer));
-}
+    var severityOrder = { high: 0, medium: 1, low: 2 };
+    var sorted = result.findings.slice().sort(function (a, b) {
+      return (severityOrder[a.severity] || 9) - (severityOrder[b.severity] || 9);
+    });
 
-function renderSwitches() {
-  $('forensicToggle').textContent = state.forensicMode ? '切回客户视角' : '切到取证视角';
-}
+    var html = '<div class="scan-summary">' +
+      '<span class="scan-count">' + sorted.length + ' 项风险</span>' +
+      '<span class="scan-hint">点击每项查看详情</span>' +
+    '</div>';
 
-function render() {
-  renderPresetCards();
-  syncForm();
-  renderPreview();
-  renderMetadata();
-  renderFindings();
-  renderPresetStats();
-  renderSwitches();
-}
+    sorted.forEach(function (f, idx) {
+      var sevClass = f.severity === 'high' ? 'sev-high' : 'sev-medium';
+      var sevLabel = f.severity === 'high' ? '高' : '中';
+      var detailId = 'fd-' + idx;
 
-function updateStateFromForm() {
-  const cfg = state.config;
-  cfg.exportFormat = $('exportFormat').value;
-  cfg.fileName = $('fileName').value.trim();
-  cfg.title = $('title').value.trim();
-  cfg.clientName = $('clientName').value.trim();
-  cfg.author = $('author').value.trim();
-  cfg.lastEditor = $('lastEditor').value.trim();
-  cfg.machineName = $('machineName').value.trim();
-  cfg.createdAt = $('createdAt').value.trim();
-  cfg.modifiedAt = $('modifiedAt').value.trim();
+      html += '<div class="finding-card">' +
+        '<div class="finding-header" data-target="' + detailId + '">' +
+          '<div class="finding-left">' +
+            '<span class="finding-sev ' + sevClass + '">' + sevLabel + '</span>' +
+            '<span class="finding-title">' + escHtml(f.title) + '</span>' +
+          '</div>' +
+          '<i class="ti ti-chevron-down finding-chevron"></i>' +
+        '</div>' +
+        '<div class="finding-detail" id="' + detailId + '" style="display:none">' +
+          renderFindingDetail(f) +
+          '<div class="finding-tip"><i class="ti ti-tool"></i>' + escHtml(f.tip) + '</div>' +
+        '</div>' +
+      '</div>';
+    });
 
-  cfg.metadata.enabled = $('metadataEnabled').checked;
-  cfg.whiteTextLayer.enabled = $('whiteTextEnabled').checked;
-  cfg.whiteTextLayer.content = $('whiteTextContent').value.trim();
-  cfg.trackChanges.enabled = $('trackChangesEnabled').checked;
-  cfg.trackChanges.count = Number($('trackChangesCount').value || 0);
-  cfg.trackChanges.sample = $('trackChangesSample').value.trim();
-  cfg.comments.enabled = $('commentsEnabled').checked;
-  cfg.comments.count = Number($('commentsCount').value || 0);
-  cfg.comments.sample = $('commentsSample').value.trim();
-  cfg.pdfLayer.enabled = $('pdfLayerEnabled').checked;
-  cfg.pdfLayer.name = $('pdfLayerName').value.trim();
-  cfg.pdfLayer.content = $('pdfLayerContent').value.trim();
+    container.innerHTML = html;
 
-  render();
-}
+    // 展开/收起
+    container.querySelectorAll('.finding-header').forEach(function (header) {
+      header.addEventListener('click', function () {
+        var targetId = header.getAttribute('data-target');
+        var detail = document.getElementById(targetId);
+        var chevron = header.querySelector('.finding-chevron');
+        if (detail.style.display === 'none') {
+          detail.style.display = 'block';
+          chevron.classList.add('rotated');
+        } else {
+          detail.style.display = 'none';
+          chevron.classList.remove('rotated');
+        }
+      });
+    });
+  }
 
-function bindEvents() {
-  $('presetList').addEventListener('click', function(event) {
-    const button = event.target.closest('[data-preset-id]');
-    if (!button) return;
-    applyPreset(button.getAttribute('data-preset-id'));
+  function renderFindingDetail(f) {
+    if (f.type === 'metadata') {
+      return '<table class="meta-table">' +
+        f.fields.map(function (field) {
+          return '<tr><td class="meta-key">' + escHtml(field.label) + '</td>' +
+            '<td class="meta-val">' + escHtml(field.value) + '</td></tr>';
+        }).join('') +
+      '</table>';
+    }
+
+    if (f.type === 'revisions') {
+      if (!f.samples || !f.samples.length) return '<p class="detail-empty">无法提取具体内容。</p>';
+      return '<div class="sample-list">' +
+        f.samples.map(function (s) {
+          var cls = s.type === '删除' ? 'sample-del' : 'sample-ins';
+          return '<div class="sample-item ' + cls + '">' +
+            '<span class="sample-type">' + escHtml(s.type) + '</span>' +
+            (s.author ? '<span class="sample-author">' + escHtml(s.author) + '</span>' : '') +
+            '<span class="sample-text">' + escHtml(s.text) + '</span>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }
+
+    if (f.type === 'comments') {
+      return '<div class="sample-list">' +
+        f.samples.map(function (s) {
+          return '<div class="sample-item sample-comment">' +
+            (s.author ? '<span class="sample-author">' + escHtml(s.author) + '</span>' : '') +
+            '<span class="sample-text">' + escHtml(s.text) + '</span>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }
+
+    if (f.type === 'whiteText') {
+      if (!f.samples || !f.samples.length) return '<p class="detail-empty">检测到白色文字，但无法提取文本内容。</p>';
+      return '<div class="sample-list">' +
+        f.samples.map(function (s) {
+          return '<div class="sample-item sample-white">' +
+            '<span class="sample-text">' + escHtml(s) + '</span>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }
+
+    return '';
+  }
+
+  function handleFile(file) {
+    if (!file || !file.name.endsWith('.docx')) {
+      alert('请上传 .docx 格式的文件');
+      return;
+    }
+
+    var zone = $('uploadZone');
+    zone.innerHTML = '<i class="ti ti-loader-2 upload-icon spin"></i>' +
+      '<div class="upload-text">正在解析 ' + escHtml(file.name) + '…</div>' +
+      '<div class="upload-sub">文件不会离开你的设备</div>';
+
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      lab.scanDocx(e.target.result).then(function (result) {
+        zone.innerHTML = '<i class="ti ti-file-check upload-icon"></i>' +
+          '<div class="upload-text">' + escHtml(file.name) + '</div>' +
+          '<div class="upload-sub">点击重新选择文件</div>' +
+          '<input type="file" id="fileInput" accept=".docx" style="display:none">';
+        bindUploadInput();
+        renderScanResult(result);
+      }).catch(function (err) {
+        zone.innerHTML = '<i class="ti ti-file-x upload-icon"></i>' +
+          '<div class="upload-text">解析失败</div>' +
+          '<div class="upload-sub">' + escHtml(err.message) + '</div>' +
+          '<input type="file" id="fileInput" accept=".docx" style="display:none">';
+        bindUploadInput();
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function bindUploadInput() {
+    var input = $('fileInput');
+    if (input) {
+      input.addEventListener('change', function (e) {
+        if (e.target.files[0]) handleFile(e.target.files[0]);
+      });
+    }
+  }
+
+  // ─── 事件绑定 ────────────────────────────────────────────────────────────────
+
+  function bindEvents() {
+    // 场景选择
+    $('scenarioList').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-id]');
+      if (!btn) return;
+      selectedScenarioId = btn.getAttribute('data-id');
+      renderScenarios();
+      renderSelectedInfo();
+    });
+
+    // 生成下载
+    $('generateBtn').addEventListener('click', handleGenerate);
+
+    // 上传区域点击
+    var zone = $('uploadZone');
+    zone.addEventListener('click', function () {
+      var input = $('fileInput');
+      if (input) input.click();
+    });
+
+    // 拖拽
+    zone.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      zone.classList.add('drag-over');
+    });
+    zone.addEventListener('dragleave', function () {
+      zone.classList.remove('drag-over');
+    });
+    zone.addEventListener('drop', function (e) {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      var file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    bindUploadInput();
+  }
+
+  // ─── 初始化 ──────────────────────────────────────────────────────────────────
+
+  document.addEventListener('DOMContentLoaded', function () {
+    renderScenarios();
+    renderSelectedInfo();
+    bindEvents();
   });
 
-  $('controlsForm').addEventListener('input', updateStateFromForm);
-  $('controlsForm').addEventListener('change', updateStateFromForm);
-
-  $('forensicToggle').addEventListener('click', function() {
-    state.forensicMode = !state.forensicMode;
-    render();
-  });
-
-  $('sanitizeBtn').addEventListener('click', function() {
-    state.config = labApi.sanitizeConfig(state.config);
-    render();
-  });
-
-  $('resetBtn').addEventListener('click', function() {
-    applyPreset(state.presetId);
-  });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  bindEvents();
-  render();
-});
+})();

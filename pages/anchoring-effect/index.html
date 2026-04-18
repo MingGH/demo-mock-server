@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="锚定效应量化测试：10道估算题，测量你的判断被随机数字拉偏了多少。基于Tversky & Kahneman经典实验。">
+  <title>锚定效应量化测试 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-anchor"></i> 锚定效应量化测试</h1>
+    <p>一个随机数字，就能让你的判断偏移 20%。不信？来测。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 1：开始页
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase active" id="phase-intro">
+    <div class="intro-card">
+      <h2><i class="ti ti-brain"></i> 你的大脑有多容易被「带节奏」？</h2>
+      <p>接下来你会看到 10 道估算题。每道题开始前，屏幕上会闪过一个<strong>完全随机</strong>的数字——它跟正确答案没有任何关系。</p>
+      <p>但研究表明，这个无关数字会悄悄拉偏你的判断。</p>
+
+      <div class="intro-steps">
+        <div class="intro-step">
+          <div class="intro-step-num">1</div>
+          <div class="intro-step-text">看到一个<strong>随机数字</strong>（锚点）</div>
+        </div>
+        <div class="intro-step">
+          <div class="intro-step-num">2</div>
+          <div class="intro-step-text">回答一道<strong>估算题</strong></div>
+        </div>
+        <div class="intro-step">
+          <div class="intro-step-num">3</div>
+          <div class="intro-step-text">看看你被锚点<strong>拉偏了多少</strong></div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="startBtn">
+        <i class="ti ti-player-play"></i> 开始测试
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 2：答题
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-quiz">
+    <div class="question-card">
+      <div class="question-progress">
+        <span id="progressText">第 1 / 10 题</span>
+        <div class="progress-dots" id="progressDots"></div>
+      </div>
+
+      <div class="anchor-display" id="anchorDisplay">
+        <div class="anchor-label">随机生成的数字</div>
+        <div class="anchor-value" id="anchorValue">—</div>
+        <div class="anchor-note">这个数字跟答案无关，但你的大脑会偷偷参考它</div>
+      </div>
+
+      <div class="question-text" id="questionText">—</div>
+
+      <div class="answer-input-group">
+        <input type="number" class="answer-input" id="answerInput" placeholder="你的估算">
+        <span class="answer-unit" id="answerUnit">—</span>
+      </div>
+
+      <div class="submit-row">
+        <button class="btn btn-primary" id="submitAnswer" disabled>
+          <i class="ti ti-check"></i> 提交
+        </button>
+      </div>
+
+      <div class="question-result" id="questionResult">
+        <div class="result-row">
+          <span class="result-label">你的回答</span>
+          <span class="result-value" id="resUserAnswer">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">正确答案</span>
+          <span class="result-value" id="resTrueAnswer">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">锚点</span>
+          <span class="result-value" id="resAnchor">—</span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">锚定系数</span>
+          <span class="result-value" id="resAI">—</span>
+        </div>
+        <div class="anchor-pull-bar" id="pullBar">
+          <div class="anchor-pull-marker" id="pullMarkerTrue" title="正确答案"></div>
+          <div class="anchor-pull-fill" id="pullFill"></div>
+        </div>
+        <div class="result-row">
+          <span class="result-label" id="resPullLabel">—</span>
+        </div>
+        <div style="text-align:center; margin-top: 14px;">
+          <button class="btn btn-secondary" id="nextBtn">
+            下一题 <i class="ti ti-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 3：总结
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-summary">
+    <div class="summary-hero">
+      <h2>你的锚定效应测试结果</h2>
+      <div class="summary-score" id="summaryScore">—</div>
+      <div class="summary-label" id="summaryLabel">—</div>
+      <div class="summary-desc" id="summaryDesc">—</div>
+    </div>
+
+    <div class="chart-section">
+      <h3><i class="ti ti-chart-bar"></i> 每道题的锚定系数</h3>
+      <div class="chart-container">
+        <canvas id="aiChart"></canvas>
+      </div>
+    </div>
+
+    <div class="detail-table-wrap">
+      <h3><i class="ti ti-list-details"></i> 详细数据</h3>
+      <table class="detail-table">
+        <thead>
+          <tr>
+            <th>题目</th>
+            <th class="num">锚点</th>
+            <th class="num">你的回答</th>
+            <th class="num">正确答案</th>
+            <th class="num">锚定系数</th>
+          </tr>
+        </thead>
+        <tbody id="detailBody"></tbody>
+      </table>
+    </div>
+
+    <div class="knowledge-cards">
+      <div class="knowledge-card">
+        <h4><i class="ti ti-flask"></i> 经典实验</h4>
+        <p>1974年，Tversky & Kahneman 让受试者转一个轮盘（被操纵停在10或65），然后估算非洲国家占联合国的比例。</p>
+        <p>看到 <span class="highlight">10</span> 的人中位数估 <span class="highlight">25%</span>，看到 <span class="highlight">65</span> 的人中位数估 <span class="highlight">45%</span>。</p>
+        <p>一个明显无关的随机数，让两组人的答案差了 <span class="highlight">20个百分点</span>。</p>
+        <div class="source">来源：Tversky & Kahneman, "Judgment under Uncertainty: Heuristics and Biases", Science, 1974</div>
+      </div>
+      <div class="knowledge-card">
+        <h4><i class="ti ti-shopping-cart"></i> 商业应用</h4>
+        <p>「原价 <span class="highlight">¥999</span>」划掉，现价 ¥299——你觉得便宜了 700 块。</p>
+        <p>但如果一开始就标 ¥299，你可能觉得贵。</p>
+        <p>那个划掉的 999 就是锚点。它的唯一作用是让你觉得 299 是「赚到了」。</p>
+        <div class="source">参考：Ariely, "Predictably Irrational", 2008</div>
+      </div>
+      <div class="knowledge-card">
+        <h4><i class="ti ti-gavel"></i> 法庭判决</h4>
+        <p>研究发现，检察官要求的刑期越高，法官判的刑期也越高——即使法官认为检察官的要求不合理。</p>
+        <p>Englich et al. (2006) 的实验中，让有经验的法官掷骰子决定「检察官建议刑期」，骰子结果仍然显著影响了最终判决。</p>
+        <div class="source">来源：Englich, Mussweiler & Strack, "Playing Dice With Criminal Sentences", PSPB, 2006</div>
+      </div>
+      <div class="knowledge-card">
+        <h4><i class="ti ti-shield"></i> 如何防御</h4>
+        <p><span class="highlight">意识到锚点存在</span>是第一步，但光靠意识不够——研究表明即使被告知锚点是随机的，影响仍然存在。</p>
+        <p>有效策略：在看到报价前，先独立估算你的心理价位；做重大决策时，主动寻找反方向的参考信息。</p>
+        <div class="source">参考：Wilson et al., "A New Look at Anchoring Effects", JEP: General, 1996</div>
+      </div>
+    </div>
+
+    <div class="summary-actions">
+      <button class="btn btn-primary" id="retryBtn">
+        <i class="ti ti-refresh"></i> 再测一次
+      </button>
+      <button class="btn btn-secondary" id="shareBtn">
+        <i class="ti ti-share"></i> 分享结果
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="questions.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

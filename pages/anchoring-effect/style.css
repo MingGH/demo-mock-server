@@ -1,0 +1,233 @@
+/* ── 基础 ── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 20px; }
+.header h1 {
+  font-size: 2rem;
+  background: linear-gradient(135deg, #f5af19, #f12711, #f5af19);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer { 0%,100% { background-position: 0% center; } 50% { background-position: 200% center; } }
+.header p { color: #94a3b8; margin-top: 8px; font-size: 0.95rem; max-width: 600px; margin-left: auto; margin-right: auto; }
+
+/* ── 阶段切换 ── */
+.phase { display: none; }
+.phase.active { display: block; }
+
+/* ── 开始页 ── */
+.intro-card {
+  background: rgba(255,255,255,0.05); border-radius: 16px;
+  padding: 32px; border: 1px solid rgba(255,255,255,0.08);
+  text-align: center; max-width: 600px; margin: 20px auto;
+}
+.intro-card h2 { font-size: 1.3rem; color: #fff; margin-bottom: 16px; }
+.intro-card p { color: #94a3b8; font-size: 0.95rem; line-height: 1.7; margin-bottom: 12px; }
+.intro-steps {
+  display: flex; flex-direction: column; gap: 12px;
+  text-align: left; margin: 20px 0;
+}
+.intro-step {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 16px; border-radius: 12px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+}
+.intro-step-num {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #f5af19, #f12711);
+  color: #fff; font-weight: 700; font-size: 0.85rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.intro-step-text { color: #cbd5e1; font-size: 0.9rem; line-height: 1.5; }
+.intro-step-text strong { color: #fff; }
+
+/* ── 按钮 ── */
+.btn {
+  border: none; border-radius: 10px; cursor: pointer;
+  font-size: 0.95rem; transition: all 0.2s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #f5af19, #f12711);
+  color: #fff; padding: 14px 32px; font-weight: 600; font-size: 1rem;
+}
+.btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-secondary {
+  background: rgba(255,255,255,0.08); color: #e0e0e0;
+  padding: 10px 20px; border: 1px solid rgba(255,255,255,0.12);
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.12); }
+
+/* ── 答题区 ── */
+.question-card {
+  background: rgba(255,255,255,0.05); border-radius: 16px;
+  padding: 28px; border: 1px solid rgba(255,255,255,0.08);
+  margin: 20px auto; max-width: 640px;
+}
+.question-progress {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; font-size: 0.85rem; color: #64748b;
+}
+.progress-dots { display: flex; gap: 6px; }
+.progress-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,255,255,0.1); transition: all 0.3s;
+}
+.progress-dot.done { background: #22c55e; }
+.progress-dot.current { background: #f5af19; transform: scale(1.3); }
+
+/* ── 锚点展示 ── */
+.anchor-display {
+  text-align: center; padding: 24px; margin-bottom: 20px;
+  border-radius: 12px; background: rgba(245,175,25,0.06);
+  border: 1px solid rgba(245,175,25,0.15);
+}
+.anchor-label { font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.1em; }
+.anchor-value {
+  font-size: 2.5rem; font-weight: 800; color: #f5af19;
+  font-variant-numeric: tabular-nums;
+}
+.anchor-note { font-size: 0.75rem; color: #64748b; margin-top: 8px; }
+
+/* ── 问题文本 ── */
+.question-text { font-size: 1.1rem; color: #fff; line-height: 1.6; margin-bottom: 20px; text-align: center; }
+
+/* ── 输入区 ── */
+.answer-input-group {
+  display: flex; align-items: center; gap: 10px;
+  max-width: 320px; margin: 0 auto 20px;
+}
+.answer-input {
+  flex: 1; padding: 12px 16px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06);
+  color: #fff; font-size: 1.2rem; text-align: center;
+  outline: none; transition: border-color 0.2s;
+  -moz-appearance: textfield;
+}
+.answer-input::-webkit-outer-spin-button,
+.answer-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.answer-input:focus { border-color: #f5af19; }
+.answer-unit { color: #94a3b8; font-size: 0.95rem; white-space: nowrap; }
+
+.submit-row { text-align: center; }
+
+/* ── 单题结果 ── */
+.question-result {
+  margin-top: 20px; padding: 20px; border-radius: 12px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  display: none;
+}
+.question-result.show { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.result-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 0.9rem;
+}
+.result-row:last-child { border-bottom: none; }
+.result-label { color: #94a3b8; }
+.result-value { color: #fff; font-weight: 600; }
+.result-value.good { color: #22c55e; }
+.result-value.warn { color: #f59e0b; }
+.result-value.bad { color: #ef4444; }
+
+.anchor-pull-bar {
+  margin: 12px 0; height: 8px; border-radius: 4px;
+  background: rgba(255,255,255,0.06); position: relative; overflow: visible;
+}
+.anchor-pull-fill {
+  height: 100%; border-radius: 4px; transition: width 0.5s ease;
+  position: absolute; top: 0;
+}
+.anchor-pull-marker {
+  position: absolute; top: -6px; width: 3px; height: 20px;
+  background: #fff; border-radius: 2px;
+}
+
+/* ── 总结页 ── */
+.summary-hero {
+  text-align: center; padding: 32px 24px;
+  background: rgba(255,255,255,0.05); border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.08); margin: 20px auto;
+  max-width: 640px;
+}
+.summary-hero h2 { font-size: 1.4rem; color: #fff; margin-bottom: 8px; }
+.summary-score {
+  font-size: 4rem; font-weight: 800; margin: 16px 0;
+  font-variant-numeric: tabular-nums;
+}
+.summary-label { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+.summary-desc { color: #94a3b8; font-size: 0.9rem; line-height: 1.6; max-width: 480px; margin: 0 auto; }
+
+/* ── 详细结果表 ── */
+.detail-table-wrap {
+  overflow-x: auto; margin: 20px auto; max-width: 800px;
+  background: rgba(255,255,255,0.05); border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.08); padding: 20px;
+}
+.detail-table-wrap h3 { font-size: 1rem; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.detail-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.detail-table th {
+  text-align: left; padding: 10px 12px; color: #94a3b8;
+  border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 600;
+}
+.detail-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; }
+.detail-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.ai-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 20px;
+  font-size: 0.75rem; font-weight: 600;
+}
+
+/* ── 对比图表区 ── */
+.chart-section {
+  margin: 20px auto; max-width: 800px;
+  background: rgba(255,255,255,0.05); border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.08); padding: 20px;
+}
+.chart-section h3 { font-size: 1rem; color: #fff; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.chart-container { position: relative; height: 300px; }
+
+/* ── 科普卡片 ── */
+.knowledge-cards {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  margin: 20px auto; max-width: 800px;
+}
+@media (max-width: 640px) { .knowledge-cards { grid-template-columns: 1fr; } }
+.knowledge-card {
+  background: rgba(255,255,255,0.05); border-radius: 16px;
+  padding: 20px; border: 1px solid rgba(255,255,255,0.08);
+}
+.knowledge-card h4 {
+  font-size: 0.95rem; color: #fff; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.knowledge-card p { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
+.knowledge-card .highlight { color: #f5af19; font-weight: 600; }
+.knowledge-card .source { font-size: 0.75rem; color: #64748b; margin-top: 8px; }
+
+/* ── 底部操作 ── */
+.summary-actions {
+  display: flex; gap: 12px; justify-content: center;
+  margin: 24px auto; max-width: 640px; flex-wrap: wrap;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 640px) {
+  .container { padding: 12px; }
+  .header h1 { font-size: 1.5rem; }
+  .anchor-value { font-size: 2rem; }
+  .summary-score { font-size: 3rem; }
+  .question-card { padding: 20px; }
+  .knowledge-cards { gap: 12px; }
+}

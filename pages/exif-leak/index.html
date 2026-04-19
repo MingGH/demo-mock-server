@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="照片EXIF元数据泄露检测器：拖入一张照片，查看隐藏的GPS坐标、设备信息、拍摄参数。纯前端处理，不上传服务器。">
+  <title>照片隐私泄露检测器 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-photo-exclamation"></i> 照片隐私泄露检测器</h1>
+    <p>拖入一张手机拍的照片，看看它偷偷藏了多少关于你的信息。纯前端处理，照片不会上传到任何服务器。</p>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="detect">
+      <i class="ti ti-search"></i> 检测泄露
+    </button>
+    <button class="tab-btn" data-tab="strip">
+      <i class="ti ti-eraser"></i> 批量清除
+    </button>
+    <button class="tab-btn" data-tab="compare">
+      <i class="ti ti-table"></i> 平台对比
+    </button>
+    <button class="tab-btn" data-tab="explain">
+      <i class="ti ti-info-circle"></i> 原理说明
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Tab 1：检测
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-detect">
+
+    <div class="privacy-note">
+      <i class="ti ti-shield-check"></i>
+      <span>你的照片全程在浏览器本地处理，不会上传到任何服务器。你可以断网后使用本工具。</span>
+    </div>
+
+    <div class="upload-zone" id="uploadZone">
+      <i class="ti ti-photo-up upload-icon"></i>
+      <div class="upload-text">拖拽照片到这里，或点击选择</div>
+      <div class="upload-sub">支持 JPEG、PNG、HEIC、TIFF、WebP、AVIF，推荐使用手机直接拍摄的原图</div>
+      <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/heic,image/heif,image/tiff,image/webp,image/avif,.jpg,.jpeg,.png,.heic,.heif,.tiff,.tif,.webp,.avif" style="display:none">
+    </div>
+
+    <div class="result-area" id="resultArea">
+
+      <div id="alertBanner"></div>
+
+      <div class="stat-cards" id="statCards"></div>
+
+      <div class="two-col">
+        <!-- 左：地图 + GPS -->
+        <div class="card">
+          <div class="card-header">
+            <h2><i class="ti ti-map-pin"></i> GPS 定位</h2>
+          </div>
+          <div class="map-container" id="mapContainer">
+            <div class="map-placeholder">等待检测...</div>
+          </div>
+          <div class="gps-coords" id="gpsCoords" style="display:none"></div>
+        </div>
+
+        <!-- 右：设备 + 拍摄信息 -->
+        <div class="card">
+          <div class="card-header">
+            <h2><i class="ti ti-device-mobile"></i> 泄露的信息</h2>
+          </div>
+          <div class="data-list" id="dataList"></div>
+        </div>
+      </div>
+
+      <div class="action-row" style="justify-content: center; margin-top: 20px;">
+        <button class="btn btn-danger" id="stripBtn">
+          <i class="ti ti-eraser"></i> 一键清除元数据并下载
+        </button>
+        <button class="btn btn-secondary" id="resetBtn">
+          <i class="ti ti-refresh"></i> 检测另一张
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Tab 2：批量清除
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-strip">
+
+    <div class="privacy-note">
+      <i class="ti ti-shield-check"></i>
+      <span>所有处理在浏览器本地完成，照片不会上传到任何服务器。</span>
+    </div>
+
+    <div class="upload-zone" id="stripUploadZone">
+      <i class="ti ti-photos upload-icon"></i>
+      <div class="upload-text">拖拽照片到这里，支持多选</div>
+      <div class="upload-sub">支持 JPEG、PNG、HEIC、WebP、AVIF、TIFF — JPEG 直接剥离，其他格式通过 Canvas 重绘去除元数据</div>
+      <input type="file" id="stripFileInput" accept="image/*,.heic,.heif" multiple style="display:none">
+    </div>
+
+    <div class="strip-result" id="stripResult" style="display:none;">
+      <div class="card">
+        <div class="card-header">
+          <h2><i class="ti ti-list-check"></i> 处理结果</h2>
+        </div>
+        <div class="strip-file-list" id="stripFileList"></div>
+        <div class="action-row" style="margin-top:16px;">
+          <button class="btn btn-primary" id="downloadAllBtn">
+            <i class="ti ti-download"></i> 全部下载
+          </button>
+          <button class="btn btn-secondary" id="stripResetBtn">
+            <i class="ti ti-refresh"></i> 清除更多
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Tab 3：平台对比
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-compare">
+    <div class="card" style="margin-top:20px;">
+      <div class="card-header">
+        <h2><i class="ti ti-table"></i> 各平台 EXIF 处理方式</h2>
+      </div>
+      <p style="font-size:0.85rem;color:#94a3b8;margin-bottom:12px;">
+        你发一张带 GPS 的照片到这些平台，对方能不能看到你的位置？
+      </p>
+      <div style="overflow-x:auto;">
+        <table class="platform-table" id="platformTable">
+          <thead>
+            <tr>
+              <th>平台</th>
+              <th>EXIF 处理</th>
+              <th>风险</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div style="margin-top:16px;padding:12px 16px;border-radius:10px;background:rgba(245,175,25,0.06);border:1px solid rgba(245,175,25,0.15);font-size:0.8rem;color:#94a3b8;">
+        <i class="ti ti-alert-triangle" style="color:#f59e0b;"></i>
+        <strong style="color:#f5af19;">关键结论：</strong>微信「发送原图」、Telegram、邮件、网盘分享都会完整保留你的 GPS 坐标。最危险的场景是你以为安全的私聊。
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Tab 3：原理说明
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-explain">
+    <div class="card" style="margin-top:20px;">
+      <div class="card-header">
+        <h2><i class="ti ti-info-circle"></i> EXIF 是什么</h2>
+      </div>
+      <div class="data-list">
+        <p style="font-size:0.9rem;color:#cbd5e1;line-height:1.7;margin-bottom:12px;">
+          EXIF（Exchangeable Image File Format）是嵌入在每张照片里的隐藏数据。你的手机每次拍照，都会自动写入：
+        </p>
+        <div class="data-row"><span class="data-label"><i class="ti ti-map-pin"></i> GPS 坐标</span><span class="data-value danger">精确到门牌号</span></div>
+        <div class="data-row"><span class="data-label"><i class="ti ti-device-mobile"></i> 设备型号</span><span class="data-value">iPhone 15 Pro Max</span></div>
+        <div class="data-row"><span class="data-label"><i class="ti ti-clock"></i> 拍摄时间</span><span class="data-value">精确到秒</span></div>
+        <div class="data-row"><span class="data-label"><i class="ti ti-camera"></i> 镜头参数</span><span class="data-value">焦距、光圈、ISO</span></div>
+        <div class="data-row"><span class="data-label"><i class="ti ti-compass"></i> 朝向</span><span class="data-value">拍照时面朝的方向</span></div>
+        <div class="data-row"><span class="data-label"><i class="ti ti-mountain"></i> 海拔</span><span class="data-value">你所在的楼层高度</span></div>
+      </div>
+      <p style="font-size:0.85rem;color:#94a3b8;line-height:1.7;margin-top:16px;">
+        这些数据对你不可见，但任何拿到原图的人都能用免费工具读取。一张在家拍的自拍，就能暴露你的家庭住址。
+      </p>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <div class="card-header">
+        <h2><i class="ti ti-shield"></i> 怎么保护自己</h2>
+      </div>
+      <div class="data-list">
+        <div class="data-row">
+          <span class="data-label">1. 关闭相机定位权限</span>
+          <span class="data-value" style="font-size:0.8rem;">设置 → 隐私 → 定位 → 相机 → 永不</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">2. 发图前清除元数据</span>
+          <span class="data-value" style="font-size:0.8rem;">用本工具一键清除</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">3. 不要发原图</span>
+          <span class="data-value" style="font-size:0.8rem;">微信「发原图」= 发你的坐标</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">4. 截图代替原图</span>
+          <span class="data-value" style="font-size:0.8rem;">截图不包含原始 EXIF</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.5/dist/heic2any.min.js"></script>
+<script src="exif-parser.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import com.example.demo_mock_server.service.FingerprintService;
 import com.example.demo_mock_server.service.GeoLocationService;
 import com.example.demo_mock_server.service.InferenceLeaderboardService;
 import com.example.demo_mock_server.service.SocialEngineeringService;
+import com.example.demo_mock_server.service.StroopStatsService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
@@ -105,6 +106,12 @@ public class RouterConfig {
         router.post("/inference/leaderboard").handler(new RateLimitHandler(10, 60)).handler(inferenceHandler);
         router.get("/inference/leaderboard").handler(inferenceHandler);
         router.delete("/inference/leaderboard").handler(inferenceHandler);
+
+        // 斯特鲁普效应统计
+        StroopStatsService stroopService = new StroopStatsService(mysqlPool);
+        StroopStatsHandler stroopHandler = new StroopStatsHandler(stroopService);
+        router.post("/stroop/submit").handler(new RateLimitHandler(10, 60)).handler(stroopHandler);
+        router.get("/stroop/stats").handler(stroopHandler);
 
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();

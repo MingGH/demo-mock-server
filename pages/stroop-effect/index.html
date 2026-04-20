@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="红色写的「蓝」字，快速说出颜色。计时+正确率，量化你的认知冲突。斯特鲁普效应交互式测试。">
+  <title>斯特鲁普效应挑战：你的大脑能忽略文字吗 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="engine.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-brain"></i> 斯特鲁普效应挑战</h1>
+    <p>红色写的「蓝」字，你能多快说出它的颜色？测量你的认知冲突，量化大脑的「自动驾驶」有多强。</p>
+  </div>
+
+  <!-- ── 说明区 ── -->
+  <div class="section" id="introSection">
+    <h2><i class="ti ti-info-circle"></i> 什么是斯特鲁普效应</h2>
+    <p style="color:#a0a0a0; margin-bottom: 16px;">
+      看下面两个字，说出它们的<strong style="color:#ffd700">墨水颜色</strong>（不是文字内容）：
+    </p>
+    <div class="intro-demo">
+      <div class="intro-item">
+        <div class="word" style="color:#4CAF50">绿</div>
+        <div class="label">简单：字义=颜色</div>
+      </div>
+      <div class="intro-item">
+        <div class="word" style="color:#ff4444">蓝</div>
+        <div class="label">困难：字义≠颜色</div>
+      </div>
+    </div>
+    <p style="color:#a0a0a0; margin-bottom: 20px;">
+      第二个明显更慢对吧？这就是 1935 年 John Ridley Stroop 发现的认知干扰现象。你的大脑会自动阅读文字，即使你只想看颜色。
+    </p>
+
+    <div class="settings-row">
+      <div class="setting-group">
+        <label>题目数量：</label>
+        <select id="trialCountSelect">
+          <option value="20" selected>20 题（快速）</option>
+          <option value="40">40 题（标准）</option>
+          <option value="60">60 题（完整）</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="startGame()">
+      <i class="ti ti-player-play"></i> 开始挑战
+    </button>
+  </div>
+
+  <!-- ── 游戏区 ── -->
+  <div class="section" id="gameSection" style="display:none">
+    <div class="round-header">
+      <span class="round-label">第 <strong id="trialNum">1</strong> / <span id="totalTrials">20</span> 题</span>
+      <span class="score-badge"><i class="ti ti-check"></i> 正确：<span id="correctCount">0</span></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+    <div class="game-area" id="gameArea">
+      <!-- 倒计时或题目会动态插入 -->
+    </div>
+
+    <div class="color-buttons" id="colorButtons" style="display:none">
+      <!-- 颜色按钮动态生成 -->
+    </div>
+
+    <div class="keyboard-hint" id="keyboardHint" style="display:none">
+      <!-- 键盘快捷键提示 -->
+    </div>
+  </div>
+
+  <!-- ── 结果区 ── -->
+  <div class="section" id="resultSection" style="display:none">
+    <h2><i class="ti ti-chart-bar"></i> 测试结果</h2>
+
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="result-compare" id="resultCompare"></div>
+
+    <div id="gradeBox"></div>
+
+    <!-- RT 时间线 -->
+    <h3 style="color:#ffd700; margin: 24px 0 8px; font-size: 1rem;">
+      <i class="ti ti-clock"></i> 每题反应时间
+    </h3>
+    <div class="rt-timeline" id="rtTimeline"></div>
+    <div class="legend">
+      <span><span class="legend-dot" style="background:rgba(76,175,80,0.7)"></span>一致（字义=颜色）</span>
+      <span><span class="legend-dot" style="background:rgba(255,152,0,0.7)"></span>不一致（字义≠颜色）</span>
+      <span><span class="legend-dot" style="background:rgba(255,68,68,0.5)"></span>答错</span>
+    </div>
+
+    <!-- RT 分布图 -->
+    <div class="chart-wrap" style="height:260px;">
+      <canvas id="rtChart"></canvas>
+    </div>
+
+    <div id="insightBox"></div>
+
+    <div id="submitBox"></div>
+
+    <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="startGame()">
+        <i class="ti ti-refresh"></i> 再来一次
+      </button>
+      <button class="btn btn-secondary" onclick="showIntro()">
+        <i class="ti ti-settings"></i> 调整设置
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 社区统计 ── -->
+  <div class="section" id="communitySection">
+    <h2><i class="ti ti-users-group"></i> 社区数据</h2>
+    <div id="communityLoading" style="color:#666; font-size:0.9rem;">加载中...</div>
+    <div id="communityContent" style="display:none">
+      <div class="stats-grid" id="communityStats"></div>
+      <div class="chart-wrap" style="height:240px; margin-top:16px;">
+        <canvas id="gradeDistChart"></canvas>
+      </div>
+      <div id="communityInsight"></div>
+    </div>
+    <div id="communityError" style="display:none; color:#666; font-size:0.9rem;">暂无数据，完成一次挑战后刷新查看。</div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

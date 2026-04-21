@@ -7,6 +7,7 @@ import com.example.demo_mock_server.service.FingerprintService;
 import com.example.demo_mock_server.service.GeoLocationService;
 import com.example.demo_mock_server.service.InferenceLeaderboardService;
 import com.example.demo_mock_server.service.SocialEngineeringService;
+import com.example.demo_mock_server.service.CaptchaStatsService;
 import com.example.demo_mock_server.service.StroopStatsService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
@@ -112,6 +113,12 @@ public class RouterConfig {
         StroopStatsHandler stroopHandler = new StroopStatsHandler(stroopService);
         router.post("/stroop/submit").handler(new RateLimitHandler(10, 60)).handler(stroopHandler);
         router.get("/stroop/stats").handler(stroopHandler);
+
+        // CAPTCHA 攻防实验室统计
+        CaptchaStatsService captchaService = new CaptchaStatsService(mysqlPool);
+        CaptchaStatsHandler captchaHandler = new CaptchaStatsHandler(captchaService);
+        router.post("/captcha/submit").handler(new RateLimitHandler(10, 60)).handler(captchaHandler);
+        router.get("/captcha/stats").handler(captchaHandler);
 
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="验证码进化史：从扭曲文字到行为分析，8关验证码挑战，看看你能通过几关。你每次证明自己是人类，都在免费帮AI变聪明。">
+  <title>CAPTCHA 攻防实验室：你能通过几关验证码 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-shield-lock"></i> CAPTCHA 攻防实验室</h1>
+    <p>验证码进化 20 年，从扭曲文字到行为分析。8 关挑战，看看你能通过几关——以及你每次「证明自己是人类」时，到底在帮谁打工。</p>
+  </div>
+
+  <!-- ── 介绍区 ── -->
+  <div class="section" id="introSection">
+    <h2><i class="ti ti-history"></i> 验证码进化史</h2>
+    <p style="color:#a0a0a0; margin-bottom:20px;">
+      CAPTCHA 全称 "Completely Automated Public Turing test to tell Computers and Humans Apart"——一个让机器出题、人类答题的图灵测试。
+      20 年来，每一代验证码都在和破解技术赛跑。你将依次挑战 8 种验证码，从 2000 年代的扭曲文字到 2023 年的行为分析。
+    </p>
+
+    <div class="level-list">
+      <div class="level-card">
+        <div class="level-num">第 1 关</div>
+        <div class="level-name">扭曲文字</div>
+        <div class="level-year">2000 年代</div>
+        <div class="level-diff">
+          <span class="star">&#9733;</span><span class="star empty">&#9733;</span><span class="star empty">&#9733;</span>
+        </div>
+      </div>
+      <div class="level-card">
+        <div class="level-num">第 2 关</div>
+        <div class="level-name">数学运算</div>
+        <div class="level-year">2005 年代</div>
+        <div class="level-diff">
+          <span class="star">&#9733;</span><span class="star empty">&#9733;</span><span class="star empty">&#9733;</span>
+        </div>
+      </div>
+      <div class="level-card">
+        <div class="level-num">第 3 关</div>
+        <div class="level-name">滑块拼图</div>
+        <div class="level-year">2012 年代</div>
+        <div class="level-diff">
+          <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star empty">&#9733;</span>
+        </div>
+      </div>
+      <div class="level-card">
+        <div class="level-num">第 4 关</div>
+        <div class="level-name">九宫格选择</div>
+        <div class="level-year">2014 年代</div>
+        <div class="level-diff">
+          <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star empty">&#9733;</span>
+        </div>
+      </div>
+      <div class="level-card">
+        <div class="level-num">第 5 关</div>
+        <div class="level-name">文字点选</div>
+        <div class="level-year">2017 年代</div>
+        <div class="level-diff">
+          <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
+        </div>
+      </div>
+      <div class="level-card">
+        <div class="level-num">第 6 关</div>
+        <div class="level-name">旋转对齐</div>
+        <div class="level-year">2019 年代</div>
+        <div class="level-diff">
+          <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star empty">&#9733;</span>
+        </div>
+      </div>
+      <div class="level-card">
+        <div class="level-num">第 7 关</div>
+        <div class="level-name">空间推理</div>
+        <div class="level-year">2021 年代</div>
+        <div class="level-diff">
+          <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
+        </div>
+      </div>
+      <div class="level-card">
+        <div class="level-num">第 8 关</div>
+        <div class="level-name">行为验证</div>
+        <div class="level-year">2023 年代</div>
+        <div class="level-diff">
+          <span class="star">&#9733;</span><span class="star">&#9733;</span><span class="star">&#9733;</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="startGame()">
+      <i class="ti ti-player-play"></i> 开始挑战
+    </button>
+  </div>
+
+  <!-- ── 游戏区 ── -->
+  <div class="section" id="gameSection" style="display:none">
+    <div class="round-header">
+      <span class="round-label">第 <strong id="levelNum">1</strong> / <span id="totalLevels">8</span> 关</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="game-area" id="gameArea"></div>
+  </div>
+
+  <!-- ── 结果区 ── -->
+  <div class="section" id="resultSection" style="display:none">
+    <h2><i class="ti ti-chart-bar"></i> 挑战结果</h2>
+    <div class="stats-grid" id="statsGrid"></div>
+    <div class="result-levels" id="resultLevels"></div>
+    <div id="gradeBox"></div>
+
+    <h3 style="color:#ffd700; margin: 24px 0 8px; font-size: 1rem;">
+      <i class="ti ti-clock"></i> 各关用时
+    </h3>
+    <div class="chart-wrap" style="height:260px;">
+      <canvas id="resultChart"></canvas>
+    </div>
+
+    <div id="insightBox"></div>
+
+    <div id="submitBox"></div>
+
+    <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="startGame()">
+        <i class="ti ti-refresh"></i> 再来一次
+      </button>
+      <button class="btn btn-secondary" onclick="showIntro()">
+        <i class="ti ti-arrow-left"></i> 返回介绍
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 社区统计 ── -->
+  <div class="section" id="communitySection">
+    <h2><i class="ti ti-users-group"></i> 社区数据</h2>
+    <div id="communityLoading" style="color:#666; font-size:0.9rem;">加载中...</div>
+    <div id="communityContent" style="display:none">
+      <div class="stats-grid" id="communityStats"></div>
+      <h3 style="color:#ffd700; margin: 16px 0 8px; font-size: 1rem;">
+        <i class="ti ti-chart-bar"></i> 各关通过率
+      </h3>
+      <div class="chart-wrap" style="height:260px;">
+        <canvas id="passRateChart"></canvas>
+      </div>
+      <h3 style="color:#ffd700; margin: 16px 0 8px; font-size: 1rem;">
+        <i class="ti ti-award"></i> 评级分布
+      </h3>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="gradeDistChart"></canvas>
+      </div>
+      <div id="communityInsight"></div>
+    </div>
+    <div id="communityError" style="display:none; color:#666; font-size:0.9rem;">暂无数据，完成一次挑战后刷新查看。</div>
+  </div>
+
+  <!-- ── 科普区 ── -->
+  <div class="section">
+    <h2><i class="ti ti-bulb"></i> 验证码的秘密</h2>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="tl-year">2000</div>
+        <div class="tl-title">扭曲文字 CAPTCHA 诞生</div>
+        <div class="tl-desc">卡内基梅隆大学的 Luis von Ahn 团队提出 CAPTCHA 概念，用扭曲文字区分人机。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-year">2007</div>
+        <div class="tl-title">reCAPTCHA：免费劳动力</div>
+        <div class="tl-desc">同一个 Luis von Ahn 发明了 reCAPTCHA——你识别的每个单词都在帮 Google 数字化书籍。后被 Google 收购。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-year">2012</div>
+        <div class="tl-title">滑块验证码兴起</div>
+        <div class="tl-desc">极验等公司推出滑块拼图验证，通过行为轨迹而非内容识别来判断人机。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-year">2014</div>
+        <div class="tl-title">reCAPTCHA v2：点击图片</div>
+        <div class="tl-desc">「请选择所有包含红绿灯的图片」——你标注的数据正在训练 Google 的自动驾驶 Waymo。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-year">2018</div>
+        <div class="tl-title">reCAPTCHA v3：无感验证</div>
+        <div class="tl-desc">不再需要用户操作，通过分析鼠标轨迹、滚动行为、浏览器指纹等给出「人类概率分数」。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="tl-year">2024+</div>
+        <div class="tl-title">AI vs AI 的军备竞赛</div>
+        <div class="tl-desc">GPT-4V 已能通过大部分图片验证码。验证码正从「证明你是人」变成「证明你不是高级 AI」。</div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <h3><i class="ti ti-alert-triangle"></i> 讽刺的真相</h3>
+      <p>据估算，人类每天花费约 50 万小时在验证码上。reCAPTCHA 的商业模式本质上是：用「安全验证」的名义，让全球用户免费为 Google 标注训练数据。你每次点击红绿灯，都在让自动驾驶 AI 更聪明一点。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

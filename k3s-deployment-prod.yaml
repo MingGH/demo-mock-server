@@ -25,6 +25,25 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /mock
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /mock
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
           env:
             - name: NINJA_API_TOKEN
               valueFrom:

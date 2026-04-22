@@ -78,7 +78,7 @@ function computeStats(results) {
   const incAvgRT = incCorrect.length > 0
     ? incCorrect.reduce((s, r) => s + r.rt, 0) / incCorrect.length : 0;
 
-  const stroopEffect = incAvgRT - conAvgRT;
+  const stroopEffect = Math.max(0, incAvgRT - conAvgRT);
 
   return {
     total, correctCount, accuracy, avgRT,

@@ -1,4 +1,9 @@
 (function() {
+  // 注册 Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+
   const pathname = window.location.pathname;
   const currentPage = pathname.split('/').pop() || 'index.html';
   const isHome = currentPage === 'index.html' && !pathname.includes('/pages/');
@@ -49,6 +54,21 @@
   function loadAssets() {
     // 预加载 Chart.js，让后续页面命中缓存
     ensureLink('data-chartjs-preload', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js', 'preload', 'script');
+
+    // 按需加载 Chart.js，供页面调用: loadChartJS().then(() => { new Chart(...) })
+    let _chartPromise;
+    window.loadChartJS = function() {
+      if (window.Chart) return Promise.resolve();
+      if (_chartPromise) return _chartPromise;
+      _chartPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      return _chartPromise;
+    };
     ensureScript('data-umami-script', {
       defer: true,
       src: 'https://umami.runnable.run/script.js',

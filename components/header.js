@@ -1,4 +1,11 @@
 (function() {
+  // 域名保护：非生产域名跳转
+  var host = location.hostname;
+  if (host !== 'numfeel.996.ninja' && host !== 'localhost' && host !== '127.0.0.1') {
+    location.replace('https://numfeel.996.ninja' + location.pathname + location.search + location.hash);
+    return;
+  }
+
   // 注册 Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});

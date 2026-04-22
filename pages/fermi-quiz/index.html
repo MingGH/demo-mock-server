@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="10道费米估算题，测试你的数量级直觉。北京有多少理发店？一架747能装多少高尔夫球？输入你的猜测，看看离真实答案差几个数量级。">
+  <title>费米估算挑战：你的直觉有多准 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-target-arrow"></i> 费米估算挑战</h1>
+    <p>10 道数量级估算题。不需要精确答案，只需要你的直觉。看看你离真相差几个零。</p>
+  </div>
+
+  <!-- ── 介绍区 ── -->
+  <div class="section" id="introSection">
+    <h2><i class="ti ti-info-circle"></i> 什么是费米估算</h2>
+    <p class="muted">
+      物理学家恩里科·费米擅长用极少的信息快速估算出数量级正确的答案。1945 年他在核试验现场撕碎纸片扔向空中，通过纸片飘落的距离估算出爆炸当量——和精密仪器的测量结果相差不到 2 倍。
+    </p>
+    <p class="muted" style="margin-top:10px;">
+      这类问题后来成了 Google、McKinsey 等公司的经典面试题。核心能力：把一个模糊的大问题拆解成可估算的小问题。
+    </p>
+
+    <div class="intro-stats">
+      <div class="intro-stat">
+        <div class="intro-stat-val">10</div>
+        <div class="intro-stat-lbl">道题目</div>
+      </div>
+      <div class="intro-stat">
+        <div class="intro-stat-val">~5 min</div>
+        <div class="intro-stat-lbl">预计用时</div>
+      </div>
+      <div class="intro-stat">
+        <div class="intro-stat-val">OOM</div>
+        <div class="intro-stat-lbl">数量级评分</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="startQuiz()">
+      <i class="ti ti-player-play"></i> 开始挑战
+    </button>
+  </div>
+
+  <!-- ── 答题区 ── -->
+  <div class="section" id="quizSection" style="display:none">
+    <div class="round-header">
+      <span class="round-label">第 <strong id="qNum">1</strong> / 10 题</span>
+      <span class="score-badge" id="scoreBadge"><i class="ti ti-target"></i> 累计误差：<span id="totalError">0</span></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+    <div class="question-area" id="questionArea">
+      <div class="question-text" id="questionText"></div>
+      <div class="question-hint" id="questionHint"></div>
+
+      <div class="input-group">
+        <input type="text" id="guessInput" inputmode="numeric" placeholder="输入你的估算值" autocomplete="off">
+        <span class="input-unit" id="inputUnit"></span>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="submitBtn" onclick="submitGuess()">
+        <i class="ti ti-check"></i> 提交
+      </button>
+    </div>
+
+    <!-- 答案揭晓 -->
+    <div class="reveal-area" id="revealArea" style="display:none">
+      <div class="reveal-compare" id="revealCompare"></div>
+      <div class="reveal-source" id="revealSource"></div>
+      <div class="reveal-explain" id="revealExplain"></div>
+      <button class="btn btn-primary btn-full" id="nextBtn" onclick="nextQuestion()">
+        <i class="ti ti-arrow-right"></i> 下一题
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 结果区 ── -->
+  <div class="section" id="resultSection" style="display:none">
+    <h2><i class="ti ti-chart-bar"></i> 挑战结果</h2>
+    <div class="stats-grid" id="statsGrid"></div>
+    <div id="gradeBox"></div>
+
+    <h3 class="section-subtitle"><i class="ti ti-chart-dots-3"></i> 每题误差倍数</h3>
+    <div class="chart-wrap" style="height:280px;">
+      <canvas id="errorChart"></canvas>
+    </div>
+
+    <div class="result-questions" id="resultQuestions"></div>
+
+    <div id="insightBox"></div>
+    <div id="submitBox"></div>
+
+    <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="startQuiz()">
+        <i class="ti ti-refresh"></i> 再来一次
+      </button>
+      <button class="btn btn-secondary" onclick="showIntro()">
+        <i class="ti ti-arrow-left"></i> 返回介绍
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 社区统计 ── -->
+  <div class="section" id="communitySection">
+    <h2><i class="ti ti-users-group"></i> 社区数据</h2>
+    <div id="communityLoading" class="muted" style="font-size:0.9rem;">加载中...</div>
+    <div id="communityContent" style="display:none">
+      <div class="stats-grid" id="communityStats"></div>
+      <h3 class="section-subtitle"><i class="ti ti-chart-bar"></i> 评级分布</h3>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="gradeDistChart"></canvas>
+      </div>
+      <div id="communityInsight"></div>
+    </div>
+    <div id="communityError" style="display:none" class="muted">暂无数据，完成一次挑战后刷新查看。</div>
+  </div>
+
+</div>
+
+<script src="questions.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

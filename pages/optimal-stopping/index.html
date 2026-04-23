@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="租房、择偶、找工作——什么时候该停止挑选？37%法则给出了数学最优解。用模拟器亲自验证。">
+  <title>37%法则：什么时候该停止挑选 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-heart-search"></i> 37%法则</h1>
+    <p>租房、择偶、找工作——什么时候该停止挑选？数学最优策略：先「只看不选」前 37%，然后选下一个比之前都好的。靠谱吗？</p>
+  </div>
+
+  <!-- ── Tab 切换 ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('game')"><i class="ti ti-heart"></i> 亲自选</button>
+    <button class="tab-btn" onclick="switchTab('sim')"><i class="ti ti-chart-bar"></i> 跑模拟</button>
+    <button class="tab-btn" onclick="switchTab('scan')"><i class="ti ti-chart-line"></i> 扫参数</button>
+  </div>
+
+  <!-- ══════════ Tab 1: 互动游戏 ══════════ -->
+  <div class="tab-content active" id="tab-game">
+    <div class="section" id="gameSection">
+      <h2><i class="ti ti-heart"></i> 择偶模拟器</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        系统随机生成候选人，每人有一个你不知道的「契合度」评分（1~100）。<br>
+        你只能看到当前这位在<strong>已见过的人</strong>中排第几。一旦跳过，无法回头。
+      </p>
+
+      <!-- 设置 -->
+      <div class="sim-controls" id="gameSetup">
+        <div class="sim-field">
+          <label>候选人数量</label>
+          <select id="gameN">
+            <option value="8">8 人</option>
+            <option value="12" selected>12 人</option>
+            <option value="20">20 人</option>
+            <option value="30">30 人</option>
+            <option value="50">50 人</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="startGame()">
+          <i class="ti ti-player-play"></i> 开始
+        </button>
+      </div>
+
+      <!-- 游戏进行中 -->
+      <div id="gamePlay" style="display:none;">
+        <div class="game-status">
+          <span class="status-badge"><i class="ti ti-user"></i> 第 <span id="currentIdx">1</span> / <span id="totalN">12</span> 位</span>
+          <span class="phase-badge" id="phaseBadge">观察期</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill observe" id="gameProgress" style="width:0%"></div>
+        </div>
+
+        <div class="candidate-area">
+          <div class="candidate-card" id="candidateCard">
+            <div class="candidate-number" id="candidateNum">候选人 #1</div>
+            <div class="candidate-score" id="candidateDisplay">?</div>
+            <div class="candidate-label">契合度评分</div>
+            <div class="candidate-rank" id="candidateRank"></div>
+          </div>
+
+          <div class="action-buttons" id="actionBtns">
+            <button class="btn btn-danger" id="btnSkip" onclick="skipCandidate()">
+              <i class="ti ti-x"></i> 跳过 TA
+            </button>
+            <button class="btn btn-success" id="btnChoose" onclick="chooseCandidate()" style="display:none;">
+              <i class="ti ti-heart"></i> 选 TA！
+            </button>
+          </div>
+        </div>
+
+        <div class="history-strip" id="historyStrip"></div>
+
+        <div class="insight-box" style="margin-top:16px;">
+          <h3><i class="ti ti-bulb"></i> 37%法则建议</h3>
+          <p id="strategyHint">观察期：先看前几位，记住最好的那个，别急着选。</p>
+        </div>
+      </div>
+
+      <!-- 游戏结果 -->
+      <div id="gameResult" style="display:none;">
+        <div class="result-banner" id="resultBanner">
+          <div class="emoji" id="resultEmoji"></div>
+          <h3 id="resultTitle"></h3>
+          <p id="resultDesc"></p>
+        </div>
+
+        <div class="result-compare">
+          <div class="result-card you">
+            <span class="tag">你选的</span>
+            <div class="big" id="resYouScore">—</div>
+            <div class="sub" id="resYouRank">—</div>
+          </div>
+          <div class="result-card opt">
+            <span class="tag">37%法则会选</span>
+            <div class="big" id="resOptScore">—</div>
+            <div class="sub" id="resOptRank">—</div>
+          </div>
+          <div class="result-card best">
+            <span class="tag">最佳候选人</span>
+            <div class="big" id="resBestScore">—</div>
+            <div class="sub" id="resBestRank">—</div>
+          </div>
+        </div>
+
+        <div class="history-strip" id="resultStrip"></div>
+
+        <div style="text-align:center;margin-top:20px;">
+          <button class="btn btn-primary" onclick="startGame()">
+            <i class="ti ti-refresh"></i> 再来一局
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Tab 2: 蒙特卡洛模拟 ══════════ -->
+  <div class="tab-content" id="tab-sim">
+    <div class="section">
+      <h2><i class="ti ti-chart-bar"></i> 策略对决：跑 N 千次看谁赢</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        四种策略同时跑，看谁选到最佳候选人的概率最高。
+      </p>
+
+      <div class="sim-controls">
+        <div class="sim-field">
+          <label>候选人数量</label>
+          <input type="number" id="simN" value="20" min="3" max="200">
+        </div>
+        <div class="sim-field">
+          <label>模拟次数</label>
+          <select id="simCount">
+            <option value="1000">1,000 次</option>
+            <option value="5000" selected>5,000 次</option>
+            <option value="10000">10,000 次</option>
+            <option value="50000">50,000 次</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="simBtn" onclick="runSim()">
+          <i class="ti ti-player-play"></i> 开始模拟
+        </button>
+      </div>
+
+      <div class="stats-grid" id="simStats" style="display:none;"></div>
+
+      <div class="chart-wrap" style="height:320px;margin-top:16px;">
+        <canvas id="simChart"></canvas>
+      </div>
+
+      <div class="insight-box green" id="simInsight" style="display:none;">
+        <h3><i class="ti ti-bulb"></i> 模拟结论</h3>
+        <p id="simInsightText"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Tab 3: 参数扫描 ══════════ -->
+  <div class="tab-content" id="tab-scan">
+    <div class="section">
+      <h2><i class="ti ti-chart-line"></i> 跳过比例 vs 成功率</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        跳过 0%~100% 的候选人，每个比例跑模拟，看成功率曲线的峰值在哪。
+      </p>
+
+      <div class="sim-controls">
+        <div class="sim-field">
+          <label>候选人数量</label>
+          <input type="number" id="scanN" value="30" min="5" max="200">
+        </div>
+        <div class="sim-field">
+          <label>每点模拟次数</label>
+          <select id="scanCount">
+            <option value="500">500 次</option>
+            <option value="1000" selected>1,000 次</option>
+            <option value="3000">3,000 次</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="scanBtn" onclick="runScan()">
+          <i class="ti ti-player-play"></i> 开始扫描
+        </button>
+      </div>
+
+      <div class="chart-wrap" style="height:340px;margin-top:16px;">
+        <canvas id="scanChart"></canvas>
+      </div>
+
+      <div class="insight-box green" id="scanInsight" style="display:none;">
+        <h3><i class="ti ti-bulb"></i> 扫描结论</h3>
+        <p id="scanInsightText"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 原理解释 ══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 37% 从哪来的</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>问题设定</h4>
+        <p>N 个候选人随机出场，你只能看到当前这位和之前的对比，跳过就不能回头。目标：选到评分最高的那个。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>最优策略</h4>
+        <p>跳过前 r = N/e ≈ 37% 个人（只观察），然后选第一个比观察期所有人都好的。这个策略的成功率趋近 1/e ≈ 36.8%。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>为什么有效</h4>
+        <p>观察期帮你建立「基准线」。太短，基准不准；太长，好的都被跳过了。37% 是信息收集和行动窗口的最优平衡点。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 生活场景 ══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-world"></i> 37% 法则的现实应用</h2>
+
+    <div class="scenario-list">
+      <div class="scenario-card">
+        <h4><i class="ti ti-heart"></i> 择偶</h4>
+        <p>如果你觉得一生大概会认真考虑 10 个人，那前 3~4 个只交往不定下来，从第 4~5 个开始，遇到比之前都好的就定了。</p>
+        <div class="formula">N=10 → 跳过前 4 人 → 成功率 ≈ 39.9%</div>
+      </div>
+      <div class="scenario-card">
+        <h4><i class="ti ti-home"></i> 租房</h4>
+        <p>打算看 20 套房？先看 7 套建立标准，从第 8 套开始，遇到比前 7 套都好的就签约。</p>
+        <div class="formula">N=20 → 跳过前 7 套 → 成功率 ≈ 37.1%</div>
+      </div>
+      <div class="scenario-card">
+        <h4><i class="ti ti-briefcase"></i> 招聘</h4>
+        <p>面试 30 个候选人？先面 11 个只记录不发 offer，从第 12 个开始，遇到比前面都强的就录用。</p>
+        <div class="formula">N=30 → 跳过前 11 人 → 成功率 ≈ 36.9%</div>
+      </div>
+      <div class="scenario-card">
+        <h4><i class="ti ti-car"></i> 买二手车</h4>
+        <p>看 15 辆车？先看 5~6 辆了解行情，之后遇到性价比超过前面所有的就出手。</p>
+        <div class="formula">N=15 → 跳过前 6 辆 → 成功率 ≈ 38.2%</div>
+      </div>
+    </div>
+
+    <div class="insight-box" style="margin-top:20px;">
+      <h3><i class="ti ti-alert-triangle"></i> 现实中的限制</h3>
+      <p>
+        37% 法则假设：① 候选人随机出场 ② 你能准确排序 ③ 跳过不能回头 ④ 你只想要「最好的那个」。
+        现实中这些条件很少完全满足——你可能不知道 N 是多少，候选人可能拒绝你，你可能接受「足够好」而非「最好」。
+        但核心思想仍然有用：<strong>先花一段时间建立标准，再做决定</strong>。
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

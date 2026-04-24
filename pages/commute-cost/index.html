@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="每天通勤1小时的人，一辈子在路上花了多久？输入你的通勤时间，算出一生浪费了多少小时，换算成电影、书、马拉松。">
+  <title>通勤人生计算器 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-clock-hour-4"></i> 通勤人生计算器</h1>
+    <p>输入你的通勤时间，看看这辈子有多少小时花在了路上——然后算算，如果少通勤 15 分钟，你的人生会多出什么。</p>
+  </div>
+
+  <!-- ══════════ 1. 输入区 ══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-settings"></i> 你的通勤参数</h2>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>单程通勤时间</span>
+        <span class="val" id="commuteVal">40 分钟</span>
+      </div>
+      <input type="range" id="commuteSlider" min="5" max="120" value="40" step="5" oninput="update()">
+    </div>
+
+    <div class="input-grid">
+      <div class="input-group">
+        <label>每周通勤天数</label>
+        <select id="daysPerWeek" onchange="update()">
+          <option value="5" selected>5 天</option>
+          <option value="6">6 天</option>
+          <option value="4">4 天（弹性）</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>每年工作周数（扣假期）</label>
+        <input type="number" id="weeksPerYear" value="48" min="30" max="52" onchange="update()">
+      </div>
+      <div class="input-group">
+        <label>预计工作年数</label>
+        <input type="number" id="careerYears" value="35" min="5" max="50" onchange="update()">
+      </div>
+    </div>
+
+    <!-- 城市快捷选择 -->
+    <p style="color:#888;font-size:0.85rem;margin-bottom:10px;">或者直接选一个城市：</p>
+    <div class="city-grid" id="cityGrid"></div>
+  </div>
+
+  <!-- ══════════ 2. 核心结果 ══════════ -->
+  <div class="section" id="resultSection">
+    <h2><i class="ti ti-hourglass-high"></i> 你的通勤账单</h2>
+
+    <div class="stats-grid" id="mainStats"></div>
+
+    <div class="insight-box red" id="mainInsight">
+      <h3><i class="ti ti-alert-triangle"></i> 换个说法</h3>
+      <p id="mainInsightText"></p>
+    </div>
+  </div>
+
+  <!-- ══════════ 3. 时间等价物 ══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-replace"></i> 这些时间能干什么</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+      你一辈子花在通勤上的 <strong id="lifetimeHoursLabel" style="color:#ffd700;">0</strong> 小时，等价于：
+    </p>
+    <div class="equiv-grid" id="equivGrid"></div>
+  </div>
+
+  <!-- ══════════ 4. 如果少通勤 X 分钟 ══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-clock-minus"></i> 如果每天少通勤…</h2>
+
+    <div class="slider-group">
+      <div class="slider-label">
+        <span>单程减少</span>
+        <span class="val" id="savedVal">15 分钟</span>
+      </div>
+      <input type="range" id="savedSlider" min="5" max="60" value="15" step="5" oninput="update()">
+    </div>
+
+    <div class="saved-banner" id="savedBanner">
+      <div class="big" id="savedBig">—</div>
+      <div class="sub" id="savedSub">—</div>
+    </div>
+
+    <div class="equiv-grid" id="savedEquivGrid"></div>
+  </div>
+
+  <!-- ══════════ 5. 不同通勤时长对比图 ══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-chart-bar"></i> 通勤时长 vs 一生消耗</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+      横轴是单程通勤时间，纵轴是一辈子花在通勤上的年数。找到你的位置。
+    </p>
+    <div class="chart-wrap" style="height:340px;">
+      <canvas id="compChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ══════════ 6. 城市排行 ══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-building-skyscraper"></i> 各城市通勤人生对比</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+      按当前参数（每周 <span id="cityDays">5</span> 天，工作 <span id="cityYears">35</span> 年），各城市打工人一辈子花在通勤上的时间：
+    </p>
+    <div class="chart-wrap" style="height:360px;">
+      <canvas id="cityChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ══════════ 7. 数据来源 ══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-info-circle"></i> 数据说明</h2>
+    <div class="insight-box green">
+      <h3><i class="ti ti-database"></i> 来源</h3>
+      <p>
+        中国城市通勤数据参考住建部《中国主要城市通勤监测报告》（2024）。
+        美国数据来自 U.S. Census Bureau American Community Survey。
+        东京数据来自 NHK 放送文化研究所生活时间调查。
+        时间等价物换算标准：电影 2h、书 6h（中等厚度非虚构）、全马 4.5h（业余完赛）、语言 B1 水平 600h（FSI 估算）。
+        所有计算均在浏览器本地完成，不上传任何数据。
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

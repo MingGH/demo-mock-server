@@ -105,6 +105,7 @@
 - [圣诞帽头像生成器](https://numfeel.996.ninja/pages/christmas-hat.html) - 上传头像添加圣诞贴图，支持拖拽、缩放、旋转，可叠加多个贴图，一键下载。
 - [AI颜值评分器](https://numfeel.996.ninja/pages/face-score.html) - 上传照片，AI 分析面部比例、对称性、五眼三庭，给你一个颜值分数。仅供娱乐！
 - [户晨风直播词云分析](https://numfeel.996.ninja/pages/word-cloud.html) - 基于直播实录数据生成的词云图，看看户晨风直播中最常提到的词汇有哪些。
+- [通勤人生计算器](https://numfeel.996.ninja/pages/commute-cost/) - 每天通勤1小时的人，一辈子在路上花了多久？输入你的通勤时间，算出一生浪费了多少小...
 
 ### 💻 技术演示
 - [IndexedDB 缓存分页](https://numfeel.996.ninja/pages/mock-data.html) - 从后端获取大量模拟数据，使用 IndexedDB 本地缓存，支持分页浏览，体验流...

@@ -70,13 +70,6 @@
       <div id="insightContent"></div>
     </div>
 
-    <!-- 分布对比 -->
-    <div class="section">
-      <h2><i class="ti ti-users"></i> 大多数人会为了什么交易</h2>
-      <p style="color:#888;font-size:0.88rem;margin-bottom:16px;">基于题目选项设计的理论预期分布（模拟数据，非真实用户统计）</p>
-      <div id="distChart"></div>
-    </div>
-
     <!-- 心理学背景 -->
     <div class="section">
       <h2><i class="ti ti-book"></i> 这背后的心理学</h2>
@@ -84,10 +77,14 @@
     </div>
 
     <!-- 社区统计（后端数据） -->
-    <div class="section" id="communitySection" style="display:none">
-      <h2><i class="ti ti-chart-pie"></i> 社区契约统计</h2>
+    <div class="section" id="communitySection">
+      <h2><i class="ti ti-chart-pie"></i> 大多数人会为了什么交易</h2>
       <p style="color:#888;font-size:0.88rem;margin-bottom:16px;" id="communityDesc">来自真实用户的测试数据</p>
-      <div id="communityContent"></div>
+      <div id="communityContent">
+        <div style="text-align:center;padding:20px 0;color:#666;font-size:0.9rem;">
+          <i class="ti ti-loader" style="animation:spin 1s linear infinite;display:inline-block"></i> 加载中...
+        </div>
+      </div>
     </div>
 
     <!-- 分享卡片 -->
@@ -196,9 +193,6 @@ function showResult() {
   // 洞察
   renderInsights(rawScores, pcts, topDim, secondDim);
 
-  // 分布
-  renderDist(topDim);
-
   // 理论
   renderTheory(topDim, secondDim);
 
@@ -283,26 +277,6 @@ function getComboInsight(top, second) {
   var key1 = top + '_' + second;
   var key2 = second + '_' + top;
   return combos[key1] || combos[key2] || null;
-}
-
-function renderDist(topDim) {
-  var dist = getExpectedDistribution();
-  var h = '';
-  // 按百分比排序
-  var sorted = DIMENSIONS.slice().sort(function(a, b) {
-    return (dist[b.id] || 0) - (dist[a.id] || 0);
-  });
-  sorted.forEach(function(d) {
-    var pct = dist[d.id] || 0;
-    var isUser = d.id === topDim;
-    h += '<div class="dist-bar-row">';
-    h += '<div class="dist-label" style="' + (isUser ? 'color:' + d.color + ';font-weight:bold' : '') + '">' + d.name + '</div>';
-    h += '<div class="dist-bar-bg">';
-    h += '<div class="dist-bar-fill" style="width:' + pct + '%;background:' + d.color + (isUser ? ';box-shadow:0 0 8px ' + d.color : '') + '">';
-    h += '<span>' + pct + '%' + (isUser ? ' ← 你' : '') + '</span>';
-    h += '</div></div></div>';
-  });
-  document.getElementById('distChart').innerHTML = h;
 }
 
 function renderTheory(topDim, secondDim) {
@@ -405,11 +379,10 @@ function submitToBackend(topDim, secondDim, pcts) {
   .then(function(res) {
     if (res.status === 200 && res.data) {
       renderSubmitFeedback(res.data, topDim);
-      loadCommunityStats(topDim);
     }
+    loadCommunityStats(topDim);
   })
   .catch(function() {
-    // 后端不可用时静默降级，使用理论分布
     loadCommunityStats(topDim);
   });
 }
@@ -420,10 +393,12 @@ function loadCommunityStats(topDim) {
   .then(function(res) {
     if (res.status === 200 && res.data) {
       renderCommunityStats(res.data, topDim);
+    } else {
+      renderCommunityEmpty();
     }
   })
   .catch(function() {
-    // 静默降级
+    renderCommunityEmpty();
   });
 }
 
@@ -441,18 +416,19 @@ function renderSubmitFeedback(data, topDim) {
 }
 
 function renderCommunityStats(data, topDim) {
-  var section = document.getElementById('communitySection');
   var content = document.getElementById('communityContent');
   var desc = document.getElementById('communityDesc');
-  if (!section || !content) return;
+  if (!content) return;
 
   var global = data.global || {};
   var typeDist = data.typeDist || {};
   var totalSessions = global.totalSessions || 0;
 
-  if (totalSessions < 5) return; // 数据太少不展示
+  if (totalSessions === 0) {
+    renderCommunityEmpty();
+    return;
+  }
 
-  section.style.display = '';
   desc.textContent = '来自 ' + totalSessions + ' 位真实用户的测试数据';
 
   var h = '';
@@ -501,6 +477,18 @@ function renderCommunityStats(data, topDim) {
   });
 
   content.innerHTML = h;
+}
+
+function renderCommunityEmpty() {
+  var content = document.getElementById('communityContent');
+  var desc = document.getElementById('communityDesc');
+  if (!content) return;
+  desc.textContent = '数据来自所有完成测试的用户';
+  content.innerHTML = '<div style="text-align:center;padding:24px 0;color:#666;font-size:0.9rem;">' +
+    '<i class="ti ti-mood-smile" style="font-size:1.5rem;display:block;margin-bottom:8px;color:#fbbf24"></i>' +
+    '你是最早的一批测试者，数据还在积累中<br>' +
+    '<span style="font-size:0.82rem;color:#555">分享给朋友一起测，这里会显示真实的契约分布</span>' +
+    '</div>';
 }
 </script>
 </body>

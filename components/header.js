@@ -547,7 +547,6 @@
 
   function pickHeaderNote(seedText) {
     var notes = [
-      '别把第一页当答案。<br>把控件拖满再说。',
       '如果这页不反直觉，<br>那多半还没点透。',
       '看数字前，<br>先想想自己会错哪。',
       '这页不劝你服气。<br>只劝你再试一次。'

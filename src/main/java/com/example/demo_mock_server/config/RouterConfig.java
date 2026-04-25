@@ -120,6 +120,14 @@ public class RouterConfig {
         router.post("/captcha/submit").handler(new RateLimitHandler(10, 60)).handler(captchaHandler);
         router.get("/captcha/stats").handler(captchaHandler);
 
+        // 筑梦师测试统计
+        com.example.demo_mock_server.service.InceptionMazeService inceptionService =
+            new com.example.demo_mock_server.service.InceptionMazeService(mysqlPool);
+        com.example.demo_mock_server.handler.InceptionMazeHandler inceptionHandler =
+            new com.example.demo_mock_server.handler.InceptionMazeHandler(inceptionService);
+        router.post("/inception-maze/submit").handler(new RateLimitHandler(10, 60)).handler(inceptionHandler);
+        router.get("/inception-maze/stats").handler(inceptionHandler);
+
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();
         router.get("/doc-track/pixel").handler(docTrackHandler);

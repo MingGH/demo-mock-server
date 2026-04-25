@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="你每次Ctrl+C，网页和App都能看到你复制了什么。三个实验亲手体验剪贴板监听、富文本追踪码、隐私画像拼凑。">
+  <title>剪贴板偷窥实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-clipboard-data"></i> 剪贴板偷窥实验室</h1>
+    <p>你每次 Ctrl+C 复制的内容，网页和 App 都能看到。三个实验，亲手体验你的剪贴板有多透明。</p>
+  </div>
+
+  <!-- ── Tab 切换 ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('monitor')"><i class="ti ti-eye"></i> 实验一：监听器</button>
+    <button class="tab-btn" onclick="switchTab('richtext')"><i class="ti ti-code"></i> 实验二：富文本陷阱</button>
+    <button class="tab-btn" onclick="switchTab('profile')"><i class="ti ti-user-scan"></i> 实验三：画像拼凑</button>
+  </div>
+
+  <!-- ══════════ 实验一：剪贴板监听器 ══════════ -->
+  <div class="tab-content active" id="tab-monitor">
+    <div class="section">
+      <h2><i class="ti ti-eye"></i> 实验一：剪贴板监听器</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        在这个页面上复制、剪切、粘贴任何内容——下方的监听日志会实时记录你的每一次操作。<br>
+        这就是网页 JavaScript 能做到的事，不需要任何权限弹窗。
+      </p>
+
+      <div class="alert-banner">
+        <span class="alert-icon"><i class="ti ti-alert-triangle"></i></span>
+        <span class="alert-text">
+          <strong>监听已开启。</strong>你在这个页面上的每次复制/剪切/粘贴都会被记录。
+          所有数据仅在浏览器本地处理，不上传任何服务器。
+        </span>
+      </div>
+
+      <div class="copy-target" id="copyTarget1">
+        张三，手机号 138-0013-8000，住在北京市朝阳区建国路 88 号，
+        银行卡号 6222 0200 0000 1234 567，身份证 110105199003071234。
+        WiFi 密码是 MyHome@2026，邮箱 zhangsan@example.com。
+      </div>
+
+      <div class="stats-grid" id="monitorStats">
+        <div class="stat-card">
+          <div class="val" id="copyCount">0</div>
+          <div class="lbl">复制次数</div>
+        </div>
+        <div class="stat-card">
+          <div class="val" id="cutCount">0</div>
+          <div class="lbl">剪切次数</div>
+        </div>
+        <div class="stat-card">
+          <div class="val" id="pasteCount">0</div>
+          <div class="lbl">粘贴次数</div>
+        </div>
+        <div class="stat-card highlight">
+          <div class="val" id="sensitiveCount">0</div>
+          <div class="lbl">敏感信息命中</div>
+        </div>
+      </div>
+
+      <h3 style="color:#ffd700;margin-bottom:12px;font-size:1rem;"><i class="ti ti-list"></i> 监听日志</h3>
+      <div class="log-area" id="monitorLog">
+        <div style="color:#546e7a;text-align:center;padding:20px;">等待你的第一次复制操作...</div>
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="clearLog()"><i class="ti ti-trash"></i> 清空日志</button>
+      </div>
+
+      <div class="insight-box red" style="margin-top:20px;">
+        <h3><i class="ti ti-alert-circle"></i> 发生了什么</h3>
+        <p>
+          网页通过 <code>document.addEventListener('copy/cut/paste', ...)</code> 监听剪贴板事件。
+          这三个事件<strong>不需要用户授权</strong>，页面加载后自动生效。
+          你复制的文本内容、时间戳、操作类型，全部可以被 JavaScript 捕获。
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-code"></i> 背后的代码</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:12px;">只需要 6 行 JavaScript：</p>
+      <div class="code-block">
+        <span class="comment">// 监听复制事件</span><br>
+        <span class="keyword">document</span>.<span class="func">addEventListener</span>(<span class="string">'copy'</span>, <span class="keyword">function</span>(e) {<br>
+        &nbsp;&nbsp;<span class="keyword">const</span> text = <span class="keyword">window</span>.<span class="func">getSelection</span>().<span class="func">toString</span>();<br>
+        &nbsp;&nbsp;<span class="comment">// text 就是用户复制的全部内容</span><br>
+        &nbsp;&nbsp;<span class="comment">// 可以发送到服务器、做正则匹配、提取敏感信息...</span><br>
+        &nbsp;&nbsp;<span class="func">console</span>.<span class="func">log</span>(<span class="string">'用户复制了:'</span>, text);<br>
+        });
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 实验二：富文本陷阱 ══════════ -->
+  <div class="tab-content" id="tab-richtext">
+    <div class="section">
+      <h2><i class="ti ti-code"></i> 实验二：富文本陷阱</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        下面这段文字看起来很正常。复制它，然后粘贴到下方的输入框——看看你实际粘贴了什么。
+      </p>
+
+      <div class="copy-target" id="richTextSource">
+        <span>据统计，2024年中国移动互联网用户规模达到12.4亿，</span><span>人均每天使用手机时长超过6小时。</span><span>其中短视频应用占据了用户最多的注意力，</span><span>日均使用时长达到2.5小时。</span>
+      </div>
+
+      <p style="color:#a0a0a0;font-size:0.85rem;margin:12px 0 8px;">粘贴到这里（Ctrl+V）：</p>
+      <div class="paste-area" id="richPasteArea" contenteditable="true" style="min-height:80px;"></div>
+
+      <div style="margin:16px 0;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="analyzeRichPaste()"><i class="ti ti-search"></i> 分析粘贴内容</button>
+        <button class="btn btn-secondary btn-sm" onclick="clearRichPaste()"><i class="ti ti-trash"></i> 清空</button>
+      </div>
+
+      <div class="reveal-panel" id="richRevealPanel" style="display:none;">
+        <h3 style="color:#ef9a9a;margin-bottom:12px;"><i class="ti ti-alert-triangle"></i> 你以为你粘贴的是纯文本，实际上是：</h3>
+
+        <div class="reveal-row">
+          <span class="reveal-label">纯文本内容</span>
+          <span class="reveal-value" id="revealPlainText">—</span>
+        </div>
+        <div class="reveal-row">
+          <span class="reveal-label">HTML 标签数</span>
+          <span class="reveal-value danger" id="revealTagCount">—</span>
+        </div>
+        <div class="reveal-row">
+          <span class="reveal-label">隐藏样式</span>
+          <span class="reveal-value danger" id="revealStyles">—</span>
+        </div>
+        <div class="reveal-row">
+          <span class="reveal-label">零宽字符数</span>
+          <span class="reveal-value danger" id="revealZwsp">—</span>
+        </div>
+        <div class="reveal-row">
+          <span class="reveal-label">追踪 ID（解码）</span>
+          <span class="reveal-value danger" id="revealTrackId">—</span>
+        </div>
+
+        <h4 style="color:#ffd700;margin:16px 0 8px;font-size:0.9rem;">原始 HTML 源码：</h4>
+        <div class="code-block" id="revealRawHtml" style="max-height:200px;overflow-y:auto;"></div>
+      </div>
+
+      <div class="insight-box red" style="margin-top:20px;">
+        <h3><i class="ti ti-fingerprint"></i> 零宽字符追踪</h3>
+        <p>
+          上面那段文字里藏了<strong>零宽字符</strong>（U+200B、U+200C、U+200D、U+FEFF）。
+          肉眼完全看不见，但它们编码了一个唯一 ID。
+          你把文字粘贴到任何地方，这个 ID 会跟着走——网站可以用它追踪「这段文字是谁复制的」。
+          知乎、微信公众号、部分新闻网站都用过类似技术。
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-eye-off"></i> 零宽字符可视化</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:12px;">
+        把上面那段「看起来正常」的文字拆开，让隐藏字符现形：
+      </p>
+      <div id="zwspVisualization" style="line-height:2.2;font-size:0.95rem;"></div>
+
+      <div class="insight-box green" style="margin-top:20px;">
+        <h3><i class="ti ti-shield-check"></i> 怎么防</h3>
+        <p>
+          粘贴时选择「粘贴为纯文本」（Ctrl+Shift+V），或者用记事本中转一下。
+          这会剥掉所有 HTML 标签和零宽字符。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 实验三：画像拼凑 ══════════ -->
+  <div class="tab-content" id="tab-profile">
+    <div class="section">
+      <h2><i class="ti ti-user-scan"></i> 实验三：画像拼凑</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        如果一个 App 持续监听你的剪贴板，它能从你日常的复制粘贴中拼凑出什么？<br>
+        点击下方的按钮，模拟一天中的典型复制操作，看看最终能拼出怎样的画像。
+      </p>
+
+      <div class="alert-banner">
+        <span class="alert-icon"><i class="ti ti-spy"></i></span>
+        <span class="alert-text">
+          <strong>模拟模式。</strong>以下数据全部是虚构的模拟数据，用于演示剪贴板监听的风险。
+          点击按钮模拟一天中的复制操作。
+        </span>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0;">
+        <button class="btn btn-primary btn-sm" onclick="simulateDay()"><i class="ti ti-player-play"></i> 模拟一天的复制操作</button>
+        <button class="btn btn-secondary btn-sm" onclick="simulateNextAction()"><i class="ti ti-player-skip-forward"></i> 下一条</button>
+        <button class="btn btn-danger btn-sm" onclick="resetSimulation()"><i class="ti ti-trash"></i> 重置</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="val" id="simTotal">0</div>
+          <div class="lbl">剪贴板读取次数</div>
+        </div>
+        <div class="stat-card highlight">
+          <div class="val" id="simSensitive">0</div>
+          <div class="lbl">敏感信息</div>
+        </div>
+        <div class="stat-card">
+          <div class="val" id="simCategories">0</div>
+          <div class="lbl">信息类别</div>
+        </div>
+      </div>
+
+      <h3 style="color:#ffd700;margin-bottom:12px;font-size:1rem;"><i class="ti ti-list"></i> 剪贴板读取记录</h3>
+      <div class="log-area" id="simLog">
+        <div style="color:#546e7a;text-align:center;padding:20px;">点击「模拟一天的复制操作」开始...</div>
+      </div>
+
+      <div class="profile-card" id="profileCard" style="display:none;">
+        <h3><i class="ti ti-user-exclamation"></i> 拼凑出的用户画像</h3>
+        <div id="profileItems"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-history"></i> 真实事件回顾</h2>
+
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>App</th>
+            <th>行为</th>
+            <th>来源</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>2020.06</td>
+            <td>TikTok</td>
+            <td>每 1~3 次按键读取一次剪贴板</td>
+            <td>iOS 14 Beta 曝光</td>
+          </tr>
+          <tr>
+            <td>2020.07</td>
+            <td>LinkedIn</td>
+            <td>每次按键都复制剪贴板内容</td>
+            <td>iOS 14 粘贴通知</td>
+          </tr>
+          <tr>
+            <td>2020.07</td>
+            <td>Reddit</td>
+            <td>启动时读取剪贴板</td>
+            <td>iOS 14 粘贴通知</td>
+          </tr>
+          <tr>
+            <td>2020</td>
+            <td>共 53 款 App</td>
+            <td>被发现在后台读取剪贴板</td>
+            <td>安全研究员 Mysk 报告</td>
+          </tr>
+          <tr>
+            <td>2026.04</td>
+            <td>Chrome</td>
+            <td>剪贴板跨域数据泄露漏洞</td>
+            <td>CVE-2026-3938</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="insight-box green">
+        <h3><i class="ti ti-shield-check"></i> 各平台的防护措施</h3>
+        <p>
+          <strong>iOS 14+</strong>：App 读取剪贴板时顶部弹出横幅提示。<br>
+          <strong>Android 12+</strong>：App 读取剪贴板时底部弹出 Toast 提示。<br>
+          <strong>Android 13+</strong>：剪贴板内容 1 小时后自动清除。<br>
+          <strong>浏览器</strong>：Clipboard API 读取需要用户主动授权（但 copy/paste 事件监听不需要）。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 防护建议 ══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-shield-lock"></i> 防护清单</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="val" style="font-size:1.4rem;">Ctrl+Shift+V</div>
+        <div class="lbl">粘贴为纯文本<br>剥掉隐藏标签</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" style="font-size:1.4rem;">1h 自动清</div>
+        <div class="lbl">Android 13+ 开启<br>剪贴板自动清除</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" style="font-size:1.4rem;">密码管理器</div>
+        <div class="lbl">自动填充代替<br>复制粘贴密码</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" style="font-size:1.4rem;">留意提示</div>
+        <div class="lbl">iOS/Android 的<br>剪贴板访问通知</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 数据说明 ══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-info-circle"></i> 数据说明</h2>
+    <div class="insight-box green">
+      <h3><i class="ti ti-lock"></i> 隐私声明</h3>
+      <p>
+        本页面所有实验均在浏览器本地运行，不上传任何数据到服务器。
+        实验一的监听日志、实验二的粘贴内容、实验三的模拟数据全部存储在内存中，关闭页面即消失。
+        实验三使用的全部是虚构数据，不涉及任何真实个人信息。
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

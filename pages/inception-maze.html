@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="30秒设计一个迷宫，让AI（BFS）去解。迷宫必须有解，但AI探索覆盖率越高说明你越有筑梦师潜质。致敬盗梦空间。">
+  <title>筑梦师测试 | 数字直觉</title>
+  <script src="../components/header.js" defer></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e4;
+      padding: 30px 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { text-align: center; margin: 20px 0 35px; }
+    .header h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+      background-size: 200% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s ease infinite;
+    }
+    .header p {
+      color: rgba(255,255,255,0.55);
+      margin-top: 12px;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+
+    .card {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 24px;
+      margin-bottom: 22px;
+    }
+    .card-title {
+      color: #fbbf24;
+      font-size: 16px;
+      margin-bottom: 18px;
+      padding-left: 10px;
+      border-left: 3px solid #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-desc {
+      color: rgba(255,255,255,0.55);
+      font-size: 13px;
+      margin-bottom: 14px;
+      line-height: 1.7;
+    }
+
+    /* 控制区 */
+    .ctrl-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+    .ctrl-item { flex: 1; min-width: 140px; }
+    label {
+      display: block;
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 8px;
+    }
+    select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.25);
+      color: #e4e4e4;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .btn {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: #1a1a2e;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(251,191,36,0.28); }
+    .btn.secondary {
+      background: rgba(255,255,255,0.08);
+      color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.3);
+    }
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* 倒计时 */
+    .timer-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px;
+      margin: 14px 0;
+      overflow: hidden;
+    }
+    .timer-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4ade80, #fbbf24, #f87171);
+      border-radius: 3px;
+      transition: width 0.1s linear;
+      width: 100%;
+    }
+    .timer-text {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #fbbf24;
+      margin: 8px 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 画布 */
+    .canvas-wrap {
+      margin-top: 16px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 12px;
+      overflow-x: auto;
+      text-align: center;
+    }
+    #mazeCanvas {
+      display: inline-block;
+      border-radius: 8px;
+      background: #0b1221;
+      border: 1px solid rgba(255,255,255,0.08);
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    /* 图例 */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 12px;
+      justify-content: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+    }
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    /* 工具栏 */
+    .tool-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+      justify-content: center;
+    }
+    .tool-btn {
+      padding: 8px 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.25);
+      color: rgba(255,255,255,0.7);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tool-btn:hover { background: rgba(255,255,255,0.08); }
+    .tool-btn.active {
+      background: rgba(251,191,36,0.15);
+      border-color: rgba(251,191,36,0.4);
+      color: #fbbf24;
+    }
+
+    /* 结果 */
+    .result-panel {
+      margin-top: 20px;
+      text-align: center;
+      display: none;
+    }
+    .result-panel.show { display: block; }
+    .result-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+    .result-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .result-title.success { color: #4ade80; }
+    .result-title.fail { color: #fbbf24; }
+    .result-desc {
+      color: rgba(255,255,255,0.65);
+      font-size: 14px;
+      line-height: 1.8;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .result-stats {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-item {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      padding: 14px 20px;
+      min-width: 120px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .stat-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fbbf24;
+    }
+
+    /* 解题动画 */
+    .solve-status {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.6);
+      min-height: 24px;
+    }
+
+    /* 引用 */
+    .quote-box {
+      margin-top: 20px;
+      padding: 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(251,191,36,0.2);
+      background: linear-gradient(135deg, rgba(251,191,36,0.08), rgba(245,158,11,0.03));
+      font-size: 14px;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.7);
+    }
+    .quote-box .quote-text {
+      font-style: italic;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.85);
+    }
+    .quote-box .quote-from {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* 知识卡片 */
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .fact {
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 14px;
+    }
+    .fact .k {
+      color: #fbbf24;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .fact .v {
+      color: rgba(255,255,255,0.86);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    /* 难度星级 */
+    .difficulty-stars {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+    .difficulty-stars .star {
+      font-size: 1.2rem;
+    }
+    .difficulty-stars .star.filled { color: #fbbf24; }
+    .difficulty-stars .star.empty { color: rgba(255,255,255,0.15); }
+
+    @media (max-width: 600px) {
+      body { padding: 16px 12px; }
+      .header h1 { font-size: 1.5rem; }
+      .header p { font-size: 13px; }
+      .card { padding: 16px; }
+      .timer-text { font-size: 1.4rem; }
+      .result-title { font-size: 1.2rem; }
+      .result-stats { gap: 10px; }
+      .stat-item { min-width: 0; flex: 1 1 calc(50% - 5px); padding: 10px 12px; }
+      .stat-value { font-size: 1.1rem; }
+      .tool-btn { padding: 10px 18px; font-size: 14px; }
+      .btn { padding: 12px 18px; font-size: 14px; }
+      .facts { grid-template-columns: 1fr; }
+      .legend { gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-maze"></i> 筑梦师测试</h1>
+    <p>你有30秒设计一个迷宫，然后让AI去解。<br>迷宫必须有解——但让AI走得越迷，你的筑梦师潜质越强。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-bulb"></i> 盗梦空间的迷宫</div>
+    <div class="facts">
+      <div class="fact">
+        <div class="k">筑梦师的任务</div>
+        <div class="v">构建让人迷失的梦境空间——不是让人出不去，而是让人找路时耗尽精力。迷宫越绕，梦境越稳固。</div>
+      </div>
+      <div class="fact">
+        <div class="k">Cobb 的测试</div>
+        <div class="v">Cobb 让 Ariadne 在两分钟内画出一个他走不出来的迷宫。她用了不到一分钟——关键是让路径足够曲折。</div>
+      </div>
+      <div class="fact">
+        <div class="k">你的挑战</div>
+        <div class="v">迷宫必须有解（起点和终点不能被完全封死）。评分标准是 AI 找到的路径长度 ÷ 理论最短路径——倍数越高，说明你的迷宫越绕。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-pencil"></i> 设计你的迷宫</div>
+    <div class="card-desc">选择网格大小，点击「开始设计」后在网格上画墙壁。绿色是起点（左上），红色是终点（右下）。<br>
+    规则：<strong style="color:#fbbf24;">迷宫必须保持有解</strong>——如果你画的墙会切断所有通路，系统会自动阻止。目标是让AI走的路径尽可能绕。<br>
+    <span id="inputHint" style="color:rgba(255,255,255,0.45);font-size:12px;"><i class="ti ti-mouse-2"></i> 左键画墙，右键擦除</span></div>
+
+    <div class="ctrl-row">
+      <div class="ctrl-item">
+        <label>网格大小</label>
+        <select id="gridSize">
+          <option value="15" selected>15×15（入门）</option>
+          <option value="20">20×20（标准）</option>
+          <option value="25">25×25（困难）</option>
+          <option value="30">30×30（大师）</option>
+        </select>
+      </div>
+      <div class="ctrl-item">
+        <label>时间限制</label>
+        <select id="timeLimit">
+          <option value="30">30秒</option>
+          <option value="45" selected>45秒</option>
+          <option value="60">60秒</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="tool-bar" id="toolBar">
+      <button class="tool-btn active" data-tool="wall"><i class="ti ti-wall"></i> 画墙</button>
+      <button class="tool-btn" data-tool="erase"><i class="ti ti-eraser"></i> 擦除</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="startBtn"><i class="ti ti-player-play"></i> 开始设计</button>
+      <button class="btn secondary" id="clearBtn"><i class="ti ti-trash"></i> 清空</button>
+      <button class="btn" id="solveBtn" disabled><i class="ti ti-brain"></i> 让AI解题</button>
+    </div>
+
+    <div class="timer-bar" id="timerBar" style="display:none;">
+      <div class="timer-fill" id="timerFill"></div>
+    </div>
+    <div class="timer-text" id="timerText" style="display:none;">30.0</div>
+
+    <div class="canvas-wrap">
+      <canvas id="mazeCanvas"></canvas>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-color" style="background:#1f2a44;"></div> 通路</div>
+      <div class="legend-item"><div class="legend-color" style="background:#10182f;"></div> 墙壁</div>
+      <div class="legend-item"><div class="legend-color" style="background:#4ade80;"></div> 起点</div>
+      <div class="legend-item"><div class="legend-color" style="background:#f87171;"></div> 终点</div>
+      <div class="legend-item"><div class="legend-color" style="background:#fbbf24;"></div> AI路径</div>
+      <div class="legend-item"><div class="legend-color" style="background:rgba(96,165,250,0.5);"></div> AI搜索过</div>
+    </div>
+
+    <div class="solve-status" id="solveStatus"></div>
+  </div>
+
+  <div class="result-panel" id="resultPanel">
+    <div class="card">
+      <div class="result-icon" id="resultIcon"></div>
+      <div class="result-title" id="resultTitle"></div>
+      <div class="result-desc" id="resultDesc"></div>
+      <div class="difficulty-stars" id="difficultyStars"></div>
+      <div class="result-stats" id="resultStats"></div>
+      <div id="percentileNote" style="display:none; text-align:center; margin-top:14px; font-size:13px; padding:10px 16px; border-radius:10px; background:rgba(0,0,0,0.2);"></div>
+      <div class="quote-box" id="resultQuote" style="display:none;">
+        <div class="quote-text" id="quoteText"></div>
+        <div class="quote-from" id="quoteFrom"></div>
+      </div>
+      <div class="btn-row" style="justify-content:center; margin-top:20px;">
+        <button class="btn" id="retryBtn"><i class="ti ti-refresh"></i> 再来一次</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><i class="ti ti-info-circle"></i> 评分规则</div>
+    <div class="card-desc" style="margin-bottom:0;">
+      AI 使用 BFS（广度优先搜索）解题，它会系统地向四个方向扩展，保证找到最短路径。
+      评分基于<strong>绕路倍数</strong>：AI 找到的最短路径长度 ÷ 理论最短路径（直线不拐弯）。
+      倍数越高，说明你的迷宫让 AI 走了更多弯路，筑梦师等级越高。空迷宫倍数=1.0，设计得越好倍数越大。
+      <br><br>
+      迷宫必须保持有解——画墙时系统会实时检测，如果某面墙会切断起点到终点的所有通路，这面墙会被自动撤销。
+      这意味着你不能靠"堵死出口"取胜，只能靠设计复杂的迷路结构。
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 核心算法（可独立测试） ──
+function createGrid(size) {
+  const grid = [];
+  for (let r = 0; r < size; r++) {
+    grid[r] = [];
+    for (let c = 0; c < size; c++) {
+      grid[r][c] = 0; // 0=通路, 1=墙
+    }
+  }
+  return grid;
+}
+
+function bfsSolve(grid, startR, startC, endR, endC) {
+  const rows = grid.length;
+  const cols = grid[0].length;
+  if (grid[startR][startC] === 1 || grid[endR][endC] === 1) {
+    return { found: false, visited: [], path: [] };
+  }
+
+  const visited = [];
+  const visitedSet = new Set();
+  const parent = {};
+  const queue = [[startR, startC]];
+  const key = (r, c) => r + ',' + c;
+  visitedSet.add(key(startR, startC));
+  visited.push([startR, startC]);
+
+  const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+
+  while (queue.length > 0) {
+    const [cr, cc] = queue.shift();
+    if (cr === endR && cc === endC) {
+      const path = [];
+      let cur = key(endR, endC);
+      while (cur) {
+        const [pr, pc] = cur.split(',').map(Number);
+        path.unshift([pr, pc]);
+        cur = parent[cur] || null;
+      }
+      return { found: true, visited: visited, path: path };
+    }
+    for (const [dr, dc] of dirs) {
+      const nr = cr + dr;
+      const nc = cc + dc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc] === 0 && !visitedSet.has(key(nr, nc))) {
+        visitedSet.add(key(nr, nc));
+        parent[key(nr, nc)] = key(cr, cc);
+        queue.push([nr, nc]);
+        visited.push([nr, nc]);
+      }
+    }
+  }
+
+  return { found: false, visited: visited, path: [] };
+}
+
+// 计算可通行格子总数（不含起点终点，但它们本身也是通路）
+function countPassable(grid, size) {
+  let count = 0;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (grid[r][c] === 0) count++;
+    }
+  }
+  return count;
+}
+
+function calcMazeStats(grid, size) {
+  let wallCount = 0;
+  const total = size * size;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (grid[r][c] === 1) wallCount++;
+    }
+  }
+  return {
+    wallCount: wallCount,
+    wallPercent: ((wallCount / total) * 100).toFixed(1),
+    totalCells: total,
+    passable: total - wallCount
+  };
+}
+
+// 绕路倍数：实际路径长度 / 理论最短路径（直线不拐弯）
+// 空迷宫的理论最短路径 = (size-1)*2 + 1（先走完行再走完列）
+// 倍数越高说明迷宫越绕
+function calcDetourRatio(pathLength, gridSize) {
+  const minPath = (gridSize - 1) * 2 + 1;
+  return pathLength / minPath;
+}
+
+// 筑梦师等级（0-5）基于绕路倍数
+// 空迷宫倍数=1.0，设计得越好倍数越大
+function calcDreamLevel(detourRatio) {
+  if (detourRatio >= 4.0) return 5;
+  if (detourRatio >= 3.0) return 4;
+  if (detourRatio >= 2.0) return 3;
+  if (detourRatio >= 1.5) return 2;
+  if (detourRatio >= 1.2) return 1;
+  return 0;
+}
+
+// 导出给测试用
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { createGrid, bfsSolve, calcMazeStats, countPassable, calcDetourRatio, calcDreamLevel };
+}
+
+// ── UI 逻辑 ──
+(function() {
+  const canvas = document.getElementById('mazeCanvas');
+  const ctx = canvas.getContext('2d');
+  const gridSizeSelect = document.getElementById('gridSize');
+  const timeLimitSelect = document.getElementById('timeLimit');
+  const startBtn = document.getElementById('startBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const solveBtn = document.getElementById('solveBtn');
+  const timerBar = document.getElementById('timerBar');
+  const timerFill = document.getElementById('timerFill');
+  const timerText = document.getElementById('timerText');
+  const solveStatus = document.getElementById('solveStatus');
+  const resultPanel = document.getElementById('resultPanel');
+  const retryBtn = document.getElementById('retryBtn');
+  const toolBar = document.getElementById('toolBar');
+
+  let gridSize = 20;
+  let cellSize = 24;
+  let grid = [];
+  let isDesigning = false;
+  let isDrawing = false;
+  let currentTool = 'wall';
+  let timerInterval = null;
+  let timeLeft = 30;
+  let solveAnimTimer = null;
+  // 上一次画墙被拒绝的格子（用于闪红提示）
+  let rejectedCell = null;
+  let rejectedTimer = null;
+
+  function init() {
+    gridSize = parseInt(gridSizeSelect.value);
+    grid = createGrid(gridSize);
+    calcCellSize();
+    drawGrid();
+    solveBtn.disabled = true;
+    resultPanel.classList.remove('show');
+    solveStatus.textContent = '';
+    startBtn.disabled = false;
+    startBtn.innerHTML = '<i class="ti ti-player-play"></i> 开始设计';
+    timerBar.style.display = 'none';
+    timerText.style.display = 'none';
+    isDesigning = false;
+    var pn = document.getElementById('percentileNote');
+    if (pn) pn.style.display = 'none';
+    lastCheckedCell = null;
+    clearTimers();
+  }
+
+  function clearTimers() {
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    if (solveAnimTimer) { clearTimeout(solveAnimTimer); solveAnimTimer = null; }
+    if (rejectedTimer) { clearTimeout(rejectedTimer); rejectedTimer = null; }
+  }
+
+  function calcCellSize() {
+    // 移动端留出更小的边距
+    const padding = window.innerWidth <= 600 ? 48 : 80;
+    const maxWidth = Math.min(860, window.innerWidth - padding);
+    cellSize = Math.max(14, Math.floor(maxWidth / gridSize));
+    canvas.width = gridSize * cellSize;
+    canvas.height = gridSize * cellSize;
+  }
+
+  function drawGrid(visitedCells, pathCells) {
+    const visitedSet = new Set();
+    const pathSet = new Set();
+    if (visitedCells) visitedCells.forEach(([r,c]) => visitedSet.add(r+','+c));
+    if (pathCells) pathCells.forEach(([r,c]) => pathSet.add(r+','+c));
+
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        const key = r+','+c;
+        const isStart = r === 0 && c === 0;
+        const isEnd = r === gridSize - 1 && c === gridSize - 1;
+        const isWall = grid[r][c] === 1;
+        const isRejected = rejectedCell && rejectedCell[0] === r && rejectedCell[1] === c;
+
+        let color;
+        if (isStart) color = '#4ade80';
+        else if (isEnd) color = '#f87171';
+        else if (isRejected) color = 'rgba(248,113,113,0.6)'; // 红色闪烁提示
+        else if (pathSet.has(key)) color = '#fbbf24';
+        else if (visitedSet.has(key)) color = 'rgba(96,165,250,0.35)';
+        else if (isWall) color = '#10182f';
+        else color = '#1f2a44';
+
+        ctx.fillStyle = color;
+        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+
+        ctx.strokeStyle = isWall ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(c * cellSize + 0.5, r * cellSize + 0.5, cellSize - 1, cellSize - 1);
+      }
+    }
+
+    // 起点终点标记
+    ctx.font = Math.max(10, Math.floor(cellSize * 0.45)) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText('S', cellSize / 2, cellSize / 2 + 1);
+    ctx.fillText('E', (gridSize - 0.5) * cellSize, (gridSize - 0.5) * cellSize + 1);
+  }
+
+  function getCellFromEvent(e) {
+    const rect = canvas.getBoundingClientRect();
+    let x, y;
+    if (e.touches) {
+      x = e.touches[0].clientX - rect.left;
+      y = e.touches[0].clientY - rect.top;
+    } else {
+      x = e.clientX - rect.left;
+      y = e.clientY - rect.top;
+    }
+    const c = Math.floor(x / cellSize);
+    const r = Math.floor(y / cellSize);
+    if (r < 0 || r >= gridSize || c < 0 || c >= gridSize) return null;
+    if (r === 0 && c === 0) return null;
+    if (r === gridSize - 1 && c === gridSize - 1) return null;
+    return [r, c];
+  }
+
+  // 检测：把 (r,c) 设为墙后，迷宫是否仍然有解
+  function wouldBreakMaze(r, c) {
+    if (grid[r][c] === 1) return false; // 已经是墙，不影响
+    grid[r][c] = 1; // 临时设墙
+    const result = bfsSolve(grid, 0, 0, gridSize - 1, gridSize - 1);
+    grid[r][c] = 0; // 还原
+    return !result.found;
+  }
+
+  function paintCell(e) {
+    const cell = getCellFromEvent(e);
+    if (!cell) return;
+    const [r, c] = cell;
+
+    if (currentTool === 'wall') {
+      if (grid[r][c] === 1) return; // 已经是墙，跳过
+      // 连通性检测：这面墙会不会切断所有通路？
+      if (wouldBreakMaze(r, c)) {
+        // 拒绝，闪红提示
+        rejectedCell = [r, c];
+        drawGrid();
+        if (rejectedTimer) clearTimeout(rejectedTimer);
+        rejectedTimer = setTimeout(function() {
+          rejectedCell = null;
+          drawGrid();
+        }, 400);
+        return;
+      }
+      grid[r][c] = 1;
+    } else {
+      grid[r][c] = 0;
+    }
+    drawGrid();
+  }
+
+  // 检测触摸设备，更新操作提示
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  (function() {
+    var hint = document.getElementById('inputHint');
+    if (hint && isTouchDevice) {
+      hint.innerHTML = '<i class="ti ti-hand-finger"></i> 单指画墙，点击「擦除」后单指擦除';
+    }
+  })();
+
+  // wouldBreakMaze 在触摸拖动时节流：同一格只检测一次
+  var lastCheckedCell = null;
+  function wouldBreakMazeCached(r, c) {
+    const key = r + ',' + c;
+    if (lastCheckedCell === key) return false; // 同一格不重复检测
+    lastCheckedCell = key;
+    return wouldBreakMaze(r, c);
+  }
+
+  function paintCellWithThrottle(e, useCache) {
+    const cell = getCellFromEvent(e);
+    if (!cell) return;
+    const [r, c] = cell;
+
+    if (currentTool === 'wall') {
+      if (grid[r][c] === 1) return;
+      const wouldBreak = useCache ? wouldBreakMazeCached(r, c) : wouldBreakMaze(r, c);
+      if (wouldBreak) {
+        rejectedCell = [r, c];
+        drawGrid();
+        if (rejectedTimer) clearTimeout(rejectedTimer);
+        rejectedTimer = setTimeout(function() {
+          rejectedCell = null;
+          drawGrid();
+        }, 400);
+        return;
+      }
+      grid[r][c] = 1;
+    } else {
+      grid[r][c] = 0;
+    }
+    drawGrid();
+  }
+
+  // 鼠标事件：左键画墙，右键擦除
+  canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+  canvas.addEventListener('mousedown', function(e) {
+    if (!isDesigning) return;
+    isDrawing = true;
+    lastCheckedCell = null;
+    currentTool = e.button === 2 ? 'erase' : 'wall';
+    syncToolBar();
+    paintCellWithThrottle(e, false);
+  });
+  canvas.addEventListener('mousemove', function(e) {
+    if (!isDesigning || !isDrawing) return;
+    paintCellWithThrottle(e, false);
+  });
+  canvas.addEventListener('mouseup', function() { isDrawing = false; lastCheckedCell = null; });
+  canvas.addEventListener('mouseleave', function() { isDrawing = false; lastCheckedCell = null; });
+
+  // 触摸事件：拖动时节流 wouldBreakMaze，避免每格都跑 BFS 导致卡顿
+  canvas.addEventListener('touchstart', function(e) {
+    if (!isDesigning) return;
+    e.preventDefault();
+    isDrawing = true;
+    lastCheckedCell = null;
+    paintCellWithThrottle(e, false);
+  }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) {
+    if (!isDesigning || !isDrawing) return;
+    e.preventDefault();
+    paintCellWithThrottle(e, true); // 触摸拖动用缓存，同一格只检测一次
+  }, { passive: false });
+  canvas.addEventListener('touchend', function() { isDrawing = false; lastCheckedCell = null; });
+
+  // 工具栏
+  function syncToolBar() {
+    toolBar.querySelectorAll('.tool-btn').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.tool === currentTool);
+    });
+    // 移动端：擦除模式时给画布加视觉提示
+    if (isTouchDevice) {
+      canvas.style.outline = currentTool === 'erase'
+        ? '2px solid rgba(248,113,113,0.6)'
+        : 'none';
+    }
+  }
+
+  toolBar.addEventListener('click', function(e) {
+    const btn = e.target.closest('.tool-btn');
+    if (!btn) return;
+    currentTool = btn.dataset.tool;
+    syncToolBar();
+  });
+
+  // 开始设计
+  startBtn.addEventListener('click', function() {
+    if (isDesigning) return;
+    gridSize = parseInt(gridSizeSelect.value);
+    grid = createGrid(gridSize);
+    calcCellSize();
+    drawGrid();
+    resultPanel.classList.remove('show');
+    solveStatus.textContent = '';
+
+    isDesigning = true;
+    solveBtn.disabled = true;
+    startBtn.disabled = true;
+    startBtn.innerHTML = '<i class="ti ti-clock"></i> 设计中...';
+
+    const totalTime = parseInt(timeLimitSelect.value);
+    timeLeft = totalTime;
+    timerBar.style.display = 'block';
+    timerText.style.display = 'block';
+    timerFill.style.width = '100%';
+    timerText.textContent = timeLeft.toFixed(1);
+
+    const startTime = Date.now();
+    timerInterval = setInterval(function() {
+      const elapsed = (Date.now() - startTime) / 1000;
+      timeLeft = Math.max(0, totalTime - elapsed);
+      timerFill.style.width = ((timeLeft / totalTime) * 100) + '%';
+      timerText.textContent = timeLeft.toFixed(1);
+
+      if (timeLeft <= 0) {
+        endDesign();
+      }
+    }, 50);
+  });
+
+  function endDesign() {
+    clearTimers();
+    isDesigning = false;
+    isDrawing = false;
+    timerText.textContent = '0.0';
+    timerFill.style.width = '0%';
+    solveBtn.disabled = false;
+    startBtn.disabled = false;
+    startBtn.innerHTML = '<i class="ti ti-player-play"></i> 重新设计';
+    solveStatus.textContent = '时间到！点击「让AI解题」看看你的迷宫有多难。';
+  }
+
+  // 清空
+  clearBtn.addEventListener('click', function() {
+    if (!isDesigning) return;
+    grid = createGrid(gridSize);
+    drawGrid();
+  });
+
+  // 让AI解题
+  solveBtn.addEventListener('click', function() {
+    solveBtn.disabled = true;
+    solveStatus.textContent = 'AI正在分析迷宫结构...';
+    resultPanel.classList.remove('show');
+
+    const result = bfsSolve(grid, 0, 0, gridSize - 1, gridSize - 1);
+    const stats = calcMazeStats(grid, gridSize);
+
+    // 动画展示搜索过程
+    let animIdx = 0;
+    const batchSize = Math.max(1, Math.floor(result.visited.length / 60));
+
+    function animateStep() {
+      animIdx = Math.min(animIdx + batchSize, result.visited.length);
+      const currentVisited = result.visited.slice(0, animIdx);
+      const currentPath = animIdx >= result.visited.length ? result.path : [];
+      drawGrid(currentVisited, currentPath);
+
+      solveStatus.textContent = 'AI搜索中... 已探索 ' + animIdx + ' / ' + result.visited.length + ' 个节点';
+
+      if (animIdx < result.visited.length) {
+        solveAnimTimer = setTimeout(animateStep, 16);
+      } else {
+        // 搜索完成，显示路径
+        drawGrid(result.visited, result.path);
+        setTimeout(function() { showResult(result, stats); }, 300);
+      }
+    }
+
+    setTimeout(animateStep, 200);
+  });
+
+  function showResult(result, stats) {
+    resultPanel.classList.add('show');
+    const icon = document.getElementById('resultIcon');
+    const title = document.getElementById('resultTitle');
+    const desc = document.getElementById('resultDesc');
+    const statsEl = document.getElementById('resultStats');
+    const quoteBox = document.getElementById('resultQuote');
+    const quoteText = document.getElementById('quoteText');
+    const quoteFrom = document.getElementById('quoteFrom');
+    const starsEl = document.getElementById('difficultyStars');
+
+    const pathLen = result.path.length;
+    const minPath = (gridSize - 1) * 2 + 1;
+    const detourRatio = calcDetourRatio(pathLen, gridSize);
+    const level = calcDreamLevel(detourRatio);
+
+    // 星级
+    let starsHtml = '';
+    for (let i = 0; i < 5; i++) {
+      starsHtml += '<span class="star ' + (i < level ? 'filled' : 'empty') + '">&#9733;</span>';
+    }
+    starsEl.innerHTML = starsHtml;
+
+    const LEVEL_NAMES = ['迷宫新手', '见习筑梦师', '筑梦学徒', '资深筑梦师', '梦境建筑师', 'Ariadne 级'];
+    const LEVEL_DESCS = [
+      'AI 几乎走直线就找到了出口（绕路倍数 < 1.2×）。试试用死胡同把 AI 引向错误方向。',
+      '有点绕路了（1.2–1.5×）。继续加长通路、减少捷径，让 AI 多走几段弯路。',
+      '不错！绕路倍数达到 1.5–2×。你的迷宫开始有筑梦师的味道了。',
+      '很强！绕路倍数达到 2–3×。AI 被你的迷宫结构绕得团团转。',
+      '出色！绕路倍数超过 3×。你对空间结构有极强的直觉，Cobb 会注意到你。',
+      '完美！绕路倍数超过 4×。AI 走了理论最短路径的四倍以上。Cobb 会亲自来招募你。'
+    ];
+    const QUOTES = [
+      ['"You\'re waiting for a train..."', '— Mal, Inception (2010)'],
+      ['"Dreams feel real while we\'re in them."', '— Dominick Cobb, Inception (2010)'],
+      ['"You mustn\'t be afraid to dream a little bigger, darling."', '— Eames, Inception (2010)'],
+      ['"An architect is someone who creates the world of the dream."', '— Dominick Cobb, Inception (2010)'],
+      ['"The dream is real. The real is a dream."', '— Inception (2010)'],
+      ['"She had a gift. She could build worlds."', '— Dominick Cobb, Inception (2010)']
+    ];
+
+    icon.textContent = ['😴', '🌙', '💭', '🌀', '🏛️', '🎭'][level];
+    title.textContent = LEVEL_NAMES[level];
+    title.className = level >= 3 ? 'result-title fail' : 'result-title success';
+
+    desc.innerHTML =
+      'AI 找到的路径长 <strong>' + pathLen + '</strong> 步，理论最短路径为 <strong>' + minPath + '</strong> 步，' +
+      '绕路倍数 <strong>' + detourRatio.toFixed(2) + '×</strong>。' +
+      '<br><br>' + LEVEL_DESCS[level];
+
+    solveStatus.textContent = 'AI 解题完成，绕路倍数 ' + detourRatio.toFixed(2) + '×。';
+
+    const q = QUOTES[level];
+    quoteBox.style.display = 'block';
+    quoteText.textContent = q[0];
+    quoteFrom.textContent = q[1];
+
+    statsEl.innerHTML =
+      '<div class="stat-item"><div class="stat-label">绕路倍数</div><div class="stat-value">' + detourRatio.toFixed(2) + '×</div></div>' +
+      '<div class="stat-item"><div class="stat-label">实际路径</div><div class="stat-value">' + pathLen + ' 步</div></div>' +
+      '<div class="stat-item"><div class="stat-label">理论最短</div><div class="stat-value">' + minPath + ' 步</div></div>' +
+      '<div class="stat-item"><div class="stat-label">墙壁占比</div><div class="stat-value">' + stats.wallPercent + '%</div></div>';
+
+    resultPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // 上报得分，展示百分位
+    submitScore({
+      gridSize:    gridSize,
+      pathLength:  pathLen,
+      minPath:     minPath,
+      detourRatio: parseFloat(detourRatio.toFixed(4)),
+      dreamLevel:  level,
+      wallCount:   stats.wallCount
+    });
+  }
+
+  // 上报得分到后端，展示百分位排名
+  function submitScore(payload) {
+    var percentileEl = document.getElementById('percentileNote');
+    if (!percentileEl) return;
+    percentileEl.textContent = '正在统计排名...';
+    percentileEl.style.display = 'block';
+
+    fetch('https://numfeel-api.996.ninja/inception-maze/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.status === 200 && res.data) {
+        var pct = res.data.percentile;
+        var total = res.data.total;
+        if (pct >= 80) {
+          percentileEl.textContent = '你比 ' + pct + '% 的人更有筑梦师潜质（共 ' + total + ' 次测试）';
+          percentileEl.style.color = '#fbbf24';
+        } else if (pct >= 50) {
+          percentileEl.textContent = '你超过了 ' + pct + '% 的测试者（共 ' + total + ' 次测试）';
+          percentileEl.style.color = 'rgba(255,255,255,0.7)';
+        } else {
+          percentileEl.textContent = '还有 ' + (100 - pct) + '% 的人比你更绕（共 ' + total + ' 次测试）';
+          percentileEl.style.color = 'rgba(255,255,255,0.5)';
+        }
+      } else {
+        percentileEl.style.display = 'none';
+      }
+    })
+    .catch(function() { percentileEl.style.display = 'none'; });
+  }
+
+  // 再来一次
+  retryBtn.addEventListener('click', function() {
+    init();
+    document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+  });
+
+  // 网格大小变化
+  gridSizeSelect.addEventListener('change', function() {
+    if (!isDesigning) init();
+  });
+
+  // 窗口大小变化
+  window.addEventListener('resize', function() {
+    calcCellSize();
+    drawGrid();
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

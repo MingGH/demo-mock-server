@@ -128,6 +128,14 @@ public class RouterConfig {
         router.post("/inception-maze/submit").handler(new RateLimitHandler(10, 60)).handler(inceptionHandler);
         router.get("/inception-maze/stats").handler(inceptionHandler);
 
+        // 恶魔交易诊断统计
+        com.example.demo_mock_server.service.DevilDealService devilDealService =
+            new com.example.demo_mock_server.service.DevilDealService(mysqlPool);
+        com.example.demo_mock_server.handler.DevilDealHandler devilDealHandler =
+            new com.example.demo_mock_server.handler.DevilDealHandler(devilDealService);
+        router.post("/devil-deal/submit").handler(new RateLimitHandler(10, 60)).handler(devilDealHandler);
+        router.get("/devil-deal/stats").handler(devilDealHandler);
+
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();
         router.get("/doc-track/pixel").handler(docTrackHandler);

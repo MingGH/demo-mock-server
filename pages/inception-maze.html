@@ -369,8 +369,8 @@
       <div class="ctrl-item">
         <label>网格大小</label>
         <select id="gridSize">
-          <option value="15" selected>15×15（入门）</option>
-          <option value="20">20×20（标准）</option>
+          <option value="15">15×15（入门）</option>
+          <option value="20" selected>20×20（标准）</option>
           <option value="25">25×25（困难）</option>
           <option value="30">30×30（大师）</option>
         </select>
@@ -445,6 +445,12 @@
       迷宫必须保持有解——画墙时系统会实时检测，如果某面墙会切断起点到终点的所有通路，这面墙会被自动撤销。
       这意味着你不能靠"堵死出口"取胜，只能靠设计复杂的迷路结构。
     </div>
+  </div>
+
+  <div class="card" id="globalStatsCard" style="display:none;">
+    <div class="card-title"><i class="ti ti-chart-bar"></i> 全局统计</div>
+    <div class="result-stats" id="globalStats" style="justify-content:flex-start;"></div>
+    <div id="globalLevelDist" style="margin-top:14px;"></div>
   </div>
 </div>
 
@@ -1009,6 +1015,7 @@ if (typeof module !== 'undefined' && module.exports) {
       } else {
         percentileEl.style.display = 'none';
       }
+      loadGlobalStats(); // 刷新全局统计
     })
     .catch(function() { percentileEl.style.display = 'none'; });
   }
@@ -1030,7 +1037,52 @@ if (typeof module !== 'undefined' && module.exports) {
     drawGrid();
   });
 
+  // 页面加载时拉取全局统计
+  function loadGlobalStats() {
+    fetch('https://numfeel-api.996.ninja/inception-maze/stats')
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.status !== 200 || !res.data) return;
+        var d = res.data;
+        var card = document.getElementById('globalStatsCard');
+        var statsEl = document.getElementById('globalStats');
+        var distEl = document.getElementById('globalLevelDist');
+        if (!card || !statsEl || d.totalSessions < 1) return;
+
+        card.style.display = '';
+        statsEl.innerHTML =
+          '<div class="stat-item"><div class="stat-label">总测试次数</div><div class="stat-value">' + d.totalSessions + '</div></div>' +
+          '<div class="stat-item"><div class="stat-label">平均绕路倍数</div><div class="stat-value">' + (d.avgDetour || 0).toFixed(2) + '×</div></div>' +
+          '<div class="stat-item"><div class="stat-label">最高绕路倍数</div><div class="stat-value">' + (d.maxDetour || 0).toFixed(2) + '×</div></div>' +
+          '<div class="stat-item"><div class="stat-label">平均墙壁数</div><div class="stat-value">' + Math.round(d.avgWalls || 0) + '</div></div>';
+
+        // 等级分布
+        var dist = d.levelDist || {};
+        var names = ['迷宫新手', '见习筑梦师', '筑梦学徒', '资深筑梦师', '梦境建筑师', 'Ariadne 级'];
+        var icons = ['😴', '🌙', '💭', '🌀', '🏛️', '🎭'];
+        var total = d.totalSessions || 1;
+        var bars = '';
+        for (var i = 0; i <= 5; i++) {
+          var cnt = dist[String(i)] || 0;
+          var pct = (cnt / total * 100).toFixed(1);
+          bars +=
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+              '<span style="min-width:24px;text-align:center;">' + icons[i] + '</span>' +
+              '<span style="min-width:80px;font-size:12px;color:rgba(255,255,255,0.55);">' + names[i] + '</span>' +
+              '<div style="flex:1;height:16px;background:rgba(0,0,0,0.2);border-radius:8px;overflow:hidden;">' +
+                '<div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#fbbf24,#f59e0b);border-radius:8px;min-width:' + (cnt > 0 ? '2px' : '0') + ';"></div>' +
+              '</div>' +
+              '<span style="min-width:50px;text-align:right;font-size:12px;color:rgba(255,255,255,0.5);">' + cnt + ' (' + pct + '%)</span>' +
+            '</div>';
+        }
+        distEl.innerHTML =
+          '<div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:8px;">等级分布</div>' + bars;
+      })
+      .catch(function() {}); // 静默失败
+  }
+
   init();
+  loadGlobalStats();
 })();
 </script>
 </body>

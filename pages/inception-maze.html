@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="30秒设计一个迷宫，让AI（BFS）去解。迷宫必须有解，但AI探索覆盖率越高说明你越有筑梦师潜质。致敬盗梦空间。">
+  <meta name="description" content="2分钟设计一个迷宫，让AI（BFS）去解。迷宫必须有解，但绕路倍数越高说明你越有筑梦师潜质。致敬盗梦空间。">
   <title>筑梦师测试 | 数字直觉</title>
   <script src="../components/header.js" defer></script>
   <style>
@@ -338,7 +338,7 @@
 <div class="container">
   <div class="header">
     <h1><i class="ti ti-maze"></i> 筑梦师测试</h1>
-    <p>你有30秒设计一个迷宫，然后让AI去解。<br>迷宫必须有解——但让AI走得越迷，你的筑梦师潜质越强。</p>
+    <p>你有2分钟设计一个迷宫，然后让AI去解。<br>迷宫必须有解——但让AI走得越迷，你的筑梦师潜质越强。</p>
   </div>
 
   <div class="card">
@@ -350,7 +350,7 @@
       </div>
       <div class="fact">
         <div class="k">Cobb 的测试</div>
-        <div class="v">Cobb 让 Ariadne 在两分钟内画出一个他走不出来的迷宫。她用了不到一分钟——关键是让路径足够曲折。</div>
+        <div class="v">Cobb 让 Ariadne 在两分钟内画出一个他走不出来的迷宫。她用了不到两分钟——关键是让路径足够曲折。</div>
       </div>
       <div class="fact">
         <div class="k">你的挑战</div>
@@ -378,9 +378,9 @@
       <div class="ctrl-item">
         <label>时间限制</label>
         <select id="timeLimit">
-          <option value="30">30秒</option>
-          <option value="45" selected>45秒</option>
-          <option value="60">60秒</option>
+          <option value="60">1分钟</option>
+          <option value="120" selected>2分钟</option>
+          <option value="180">3分钟</option>
         </select>
       </div>
     </div>
@@ -399,7 +399,7 @@
     <div class="timer-bar" id="timerBar" style="display:none;">
       <div class="timer-fill" id="timerFill"></div>
     </div>
-    <div class="timer-text" id="timerText" style="display:none;">30.0</div>
+    <div class="timer-text" id="timerText" style="display:none;">2:00</div>
 
     <div class="canvas-wrap">
       <canvas id="mazeCanvas"></canvas>
@@ -829,14 +829,14 @@ if (typeof module !== 'undefined' && module.exports) {
     timerBar.style.display = 'block';
     timerText.style.display = 'block';
     timerFill.style.width = '100%';
-    timerText.textContent = timeLeft.toFixed(1);
+    timerText.textContent = formatTime(timeLeft);
 
     const startTime = Date.now();
     timerInterval = setInterval(function() {
       const elapsed = (Date.now() - startTime) / 1000;
       timeLeft = Math.max(0, totalTime - elapsed);
       timerFill.style.width = ((timeLeft / totalTime) * 100) + '%';
-      timerText.textContent = timeLeft.toFixed(1);
+      timerText.textContent = formatTime(timeLeft);
 
       if (timeLeft <= 0) {
         endDesign();
@@ -844,11 +844,18 @@ if (typeof module !== 'undefined' && module.exports) {
     }, 50);
   });
 
+  // M:SS 格式
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
   function endDesign() {
     clearTimers();
     isDesigning = false;
     isDrawing = false;
-    timerText.textContent = '0.0';
+    timerText.textContent = '0:00';
     timerFill.style.width = '0%';
     solveBtn.disabled = false;
     startBtn.disabled = false;

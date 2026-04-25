@@ -1,0 +1,121 @@
+/* ── Devil Deal 心理测试 ── */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);min-height:100vh;color:#e8e8e8;line-height:1.6}
+.container{max-width:860px;margin:0 auto;padding:20px}
+.header{text-align:center;padding:40px 20px 30px}
+.header h1{font-size:2.2rem;background:linear-gradient(90deg,#ff4444,#fbbf24,#ff4444);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 3s linear infinite;margin-bottom:14px}
+@keyframes shimmer{0%{background-position:0% center}100%{background-position:200% center}}
+.header p{font-size:1rem;color:#a0a0a0;max-width:640px;margin:0 auto}
+
+/* 卡片 */
+.section{background:rgba(255,255,255,0.05);border-radius:16px;padding:28px;margin-bottom:24px;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1)}
+.section h2{font-size:1.3rem;margin-bottom:18px;color:#fbbf24;display:flex;align-items:center;gap:10px}
+
+/* 进度条 */
+.progress-wrap{background:rgba(255,255,255,0.1);border-radius:4px;height:5px;margin-bottom:22px}
+.progress-fill{height:5px;border-radius:4px;background:linear-gradient(90deg,#ff4444,#fbbf24);transition:width 0.4s ease}
+
+/* 题目卡片 */
+.q-card{background:rgba(0,0,0,0.25);border-radius:14px;padding:26px;border:1px solid rgba(255,255,255,0.08)}
+.q-meta{font-size:0.82rem;color:#888;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.q-scenario{display:inline-block;font-size:0.78rem;padding:3px 10px;border-radius:12px;background:rgba(255,68,68,0.12);color:#ff6b6b;border:1px solid rgba(255,68,68,0.25);margin-bottom:14px}
+.q-text{font-size:1.08rem;color:#ddd;line-height:1.75;margin-bottom:22px}
+.options{display:flex;flex-direction:column;gap:10px}
+.opt{background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px 18px;cursor:pointer;transition:all 0.22s ease;display:flex;align-items:flex-start;gap:12px}
+.opt:hover{border-color:rgba(255,68,68,0.4);background:rgba(255,68,68,0.05)}
+.opt.selected{border-color:#ff4444;background:rgba(255,68,68,0.1)}
+.opt-dot{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.25);flex-shrink:0;margin-top:2px;transition:all 0.2s}
+.opt.selected .opt-dot{background:#ff4444;border-color:#ff4444}
+.opt-text{font-size:0.95rem;color:#ccc;line-height:1.6}
+.opt.selected .opt-text{color:#fff}
+
+/* 导航 */
+.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:12px}
+.btn{padding:11px 22px;border:none;border-radius:8px;font-size:0.95rem;cursor:pointer;transition:all 0.25s ease;display:inline-flex;align-items:center;gap:7px}
+.btn-primary{background:linear-gradient(135deg,#ff4444,#cc3333);color:#fff;font-weight:600}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 5px 18px rgba(255,68,68,0.3)}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-ghost{background:rgba(255,255,255,0.08);color:#ccc;border:1px solid rgba(255,255,255,0.15)}
+.btn-ghost:hover{background:rgba(255,255,255,0.13)}
+
+/* ── 开场页 ── */
+.intro-wrap{text-align:center;padding:20px 0}
+.intro-icon{font-size:4rem;margin-bottom:16px;display:block}
+.intro-text{color:#b0b0b0;font-size:0.95rem;line-height:1.8;max-width:560px;margin:0 auto 24px}
+.intro-rules{text-align:left;max-width:480px;margin:0 auto 28px;color:#999;font-size:0.88rem;line-height:2}
+.intro-rules li{list-style:none;padding-left:20px;position:relative}
+.intro-rules li::before{content:'▸';position:absolute;left:0;color:#ff4444}
+.start-btn{font-size:1.1rem;padding:14px 40px}
+
+/* ── 结果页 ── */
+.result-wrap{display:none}
+.result-wrap.show{display:block}
+
+/* 恶魔契约卡 */
+.deal-card{background:linear-gradient(135deg,rgba(30,0,0,0.6),rgba(60,10,10,0.4));border:2px solid rgba(255,68,68,0.3);border-radius:20px;padding:36px 28px;text-align:center;position:relative;overflow:hidden}
+.deal-card::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(255,68,68,0.06) 0%,transparent 60%);animation:pulse-glow 4s ease infinite}
+@keyframes pulse-glow{0%,100%{opacity:0.5;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+.deal-icon{font-size:3.5rem;margin-bottom:12px;display:block}
+.deal-title{font-size:1.6rem;color:#ff6b6b;margin-bottom:8px;font-weight:700}
+.deal-subtitle{font-size:1rem;color:#fbbf24;margin-bottom:16px}
+.deal-desc{color:#b0b0b0;font-size:0.92rem;line-height:1.8;max-width:520px;margin:0 auto}
+
+/* 维度雷达 */
+.radar-section{display:flex;flex-wrap:wrap;gap:20px;justify-content:center;margin:20px 0}
+.dim-bar-card{flex:1;min-width:200px;background:rgba(0,0,0,0.25);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.08)}
+.dim-bar-card .dim-name{font-size:0.85rem;color:#a0a0a0;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.dim-bar-card .dim-score{font-size:1.4rem;font-weight:bold;margin-bottom:6px}
+.dim-bar-wrap{background:rgba(255,255,255,0.08);border-radius:3px;height:5px}
+.dim-bar{height:5px;border-radius:3px;transition:width 0.8s ease}
+.dim-hint{font-size:0.8rem;color:#888;margin-top:6px;line-height:1.5}
+
+/* 分布图 */
+.dist-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.dist-label{font-size:0.82rem;color:#999;width:80px;flex-shrink:0;text-align:right}
+.dist-bar-bg{flex:1;background:rgba(255,255,255,0.07);border-radius:3px;height:22px;overflow:hidden}
+.dist-bar-fill{height:100%;border-radius:3px;transition:width 1s ease;display:flex;align-items:center;padding-left:8px}
+.dist-bar-fill span{font-size:0.75rem;color:#fff;font-weight:600;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+
+/* 洞察卡 */
+.insight{background:linear-gradient(135deg,rgba(255,68,68,0.08),rgba(255,68,68,0.04));border-left:3px solid #ff4444;padding:18px 20px;border-radius:0 12px 12px 0;margin:16px 0}
+.insight h4{color:#ff6b6b;margin-bottom:8px;font-size:0.95rem;display:flex;align-items:center;gap:7px}
+.insight p{color:#b8b8b8;font-size:0.9rem;line-height:1.75}
+.insight.gold{border-left-color:#fbbf24;background:linear-gradient(135deg,rgba(251,191,36,0.08),rgba(251,191,36,0.04))}
+.insight.gold h4{color:#fbbf24}
+.insight.blue{border-left-color:#64b5f6;background:linear-gradient(135deg,rgba(100,181,246,0.08),rgba(33,150,243,0.05))}
+.insight.blue h4{color:#64b5f6}
+.insight.green{border-left-color:#81c784;background:linear-gradient(135deg,rgba(129,199,132,0.08),rgba(76,175,80,0.05))}
+.insight.green h4{color:#81c784}
+
+/* 分享卡片 */
+.share-card{background:linear-gradient(135deg,#1a0000 0%,#2a0a0a 50%,#1a1a2e 100%);border:1px solid rgba(255,68,68,0.3);border-radius:16px;padding:32px 24px;text-align:center;position:relative;overflow:hidden}
+.share-card-inner{position:relative;z-index:1}
+.share-card .share-title{font-size:1.1rem;color:#ff6b6b;margin-bottom:6px}
+.share-card .share-result{font-size:1.8rem;color:#fbbf24;font-weight:700;margin-bottom:4px}
+.share-card .share-sub{color:#888;font-size:0.85rem;margin-bottom:16px}
+.share-card .share-url{color:#666;font-size:0.75rem}
+.share-actions{display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+
+/* 理论卡 */
+.theory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.theory-card{background:rgba(0,0,0,0.22);border-radius:12px;padding:18px;border:1px solid rgba(255,255,255,0.07)}
+.theory-card h4{color:#fbbf24;font-size:0.92rem;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.theory-card p{color:#999;font-size:0.85rem;line-height:1.7}
+.theory-card .source{font-size:0.78rem;color:#666;margin-top:8px;font-style:italic}
+
+/* Toast */
+.toast{position:fixed;top:20px;right:20px;background:#ff4444;color:white;padding:13px 22px;border-radius:8px;opacity:0;transform:translateY(-16px);transition:all 0.3s ease;z-index:1001;font-size:0.9rem}
+.toast.show{opacity:1;transform:translateY(0)}
+.copy-btn{position:fixed;bottom:28px;right:28px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#ff4444,#cc3333);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(255,68,68,0.3);transition:all 0.3s ease;z-index:1000;color:#fff;font-size:1.2rem}
+.copy-btn:hover{transform:scale(1.1)}
+
+/* 响应式 */
+@media(max-width:640px){
+  .header h1{font-size:1.6rem}
+  .section{padding:18px}
+  .q-text{font-size:1rem}
+  .deal-card{padding:24px 18px}
+  .deal-title{font-size:1.3rem}
+  .nav-row{flex-wrap:wrap}
+  .share-actions{flex-direction:column;align-items:center}
+}

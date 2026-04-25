@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="10道情境题，诊断你最可能为了什么与恶魔签下契约——权力、爱情、金钱、复仇、被认可、还是知识。结果带心理学解读和分享卡片。">
+  <title>恶魔交易诊断 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+  <script src="questions.js"></script>
+  <script src="engine.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-devil"></i> 恶魔交易诊断</h1>
+    <p>如果恶魔出现在你面前，你最可能用灵魂换什么？</p>
+  </div>
+
+  <!-- ── 开场 ── -->
+  <div class="section" id="introSection">
+    <div class="intro-wrap">
+      <span class="intro-icon"><i class="ti ti-devil" style="color:#ff4444;font-size:3.5rem"></i></span>
+      <div class="intro-text">
+        每个人心里都有一个价码。<br>
+        不是因为贪婪，而是因为有些东西你太想要了。<br>
+        10 道情境题，找出你的那个「价码」。
+      </div>
+      <ul class="intro-rules">
+        <li>没有对错，选最接近真实想法的</li>
+        <li>不要想太久，第一反应最准</li>
+        <li>结果会告诉你「恶魔最可能用什么诱惑你」</li>
+      </ul>
+      <button class="btn btn-primary start-btn" onclick="startTest()">
+        <i class="ti ti-flame"></i> 开始诊断
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 答题区 ── -->
+  <div class="section" id="testSection" style="display:none">
+    <h2><i class="ti ti-clipboard-list"></i> 情境诊断</h2>
+    <div class="progress-wrap"><div class="progress-fill" id="progressBar" style="width:0%"></div></div>
+    <div id="questionArea"></div>
+    <div class="nav-row">
+      <button class="btn btn-ghost" id="prevBtn" onclick="prevQ()" style="visibility:hidden"><i class="ti ti-arrow-left"></i> 上一题</button>
+      <span id="qCounter" style="color:#888;font-size:0.85rem;"></span>
+      <button class="btn btn-primary" id="nextBtn" onclick="nextQ()" disabled><i class="ti ti-arrow-right"></i> 下一题</button>
+    </div>
+  </div>
+
+  <!-- ── 结果页 ── -->
+  <div class="result-wrap" id="resultWrap">
+
+    <!-- 契约卡 -->
+    <div class="section">
+      <div class="deal-card" id="dealCard"></div>
+    </div>
+
+    <!-- 六维度得分 -->
+    <div class="section">
+      <h2><i class="ti ti-chart-radar"></i> 你的欲望图谱</h2>
+      <p style="color:#888;font-size:0.88rem;margin-bottom:16px;">每个维度的得分反映你在该方向上的「交易意愿」</p>
+      <div class="radar-section" id="dimGrid"></div>
+    </div>
+
+    <!-- 副维度洞察 -->
+    <div class="section" id="insightSection">
+      <h2><i class="ti ti-bulb"></i> 深层解读</h2>
+      <div id="insightContent"></div>
+    </div>
+
+    <!-- 分布对比 -->
+    <div class="section">
+      <h2><i class="ti ti-users"></i> 大多数人会为了什么交易</h2>
+      <p style="color:#888;font-size:0.88rem;margin-bottom:16px;">基于题目选项设计的理论预期分布（模拟数据，非真实用户统计）</p>
+      <div id="distChart"></div>
+    </div>
+
+    <!-- 心理学背景 -->
+    <div class="section">
+      <h2><i class="ti ti-book"></i> 这背后的心理学</h2>
+      <div class="theory-grid" id="theoryGrid"></div>
+    </div>
+
+    <!-- 分享卡片 -->
+    <div class="section">
+      <h2><i class="ti ti-share"></i> 分享你的契约</h2>
+      <div class="share-card" id="shareCard"></div>
+      <div class="share-actions">
+        <button class="btn btn-primary" onclick="copyResult()"><i class="ti ti-copy"></i> 复制结果</button>
+        <button class="btn btn-ghost" onclick="restart()"><i class="ti ti-refresh"></i> 重新测试</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<button class="copy-btn" onclick="copyLink()" title="复制链接"><i class="ti ti-link"></i></button>
+<div class="toast" id="toast">已复制</div>
+
+<script>
+// ===== 状态 =====
+var curIdx = 0;
+var answers = [];
+for (var i = 0; i < QUESTIONS.length; i++) answers.push(null);
+
+function startTest() {
+  document.getElementById('introSection').style.display = 'none';
+  document.getElementById('testSection').style.display = '';
+  renderQ();
+}
+
+function renderQ() {
+  var q = QUESTIONS[curIdx];
+  var pct = ((curIdx / QUESTIONS.length) * 100).toFixed(0);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('qCounter').textContent = (curIdx + 1) + ' / ' + QUESTIONS.length;
+  document.getElementById('prevBtn').style.visibility = curIdx === 0 ? 'hidden' : 'visible';
+
+  var isLast = curIdx === QUESTIONS.length - 1;
+  var nb = document.getElementById('nextBtn');
+  nb.innerHTML = isLast ? '<i class="ti ti-check"></i> 查看契约' : '<i class="ti ti-arrow-right"></i> 下一题';
+  nb.disabled = answers[curIdx] === null;
+
+  var h = '<div class="q-card">';
+  h += '<div class="q-meta"><i class="ti ti-hash"></i> 第 ' + (curIdx + 1) + ' 题</div>';
+  h += '<div class="q-scenario"><i class="ti ti-tag"></i> ' + q.tag + '</div>';
+  h += '<div class="q-text">' + q.text + '</div>';
+  h += '<div class="options">';
+  q.opts.forEach(function(o, i) {
+    var sel = answers[curIdx] === i ? ' selected' : '';
+    h += '<div class="opt' + sel + '" onclick="pick(' + i + ')"><div class="opt-dot"></div><div class="opt-text">' + o.text + '</div></div>';
+  });
+  h += '</div></div>';
+  document.getElementById('questionArea').innerHTML = h;
+}
+
+function pick(i) {
+  answers[curIdx] = i;
+  renderQ();
+}
+
+function nextQ() {
+  if (answers[curIdx] === null) return;
+  if (curIdx === QUESTIONS.length - 1) { showResult(); return; }
+  curIdx++;
+  renderQ();
+  document.getElementById('questionArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function prevQ() {
+  if (curIdx > 0) { curIdx--; renderQ(); }
+}
+
+function restart() {
+  curIdx = 0;
+  answers = [];
+  for (var i = 0; i < QUESTIONS.length; i++) answers.push(null);
+  document.getElementById('introSection').style.display = '';
+  document.getElementById('testSection').style.display = 'none';
+  document.getElementById('resultWrap').classList.remove('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== 结果渲染 =====
+function showResult() {
+  document.getElementById('testSection').style.display = 'none';
+  document.getElementById('resultWrap').classList.add('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  var rawScores = calcRawScores(QUESTIONS, answers);
+  var pcts = calcPercentages(rawScores, QUESTIONS);
+  var topDim = findTopDimension(rawScores);
+  var secondDim = findSecondDimension(rawScores);
+  var result = DEAL_RESULTS[topDim];
+  var topDimObj = DIMENSIONS.filter(function(d) { return d.id === topDim; })[0];
+
+  // 契约卡
+  var dc = document.getElementById('dealCard');
+  dc.innerHTML = '<span class="deal-icon">' + result.icon + '</span>' +
+    '<div class="deal-title">' + result.title + '</div>' +
+    '<div class="deal-subtitle">' + result.subtitle + '</div>' +
+    '<div class="deal-desc">' + result.desc + '</div>';
+
+  // 维度得分
+  renderDimGrid(rawScores, pcts, topDim);
+
+  // 洞察
+  renderInsights(rawScores, pcts, topDim, secondDim);
+
+  // 分布
+  renderDist(topDim);
+
+  // 理论
+  renderTheory(topDim, secondDim);
+
+  // 分享卡
+  renderShareCard(result, topDimObj, pcts);
+}
+
+function renderDimGrid(rawScores, pcts, topDim) {
+  var h = '';
+  // 按得分排序
+  var sorted = DIMENSIONS.slice().sort(function(a, b) {
+    return (rawScores[b.id] || 0) - (rawScores[a.id] || 0);
+  });
+  sorted.forEach(function(d) {
+    var pct = Math.round(pcts[d.id] * 100);
+    var isTop = d.id === topDim;
+    h += '<div class="dim-bar-card">';
+    h += '<div class="dim-name"><i class="ti ' + d.icon + '"></i> ' + d.name + (isTop ? ' <span style="color:#ff4444;font-size:0.75rem">← 主契约</span>' : '') + '</div>';
+    h += '<div class="dim-score" style="color:' + d.color + '">' + pct + '%</div>';
+    h += '<div class="dim-bar-wrap"><div class="dim-bar" style="width:' + pct + '%;background:' + d.color + '"></div></div>';
+    h += '</div>';
+  });
+  document.getElementById('dimGrid').innerHTML = h;
+}
+
+function renderInsights(rawScores, pcts, topDim, secondDim) {
+  var h = '';
+  var topResult = DEAL_RESULTS[topDim];
+  var secondResult = DEAL_RESULTS[secondDim];
+  var topObj = DIMENSIONS.filter(function(d) { return d.id === topDim; })[0];
+  var secondObj = DIMENSIONS.filter(function(d) { return d.id === secondDim; })[0];
+
+  // 主维度心理学解读
+  h += '<div class="insight">';
+  h += '<h4><i class="ti ' + topObj.icon + '"></i> 为什么是「' + topObj.name + '」</h4>';
+  h += '<p>' + topResult.psychology + '</p>';
+  h += '</div>';
+
+  // 副维度
+  if (secondDim !== topDim) {
+    h += '<div class="insight gold">';
+    h += '<h4><i class="ti ' + secondObj.icon + '"></i> 你的副契约：' + secondObj.name + '</h4>';
+    h += '<p>' + secondResult.desc + '</p>';
+    h += '</div>';
+  }
+
+  // 组合解读
+  var combo = getComboInsight(topDim, secondDim);
+  if (combo) {
+    h += '<div class="insight blue">';
+    h += '<h4><i class="ti ti-arrows-cross"></i> 组合解读：' + topObj.name + ' × ' + secondObj.name + '</h4>';
+    h += '<p>' + combo + '</p>';
+    h += '</div>';
+  }
+
+  // 最终提醒
+  h += '<div class="insight green">';
+  h += '<h4><i class="ti ti-shield-check"></i> 一个提醒</h4>';
+  h += '<p>这个测试不是在说你「贪婪」或「有问题」。每个人都有核心需求，它驱动你的选择、焦虑和努力方向。看见它，你就不容易被它绑架——无论诱惑来自恶魔，还是来自一个精准投放的广告。</p>';
+  h += '</div>';
+
+  document.getElementById('insightContent').innerHTML = h;
+}
+
+function getComboInsight(top, second) {
+  var combos = {
+    'power_money': '权力和金钱的组合说明你追求的是「不可撼动的地位」。你不只想有钱，你想让钱成为你说话的底气。这种组合在创业者和管理者中最常见。',
+    'power_recognition': '你想要的不是暗处的权力，而是「被承认的权威」。你需要别人知道你厉害，而且心服口服。这种组合驱动了很多学术界和职场中的「卷王」。',
+    'power_revenge': '你的权力欲望可能源于过去的无力经历。你想变强，一部分是为了自己，一部分是为了让曾经看不起你的人后悔。这种驱动力很强，但也容易让你活在过去。',
+    'love_recognition': '你渴望的爱，本质上是一种「被选中」的感觉。你需要有人看见你、选择你、把你放在第一位。这种需求在童年缺少关注的人身上尤其强烈。',
+    'love_revenge': '你心里可能有一段没有被好好对待的感情。你同时渴望真爱和公道——想被爱，也想让伤害你的人知道他们错了。',
+    'love_knowledge': '你想理解爱。你不满足于「感觉对了」，你想知道为什么对、怎样才能持久、失去了该怎么办。你是那种会在失恋后读心理学论文的人。',
+    'money_recognition': '你追求财富的一个重要原因是「证明自己」。你想让那些曾经质疑你的人看到你的成功。财务自由对你来说不只是数字，是一张成绩单。',
+    'money_love': '你的安全感同时依赖物质和情感。你害怕的不是穷，也不是孤独，而是「又穷又孤独」。这种双重焦虑在大城市独居的年轻人中非常普遍。',
+    'revenge_recognition': '你的复仇欲望根源是「不被公正对待」。你不是想伤害谁，你是想让所有人看到真相——你被冤枉了、被低估了、被忽视了。',
+    'knowledge_recognition': '你想成为「那个最懂的人」。你追求知识不只是好奇心，还有一种「用见识赢得尊重」的渴望。你可能是朋友圈里的「百科全书」角色。',
+    'knowledge_power': '你相信「知识就是力量」，而且是字面意义上的。你想通过理解规则来掌控局面，通过信息差来获得优势。这种组合在策略型人格中最常见。'
+  };
+  var key1 = top + '_' + second;
+  var key2 = second + '_' + top;
+  return combos[key1] || combos[key2] || null;
+}
+
+function renderDist(topDim) {
+  var dist = getExpectedDistribution();
+  var h = '';
+  // 按百分比排序
+  var sorted = DIMENSIONS.slice().sort(function(a, b) {
+    return (dist[b.id] || 0) - (dist[a.id] || 0);
+  });
+  sorted.forEach(function(d) {
+    var pct = dist[d.id] || 0;
+    var isUser = d.id === topDim;
+    h += '<div class="dist-bar-row">';
+    h += '<div class="dist-label" style="' + (isUser ? 'color:' + d.color + ';font-weight:bold' : '') + '">' + d.name + '</div>';
+    h += '<div class="dist-bar-bg">';
+    h += '<div class="dist-bar-fill" style="width:' + pct + '%;background:' + d.color + (isUser ? ';box-shadow:0 0 8px ' + d.color : '') + '">';
+    h += '<span>' + pct + '%' + (isUser ? ' ← 你' : '') + '</span>';
+    h += '</div></div></div>';
+  });
+  document.getElementById('distChart').innerHTML = h;
+}
+
+function renderTheory(topDim, secondDim) {
+  var dims = [topDim];
+  if (secondDim !== topDim) dims.push(secondDim);
+
+  var h = '';
+  dims.forEach(function(dimId) {
+    var result = DEAL_RESULTS[dimId];
+    var dimObj = DIMENSIONS.filter(function(d) { return d.id === dimId; })[0];
+    h += '<div class="theory-card">';
+    h += '<h4><i class="ti ' + dimObj.icon + '"></i> ' + dimObj.name + '契约的心理学</h4>';
+    h += '<p>' + result.psychology + '</p>';
+    h += '<div class="source">' + result.source + '</div>';
+    h += '</div>';
+  });
+
+  // 通用理论卡
+  h += '<div class="theory-card">';
+  h += '<h4><i class="ti ti-brain"></i> 浮士德原型</h4>';
+  h += '<p>「与恶魔交易」是人类最古老的叙事原型之一。从歌德的《浮士德》到《暮光之城》，核心结构相同：用你最珍贵的东西（灵魂/寿命/记忆）换你最渴望的东西。心理学家 Jung 认为，这个故事之所以跨文化存在，是因为它映射了人类的「阴影」——那些你不愿承认但确实存在的欲望。</p>';
+  h += '<div class="source">Jung, C.G. (1959). The Archetypes and the Collective Unconscious. Princeton UP.</div>';
+  h += '</div>';
+
+  document.getElementById('theoryGrid').innerHTML = h;
+}
+
+function renderShareCard(result, topDimObj, pcts) {
+  var pctVal = Math.round(pcts[topDimObj.id] * 100);
+  var sc = document.getElementById('shareCard');
+  sc.innerHTML = '<div class="share-card-inner">' +
+    '<div class="share-title">我的恶魔契约诊断结果</div>' +
+    '<div class="share-result">' + result.icon + ' ' + result.title + '</div>' +
+    '<div class="share-sub">' + result.subtitle + '（' + pctVal + '%）</div>' +
+    '<div class="share-url">numfeel.996.ninja/pages/devil-deal/</div>' +
+    '</div>';
+}
+
+// ===== 工具 =====
+function copyLink() {
+  var url = 'https://numfeel.996.ninja/pages/devil-deal/';
+  doCopy(url, '链接已复制');
+}
+
+function copyResult() {
+  var rawScores = calcRawScores(QUESTIONS, answers);
+  var topDim = findTopDimension(rawScores);
+  var result = DEAL_RESULTS[topDim];
+  var text = '我做了「恶魔交易诊断」，结果是：' + result.icon + ' ' + result.title + '\n' +
+    result.subtitle + '\n' +
+    '你也来测测 → https://numfeel.996.ninja/pages/devil-deal/';
+  doCopy(text, '结果已复制');
+}
+
+function doCopy(text, msg) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() { showToast(msg); }).catch(function() { showToast('复制失败'); });
+  } else {
+    // fallback
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(msg);
+  }
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2000);
+}
+</script>
+</body>
+</html>

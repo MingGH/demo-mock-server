@@ -83,6 +83,13 @@
       <div class="theory-grid" id="theoryGrid"></div>
     </div>
 
+    <!-- 社区统计（后端数据） -->
+    <div class="section" id="communitySection" style="display:none">
+      <h2><i class="ti ti-chart-pie"></i> 社区契约统计</h2>
+      <p style="color:#888;font-size:0.88rem;margin-bottom:16px;" id="communityDesc">来自真实用户的测试数据</p>
+      <div id="communityContent"></div>
+    </div>
+
     <!-- 分享卡片 -->
     <div class="section">
       <h2><i class="ti ti-share"></i> 分享你的契约</h2>
@@ -197,6 +204,9 @@ function showResult() {
 
   // 分享卡
   renderShareCard(result, topDimObj, pcts);
+
+  // 提交到后端 & 加载社区统计
+  submitToBackend(topDim, secondDim, pcts);
 }
 
 function renderDimGrid(rawScores, pcts, topDim) {
@@ -369,6 +379,128 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(function() { t.classList.remove('show'); }, 2000);
+}
+
+// ===== 后端集成 =====
+var API_BASE = 'https://numfeel-api.996.ninja';
+
+function submitToBackend(topDim, secondDim, pcts) {
+  var payload = {
+    dealType: topDim,
+    secondType: secondDim,
+    powerPct: Math.round(pcts.power * 100),
+    lovePct: Math.round(pcts.love * 100),
+    moneyPct: Math.round(pcts.money * 100),
+    revengePct: Math.round(pcts.revenge * 100),
+    recognitionPct: Math.round(pcts.recognition * 100),
+    knowledgePct: Math.round(pcts.knowledge * 100)
+  };
+
+  fetch(API_BASE + '/devil-deal/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (res.status === 200 && res.data) {
+      renderSubmitFeedback(res.data, topDim);
+      loadCommunityStats(topDim);
+    }
+  })
+  .catch(function() {
+    // 后端不可用时静默降级，使用理论分布
+    loadCommunityStats(topDim);
+  });
+}
+
+function loadCommunityStats(topDim) {
+  fetch(API_BASE + '/devil-deal/stats')
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (res.status === 200 && res.data) {
+      renderCommunityStats(res.data, topDim);
+    }
+  })
+  .catch(function() {
+    // 静默降级
+  });
+}
+
+function renderSubmitFeedback(data, topDim) {
+  var topObj = DIMENSIONS.filter(function(d) { return d.id === topDim; })[0];
+  var feedbackEl = document.getElementById('dealCard');
+  if (!feedbackEl) return;
+
+  var badge = document.createElement('div');
+  badge.style.cssText = 'margin-top:16px;padding:10px 16px;background:rgba(255,255,255,0.06);border-radius:10px;font-size:0.88rem;color:#b0b0b0;';
+  badge.innerHTML = '<i class="ti ti-users" style="color:#fbbf24"></i> ' +
+    '共 <strong style="color:#fbbf24">' + data.total + '</strong> 人完成测试，' +
+    '<strong style="color:' + topObj.color + '">' + data.samePercent + '%</strong> 的人和你签了同一份契约';
+  feedbackEl.appendChild(badge);
+}
+
+function renderCommunityStats(data, topDim) {
+  var section = document.getElementById('communitySection');
+  var content = document.getElementById('communityContent');
+  var desc = document.getElementById('communityDesc');
+  if (!section || !content) return;
+
+  var global = data.global || {};
+  var typeDist = data.typeDist || {};
+  var totalSessions = global.totalSessions || 0;
+
+  if (totalSessions < 5) return; // 数据太少不展示
+
+  section.style.display = '';
+  desc.textContent = '来自 ' + totalSessions + ' 位真实用户的测试数据';
+
+  var h = '';
+
+  // 契约类型分布（真实数据）
+  h += '<div style="margin-bottom:20px">';
+  h += '<div style="font-size:0.9rem;color:#ccc;margin-bottom:12px"><i class="ti ti-chart-bar"></i> 契约类型分布</div>';
+
+  var sorted = DIMENSIONS.slice().sort(function(a, b) {
+    return (typeDist[b.id] || 0) - (typeDist[a.id] || 0);
+  });
+  sorted.forEach(function(d) {
+    var cnt = typeDist[d.id] || 0;
+    var pct = totalSessions > 0 ? Math.round(cnt / totalSessions * 100) : 0;
+    var isUser = d.id === topDim;
+    h += '<div class="dist-bar-row">';
+    h += '<div class="dist-label" style="' + (isUser ? 'color:' + d.color + ';font-weight:bold' : '') + '">' + d.name + '</div>';
+    h += '<div class="dist-bar-bg">';
+    h += '<div class="dist-bar-fill" style="width:' + Math.max(pct, 2) + '%;background:' + d.color + (isUser ? ';box-shadow:0 0 8px ' + d.color : '') + '">';
+    h += '<span>' + pct + '%' + (isUser ? ' ← 你' : '') + '</span>';
+    h += '</div></div></div>';
+  });
+  h += '</div>';
+
+  // 全体平均维度
+  h += '<div style="font-size:0.9rem;color:#ccc;margin-bottom:12px"><i class="ti ti-chart-radar"></i> 全体平均欲望图谱</div>';
+  var avgMap = {
+    power: global.avgPower || 0,
+    love: global.avgLove || 0,
+    money: global.avgMoney || 0,
+    revenge: global.avgRevenge || 0,
+    recognition: global.avgRecognition || 0,
+    knowledge: global.avgKnowledge || 0
+  };
+  var avgSorted = DIMENSIONS.slice().sort(function(a, b) {
+    return (avgMap[b.id] || 0) - (avgMap[a.id] || 0);
+  });
+  avgSorted.forEach(function(d) {
+    var avg = avgMap[d.id] || 0;
+    h += '<div class="dist-bar-row">';
+    h += '<div class="dist-label">' + d.name + '</div>';
+    h += '<div class="dist-bar-bg">';
+    h += '<div class="dist-bar-fill" style="width:' + Math.max(avg, 2) + '%;background:' + d.color + ';opacity:0.7">';
+    h += '<span>' + avg + '%</span>';
+    h += '</div></div></div>';
+  });
+
+  content.innerHTML = h;
 }
 </script>
 </body>

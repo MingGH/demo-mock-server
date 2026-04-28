@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="巴纳姆效应盲测器：同样的模糊描述，被告知是「AI塔罗分析」时会觉得更准吗？AB盲测揭示你对模糊文字的确认偏误。">
+  <title>巴纳姆效应盲测器：塔罗为什么那么准 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-crystal-ball"></i> 巴纳姆效应盲测器</h1>
+    <p>同样的模糊描述，被告知是「AI塔罗分析」时会觉得更准吗？一个AB盲测揭开你对模糊文字的确认偏误。</p>
+  </div>
+
+  <div class="section" id="introSection">
+    <h2><i class="ti ti-info-circle"></i> 这是什么</h2>
+    <p style="color:#a0a0a0; margin-bottom: 16px;">
+      1948年，心理学家福勒（Forer）给全班学生发了一段性格描述，让他们打分（1-5分，5=非常准确）。学生们的平均评分是 <strong style="color:#ffd700">4.26/5</strong>。
+    </p>
+    <p style="color:#a0a0a0; margin-bottom: 16px;">
+      但这段描述，<strong style="color:#ffd700">每个学生拿到的都是一模一样的</strong>。包括「你外表自信但内心会怀疑自己」「你渴望改变又害怕失去稳定」这类放谁身上都能对号入座的句子。
+    </p>
+    <p style="color:#a0a0a0; margin-bottom: 16px;">
+      这就是巴纳姆效应：人们倾向于接受模糊、普遍的描述，并认为它是精准针对自己的。
+    </p>
+    <p style="color:#a0a0a0; margin-bottom: 24px;">
+      本测试更进一步：<strong style="color:#ffd700">加一层AB盲测</strong>。系统会随机把你分到两组——A组被告知文字是「AI塔罗分析」，B组被告知是「随机生成文字」。然后<strong>两组看到的文字完全一样</strong>。看看到底是不是只要说是「塔罗」，你就会觉得更准。
+    </p>
+
+    <button class="btn btn-primary btn-full" onclick="startTest()">
+      <i class="ti ti-player-play"></i> 开始盲测
+    </button>
+  </div>
+
+  <div class="section hidden" id="testSection">
+    <h2><i class="ti ti-list-check"></i> 性格描述盲测</h2>
+
+    <div class="group-badge" id="groupBadge"></div>
+
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="round-header">
+      <span class="round-label">第 <strong id="currentNum">1</strong> / <strong id="totalNum">5</strong> 条</span>
+    </div>
+
+    <div class="statement-card" id="statementCard">
+      <div class="label-text" id="statementLabel"></div>
+      <div class="statement-text" id="statementText"></div>
+    </div>
+
+    <div class="rating-area" id="ratingArea">
+      <div class="rating-label">这段描述有多符合你？（1=完全不符合，5=非常符合）</div>
+      <div class="rating-buttons" id="ratingButtons">
+        <button class="rating-btn" data-rating="1"><span class="num">1</span><span class="lbl">不符合</span></button>
+        <button class="rating-btn" data-rating="2"><span class="num">2</span></button>
+        <button class="rating-btn" data-rating="3"><span class="num">3</span><span class="lbl">一般</span></button>
+        <button class="rating-btn" data-rating="4"><span class="num">4</span></button>
+        <button class="rating-btn" data-rating="5"><span class="num">5</span><span class="lbl">很符合</span></button>
+      </div>
+    </div>
+
+    <div style="text-align:center; margin-top: 20px;">
+      <button class="btn btn-secondary btn-sm hidden" id="prevBtn" onclick="prevStatement()">
+        <i class="ti ti-arrow-left"></i> 上一条
+      </button>
+    </div>
+  </div>
+
+  <div class="section hidden" id="resultSection">
+    <h2><i class="ti ti-chart-bar"></i> 你的测试结果</h2>
+
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <h3 style="color:#ffd700; margin-top: 24px;">评分分布</h3>
+    <div id="distributionBars"></div>
+
+    <div class="reveal-box" id="revealBox">
+      <h3 style="color:#ff6868; margin-bottom:10px;"><i class="ti ti-alert-triangle"></i> 真相揭晓</h3>
+      <p id="revealText"></p>
+      <p style="margin-top:12px;">你上面看到的5条描述，和另一组用户看到的内容<strong style="color:#ffd700;">完全一样</strong>。唯一的区别，只是开头那句话的措辞。</p>
+    </div>
+
+    <div class="aggregate-section" id="aggregateSection">
+      <h3><i class="ti ti-users"></i> 全局数据：两组用户的评分对比</h3>
+      <div class="compare-grid" id="aggregateCompare"></div>
+      <div class="diff-banner" id="diffBanner"></div>
+      <div id="aggregateDistributions"></div>
+      <p style="color:#888; font-size:0.85rem; margin-top:12px;">
+        数据来自所有完成测试的用户（实时累计）。如果「AI 塔罗分析」组的评分显著高于「随机生成文字」组，就说明巴纳姆效应在起作用：标签本身就足以让你觉得文字更准确。
+      </p>
+    </div>
+
+    <div class="feedback-box" id="feedbackBox"></div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <button class="btn btn-secondary" onclick="resetTest()">
+        <i class="ti ti-refresh"></i> 重新测试
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+var API_BASE = 'https://numfeel-api.996.ninja';
+</script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

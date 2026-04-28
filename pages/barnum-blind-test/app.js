@@ -263,6 +263,7 @@ function showAggregateFallback(personalStats) {
 }
 
 function resetTest() {
+  resetSessionSeed();
   testStarted = false;
   userGroup = null;
   statements = [];

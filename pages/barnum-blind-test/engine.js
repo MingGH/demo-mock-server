@@ -142,10 +142,13 @@ function compareGroups(tarotStats, randomStats) {
 }
 
 /**
- * 重置会话种子（仅用于测试）
+ * 重置会话种子，下次启动重新随机分组
  */
 function resetSessionSeed() {
   _sessionSeed = null;
+  try {
+    localStorage.removeItem('barnum_session_seed');
+  } catch (e) { /* localStorage unavailable */ }
 }
 
 if (typeof module !== 'undefined' && module.exports) {

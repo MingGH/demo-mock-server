@@ -3,6 +3,7 @@ package com.example.demo_mock_server.config;
 import com.example.demo_mock_server.generator.ChineseNameGenerator;
 import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.*;
+import com.example.demo_mock_server.service.BarnumStatsService;
 import com.example.demo_mock_server.service.FingerprintService;
 import com.example.demo_mock_server.service.GeoLocationService;
 import com.example.demo_mock_server.service.InferenceLeaderboardService;
@@ -113,6 +114,12 @@ public class RouterConfig {
         StroopStatsHandler stroopHandler = new StroopStatsHandler(stroopService);
         router.post("/stroop/submit").handler(new RateLimitHandler(10, 60)).handler(stroopHandler);
         router.get("/stroop/stats").handler(stroopHandler);
+
+        // 巴纳姆效应盲测统计
+        BarnumStatsService barnumService = new BarnumStatsService(mysqlPool);
+        BarnumStatsHandler barnumHandler = new BarnumStatsHandler(barnumService);
+        router.post("/barnum-test/submit").handler(new RateLimitHandler(10, 60)).handler(barnumHandler);
+        router.get("/barnum-test/stats").handler(barnumHandler);
 
         // CAPTCHA 攻防实验室统计
         CaptchaStatsService captchaService = new CaptchaStatsService(mysqlPool);

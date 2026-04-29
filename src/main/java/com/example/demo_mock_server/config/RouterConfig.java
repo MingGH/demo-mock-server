@@ -11,6 +11,7 @@ import com.example.demo_mock_server.service.SocialEngineeringService;
 import com.example.demo_mock_server.service.CaptchaStatsService;
 import com.example.demo_mock_server.service.StroopStatsService;
 import com.example.demo_mock_server.service.TimePerceptionService;
+import com.example.demo_mock_server.service.TarotTuringStatsService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
@@ -150,6 +151,12 @@ public class RouterConfig {
         router.post("/time-perception/submit").handler(new RateLimitHandler(10, 60)).handler(timePerceptionHandler);
         router.get("/time-perception/stats").handler(timePerceptionHandler);
         router.get("/time-perception/leaderboard").handler(timePerceptionHandler);
+
+        // 塔罗图灵测试统计
+        TarotTuringStatsService tarotTuringService = new TarotTuringStatsService(mysqlPool);
+        TarotTuringStatsHandler tarotTuringHandler = new TarotTuringStatsHandler(tarotTuringService);
+        router.post("/tarot-turing-test/submit").handler(new RateLimitHandler(10, 60)).handler(tarotTuringHandler);
+        router.get("/tarot-turing-test/stats").handler(tarotTuringHandler);
 
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();

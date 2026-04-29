@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="AI塔罗、真人塔罗师风格、模板拼接同时解同一组牌。你能分辨谁是谁吗？一场关于叙事质量与心理投射的塔罗图灵测试。">
+  <title>塔罗图灵测试：AI塔罗 vs 真塔罗 vs 随机拼接 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-cards"></i> 塔罗图灵测试</h1>
+    <p>三位“塔罗师”同时解读同一组牌：一个是模板拼接，一个是真人塔罗师风格，一个是 AI 风格。读完之后，选哪个最准，再猜谁是 AI。</p>
+  </div>
+
+  <div class="section" id="introSection">
+    <h2><i class="ti ti-sparkles"></i> 这是什么实验</h2>
+    <p class="intro-text">
+      这个 Demo 不测试塔罗“灵不灵”，它测试另一件更具体的事：当三段解读放在一起时，你会不会把更顺滑、更有故事感、更像“懂你”的那段，误认成最准？
+    </p>
+    <p class="intro-text">
+      你会看到同一组牌阵的三份解读。A、B、C 的身份会被打乱。请你先凭直觉阅读，再完成两个判断。
+    </p>
+
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-title">问题 1</div>
+        <div class="info-desc">你觉得哪个解读最准，最像在说你？</div>
+      </div>
+      <div class="info-card">
+        <div class="info-title">问题 2</div>
+        <div class="info-desc">你猜哪一位其实是 AI？</div>
+      </div>
+      <div class="info-card">
+        <div class="info-title">揭晓后</div>
+        <div class="info-desc">系统会公布真相，并显示所有参与者的累计统计。</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="startExperiment()">
+      <i class="ti ti-player-play"></i> 开始测试
+    </button>
+  </div>
+
+  <div class="section hidden" id="experimentSection">
+    <div class="spread-head">
+      <div>
+        <h2><i class="ti ti-layout-cards"></i> 本轮牌阵</h2>
+        <p class="muted">同一组牌，三位“塔罗师”同时解读。</p>
+      </div>
+      <div class="spread-badge" id="spreadBadge"></div>
+    </div>
+
+    <div class="spread-box">
+      <div class="spread-question" id="spreadQuestion"></div>
+      <div class="card-row" id="cardRow"></div>
+    </div>
+
+    <div class="reader-grid" id="readerGrid"></div>
+
+    <div class="section-label"><i class="ti ti-checklist"></i> 你的判断</div>
+
+    <div class="vote-grid">
+      <div class="vote-card">
+        <div class="vote-title">哪个最准</div>
+        <p class="vote-desc">只看文本，选你最愿意相信的一位。</p>
+        <div class="choice-row" id="bestChoiceRow"></div>
+      </div>
+      <div class="vote-card">
+        <div class="vote-title">猜谁是 AI</div>
+        <p class="vote-desc">选你觉得最像 AI 生成的一位。</p>
+        <div class="choice-row" id="aiChoiceRow"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" id="submitBtn" onclick="submitAnswers()" disabled>
+      <i class="ti ti-scan-eye"></i> 揭晓结果
+    </button>
+  </div>
+
+  <div class="section hidden" id="resultSection">
+    <h2><i class="ti ti-zoom-question"></i> 真相揭晓</h2>
+
+    <div class="stats-grid" id="resultStats"></div>
+
+    <div class="reveal-board" id="revealBoard"></div>
+
+    <div class="insight-box" id="personalInsight"></div>
+
+    <div class="aggregate-section" id="aggregateSection">
+      <h3><i class="ti ti-users"></i> 累计参与结果</h3>
+      <div class="aggregate-grid" id="aggregateGrid"></div>
+      <div class="aggregate-bars" id="aggregateBars"></div>
+      <p class="aggregate-note">
+        这里展示的是所有完成测试用户的累计统计。数据只来自这个 Demo 的真实提交结果。
+      </p>
+    </div>
+
+    <div style="text-align:center; margin-top: 24px;">
+      <button class="btn btn-secondary" onclick="restartExperiment()">
+        <i class="ti ti-refresh"></i> 再测一次
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API_BASE = 'https://numfeel-api.996.ninja';
+</script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

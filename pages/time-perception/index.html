@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="时间感知扭曲实验室：你的大脑如何欺骗你对时间的判断？8轮实验，测量你的时间估计偏差系数和韦伯分数。">
+  <title>时间感知扭曲实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="engine.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-clock"></i> 时间感知扭曲实验室</h1>
+    <p>为什么等红灯的 30 秒比刷短视频的 30 分钟还长？<br>8 轮实验，测量你的大脑如何扭曲时间。</p>
+  </div>
+
+  <!-- ── 介绍区 ── -->
+  <div class="section" id="introSection">
+    <h2><i class="ti ti-info-circle"></i> 实验说明</h2>
+    <p style="color:#8b949e;margin-bottom:20px;line-height:1.8;">
+      大脑里没有「时钟」器官。你对时间的感知，来自注意力、情绪和记忆的共同拼凑。
+      本实验分三个环节，共 8 轮，每轮你需要凭感觉判断一段时间的流逝。
+    </p>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+      <div class="phase-intro blank">
+        <h3><i class="ti ti-clock"></i> 环节一：空白等待</h3>
+        <p>3 轮。屏幕空白，纯靠生物钟计时。测量你的基准韦伯分数。</p>
+      </div>
+      <div class="phase-intro load">
+        <h3><i class="ti ti-brain"></i> 环节二：认知负荷</h3>
+        <p>3 轮。边计时边完成任务。注意资源被占用，累加器会漏数吗？</p>
+      </div>
+      <div class="phase-intro emotion">
+        <h3><i class="ti ti-mood-smile"></i> 环节三：情绪唤醒</h3>
+        <p>2 轮。不同视觉环境下计时。紧张情绪会让节拍器加速吗？</p>
+      </div>
+    </div>
+
+    <p style="color:#6e7681;font-size:0.88rem;">
+      每轮你需要先在心中数到指定秒数，然后点击「停止」按钮。全程约需 5 分钟。建议戴耳机。
+    </p>
+
+    <button class="btn btn-primary btn-full" onclick="initExperiment()" style="margin-top:16px;">
+      <i class="ti ti-player-play"></i> 开始实验
+    </button>
+  </div>
+
+  <!-- ── 实验区域 ── -->
+  <div class="section hidden" id="trialSection">
+    <h2 id="phaseHeading"><i class="ti ti-clock"></i> <span id="phaseLabel">空白等待</span></h2>
+
+    <div class="round-header">
+      <span class="round-label">第 <strong id="roundNum">1</strong> / <span id="totalRounds">8</span> 轮</span>
+      <span class="phase-badge blank" id="phaseBadge">环节一：空白等待</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+    <!-- 计时区 -->
+    <div class="timer-area blank" id="timerArea">
+      <div class="timer-label" id="timerLabel"></div>
+      <div class="task-area" id="taskArea" style="display:none;"></div>
+      <button class="btn btn-stop hidden" id="stopBtn" onclick="handleStop()">
+        <i class="ti ti-hand-stop"></i> 停止计时
+      </button>
+      <button class="btn btn-primary" id="startBtn" onclick="handleStart()">
+        <i class="ti ti-player-play"></i> 开始计时
+      </button>
+    </div>
+
+    <!-- 本轮结果 -->
+    <div class="round-result" id="roundResult">
+      <div class="result-row">
+        <div class="result-item">
+          <div class="val" id="resEstimated">—</div>
+          <div class="lbl">你估计的时间</div>
+        </div>
+        <div class="result-item">
+          <div class="val" id="resActual">—</div>
+          <div class="lbl">真实时间</div>
+        </div>
+        <div class="result-item">
+          <div class="val" id="resDistortion">—</div>
+          <div class="lbl">偏差系数</div>
+        </div>
+        <div class="result-item">
+          <div class="val" id="resScore">—</div>
+          <div class="lbl">本轮得分</div>
+        </div>
+      </div>
+      <div class="insight-text" id="roundInsight"></div>
+      <button class="btn btn-primary" id="nextBtn" onclick="nextTrial()" style="margin-top:16px;">
+        <i class="ti ti-arrow-right"></i> <span id="nextBtnText">下一轮</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 最终结果 ── -->
+  <div class="section hidden" id="finalSection">
+    <h2><i class="ti ti-trophy"></i> 你的时间感知画像</h2>
+
+    <div class="final-stats" id="finalStats"></div>
+
+    <div class="grade-display" id="gradeDisplay"></div>
+
+    <div class="chart-wrap">
+      <canvas id="distortionChart"></canvas>
+    </div>
+
+    <h3 style="font-size:1rem;color:#8b949e;margin-bottom:12px;"><i class="ti ti-list"></i> 逐轮记录</h3>
+    <div style="overflow-x:auto;">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>#</th><th>阶段</th><th>条件</th><th>你估计</th><th>实际</th><th>偏差</th><th>得分</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+
+    <div class="chart-wrap" style="height:220px;">
+      <canvas id="scoreChart"></canvas>
+    </div>
+
+    <!-- 社区统计 -->
+    <div class="community-section" id="communitySection" style="display:none;">
+      <h3 style="font-size:1rem;color:#8b949e;margin-bottom:12px;">
+        <i class="ti ti-users-group"></i> 社区统计
+        <span style="font-size:0.8rem;font-weight:normal;" id="communityCount"></span>
+      </h3>
+      <div class="community-grid" id="communityGrid"></div>
+    </div>
+
+    <!-- 提交名字 -->
+    <div class="submit-area" id="submitArea">
+      <h3 style="font-size:1rem;color:#8b949e;margin-bottom:12px;">
+        <i class="ti ti-send"></i> 提交你的结果到社区排行榜
+      </h3>
+      <input type="text" id="playerName" maxlength="24" placeholder="输入你的名字（可选）">
+      <button class="btn btn-primary btn-full" id="submitScoreBtn" onclick="submitScore()">
+        <i class="ti ti-send"></i> 提交
+      </button>
+      <div class="submit-result" id="submitResult"></div>
+    </div>
+
+    <!-- 排行榜 -->
+    <div id="leaderboardArea" style="margin-top:20px;">
+      <h3 style="font-size:1rem;color:#8b949e;margin-bottom:12px;">
+        <i class="ti ti-trophy"></i> 社区排行榜 <span style="font-weight:normal;font-size:0.8rem;" id="lbTotal"></span>
+      </h3>
+      <div id="lbList" class="lb-loading">加载中…</div>
+    </div>
+
+    <button class="btn btn-secondary btn-full" onclick="restartExperiment()" style="margin-top:24px;">
+      <i class="ti ti-refresh"></i> 重新测试
+    </button>
+  </div>
+
+  <div id="toast" class="toast"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

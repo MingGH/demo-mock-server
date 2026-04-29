@@ -72,7 +72,6 @@ const API = process.env.API_URL || 'https://numfeel-api.996.ninja';
     { path: '/pages/kelly-criterion.html', name: '凯利公式' },
     { path: '/pages/braess-paradox.html', name: '布雷斯悖论' },
     { path: '/pages/browser-fingerprint.html', name: '浏览器指纹' },
-    { path: '/pages/session-replay-lab/', name: '会话回放实验室' },
     { path: '/pages/image-retro-lab.html', name: '图片做旧实验室' },
     { path: '/pages/right-hand-maze.html', name: '右转迷宫' },
     { path: '/pages/subscription-ownership.html', name: '订阅拥有感' },

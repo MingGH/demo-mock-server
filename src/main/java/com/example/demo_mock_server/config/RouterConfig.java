@@ -10,6 +10,7 @@ import com.example.demo_mock_server.service.InferenceLeaderboardService;
 import com.example.demo_mock_server.service.SocialEngineeringService;
 import com.example.demo_mock_server.service.CaptchaStatsService;
 import com.example.demo_mock_server.service.StroopStatsService;
+import com.example.demo_mock_server.service.TimePerceptionService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
@@ -142,6 +143,13 @@ public class RouterConfig {
             new com.example.demo_mock_server.handler.DevilDealHandler(devilDealService);
         router.post("/devil-deal/submit").handler(new RateLimitHandler(10, 60)).handler(devilDealHandler);
         router.get("/devil-deal/stats").handler(devilDealHandler);
+
+        // 时间感知扭曲实验室统计
+        TimePerceptionService timePerceptionService = new TimePerceptionService(mysqlPool);
+        TimePerceptionHandler timePerceptionHandler = new TimePerceptionHandler(timePerceptionService);
+        router.post("/time-perception/submit").handler(new RateLimitHandler(10, 60)).handler(timePerceptionHandler);
+        router.get("/time-perception/stats").handler(timePerceptionHandler);
+        router.get("/time-perception/leaderboard").handler(timePerceptionHandler);
 
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();

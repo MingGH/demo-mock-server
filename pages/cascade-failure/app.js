@@ -5,16 +5,16 @@ const CANVAS_H = 500;
 
 let nodes = [];
 let edges = [];
-let simState = null; // { alive[], failed[], queue[], step, animating }
+let simState = null; // { animating }
 let canvas, ctx;
-let animFrame = null;
+let animTimer = null;
 
 function initCanvas() {
   canvas = document.getElementById('networkCanvas');
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
   ctx = canvas.getContext('2d');
-  // 响应式缩放
+
   function resize() {
     const wrap = canvas.parentElement;
     const scale = Math.min(1, wrap.clientWidth / CANVAS_W);
@@ -33,24 +33,22 @@ function generateNetwork(topology, coupling) {
   edges = [];
   const p = coupling / 100;
 
-  // 初始化节点
   for (let i = 0; i < NODE_COUNT; i++) {
     nodes.push({ id: i, x: 0, y: 0, load: 0, capacity: 0, alive: true, neighbors: [], degree: 0 });
   }
 
   if (topology === 'random') {
-    // Erdős–Rényi
     for (let i = 0; i < NODE_COUNT; i++) {
       for (let j = i + 1; j < NODE_COUNT; j++) {
         if (Math.random() < p) addEdge(i, j);
       }
     }
-    // 随机布局（力导向简化）
-    for (let n of nodes) { n.x = Math.random() * (CANVAS_W - 60) + 30; n.y = Math.random() * (CANVAS_H - 60) + 30; }
+    for (let n of nodes) {
+      n.x = Math.random() * (CANVAS_W - 60) + 30;
+      n.y = Math.random() * (CANVAS_H - 60) + 30;
+    }
   } else if (topology === 'scale-free') {
-    // Barabási–Albert 简化：优先连接
-    const m = Math.max(1, Math.floor(p * 4)); // 每个新节点连m条
-    // 前m个节点全连接
+    const m = Math.max(1, Math.floor(p * 4));
     for (let i = 0; i < Math.min(m, NODE_COUNT); i++) {
       for (let j = i + 1; j < Math.min(m, NODE_COUNT); j++) addEdge(i, j);
     }
@@ -71,7 +69,6 @@ function generateNetwork(topology, coupling) {
       }
       for (let t of targets) addEdge(i, t);
     }
-    // 环形+半径布局，枢纽放中心
     layoutScaleFree();
   } else if (topology === 'grid') {
     const cols = Math.ceil(Math.sqrt(NODE_COUNT));
@@ -79,10 +76,8 @@ function generateNetwork(topology, coupling) {
       const row = Math.floor(i / cols), col = i % cols;
       nodes[i].x = 40 + col * ((CANVAS_W - 80) / (cols - 1 || 1));
       nodes[i].y = 40 + row * ((CANVAS_H - 80) / (Math.ceil(NODE_COUNT / cols) - 1 || 1));
-      // 连接上下左右
       if (col > 0) addEdge(i, i - 1);
       if (row > 0) addEdge(i, i - cols);
-      // 额外随机长边增加密度
       for (let j = i + 1; j < NODE_COUNT; j++) {
         if (Math.random() < p * 0.3) addEdge(i, j);
       }
@@ -100,7 +95,6 @@ function generateNetwork(topology, coupling) {
         nodes[idx].y = cy + (Math.random() - 0.5) * CANVAS_H * 0.25;
       }
     }
-    // 组内高密度
     for (let g = 0; g < groups; g++) {
       const start = g * perGroup;
       const end = Math.min(start + perGroup, NODE_COUNT);
@@ -110,7 +104,6 @@ function generateNetwork(topology, coupling) {
         }
       }
     }
-    // 组间低密度
     for (let i = 0; i < NODE_COUNT; i++) {
       for (let j = i + 1; j < NODE_COUNT; j++) {
         if (Math.floor(i / perGroup) !== Math.floor(j / perGroup)) {
@@ -127,12 +120,10 @@ function generateNetwork(topology, coupling) {
       if (pick !== n.id) addEdge(n.id, pick);
     }
   }
-  return nodes;
 }
 
 function addEdge(a, b) {
   if (a === b) return;
-  // 去重
   for (let e of edges) if ((e[0] === a && e[1] === b) || (e[0] === b && e[1] === a)) return;
   edges.push([a, b]);
   nodes[a].neighbors.push(b);
@@ -142,7 +133,6 @@ function addEdge(a, b) {
 }
 
 function layoutScaleFree() {
-  // 按degree排序，大的放中心
   const order = nodes.map((n, i) => ({ i, d: n.degree })).sort((a, b) => b.d - a.d);
   const centerX = CANVAS_W / 2, centerY = CANVAS_H / 2;
   for (let k = 0; k < order.length; k++) {
@@ -156,11 +146,9 @@ function layoutScaleFree() {
 
 // ===== 负载与容量初始化 =====
 function initLoads(capacityMargin, strategy) {
-  // base load 取决于邻居数（耦合度高=负载高）
   for (let n of nodes) {
-    const baseLoad = 30 + n.degree * 12; // 基础负载
+    const baseLoad = 30 + n.degree * 12;
     n.load = baseLoad + Math.random() * 10;
-    // 容量 = 基础负载 * (1 + margin)
     let capMult = 1 + capacityMargin / 100;
     if (strategy === 'hub' && n.degree >= 6) capMult += 0.5;
     if (strategy === 'hub' && n.degree < 6) capMult -= 0.05;
@@ -193,13 +181,14 @@ function drawNetwork(highlightIds = new Set()) {
     if (!n.alive) {
       ctx.fillStyle = '#444';
       ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      ctx.stroke();
     } else if (highlightIds.has(n.id)) {
       ctx.fillStyle = '#f87171';
       ctx.strokeStyle = '#fca5a5';
       ctx.lineWidth = 2;
       ctx.stroke();
     } else {
-      // 负载率决定颜色
       const ratio = n.load / n.capacity;
       if (ratio > 0.9) ctx.fillStyle = '#f87171';
       else if (ratio > 0.7) ctx.fillStyle = '#fbbf24';
@@ -219,11 +208,9 @@ function simulateCascade(startId) {
   failed.add(startId);
   let step = 0;
   const stepLog = [];
-  const snapshots = []; // 每步状态，用于动画
+  const snapshots = [];
 
-  // 深拷贝当前负载
   const loads = nodes.map(n => n.load);
-
   snapshots.push({ failed: new Set(failed), newly: new Set([startId]), step: 0 });
 
   while (queue.length > 0 && step < 200) {
@@ -238,7 +225,6 @@ function simulateCascade(startId) {
       }
     }
 
-    // 检查超载
     const newly = new Set();
     for (let nb of livingNeighbors) {
       if (!failed.has(nb) && loads[nb] > nodes[nb].capacity) {
@@ -250,7 +236,7 @@ function simulateCascade(startId) {
 
     if (newly.size > 0) {
       step++;
-      stepLog.push(`第${step}步: ${Array.from(newly).length}个节点超载崩溃`);
+      stepLog.push('第' + step + '步: ' + newly.size + '个节点超载崩溃');
       snapshots.push({ failed: new Set(failed), newly: new Set(newly), step });
     }
   }
@@ -303,6 +289,11 @@ function playAnimation(result, onDone) {
 
   function frame() {
     if (idx >= snapshots.length) {
+      // 最终状态：显示所有已失败节点
+      for (let n of nodes) {
+        n.alive = !result.failed.has(n.id);
+      }
+      drawNetwork();
       onDone();
       return;
     }
@@ -310,14 +301,13 @@ function playAnimation(result, onDone) {
     failedNow.clear();
     snap.failed.forEach(id => failedNow.add(id));
 
-    // 更新节点显示
     for (let n of nodes) {
       n.alive = !failedNow.has(n.id);
     }
 
     drawNetwork(snap.newly);
     idx++;
-    animFrame = setTimeout(() => requestAnimationFrame(frame), idx === 1 ? 600 : 350);
+    animTimer = setTimeout(() => requestAnimationFrame(frame), idx === 1 ? 600 : 350);
   }
   frame();
 }
@@ -377,11 +367,16 @@ function showResult(r, triggerPos) {
   const insight = document.getElementById('resultInsight');
   let txt = '';
   if (r.survivalRate < 0.3) {
-    txt = `级联大爆发。${triggerPos === 'hub' ? '你炸掉了一个枢纽，负载顺着连线向外冲击，最终${r.totalFailed}个节点全部歼没。' : '虽然只是一个边缘节点，但网络太脆弱，仍然引发了大规模崩溃。'}`;
+    if (triggerPos === 'hub') {
+      txt = '级联大爆发。你炸掉了一个枢纽，负载顺着连线向外冲击，最终' + r.totalFailed + '个节点全部歼没。';
+    } else {
+      txt = '级联大爆发。虽然只是一个边缘节点，但网络太脆弱，仍然引发了大规模崩溃。';
+    }
   } else if (r.survivalRate < 0.7) {
-    txt = `局部崩湃。${r.totalFailed}个节点失去连接，最大连通分量还剩${r.maxComponent}节点。网络没有完全断裂，但性能已经严重受损。`;
+    txt = '局部崩溃。' + r.totalFailed + '个节点失去连接，最大连通分量还剩' + r.maxComponent + '个节点。网络没有完全断裂，但性能已经严重受损。';
   } else {
-    txt = `影响可控。级联被成功阻断在${r.step}步之内，网络保持了${(r.survivalRate*100).toFixed(0)}%的存活。${document.getElementById('strategy').value !== 'none' ? '防御策略发挥了作用。' : '这还得益于网络自身的冗余度。'}`;
+    const strat = document.getElementById('strategy').value;
+    txt = '影响可控。级联被成功阻断在' + r.step + '步之内，网络保持了' + (r.survivalRate * 100).toFixed(0) + '%的存活。' + (strat !== 'none' ? '防御策略发挥了作用。' : '这还得益于网络自身的冗余度。');
   }
   insight.innerHTML = txt;
 
@@ -408,14 +403,14 @@ async function submitResult(data) {
     });
     const json = await resp.json();
     if (json.status === 200) {
-      document.getElementById('totalRuns').textContent = json.data.totalRuns + '次全局模拟';
+      document.getElementById('totalRuns') && (document.getElementById('totalRuns').textContent = json.data.totalRuns + '次全局模拟');
     }
   } catch (e) { console.error('submit failed', e); }
 }
 
 // ===== 全局操作 =====
 function regenerate() {
-  if (animFrame) clearTimeout(animFrame);
+  if (animTimer) clearTimeout(animTimer);
   const topo = document.getElementById('topology').value;
   const coupling = parseInt(document.getElementById('coupling').value);
   const capacity = parseInt(document.getElementById('capacity').value);
@@ -439,7 +434,7 @@ async function loadStats() {
     if (json.status !== 200) return;
     const g = json.data.global;
     const el = document.getElementById('globalStats');
-    el.innerHTML = `已收集 <strong style="color:#fbbf24">${g.totalRuns}</strong> 次模拟 | 平均存活率 <strong style="color:#fbbf24">${(g.avgSurvival*100).toFixed(1)}%</strong> | 平均级联步数 <strong style="color:#fbbf24">${g.avgSteps}</strong> | 高存活率占比 <strong style="color:#fbbf24">${(g.highSurvivalRate*100).toFixed(1)}%</strong>`;
+    el.innerHTML = '已收集 <strong>' + g.totalRuns + '</strong> 次模拟 | 平均存活率 <strong>' + (g.avgSurvival * 100).toFixed(1) + '%</strong> | 平均级联步数 <strong>' + g.avgSteps + '</strong> | 高存活率占比 <strong>' + (g.highSurvivalRate * 100).toFixed(1) + '%</strong>';
   } catch (e) { console.error('stats load failed', e); }
 }
 
@@ -454,13 +449,13 @@ async function loadLeaderboard() {
       container.innerHTML = '<div class="lb-loading">暂无数据</div>';
       return;
     }
-    container.innerHTML = list.map((r, i) => `
-      <div class="lb-row">
-        <span class="lb-rank">#${r.rank}</span>
-        <span class="lb-info">${r.topology} / ${r.strategy} / 存活${(r.survivalRate*100).toFixed(0)}%</span>
-        <span class="lb-score">${r.score}分</span>
-      </div>
-    `).join('');
+    container.innerHTML = list.map((r, i) =>
+      '<div class="lb-row">' +
+        '<span class="lb-rank">#' + r.rank + '</span>' +
+        '<span class="lb-info">' + r.topology + ' / ' + r.strategy + ' / 存活' + (r.survivalRate * 100).toFixed(0) + '%</span>' +
+        '<span class="lb-score">' + r.score + '分</span>' +
+      '</div>'
+    ).join('');
   } catch (e) { console.error('lb load failed', e); }
 }
 

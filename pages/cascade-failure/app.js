@@ -147,26 +147,30 @@ function layoutScaleFree() {
 // ===== 负载与容量初始化 =====
 function initLoads(capacityMargin, strategy) {
   for (let n of nodes) {
-    const baseLoad = 30 + n.degree * 12;
-    n.load = baseLoad + Math.random() * 10;
+    const baseLoad = 30 + n.degree * 5;
+    n.load = baseLoad * (0.88 + Math.random() * 0.09);
     let capMult = 1 + capacityMargin / 100;
     if (strategy === 'hub' && n.degree >= 6) capMult += 0.5;
     if (strategy === 'hub' && n.degree < 6) capMult -= 0.05;
     if (strategy === 'distributed') capMult += 0.2;
-    n.capacity = baseLoad * Math.max(1.05, capMult);
+    n.capacity = baseLoad * Math.max(1.02, capMult);
     n.alive = true;
   }
 }
 
 // ===== 渲染 =====
-function drawNetwork(highlightIds = new Set()) {
+function drawNetwork(highlightIds = new Set(), pulseIds = new Set()) {
   ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
 
   // 边
   ctx.lineWidth = 1;
   for (let [a, b] of edges) {
     const na = nodes[a], nb = nodes[b];
-    ctx.strokeStyle = (!na.alive || !nb.alive) ? 'rgba(100,100,100,0.15)' : 'rgba(255,255,255,0.08)';
+    if (!na.alive || !nb.alive) {
+      ctx.strokeStyle = 'rgba(100,100,100,0.12)';
+    } else {
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    }
     ctx.beginPath();
     ctx.moveTo(na.x, na.y);
     ctx.lineTo(nb.x, nb.y);
@@ -175,22 +179,26 @@ function drawNetwork(highlightIds = new Set()) {
 
   // 节点
   for (let n of nodes) {
-    const r = 4 + Math.min(n.degree, 10);
+    const baseR = 4 + Math.min(n.degree, 10) * 0.6;
+    const r = pulseIds.has(n.id) ? baseR * 1.6 : baseR;
+
     ctx.beginPath();
     ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-    if (!n.alive) {
-      ctx.fillStyle = '#444';
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    } else if (highlightIds.has(n.id)) {
+
+    if (highlightIds.has(n.id)) {
       ctx.fillStyle = '#f87171';
       ctx.strokeStyle = '#fca5a5';
       ctx.lineWidth = 2;
       ctx.stroke();
+    } else if (!n.alive) {
+      ctx.fillStyle = '#444';
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      ctx.stroke();
     } else {
       const ratio = n.load / n.capacity;
-      if (ratio > 0.9) ctx.fillStyle = '#f87171';
+      if (ratio > 0.95) ctx.fillStyle = '#ef4444';
+      else if (ratio > 0.85) ctx.fillStyle = '#f87171';
       else if (ratio > 0.7) ctx.fillStyle = '#fbbf24';
       else ctx.fillStyle = '#60a5fa';
       ctx.strokeStyle = 'rgba(255,255,255,0.2)';
@@ -211,7 +219,7 @@ function simulateCascade(startId) {
   const snapshots = [];
 
   const loads = nodes.map(n => n.load);
-  snapshots.push({ failed: new Set(failed), newly: new Set([startId]), step: 0 });
+  snapshots.push({ failed: new Set(failed), newly: new Set([startId]), step: 0, loads: [...loads] });
 
   while (queue.length > 0 && step < 200) {
     const current = queue.shift();
@@ -237,7 +245,7 @@ function simulateCascade(startId) {
     if (newly.size > 0) {
       step++;
       stepLog.push('第' + step + '步: ' + newly.size + '个节点超载崩溃');
-      snapshots.push({ failed: new Set(failed), newly: new Set(newly), step });
+      snapshots.push({ failed: new Set(failed), newly: new Set(newly), step, loads: [...loads] });
     }
   }
 
@@ -285,29 +293,27 @@ function largestComponent(failedSet) {
 function playAnimation(result, onDone) {
   const snapshots = result.snapshots;
   let idx = 0;
-  const failedNow = new Set();
 
   function frame() {
     if (idx >= snapshots.length) {
-      // 最终状态：显示所有已失败节点
       for (let n of nodes) {
         n.alive = !result.failed.has(n.id);
+        n.load = result.loads[n.id];
       }
       drawNetwork();
       onDone();
       return;
     }
     const snap = snapshots[idx];
-    failedNow.clear();
-    snap.failed.forEach(id => failedNow.add(id));
 
     for (let n of nodes) {
-      n.alive = !failedNow.has(n.id);
+      n.alive = !snap.failed.has(n.id);
+      n.load = snap.loads[n.id];
     }
 
-    drawNetwork(snap.newly);
+    drawNetwork(snap.newly, snap.newly);
     idx++;
-    animTimer = setTimeout(() => requestAnimationFrame(frame), idx === 1 ? 600 : 350);
+    animTimer = setTimeout(() => requestAnimationFrame(frame), idx === 1 ? 700 : 500);
   }
   frame();
 }
@@ -326,7 +332,7 @@ function onCanvasClick(e) {
     const d = (n.x - mx) ** 2 + (n.y - my) ** 2;
     if (d < bestDist) { bestDist = d; closest = n.id; }
   }
-  if (closest >= 0 && bestDist < 400) {
+  if (closest >= 0 && bestDist < 900) {
     triggerNode(closest);
   }
 }
@@ -339,18 +345,23 @@ function triggerNode(nodeId) {
   const capacity = parseInt(document.getElementById('capacity').value);
   const strategy = document.getElementById('strategy').value;
 
-  // 重新生成网络（保证与显示一致）
   generateNetwork(topo, coupling);
   initLoads(capacity, strategy);
   simState = { animating: true };
 
-  const result = simulateCascade(nodeId);
-  const triggerPos = nodes[nodeId].degree >= 6 ? 'hub' : (nodes[nodeId].degree <= 2 ? 'edge' : 'mid');
+  // 视觉反馈：先闪烁被点击的节点
+  nodes[nodeId].alive = false;
+  drawNetwork(new Set([nodeId]));
 
-  playAnimation(result, () => {
-    simState.animating = false;
-    showResult(result, triggerPos);
-  });
+  setTimeout(() => {
+    const result = simulateCascade(nodeId);
+    const triggerPos = nodes[nodeId].degree >= 6 ? 'hub' : (nodes[nodeId].degree <= 2 ? 'edge' : 'mid');
+
+    playAnimation(result, () => {
+      simState.animating = false;
+      showResult(result, triggerPos);
+    });
+  }, 300);
 }
 
 // ===== 结果展示 =====
@@ -366,9 +377,11 @@ function showResult(r, triggerPos) {
 
   const insight = document.getElementById('resultInsight');
   let txt = '';
-  if (r.survivalRate < 0.3) {
+  if (r.totalFailed <= 1) {
+    txt = '本次引爆未引发级联。该节点负载被邻居顺利吸收，网络保持完整。尝试降低容量余量、提高耦合度，或切换到更稀疏的拓扑。';
+  } else if (r.survivalRate < 0.3) {
     if (triggerPos === 'hub') {
-      txt = '级联大爆发。你炸掉了一个枢纽，负载顺着连线向外冲击，最终' + r.totalFailed + '个节点全部歼没。';
+      txt = '级联大爆发。你炸掉了一个枢纽，负载顺着连线向外冲击，最终' + r.totalFailed + '个节点全部歼灭。';
     } else {
       txt = '级联大爆发。虽然只是一个边缘节点，但网络太脆弱，仍然引发了大规模崩溃。';
     }
@@ -380,7 +393,6 @@ function showResult(r, triggerPos) {
   }
   insight.innerHTML = txt;
 
-  // 提交后端
   submitResult({
     topology: document.getElementById('topology').value,
     coupling: parseInt(document.getElementById('coupling').value),

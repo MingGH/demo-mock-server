@@ -10,6 +10,7 @@ import com.example.demo_mock_server.service.InferenceLeaderboardService;
 import com.example.demo_mock_server.service.SocialEngineeringService;
 import com.example.demo_mock_server.service.CaptchaStatsService;
 import com.example.demo_mock_server.service.StroopStatsService;
+import com.example.demo_mock_server.service.CascadeFailureService;
 import com.example.demo_mock_server.service.TimePerceptionService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
@@ -150,6 +151,13 @@ public class RouterConfig {
         router.post("/time-perception/submit").handler(new RateLimitHandler(10, 60)).handler(timePerceptionHandler);
         router.get("/time-perception/stats").handler(timePerceptionHandler);
         router.get("/time-perception/leaderboard").handler(timePerceptionHandler);
+
+        // 级联故障模拟器统计
+        CascadeFailureService cascadeFailureService = new CascadeFailureService(mysqlPool);
+        CascadeFailureHandler cascadeFailureHandler = new CascadeFailureHandler(cascadeFailureService);
+        router.post("/cascade-failure/submit").handler(new RateLimitHandler(10, 60)).handler(cascadeFailureHandler);
+        router.get("/cascade-failure/stats").handler(cascadeFailureHandler);
+        router.get("/cascade-failure/leaderboard").handler(cascadeFailureHandler);
 
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();

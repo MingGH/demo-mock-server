@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="点击一个节点，看看故障如何像雪崩一样吞噬整个系统。线上模拟电网、云服务、金融网络的级联崩溃。">
+  <title>越修越崩：级联故障模拟器 | 数字直觉</title>
+  <script src="../components/header.js" defer></script>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>越修越崩：级联故障模拟器</h1>
+    <p>你是运维。一个节点挂了，你修复了它。然后负载被分散到邻居，邻居超载，再分散……<br>
+    点击任意节点引爆，观察这场雪崩如何演变。</p>
+    <p id="globalStats" style="margin-top:8px;font-size:13px;color:rgba(255,255,255,0.4);">加载全局统计中...</p>
+  </div>
+
+  <!-- 控制台 -->
+  <div class="card">
+    <div class="card-title">网络配置</div>
+    <div class="controls-grid">
+      <div class="select-group">
+        <label>网络拓扑</label>
+        <select id="topology" onchange="regenerate()">
+          <option value="random">随机网络（Erdős–Rényi）</option>
+          <option value="scale-free" selected>无标度网络（枢纽型）</option>
+          <option value="grid">网格网络（高冗余）</option>
+          <option value="modular">模块化网络（社区隔离）</option>
+        </select>
+      </div>
+      <div class="slider-group">
+        <label>耦合密度 <span id="coupling-val">40</span>%</label>
+        <input type="range" id="coupling" min="10" max="90" value="40"
+          oninput="document.getElementById('coupling-val').textContent=this.value; regenerate()">
+      </div>
+      <div class="slider-group">
+        <label>容量余量 <span id="capacity-val">30</span>%</label>
+        <input type="range" id="capacity" min="5" max="95" value="30"
+          oninput="document.getElementById('capacity-val').textContent=this.value; regenerate()">
+      </div>
+      <div class="select-group">
+        <label>防御策略</label>
+        <select id="strategy" onchange="regenerate()">
+          <option value="none">无防御</option>
+          <option value="hub">加固枢纽</option>
+          <option value="distributed">均匀增容</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="randomTrigger()">随机引爆</button>
+      <button class="btn btn-secondary" onclick="regenerate()">重新生成网络</button>
+    </div>
+  </div>
+
+  <!-- 画布 -->
+  <div class="card">
+    <div class="card-title">网络视图（点击节点引爆）</div>
+    <div class="canvas-wrap">
+      <canvas id="networkCanvas" width="900" height="500"></canvas>
+      <div class="canvas-overlay">
+        <span class="legend-dot" style="background:#60a5fa"></span>正常
+        <span class="legend-dot" style="background:#fbbf24"></span>高负载
+        <span class="legend-dot" style="background:#f87171"></span>危险
+        <span class="legend-dot" style="background:#444;border:1px solid #333"></span>已崩溃
+      </div>
+    </div>
+    <div class="card-desc">节点大小代表连接度。蓝色=健康，橙色=高负载，红色=接近崩溃，灰色=已歼没。</div>
+  </div>
+
+  <!-- 结果 -->
+  <div class="card hidden" id="resultPanel">
+    <div class="card-title">级联结果</div>
+    <div class="result-grid">
+      <div class="result-item green"><div class="label">存活率</div><div class="value" id="res-survival">--</div></div>
+      <div class="result-item red"><div class="label">级联步数</div><div class="value" id="res-steps">--</div></div>
+      <div class="result-item"><div class="label">故障节点</div><div class="value" id="res-failed">--</div></div>
+      <div class="result-item blue"><div class="label">最大连通分量</div><div class="value" id="res-component">--</div></div>
+      <div class="result-item"><div class="label">得分</div><div class="value" id="res-score">--</div></div>
+    </div>
+    <div class="insight-box" id="resultInsight"></div>
+  </div>
+
+  <!-- 排行榜 -->
+  <div class="card">
+    <div class="card-title">全局排行榜</div>
+    <div class="lb-header">
+      <span>最佳防御记录</span>
+      <span id="totalRuns">加载中...</span>
+    </div>
+    <div class="lb-list" id="lbList">
+      <div class="lb-loading">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 原理 -->
+  <div class="card">
+    <div class="card-title">为什么会这样？</div>
+    <div style="font-size:14px;line-height:1.9;color:rgba(255,255,255,0.7);">
+      <p style="margin-bottom:12px">
+        <strong style="color:#fbbf24">级联故障的机理很简单：负载会转移。</strong>
+      </p>
+      <p style="margin-bottom:12px">
+        一个服务挂了，流量会被转发到其他服务。如果那些服务本来就在高负载运行，这笔新增的流量可能直接超过它们的容量上限，导致它们也挂掉。挂掉之后，负载再次转移……这就是雪崩。
+      </p>
+      <p style="margin-bottom:12px">
+        <strong style="color:#f87171">无标度网络（Scale-Free）的阿喀琅斯之踞</strong>在于，它有极少数“超级节点”连接着大量邻居。炸掉这种节点，影响半个网络。但这种网络对随机故障又很耐打——边缘节点的倒下几乎不会传播。
+      </p>
+      <p style="margin-bottom:12px">
+        <strong style="color:#4ade80">网格网络的反直觉</strong>在于，看起来它应该很安全，因为每个节点都有很多备份。但实际上，它对“连续性故障”很敏感——如果一段区域的节点密度不足，整块网格就会被割裂。
+      </p>
+      <p>
+        这个 demo 用的是最简化的模型：均匀负载转移。真实世界更复杂——有时候转移不是均匀的，而是按“最近邻居优先”或“剩余容量最大优先”。但核心逻辑不变：<strong style="color:#fbbf24">没有缓冲余量的系统，就是一块待点燃的干草。</strong>
+      </p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

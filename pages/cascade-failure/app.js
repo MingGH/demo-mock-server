@@ -79,7 +79,7 @@ function generateNetwork(topology, coupling) {
       if (col > 0) addEdge(i, i - 1);
       if (row > 0) addEdge(i, i - cols);
       for (let j = i + 1; j < NODE_COUNT; j++) {
-        if (Math.random() < p * 0.3) addEdge(i, j);
+        if (Math.random() < p * 0.02) addEdge(i, j);
       }
     }
   } else if (topology === 'modular') {

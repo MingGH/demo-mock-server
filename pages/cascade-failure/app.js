@@ -100,14 +100,14 @@ function generateNetwork(topology, coupling) {
       const end = Math.min(start + perGroup, NODE_COUNT);
       for (let i = start; i < end; i++) {
         for (let j = i + 1; j < end; j++) {
-          if (Math.random() < p * 2.5) addEdge(i, j);
+          if (Math.random() < p * 0.4) addEdge(i, j);
         }
       }
     }
     for (let i = 0; i < NODE_COUNT; i++) {
       for (let j = i + 1; j < NODE_COUNT; j++) {
         if (Math.floor(i / perGroup) !== Math.floor(j / perGroup)) {
-          if (Math.random() < p * 0.15) addEdge(i, j);
+          if (Math.random() < p * 0.02) addEdge(i, j);
         }
       }
     }
@@ -446,6 +446,10 @@ async function loadStats() {
     if (json.status !== 200) return;
     const g = json.data.global;
     const el = document.getElementById('globalStats');
+    if (g.totalRuns === 0) {
+      el.innerHTML = '<span style="opacity:0.6">暂无全局数据，完成一次模拟并提交后即可查看统计。</span>';
+      return;
+    }
     el.innerHTML = '已收集 <strong>' + g.totalRuns + '</strong> 次模拟 | 平均存活率 <strong>' + (g.avgSurvival * 100).toFixed(1) + '%</strong> | 平均级联步数 <strong>' + g.avgSteps + '</strong> | 高存活率占比 <strong>' + (g.highSurvivalRate * 100).toFixed(1) + '%</strong>';
   } catch (e) { console.error('stats load failed', e); }
 }

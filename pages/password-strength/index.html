@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="输入密码，实时计算暴力破解需要多久。用信息熵量化密码强度，对比常见密码模式的脆弱程度。所有计算在本地完成，不上传任何数据。">
+  <title>密码强度可视化：你的密码能扛多久 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+  <script src="engine.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-lock"></i> 密码强度可视化</h1>
+    <p>输入密码，实时计算暴力破解需要多久。从毫秒到宇宙年龄，用信息熵量化你的密码。</p>
+  </div>
+
+  <!-- ══════ 输入区 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-keyboard"></i> 输入密码</h2>
+    <div class="input-wrap">
+      <input type="password" id="passwordInput" placeholder="输入密码，实时分析..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <button class="toggle-pwd" id="togglePwd" type="button" title="显示/隐藏密码">
+        <i class="ti ti-eye"></i>
+      </button>
+    </div>
+    <div class="safety-note" style="margin-top:12px">
+      <i class="ti ti-shield-check"></i>
+      <span>所有计算在您的浏览器本地完成，密码不会被发送到任何服务器。</span>
+    </div>
+  </div>
+
+  <!-- ══════ 强度指示 ══════ -->
+  <div class="section" id="strengthSection">
+    <h2><i class="ti ti-activity"></i> 密码强度</h2>
+    <div class="strength-row">
+      <div class="strength-bar-wrap">
+        <div class="strength-bar" id="strengthBar" style="background:#64748b"></div>
+      </div>
+      <div class="strength-label" id="strengthLabel" style="color:#64748b">--</div>
+      <div class="strength-entropy" id="entropyDisplay">0 bit</div>
+    </div>
+  </div>
+
+  <!-- ══════ 统计信息 ══════ -->
+  <div class="section" id="statsSection">
+    <h2><i class="ti ti-chart-infographic"></i> 统计信息</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-card-value" id="statLength">--</div>
+        <div class="stat-card-label">密码长度</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-value" id="statCharset">--</div>
+        <div class="stat-card-label">字符集大小</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-value" id="statEntropy">-- bit</div>
+        <div class="stat-card-label">信息熵</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card-value" id="statKeyspace">--</div>
+        <div class="stat-card-label">可能组合数</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 破解时间估算 ══════ -->
+  <div class="section" id="crackSection">
+    <h2><i class="ti ti-clock-hour-4"></i> 暴力破解时间估算</h2>
+    <table class="crack-table">
+      <thead>
+        <tr>
+          <th>攻击场景</th>
+          <th>破解速度</th>
+          <th>预计破解时间</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><i class="ti ti-globe"></i> 在线攻击</td>
+          <td class="speed-cell">1,000 次/秒</td>
+          <td class="time-cell" id="crackOnline">--</td>
+        </tr>
+        <tr>
+          <td><i class="ti ti-server-bolt"></i> GPU 集群</td>
+          <td class="speed-cell">10^10 次/秒</td>
+          <td class="time-cell" id="crackGpu">--</td>
+        </tr>
+        <tr>
+          <td><i class="ti ti-building-fortress"></i> 国家级</td>
+          <td class="speed-cell">10^12 次/秒</td>
+          <td class="time-cell" id="crackNation">--</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- 破解时间标尺 -->
+    <div class="timescale-wrap" id="timescaleWrap" style="display:none;margin-top:20px">
+      <div class="section-subtitle" style="margin-bottom:6px">破解时间标尺（从毫秒到宇宙年龄的对数尺度）</div>
+      <div class="timescale-bar" id="timescaleBar">
+        <div class="timescale-marker" id="timescaleMarker" style="left:0%"></div>
+      </div>
+      <div class="timescale-labels">
+        <span>毫秒</span><span>秒</span><span>分</span><span>小时</span><span>天</span><span>年</span><span>宇宙年龄</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 字符集构成 ══════ -->
+  <div class="section" id="charsetSection">
+    <h2><i class="ti ti-abc"></i> 字符集构成</h2>
+    <div class="charset-grid">
+      <div class="charset-check" id="csLower">
+        <div class="dot" style="background:#3b82f6"></div>
+        <span>小写字母 (a-z)</span>
+      </div>
+      <div class="charset-check" id="csUpper">
+        <div class="dot" style="background:#22c55e"></div>
+        <span>大写字母 (A-Z)</span>
+      </div>
+      <div class="charset-check" id="csDigit">
+        <div class="dot" style="background:#f59e0b"></div>
+        <span>数字 (0-9)</span>
+      </div>
+      <div class="charset-check" id="csSpecial">
+        <div class="dot" style="background:#ef4444"></div>
+        <span>特殊字符</span>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="charsetChart"></canvas></div>
+  </div>
+
+  <!-- ══════ 弱模式检测 ══════ -->
+  <div class="section" id="warningsSection">
+    <h2><i class="ti ti-alert-triangle"></i> 弱模式检测</h2>
+    <div id="warningsContent">
+      <div class="no-warning" id="noWarnings" style="display:none">
+        <i class="ti ti-circle-check"></i> 未检测到已知弱模式（但不代表密码绝对安全）
+      </div>
+      <ul class="warning-list" id="warningList"></ul>
+    </div>
+  </div>
+
+  <!-- ══════ 对比模式 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-versions"></i> 密码策略对比</h2>
+    <p class="section-subtitle">点击预设密码，看看不同策略的强度差异有多大。</p>
+    <div class="compare-grid" id="compareGrid">
+      <div class="compare-card" data-pwd="password">
+        <div class="cmp-pwd">password</div>
+        <div class="cmp-desc">最常见的弱密码</div>
+        <div class="cmp-time" data-time="--">--</div>
+        <div class="cmp-level">--</div>
+      </div>
+      <div class="compare-card" data-pwd="P@ssw0rd">
+        <div class="cmp-pwd">P@ssw0rd</div>
+        <div class="cmp-desc">替换策略（leet speak）</div>
+        <div class="cmp-time" data-time="--">--</div>
+        <div class="cmp-level">--</div>
+      </div>
+      <div class="compare-card" data-pwd="correct horse battery staple">
+        <div class="cmp-pwd">correct horse battery staple</div>
+        <div class="cmp-desc">XKCD 经典 passphrase</div>
+        <div class="cmp-time" data-time="--">--</div>
+        <div class="cmp-level">--</div>
+      </div>
+      <div class="compare-card" data-pwd="12345678">
+        <div class="cmp-pwd">12345678</div>
+        <div class="cmp-desc">纯数字 8 位</div>
+        <div class="cmp-time" data-time="--">--</div>
+        <div class="cmp-level">--</div>
+      </div>
+      <div class="compare-card" data-pwd="aB3!kQ9x">
+        <div class="cmp-pwd">aB3!kQ9x</div>
+        <div class="cmp-desc">随机混合 8 位</div>
+        <div class="cmp-time" data-time="--">--</div>
+        <div class="cmp-level">--</div>
+      </div>
+      <div class="compare-card" data-pwd="xK9!mQ2#vL7$wR4">
+        <div class="cmp-pwd">xK9!mQ2#vL7$wR4</div>
+        <div class="cmp-desc">随机混合 16 位</div>
+        <div class="cmp-time" data-time="--">--</div>
+        <div class="cmp-level">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 分享 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-share"></i> 分享结果</h2>
+    <div class="share-result" id="shareText">输入密码后自动生成分享文本...</div>
+    <button class="btn btn-secondary btn-full" id="copyBtn" disabled>
+      <i class="ti ti-copy"></i> 复制到剪贴板
+    </button>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

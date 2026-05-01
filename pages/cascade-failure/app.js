@@ -1,4 +1,5 @@
 // ===== 级联故障模拟器 =====
+const API_BASE = 'https://numfeel-api.996.ninja';
 const NODE_COUNT = 80;
 const CANVAS_W = 900;
 const CANVAS_H = 500;
@@ -409,7 +410,7 @@ function showResult(r, triggerPos) {
 
 async function submitResult(data) {
   try {
-    const resp = await fetch('/cascade-failure/submit', {
+    const resp = await fetch(API_BASE + '/cascade-failure/submit', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
@@ -442,7 +443,7 @@ function randomTrigger() {
 async function loadStats() {
   const el = document.getElementById('globalStats');
   try {
-    const resp = await fetch('/cascade-failure/stats');
+    const resp = await fetch(API_BASE + '/cascade-failure/stats');
     const json = await resp.json();
     if (json.status !== 200 || !json.data || !json.data.global) {
       el.innerHTML = '<span style="opacity:0.6">数据加载失败，请刷新重试。</span>';
@@ -463,7 +464,7 @@ async function loadStats() {
 async function loadLeaderboard() {
   const container = document.getElementById('lbList');
   try {
-    const resp = await fetch('/cascade-failure/leaderboard?limit=10');
+    const resp = await fetch(API_BASE + '/cascade-failure/leaderboard?limit=10');
     const json = await resp.json();
     if (json.status !== 200 || !json.data) {
       container.innerHTML = '<div class="lb-loading">数据加载失败</div>';

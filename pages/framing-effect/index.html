@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="存活率90%和死亡率10%是同一件事，但你的大脑不这么认为。10道题量化你被说法绑架的程度。">
+  <title>框架效应测试 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-exchange"></i> 框架效应测试</h1>
+    <p>同一件事换个说法，你的选择还一样吗？10 道题，量化你被「说法」影响的程度。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 1：开始页
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase active" id="phase-intro">
+    <div class="card">
+      <div class="intro-card">
+        <span class="intro-icon"><i class="ti ti-exchange" style="font-size:3.5rem"></i></span>
+        <div class="intro-text">
+          「存活率 90%」和「死亡率 10%」是同一件事。<br>
+          但你的大脑不这么认为。<br>
+          诺贝尔经济学奖得主 Kahneman 和 Tversky 发现：人们对「得」和「失」的感知天生不对称。
+        </div>
+        <div class="intro-steps">
+          <div class="intro-step">
+            <div class="intro-step-num">1</div>
+            <div class="intro-step-text">10 道题，覆盖<strong>医疗、投资、消费、职业</strong>等多个领域</div>
+          </div>
+          <div class="intro-step">
+            <div class="intro-step-num">2</div>
+            <div class="intro-step-text">每道题随机用<strong>正面或负面框架</strong>描述同一个场景</div>
+          </div>
+          <div class="intro-step">
+            <div class="intro-step-num">3</div>
+            <div class="intro-step-text">对比两种说法下的选择，算出你的<strong>框架效应指数</strong></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="startFramingQuiz()">
+          <i class="ti ti-player-play"></i> 开始测试
+        </button>
+        <div style="margin-top:12px;font-size:0.8rem;color:#a0a0a0">约 2~3 分钟 · 无需注册</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 2：答题
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-quiz">
+    <div class="card">
+      <div class="progress-wrap">
+        <span class="progress-label" id="progressLabel">1 / 10</span>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="question-category" id="questionCategory">—</div>
+
+      <div class="question-context" id="questionContext">—</div>
+
+      <div class="option-card" id="optionA">
+        <div class="option-letter">A</div>
+        <div class="option-text" id="optionAText">—</div>
+      </div>
+
+      <div class="option-card" id="optionB">
+        <div class="option-letter">B</div>
+        <div class="option-text" id="optionBText">—</div>
+      </div>
+
+      <div class="confirm-row">
+        <button class="btn btn-primary" id="confirmBtn" onclick="confirmFramingAnswer()" disabled>
+          <i class="ti ti-check"></i> 确认选择
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 3：结果
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-result">
+    <div class="result-hero" id="resultHero"></div>
+
+    <div class="card">
+      <div class="compare-grid" id="compareGrid"></div>
+    </div>
+
+    <div class="chart-section">
+      <h3><i class="ti ti-chart-bar"></i> 正面 vs 负面框架选择分布</h3>
+      <div class="chart-container">
+        <canvas id="framingChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:1rem;color:#fff;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-list-check"></i> 逐题回顾
+      </h3>
+      <div id="reviewList"></div>
+    </div>
+
+    <div class="card">
+      <div class="classic-compare" id="classicCompare"></div>
+    </div>
+
+    <div class="summary-actions">
+      <button class="btn btn-primary" id="retryBtn">
+        <i class="ti ti-refresh"></i> 重新测试
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script src="questions.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

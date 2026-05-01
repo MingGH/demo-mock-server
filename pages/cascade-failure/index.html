@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="点击一个节点，看看故障如何像雪崩一样吞噬整个网络。四种网络拓扑，三个可调参数，测试你的系统在故障面前能撑多久。">
+  <meta name="description" content="点击一个节点，看看故障如何像雪崩一样吞噬整个网络。两种游戏模式：找出最致命的阿喀琉斯之踵，或设计一个炸不垮的网络。">
   <title>越修越崩：级联故障模拟器 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
@@ -14,36 +14,70 @@
 
   <div class="header">
     <h1><i class="ti ti-zap-off"></i> 越修越崩：级联故障模拟器</h1>
-    <p>点击画布上的任意节点，模拟一次故障。看着负载像多米诺骨牌一样传下去，直到整个网络崩溃——或者幸存。</p>
+    <p>一个节点倒下，负载涌向邻居，邻居撑不住也倒下……直到整个网络崩溃，或者奇迹般幸存。</p>
   </div>
 
-  <!-- ── 控制面板 ── -->
-  <div class="section">
+  <!-- ── 模式选择 ── -->
+  <div class="section mode-section">
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="achilles" onclick="switchMode('achilles')">
+        <i class="ti ti-target-arrow"></i>
+        <span class="mode-tab-title">阿喀琉斯之踵</span>
+        <span class="mode-tab-desc">找出最致命的节点</span>
+      </button>
+      <button class="mode-tab" data-mode="architect" onclick="switchMode('architect')">
+        <i class="ti ti-shield-check"></i>
+        <span class="mode-tab-title">韧性建筑师</span>
+        <span class="mode-tab-desc">设计炸不垮的网络</span>
+      </button>
+      <button class="mode-tab" data-mode="sandbox" onclick="switchMode('sandbox')">
+        <i class="ti ti-flask"></i>
+        <span class="mode-tab-title">自由实验</span>
+        <span class="mode-tab-desc">随便炸着玩</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 挑战说明 ── -->
+  <div class="section challenge-banner" id="challengeBanner">
+    <div class="challenge-inner">
+      <div class="challenge-icon"><i class="ti ti-target-arrow"></i></div>
+      <div class="challenge-text">
+        <h3 id="challengeTitle">找出阿喀琉斯之踵</h3>
+        <p id="challengeDesc">这个网络有一个致命弱点。你有 <strong id="attemptsLeft">3</strong> 次机会，找到引爆后造成最大破坏的节点。鼠标悬停查看节点信息，想好了再点。</p>
+      </div>
+      <div class="challenge-score" id="challengeScoreBox">
+        <div class="cs-label">当前最佳破坏</div>
+        <div class="cs-val" id="bestDamage">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 控制面板（自由/建筑师模式） ── -->
+  <div class="section settings-section" id="settingsPanel">
     <h2><i class="ti ti-adjustments"></i> 网络参数</h2>
     <div class="settings-row">
       <div class="setting-group">
         <label>拓扑结构</label>
-        <select id="topology" onchange="regenerate()">
-          <option value="random">随机交友型（人人随机连）</option>
-          <option value="scale-free" selected>大V中心型（少数节点特别忙）</option>
-          <option value="grid">棋盘格子型（像电网/存储一样排列）</option>
-          <option value="modular">小圈子型（分成几个部门/模块）</option>
+        <select id="topology" onchange="onSettingChange()">
+          <option value="random">随机交友型</option>
+          <option value="scale-free" selected>大V中心型</option>
+          <option value="grid">棋盘格子型</option>
+          <option value="modular">小圈子型</option>
         </select>
         <div class="hint-text" id="topologyHint"></div>
       </div>
       <div class="setting-group">
-        <label>耦合密度</label>
-        <input type="range" id="coupling" min="10" max="90" value="55" oninput="document.getElementById('couplingVal').textContent=this.value+'%'; regenerate()">
-        <span class="range-val" id="couplingVal">55%</span>
+        <label>耦合密度 <span class="range-val" id="couplingVal">55%</span></label>
+        <input type="range" id="coupling" min="10" max="90" value="55" oninput="document.getElementById('couplingVal').textContent=this.value+'%'; onSettingChange()">
       </div>
       <div class="setting-group">
-        <label>容量余量</label>
-        <input type="range" id="capacity" min="5" max="95" value="12" oninput="document.getElementById('capacityVal').textContent=this.value+'%'; regenerate()">
-        <span class="range-val" id="capacityVal">12%</span>
+        <label>容量余量 <span class="range-val" id="capacityVal">12%</span></label>
+        <input type="range" id="capacity" min="5" max="95" value="12" oninput="document.getElementById('capacityVal').textContent=this.value+'%'; onSettingChange()">
       </div>
       <div class="setting-group">
         <label>防御策略</label>
-        <select id="strategy" onchange="regenerate()">
+        <select id="strategy" onchange="onSettingChange()">
           <option value="none" selected>不加防御</option>
           <option value="hub">加固枢纽</option>
           <option value="distributed">均匀增容</option>
@@ -61,20 +95,51 @@
   </div>
 
   <!-- ── 画布区 ── -->
-  <div class="section">
-    <div class="canvas-hint">
-      <i class="ti ti-click"></i> <strong>点击任意节点</strong> 引爆它，观察级联故障的传播路径
+  <div class="section canvas-section">
+    <div class="canvas-hint" id="canvasHint">
+      <i class="ti ti-click"></i> <strong>点击任意节点</strong>引爆它 &nbsp;|&nbsp; <strong>悬停</strong>查看节点信息
     </div>
-    <div class="canvas-wrap">
+    <div class="canvas-wrap" id="canvasWrap">
       <canvas id="networkCanvas"></canvas>
+      <!-- 悬浮提示 -->
+      <div class="node-tooltip" id="nodeTooltip">
+        <div class="tt-header">
+          <span class="tt-id">节点 #0</span>
+          <span class="tt-badge">枢纽</span>
+        </div>
+        <div class="tt-stats">
+          <div class="tt-row"><span>负载</span><span class="tt-val">--</span></div>
+          <div class="tt-row"><span>容量</span><span class="tt-val">--</span></div>
+          <div class="tt-row"><span>连接数</span><span class="tt-val">--</span></div>
+          <div class="tt-row"><span>负载率</span><div class="tt-bar"><div class="tt-bar-fill"></div></div></div>
+        </div>
+        <div class="tt-hint">点击引爆此节点</div>
+      </div>
+      <!-- 屏幕震动层 -->
+      <div class="shake-overlay" id="shakeOverlay"></div>
     </div>
     <div class="legend-row">
-      <span><span class="legend-dot" style="background:#60a5fa"></span>健康</span>
-      <span><span class="legend-dot" style="background:#fbbf24"></span>高负载</span>
-      <span><span class="legend-dot" style="background:#f87171"></span>超载</span>
-      <span><span class="legend-dot" style="background:#444"></span>已崩溃</span>
-      <span><span class="legend-dot" style="background:#f87171;box-shadow:0 0 6px #f87171"></span>当前波次</span>
+      <span><span class="legend-dot healthy"></span>健康</span>
+      <span><span class="legend-dot warning"></span>高负载</span>
+      <span><span class="legend-dot danger"></span>超载</span>
+      <span><span class="legend-dot dead"></span>已崩溃</span>
+      <span><span class="legend-dot shockwave"></span>冲击波</span>
     </div>
+  </div>
+
+  <!-- ── 时间线回放 ── -->
+  <div class="section hidden" id="timelinePanel">
+    <h2><i class="ti ti-player-play"></i> 崩溃时间线</h2>
+    <div class="timeline-controls">
+      <button class="btn btn-secondary btn-sm" id="tlPrev" onclick="timelineStep(-1)"><i class="ti ti-chevron-left"></i></button>
+      <div class="timeline-slider-wrap">
+        <input type="range" id="tlSlider" min="0" max="0" value="0" oninput="timelineSeek(+this.value)">
+        <div class="timeline-label" id="tlLabel">引爆瞬间</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="tlNext" onclick="timelineStep(1)"><i class="ti ti-chevron-right"></i></button>
+      <button class="btn btn-secondary btn-sm" id="tlPlay" onclick="timelineTogglePlay()"><i class="ti ti-player-play"></i></button>
+    </div>
+    <div class="timeline-narrative" id="tlNarrative"></div>
   </div>
 
   <!-- ── 结果面板 ── -->
@@ -103,6 +168,18 @@
       </div>
     </div>
     <div class="insight-box" id="resultInsight"></div>
+    <div class="real-world-box" id="realWorldBox"></div>
+  </div>
+
+  <!-- ── 挑战结算（阿喀琉斯/建筑师模式） ── -->
+  <div class="section hidden" id="challengeResult">
+    <div class="challenge-result-inner">
+      <div class="cr-icon" id="crIcon"><i class="ti ti-trophy"></i></div>
+      <h2 id="crTitle">挑战完成</h2>
+      <p id="crDesc"></p>
+      <div class="cr-stats" id="crStats"></div>
+      <button class="btn btn-primary" onclick="startNewChallenge()"><i class="ti ti-refresh"></i> 再来一局</button>
+    </div>
   </div>
 
   <!-- ── 社区统计 ── -->
@@ -119,6 +196,6 @@
 
 </div>
 
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

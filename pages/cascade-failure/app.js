@@ -431,7 +431,19 @@ function regenerate() {
   generateNetwork(topo, coupling);
   initLoads(capacity, strategy);
   document.getElementById('resultPanel').classList.add('hidden');
+  updateTopologyHint(topo);
   drawNetwork();
+}
+
+function updateTopologyHint(topo) {
+  const el = document.getElementById('topologyHint');
+  const hints = {
+    random: '每个人随机认识几个朋友，大家的朋友数量差不多。炸掉一个对整体影响不大。',
+    'scale-free': '少数"大V"连接了绝大多数人，大多数人只连接了几个。这是真实社交网络的模样。炸掉大V全网崩溃，炸掉边缘人可能毫无反应。',
+    grid: '节点排成方格，只和上下左右四个邻居相连。像电网、稻田溉溉温。故障会沿着格子一步步传播，好看但可怕。',
+    modular: '全网分成4个小组，组内很熟，组间偶尔连。像公司里的部门。故障通常被困在一个部门里，不容易跨部门传染。'
+  };
+  el.textContent = hints[topo] || '';
 }
 
 function randomTrigger() {
@@ -494,4 +506,5 @@ document.addEventListener('DOMContentLoaded', () => {
   regenerate();
   loadStats();
   loadLeaderboard();
+  updateTopologyHint(document.getElementById('topology').value);
 });

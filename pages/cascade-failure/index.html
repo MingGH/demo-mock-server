@@ -24,11 +24,12 @@
       <div class="setting-group">
         <label>拓扑结构</label>
         <select id="topology" onchange="regenerate()">
-          <option value="random">随机网络</option>
-          <option value="scale-free" selected>无标度网络（社交/CDN）</option>
-          <option value="grid">网格网络（电网/存储）</option>
-          <option value="modular">模块化网络（微服务）</option>
+          <option value="random">随机交友型（人人随机连）</option>
+          <option value="scale-free" selected>大V中心型（少数节点特别忙）</option>
+          <option value="grid">棋盘格子型（像电网/存储一样排列）</option>
+          <option value="modular">小圈子型（分成几个部门/模块）</option>
         </select>
+        <div class="hint-text" id="topologyHint"></div>
       </div>
       <div class="setting-group">
         <label>耦合密度</label>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="选项从2个增加到32个，你的反应时间会怎样变化？三个关卡实测你的Hick定律曲线、决策疲劳衰减和果酱实验犹豫度，量化你的选择困难指数。">
+  <title>选择过载：为什么选项越多你越不会选 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+  <script src="engine.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-brain-puzzle"></i> 选择过载实验室</h1>
+    <p>选项从 2 个增加到 32 个，你的大脑什么时候开始崩溃？三个关卡，量化你的「选择困难指数」。</p>
+  </div>
+
+  <!-- ══════ 开场 ══════ -->
+  <div class="phase active" id="phaseIntro">
+    <div class="section">
+      <div class="intro-card">
+        <span class="intro-icon"><i class="ti ti-brain-puzzle" style="font-size:3.5rem"></i></span>
+        <div class="intro-text">
+          超市里 24 种果酱，你反而不买了。<br>
+          外卖 App 翻了 20 分钟，最后点了老三样。<br>
+          这不是你的问题，是你大脑的硬件限制。
+        </div>
+        <div class="intro-steps">
+          <div class="intro-step">
+            <div class="intro-step-num">1</div>
+            <div class="intro-step-text"><strong>Hick 定律测试</strong> — 选项从 2 到 32，测你的反应时间曲线</div>
+          </div>
+          <div class="intro-step">
+            <div class="intro-step-num">2</div>
+            <div class="intro-step-text"><strong>决策疲劳测试</strong> — 连续做 15 道选择题，看你什么时候开始乱选</div>
+          </div>
+          <div class="intro-step">
+            <div class="intro-step-num">3</div>
+            <div class="intro-step-text"><strong>果酱实验复现</strong> — 6 个选项 vs 24 个选项，测你的犹豫度差异</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="startExperiment()">
+          <i class="ti ti-flask"></i> 开始实验
+        </button>
+        <div style="margin-top:12px;font-size:0.8rem;color:#64748b">约 3~5 分钟 · 无需注册</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 关卡一：Hick 定律 ══════ -->
+  <div class="phase" id="phaseHick">
+    <div class="section">
+      <h2><i class="ti ti-target"></i> 关卡一：Hick 定律测试</h2>
+      <div class="progress-wrap"><div class="progress-fill" id="hickProgress" style="width:0%"></div></div>
+      <div class="hick-round-info">
+        <span>第 <strong id="hickRoundNum">1</strong> / <span id="hickTotalRounds">7</span> 轮</span>
+        <span>当前选项数：<strong id="hickOptionCount">2</strong></span>
+      </div>
+
+      <!-- 倒计时 -->
+      <div id="hickCountdown" style="display:none">
+        <div class="hick-countdown" id="hickCountdownText">3</div>
+      </div>
+
+      <!-- 游戏区 -->
+      <div id="hickGame" style="display:none">
+        <div class="hick-instruction">找到并点击下面这个颜色的方块 ↓</div>
+        <div class="hick-target">
+          <div class="hick-target-color" id="hickTargetSwatch"></div>
+          <div class="hick-target-name" id="hickTargetName"></div>
+        </div>
+        <div class="hick-grid" id="hickGrid"></div>
+      </div>
+
+      <!-- 单轮结果 -->
+      <div id="hickRoundResult" style="display:none;text-align:center;margin-top:20px">
+        <div id="hickRoundFeedback" style="font-size:1.2rem;margin-bottom:12px"></div>
+        <button class="btn btn-primary" onclick="nextHickRound()">
+          <i class="ti ti-arrow-right"></i> 下一轮
+        </button>
+      </div>
+
+      <!-- 关卡总结 -->
+      <div id="hickSummary" style="display:none">
+        <h3 style="color:#fff;margin-bottom:16px"><i class="ti ti-chart-line"></i> 你的 Hick 曲线</h3>
+        <div class="chart-container"><canvas id="hickChart"></canvas></div>
+        <div id="hickFitInfo" style="margin-top:16px;text-align:center;color:#94a3b8;font-size:0.9rem"></div>
+        <div style="text-align:center;margin-top:20px">
+          <button class="btn btn-primary" onclick="startFatiguePhase()">
+            <i class="ti ti-arrow-right"></i> 进入关卡二
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 关卡二：决策疲劳 ══════ -->
+  <div class="phase" id="phaseFatigue">
+    <div class="section">
+      <h2><i class="ti ti-battery-2"></i> 关卡二：决策疲劳测试</h2>
+      <div class="progress-wrap"><div class="progress-fill" id="fatigueProgress" style="width:0%"></div></div>
+      <div class="fatigue-meta" id="fatigueMeta">第 1 / 15 题 · 每题限时 5 秒</div>
+
+      <div class="fatigue-card" id="fatigueCard">
+        <div class="fatigue-timer" id="fatigueTimer">5.0</div>
+        <div class="fatigue-q" id="fatigueQuestion"></div>
+        <div class="fatigue-options" id="fatigueOptions"></div>
+      </div>
+
+      <!-- 关卡总结 -->
+      <div id="fatigueSummary" style="display:none">
+        <h3 style="color:#fff;margin-bottom:16px"><i class="ti ti-chart-area-line"></i> 你的决策质量衰减曲线</h3>
+        <div class="chart-container"><canvas id="fatigueChart"></canvas></div>
+        <div id="fatigueFitInfo" style="margin-top:16px;text-align:center;color:#94a3b8;font-size:0.9rem"></div>
+        <div style="text-align:center;margin-top:20px">
+          <button class="btn btn-primary" onclick="startJamPhase()">
+            <i class="ti ti-arrow-right"></i> 进入关卡三
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 关卡三：果酱实验 ══════ -->
+  <div class="phase" id="phaseJam">
+    <div class="section">
+      <h2><i class="ti ti-shopping-cart"></i> 关卡三：果酱实验</h2>
+
+      <!-- 第一轮：6 个 -->
+      <div id="jamRound1">
+        <div class="jam-instruction">货架上有 <strong>6</strong> 种果酱，选一种你最想买的</div>
+        <div class="jam-shelf few" id="jamShelf1"></div>
+        <div class="jam-confirm-row">
+          <button class="btn btn-primary" id="jamConfirm1" onclick="confirmJam(1)" disabled>
+            <i class="ti ti-check"></i> 确认选择
+          </button>
+        </div>
+      </div>
+
+      <!-- 满意度 1 -->
+      <div id="jamSat1" style="display:none">
+        <div class="jam-instruction">你对这个选择有多满意？</div>
+        <div class="satisfaction-row" id="satRow1"></div>
+        <div class="sat-label" id="satLabel1">点击星星评分</div>
+        <div style="text-align:center;margin-top:16px">
+          <button class="btn btn-primary" id="satConfirm1" onclick="confirmSat(1)" disabled>
+            <i class="ti ti-arrow-right"></i> 继续
+          </button>
+        </div>
+      </div>
+
+      <!-- 第二轮：24 个 -->
+      <div id="jamRound2" style="display:none">
+        <div class="jam-instruction">现在货架上有 <strong>24</strong> 种果酱，再选一种</div>
+        <div class="jam-shelf many" id="jamShelf2"></div>
+        <div class="jam-confirm-row">
+          <button class="btn btn-primary" id="jamConfirm2" onclick="confirmJam(2)" disabled>
+            <i class="ti ti-check"></i> 确认选择
+          </button>
+        </div>
+      </div>
+
+      <!-- 满意度 2 -->
+      <div id="jamSat2" style="display:none">
+        <div class="jam-instruction">你对这个选择有多满意？</div>
+        <div class="satisfaction-row" id="satRow2"></div>
+        <div class="sat-label" id="satLabel2">点击星星评分</div>
+        <div style="text-align:center;margin-top:16px">
+          <button class="btn btn-primary" id="satConfirm2" onclick="confirmSat(2)" disabled>
+            <i class="ti ti-arrow-right"></i> 查看结果
+          </button>
+        </div>
+      </div>
+
+      <!-- 果酱总结 -->
+      <div id="jamSummary" style="display:none">
+        <h3 style="color:#fff;margin-bottom:16px"><i class="ti ti-chart-bar"></i> 你的果酱实验数据</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+          <div style="background:rgba(0,0,0,0.25);border-radius:12px;padding:20px;text-align:center;border:1px solid rgba(255,255,255,0.08)">
+            <div style="font-size:0.8rem;color:#64748b;margin-bottom:4px">6 种果酱</div>
+            <div style="font-size:1.8rem;font-weight:700;color:#22c55e" id="jam6Time">-</div>
+            <div style="font-size:0.75rem;color:#94a3b8">选择用时</div>
+            <div style="margin-top:8px;font-size:0.85rem;color:#fbbf24" id="jam6Sat">-</div>
+          </div>
+          <div style="background:rgba(0,0,0,0.25);border-radius:12px;padding:20px;text-align:center;border:1px solid rgba(255,255,255,0.08)">
+            <div style="font-size:0.8rem;color:#64748b;margin-bottom:4px">24 种果酱</div>
+            <div style="font-size:1.8rem;font-weight:700;color:#ef4444" id="jam24Time">-</div>
+            <div style="font-size:0.75rem;color:#94a3b8">选择用时</div>
+            <div style="margin-top:8px;font-size:0.85rem;color:#fbbf24" id="jam24Sat">-</div>
+          </div>
+        </div>
+        <div id="jamInsight" style="color:#94a3b8;font-size:0.9rem;text-align:center;margin-bottom:20px"></div>
+        <div style="text-align:center">
+          <button class="btn btn-primary" onclick="showResult()">
+            <i class="ti ti-report-analytics"></i> 查看最终报告
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 最终结果 ══════ -->
+  <div class="phase" id="phaseResult">
+    <!-- 总分 -->
+    <div class="result-hero">
+      <h2><i class="ti ti-brain-puzzle"></i> 你的选择困难指数</h2>
+      <div class="result-score" id="resultScore" style="color:#f5af19">--</div>
+      <div class="result-grade" id="resultGrade">-</div>
+      <div class="result-desc" id="resultDesc"></div>
+    </div>
+
+    <!-- 三维度 -->
+    <div class="section">
+      <h2><i class="ti ti-chart-radar"></i> 三维度分析</h2>
+      <div class="dim-bars" id="dimBars"></div>
+    </div>
+
+    <!-- Hick 曲线 -->
+    <div class="chart-section">
+      <h3><i class="ti ti-chart-line"></i> 你的 Hick 曲线 vs 理论预测</h3>
+      <div class="chart-container"><canvas id="resultHickChart"></canvas></div>
+    </div>
+
+    <!-- 科普 -->
+    <div class="knowledge-cards">
+      <div class="knowledge-card">
+        <h4><i class="ti ti-book"></i> Hick 定律</h4>
+        <p>1952 年，心理学家 W.E. Hick 发现：选择反应时间 = a + b × log₂(n+1)。选项翻倍，决策时间只增加一个固定值。你的大脑是一台 <span class="highlight">对数处理器</span>。</p>
+        <div class="source">Hick, W.E. (1952). On the rate of gain of information. QJEP.</div>
+      </div>
+      <div class="knowledge-card">
+        <h4><i class="ti ti-shopping-cart"></i> 果酱实验</h4>
+        <p>Iyengar & Lepper (2000) 在超市摆了两个试吃摊：24 种果酱吸引了 60% 的人驻足，但只有 <span class="highlight">3%</span> 购买；6 种果酱只吸引 40% 的人，但 <span class="highlight">30%</span> 购买。选项多 4 倍，购买率低 10 倍。</p>
+        <div class="source">Iyengar & Lepper (2000). When choice is demotivating. JPSP.</div>
+      </div>
+      <div class="knowledge-card">
+        <h4><i class="ti ti-battery-2"></i> 决策疲劳</h4>
+        <p>以色列法官的假释研究：上午批准率 <span class="highlight">65%</span>，午餐前降到接近 <span class="highlight">0%</span>，吃完饭又回到 65%。连续做决策会耗尽你的「决策电量」。</p>
+        <div class="source">Danziger et al. (2011). PNAS, 108(17).</div>
+      </div>
+      <div class="knowledge-card">
+        <h4><i class="ti ti-bulb"></i> 怎么办</h4>
+        <p>① 重要决策放在上午<br>② 用「两步法」：先排除到 3 个，再比较<br>③ 设置默认选项，减少日常决策数量<br>④ 接受「足够好」，放弃「最优解」</p>
+      </div>
+    </div>
+
+    <!-- 操作 -->
+    <div class="summary-actions">
+      <button class="btn btn-secondary" onclick="location.reload()">
+        <i class="ti ti-refresh"></i> 重新测试
+      </button>
+      <button class="btn btn-secondary" onclick="copyShareText()">
+        <i class="ti ti-share"></i> 分享结果
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

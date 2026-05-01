@@ -1,0 +1,141 @@
+/* ── 信息过载决策崩溃 ── */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);min-height:100vh;color:#e8e8e8;line-height:1.6}
+.container{max-width:900px;margin:0 auto;padding:20px}
+.header{text-align:center;padding:40px 20px 20px}
+.header h1{font-size:2rem;background:linear-gradient(135deg,#f5af19,#f12711,#f5af19);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 3s ease-in-out infinite}
+@keyframes shimmer{0%,100%{background-position:0% center}50%{background-position:200% center}}
+.header p{color:#94a3b8;margin-top:8px;font-size:0.95rem;max-width:600px;margin-left:auto;margin-right:auto}
+
+/* 阶段 */
+.phase{display:none}
+.phase.active{display:block}
+
+/* 卡片 */
+.section{background:rgba(255,255,255,0.05);border-radius:16px;padding:28px;margin-bottom:24px;border:1px solid rgba(255,255,255,0.08)}
+.section h2{font-size:1.25rem;margin-bottom:16px;color:#fbbf24;display:flex;align-items:center;gap:10px}
+
+/* 按钮 */
+.btn{border:none;border-radius:10px;cursor:pointer;font-size:0.95rem;transition:all 0.2s;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:linear-gradient(135deg,#f5af19,#f12711);color:#fff;padding:14px 32px;font-weight:600;font-size:1rem}
+.btn-primary:hover{opacity:0.9;transform:translateY(-1px)}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.btn-secondary{background:rgba(255,255,255,0.08);color:#e0e0e0;padding:10px 20px;border:1px solid rgba(255,255,255,0.12)}
+.btn-secondary:hover{background:rgba(255,255,255,0.12)}
+.btn-ghost{background:transparent;color:#94a3b8;padding:10px 20px;border:1px solid rgba(255,255,255,0.1)}
+.btn-ghost:hover{background:rgba(255,255,255,0.05)}
+.btn-full{width:100%}
+
+/* 开场 */
+.intro-card{text-align:center;max-width:620px;margin:0 auto}
+.intro-icon{font-size:3.5rem;margin-bottom:16px;display:block;color:#f5af19}
+.intro-text{color:#b0b0b0;font-size:0.95rem;line-height:1.8;margin-bottom:24px}
+.intro-steps{display:flex;flex-direction:column;gap:12px;text-align:left;margin:20px 0}
+.intro-step{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06)}
+.intro-step-num{width:28px;height:28px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#f5af19,#f12711);color:#fff;font-weight:700;font-size:0.85rem;display:flex;align-items:center;justify-content:center}
+.intro-step-text{color:#cbd5e1;font-size:0.9rem;line-height:1.5}
+.intro-step-text strong{color:#fff}
+
+/* 进度条 */
+.progress-wrap{background:rgba(255,255,255,0.1);border-radius:4px;height:5px;margin-bottom:20px}
+.progress-fill{height:5px;border-radius:4px;background:linear-gradient(90deg,#f5af19,#f12711);transition:width 0.4s ease}
+
+/* ── 关卡一：Hick 定律 ── */
+.hick-instruction{text-align:center;color:#94a3b8;font-size:0.9rem;margin-bottom:16px}
+.hick-target{text-align:center;margin-bottom:20px}
+.hick-target-label{font-size:0.85rem;color:#64748b;margin-bottom:8px}
+.hick-target-color{display:inline-block;width:60px;height:60px;border-radius:12px;border:3px solid rgba(255,255,255,0.2)}
+.hick-target-name{font-size:1.1rem;color:#fff;margin-top:8px;font-weight:600}
+.hick-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:20px 0;min-height:80px}
+.hick-btn{width:56px;height:56px;border-radius:12px;border:2px solid rgba(255,255,255,0.15);cursor:pointer;transition:all 0.15s;position:relative}
+.hick-btn:hover{transform:scale(1.1);border-color:rgba(255,255,255,0.4)}
+.hick-btn.correct{animation:correctPop 0.4s ease}
+.hick-btn.wrong{animation:wrongShake 0.4s ease}
+@keyframes correctPop{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
+@keyframes wrongShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.hick-round-info{display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;color:#64748b;margin-bottom:12px}
+.hick-countdown{font-size:2rem;font-weight:700;color:#f5af19;text-align:center;margin:40px 0}
+.hick-result-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.9rem}
+.hick-result-row:last-child{border-bottom:none}
+.hick-result-label{color:#94a3b8}
+.hick-result-value{color:#fff;font-weight:600}
+
+/* ── 关卡二：决策疲劳 ── */
+.fatigue-card{background:rgba(0,0,0,0.25);border-radius:14px;padding:24px;border:1px solid rgba(255,255,255,0.08);text-align:center}
+.fatigue-q{font-size:1.1rem;color:#fff;margin-bottom:20px;line-height:1.6}
+.fatigue-options{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:16px}
+.fatigue-opt{padding:12px 20px;border-radius:10px;border:2px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);cursor:pointer;transition:all 0.2s;color:#ccc;font-size:0.95rem;min-width:80px}
+.fatigue-opt:hover{border-color:rgba(245,175,25,0.4);background:rgba(245,175,25,0.05)}
+.fatigue-opt.selected{border-color:#f5af19;background:rgba(245,175,25,0.1);color:#fff}
+.fatigue-timer{font-size:2.5rem;font-weight:700;color:#f5af19;margin-bottom:8px;font-variant-numeric:tabular-nums}
+.fatigue-timer.warning{color:#ef4444;animation:timerPulse 0.5s ease infinite}
+@keyframes timerPulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.fatigue-meta{font-size:0.85rem;color:#64748b;margin-bottom:16px}
+
+/* ── 关卡三：果酱实验 ── */
+.jam-shelf{display:grid;gap:12px;margin:16px 0}
+.jam-shelf.few{grid-template-columns:repeat(3,1fr)}
+.jam-shelf.many{grid-template-columns:repeat(4,1fr)}
+.jam-card{background:rgba(0,0,0,0.25);border-radius:12px;padding:16px 12px;border:2px solid rgba(255,255,255,0.08);cursor:pointer;transition:all 0.2s;text-align:center}
+.jam-card:hover{border-color:rgba(245,175,25,0.3);transform:translateY(-2px)}
+.jam-card.selected{border-color:#f5af19;background:rgba(245,175,25,0.08)}
+.jam-card.hovered{background:rgba(255,255,255,0.03)}
+.jam-swatch{width:40px;height:40px;border-radius:10px;margin:0 auto 10px;border:2px solid rgba(255,255,255,0.1)}
+.jam-name{font-size:0.85rem;color:#fff;font-weight:600;margin-bottom:4px}
+.jam-desc{font-size:0.75rem;color:#94a3b8;line-height:1.4}
+.jam-instruction{text-align:center;color:#94a3b8;font-size:0.9rem;margin-bottom:16px}
+.jam-confirm-row{text-align:center;margin-top:16px}
+
+/* 满意度评分 */
+.satisfaction-row{display:flex;align-items:center;justify-content:center;gap:8px;margin:16px 0}
+.sat-star{font-size:2rem;cursor:pointer;color:rgba(255,255,255,0.35);transition:all 0.15s;line-height:1;user-select:none}
+.sat-star:hover,.sat-star.active{color:#fbbf24}
+.sat-label{font-size:0.85rem;color:#64748b;text-align:center}
+
+/* ── 结果页 ── */
+.result-hero{text-align:center;padding:32px 24px;background:rgba(255,255,255,0.05);border-radius:16px;border:1px solid rgba(255,255,255,0.08);margin:20px auto;max-width:640px}
+.result-hero h2{font-size:1.4rem;color:#fff;margin-bottom:8px}
+.result-score{font-size:4rem;font-weight:800;margin:16px 0;font-variant-numeric:tabular-nums}
+.result-grade{font-size:1.2rem;font-weight:600;margin-bottom:8px}
+.result-desc{color:#94a3b8;font-size:0.9rem;line-height:1.6;max-width:480px;margin:0 auto}
+
+/* 三维度条 */
+.dim-bars{display:flex;flex-direction:column;gap:14px;margin:20px 0}
+.dim-item{display:flex;align-items:center;gap:12px}
+.dim-label{width:100px;font-size:0.85rem;color:#94a3b8;text-align:right;flex-shrink:0}
+.dim-bar-bg{flex:1;background:rgba(255,255,255,0.08);border-radius:4px;height:24px;overflow:hidden}
+.dim-bar-fill{height:100%;border-radius:4px;transition:width 1s ease;display:flex;align-items:center;padding-left:10px}
+.dim-bar-fill span{font-size:0.75rem;color:#fff;font-weight:600}
+
+/* 图表 */
+.chart-section{margin:20px auto;max-width:800px;background:rgba(255,255,255,0.05);border-radius:16px;border:1px solid rgba(255,255,255,0.08);padding:20px}
+.chart-section h3{font-size:1rem;color:#fff;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.chart-container{position:relative;height:280px}
+
+/* 科普卡片 */
+.knowledge-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px auto;max-width:800px}
+.knowledge-card{background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.08)}
+.knowledge-card h4{font-size:0.95rem;color:#fff;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.knowledge-card p{font-size:0.85rem;color:#94a3b8;line-height:1.6}
+.knowledge-card .highlight{color:#f5af19;font-weight:600}
+.knowledge-card .source{font-size:0.75rem;color:#64748b;margin-top:8px}
+
+/* 底部操作 */
+.summary-actions{display:flex;gap:12px;justify-content:center;margin:24px auto;max-width:640px;flex-wrap:wrap}
+
+/* Toast */
+.toast{position:fixed;top:20px;right:20px;background:#f5af19;color:#1a1a2e;padding:13px 22px;border-radius:8px;opacity:0;transform:translateY(-16px);transition:all 0.3s ease;z-index:1001;font-size:0.9rem;font-weight:600}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* 响应式 */
+@media(max-width:640px){
+  .container{padding:12px}
+  .header h1{font-size:1.5rem}
+  .section{padding:18px}
+  .hick-btn{width:44px;height:44px}
+  .jam-shelf.few{grid-template-columns:repeat(2,1fr)}
+  .jam-shelf.many{grid-template-columns:repeat(3,1fr)}
+  .knowledge-cards{grid-template-columns:1fr}
+  .result-score{font-size:3rem}
+  .fatigue-timer{font-size:2rem}
+}

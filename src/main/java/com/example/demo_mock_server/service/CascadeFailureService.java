@@ -99,12 +99,20 @@ public class CascadeFailureService {
     public Future<JsonObject> stats() {
         Future<JsonObject> globalFuture = pool.query(SQL_STATS).execute().map(rows -> {
             var row = rows.iterator().next();
-            return new JsonObject()
-                .put("totalRuns", row.getLong("total_runs"))
-                .put("avgSurvival", row.getDouble("avg_survival"))
-                .put("avgSteps", row.getDouble("avg_steps"))
-                .put("avgScore", row.getDouble("avg_score"))
-                .put("highSurvivalRate", row.getDouble("high_survival_rate"));
+            long totalRuns = row.getLong("total_runs");
+            JsonObject global = new JsonObject().put("totalRuns", totalRuns);
+            if (totalRuns == 0) {
+                global.put("avgSurvival", 0.0)
+                      .put("avgSteps", 0.0)
+                      .put("avgScore", 0.0)
+                      .put("highSurvivalRate", 0.0);
+            } else {
+                global.put("avgSurvival", row.getDouble("avg_survival"))
+                      .put("avgSteps", row.getDouble("avg_steps"))
+                      .put("avgScore", row.getDouble("avg_score"))
+                      .put("highSurvivalRate", row.getDouble("high_survival_rate"));
+            }
+            return global;
         });
 
         Future<JsonArray> topoFuture = pool.query(SQL_TOPO_STATS).execute().map(rows -> {

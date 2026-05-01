@@ -440,27 +440,36 @@ function randomTrigger() {
 
 // ===== 后端数据加载 =====
 async function loadStats() {
+  const el = document.getElementById('globalStats');
   try {
     const resp = await fetch('/cascade-failure/stats');
     const json = await resp.json();
-    if (json.status !== 200) return;
+    if (json.status !== 200 || !json.data || !json.data.global) {
+      el.innerHTML = '<span style="opacity:0.6">数据加载失败，请刷新重试。</span>';
+      return;
+    }
     const g = json.data.global;
-    const el = document.getElementById('globalStats');
     if (g.totalRuns === 0) {
       el.innerHTML = '<span style="opacity:0.6">暂无全局数据，完成一次模拟并提交后即可查看统计。</span>';
       return;
     }
     el.innerHTML = '已收集 <strong>' + g.totalRuns + '</strong> 次模拟 | 平均存活率 <strong>' + (g.avgSurvival * 100).toFixed(1) + '%</strong> | 平均级联步数 <strong>' + g.avgSteps + '</strong> | 高存活率占比 <strong>' + (g.highSurvivalRate * 100).toFixed(1) + '%</strong>';
-  } catch (e) { console.error('stats load failed', e); }
+  } catch (e) {
+    console.error('stats load failed', e);
+    el.innerHTML = '<span style="opacity:0.6">数据加载失败，请刷新重试。</span>';
+  }
 }
 
 async function loadLeaderboard() {
+  const container = document.getElementById('lbList');
   try {
     const resp = await fetch('/cascade-failure/leaderboard?limit=10');
     const json = await resp.json();
-    if (json.status !== 200) return;
+    if (json.status !== 200 || !json.data) {
+      container.innerHTML = '<div class="lb-loading">数据加载失败</div>';
+      return;
+    }
     const list = json.data.leaders;
-    const container = document.getElementById('lbList');
     if (!list || list.length === 0) {
       container.innerHTML = '<div class="lb-loading">暂无数据</div>';
       return;
@@ -472,7 +481,10 @@ async function loadLeaderboard() {
         '<span class="lb-score">' + r.score + '分</span>' +
       '</div>'
     ).join('');
-  } catch (e) { console.error('lb load failed', e); }
+  } catch (e) {
+    console.error('lb load failed', e);
+    container.innerHTML = '<div class="lb-loading">数据加载失败</div>';
+  }
 }
 
 // ===== 初始化 =====

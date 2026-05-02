@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="一个全知AI预测了你的决定，桌上两个箱子，你拿一个还是两个？交互式体验纽科姆悖论，蒙特卡洛模拟验证一箱派vs两箱派。">
+  <title>纽科姆悖论：AI 预测了你的选择 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-box-multiple"></i> 纽科姆悖论</h1>
+    <p>一个预测者声称能看穿你的选择。桌上两个箱子，你拿一个还是两个？</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Phase 1：开始页
+  ═══════════════════════════════════════════════════════ -->
+  <div class="phase active" id="phase-intro">
+    <div class="card">
+      <div class="intro-card">
+        <span class="intro-icon"><i class="ti ti-box-multiple" style="font-size:3.5rem"></i></span>
+        <div class="intro-text">
+          1969 年，物理学家 William Newcomb 提出了一个让哲学家吵了半个世纪的问题。<br>
+          2020 年调查：39% 的哲学家选两箱，31.2% 选一箱，剩下的不确定。<br>
+          2026 年实验：40% 的人把 AI 当成了全知预测者。
+        </div>
+        <div class="intro-steps">
+          <div class="intro-step">
+            <div class="intro-step-num">1</div>
+            <div class="intro-step-text">完成 3 个小任务，系统<strong>「分析」你的决策倾向</strong></div>
+          </div>
+          <div class="intro-step">
+            <div class="intro-step-num">2</div>
+            <div class="intro-step-text">面对两个箱子，做出你的选择：<strong>只拿 B，还是 A+B 都拿</strong></div>
+          </div>
+          <div class="intro-step">
+            <div class="intro-step-num">3</div>
+            <div class="intro-step-text">揭晓预测结果，用<strong>蒙特卡洛模拟</strong>验证哪种策略更优</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="startGame()">
+          <i class="ti ti-player-play"></i> 开始实验
+        </button>
+        <div style="margin-top:12px;font-size:0.8rem;color:#a0a0a0">约 3 分钟 · 无需注册</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Phase 2：行为分析（收集信号）
+  ═══════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-scan">
+    <div class="card">
+      <div class="scan-section">
+        <div class="scan-title"><i class="ti ti-scan"></i> 预测系统正在分析你</div>
+        <div class="scan-desc">完成以下任务，系统将根据你的行为模式生成预测</div>
+      </div>
+
+      <!-- 任务1：滑块 -->
+      <div class="scan-task" id="task1">
+        <div class="scan-task-label"><i class="ti ti-adjustments"></i> 任务 1/3：凭直觉拖动滑块</div>
+        <p style="font-size:0.9rem;color:#cbd5e1;margin-bottom:16px">不要想太多，把滑块拖到你觉得「舒服」的位置。</p>
+        <div class="slider-wrap">
+          <input type="range" id="scanSlider" min="0" max="100" value="50">
+          <div class="slider-labels"><span>保守</span><span>冒险</span></div>
+        </div>
+      </div>
+
+      <!-- 任务2：颜色 -->
+      <div class="scan-task" id="task2" style="display:none">
+        <div class="scan-task-label"><i class="ti ti-palette"></i> 任务 2/3：选一个颜色</div>
+        <p style="font-size:0.9rem;color:#cbd5e1;margin-bottom:16px">哪个颜色最吸引你？</p>
+        <div class="color-choices">
+          <div class="color-btn cool-1" data-color="0" onclick="selectColor(this)"></div>
+          <div class="color-btn cool-2" data-color="0" onclick="selectColor(this)"></div>
+          <div class="color-btn cool-3" data-color="0" onclick="selectColor(this)"></div>
+          <div class="color-btn warm-1" data-color="1" onclick="selectColor(this)"></div>
+          <div class="color-btn warm-2" data-color="1" onclick="selectColor(this)"></div>
+          <div class="color-btn warm-3" data-color="1" onclick="selectColor(this)"></div>
+        </div>
+      </div>
+
+      <!-- 任务3：反应速度 -->
+      <div class="scan-task" id="task3" style="display:none">
+        <div class="scan-task-label"><i class="ti ti-bolt"></i> 任务 3/3：反应速度测试</div>
+        <p style="font-size:0.9rem;color:#cbd5e1;margin-bottom:16px">等背景变绿后，尽快点击。</p>
+        <div class="reaction-area waiting" id="reactionArea" onclick="handleReaction()">
+          等待中...
+        </div>
+      </div>
+
+      <div class="scan-progress">
+        <div class="scan-bar-bg"><div class="scan-bar-fill" id="scanBarFill"></div></div>
+        <div class="scan-status" id="scanStatus">完成任务以继续</div>
+      </div>
+
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn btn-primary" id="scanNextBtn" onclick="nextScanTask()" disabled>
+          <i class="ti ti-arrow-right"></i> 下一步
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Phase 3：预测生成 + 选择
+  ═══════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-choice">
+    <div class="card">
+      <div class="boxes-scene">
+        <div class="box-visual box-a">
+          <div class="box-label">箱子 A（透明）</div>
+          <div class="box-content">¥1,000</div>
+          <div class="box-sub">你能看到里面的钱</div>
+        </div>
+        <div class="box-visual box-b">
+          <div class="box-label">箱子 B（不透明）</div>
+          <div class="box-mystery"><i class="ti ti-help"></i></div>
+          <div class="box-content">¥0 或 ¥100 万</div>
+          <div class="box-sub">取决于预测者的预测</div>
+        </div>
+      </div>
+
+      <div class="prediction-seal">
+        <div class="seal-icon"><i class="ti ti-lock"></i></div>
+        <div class="seal-text">预测已密封完成。预测者声称已经看穿了你的选择。</div>
+      </div>
+
+      <div style="padding:16px;background:rgba(255,255,255,0.03);border-radius:12px;margin:16px 0;font-size:0.88rem;color:#a0a0a0;line-height:1.7">
+        <strong style="color:#fff">规则：</strong>
+        如果预测者预测你<strong style="color:#4ade80">只拿 B</strong> → B 里有 100 万。
+        如果预测者预测你<strong style="color:#f87171">两个都拿</strong> → B 里是空的。
+        预测者的历史准确率：<strong style="color:#ffd700">99.9%</strong>。
+      </div>
+
+      <div class="choice-buttons">
+        <div class="choice-btn" id="choiceOne" onclick="selectChoice('one')">
+          <h3><i class="ti ti-box"></i> 只拿箱子 B</h3>
+          <p>信任预测者，放弃确定的 1000 元</p>
+        </div>
+        <div class="choice-btn" id="choiceTwo" onclick="selectChoice('two')">
+          <h3><i class="ti ti-box-multiple"></i> A + B 都拿</h3>
+          <p>管它预测什么，多拿一个总没错</p>
+        </div>
+      </div>
+
+      <div class="confirm-row">
+        <button class="btn btn-primary" id="choiceConfirmBtn" onclick="confirmChoice()" disabled>
+          <i class="ti ti-check"></i> 确认选择
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Phase 4：揭晓结果
+  ═══════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-reveal">
+    <div class="card reveal-hero" id="revealHero">
+      <!-- 动态填充 -->
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:1rem;color:#fff;margin-bottom:16px;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-world"></i> 全站统计
+      </h3>
+      <div class="global-stats" id="globalStats">
+        <div class="stat-card">
+          <h4>参与人数</h4>
+          <div class="stat-value" style="color:#ffd700" id="statPlayers">—</div>
+        </div>
+        <div class="stat-card">
+          <h4>一箱派</h4>
+          <div class="stat-value" style="color:#4ade80" id="statOneBox">—</div>
+          <div class="stat-label" id="statOneBoxPct"></div>
+        </div>
+        <div class="stat-card">
+          <h4>两箱派</h4>
+          <div class="stat-value" style="color:#f87171" id="statTwoBox">—</div>
+          <div class="stat-label" id="statTwoBoxPct"></div>
+        </div>
+        <div class="stat-card">
+          <h4>预测命中率</h4>
+          <div class="stat-value" style="color:#ffd700" id="statAccuracy">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin:20px 0">
+      <button class="btn btn-primary" onclick="showSimulator()">
+        <i class="ti ti-chart-line"></i> 用蒙特卡洛模拟验证
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Phase 5：蒙特卡洛模拟器
+  ═══════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-simulator">
+    <div class="card">
+      <h3 style="font-size:1.1rem;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-chart-line"></i> 蒙特卡洛模拟器
+      </h3>
+
+      <div class="sim-controls">
+        <div class="sim-control">
+          <label>预测者准确率</label>
+          <input type="range" id="simAccuracy" min="50" max="100" value="90" oninput="updateSimLabel()">
+          <div class="sim-value" id="simAccuracyLabel">90%</div>
+        </div>
+        <div class="sim-control">
+          <label>模拟轮数</label>
+          <input type="range" id="simRounds" min="100" max="50000" value="10000" step="100" oninput="updateSimLabel()">
+          <div class="sim-value" id="simRoundsLabel">10,000 轮</div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin:16px 0">
+        <button class="btn btn-primary" id="runSimBtn" onclick="runSim()">
+          <i class="ti ti-player-play"></i> 运行模拟
+        </button>
+      </div>
+
+      <div id="simResults" style="display:none">
+        <div class="sim-result-grid">
+          <div class="sim-result-card">
+            <h4><i class="ti ti-box"></i> 一箱策略</h4>
+            <div class="sim-result-value" style="color:#4ade80" id="simOneBoxAvg">—</div>
+            <div class="sim-result-label">平均每轮收益</div>
+          </div>
+          <div class="sim-result-card">
+            <h4><i class="ti ti-box-multiple"></i> 两箱策略</h4>
+            <div class="sim-result-value" style="color:#f87171" id="simTwoBoxAvg">—</div>
+            <div class="sim-result-label">平均每轮收益</div>
+          </div>
+        </div>
+
+        <div class="crossover-note" id="crossoverNote"></div>
+
+        <div class="chart-section">
+          <h3><i class="ti ti-chart-area"></i> 期望值 vs 准确率</h3>
+          <div class="chart-container"><canvas id="evChart"></canvas></div>
+        </div>
+
+        <div class="chart-section">
+          <h3><i class="ti ti-chart-line"></i> 累计收益对比</h3>
+          <div class="chart-container"><canvas id="cumChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin:20px 0">
+      <button class="btn btn-secondary" onclick="showTheory()">
+        <i class="ti ti-brain"></i> 看看两派怎么吵的
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       Phase 6：决策论对决 + AI 延伸
+  ═══════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-theory">
+    <div class="card">
+      <h3 style="font-size:1.1rem;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-brain"></i> 两派怎么吵的
+      </h3>
+
+      <div class="theory-tabs">
+        <div class="theory-tab active" onclick="switchTheory('edt')">
+          <i class="ti ti-box"></i> 一箱派<br><small>证据决策论</small>
+        </div>
+        <div class="theory-tab" onclick="switchTheory('cdt')">
+          <i class="ti ti-box-multiple"></i> 两箱派<br><small>因果决策论</small>
+        </div>
+        <div class="theory-tab" onclick="switchTheory('matrix')">
+          <i class="ti ti-table"></i> 收益矩阵
+        </div>
+      </div>
+
+      <div class="theory-content active" id="theory-edt">
+        <div class="theory-argument pro-one">
+          <h4><i class="ti ti-box"></i> 一箱派的核心论点</h4>
+          <p>预测者准确率 99.9%。选一箱的人，99.9% 拿到 100 万；选两箱的人，99.9% 只拿到 1000 元。</p>
+          <p style="margin-top:8px">期望值：一箱 = 99.9 万，两箱 = 1099 元。差了将近 1000 倍。</p>
+          <p style="margin-top:8px">你去看看历史记录——选一箱的人都发财了，选两箱的人都只拿到 1000 块。你还选两箱？</p>
+        </div>
+        <div style="padding:12px;font-size:0.85rem;color:#64748b;line-height:1.6;margin-top:12px">
+          代表人物：Arif Ahmed、Eliezer Yudkowsky<br>
+          核心原则：最大化期望效用（Expected Utility Maximization）
+        </div>
+      </div>
+
+      <div class="theory-content" id="theory-cdt">
+        <div class="theory-argument pro-two">
+          <h4><i class="ti ti-box-multiple"></i> 两箱派的核心论点</h4>
+          <p>预测已经做完了。箱子 B 里有没有钱，此刻已经是确定的事实。你的选择改变不了过去。</p>
+          <p style="margin-top:8px">如果 B 里有 100 万：拿两箱得 100.1 万，拿一箱得 100 万。多拿 1000。</p>
+          <p style="margin-top:8px">如果 B 里是空的：拿两箱得 1000，拿一箱得 0。还是多拿 1000。</p>
+          <p style="margin-top:8px">不管哪种情况，两箱都比一箱多 1000 元。这叫<strong>支配策略</strong>。</p>
+        </div>
+        <div style="padding:12px;font-size:0.85rem;color:#64748b;line-height:1.6;margin-top:12px">
+          代表人物：Robert Nozick、David Lewis<br>
+          核心原则：支配策略原则（Strategic Dominance Principle）
+        </div>
+      </div>
+
+      <div class="theory-content" id="theory-matrix">
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>预测「只拿 B」<br><small>B 里有 100 万</small></th>
+              <th>预测「两个都拿」<br><small>B 里是空的</small></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600;color:#4ade80">你选：只拿 B</td>
+              <td class="highlight">¥1,000,000</td>
+              <td class="dim">¥0</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600;color:#f87171">你选：A+B 都拿</td>
+              <td>¥1,001,000</td>
+              <td>¥1,000</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="font-size:0.85rem;color:#a0a0a0;line-height:1.7;margin-top:12px">
+          <p>两箱派看<strong>列</strong>：不管预测结果如何，两箱总比一箱多 1000 元。</p>
+          <p style="margin-top:6px">一箱派看<strong>对角线</strong>：准确率 99.9% 意味着你几乎只会落在左上或右下格。左上（100 万）远好于右下（1000 元）。</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 时代延伸 -->
+    <div class="card">
+      <h3 style="font-size:1.1rem;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-robot"></i> AI 时代的纽科姆
+      </h3>
+
+      <div class="ai-scenario">
+        <div class="ai-scenario-header">
+          <span class="ai-scenario-icon"><i class="ti ti-brain"></i></span>
+          <span class="ai-scenario-title">2026 年实验：AI 预测让人放弃确定奖励</span>
+        </div>
+        <div class="ai-scenario-text">
+          Naito & Shirado (2026) 在 1305 人中做了纽科姆悖论的行为实验。结果：<strong>超过 40% 的人把 AI 当成了全知预测者</strong>，愿意放弃确定的奖励。这些人的收益比随机组低 10.7%~42.9%。当人们相信 AI 能预测自己的行为时，会主动限制自己的选择。
+        </div>
+      </div>
+
+      <div class="ai-scenario">
+        <div class="ai-scenario-header">
+          <span class="ai-scenario-icon"><i class="ti ti-ad-2"></i></span>
+          <span class="ai-scenario-title">推荐算法：你的纽科姆困境</span>
+        </div>
+        <div class="ai-scenario-text">
+          抖音的推荐算法预测你会点什么。如果你相信它「懂你」，你就会按它推荐的看——这跟一箱派的逻辑一模一样。<strong>你的行为在验证它的预测，它的预测在塑造你的行为。</strong>
+        </div>
+      </div>
+
+      <div class="ai-scenario">
+        <div class="ai-scenario-header">
+          <span class="ai-scenario-icon"><i class="ti ti-car"></i></span>
+          <span class="ai-scenario-title">自动驾驶：算法替你做纽科姆选择</span>
+        </div>
+        <div class="ai-scenario-text">
+          自动驾驶系统需要预测其他车辆的行为来做决策。如果对方车辆也在用 AI 预测你——两个预测者互相预测对方的预测。这是纽科姆悖论的递归版本。
+        </div>
+      </div>
+
+      <div class="paper-ref">
+        <div class="paper-ref-title"><i class="ti ti-file-text"></i> 参考文献</div>
+        <div class="paper-ref-text">
+          Naito, A. & Shirado, H. (2026). AI prediction leads people to forgo guaranteed rewards. <a href="https://arxiv.org/abs/2603.28944" target="_blank">arXiv:2603.28944</a><br>
+          Nozick, R. (1969). Newcomb's Problem and Two Principles of Choice. In <em>Essays in Honor of Carl G. Hempel</em>.<br>
+          PhilPapers Survey 2020: 39.0% two-box vs 31.2% one-box. <a href="https://survey2020.philpeople.org/" target="_blank">survey2020.philpeople.org</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-actions">
+      <button class="btn btn-primary" onclick="resetGame()">
+        <i class="ti ti-refresh"></i> 重新体验
+      </button>
+      <button class="btn btn-secondary" onclick="showSimulator()">
+        <i class="ti ti-chart-line"></i> 回到模拟器
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

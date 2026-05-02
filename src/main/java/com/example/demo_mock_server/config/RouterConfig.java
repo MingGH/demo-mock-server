@@ -159,6 +159,14 @@ public class RouterConfig {
         router.get("/cascade-failure/stats").handler(cascadeFailureHandler);
         router.get("/cascade-failure/leaderboard").handler(cascadeFailureHandler);
 
+        // 纽科姆悖论统计
+        com.example.demo_mock_server.service.NewcombService newcombService =
+            new com.example.demo_mock_server.service.NewcombService(mysqlPool);
+        com.example.demo_mock_server.handler.NewcombHandler newcombHandler =
+            new com.example.demo_mock_server.handler.NewcombHandler(newcombService);
+        router.post("/newcomb/submit").handler(new RateLimitHandler(10, 60)).handler(newcombHandler);
+        router.get("/newcomb/stats").handler(newcombHandler);
+
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();
         router.get("/doc-track/pixel").handler(docTrackHandler);

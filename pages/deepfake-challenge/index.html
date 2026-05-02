@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="12张人脸照片，一半真人一半AI生成。你能分辨几张？用信号检测论量化你的辨别力，对比人类平均24.5%的识别率。">
+  <title>Deepfake 识别挑战 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-scan-eye"></i> Deepfake 识别挑战</h1>
+    <p>12 张人脸照片，一半真人一半 AI 生成。你能分辨几张？</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 1：开始页
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase active" id="phase-intro">
+    <div class="card">
+      <div class="intro-card">
+        <span class="intro-icon"><i class="ti ti-scan-eye" style="font-size:3.5rem"></i></span>
+        <div class="intro-text">
+          2026 年 Q1，全球发生了 420 万起 deepfake 欺诈事件。<br>
+          人类对高质量 AI 生成人脸的识别准确率只有 24.5%。<br>
+          你觉得自己能做得更好吗？
+        </div>
+        <div class="intro-stats">
+          <div class="intro-stat">
+            <span class="intro-stat-num">420万</span>
+            <span class="intro-stat-label">Q1 欺诈事件</span>
+          </div>
+          <div class="intro-stat">
+            <span class="intro-stat-num">24.5%</span>
+            <span class="intro-stat-label">人类识别率</span>
+          </div>
+          <div class="intro-stat">
+            <span class="intro-stat-num">118亿$</span>
+            <span class="intro-stat-label">经济损失</span>
+          </div>
+        </div>
+        <div class="intro-steps">
+          <div class="intro-step">
+            <div class="intro-step-num">1</div>
+            <div class="intro-step-text">依次看 <strong>12 张人脸照片</strong>，判断每张是真人还是 AI 生成</div>
+          </div>
+          <div class="intro-step">
+            <div class="intro-step-num">2</div>
+            <div class="intro-step-text">用<strong>信号检测论（d'）</strong>量化你的辨别力，比准确率更科学</div>
+          </div>
+          <div class="intro-step">
+            <div class="intro-step-num">3</div>
+            <div class="intro-step-text">对比<strong>人类平均水平</strong>和 <strong>AI 检测工具</strong>的表现</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="startChallenge()">
+          <i class="ti ti-player-play"></i> 开始挑战
+        </button>
+        <div style="margin-top:12px;font-size:0.8rem;color:#a0a0a0">约 2 分钟 · 真人照片来自 Unsplash · AI 照片由豆包生成</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 2：答题
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-quiz">
+    <div class="card">
+      <div class="progress-wrap">
+        <span class="progress-label" id="progressLabel">1 / 12</span>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="trial-image-wrap" id="trialImageWrap">
+        <img id="trialImage" src="" alt="待判断的人脸照片">
+        <div class="feedback-overlay" id="feedbackOverlay"></div>
+      </div>
+
+      <div class="trial-hint" id="trialHint">这张照片是真人拍摄的，还是 AI 生成的？</div>
+
+      <div class="choice-row">
+        <div class="choice-btn" id="btnReal" onclick="makeChoice(true)">
+          <span class="choice-icon"><i class="ti ti-user-check"></i></span>
+          <span class="choice-label">真人</span>
+          <span class="choice-sub">Real Photo</span>
+        </div>
+        <div class="choice-btn" id="btnFake" onclick="makeChoice(false)">
+          <span class="choice-icon"><i class="ti ti-robot"></i></span>
+          <span class="choice-label">AI 生成</span>
+          <span class="choice-sub">AI Generated</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 3：结果
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-result">
+    <div id="resultHero" class="result-hero"></div>
+
+    <div class="card">
+      <h3 style="font-size:1rem;color:#fff;margin-bottom:16px"><i class="ti ti-chart-bar"></i> 你 vs 人类平均 vs AI 检测</h3>
+      <div id="compareGrid" class="compare-grid"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:1rem;color:#fff;margin-bottom:16px"><i class="ti ti-table"></i> 信号检测四格表</h3>
+      <div id="sdtTable"></div>
+      <div id="sdtExplain" style="margin-top:12px"></div>
+    </div>
+
+    <div class="chart-section">
+      <h3><i class="ti ti-chart-dots-3"></i> ROC 空间定位</h3>
+      <div class="chart-container">
+        <canvas id="rocChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:1rem;color:#fff;margin-bottom:16px"><i class="ti ti-photo-search"></i> 逐张回顾</h3>
+      <div id="reviewGrid" class="review-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="knowledge-card">
+        <h4><i class="ti ti-brain"></i> 为什么用 d' 而不是准确率？</h4>
+        <p>准确率会被「判断偏好」污染。如果你把所有照片都猜成「真人」，在真假各半的测试中准确率也有 50%——但你的辨别力其实是零。</p>
+        <p>信号检测论的 d'（d-prime）把「辨别力」和「判断偏好」分开计算。d' = 0 表示纯猜，d' 越高辨别力越强。</p>
+        <p class="source">Green, D. M. & Swets, J. A. (1966). Signal Detection Theory and Psychophysics. Wiley.</p>
+      </div>
+      <div class="knowledge-card">
+        <h4><i class="ti ti-alert-triangle"></i> 2026 年的 Deepfake 现状</h4>
+        <p>2026 Q1 全球 deepfake 欺诈事件 420 万起，经济损失 118 亿美元。AI 检测工具在实验室准确率 93-98%，但在真实场景下降到 45-50%。</p>
+        <p class="source">数据来源：Signisys (2026), Sozee.ai (2026), Deepstrike.io (2025)</p>
+      </div>
+    </div>
+
+    <div class="summary-actions">
+      <button class="btn btn-primary" id="retryBtn">
+        <i class="ti ti-refresh"></i> 再挑战一次
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

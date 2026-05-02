@@ -8,6 +8,7 @@ import com.example.demo_mock_server.service.FingerprintService;
 import com.example.demo_mock_server.service.GeoLocationService;
 import com.example.demo_mock_server.service.InferenceLeaderboardService;
 import com.example.demo_mock_server.service.SocialEngineeringService;
+import com.example.demo_mock_server.service.SoritesService;
 import com.example.demo_mock_server.service.CaptchaStatsService;
 import com.example.demo_mock_server.service.StroopStatsService;
 import com.example.demo_mock_server.service.CascadeFailureService;
@@ -166,6 +167,12 @@ public class RouterConfig {
             new com.example.demo_mock_server.handler.NewcombHandler(newcombService);
         router.post("/newcomb/submit").handler(new RateLimitHandler(10, 60)).handler(newcombHandler);
         router.get("/newcomb/stats").handler(newcombHandler);
+
+        // 沙堆悖论统计
+        SoritesService soritesService = new SoritesService(mysqlPool);
+        SoritesHandler soritesHandler = new SoritesHandler(soritesService);
+        router.post("/sorites/submit").handler(new RateLimitHandler(10, 60)).handler(soritesHandler);
+        router.get("/sorites/stats").handler(soritesHandler);
 
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();

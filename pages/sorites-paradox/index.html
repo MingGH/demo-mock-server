@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="10000粒沙子是一堆，减到几粒就不算了？古希腊经典悖论的交互式体验，收集全站数据画出「堆」的模糊边界分布图。">
+  <title>沙堆悖论：多少粒沙子算一堆 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-stack-2"></i> 沙堆悖论</h1>
+    <p>10000 粒沙子是一堆。拿走一粒，还是一堆。再拿走一粒，还是一堆。那到底从哪一粒开始，它就不算「一堆」了？</p>
+  </div>
+
+  <!-- ── 沙堆实验 ── -->
+  <div class="section" id="sandSection">
+    <h2><i class="ti ti-stack-2"></i> 实验一：沙堆</h2>
+
+    <div class="progress-info">
+      <span class="label">进度：<span class="value" id="stepLabel">1 / 30</span></span>
+      <span class="label">当前：<span class="value" id="grainLabel">10,000 粒</span></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="sandProgress" style="width:0%"></div></div>
+
+    <div class="sand-pile-container">
+      <div class="sand-display">
+        <div class="sand-count" id="sandCount">10,000<small> 粒</small></div>
+        <div class="sand-shape" id="sandShape" style="height:100%;width:100%;"></div>
+      </div>
+    </div>
+
+    <p style="text-align:center;color:#a0a0a0;margin-bottom:16px;" id="sandQuestion">
+      这 <strong style="color:#ffd700;">10,000</strong> 粒沙子，算「一堆」吗？
+    </p>
+
+    <div class="vote-area" id="sandVoteArea">
+      <button class="vote-btn yes" onclick="voteSand(true)">
+        <i class="ti ti-check"></i> 算一堆
+      </button>
+      <button class="vote-btn no" onclick="voteSand(false)">
+        <i class="ti ti-x"></i> 不算了
+      </button>
+    </div>
+
+    <!-- 沙堆结果 -->
+    <div id="sandResult" style="display:none;">
+      <div class="result-card">
+        <h3><i class="ti ti-chart-dots"></i> 你的模糊边界</h3>
+        <div class="big-number" id="sandBoundary">—</div>
+        <div class="sub" id="sandBoundarySub">—</div>
+      </div>
+
+      <div class="chart-wrap" style="height:200px;">
+        <canvas id="sandVoteChart"></canvas>
+      </div>
+
+      <div style="text-align:center;margin-top:16px;">
+        <button class="btn btn-primary" onclick="startBaldExperiment()">
+          <i class="ti ti-arrow-right"></i> 继续：秃头悖论
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 秃头实验 ── -->
+  <div class="section" id="baldSection" style="display:none;">
+    <h2><i class="ti ti-user"></i> 实验二：秃头悖论</h2>
+    <p style="color:#a0a0a0;margin-bottom:16px;">一个人有 100,000 根头发，掉一根不算秃。再掉一根也不算。那掉到几根算秃？</p>
+
+    <div class="progress-info">
+      <span class="label">进度：<span class="value" id="baldStepLabel">1 / 28</span></span>
+      <span class="label">当前：<span class="value" id="hairLabel">100,000 根</span></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="baldProgress" style="width:0%"></div></div>
+
+    <div class="hair-display">
+      <span class="hair-icon" id="hairIcon">👨</span>
+      <div>
+        <div class="sand-count" id="hairCount" style="font-size:2.2rem;">100,000<small> 根</small></div>
+      </div>
+    </div>
+
+    <p style="text-align:center;color:#a0a0a0;margin-bottom:16px;" id="baldQuestion">
+      还剩 <strong style="color:#ffd700;">100,000</strong> 根头发，算「秃」吗？
+    </p>
+
+    <div class="vote-area" id="baldVoteArea">
+      <button class="vote-btn no" onclick="voteBald(true)">
+        <i class="ti ti-check"></i> 算秃了
+      </button>
+      <button class="vote-btn yes" onclick="voteBald(false)">
+        <i class="ti ti-x"></i> 还不算
+      </button>
+    </div>
+
+    <div id="baldResult" style="display:none;">
+      <div class="result-card">
+        <h3><i class="ti ti-chart-dots"></i> 你的「秃头边界」</h3>
+        <div class="big-number" id="baldBoundary">—</div>
+        <div class="sub" id="baldBoundarySub">—</div>
+      </div>
+
+      <div style="text-align:center;margin-top:16px;">
+        <button class="btn btn-primary" onclick="startColorExperiment()">
+          <i class="ti ti-arrow-right"></i> 继续：颜色渐变
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 颜色渐变实验 ── -->
+  <div class="section" id="colorSection" style="display:none;">
+    <h2><i class="ti ti-palette"></i> 实验三：蓝色从哪里变成绿色</h2>
+    <p style="color:#a0a0a0;margin-bottom:16px;">拖动滑块，标记你觉得颜色从「蓝色」变成「绿色」的位置。</p>
+
+    <div class="gradient-bar" id="gradientBar" style="background: linear-gradient(to right, #0066ff, #00ff66);">
+      <div class="gradient-marker" id="gradientMarker" style="left:50%;"></div>
+    </div>
+    <div class="gradient-labels">
+      <span>蓝色</span>
+      <span id="colorLabel" style="color:#ffd700;">拖动标记你的边界</span>
+      <span>绿色</span>
+    </div>
+
+    <input type="range" id="colorSlider" min="0" max="100" value="50" step="1"
+           style="width:100%;margin:16px 0;accent-color:#ffd700;"
+           oninput="updateColorMarker()">
+
+    <div style="text-align:center;margin-top:16px;">
+      <button class="btn btn-primary" onclick="submitAllResults()">
+        <i class="ti ti-send"></i> 提交全部结果，查看分析
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 综合结果 ── -->
+  <div class="section" id="finalSection" style="display:none;">
+    <h2><i class="ti ti-chart-bar"></i> 你的模糊边界档案</h2>
+
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="num" id="finalSandBoundary">—</div>
+        <div class="desc">沙堆边界（粒）</div>
+      </div>
+      <div class="stat-item">
+        <div class="num" id="finalBaldBoundary">—</div>
+        <div class="desc">秃头边界（根）</div>
+      </div>
+      <div class="stat-item">
+        <div class="num" id="finalColorBoundary">—</div>
+        <div class="desc">蓝绿边界（%）</div>
+      </div>
+    </div>
+
+    <div class="insight-box" id="personalInsight">
+      <h3><i class="ti ti-bulb"></i> 你的判断风格</h3>
+      <p id="personalInsightText">分析中…</p>
+    </div>
+
+    <!-- 全站数据 -->
+    <div class="global-stats-area" id="globalStatsArea">
+      <h3 style="color:#ffd700;margin:20px 0 12px;"><i class="ti ti-world"></i> 全站数据</h3>
+      <div class="loading" id="globalLoading">加载全站数据中…</div>
+
+      <div id="globalCharts" style="display:none;">
+        <div class="stats-grid" id="globalSummary"></div>
+        <div class="chart-wrap" style="height:280px;">
+          <canvas id="globalSandChart"></canvas>
+        </div>
+        <div class="chart-wrap" style="height:280px;">
+          <canvas id="globalBaldChart"></canvas>
+        </div>
+        <div class="chart-wrap" style="height:280px;">
+          <canvas id="globalColorChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:20px;">
+      <button class="btn btn-secondary" onclick="restartAll()">
+        <i class="ti ti-refresh"></i> 重新体验
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么这是个悖论</h2>
+
+    <div class="extension-grid">
+      <div class="ext-card">
+        <h4><i class="ti ti-stack-2"></i> 连锁悖论</h4>
+        <p>每一步推理都合理（减一粒不影响），但链条走到底结论荒谬（0粒也是一堆）。问题出在「不影响」这个词太模糊。</p>
+      </div>
+      <div class="ext-card">
+        <h4><i class="ti ti-robot"></i> AI 的同款难题</h4>
+        <p>改几个像素算「不同的图片」？改几个词算「抄袭」？多少自动化算「AI 生成」？分类器面对的就是沙堆悖论。</p>
+      </div>
+      <div class="ext-card">
+        <h4><i class="ti ti-chart-area-line"></i> 模糊逻辑</h4>
+        <p>经典逻辑只有真/假，模糊逻辑允许 0.7 的「堆」。Lotfi Zadeh 1965 年提出，现在用在洗衣机、空调、自动驾驶里。</p>
+      </div>
+      <div class="ext-card">
+        <h4><i class="ti ti-scale"></i> 法律中的沙堆</h4>
+        <p>血液酒精浓度 0.08% 是醉驾。0.079% 就不醉了？法律必须画一条线，但这条线本身就是人为的。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 关键洞察</h3>
+      <p>沙堆悖论揭示的不是逻辑的缺陷，而是语言的缺陷。「堆」「秃」「蓝色」这些词天生就有模糊边界。人类靠直觉处理模糊性，AI 靠阈值。两种方式都不完美，但都在用。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,121 +1,145 @@
-/**
- * 沙堆悖论 — 前端交互
- */
 (function() {
   'use strict';
 
   var API_BASE = 'https://numfeel-api.996.ninja';
+  var IMG_SIZE = 64;
 
-  // ── 沙堆实验状态 ──
+  // ══════ State ══════
   var sandStep = 0;
-  var sandVotes = [];
-  var sandDone = false;
-
-  // ── 秃头实验状态 ──
-  var baldStep = 0;
-  var baldVotes = [];
-  var baldDone = false;
-
-  // ── 颜色实验状态 ──
+  var sandVotes = [];       // {grains, confidence}
   var colorBoundary = 50;
+  var pixelRound = 0;
+  var pixelScore = 0;
+  var pixelRounds = [];     // {perturbCount, perturbAmount, correct}
+  var sCurveChart = null;
+  var crowdData = null;      // 全站每步数据（预加载）
 
-  // ── Charts ──
-  var sandVoteChart = null;
-  var globalSandChart = null;
-  var globalBaldChart = null;
-  var globalColorChart = null;
+  // ══════ Particle system ══════
+  var particles = [];
+  var canvas, ctx;
+  var animId = null;
+  var targetCount = SAND_CONFIG.startGrains;
+  var currentVisualCount = SAND_CONFIG.startGrains;
 
-  // ── 初始化 ──
-  updateSandDisplay();
+  function initCanvas() {
+    canvas = document.getElementById('sandCanvas');
+    ctx = canvas.getContext('2d');
+    canvas.width = 500;
+    canvas.height = 300;
+    spawnParticles(300); // 初始粒子数（视觉上的，不是真实数量）
+    animLoop();
+  }
 
-  // ── 沙堆投票 ──
-  window.voteSand = function(isHeap) {
-    if (sandDone) return;
+  function spawnParticles(count) {
+    particles = [];
+    for (var i = 0; i < count; i++) {
+      particles.push(createParticle());
+    }
+  }
 
-    var grains = SAND_CONFIG.steps[sandStep];
-    sandVotes.push({ grains: grains, isHeap: isHeap });
+  function createParticle() {
+    // 堆形分布：底部宽，顶部窄
+    var angle = Math.random() * Math.PI;
+    var radius = Math.random();
+    var x = 250 + Math.cos(angle) * radius * 160;
+    var baseY = 260;
+    var y = baseY - Math.sin(angle) * radius * 140;
+    var hue = 35 + Math.random() * 15;
+    var light = 45 + Math.random() * 20;
+    return {
+      x: x, y: y, baseX: x, baseY: y,
+      size: 1.5 + Math.random() * 2.5,
+      color: 'hsl(' + hue + ',70%,' + light + '%)',
+      vx: 0, vy: 0,
+      alive: true,
+      wobble: Math.random() * Math.PI * 2,
+      wobbleSpeed: 0.02 + Math.random() * 0.03
+    };
+  }
 
-    // 高亮选中按钮
-    var btns = document.querySelectorAll('#sandVoteArea .vote-btn');
-    btns.forEach(function(b) { b.classList.remove('selected'); });
-    btns[isHeap ? 0 : 1].classList.add('selected');
+  function animLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    sandStep++;
+    // 地面线
+    ctx.strokeStyle = 'rgba(255,215,0,0.1)';
+    ctx.beginPath();
+    ctx.moveTo(50, 270);
+    ctx.lineTo(450, 270);
+    ctx.stroke();
 
-    if (sandStep >= SAND_CONFIG.totalSteps) {
-      sandDone = true;
-      showSandResult();
-      return;
+    for (var i = particles.length - 1; i >= 0; i--) {
+      var p = particles[i];
+      if (!p.alive) {
+        // 飞走动画
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.15; // 重力
+        p.size *= 0.97;
+        if (p.size < 0.3 || p.y > 350) {
+          particles.splice(i, 1);
+          continue;
+        }
+      } else {
+        // 微小晃动
+        p.wobble += p.wobbleSpeed;
+        p.x = p.baseX + Math.sin(p.wobble) * 0.5;
+        p.y = p.baseY + Math.cos(p.wobble) * 0.3;
+      }
+
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // 短暂延迟后更新
-    setTimeout(function() {
-      btns.forEach(function(b) { b.classList.remove('selected'); });
-      updateSandDisplay();
-    }, 300);
-  };
-
-  function updateSandDisplay() {
-    var grains = SAND_CONFIG.steps[sandStep];
-    var formatted = grains.toLocaleString();
-
-    document.getElementById('sandCount').innerHTML = formatted + '<small> 粒</small>';
-    document.getElementById('grainLabel').textContent = formatted + ' 粒';
-    document.getElementById('stepLabel').textContent = (sandStep + 1) + ' / ' + SAND_CONFIG.totalSteps;
-    document.getElementById('sandQuestion').innerHTML =
-      '这 <strong style="color:#ffd700;">' + formatted + '</strong> 粒沙子，算「一堆」吗？';
-
-    var pct = sandStep / SAND_CONFIG.totalSteps * 100;
-    document.getElementById('sandProgress').style.width = pct + '%';
-
-    // 更新沙堆形状
-    var h = sandHeightPercent(grains, SAND_CONFIG.startGrains);
-    var w = sandWidthPercent(grains, SAND_CONFIG.startGrains);
-    var shape = document.getElementById('sandShape');
-    shape.style.height = Math.max(h, 2) + '%';
-    shape.style.width = w + '%';
-    shape.style.opacity = grains === 0 ? '0' : '1';
+    animId = requestAnimationFrame(animLoop);
   }
 
-  function showSandResult() {
-    document.getElementById('sandVoteArea').style.display = 'none';
-    document.getElementById('sandResult').style.display = 'block';
-
-    var result = findBoundary(sandVotes);
-    document.getElementById('sandBoundary').textContent = result.boundary.toLocaleString() + ' 粒';
-
-    var sharpnessText = {
-      'sharp': '你的判断很果断，有一条清晰的分界线',
-      'moderate': '你有些犹豫，边界区域有来回',
-      'fuzzy': '你的边界很模糊，反复切换了好几次',
-      'extreme-yes': '你认为即使 0 粒也算一堆（哲学家体质）',
-      'extreme-no': '你从一开始就觉得不算一堆（严格派）',
-      'unknown': '—'
-    };
-    document.getElementById('sandBoundarySub').textContent = sharpnessText[result.sharpness] || '';
-
-    // 画投票时间线
-    drawSandVoteChart();
+  function removeParticles(fraction) {
+    // 从顶部移除一定比例的粒子（飞散效果）
+    var toRemove = Math.max(1, Math.round(particles.filter(function(p) { return p.alive; }).length * fraction));
+    var alive = particles.filter(function(p) { return p.alive; });
+    // 优先移除顶部的
+    alive.sort(function(a, b) { return a.y - b.y; });
+    for (var i = 0; i < Math.min(toRemove, alive.length); i++) {
+      alive[i].alive = false;
+      alive[i].vx = (Math.random() - 0.5) * 8;
+      alive[i].vy = -(2 + Math.random() * 5);
+    }
   }
 
-  function drawSandVoteChart() {
-    var ctx = document.getElementById('sandVoteChart').getContext('2d');
-    var labels = sandVotes.map(function(v) { return v.grains.toLocaleString(); });
-    var data = sandVotes.map(function(v) { return v.isHeap ? 1 : 0; });
-    var colors = sandVotes.map(function(v) {
-      return v.isHeap ? 'rgba(46,204,113,0.7)' : 'rgba(231,76,60,0.7)';
-    });
+  // ══════ Init ══════
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
 
-    if (sandVoteChart) sandVoteChart.destroy();
-    sandVoteChart = new Chart(ctx, {
-      type: 'bar',
+  function boot() {
+    initCanvas();
+    initSCurve();
+    preloadCrowdData();
+    updateSandDisplay();
+  }
+
+  // ══════ S-Curve chart ══════
+  function initSCurve() {
+    var el = document.getElementById('sCurveChart');
+    if (!el) return;
+    sCurveChart = new Chart(el.getContext('2d'), {
+      type: 'line',
       data: {
-        labels: labels,
+        labels: [],
         datasets: [{
-          label: '你的判断',
-          data: data,
-          backgroundColor: colors,
-          borderRadius: 4
+          label: '你的信心',
+          data: [],
+          borderColor: '#ffd700',
+          backgroundColor: 'rgba(255,215,0,0.1)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: '#ffd700',
+          borderWidth: 2
         }]
       },
       options: {
@@ -124,16 +148,18 @@
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: function(c) { return c.raw === 1 ? '算一堆' : '不算了'; }
+              label: function(c) { return c.parsed.y + '% 信心'; }
             }
           }
         },
         scales: {
           y: {
-            display: false, min: 0, max: 1.2
+            min: 0, max: 100,
+            ticks: { color: '#666', callback: function(v) { return v + '%'; } },
+            grid: { color: 'rgba(255,255,255,0.05)' }
           },
           x: {
-            ticks: { color: '#a0a0a0', maxRotation: 45, font: { size: 10 } },
+            ticks: { color: '#666', maxRotation: 45, font: { size: 9 } },
             grid: { display: false }
           }
         }
@@ -141,80 +167,123 @@
     });
   }
 
-  // ── 秃头实验 ──
-  window.startBaldExperiment = function() {
-    document.getElementById('baldSection').style.display = 'block';
-    document.getElementById('baldSection').scrollIntoView({ behavior: 'smooth' });
-    updateBaldDisplay();
+  function updateSCurve() {
+    if (!sCurveChart) return;
+    sCurveChart.data.labels = sandVotes.map(function(v) { return v.grains.toLocaleString(); });
+    sCurveChart.data.datasets[0].data = sandVotes.map(function(v) { return v.confidence; });
+    // 动态颜色：根据信心值
+    sCurveChart.data.datasets[0].pointBackgroundColor = sandVotes.map(function(v) {
+      if (v.confidence >= 70) return '#2ecc71';
+      if (v.confidence >= 40) return '#f39c12';
+      return '#e74c3c';
+    });
+    sCurveChart.update('none');
+  }
+
+  // ══════ Preload crowd data ══════
+  function preloadCrowdData() {
+    fetch(API_BASE + '/sorites/stats')
+      .then(function(r) { return r.json(); })
+      .then(function(resp) {
+        if (resp.status === 200 && resp.data) crowdData = resp.data;
+      })
+      .catch(function() {});
+  }
+
+  function showCrowdComparison(stepIndex) {
+    var wrap = document.getElementById('crowdBarWrap');
+    if (!crowdData || !crowdData.stepConfidence || stepIndex < 1) {
+      wrap.classList.remove('visible');
+      return;
+    }
+    var prevStep = stepIndex - 1;
+    var pct = crowdData.stepConfidence[prevStep];
+    if (pct === undefined || pct === null) {
+      wrap.classList.remove('visible');
+      return;
+    }
+    document.getElementById('crowdPct').textContent = pct + '%';
+    document.getElementById('crowdFill').style.width = pct + '%';
+    wrap.classList.add('visible');
+  }
+
+  // ══════ Sand experiment ══════
+  function updateSandDisplay() {
+    var grains = SAND_CONFIG.steps[sandStep];
+    var formatted = grains.toLocaleString();
+
+    document.getElementById('grainNum').textContent = formatted;
+    document.getElementById('stepLabel').textContent = sandStep + 1;
+    document.getElementById('sandQuestion').innerHTML =
+      '你有多确定 <strong>' + formatted + '</strong> 粒沙子算「一堆」？';
+
+    var pct = sandStep / SAND_CONFIG.totalSteps * 100;
+    document.getElementById('sandProgress').style.width = pct + '%';
+
+    // 提示
+    var hint = '';
+    if (sandStep === 0) hint = '从 100% 开始拖';
+    else if (sandStep === 5) hint = '注意你的信心变化';
+    else if (sandStep === 15) hint = '开始犹豫了吗？';
+    else if (sandStep === 25) hint = '快到底了';
+    document.getElementById('stepHint').textContent = hint;
+
+    // 默认信心值：基于上一步递减
+    var defaultConf = 95;
+    if (sandVotes.length > 0) {
+      var last = sandVotes[sandVotes.length - 1].confidence;
+      defaultConf = Math.max(0, last - Math.round(Math.random() * 3));
+    }
+    document.getElementById('confidenceSlider').value = defaultConf;
+    updateConfidenceDisplay();
+
+    showCrowdComparison(sandStep);
+  }
+
+  window.updateConfidenceDisplay = function() {
+    var val = parseInt(document.getElementById('confidenceSlider').value);
+    document.getElementById('confidenceVal').textContent = val + '%';
   };
 
-  window.voteBald = function(isBald) {
-    if (baldDone) return;
+  window.confirmStep = function() {
+    var grains = SAND_CONFIG.steps[sandStep];
+    var confidence = parseInt(document.getElementById('confidenceSlider').value);
 
-    var hairs = BALD_CONFIG.steps[baldStep];
-    baldVotes.push({ grains: hairs, isHeap: !isBald }); // isHeap = "还有头发"
+    sandVotes.push({ grains: grains, confidence: confidence });
+    updateSCurve();
 
-    var btns = document.querySelectorAll('#baldVoteArea .vote-btn');
-    btns.forEach(function(b) { b.classList.remove('selected'); });
-    btns[isBald ? 0 : 1].classList.add('selected');
+    // 粒子动画
+    var prevGrains = sandStep > 0 ? SAND_CONFIG.steps[sandStep - 1] : SAND_CONFIG.startGrains;
+    var fraction = prevGrains > 0 ? (prevGrains - grains) / prevGrains : 0;
+    if (fraction > 0) removeParticles(fraction);
 
-    baldStep++;
+    sandStep++;
 
-    if (baldStep >= BALD_CONFIG.totalSteps) {
-      baldDone = true;
-      showBaldResult();
+    if (sandStep >= SAND_CONFIG.totalSteps) {
+      showSandResult();
       return;
     }
 
-    setTimeout(function() {
-      btns.forEach(function(b) { b.classList.remove('selected'); });
-      updateBaldDisplay();
-    }, 300);
+    updateSandDisplay();
   };
 
-  function updateBaldDisplay() {
-    var hairs = BALD_CONFIG.steps[baldStep];
-    var formatted = hairs.toLocaleString();
+  function showSandResult() {
+    document.getElementById('confidenceArea').style.display = 'none';
+    document.getElementById('sandResult').style.display = 'block';
+    document.getElementById('crowdBarWrap').classList.remove('visible');
 
-    document.getElementById('hairCount').innerHTML = formatted + '<small> 根</small>';
-    document.getElementById('hairLabel').textContent = formatted + ' 根';
-    document.getElementById('baldStepLabel').textContent = (baldStep + 1) + ' / ' + BALD_CONFIG.totalSteps;
-    document.getElementById('baldQuestion').innerHTML =
-      '还剩 <strong style="color:#ffd700;">' + formatted + '</strong> 根头发，算「秃」吗？';
-
-    var pct = baldStep / BALD_CONFIG.totalSteps * 100;
-    document.getElementById('baldProgress').style.width = pct + '%';
-
-    // 更新头发图标
-    var icon = document.getElementById('hairIcon');
-    if (hairs < 1000) { icon.textContent = '👴'; icon.classList.add('bald'); }
-    else if (hairs < 10000) { icon.textContent = '👨‍🦲'; icon.classList.remove('bald'); }
-    else { icon.textContent = '👨'; icon.classList.remove('bald'); }
-  }
-
-  function showBaldResult() {
-    document.getElementById('baldVoteArea').style.display = 'none';
-    document.getElementById('baldResult').style.display = 'block';
-
-    // 秃头边界：找到第一个"算秃"的位置
-    var baldBoundary = -1;
-    for (var i = 0; i < baldVotes.length; i++) {
-      if (!baldVotes[i].isHeap) { // isHeap=false 表示"算秃了"
-        baldBoundary = baldVotes[i].grains;
-        break;
-      }
+    var result = findBoundaryFromConfidence(sandVotes);
+    var hint = document.getElementById('stepHint');
+    if (result.sharpness === 'cliff') {
+      hint.textContent = '你的信心曲线有一个断崖——边界在 ' + result.boundary.toLocaleString() + ' 粒附近';
+    } else if (result.sharpness === 'gradual') {
+      hint.textContent = '你的信心缓慢下降，没有明确的分界线——这正是悖论的体现';
+    } else {
+      hint.textContent = '边界在 ' + result.boundary.toLocaleString() + ' 粒附近';
     }
-    if (baldBoundary === -1) baldBoundary = 0;
-
-    document.getElementById('baldBoundary').textContent = baldBoundary.toLocaleString() + ' 根';
-    document.getElementById('baldBoundarySub').textContent =
-      baldBoundary > 50000 ? '你对秃头的标准很严格' :
-      baldBoundary > 10000 ? '中等标准' :
-      baldBoundary > 1000 ? '你觉得头发少于这个数就算秃了' :
-      '你的标准很宽松，要几乎没头发才算秃';
   }
 
-  // ── 颜色实验 ──
+  // ══════ Color experiment ══════
   window.startColorExperiment = function() {
     document.getElementById('colorSection').style.display = 'block';
     document.getElementById('colorSection').scrollIntoView({ behavior: 'smooth' });
@@ -224,37 +293,167 @@
     var val = parseInt(document.getElementById('colorSlider').value);
     colorBoundary = val;
     document.getElementById('gradientMarker').style.left = val + '%';
-
     var name = colorName(val / 100);
     document.getElementById('colorLabel').textContent = val + '% — ' + name;
   };
 
-  // ── 提交全部结果 ──
-  window.submitAllResults = function() {
-    var sandResult = findBoundary(sandVotes);
+  // ══════ Pixel challenge ══════
+  window.startPixelExperiment = function() {
+    document.getElementById('pixelSection').style.display = 'block';
+    document.getElementById('pixelSection').scrollIntoView({ behavior: 'smooth' });
+    setupPixelRound();
+  };
 
-    var baldBoundary = -1;
-    for (var i = 0; i < baldVotes.length; i++) {
-      if (!baldVotes[i].isHeap) { baldBoundary = baldVotes[i].grains; break; }
+  // 5 轮，扰动从大到小
+  var PIXEL_LEVELS = [
+    { count: 800, amount: 80, label: '大量扰动' },
+    { count: 200, amount: 50, label: '中等扰动' },
+    { count: 50,  amount: 30, label: '少量扰动' },
+    { count: 10,  amount: 15, label: '微小扰动' },
+    { count: 3,   amount: 8,  label: '几乎无差别' }
+  ];
+
+  function setupPixelRound() {
+    var level = PIXEL_LEVELS[pixelRound];
+    document.getElementById('pixelRound').textContent = pixelRound + 1;
+    document.getElementById('pixelChanged').textContent = level.count;
+    document.getElementById('pixelResult').style.display = 'none';
+    document.getElementById('pixelNextBtn').style.display = 'none';
+
+    var seed = 42 + pixelRound * 1000;
+    var baseData = generateBaseImage(IMG_SIZE, seed);
+    var perturbedData = perturbImage(baseData, IMG_SIZE, level.count, level.amount, seed + 7);
+
+    // 随机左右位置
+    var originalOnLeft = Math.random() > 0.5;
+    var leftData = originalOnLeft ? baseData : perturbedData;
+    var rightData = originalOnLeft ? perturbedData : baseData;
+
+    var pair = document.getElementById('pixelPair');
+    pair.innerHTML = '';
+
+    var leftCard = makePixelCard(leftData, 'A', function() { pickPixel('A', originalOnLeft ? 'original' : 'perturbed'); });
+    var rightCard = makePixelCard(rightData, 'B', function() { pickPixel('B', originalOnLeft ? 'perturbed' : 'original'); });
+
+    pair.appendChild(leftCard);
+    pair.appendChild(rightCard);
+
+    // 存储当前轮信息
+    pixelRounds[pixelRound] = {
+      level: level,
+      originalOnLeft: originalOnLeft,
+      diff: imageDiffPercent(baseData, perturbedData, IMG_SIZE),
+      picked: null
+    };
+  }
+
+  function makePixelCard(imageData, label, onClick) {
+    var card = document.createElement('div');
+    card.className = 'pixel-card';
+    card.setAttribute('data-label', label);
+
+    var cvs = document.createElement('canvas');
+    cvs.width = IMG_SIZE;
+    cvs.height = IMG_SIZE;
+    cvs.style.width = '128px';
+    cvs.style.height = '128px';
+    var c = cvs.getContext('2d');
+    var imgData = c.createImageData(IMG_SIZE, IMG_SIZE);
+    imgData.data.set(imageData);
+    c.putImageData(imgData, 0, 0);
+
+    var lbl = document.createElement('div');
+    lbl.className = 'pixel-label';
+    lbl.textContent = '图 ' + label;
+
+    card.appendChild(cvs);
+    card.appendChild(lbl);
+    card.addEventListener('click', onClick);
+    return card;
+  }
+
+  function pickPixel(label, type) {
+    if (pixelRounds[pixelRound].picked !== null) return;
+    pixelRounds[pixelRound].picked = label;
+
+    var isCorrect = type === 'perturbed';
+    if (isCorrect) pixelScore++;
+
+    // 高亮选中
+    var cards = document.querySelectorAll('.pixel-card');
+    cards.forEach(function(c) {
+      if (c.getAttribute('data-label') === label) c.classList.add('selected');
+    });
+
+    var result = document.getElementById('pixelResult');
+    var diff = pixelRounds[pixelRound].diff;
+    if (isCorrect) {
+      result.className = 'pixel-result correct';
+      result.innerHTML = '<i class="ti ti-check"></i> 正确！像素差异仅 ' + diff.toFixed(2) + '%';
+    } else {
+      result.className = 'pixel-result wrong';
+      result.innerHTML = '<i class="ti ti-x"></i> 选反了。像素差异 ' + diff.toFixed(2) + '%，你的眼睛被骗了';
     }
-    if (baldBoundary === -1) baldBoundary = 0;
+    result.style.display = 'block';
 
-    // 显示最终结果
+    pixelRound++;
+    if (pixelRound >= 5) {
+      document.getElementById('pixelDone').style.display = 'block';
+      document.getElementById('pixelNextBtn').style.display = 'none';
+    } else {
+      document.getElementById('pixelNextBtn').style.display = 'inline-flex';
+    }
+  }
+
+  window.nextPixelRound = function() {
+    setupPixelRound();
+  };
+
+  // ══════ Submit all ══════
+  window.submitAllResults = function() {
+    var sandResult = findBoundaryFromConfidence(sandVotes);
+    var userType = classifyUser(sandResult.boundary, colorBoundary, pixelScore);
+
+    // Show final section
     document.getElementById('finalSection').style.display = 'block';
     document.getElementById('finalSection').scrollIntoView({ behavior: 'smooth' });
 
-    document.getElementById('finalSandBoundary').textContent = sandResult.boundary.toLocaleString();
-    document.getElementById('finalBaldBoundary').textContent = baldBoundary.toLocaleString();
-    document.getElementById('finalColorBoundary').textContent = colorBoundary + '%';
+    // Share card
+    document.getElementById('cardHeadline').textContent = userType.emoji + ' ' + userType.type;
+    document.getElementById('cardSand').textContent = sandResult.boundary.toLocaleString() + ' 粒';
+    document.getElementById('cardColor').textContent = colorBoundary + '%';
+    document.getElementById('cardPixel').textContent = pixelScore + '/5';
+    document.getElementById('cardType').textContent = userType.desc;
 
-    // 个人分析
-    generatePersonalInsight(sandResult, baldBoundary, colorBoundary);
+    // Insight
+    var lines = [];
+    if (sandResult.sharpness === 'cliff') {
+      lines.push('你的信心曲线有一个明显的断崖，说明你内心有一条比较清晰的分界线。');
+    } else if (sandResult.sharpness === 'gradual') {
+      lines.push('你的信心是缓慢下降的，没有突然的转折——你天然地感受到了边界的模糊性。');
+    } else {
+      lines.push('你的信心下降比较快，但不是断崖式的。');
+    }
 
-    // 提交到后端
+    if (pixelScore >= 4) {
+      lines.push('像素挑战你答对了 ' + pixelScore + '/5，眼力不错。但最后几轮的差异已经小到 AI 也会犯错的程度。');
+    } else if (pixelScore >= 2) {
+      lines.push('像素挑战 ' + pixelScore + '/5，扰动越小越难分辨——这就是对抗样本攻击的原理。');
+    } else {
+      lines.push('像素挑战只对了 ' + pixelScore + '/5，别担心，人类在微小像素差异上本来就不如算法。');
+    }
+
+    lines.push(userType.desc);
+    document.getElementById('personalInsightText').textContent = lines.join(' ');
+
+    // Final curve chart
+    drawFinalCurve();
+
+    // Submit to backend
     var payload = {
       sandBoundary: sandResult.boundary,
       sandSharpness: sandResult.sharpness,
-      baldBoundary: baldBoundary,
+      baldBoundary: 0,
       colorBoundary: colorBoundary
     };
 
@@ -262,73 +461,73 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
-    }).then(function() {
-      loadGlobalStats();
-    }).catch(function() {
-      loadGlobalStats();
-    });
+    }).then(function() { loadGlobalStats(); })
+      .catch(function() { loadGlobalStats(); });
   };
 
-  function generatePersonalInsight(sandResult, baldBoundary, colorVal) {
-    var lines = [];
-
-    // 沙堆分析
-    if (sandResult.boundary > 5000) {
-      lines.push('你对「堆」的标准很高，超过一半的沙子拿走了你才开始犹豫。');
-    } else if (sandResult.boundary > 1000) {
-      lines.push('你的沙堆边界在千粒级别，属于中间派。');
-    } else if (sandResult.boundary > 100) {
-      lines.push('你觉得几百粒就不太算一堆了，标准偏严格。');
-    } else {
-      lines.push('你的沙堆边界非常低，几乎要见底才觉得不算堆。');
-    }
-
-    // 秃头分析
-    if (baldBoundary > 30000) {
-      lines.push('秃头标准上，你属于「头发稍微少一点就算秃」的严格派。');
-    } else if (baldBoundary > 5000) {
-      lines.push('你觉得头发少于几千根才算秃，标准适中。');
-    } else {
-      lines.push('你对秃头很宽容，要几乎光头才算。');
-    }
-
-    // 颜色分析
-    if (colorVal < 35) {
-      lines.push('颜色边界偏蓝侧，你对蓝色的容忍度较低。');
-    } else if (colorVal > 65) {
-      lines.push('颜色边界偏绿侧，你觉得很大范围都还算蓝色。');
-    } else {
-      lines.push('颜色边界在中间，和大多数人差不多。');
-    }
-
-    // 一致性分析
-    var sandNorm = sandResult.boundary / SAND_CONFIG.startGrains;
-    var baldNorm = baldBoundary / BALD_CONFIG.startHairs;
-    var colorNorm = colorVal / 100;
-    var avg = (sandNorm + baldNorm + colorNorm) / 3;
-    var variance = ((sandNorm - avg) * (sandNorm - avg) +
-                    (baldNorm - avg) * (baldNorm - avg) +
-                    (colorNorm - avg) * (colorNorm - avg)) / 3;
-
-    if (variance < 0.02) {
-      lines.push('三个实验的边界位置很一致，说明你有一套稳定的「模糊判断标准」。');
-    } else {
-      lines.push('三个实验的边界差异较大，说明你的判断标准因场景而异——这其实很正常，因为「堆」「秃」「蓝色」本来就是不同的概念。');
-    }
-
-    document.getElementById('personalInsightText').textContent = lines.join(' ');
+  function drawFinalCurve() {
+    var el = document.getElementById('finalCurveChart');
+    if (!el) return;
+    new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: sandVotes.map(function(v) { return v.grains.toLocaleString(); }),
+        datasets: [{
+          label: '你的信心曲线',
+          data: sandVotes.map(function(v) { return v.confidence; }),
+          borderColor: '#ffd700',
+          backgroundColor: 'rgba(255,215,0,0.08)',
+          fill: true,
+          tension: 0.4,
+          pointRadius: 5,
+          pointBackgroundColor: sandVotes.map(function(v) {
+            if (v.confidence >= 70) return '#2ecc71';
+            if (v.confidence >= 40) return '#f39c12';
+            return '#e74c3c';
+          }),
+          borderWidth: 2
+        }, {
+          label: '50% 线（说不清）',
+          data: sandVotes.map(function() { return 50; }),
+          borderColor: 'rgba(255,255,255,0.2)',
+          borderDash: [5, 5],
+          borderWidth: 1,
+          pointRadius: 0,
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#a0a0a0' } },
+          title: { display: true, text: '你的「堆」信心衰减曲线', color: '#ffd700', font: { size: 14 } }
+        },
+        scales: {
+          y: {
+            min: 0, max: 100,
+            ticks: { color: '#666', callback: function(v) { return v + '%'; } },
+            grid: { color: 'rgba(255,255,255,0.05)' }
+          },
+          x: {
+            ticks: { color: '#666', maxRotation: 45, font: { size: 9 } },
+            grid: { display: false },
+            title: { display: true, text: '沙粒数', color: '#666' }
+          }
+        }
+      }
+    });
   }
 
-  // ── 加载全站数据 ──
+  // ══════ Global stats ══════
   function loadGlobalStats() {
     fetch(API_BASE + '/sorites/stats')
       .then(function(r) { return r.json(); })
       .then(function(resp) {
-        if (resp.status !== 200 || !resp.data) throw new Error('bad response');
+        if (resp.status !== 200 || !resp.data) throw new Error('bad');
         renderGlobalStats(resp.data);
       })
       .catch(function() {
-        document.getElementById('globalLoading').textContent = '暂无全站数据，你是第一个参与者！';
+        document.getElementById('globalLoading').textContent = '暂无全站数据，你是先驱！';
       });
   }
 
@@ -336,37 +535,26 @@
     document.getElementById('globalLoading').style.display = 'none';
     document.getElementById('globalCharts').style.display = 'block';
 
-    // 摘要
     document.getElementById('globalSummary').innerHTML =
       '<div class="stat-item"><div class="num">' + (data.totalCount || 0) + '</div><div class="desc">参与人数</div></div>' +
       '<div class="stat-item"><div class="num">' + (data.sandMedian || '—') + '</div><div class="desc">沙堆边界中位数</div></div>' +
-      '<div class="stat-item"><div class="num">' + (data.baldMedian || '—') + '</div><div class="desc">秃头边界中位数</div></div>';
+      '<div class="stat-item"><div class="num">' + (data.colorMedian || '—') + '%</div><div class="desc">蓝绿边界中位数</div></div>';
 
-    // 沙堆分布图
-    if (data.sandDistribution) {
-      drawDistChart('globalSandChart', '沙堆边界分布', data.sandDistribution, '#ffd700');
-    }
-    if (data.baldDistribution) {
-      drawDistChart('globalBaldChart', '秃头边界分布', data.baldDistribution, '#e74c3c');
-    }
-    if (data.colorDistribution) {
-      drawDistChart('globalColorChart', '蓝绿边界分布', data.colorDistribution, '#3498db');
-    }
+    if (data.sandDistribution) drawDistChart('globalSandChart', '沙堆边界分布（全站）', data.sandDistribution, '#ffd700');
+    if (data.colorDistribution) drawDistChart('globalColorChart', '蓝绿边界分布（全站）', data.colorDistribution, '#3498db');
   }
 
   function drawDistChart(canvasId, title, dist, color) {
-    var ctx = document.getElementById(canvasId).getContext('2d');
-    var labels = dist.map(function(d) { return d.label; });
-    var counts = dist.map(function(d) { return d.count; });
-
-    new Chart(ctx, {
+    var el = document.getElementById(canvasId);
+    if (!el) return;
+    new Chart(el.getContext('2d'), {
       type: 'bar',
       data: {
-        labels: labels,
+        labels: dist.map(function(d) { return d.label; }),
         datasets: [{
           label: title,
-          data: counts,
-          backgroundColor: color + '66',
+          data: dist.map(function(d) { return d.count; }),
+          backgroundColor: color + '55',
           borderColor: color,
           borderWidth: 1,
           borderRadius: 4
@@ -375,32 +563,42 @@
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: {
-          legend: { labels: { color: '#a0a0a0' } },
-          title: { display: true, text: title, color: '#ffd700', font: { size: 14 } }
+          legend: { display: false },
+          title: { display: true, text: title, color: '#ffd700', font: { size: 13 } }
         },
         scales: {
-          y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-          x: { ticks: { color: '#a0a0a0', maxRotation: 45, font: { size: 10 } }, grid: { display: false } }
+          y: { ticks: { color: '#666' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          x: { ticks: { color: '#666', maxRotation: 45, font: { size: 9 } }, grid: { display: false } }
         }
       }
     });
   }
 
-  // ── 重新开始 ──
+  // ══════ Restart ══════
   window.restartAll = function() {
-    sandStep = 0; sandVotes = []; sandDone = false;
-    baldStep = 0; baldVotes = []; baldDone = false;
+    sandStep = 0; sandVotes = [];
     colorBoundary = 50;
+    pixelRound = 0; pixelScore = 0; pixelRounds = [];
 
-    document.getElementById('sandVoteArea').style.display = 'flex';
+    document.getElementById('confidenceArea').style.display = 'block';
     document.getElementById('sandResult').style.display = 'none';
-    document.getElementById('baldSection').style.display = 'none';
-    document.getElementById('baldVoteArea').style.display = 'flex';
-    document.getElementById('baldResult').style.display = 'none';
     document.getElementById('colorSection').style.display = 'none';
+    document.getElementById('pixelSection').style.display = 'none';
+    document.getElementById('pixelDone').style.display = 'none';
     document.getElementById('finalSection').style.display = 'none';
     document.getElementById('colorSlider').value = 50;
     document.getElementById('gradientMarker').style.left = '50%';
+    document.getElementById('crowdBarWrap').classList.remove('visible');
+
+    // Reset particles
+    spawnParticles(300);
+
+    // Reset S-curve
+    if (sCurveChart) {
+      sCurveChart.data.labels = [];
+      sCurveChart.data.datasets[0].data = [];
+      sCurveChart.update('none');
+    }
 
     updateSandDisplay();
     document.getElementById('sandSection').scrollIntoView({ behavior: 'smooth' });

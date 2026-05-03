@@ -73,6 +73,7 @@
 
     <!-- 沙堆结果 -->
     <div id="sandResult" style="display:none;">
+      <div id="sandResultContent"></div>
       <div style="text-align:center;margin-top:16px;">
         <button class="btn btn-primary" onclick="startColorExperiment()">
           <i class="ti ti-arrow-right"></i> 继续：蓝色从哪里变成绿色
@@ -115,6 +116,10 @@
     <div class="pixel-challenge" id="pixelChallenge">
       <div class="pixel-info">
         第 <strong id="pixelRound">1</strong> / 5 轮 · 已改动 <strong id="pixelChanged">?</strong> 个像素
+      </div>
+      <div style="background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;text-align:center;">
+        <i class="ti ti-hand-click" style="color:#ffd700;font-size:1.2rem;"></i>
+        <span style="color:#ffd700;font-weight:600;"> 点击你认为「被修改过」的那张图</span>
       </div>
       <div class="pixel-pair" id="pixelPair"></div>
       <div class="pixel-result" id="pixelResult"></div>

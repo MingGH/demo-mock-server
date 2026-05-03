@@ -273,14 +273,44 @@
     document.getElementById('crowdBarWrap').classList.remove('visible');
 
     var result = findBoundaryFromConfidence(sandVotes);
-    var hint = document.getElementById('stepHint');
+
+    // 找到最低信心值
+    var minConf = 100;
+    sandVotes.forEach(function(v) { if (v.confidence < minConf) minConf = v.confidence; });
+
+    // 构建结果摘要 HTML
+    var summaryHTML = '<div class="result-card" style="margin-bottom:16px;">';
+    summaryHTML += '<h3 style="color:#ffd700;margin-bottom:12px;"><i class="ti ti-chart-line"></i> 你的信心曲线分析</h3>';
+
     if (result.sharpness === 'cliff') {
-      hint.textContent = '你的信心曲线有一个断崖——边界在 ' + result.boundary.toLocaleString() + ' 粒附近';
+      summaryHTML += '<div style="font-size:2rem;font-weight:800;color:#ffd700;margin-bottom:8px;">' + result.boundary.toLocaleString() + ' 粒</div>';
+      summaryHTML += '<div style="color:#a0a0a0;">你的信心在这里断崖式下降——你内心有一条比较清晰的分界线。</div>';
     } else if (result.sharpness === 'gradual') {
-      hint.textContent = '你的信心缓慢下降，没有明确的分界线——这正是悖论的体现';
+      summaryHTML += '<div style="font-size:2rem;font-weight:800;color:#f39c12;margin-bottom:8px;">没有明确边界</div>';
+      summaryHTML += '<div style="color:#a0a0a0;">你的信心是缓慢下降的，始终没有突然的转折。这正是悖论的体现——你画不出那条线。</div>';
+    } else if (result.sharpness === 'extreme-yes') {
+      summaryHTML += '<div style="font-size:2rem;font-weight:800;color:#2ecc71;margin-bottom:8px;">全程 ≥ 50%</div>';
+      summaryHTML += '<div style="color:#a0a0a0;">你到最后都觉得算一堆。哲学家体质。</div>';
+    } else if (result.sharpness === 'extreme-no') {
+      summaryHTML += '<div style="font-size:2rem;font-weight:800;color:#e74c3c;margin-bottom:8px;">一开始就不确定</div>';
+      summaryHTML += '<div style="color:#a0a0a0;">你从第一步就信心不足。严格派。</div>';
     } else {
-      hint.textContent = '边界在 ' + result.boundary.toLocaleString() + ' 粒附近';
+      summaryHTML += '<div style="font-size:2rem;font-weight:800;color:#ffd700;margin-bottom:8px;">' + result.boundary.toLocaleString() + ' 粒附近</div>';
+      summaryHTML += '<div style="color:#a0a0a0;">你的信心下降较快，边界比较明确。</div>';
     }
+
+    // 小数据条
+    summaryHTML += '<div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">';
+    summaryHTML += '<div style="text-align:center;"><div style="font-size:1.2rem;font-weight:700;color:#ffd700;">' + sandVotes[0].confidence + '%</div><div style="font-size:0.75rem;color:#666;">起始信心</div></div>';
+    summaryHTML += '<div style="text-align:center;"><div style="font-size:1.2rem;font-weight:700;color:#e74c3c;">' + minConf + '%</div><div style="font-size:0.75rem;color:#666;">最低信心</div></div>';
+    summaryHTML += '<div style="text-align:center;"><div style="font-size:1.2rem;font-weight:700;color:#fff;">' + sandVotes.length + '</div><div style="font-size:0.75rem;color:#666;">总步数</div></div>';
+    summaryHTML += '</div>';
+    summaryHTML += '</div>';
+
+    document.getElementById('sandResultContent').innerHTML = summaryHTML;
+
+    var hint = document.getElementById('stepHint');
+    hint.textContent = '实验一完成';
   }
 
   // ══════ Color experiment ══════

@@ -39,7 +39,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .progress-bar-fill{height:5px;border-radius:4px;background:linear-gradient(90deg,#ffd700,#ffb700);transition:width 0.4s ease}
 
 /* ── 答题：图片展示 ── */
-.trial-image-wrap{position:relative;width:100%;max-width:500px;margin:0 auto 20px;border-radius:14px;overflow:hidden;background:#111;aspect-ratio:4/3}
 .trial-image-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.3s}
 .trial-image-wrap.loading img{opacity:0}
 .trial-timer{position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.7);color:#ffd700;padding:4px 12px;border-radius:20px;font-size:0.8rem;font-weight:600;backdrop-filter:blur(4px)}
@@ -111,6 +110,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 
 /* 底部按钮 */
 .summary-actions{display:flex;gap:12px;justify-content:center;margin:24px auto;max-width:640px;flex-wrap:wrap}
+
+/* ── 图片放大 Lightbox ── */
+.zoom-lightbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);display:none;align-items:center;justify-content:center;cursor:zoom-out;backdrop-filter:blur(4px);animation:fadeIn 0.2s ease}
+.zoom-lightbox.active{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.zoom-lightbox img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,0.6);transform-origin:center center;transition:transform 0.3s ease;cursor:grab;user-select:none;-webkit-user-select:none}
+.zoom-lightbox img.zoomed-in{transform:scale(2);cursor:move}
+.zoom-lightbox .zoom-hint{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);color:#a0a0a0;font-size:0.8rem;background:rgba(0,0,0,0.6);padding:6px 16px;border-radius:20px;pointer-events:none;transition:opacity 0.3s}
+.zoom-lightbox .zoom-close{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;font-size:1.2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background 0.2s}
+.zoom-lightbox .zoom-close:hover{background:rgba(255,255,255,0.2)}
+
+.trial-image-wrap{position:relative;width:100%;max-width:500px;margin:0 auto 20px;border-radius:14px;overflow:hidden;background:#111;aspect-ratio:4/3;cursor:zoom-in}
+.trial-image-wrap .zoom-icon{position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.6);color:#ffd700;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.9rem;pointer-events:none;opacity:0.7;transition:opacity 0.2s;backdrop-filter:blur(4px)}
+.trial-image-wrap:hover .zoom-icon{opacity:1}
+
+.review-item{cursor:zoom-in}
+.review-item:hover{opacity:0.9}
 
 /* ── 响应式 ── */
 @media(max-width:680px){

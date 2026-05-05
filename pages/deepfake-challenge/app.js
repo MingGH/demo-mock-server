@@ -309,4 +309,107 @@
 
   window.startChallenge = start;
   window.makeChoice = choose;
+
+  // ── 图片放大功能 ──
+  var zoomState = { isZoomed: false, isDragging: false, startX: 0, startY: 0, translateX: 0, translateY: 0 };
+
+  function openZoom(src) {
+    var lightbox = document.getElementById('zoomLightbox');
+    var zoomImg = document.getElementById('zoomImage');
+    var imgSrc = src || els.trialImage.src;
+    if (!imgSrc) return;
+    zoomImg.src = imgSrc;
+    zoomImg.className = '';
+    zoomImg.style.transform = '';
+    zoomState.isZoomed = false;
+    zoomState.translateX = 0;
+    zoomState.translateY = 0;
+    lightbox.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeZoom() {
+    var lightbox = document.getElementById('zoomLightbox');
+    lightbox.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  function toggleZoomLevel(e) {
+    e.stopPropagation();
+    var zoomImg = document.getElementById('zoomImage');
+    if (zoomState.isZoomed) {
+      zoomImg.classList.remove('zoomed-in');
+      zoomImg.style.transform = '';
+      zoomState.isZoomed = false;
+      zoomState.translateX = 0;
+      zoomState.translateY = 0;
+    } else {
+      zoomImg.classList.add('zoomed-in');
+      zoomState.isZoomed = true;
+    }
+  }
+
+  // 拖拽移动（放大状态下）
+  function onZoomMouseDown(e) {
+    if (!zoomState.isZoomed) return;
+    e.preventDefault();
+    zoomState.isDragging = true;
+    zoomState.startX = (e.clientX || e.touches[0].clientX) - zoomState.translateX;
+    zoomState.startY = (e.clientY || e.touches[0].clientY) - zoomState.translateY;
+    document.getElementById('zoomImage').style.cursor = 'grabbing';
+  }
+
+  function onZoomMouseMove(e) {
+    if (!zoomState.isDragging) return;
+    e.preventDefault();
+    var clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    var clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    zoomState.translateX = clientX - zoomState.startX;
+    zoomState.translateY = clientY - zoomState.startY;
+    document.getElementById('zoomImage').style.transform = 'scale(2) translate(' + (zoomState.translateX / 2) + 'px,' + (zoomState.translateY / 2) + 'px)';
+  }
+
+  function onZoomMouseUp() {
+    zoomState.isDragging = false;
+    var zoomImg = document.getElementById('zoomImage');
+    if (zoomImg && zoomState.isZoomed) zoomImg.style.cursor = 'grab';
+  }
+
+  // 绑定事件
+  document.addEventListener('DOMContentLoaded', function() {
+    var lightbox = document.getElementById('zoomLightbox');
+    var zoomImg = document.getElementById('zoomImage');
+    var zoomClose = document.getElementById('zoomClose');
+
+    lightbox.addEventListener('click', function(e) {
+      if (e.target === lightbox) closeZoom();
+    });
+    zoomClose.addEventListener('click', closeZoom);
+    zoomImg.addEventListener('click', toggleZoomLevel);
+
+    // 鼠标拖拽
+    zoomImg.addEventListener('mousedown', onZoomMouseDown);
+    document.addEventListener('mousemove', onZoomMouseMove);
+    document.addEventListener('mouseup', onZoomMouseUp);
+
+    // 触摸拖拽
+    zoomImg.addEventListener('touchstart', onZoomMouseDown, { passive: false });
+    document.addEventListener('touchmove', onZoomMouseMove, { passive: false });
+    document.addEventListener('touchend', onZoomMouseUp);
+
+    // ESC 关闭
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeZoom();
+    });
+
+    // 回顾区域图片点击放大
+    document.addEventListener('click', function(e) {
+      var reviewImg = e.target.closest('.review-item img');
+      if (reviewImg) {
+        openZoom(reviewImg.src);
+      }
+    });
+  });
+
+  window.openZoom = function() { openZoom(); };
 })();

@@ -76,8 +76,9 @@
         </div>
       </div>
 
-      <div class="trial-image-wrap" id="trialImageWrap">
+      <div class="trial-image-wrap" id="trialImageWrap" onclick="openZoom()">
         <img id="trialImage" src="" alt="待判断的人脸照片">
+        <div class="zoom-icon"><i class="ti ti-zoom-in"></i></div>
         <div class="feedback-overlay" id="feedbackOverlay"></div>
       </div>
 
@@ -147,6 +148,12 @@
       </button>
     </div>
   </div>
+</div>
+
+<div class="zoom-lightbox" id="zoomLightbox">
+  <button class="zoom-close" id="zoomClose"><i class="ti ti-x"></i></button>
+  <img id="zoomImage" src="" alt="放大查看">
+  <div class="zoom-hint" id="zoomHint">点击图片放大 · 拖拽移动 · 再次点击缩小 · ESC 关闭</div>
 </div>
 
 <script src="data.js"></script>

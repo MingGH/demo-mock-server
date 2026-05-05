@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="辛普森悖论交互演示：女生录取率比男生低9个百分点，拆开每个系看却发现偏袒的是女生。基于UC Berkeley 1973年真实招生数据，三步揭示数据如何骗人。">
+  <title>辛普森悖论：数据在说谎 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-chart-arrows"></i> 辛普森悖论：数据在说谎</h1>
+    <p>女生录取率比男生低十几个百分点，调查完发现：偏袒的是女生。</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       Step 0: 引入
+  ═══════════════════════════════════════════ -->
+  <div class="phase active" id="phase-intro">
+    <div class="section">
+      <h2><i class="ti ti-building-community"></i> 1973年，伯克利出事了</h2>
+      <p class="note">
+        加州大学伯克利分校收到一封投诉：<em>研究生招生涉嫌性别歧视</em>。
+      </p>
+      <p class="note">
+        数据摆在桌上，白纸黑字——
+      </p>
+
+      <div class="compare-row">
+        <div class="big-number male">
+          <div class="value" id="introMaleRate">--</div>
+          <div class="label">男生整体录取率</div>
+        </div>
+        <div class="big-number female">
+          <div class="value" id="introFemaleRate">--</div>
+          <div class="label">女生整体录取率</div>
+        </div>
+      </div>
+
+      <p class="note" style="text-align:center;">
+        差了 <strong id="introGap">--</strong> 个百分点。看起来铁证如山。
+      </p>
+      <p class="note" style="text-align:center; margin-top: 16px;">
+        但统计学家拿到分系数据后，说了一句话：
+      </p>
+      <p class="note" style="text-align:center; font-size: 1.1rem; color: #ffd700; margin: 16px 0;">
+        「你们搞反了。」
+      </p>
+
+      <button class="btn btn-primary btn-full" onclick="goToPhase('phase-reveal')" style="margin-top: 20px;">
+        <i class="ti ti-arrow-right"></i> 看看分系数据
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       Step 1: 分系揭示
+  ═══════════════════════════════════════════ -->
+  <div class="phase" id="phase-reveal">
+    <div class="section">
+      <h2><i class="ti ti-table"></i> 拆开看：6 个系的录取率</h2>
+      <p class="note">
+        下面是申请人数最多的 6 个系（A–F）的真实数据。<strong>粉色高亮 = 该系女生录取率更高</strong>。
+      </p>
+
+      <div style="overflow-x: auto;">
+        <table class="dept-table" id="deptTable">
+          <thead>
+            <tr>
+              <th>系</th>
+              <th>男生申请</th>
+              <th>男生录取率</th>
+              <th>女生申请</th>
+              <th>女生录取率</th>
+              <th>谁更高</th>
+            </tr>
+          </thead>
+          <tbody id="deptTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="paradox-badge" id="paradoxBadge">
+        <i class="ti ti-alert-triangle"></i>
+        <span id="paradoxText"></span>
+      </div>
+
+      <p class="note">
+        6 个系里有 <strong id="femaleWinCount">--</strong> 个系女生录取率更高。整体却是男生高 <strong id="overallGap">--</strong> 个百分点。
+      </p>
+      <p class="note">
+        这就是<em>辛普森悖论</em>：分组数据的趋势，和合并数据的趋势完全相反。
+      </p>
+
+      <button class="btn btn-primary btn-full" onclick="goToPhase('phase-why')" style="margin-top: 16px;">
+        <i class="ti ti-arrow-right"></i> 为什么会这样？
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       Step 2: 原因解释 + 可视化
+  ═══════════════════════════════════════════ -->
+  <div class="phase" id="phase-why">
+    <div class="section">
+      <h2><i class="ti ti-eye"></i> 秘密在申请分布里</h2>
+      <p class="note">
+        看看男女生分别申请了哪些系。<em>蓝色 = 男生，粉色 = 女生</em>。
+      </p>
+
+      <div class="dist-chart" id="distChart"></div>
+
+      <p class="note">
+        发现了吗？男生扎堆申请 A、B 系——这两个系录取率超过 60%。
+        女生扎堆申请 C、D、E、F 系——这几个系录取率只有 7%~35%。
+      </p>
+      <p class="note">
+        <strong>女生不是被歧视了，而是选了更难进的系。</strong>
+      </p>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-chart-bar"></i> 逐系录取率对比</h2>
+      <p class="note">每个系的男女录取率并排对比，一目了然。</p>
+      <div class="bar-chart" id="barChart"></div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-refresh"></i> 反事实模拟</h2>
+      <p class="note">
+        如果女生的申请分布和男生一样（都去申请好录取的系），整体录取率会变成多少？
+      </p>
+      <div class="compare-row">
+        <div class="big-number female">
+          <div class="value" id="simOriginal">--</div>
+          <div class="label">实际女生录取率</div>
+        </div>
+        <div class="big-number highlight">
+          <div class="value" id="simCounterfactual">--</div>
+          <div class="label">模拟：按男生分布申请</div>
+        </div>
+      </div>
+      <p class="note" style="text-align:center;">
+        如果女生也去申请好录取的系，整体录取率反而会<strong>超过</strong>男生。
+      </p>
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="goToPhase('phase-monte-carlo')" style="margin-top: 8px;">
+      <i class="ti ti-arrow-right"></i> 蒙特卡洛模拟
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       Step 3: 蒙特卡洛
+  ═══════════════════════════════════════════ -->
+  <div class="phase" id="phase-monte-carlo">
+    <div class="section">
+      <h2><i class="ti ti-dice-5"></i> 辛普森悖论有多常见？</h2>
+      <p class="note">
+        随机生成招生数据，看看悖论出现的频率。条件：各系男女录取率接近，但申请分布不均匀。
+      </p>
+
+      <div class="sim-controls">
+        <label>模拟次数：<strong id="trialLabel">1000</strong></label>
+        <input type="range" id="trialSlider" min="100" max="5000" step="100" value="1000">
+        <button class="btn btn-primary" id="runSimBtn" onclick="runMonteCarlo()">
+          <i class="ti ti-player-play"></i> 开始模拟
+        </button>
+      </div>
+
+      <div class="sim-result" id="simResult" style="display:none;">
+        <div class="value" id="mcRate">--</div>
+        <div class="label" id="mcLabel">--</div>
+      </div>
+
+      <div id="mcChartWrap" style="margin-top: 16px; display: none;">
+        <canvas id="mcChart" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-book"></i> 辛普森悖论的本质</h2>
+      <div class="knowledge-card">
+        <h4><i class="ti ti-math-symbols"></i> 一句话总结</h4>
+        <p>
+          当存在一个<strong>隐藏变量</strong>（混淆因子）同时影响分组方式和结果时，
+          合并数据的趋势可以和分组数据完全相反。
+        </p>
+        <p style="margin-top: 8px;">
+          在伯克利案例中，隐藏变量是<strong>「申请哪个系」</strong>——它同时影响了性别分布和录取率。
+        </p>
+      </div>
+
+      <div class="knowledge-card">
+        <h4><i class="ti ti-world"></i> 现实中的辛普森悖论</h4>
+        <p><strong>肾结石治疗：</strong>A 疗法整体成功率更低，但在大结石和小结石两个分组中都更高。因为医生倾向于给重症患者用 A 疗法。</p>
+        <p style="margin-top: 6px;"><strong>棒球击球率：</strong>球员 A 在左投和右投面前击球率都高于球员 B，但赛季总击球率更低。因为 A 面对更多右投手（更难打）。</p>
+        <p style="margin-top: 6px;"><strong>新冠疫苗：</strong>以色列数据显示接种者死亡率更高——因为接种者中老年人比例远高于未接种者。按年龄分组后，疫苗效果显著。</p>
+        <div class="source">
+          数据来源：Bickel et al. (1975) Science 187:398–404 ·
+          Charig et al. (1986) BMJ 292:879–882 ·
+          Sprenger & Weinberger (2021) Nature Medicine
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary btn-full" onclick="goToPhase('phase-intro')" style="margin-top: 8px;">
+      <i class="ti ti-refresh"></i> 从头再看一遍
+    </button>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

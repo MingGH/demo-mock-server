@@ -178,8 +178,12 @@ console.log('--- imageDiffPercent ---');
 assert(imageDiffPercent(base, base, 16) === 0, '相同图像差异 = 0%');
 var heavyPerturb = perturbImage(base, 16, 256, 255, 99);
 var diff = imageDiffPercent(base, heavyPerturb, 16);
-assert(diff > 0, '大量扰动差异 > 0%: ' + diff);
+assert(diff > 0, '大量扰动差异 > 0%: ' + diff.toFixed(4));
 assert(diff <= 100, '差异 <= 100%');
+// 少量扰动也应该有非零差异
+var lightPerturb = perturbImage(base, 16, 3, 35, 123);
+var lightDiff = imageDiffPercent(base, lightPerturb, 16);
+assert(lightDiff > 0, '3像素扰动差异 > 0: ' + lightDiff.toFixed(6));
 
 // ── classifyUser ──
 console.log('--- classifyUser ---');

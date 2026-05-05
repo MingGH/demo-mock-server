@@ -334,13 +334,13 @@
     setupPixelRound();
   };
 
-  // 5 轮，扰动从大到小
+  // 5 轮，扰动从大到小（确保每轮肉眼可辨）
   var PIXEL_LEVELS = [
-    { count: 800, amount: 80, label: '大量扰动' },
-    { count: 200, amount: 50, label: '中等扰动' },
-    { count: 50,  amount: 30, label: '少量扰动' },
-    { count: 10,  amount: 15, label: '微小扰动' },
-    { count: 3,   amount: 8,  label: '几乎无差别' }
+    { count: 2000, amount: 120, label: '大面积篡改' },
+    { count: 600,  amount: 80,  label: '明显扰动' },
+    { count: 200,  amount: 60,  label: '中等扰动' },
+    { count: 80,   amount: 45,  label: '轻微扰动' },
+    { count: 30,   amount: 35,  label: '微小扰动' }
   ];
 
   function setupPixelRound() {
@@ -417,12 +417,22 @@
 
     var result = document.getElementById('pixelResult');
     var diff = pixelRounds[pixelRound].diff;
+    // 智能格式化：确保显示有意义的数字
+    var diffStr;
+    if (diff >= 1) diffStr = diff.toFixed(1) + '%';
+    else if (diff >= 0.01) diffStr = diff.toFixed(2) + '%';
+    else if (diff >= 0.001) diffStr = diff.toFixed(3) + '%';
+    else diffStr = diff.toFixed(4) + '%';
+    // 同时显示实际改动的像素数占总像素的比例
+    var totalPixels = IMG_SIZE * IMG_SIZE;
+    var changedPct = (pixelRounds[pixelRound].level.count / totalPixels * 100).toFixed(1);
+
     if (isCorrect) {
       result.className = 'pixel-result correct';
-      result.innerHTML = '<i class="ti ti-check"></i> 正确！像素差异仅 ' + diff.toFixed(2) + '%';
+      result.innerHTML = '<i class="ti ti-check"></i> 正确！改了 ' + pixelRounds[pixelRound].level.count + '/' + totalPixels + ' 个像素（' + changedPct + '%），色差 ' + diffStr;
     } else {
       result.className = 'pixel-result wrong';
-      result.innerHTML = '<i class="ti ti-x"></i> 选反了。像素差异 ' + diff.toFixed(2) + '%，你的眼睛被骗了';
+      result.innerHTML = '<i class="ti ti-x"></i> 选反了。改了 ' + pixelRounds[pixelRound].level.count + '/' + totalPixels + ' 个像素（' + changedPct + '%），色差 ' + diffStr;
     }
     result.style.display = 'block';
 

@@ -240,7 +240,7 @@ function perturbImage(original, size, perturbCount, perturbAmount, seed) {
 }
 
 /**
- * 计算两个图像的像素差异百分比
+ * 计算两个图像的像素差异百分比（高精度）
  */
 function imageDiffPercent(a, b, size) {
   var totalDiff = 0;
@@ -250,7 +250,8 @@ function imageDiffPercent(a, b, size) {
     totalDiff += Math.abs(a[i + 1] - b[i + 1]);
     totalDiff += Math.abs(a[i + 2] - b[i + 2]);
   }
-  return Math.round(totalDiff / maxDiff * 10000) / 100;
+  // 返回原始比值，不做四舍五入，让调用方决定精度
+  return totalDiff / maxDiff * 100;
 }
 
 /**

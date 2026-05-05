@@ -288,17 +288,18 @@
 
     // 暴露度
     const exposure = getExposure(civ);
+    const currentThreshold = civ.currentThreshold;
     const maxDisplay = cfg.threshold * 1.5;
     const pct = Math.min(100, (exposure / maxDisplay) * 100);
     const fill = $('#exposureFill');
     fill.style.width = pct + '%';
 
-    if (exposure > cfg.threshold * 0.8) fill.style.background = '#ef4444';
-    else if (exposure > cfg.threshold * 0.5) fill.style.background = '#f59e0b';
+    if (exposure > currentThreshold * 0.8) fill.style.background = '#ef4444';
+    else if (exposure > currentThreshold * 0.5) fill.style.background = '#f59e0b';
     else fill.style.background = '#22c55e';
 
-    $('#exposureText').textContent = `${Math.round(exposure)} / ${cfg.threshold}`;
-    $('#exposureThreshold').style.left = (cfg.threshold / maxDisplay * 100) + '%';
+    $('#exposureText').textContent = `${Math.round(exposure)} / ${currentThreshold}`;
+    $('#exposureThreshold').style.left = (currentThreshold / maxDisplay * 100) + '%';
   }
 
   // ══════════ 日志 ══════════

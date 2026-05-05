@@ -1,20 +1,22 @@
 /**
- * 宇宙收割者假说 — 核心模拟引擎 v2
+ * 宇宙收割者假说 — 核心模拟引擎 v3
  * 
- * v2 改动：
- * - 新增随机事件系统（每回合有概率触发抉择事件）
- * - 扫描倒计时机制（实时制辅助）
- * - 事件有正面/负面/抉择三种类型
+ * v3 核心改动：
+ * - 信号 = 基础辐射(随科技指数增长) + 策略增量
+ * - 隐蔽有上限和边际递减
+ * - 收割者阈值随时间缓慢下降（自适应扫描）
+ * - 事件系统保留
+ * - 无脑单策略无法通关
  */
 
 'use strict';
 
 // ── 策略常量 ──
 const STRATEGIES = {
-  aggressive: { id: 'aggressive', name: '激进扩张', techGain: 12, signalGain: 18, stealthGain: 2 },
-  balanced:   { id: 'balanced',   name: '均衡发展', techGain: 8,  signalGain: 8,  stealthGain: 8 },
-  stealth:    { id: 'stealth',    name: '隐蔽优先', techGain: 4,  signalGain: 3,  stealthGain: 15 },
-  dormant:    { id: 'dormant',    name: '休眠蛰伏', techGain: 2,  signalGain: 1,  stealthGain: 5 },
+  aggressive: { id: 'aggressive', name: '激进扩张', techGain: 15, signalAdd: 10, stealthAdd: -3, desc: '科技+15 信号+10 隐蔽-3' },
+  balanced:   { id: 'balanced',   name: '均衡发展', techGain: 8,  signalAdd: 3,  stealthAdd: 4, desc: '科技+8 信号+3 隐蔽+4' },
+  stealth:    { id: 'stealth',    name: '隐蔽优先', techGain: 3,  signalAdd: -8, stealthAdd: 12, desc: '科技+3 信号-8 隐蔽+12' },
+  dormant:    { id: 'dormant',    name: '休眠蛰伏', techGain: 1,  signalAdd: -12, stealthAdd: 4, desc: '科技+1 信号-12 隐蔽+4' },
 };
 
 // ── 随机事件库 ──
@@ -22,11 +24,11 @@ const EVENTS = [
   {
     id: 'asteroid_mine',
     title: '发现富矿小行星',
-    desc: '探测器发现一颗含稀有金属的小行星，开采将大幅推进科技，但采矿活动会产生强烈电磁信号。',
+    desc: '探测器发现一颗含稀有金属的小行星。开采将大幅推进科技，但采矿活动会产生强烈电磁信号。',
     choices: [
-      { label: '全力开采', effects: { tech: 25, signal: 30, stealth: 0 } },
-      { label: '隐蔽开采', effects: { tech: 10, signal: 8, stealth: -5 } },
-      { label: '放弃', effects: { tech: 0, signal: 0, stealth: 0 } },
+      { label: '全力开采', effects: { tech: 25, signal: 20, stealth: 0 } },
+      { label: '隐蔽开采', effects: { tech: 10, signal: 5, stealth: 0 } },
+      { label: '放弃', effects: { tech: 0, signal: -5, stealth: 0 } },
     ],
   },
   {
@@ -34,19 +36,19 @@ const EVENTS = [
     title: '截获不明信号',
     desc: '深空天线捕获到一段结构化信号。回复可能获得科技跳跃，也可能暴露你的坐标。',
     choices: [
-      { label: '回复信号', effects: { tech: 35, signal: 40, stealth: -10 } },
-      { label: '被动监听', effects: { tech: 8, signal: 2, stealth: 5 } },
-      { label: '切断天线', effects: { tech: -5, signal: -15, stealth: 10 } },
+      { label: '回复信号', effects: { tech: 40, signal: 35, stealth: -10 }, successRate: 0.4 },
+      { label: '被动监听', effects: { tech: 8, signal: 0, stealth: 0 } },
+      { label: '切断天线', effects: { tech: -5, signal: -15, stealth: 5 } },
     ],
   },
   {
     id: 'civil_unrest',
     title: '内部动荡',
-    desc: '民众对「隐蔽发展」政策不满，要求开放通信和星际广播。镇压需要消耗资源，妥协会增加信号。',
+    desc: '民众对「隐蔽发展」政策不满，要求开放通信和星际广播。',
     choices: [
-      { label: '铁腕镇压', effects: { tech: -8, signal: -5, stealth: 8 } },
+      { label: '铁腕镇压', effects: { tech: -10, signal: -5, stealth: 5 } },
       { label: '有限开放', effects: { tech: 5, signal: 15, stealth: -5 } },
-      { label: '全面开放', effects: { tech: 10, signal: 35, stealth: -15 } },
+      { label: '全面开放', effects: { tech: 8, signal: 30, stealth: -10 } },
     ],
   },
   {
@@ -54,26 +56,26 @@ const EVENTS = [
     title: '意外的技术突破',
     desc: '实验室偶然发现了一种新型能源转换方式，但实验过程产生了短暂的高能脉冲。',
     choices: [
-      { label: '立即量产', effects: { tech: 20, signal: 22, stealth: 0 } },
-      { label: '秘密研发', effects: { tech: 12, signal: 5, stealth: 3 } },
+      { label: '立即量产', effects: { tech: 22, signal: 18, stealth: 0 } },
+      { label: '秘密研发', effects: { tech: 12, signal: 5, stealth: 0 } },
     ],
   },
   {
     id: 'debris_field',
     title: '太空垃圾危机',
-    desc: '一片高速碎片云正在逼近。清除它需要高能激光（产生信号），或者花时间绕行（损失回合）。',
+    desc: '一片高速碎片云正在逼近。清除它需要高能激光（产生信号），或者花时间绕行。',
     choices: [
-      { label: '激光清除', effects: { tech: 3, signal: 20, stealth: -5 } },
-      { label: '绕行规避', effects: { tech: -3, signal: -2, stealth: 5 } },
+      { label: '激光清除', effects: { tech: 2, signal: 20, stealth: -5 } },
+      { label: '绕行规避', effects: { tech: -5, signal: -3, stealth: 3 } },
     ],
   },
   {
     id: 'stealth_tech',
     title: '隐身材料发现',
-    desc: '地质勘探发现了一种能吸收电磁波的天然矿物，可以大幅提升隐蔽能力。',
+    desc: '地质勘探发现了一种能吸收电磁波的天然矿物。',
     choices: [
-      { label: '大规模开采', effects: { tech: 5, signal: 12, stealth: 30 } },
-      { label: '小规模利用', effects: { tech: 2, signal: 3, stealth: 15 } },
+      { label: '大规模开采', effects: { tech: 3, signal: 10, stealth: 25 } },
+      { label: '小规模利用', effects: { tech: 1, signal: 2, stealth: 12 } },
     ],
   },
   {
@@ -81,25 +83,25 @@ const EVENTS = [
     title: '恒星耀斑',
     desc: '母星恒星爆发强烈耀斑，短时间内掩盖了你的信号，但也损坏了部分设施。',
     choices: [
-      { label: '趁机全力发展', effects: { tech: 15, signal: -20, stealth: 0 } },
-      { label: '修复设施', effects: { tech: -5, signal: -10, stealth: 5 } },
+      { label: '趁机全力发展', effects: { tech: 18, signal: -25, stealth: 0 } },
+      { label: '修复设施', effects: { tech: -5, signal: -15, stealth: 3 } },
     ],
   },
   {
     id: 'rogue_broadcast',
     title: '叛逃者广播',
-    desc: '一名科学家劫持了通信卫星，向宇宙发送了一段广播。信号已经发出，你只能选择如何善后。',
+    desc: '一名科学家劫持了通信卫星，向宇宙发送了一段广播。信号已经发出。',
     choices: [
-      { label: '紧急信号干扰', effects: { tech: -3, signal: 8, stealth: 10 } },
+      { label: '紧急信号干扰', effects: { tech: -3, signal: 5, stealth: 8 } },
       { label: '无法挽回', effects: { tech: 0, signal: 25, stealth: 0 } },
     ],
   },
   {
     id: 'dyson_project',
     title: '戴森球计划',
-    desc: '工程师提出建造戴森球的方案。这将彻底解决能源问题，但建造过程的红外辐射极其显眼。',
+    desc: '工程师提出建造戴森球的方案。彻底解决能源问题，但建造过程的红外辐射极其显眼。',
     choices: [
-      { label: '启动建造', effects: { tech: 40, signal: 50, stealth: -20 } },
+      { label: '启动建造', effects: { tech: 45, signal: 50, stealth: -15 } },
       { label: '搁置计划', effects: { tech: 0, signal: 0, stealth: 0 } },
     ],
   },
@@ -108,17 +110,17 @@ const EVENTS = [
     title: '量子通信突破',
     desc: '研究团队实现了量子纠缠通信，这种通信方式理论上不产生可截获的电磁信号。',
     choices: [
-      { label: '全面替换通信系统', effects: { tech: 15, signal: -25, stealth: 20 } },
-      { label: '部分替换', effects: { tech: 8, signal: -10, stealth: 10 } },
+      { label: '全面替换通信系统', effects: { tech: 10, signal: -30, stealth: 15 } },
+      { label: '部分替换', effects: { tech: 5, signal: -12, stealth: 8 } },
     ],
   },
   {
     id: 'reaper_fragment',
     title: '发现收割者残骸',
-    desc: '深空探测器发现了一具疑似收割者探测器的残骸。研究它可能揭示检测机制，但靠近它有风险。',
+    desc: '深空探测器发现了一具疑似收割者探测器的残骸。研究它可能揭示检测机制。',
     choices: [
-      { label: '派遣研究队', effects: { tech: 30, signal: 15, stealth: 15 } },
-      { label: '远程观测', effects: { tech: 10, signal: 3, stealth: 5 } },
+      { label: '派遣研究队', effects: { tech: 30, signal: 12, stealth: 10 } },
+      { label: '远程观测', effects: { tech: 10, signal: 3, stealth: 3 } },
       { label: '远离它', effects: { tech: 0, signal: 0, stealth: 0 } },
     ],
   },
@@ -127,7 +129,7 @@ const EVENTS = [
     title: '虫洞异常',
     desc: '天文台探测到一个不稳定的微型虫洞。穿越它可能直接获得逃逸级科技，但失败概率很高。',
     choices: [
-      { label: '派探测器穿越', effects: { tech: 50, signal: 35, stealth: -10 }, successRate: 0.3 },
+      { label: '派探测器穿越', effects: { tech: 60, signal: 30, stealth: -10 }, successRate: 0.25 },
       { label: '远程研究', effects: { tech: 12, signal: 5, stealth: 0 } },
       { label: '不冒险', effects: { tech: 0, signal: 0, stealth: 0 } },
     ],
@@ -135,14 +137,17 @@ const EVENTS = [
 ];
 
 const DEFAULT_CONFIG = {
-  threshold: 100,        // 收割者检测阈值
-  escapeTech: 200,       // 逃逸所需科技等级
-  maxTurns: 30,          // 最大回合数（缩短，节奏更快）
-  noiseRange: 3,         // 随机噪声范围（降低，让策略更可控）
-  decayRate: 0.02,       // 信号自然衰减率
-  reaperScanInterval: 4, // 收割者扫描间隔（回合）
-  eventChance: 0.4,      // 每回合触发事件的概率
-  scanDuration: 5,       // 扫描倒计时秒数（UI用）
+  threshold: 80,          // 初始收割者检测阈值
+  thresholdDecay: 3,      // 每次扫描后阈值下降量（收割者在学习）
+  escapeTech: 200,        // 逃逸所需科技等级
+  maxTurns: 30,           // 最大回合数
+  noiseRange: 3,          // 随机噪声范围
+  baseSignalRate: 0.04,   // 基础辐射系数（信号 += tech * rate）
+  stealthCap: 80,         // 隐蔽上限
+  stealthDiminish: 50,    // 隐蔽超过此值后增长减半
+  reaperScanInterval: 3,  // 收割者扫描间隔
+  eventChance: 0.4,       // 每回合触发事件概率
+  scanDuration: 6,        // 扫描倒计时秒数
 };
 
 /**
@@ -153,16 +158,19 @@ function createCivilization(config) {
   return {
     tech: 10,
     signal: 5,
-    stealth: 5,
+    stealth: 8,
     turn: 0,
     alive: true,
     escaped: false,
+    deathCause: null,
+    currentThreshold: cfg.threshold, // 动态阈值
     history: [{
       turn: 0,
       tech: 10,
       signal: 5,
-      stealth: 5,
+      stealth: 8,
       exposure: 0,
+      threshold: cfg.threshold,
       strategy: null,
       scanned: false,
       event: null,
@@ -180,6 +188,28 @@ function getExposure(civ) {
 }
 
 /**
+ * 计算基础辐射（科技越高，维持运转产生的辐射越大）
+ */
+function getBaseRadiation(tech, rate) {
+  return tech * rate;
+}
+
+/**
+ * 计算隐蔽实际增量（边际递减）
+ */
+function getEffectiveStealth(currentStealth, addAmount, cap, diminishPoint) {
+  if (addAmount <= 0) return addAmount; // 负值不受限
+  let effective = addAmount;
+  if (currentStealth >= cap) return 0; // 已到上限
+  if (currentStealth >= diminishPoint) {
+    // 超过递减点后，增量减半
+    effective = addAmount * 0.5;
+  }
+  // 不超过上限
+  return Math.min(effective, cap - currentStealth);
+}
+
+/**
  * 随机选取一个未使用过的事件
  */
 function pickEvent(civ, rng) {
@@ -194,22 +224,18 @@ function pickEvent(civ, rng) {
  */
 function applyEventChoice(civ, choice, rng) {
   let effects = choice.effects;
-
-  // 如果有成功率，判定是否成功
   if (choice.successRate !== undefined) {
     const roll = rng();
     if (roll > choice.successRate) {
-      // 失败：效果减半且可能有负面后果
       effects = {
         tech: Math.round(effects.tech * -0.2),
-        signal: Math.round(effects.signal * 0.8),
-        stealth: Math.round(effects.stealth * 0.5),
+        signal: Math.round(effects.signal * 0.7),
+        stealth: Math.round(effects.stealth * 0.3),
       };
       return { effects, success: false };
     }
     return { effects, success: true };
   }
-
   return { effects, success: true };
 }
 
@@ -227,10 +253,16 @@ function advanceTurn(civ, strategyId, rng, eventChoiceIdx) {
 
   const newTurn = civ.turn + 1;
 
-  // 基础增长
+  // 科技增长
   let techDelta = strategy.techGain + noise();
-  let signalDelta = strategy.signalGain + noise();
-  let stealthDelta = strategy.stealthGain + noise();
+
+  // 信号 = 上回合信号 + 策略增量 + 基础辐射（科技产生的）+ 噪声
+  let baseRad = getBaseRadiation(civ.tech, cfg.baseSignalRate);
+  let signalDelta = strategy.signalAdd + baseRad + noise();
+
+  // 隐蔽增长（边际递减）
+  let rawStealthAdd = strategy.stealthAdd + noise();
+  let stealthDelta = getEffectiveStealth(civ.stealth, rawStealthAdd, cfg.stealthCap, cfg.stealthDiminish);
 
   // 处理事件效果
   let eventRecord = null;
@@ -245,25 +277,27 @@ function advanceTurn(civ, strategyId, rng, eventChoiceIdx) {
     }
   }
 
-  let newTech = civ.tech + techDelta;
-  let newSignal = (civ.signal + signalDelta) * (1 - cfg.decayRate);
-  let newStealth = civ.stealth + stealthDelta;
-
-  newTech = Math.max(0, newTech);
-  newSignal = Math.max(0, newSignal);
-  newStealth = Math.max(0, newStealth);
+  let newTech = Math.max(0, civ.tech + techDelta);
+  let newSignal = Math.max(0, civ.signal + signalDelta);
+  let newStealth = Math.max(0, Math.min(cfg.stealthCap, civ.stealth + stealthDelta));
 
   const exposure = Math.max(0, newSignal - newStealth);
 
+  // 收割者扫描
   const scanned = (newTurn % cfg.reaperScanInterval === 0);
   let alive = true;
   let escaped = false;
-
   let deathCause = null;
+  let newThreshold = civ.currentThreshold;
 
-  if (scanned && exposure > cfg.threshold) {
-    alive = false;
-    deathCause = 'reaped';
+  if (scanned) {
+    if (exposure > civ.currentThreshold) {
+      alive = false;
+      deathCause = 'reaped';
+    } else {
+      // 收割者没发现目标，阈值下降（它在调整灵敏度）
+      newThreshold = Math.max(30, civ.currentThreshold - cfg.thresholdDecay);
+    }
   }
 
   if (alive && newTech >= cfg.escapeTech) {
@@ -281,6 +315,7 @@ function advanceTurn(civ, strategyId, rng, eventChoiceIdx) {
     signal: Math.round(newSignal * 10) / 10,
     stealth: Math.round(newStealth * 10) / 10,
     exposure: Math.round(exposure * 10) / 10,
+    threshold: newThreshold,
     strategy: strategyId,
     scanned,
     event: eventRecord,
@@ -294,6 +329,7 @@ function advanceTurn(civ, strategyId, rng, eventChoiceIdx) {
     alive,
     escaped,
     deathCause,
+    currentThreshold: newThreshold,
     history: [...civ.history, record],
     config: cfg,
     usedEvents: eventRecord ? [...civ.usedEvents, eventRecord.id] : [...civ.usedEvents],
@@ -305,9 +341,10 @@ function advanceTurn(civ, strategyId, rng, eventChoiceIdx) {
  */
 function simulate(strategySequence, config, seedVal) {
   const rng = mulberry32(seedVal || 42);
-  let civ = createCivilization(config);
+  const cfg = { ...DEFAULT_CONFIG, ...config };
+  let civ = createCivilization(cfg);
 
-  for (let i = 0; i < (config?.maxTurns || DEFAULT_CONFIG.maxTurns); i++) {
+  for (let i = 0; i < cfg.maxTurns; i++) {
     if (!civ.alive || civ.escaped) break;
     const strategy = strategySequence[i % strategySequence.length];
     civ = advanceTurn(civ, strategy, rng);
@@ -372,6 +409,8 @@ if (typeof module !== 'undefined' && module.exports) {
     DEFAULT_CONFIG,
     createCivilization,
     getExposure,
+    getBaseRadiation,
+    getEffectiveStealth,
     pickEvent,
     applyEventChoice,
     advanceTurn,

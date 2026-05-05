@@ -29,9 +29,9 @@ function assert(condition, msg) {
 // ── 测试1: 策略常量 ──
 console.log('\n测试1: 策略常量');
 assert(Object.keys(STRATEGIES).length === 4, '4种策略');
-assert(STRATEGIES.aggressive.techGain === 12, 'aggressive techGain=12');
-assert(STRATEGIES.stealth.stealthGain === 15, 'stealth stealthGain=15');
-assert(STRATEGIES.dormant.signalGain === 1, 'dormant signalGain=1');
+assert(STRATEGIES.aggressive.techGain === 15, 'aggressive techGain=15');
+assert(STRATEGIES.stealth.stealthAdd === 12, 'stealth stealthAdd=12');
+assert(STRATEGIES.dormant.signalAdd === -12, 'dormant signalAdd=-12');
 
 // ── 测试2: 事件库 ──
 console.log('\n测试2: 事件库');
@@ -47,20 +47,20 @@ EVENTS.forEach(e => {
 });
 
 // ── 测试3: 默认配置 v2 ──
-console.log('\n测试3: 默认配置 v2');
-assert(DEFAULT_CONFIG.threshold === 100, 'threshold=100');
+console.log('\n测试3: 默认配置 v3');
+assert(DEFAULT_CONFIG.threshold === 80, 'threshold=80');
 assert(DEFAULT_CONFIG.escapeTech === 200, 'escapeTech=200');
 assert(DEFAULT_CONFIG.maxTurns === 30, 'maxTurns=30');
-assert(DEFAULT_CONFIG.reaperScanInterval === 4, 'reaperScanInterval=4');
+assert(DEFAULT_CONFIG.reaperScanInterval === 3, 'reaperScanInterval=3');
 assert(DEFAULT_CONFIG.eventChance === 0.4, 'eventChance=0.4');
-assert(DEFAULT_CONFIG.scanDuration === 5, 'scanDuration=5');
+assert(DEFAULT_CONFIG.scanDuration === 6, 'scanDuration=6');
 
 // ── 测试4: 创建文明 ──
 console.log('\n测试4: 创建文明');
 const civ0 = createCivilization();
 assert(civ0.tech === 10, '初始tech=10');
 assert(civ0.signal === 5, '初始signal=5');
-assert(civ0.stealth === 5, '初始stealth=5');
+assert(civ0.stealth === 8, '初始stealth=8');
 assert(civ0.turn === 0, 'turn=0');
 assert(civ0.alive === true, 'alive');
 assert(civ0.escaped === false, 'not escaped');
@@ -134,17 +134,16 @@ for (let i = 0; i < 100; i++) {
 assert(successes > 0 && successes < 100, `成功率约30% (实际${successes}%)`);
 assert(successes < 50, '成功次数应明显低于50');
 
-// ── 测试11: 收割者扫描间隔=4 ──
-console.log('\n测试11: 扫描间隔=4');
+// ── 测试11: 收割者扫描间隔=3 ──
+console.log('\n测试11: 扫描间隔=3');
 let civS = createCivilization();
 const rngS = mulberry32(5);
-for (let i = 0; i < 4; i++) {
+for (let i = 0; i < 3; i++) {
   civS = advanceTurn(civS, 'dormant', rngS);
 }
 assert(civS.history[1].scanned === false, '第1回合不扫描');
 assert(civS.history[2].scanned === false, '第2回合不扫描');
-assert(civS.history[3].scanned === false, '第3回合不扫描');
-assert(civS.history[4].scanned === true, '第4回合扫描');
+assert(civS.history[3].scanned === true, '第3回合扫描');
 
 // ── 测试12: 收割触发 ──
 console.log('\n测试12: 收割触发');

@@ -26,8 +26,9 @@
       <ul class="model-desc">
         <li><strong style="color:#60a5fa">科技</strong>达到 200 即可逃逸，但发展科技会增加<strong style="color:#f59e0b">信号</strong></li>
         <li><strong style="color:#22c55e">隐蔽</strong>可以抵消信号，暴露度 = 信号 - 隐蔽</li>
-        <li>收割者每 <strong>4 回合</strong>扫描一次，暴露度超过阈值即死</li>
-        <li>每回合有 <strong>5 秒</strong>决策时间，超时自动执行休眠策略</li>
+        <li>收割者每 <strong>3 回合</strong>扫描一次，且每次扫描后灵敏度提升</li>
+        <li>每回合有 <strong>6 秒</strong>决策时间，超时自动执行休眠策略</li>
+        <li>科技越高，维持运转产生的<strong>基础辐射</strong>越大——发展本身就是风险</li>
         <li>随机事件会打断你的计划——有风险，也有机遇</li>
         <li>最多 30 回合，超时视为恒星死亡</li>
       </ul>
@@ -97,19 +98,19 @@
         <div class="strategy-grid" id="strategyGrid">
           <div class="strategy-btn selected" data-strategy="balanced">
             <div class="s-name"><i class="ti ti-scale"></i> 均衡发展</div>
-            <div class="s-desc">科技+8 信号+8 隐蔽+8</div>
+            <div class="s-desc">科技+8 信号+3 隐蔽+4</div>
           </div>
           <div class="strategy-btn" data-strategy="aggressive">
             <div class="s-name"><i class="ti ti-flame"></i> 激进扩张</div>
-            <div class="s-desc">科技+12 信号+18 隐蔽+2</div>
+            <div class="s-desc">科技+15 信号+10 隐蔽-3</div>
           </div>
           <div class="strategy-btn" data-strategy="stealth">
             <div class="s-name"><i class="ti ti-eye-off"></i> 隐蔽优先</div>
-            <div class="s-desc">科技+4 信号+3 隐蔽+15</div>
+            <div class="s-desc">科技+3 信号-8 隐蔽+12</div>
           </div>
           <div class="strategy-btn" data-strategy="dormant">
             <div class="s-name"><i class="ti ti-zzz"></i> 休眠蛰伏</div>
-            <div class="s-desc">科技+2 信号+1 隐蔽+5</div>
+            <div class="s-desc">科技+1 信号-12 隐蔽+4</div>
           </div>
         </div>
         <button class="btn btn-primary" id="executeBtn" style="width:100%; justify-content:center; margin-top:12px;">

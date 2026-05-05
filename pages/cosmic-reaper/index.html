@@ -21,14 +21,15 @@
     <div class="card intro-card">
       <h2><i class="ti ti-radar-2"></i> 模型设定</h2>
       <p>宇宙中存在远古的自动化清扫系统。它不思考、不谈判、不休眠——只执行一条规则：</p>
-      <p style="color:#ef4444; font-weight:700; font-size:1.1rem;">「当检测到信号强度超过阈值，清除信号源。」</p>
+      <p style="color:#ef4444; font-weight:700; font-size:1.1rem;">「信号超过阈值 → 清除信号源」</p>
 
       <ul class="model-desc">
-        <li>你的文明有三个维度：<strong style="color:#60a5fa">科技</strong>、<strong style="color:#f59e0b">信号</strong>（电磁辐射）、<strong style="color:#22c55e">隐蔽</strong></li>
-        <li>暴露度 = 信号 - 隐蔽。超过阈值时，收割者启动清除</li>
-        <li>收割者每 3 回合扫描一次（不是实时监控）</li>
-        <li>目标：在科技达到 200（逃逸等级）前不被检测到</li>
-        <li>限制：最多 50 回合，超时视为资源耗尽</li>
+        <li><strong style="color:#60a5fa">科技</strong>达到 200 即可逃逸，但发展科技会增加<strong style="color:#f59e0b">信号</strong></li>
+        <li><strong style="color:#22c55e">隐蔽</strong>可以抵消信号，暴露度 = 信号 - 隐蔽</li>
+        <li>收割者每 <strong>4 回合</strong>扫描一次，暴露度超过阈值即死</li>
+        <li>每回合有 <strong>5 秒</strong>决策时间，超时自动执行休眠策略</li>
+        <li>随机事件会打断你的计划——有风险，也有机遇</li>
+        <li>最多 30 回合，超时视为恒星死亡</li>
       </ul>
 
       <button class="btn btn-primary" id="startBtn">
@@ -39,11 +40,18 @@
 
   <!-- ══════════ Phase 2: 游戏 ══════════ -->
   <div class="phase" id="phase-game">
+
+    <!-- 扫描倒计时条 -->
+    <div class="scan-timer-wrapper">
+      <div class="scan-timer-bar" id="scanTimerBar" style="width:100%;"></div>
+      <div class="scan-timer-text" id="scanTimerText">5s | 距下次扫描还有 4 回合</div>
+    </div>
+
     <!-- 状态栏 -->
     <div class="status-bar">
       <div class="stat-item">
         <div class="label">回合</div>
-        <div class="value" id="turnDisplay">0 / 50</div>
+        <div class="value" id="turnDisplay">0 / 30</div>
       </div>
       <div class="stat-item">
         <div class="label"><i class="ti ti-cpu"></i> 科技</div>
@@ -59,31 +67,41 @@
       </div>
     </div>
 
-    <!-- 暴露度仪表 -->
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <span style="font-size:0.85rem; color:#94a3b8;">暴露度</span>
-        <span style="font-size:0.85rem; font-weight:700;" id="exposureText">0 / 100</span>
+    <!-- 科技进度 -->
+    <div class="card" style="padding:16px 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:0.82rem; color:#60a5fa;"><i class="ti ti-rocket"></i> 逃逸进度</span>
+        <span style="font-size:0.82rem; color:#94a3b8;" id="techProgressText">10 / 200</span>
+      </div>
+      <div class="tech-progress-bar">
+        <div class="tech-progress-fill" id="techProgress" style="width:5%;"></div>
+      </div>
+    </div>
+
+    <!-- 暴露度 -->
+    <div class="card" style="padding:16px 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:0.82rem; color:#f59e0b;"><i class="ti ti-alert-triangle"></i> 暴露度</span>
+        <span style="font-size:0.82rem; font-weight:700;" id="exposureText">0 / 100</span>
       </div>
       <div class="exposure-meter">
         <div class="exposure-fill" id="exposureFill" style="width:0%; background:#22c55e;"></div>
         <div class="exposure-threshold" id="exposureThreshold" style="left:66.7%;"></div>
       </div>
-      <div style="font-size:0.75rem; color:#64748b; margin-top:4px;" id="scanHint">下次扫描：第 3 回合</div>
     </div>
 
+    <!-- 策略 + 日志 -->
     <div class="game-panel">
-      <!-- 左：策略选择 -->
       <div class="card">
-        <h2><i class="ti ti-adjustments"></i> 选择策略</h2>
+        <h2><i class="ti ti-adjustments"></i> 发展策略</h2>
         <div class="strategy-grid" id="strategyGrid">
+          <div class="strategy-btn selected" data-strategy="balanced">
+            <div class="s-name"><i class="ti ti-scale"></i> 均衡发展</div>
+            <div class="s-desc">科技+8 信号+8 隐蔽+8</div>
+          </div>
           <div class="strategy-btn" data-strategy="aggressive">
             <div class="s-name"><i class="ti ti-flame"></i> 激进扩张</div>
             <div class="s-desc">科技+12 信号+18 隐蔽+2</div>
-          </div>
-          <div class="strategy-btn" data-strategy="balanced">
-            <div class="s-name"><i class="ti ti-scale"></i> 均衡发展</div>
-            <div class="s-desc">科技+8 信号+8 隐蔽+8</div>
           </div>
           <div class="strategy-btn" data-strategy="stealth">
             <div class="s-name"><i class="ti ti-eye-off"></i> 隐蔽优先</div>
@@ -94,23 +112,20 @@
             <div class="s-desc">科技+2 信号+1 隐蔽+5</div>
           </div>
         </div>
-        <button class="btn btn-primary" id="advanceBtn" style="width:100%; justify-content:center; margin-top:12px;" disabled>
-          <i class="ti ti-player-skip-forward"></i> 执行回合
+        <button class="btn btn-primary" id="executeBtn" style="width:100%; justify-content:center; margin-top:12px;">
+          <i class="ti ti-player-skip-forward"></i> 执行本回合
         </button>
       </div>
 
-      <!-- 右：日志 -->
       <div class="card">
         <h2><i class="ti ti-list"></i> 事件日志</h2>
-        <div class="log-panel" id="logPanel">
-          <div class="log-entry">文明初始化完成。信号微弱，暂时安全。</div>
-        </div>
+        <div class="log-panel" id="logPanel"></div>
       </div>
     </div>
 
     <!-- 图表 -->
     <div class="card">
-      <h2><i class="ti ti-chart-line"></i> 发展曲线</h2>
+      <h2><i class="ti ti-chart-line"></i> 科技 vs 暴露度</h2>
       <div class="chart-container">
         <canvas id="gameChart"></canvas>
       </div>
@@ -126,15 +141,13 @@
       <div class="score-display" id="scoreDisplay"></div>
       <div style="font-size:0.85rem; color:#94a3b8; margin-bottom:20px;">存活 <span id="surviveTurns"></span> 回合</div>
 
-      <!-- 蒙特卡洛 -->
       <div class="card" style="text-align:left;">
-        <h2><i class="ti ti-chart-dots-3"></i> 蒙特卡洛验证（1000次模拟）</h2>
-        <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:12px;">用你本局的策略序列跑1000次，看看这套策略的真实胜率</p>
+        <h2><i class="ti ti-chart-dots-3"></i> 蒙特卡洛验证（1000次）</h2>
+        <p style="font-size:0.82rem; color:#94a3b8; margin-bottom:12px;">用你的策略序列跑1000次模拟</p>
         <div class="mc-results" id="mcResults"></div>
       </div>
 
-      <!-- 全局统计 -->
-      <div class="card" style="text-align:left;" id="globalStatsCard" style="display:none;">
+      <div class="card" style="text-align:left; display:none;" id="globalStatsCard">
         <h2><i class="ti ti-world"></i> 全局统计</h2>
         <div class="global-stats" id="globalStats"></div>
       </div>
@@ -150,6 +163,18 @@
     </div>
   </div>
 
+</div>
+
+<!-- ══════════ 事件弹窗 ══════════ -->
+<div class="event-modal" id="eventModal">
+  <div class="event-modal-content">
+    <div class="event-modal-header">
+      <i class="ti ti-alert-circle" style="color:#f5af19; font-size:1.5rem;"></i>
+      <h3 id="eventTitle"></h3>
+    </div>
+    <p class="event-modal-desc" id="eventDesc"></p>
+    <div class="event-choices" id="eventChoices"></div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>

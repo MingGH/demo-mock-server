@@ -29,11 +29,11 @@ body {
 .card {
   background: rgba(255,255,255,0.05);
   border-radius: 16px;
-  padding: 28px;
+  padding: 24px;
   border: 1px solid rgba(255,255,255,0.08);
-  margin: 16px 0;
+  margin: 12px 0;
 }
-.card h2 { font-size: 1.2rem; color: #fff; margin-bottom: 16px; }
+.card h2 { font-size: 1.1rem; color: #fff; margin-bottom: 14px; }
 
 /* ── 介绍页 ── */
 .intro-card { text-align: center; max-width: 650px; margin: 20px auto; }
@@ -44,10 +44,10 @@ body {
   border-radius: 12px;
   padding: 20px;
   margin: 20px 0;
-  font-size: 0.9rem;
-  line-height: 1.8;
+  font-size: 0.88rem;
+  line-height: 1.9;
 }
-.model-desc li { margin-bottom: 8px; list-style: none; }
+.model-desc li { margin-bottom: 6px; list-style: none; }
 .model-desc li::before { content: '▸ '; color: #f5af19; }
 
 /* ── 按钮 ── */
@@ -70,22 +70,44 @@ body {
 .btn-secondary:hover { background: rgba(255,255,255,0.12); }
 .btn-group { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
 
-/* ── 游戏面板 ── */
-.game-panel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+/* ── 扫描倒计时条 ── */
+.scan-timer-wrapper {
+  position: relative;
+  height: 32px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
 }
-@media (max-width: 700px) {
-  .game-panel { grid-template-columns: 1fr; }
+.scan-timer-bar {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 1s linear, background 0.3s;
+  background: #22c55e;
+}
+.scan-timer-text {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.82rem; font-weight: 600;
+  color: #94a3b8;
+  z-index: 2;
+}
+.scan-timer-wrapper.urgent {
+  animation: pulse-border 0.5s ease-in-out infinite alternate;
+}
+@keyframes pulse-border {
+  from { border-color: rgba(239,68,68,0.3); }
+  to { border-color: rgba(239,68,68,0.8); }
 }
 
-/* ── 状态面板 ── */
+/* ── 状态栏 ── */
 .status-bar {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 @media (max-width: 600px) {
   .status-bar { grid-template-columns: repeat(2, 1fr); }
@@ -93,91 +115,182 @@ body {
 .stat-item {
   background: rgba(0,0,0,0.3);
   border-radius: 10px;
-  padding: 12px;
+  padding: 10px;
   text-align: center;
 }
-.stat-item .label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; }
-.stat-item .value { font-size: 1.3rem; font-weight: 700; color: #fff; }
+.stat-item .label { font-size: 0.72rem; color: #94a3b8; margin-bottom: 2px; }
+.stat-item .value { font-size: 1.2rem; font-weight: 700; color: #fff; }
 .stat-item .value.danger { color: #ef4444; }
 .stat-item .value.safe { color: #22c55e; }
 .stat-item .value.warning { color: #f59e0b; }
 
-/* ── 策略选择 ── */
+/* ── 科技进度条 ── */
+.tech-progress-bar {
+  height: 10px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.tech-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+/* ── 暴露度仪表 ── */
+.exposure-meter {
+  position: relative;
+  height: 10px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 5px;
+  overflow: visible;
+}
+.exposure-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.5s ease, background 0.5s ease;
+}
+.exposure-threshold {
+  position: absolute;
+  top: -4px; bottom: -4px;
+  width: 3px;
+  background: #ef4444;
+  border-radius: 2px;
+  z-index: 2;
+}
+.exposure-threshold::after {
+  content: '死线';
+  position: absolute;
+  top: -16px;
+  left: -8px;
+  font-size: 0.6rem;
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* ── 游戏面板 ── */
+.game-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 700px) {
+  .game-panel { grid-template-columns: 1fr; }
+}
+
+/* ── 策略按钮 ── */
 .strategy-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin: 16px 0;
+  gap: 8px;
+  margin: 12px 0;
 }
 @media (max-width: 500px) {
   .strategy-grid { grid-template-columns: 1fr; }
 }
 .strategy-btn {
-  background: rgba(255,255,255,0.05);
-  border: 2px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
-  padding: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 12px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
   text-align: left;
 }
-.strategy-btn:hover { border-color: #f5af19; background: rgba(245,175,25,0.08); }
-.strategy-btn.selected { border-color: #f5af19; background: rgba(245,175,25,0.12); }
-.strategy-btn .s-name { font-weight: 700; color: #fff; font-size: 0.95rem; margin-bottom: 4px; }
-.strategy-btn .s-desc { font-size: 0.8rem; color: #94a3b8; }
-
-/* ── 暴露度仪表 ── */
-.exposure-meter {
-  position: relative;
-  height: 24px;
-  background: rgba(0,0,0,0.4);
-  border-radius: 12px;
-  overflow: hidden;
-  margin: 12px 0;
-}
-.exposure-fill {
-  height: 100%;
-  border-radius: 12px;
-  transition: width 0.5s ease, background 0.5s ease;
-}
-.exposure-threshold {
-  position: absolute;
-  top: 0; bottom: 0;
-  width: 2px;
-  background: #ef4444;
-  z-index: 2;
-}
-.exposure-threshold::after {
-  content: '阈值';
-  position: absolute;
-  top: -18px;
-  left: -10px;
-  font-size: 0.65rem;
-  color: #ef4444;
-}
+.strategy-btn:hover { border-color: rgba(245,175,25,0.5); background: rgba(245,175,25,0.05); }
+.strategy-btn.selected { border-color: #f5af19; background: rgba(245,175,25,0.1); }
+.strategy-btn.disabled { opacity: 0.4; pointer-events: none; }
+.strategy-btn .s-name { font-weight: 700; color: #fff; font-size: 0.88rem; margin-bottom: 3px; }
+.strategy-btn .s-desc { font-size: 0.75rem; color: #94a3b8; }
 
 /* ── 日志 ── */
 .log-panel {
-  max-height: 200px;
+  max-height: 220px;
   overflow-y: auto;
   background: rgba(0,0,0,0.3);
   border-radius: 10px;
   padding: 12px;
-  font-size: 0.82rem;
-  line-height: 1.6;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  font-family: 'SF Mono', 'Fira Code', monospace;
 }
-.log-panel .log-entry { margin-bottom: 4px; }
-.log-panel .log-entry.danger { color: #ef4444; }
-.log-panel .log-entry.success { color: #22c55e; }
-.log-panel .log-entry.warning { color: #f59e0b; }
-.log-panel .log-entry.scan { color: #60a5fa; }
+.log-entry { margin-bottom: 3px; }
+.log-entry.danger { color: #ef4444; }
+.log-entry.success { color: #22c55e; }
+.log-entry.warning { color: #f59e0b; }
+.log-entry.scan { color: #60a5fa; }
+.log-entry.event { color: #a78bfa; }
+.log-entry.info { color: #94a3b8; }
 
 /* ── 图表 ── */
 .chart-container {
   position: relative;
-  height: 260px;
-  margin: 16px 0;
+  height: 220px;
 }
+
+/* ── 事件弹窗 ── */
+.event-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.event-modal.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+.event-modal-content {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border: 1px solid rgba(245,175,25,0.3);
+  border-radius: 20px;
+  padding: 28px;
+  max-width: 480px;
+  width: 90%;
+  animation: modalIn 0.3s ease;
+}
+@keyframes modalIn {
+  from { transform: scale(0.9) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+.event-modal-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px;
+}
+.event-modal-header h3 { font-size: 1.1rem; color: #fff; }
+.event-modal-desc {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+.event-choices {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.event-choice-btn {
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  color: #e0e0e0;
+  font-size: 0.88rem;
+}
+.event-choice-btn:hover {
+  border-color: #f5af19;
+  background: rgba(245,175,25,0.08);
+  transform: translateX(4px);
+}
+.ec-label { font-weight: 600; }
+.ec-effects { font-size: 0.75rem; }
 
 /* ── 结果页 ── */
 .result-card { text-align: center; max-width: 650px; margin: 20px auto; }
@@ -186,7 +299,7 @@ body {
 .result-title.escaped { color: #22c55e; }
 .result-title.reaped { color: #ef4444; }
 .result-title.timeout { color: #f59e0b; }
-.result-desc { color: #94a3b8; font-size: 0.95rem; margin-bottom: 20px; line-height: 1.6; }
+.result-desc { color: #94a3b8; font-size: 0.92rem; margin-bottom: 20px; line-height: 1.6; }
 
 .score-display {
   font-size: 3rem;
@@ -197,12 +310,11 @@ body {
   margin: 16px 0;
 }
 
-/* ── 蒙特卡洛面板 ── */
+/* ── 蒙特卡洛 ── */
 .mc-results {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin: 16px 0;
+  gap: 10px;
 }
 @media (max-width: 500px) {
   .mc-results { grid-template-columns: 1fr; }
@@ -210,29 +322,28 @@ body {
 .mc-item {
   background: rgba(0,0,0,0.3);
   border-radius: 10px;
-  padding: 16px;
+  padding: 14px;
   text-align: center;
 }
-.mc-item .mc-value { font-size: 1.5rem; font-weight: 700; color: #fff; }
-.mc-item .mc-label { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+.mc-item .mc-value { font-size: 1.4rem; font-weight: 700; color: #fff; }
+.mc-item .mc-label { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
 
 /* ── 全局统计 ── */
 .global-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin: 16px 0;
+  gap: 10px;
 }
 .global-stat {
   background: rgba(0,0,0,0.2);
   border-radius: 10px;
-  padding: 14px;
+  padding: 12px;
   text-align: center;
 }
-.global-stat .gs-value { font-size: 1.3rem; font-weight: 700; color: #f5af19; }
-.global-stat .gs-label { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+.global-stat .gs-value { font-size: 1.2rem; font-weight: 700; color: #f5af19; }
+.global-stat .gs-label { font-size: 0.75rem; color: #94a3b8; margin-top: 4px; }
 
 /* ── 滚动条 ── */
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }

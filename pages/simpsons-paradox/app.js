@@ -36,10 +36,14 @@
   function renderReveal() {
     var rates = allDeptRates();
     var tbody = document.getElementById('deptTableBody');
+    var cardsWrap = document.getElementById('deptCards');
     tbody.innerHTML = '';
+    cardsWrap.innerHTML = '';
 
     rates.forEach(function (r) {
       var femaleWin = r.diff >= 0;
+
+      // 桌面端表格
       var tr = document.createElement('tr');
       tr.innerHTML =
         '<td style="font-weight:700; color:#ffd700;">' + r.id + '</td>' +
@@ -50,6 +54,30 @@
         '<td style="color:' + (femaleWin ? '#f472b6' : '#60a5fa') + ';">' +
           (femaleWin ? '女生' : '男生') + '</td>';
       tbody.appendChild(tr);
+
+      // 手机端卡片
+      var card = document.createElement('div');
+      card.className = 'dept-card';
+      card.innerHTML =
+        '<div class="dept-card-header">' +
+          '<span class="dept-card-id">系 ' + r.id + '</span>' +
+          '<span class="dept-card-winner ' + (femaleWin ? 'female' : 'male') + '">' +
+            (femaleWin ? '女生更高 ✓' : '男生更高') +
+          '</span>' +
+        '</div>' +
+        '<div class="dept-card-rates">' +
+          '<div class="dept-card-rate-box male">' +
+            '<div class="rate-val">' + (r.maleRate * 100).toFixed(1) + '%</div>' +
+            '<div class="rate-lbl">男生录取率</div>' +
+            '<div class="rate-lbl">' + r.maleApply + '人申请</div>' +
+          '</div>' +
+          '<div class="dept-card-rate-box female">' +
+            '<div class="rate-val">' + (r.femaleRate * 100).toFixed(1) + '%</div>' +
+            '<div class="rate-lbl">女生录取率</div>' +
+            '<div class="rate-lbl">' + r.femaleApply + '人申请</div>' +
+          '</div>' +
+        '</div>';
+      cardsWrap.appendChild(card);
     });
 
     var adv = countFemaleAdvantage();
@@ -77,6 +105,7 @@
       var mPct = (d.maleApply / o.maleApply * 100);
       var fPct = (d.femaleApply / o.femaleApply * 100);
       var total = mPct + fPct;
+      var avgRate = ((deptRate(d).maleRate * 100 + deptRate(d).femaleRate * 100) / 2).toFixed(0);
 
       var row = document.createElement('div');
       row.className = 'dist-row';
@@ -90,18 +119,17 @@
             (fPct >= 5 ? fPct.toFixed(0) + '%' : '') +
           '</div>' +
         '</div>' +
-        '<div style="width:80px; font-size:0.75rem; color:#64748b; text-align:right;">' +
-          '录取率 ' + ((deptRate(d).maleRate * 100 + deptRate(d).femaleRate * 100) / 2).toFixed(0) + '%' +
-        '</div>';
+        '<div class="dist-rate-label">' + avgRate + '%</div>';
       wrap.appendChild(row);
     });
 
     // 图例
     var legend = document.createElement('div');
-    legend.style.cssText = 'display:flex; gap:16px; justify-content:center; margin-top:8px; font-size:0.8rem;';
+    legend.className = 'chart-legend';
     legend.innerHTML =
       '<span style="color:#60a5fa;">■ 男生申请占比</span>' +
-      '<span style="color:#f472b6;">■ 女生申请占比</span>';
+      '<span style="color:#f472b6;">■ 女生申请占比</span>' +
+      '<span style="color:#64748b;">右侧 = 平均录取率</span>';
     wrap.appendChild(legend);
   }
 
@@ -136,7 +164,7 @@
 
     // 图例
     var legend = document.createElement('div');
-    legend.style.cssText = 'display:flex; gap:16px; justify-content:center; margin-top:8px; font-size:0.8rem;';
+    legend.className = 'chart-legend';
     legend.innerHTML =
       '<span style="color:#60a5fa;">■ 男生录取率</span>' +
       '<span style="color:#f472b6;">■ 女生录取率</span>';

@@ -118,6 +118,10 @@ body {
 }
 .dist-seg.male { background: rgba(96,165,250,0.6); }
 .dist-seg.female { background: rgba(244,114,182,0.6); }
+.dist-rate-label { width: 50px; font-size: 0.75rem; color: #64748b; text-align: right; flex-shrink: 0; }
+
+/* ── 图例 ── */
+.chart-legend { display: flex; gap: 16px; justify-content: center; margin-top: 10px; font-size: 0.8rem; flex-wrap: wrap; }
 
 /* ── 反转提示 ── */
 .paradox-badge {
@@ -168,15 +172,100 @@ body {
 .note strong { color: #e0e0e0; }
 .note em { color: #ffd700; font-style: normal; }
 
+/* ── 手机端卡片式表格 ── */
+.dept-cards { display: none; }
+
 /* ── 响应式 ── */
 @media (max-width: 640px) {
-  .container { padding: 12px; }
-  .header h1 { font-size: 1.6rem; }
+  .container { padding: 10px; }
+  .header { padding: 24px 12px 16px; }
+  .header h1 { font-size: 1.5rem; }
+  .header p { font-size: 0.85rem; }
+
+  .section { padding: 18px 14px; margin-bottom: 16px; border-radius: 12px; }
+  .section h2 { font-size: 1.1rem; gap: 6px; }
+
   .compare-row { flex-direction: column; gap: 10px; }
+  .big-number { padding: 14px 12px; margin: 8px 0; }
   .big-number .value { font-size: 2rem; }
-  .dept-table { font-size: 0.8rem; }
-  .dept-table th, .dept-table td { padding: 8px 6px; }
-  .sim-controls input[type="range"] { width: 140px; }
-  .bar-row { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .bar-label { width: auto; }
+  .big-number .label { font-size: 0.8rem; }
+
+  /* 表格隐藏，改用卡片 */
+  .dept-table { display: none; }
+  .dept-cards { display: block; }
+  .dept-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 14px; margin-bottom: 10px;
+  }
+  .dept-card-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+  }
+  .dept-card-id { font-size: 1.2rem; font-weight: 800; color: #ffd700; }
+  .dept-card-winner {
+    font-size: 0.8rem; padding: 3px 10px; border-radius: 12px; font-weight: 600;
+  }
+  .dept-card-winner.female { background: rgba(244,114,182,0.15); color: #f472b6; }
+  .dept-card-winner.male { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .dept-card-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0; font-size: 0.85rem;
+  }
+  .dept-card-row .label { color: #94a3b8; }
+  .dept-card-row .val-male { color: #60a5fa; font-weight: 600; }
+  .dept-card-row .val-female { color: #f472b6; font-weight: 600; }
+  .dept-card-rates {
+    display: flex; gap: 8px; margin-top: 8px;
+  }
+  .dept-card-rate-box {
+    flex: 1; text-align: center; padding: 8px 4px;
+    border-radius: 8px; background: rgba(255,255,255,0.03);
+  }
+  .dept-card-rate-box .rate-val { font-size: 1.1rem; font-weight: 700; }
+  .dept-card-rate-box .rate-lbl { font-size: 0.7rem; color: #94a3b8; margin-top: 2px; }
+  .dept-card-rate-box.male .rate-val { color: #60a5fa; }
+  .dept-card-rate-box.female .rate-val { color: #f472b6; }
+
+  /* 悖论徽章 */
+  .paradox-badge { font-size: 0.8rem; padding: 6px 12px; flex-wrap: wrap; }
+
+  /* 条形图 */
+  .bar-row { gap: 6px; margin-bottom: 14px; }
+  .bar-label { width: 30px; font-size: 0.9rem; }
+  .bar-group { min-width: 0; }
+  .bar-track { height: 22px; }
+  .bar-fill { font-size: 0.7rem; padding: 0 6px; min-width: 36px; }
+  .bar-meta { font-size: 0.7rem; flex-wrap: wrap; gap: 4px; }
+
+  /* 分布图 */
+  .dist-row { gap: 6px; }
+  .dist-label { width: 28px; font-size: 0.85rem; }
+  .dist-bar-wrap { height: 24px; }
+  .dist-seg { font-size: 0.65rem; }
+  .dist-rate-label { width: 36px; font-size: 0.7rem; }
+
+  /* 图例 */
+  .chart-legend { font-size: 0.7rem; gap: 8px; }
+
+  /* 模拟控件 */
+  .sim-controls {
+    flex-direction: column; align-items: stretch; gap: 10px;
+  }
+  .sim-controls label { text-align: center; }
+  .sim-controls input[type="range"] { width: 100%; }
+  .sim-controls .btn { width: 100%; justify-content: center; }
+  .sim-result .value { font-size: 1.6rem; }
+  .sim-result .label { font-size: 0.8rem; }
+
+  /* 知识卡片 */
+  .knowledge-card { padding: 14px; }
+  .knowledge-card h4 { font-size: 0.9rem; }
+  .knowledge-card p { font-size: 0.85rem; line-height: 1.6; }
+  .knowledge-card .source { font-size: 0.75rem; }
+
+  /* 按钮 */
+  .btn { padding: 12px 16px; font-size: 0.9rem; }
+  .btn-primary { padding: 14px 20px; }
+
+  /* 文字 */
+  .note { font-size: 0.85rem; line-height: 1.6; }
 }

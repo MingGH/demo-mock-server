@@ -1,0 +1,238 @@
+/* ── 基础 ── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+.container { max-width: 960px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 20px; }
+.header h1 {
+  font-size: 2rem;
+  background: linear-gradient(135deg, #f5af19, #f12711, #f5af19);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer { 0%,100% { background-position: 0% center; } 50% { background-position: 200% center; } }
+.header p { color: #94a3b8; margin-top: 8px; font-size: 0.95rem; max-width: 650px; margin-left: auto; margin-right: auto; }
+
+/* ── 阶段切换 ── */
+.phase { display: none; }
+.phase.active { display: block; }
+
+/* ── 卡片 ── */
+.card {
+  background: rgba(255,255,255,0.05);
+  border-radius: 16px;
+  padding: 28px;
+  border: 1px solid rgba(255,255,255,0.08);
+  margin: 16px 0;
+}
+.card h2 { font-size: 1.2rem; color: #fff; margin-bottom: 16px; }
+
+/* ── 介绍页 ── */
+.intro-card { text-align: center; max-width: 650px; margin: 20px auto; }
+.intro-card p { color: #94a3b8; font-size: 0.95rem; line-height: 1.7; margin-bottom: 12px; }
+.model-desc {
+  text-align: left;
+  background: rgba(0,0,0,0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+.model-desc li { margin-bottom: 8px; list-style: none; }
+.model-desc li::before { content: '▸ '; color: #f5af19; }
+
+/* ── 按钮 ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 24px; border-radius: 12px;
+  font-size: 0.95rem; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.2s;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #f5af19, #f12711);
+  color: #fff;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(245,175,25,0.3); }
+.btn-secondary {
+  background: rgba(255,255,255,0.08);
+  color: #e0e0e0;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.12); }
+.btn-group { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+
+/* ── 游戏面板 ── */
+.game-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 700px) {
+  .game-panel { grid-template-columns: 1fr; }
+}
+
+/* ── 状态面板 ── */
+.status-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 600px) {
+  .status-bar { grid-template-columns: repeat(2, 1fr); }
+}
+.stat-item {
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.stat-item .label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; }
+.stat-item .value { font-size: 1.3rem; font-weight: 700; color: #fff; }
+.stat-item .value.danger { color: #ef4444; }
+.stat-item .value.safe { color: #22c55e; }
+.stat-item .value.warning { color: #f59e0b; }
+
+/* ── 策略选择 ── */
+.strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 16px 0;
+}
+@media (max-width: 500px) {
+  .strategy-grid { grid-template-columns: 1fr; }
+}
+.strategy-btn {
+  background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+.strategy-btn:hover { border-color: #f5af19; background: rgba(245,175,25,0.08); }
+.strategy-btn.selected { border-color: #f5af19; background: rgba(245,175,25,0.12); }
+.strategy-btn .s-name { font-weight: 700; color: #fff; font-size: 0.95rem; margin-bottom: 4px; }
+.strategy-btn .s-desc { font-size: 0.8rem; color: #94a3b8; }
+
+/* ── 暴露度仪表 ── */
+.exposure-meter {
+  position: relative;
+  height: 24px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+.exposure-fill {
+  height: 100%;
+  border-radius: 12px;
+  transition: width 0.5s ease, background 0.5s ease;
+}
+.exposure-threshold {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 2px;
+  background: #ef4444;
+  z-index: 2;
+}
+.exposure-threshold::after {
+  content: '阈值';
+  position: absolute;
+  top: -18px;
+  left: -10px;
+  font-size: 0.65rem;
+  color: #ef4444;
+}
+
+/* ── 日志 ── */
+.log-panel {
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+.log-panel .log-entry { margin-bottom: 4px; }
+.log-panel .log-entry.danger { color: #ef4444; }
+.log-panel .log-entry.success { color: #22c55e; }
+.log-panel .log-entry.warning { color: #f59e0b; }
+.log-panel .log-entry.scan { color: #60a5fa; }
+
+/* ── 图表 ── */
+.chart-container {
+  position: relative;
+  height: 260px;
+  margin: 16px 0;
+}
+
+/* ── 结果页 ── */
+.result-card { text-align: center; max-width: 650px; margin: 20px auto; }
+.result-icon { font-size: 4rem; margin-bottom: 16px; }
+.result-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+.result-title.escaped { color: #22c55e; }
+.result-title.reaped { color: #ef4444; }
+.result-title.timeout { color: #f59e0b; }
+.result-desc { color: #94a3b8; font-size: 0.95rem; margin-bottom: 20px; line-height: 1.6; }
+
+.score-display {
+  font-size: 3rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #f5af19, #f12711);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 16px 0;
+}
+
+/* ── 蒙特卡洛面板 ── */
+.mc-results {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+@media (max-width: 500px) {
+  .mc-results { grid-template-columns: 1fr; }
+}
+.mc-item {
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+.mc-item .mc-value { font-size: 1.5rem; font-weight: 700; color: #fff; }
+.mc-item .mc-label { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+
+/* ── 全局统计 ── */
+.global-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+.global-stat {
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+.global-stat .gs-value { font-size: 1.3rem; font-weight: 700; color: #f5af19; }
+.global-stat .gs-label { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+
+/* ── 滚动条 ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }

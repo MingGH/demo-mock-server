@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="30年房贷到底意味着什么？交互式计算器，可视化你的还款时间线、利息构成、月供压力和通胀对冲效应。">
+  <title>30年房贷：你的半辈子值多少利息 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-building-bank"></i> 30年房贷</h1>
+    <p>整整三十年，将近半辈子。你付出的利息可能比本金还多。算一算，看一看，这笔账到底怎么回事。</p>
+  </div>
+
+  <!-- ══════ 计算器 ══════ -->
+  <div class="section" id="calcSection">
+    <h2><i class="ti ti-calculator"></i> 房贷计算器</h2>
+
+    <div class="input-grid">
+      <div class="input-group">
+        <label>贷款总额</label>
+        <input type="number" id="inputPrincipal" value="100" min="1" max="2000" step="1">
+        <span class="unit">万元</span>
+      </div>
+      <div class="input-group">
+        <label>贷款年限</label>
+        <select id="inputYears">
+          <option value="5">5年</option>
+          <option value="10">10年</option>
+          <option value="15">15年</option>
+          <option value="20">20年</option>
+          <option value="25">25年</option>
+          <option value="30" selected>30年</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>年利率</label>
+        <input type="number" id="inputRate" value="3.5" min="0.1" max="10" step="0.05">
+        <span class="unit">%（2024年LPR约3.45%）</span>
+      </div>
+      <div class="input-group">
+        <label>月收入</label>
+        <input type="number" id="inputIncome" value="15000" min="1000" max="500000" step="500">
+        <span class="unit">元（用于计算压力指数）</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="calculate()">
+      <i class="ti ti-calculator"></i> 开始计算
+    </button>
+  </div>
+
+  <!-- ══════ 结果概览 ══════ -->
+  <div class="section" id="resultSection" style="display:none;">
+    <h2><i class="ti ti-report-analytics"></i> 计算结果</h2>
+
+    <div class="result-summary" id="resultSummary"></div>
+
+    <!-- 压力指数 -->
+    <div style="margin: 20px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:0.9rem;color:#a0a0a0;">月供压力指数</span>
+        <span id="pressureText" style="font-weight:700;"></span>
+      </div>
+      <div class="pressure-meter">
+        <div class="pressure-fill" id="pressureFill"></div>
+      </div>
+      <div class="pressure-label">
+        <span>舒适 ≤30%</span>
+        <span>紧张 30-50%</span>
+        <span>高压 50-70%</span>
+        <span>危险 >70%</span>
+      </div>
+    </div>
+
+    <div id="pressureInsight" class="insight-box"></div>
+  </div>
+
+  <!-- ══════ 年限对比 ══════ -->
+  <div class="section" id="compareSection" style="display:none;">
+    <h2><i class="ti ti-arrows-exchange"></i> 不同年限对比</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">同样的贷款金额和利率，年限不同，月供和总利息天差地别。</p>
+
+    <table class="compare-table" id="compareTable">
+      <thead>
+        <tr>
+          <th>年限</th>
+          <th>月供</th>
+          <th>总利息</th>
+          <th>利息/本金</th>
+        </tr>
+      </thead>
+      <tbody id="compareBody"></tbody>
+    </table>
+
+    <div class="chart-wrap" style="height:280px;">
+      <canvas id="compareChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ══════ 还款时间线 ══════ -->
+  <div class="section" id="timelineSection" style="display:none;">
+    <h2><i class="ti ti-timeline"></i> 还款时间线</h2>
+
+    <div class="tabs">
+      <span class="tab active" data-tab="chart" onclick="switchTimelineTab('chart')">图表视图</span>
+      <span class="tab" data-tab="life" onclick="switchTimelineTab('life')">人生对照</span>
+    </div>
+
+    <div id="timelineChart" class="chart-wrap" style="height:300px;">
+      <canvas id="stackedChart"></canvas>
+    </div>
+
+    <div id="timelineLife" style="display:none;">
+      <div class="input-group" style="max-width:200px;margin-bottom:16px;">
+        <label>你的贷款起始年龄</label>
+        <input type="number" id="inputAge" value="28" min="20" max="55" step="1" onchange="renderLifeTimeline()">
+      </div>
+      <div class="timeline" id="lifeTimeline"></div>
+    </div>
+
+    <div class="insight-box red" id="timelineInsight" style="display:none;"></div>
+  </div>
+
+  <!-- ══════ 通胀对冲 ══════ -->
+  <div class="section" id="inflationSection" style="display:none;">
+    <h2><i class="ti ti-trending-down"></i> 通胀对冲效应</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+      月供是固定的，但钱在贬值。30年后同样的月供，实际购买力只剩多少？
+    </p>
+
+    <div class="input-group" style="max-width:200px;margin-bottom:16px;">
+      <label>假设年通胀率</label>
+      <input type="number" id="inputInflation" value="3" min="0" max="10" step="0.5" onchange="renderInflation()">
+      <span class="unit">%</span>
+    </div>
+
+    <div id="inflationBars"></div>
+
+    <div class="insight-box green" id="inflationInsight"></div>
+  </div>
+
+  <!-- ══════ 时间进度条 ══════ -->
+  <div class="section" id="progressSection" style="display:none;">
+    <h2><i class="ti ti-hourglass-high"></i> 人生进度条</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+      拖动滑块，看看还贷的每一年你在经历什么，还剩多少本金。
+    </p>
+
+    <div class="progress-slider-area">
+      <div class="progress-year-display">
+        <span class="progress-year-label">第 <strong id="progressYearNum">0</strong> 年</span>
+        <span class="progress-age-label">你 <strong id="progressAgeNum">28</strong> 岁</span>
+      </div>
+      <input type="range" id="progressSlider" min="0" max="30" value="0" step="1" oninput="updateProgress()">
+      <div class="progress-endpoints">
+        <span>签合同</span>
+        <span>还完了</span>
+      </div>
+    </div>
+
+    <!-- 进度条可视化 -->
+    <div class="life-progress-bar">
+      <div class="life-bar-track">
+        <div class="life-bar-paid" id="lifePaidBar"></div>
+        <div class="life-bar-remaining" id="lifeRemainingBar"></div>
+      </div>
+      <div class="life-bar-labels">
+        <span id="lifePaidLabel">已还 0%</span>
+        <span id="lifeRemainingLabel">剩余 100%</span>
+      </div>
+    </div>
+
+    <!-- 当前年份信息卡片 -->
+    <div class="progress-info-cards" id="progressCards">
+      <div class="progress-card">
+        <div class="progress-card-icon"><i class="ti ti-calendar-event"></i></div>
+        <div class="progress-card-content">
+          <div class="progress-card-title">人生事件</div>
+          <div class="progress-card-value" id="progressEvent">签下贷款合同</div>
+        </div>
+      </div>
+      <div class="progress-card">
+        <div class="progress-card-icon"><i class="ti ti-building-bank"></i></div>
+        <div class="progress-card-content">
+          <div class="progress-card-title">剩余本金</div>
+          <div class="progress-card-value" id="progressRemaining">100万</div>
+        </div>
+      </div>
+      <div class="progress-card">
+        <div class="progress-card-icon"><i class="ti ti-cash"></i></div>
+        <div class="progress-card-content">
+          <div class="progress-card-title">已付利息</div>
+          <div class="progress-card-value" id="progressInterestPaid">0万</div>
+        </div>
+      </div>
+      <div class="progress-card">
+        <div class="progress-card-icon"><i class="ti ti-percentage"></i></div>
+        <div class="progress-card-content">
+          <div class="progress-card-title">本金还款进度</div>
+          <div class="progress-card-value" id="progressPercent">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 里程碑标记 -->
+    <div class="milestones" id="milestones"></div>
+  </div>
+
+  <!-- ══════ 提前还款 ══════ -->
+  <div class="section" id="prepaySection" style="display:none;">
+    <h2><i class="ti ti-rocket"></i> 提前还款模拟</h2>
+
+    <div class="input-grid">
+      <div class="input-group">
+        <label>第几年提前还款</label>
+        <input type="number" id="prepayYear" value="5" min="1" max="29" step="1">
+      </div>
+      <div class="input-group">
+        <label>提前还款金额</label>
+        <input type="number" id="prepayAmount" value="20" min="1" max="500" step="1">
+        <span class="unit">万元</span>
+      </div>
+      <div class="input-group">
+        <label>还款方式</label>
+        <select id="prepayMode">
+          <option value="shorten">缩短年限（月供不变）</option>
+          <option value="reduce">减少月供（年限不变）</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="calcPrepay()">
+      <i class="ti ti-calculator"></i> 计算节省利息
+    </button>
+
+    <div id="prepayResult" style="display:none;margin-top:20px;">
+      <div class="result-summary" id="prepayResultGrid"></div>
+    </div>
+  </div>
+
+
+
+</div>
+
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

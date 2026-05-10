@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="用蒙特卡洛模拟揭示手游抽卡的真实概率。模拟原神、星铁等保底机制，对比不同策略的长期收益，用数据告诉你什么时候该抽、什么时候该攒。">
+  <title>游戏概率策略模拟器 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-dice-5"></i> 游戏概率策略模拟器</h1>
+    <p>抽卡手游的保底机制到底怎么运作？攒石头和随缘抽哪个划算？用蒙特卡洛模拟跑10000次，让数据替你做决定。</p>
+  </div>
+
+  <!-- ── Tab 导航 ── -->
+  <div class="tab-bar">
+    <button class="tab active" data-tab="simulator" onclick="switchTab('simulator')"><i class="ti ti-cards"></i> 抽卡模拟</button>
+    <button class="tab" data-tab="strategy" onclick="switchTab('strategy')"><i class="ti ti-chart-bar"></i> 策略对比</button>
+    <button class="tab" data-tab="fallacy" onclick="switchTab('fallacy')"><i class="ti ti-brain"></i> 赌徒谬误</button>
+  </div>
+
+  <!-- ══════════ Tab 1: 抽卡模拟 ══════════ -->
+  <div class="tab-content active" id="tab-simulator">
+    <div class="section">
+      <h2><i class="ti ti-settings"></i> 选择卡池模型</h2>
+      <div class="pool-selector" id="poolSelector"></div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-player-play"></i> 模拟抽卡</h2>
+
+      <div class="config-row">
+        <span class="config-label">基础概率：</span>
+        <span class="config-value" id="cfgRate">0.6%</span>
+        <span class="config-label" style="margin-left:20px">硬保底：</span>
+        <span class="config-value" id="cfgPity">90抽</span>
+        <span class="config-label" style="margin-left:20px">50/50：</span>
+        <span class="config-value" id="cfgFifty">是</span>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>模拟次数</span>
+          <span class="val" id="simCountVal">10000</span>
+        </div>
+        <input type="range" id="simCount" min="1000" max="50000" value="10000" step="1000" oninput="document.getElementById('simCountVal').textContent=this.value">
+      </div>
+
+      <button class="btn btn-primary btn-full" id="runSimBtn" onclick="runSimulation()">
+        <i class="ti ti-player-play"></i> 开始模拟
+      </button>
+
+      <!-- 结果区域 -->
+      <div id="simResults" style="display:none;">
+        <div class="stats-grid" id="simStats"></div>
+
+        <div class="chart-wrap" style="height:280px;">
+          <canvas id="histChart"></canvas>
+        </div>
+
+        <div class="chart-wrap" style="height:240px;">
+          <canvas id="cdfChart"></canvas>
+        </div>
+
+        <div class="insight-box" id="simInsight">
+          <h3><i class="ti ti-bulb"></i> 数据解读</h3>
+          <p id="simInsightText"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 单次体验 -->
+    <div class="section">
+      <h2><i class="ti ti-sparkles"></i> 亲手抽一次</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">点击按钮体验抽卡过程，感受保底机制如何运作。</p>
+
+      <div class="gacha-display">
+        <div class="gacha-counter" id="pullCounter">0</div>
+        <div class="gacha-label">已抽次数</div>
+        <div class="gacha-pity" id="pityDisplay">当前垫刀：0 / <span id="pityMax">90</span></div>
+      </div>
+
+      <div class="pull-result" id="pullDots"></div>
+
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="pullOnce()"><i class="ti ti-plus"></i> 单抽</button>
+        <button class="btn btn-primary" onclick="pullTen()"><i class="ti ti-layers-linked"></i> 十连</button>
+        <button class="btn btn-secondary" onclick="resetPull()"><i class="ti ti-refresh"></i> 重置</button>
+      </div>
+
+      <div id="pullHitMsg" style="display:none;text-align:center;margin-top:16px;">
+        <span style="color:#ffd700;font-size:1.2rem;font-weight:700;">
+          <i class="ti ti-star-filled"></i> 出货！用了 <span id="hitPulls">0</span> 抽
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Tab 2: 策略对比 ══════════ -->
+  <div class="tab-content" id="tab-strategy">
+    <div class="section">
+      <h2><i class="ti ti-chart-bar"></i> 三种策略对比</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:20px;">
+        给你一年的免费石头（约等于180抽），三种花法，哪种能拿到最多角色？
+      </p>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>年度预算（抽数）</span>
+          <span class="val" id="budgetVal">180</span>
+        </div>
+        <input type="range" id="budgetSlider" min="60" max="500" value="180" step="10" oninput="document.getElementById('budgetVal').textContent=this.value">
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="runStrategy()">
+        <i class="ti ti-chart-arrows"></i> 模拟 5000 次对比
+      </button>
+
+      <div id="strategyResults" style="display:none;">
+        <div class="strategy-grid" id="strategyGrid"></div>
+
+        <div class="chart-wrap" style="height:280px;">
+          <canvas id="strategyChart"></canvas>
+        </div>
+
+        <div class="insight-box green" id="strategyInsight">
+          <h3><i class="ti ti-bulb"></i> 策略建议</h3>
+          <p id="strategyInsightText"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-calculator"></i> 期望花费计算器</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        想抽到某个角色，期望要花多少？最坏情况呢？
+      </p>
+
+      <div class="stats-grid" id="expectedStats">
+        <div class="stat-card"><div class="val" id="expMean">—</div><div class="lbl">期望抽数</div></div>
+        <div class="stat-card"><div class="val" id="expMedian">—</div><div class="lbl">中位数</div></div>
+        <div class="stat-card"><div class="val" id="expP90">—</div><div class="lbl">90%玩家在此之前出</div></div>
+        <div class="stat-card red"><div class="val" id="expWorst">—</div><div class="lbl">最坏情况</div></div>
+      </div>
+
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 怎么理解这些数字</h3>
+        <p>期望值是「平均要抽这么多次」，但你可能比平均幸运，也可能比平均倒霉。中位数是「一半人在这之前出货」。P90是「90%的人在这之前出货」——如果你想稳，按P90准备预算。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Tab 3: 赌徒谬误 ══════════ -->
+  <div class="tab-content" id="tab-fallacy">
+    <div class="section">
+      <h2><i class="ti ti-brain"></i> 赌徒谬误破除器</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:20px;">
+        「我已经50抽没出了，下一抽概率肯定更高吧？」——如果没有保底机制，答案是：不会。
+      </p>
+
+      <div class="fallacy-demo">
+        <h3 style="color:#ffd700;margin-bottom:12px;font-size:1rem;">无保底情况下的连续不出概率</h3>
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>基础概率</span>
+            <span class="val" id="fallacyRateVal">1.6%</span>
+          </div>
+          <input type="range" id="fallacyRate" min="0.1" max="10" value="1.6" step="0.1" oninput="updateFallacy()">
+        </div>
+
+        <div class="streak-display" id="streakDisplay"></div>
+
+        <div class="chart-wrap" style="height:220px;">
+          <canvas id="fallacyChart"></canvas>
+        </div>
+      </div>
+
+      <div class="insight-box red">
+        <h3><i class="ti ti-alert-triangle"></i> 关键认知</h3>
+        <p>没有保底机制的游戏里，每一抽都是独立事件。你之前抽了100次没出，第101次的概率跟第1次完全一样。「我垫了这么多，下次一定出」是赌徒谬误。保底机制是游戏公司给你的「安全网」，但它也让你产生了「快到保底了，再充一点」的消费冲动。</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-flame"></i> 保底 vs 无保底：差距有多大</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        同样0.6%的概率，有保底和没保底的体验天差地别。
+      </p>
+
+      <button class="btn btn-primary btn-full" onclick="runPityComparison()">
+        <i class="ti ti-arrows-diff"></i> 模拟对比
+      </button>
+
+      <div id="pityCompareResults" style="display:none;">
+        <div class="stats-grid" id="pityCompareStats"></div>
+
+        <div class="chart-wrap" style="height:260px;">
+          <canvas id="pityCompareChart"></canvas>
+        </div>
+
+        <div class="insight-box green">
+          <h3><i class="ti ti-shield-check"></i> 保底的价值</h3>
+          <p id="pityCompareText"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 原理总结 -->
+    <div class="section">
+      <h2><i class="ti ti-school"></i> 概率思维工具箱</h2>
+      <div class="principle-grid">
+        <div class="principle-card">
+          <div class="num">01</div>
+          <h4>期望管理</h4>
+          <p>别用「我觉得」，用期望值。0.6%概率期望167抽出一个，有保底约80抽。按期望准备预算，超出就是赚到。</p>
+        </div>
+        <div class="principle-card">
+          <div class="num">02</div>
+          <h4>方差意识</h4>
+          <p>期望80抽，但方差很大。有人10抽出，有人吃满保底。关注P90而非均值，这是风险管理的基本功。</p>
+        </div>
+        <div class="principle-card">
+          <div class="num">03</div>
+          <h4>沉没成本</h4>
+          <p>「我已经垫了60抽，不抽完太亏了」——这是沉没成本谬误。已经花的钱收不回来，只看未来的期望收益。</p>
+        </div>
+        <div class="principle-card">
+          <div class="num">04</div>
+          <h4>独立性判断</h4>
+          <p>有保底的游戏，抽数确实影响下一抽概率。没保底的游戏，每抽独立。分清这两种情况，是理性决策的前提。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

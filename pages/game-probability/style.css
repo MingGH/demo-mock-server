@@ -1,0 +1,210 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+}
+.container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 30px; margin-bottom: 30px; }
+.header h1 {
+  font-size: 2.4rem;
+  background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: shimmer 3s linear infinite; margin-bottom: 12px;
+}
+@keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+.header p { font-size: 1rem; color: #a0a0a0; max-width: 640px; margin: 0 auto; }
+
+/* ── Section card ── */
+.section {
+  background: rgba(255,255,255,0.05); border-radius: 16px; padding: 28px;
+  margin-bottom: 28px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+}
+.section h2 { font-size: 1.35rem; margin-bottom: 20px; color: #ffd700; display: flex; align-items: center; gap: 10px; }
+
+/* ── Buttons ── */
+.btn {
+  padding: 11px 22px; border: none; border-radius: 8px; font-size: 0.95rem;
+  cursor: pointer; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 700; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.35); }
+.btn-secondary { background: rgba(255,255,255,0.08); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.18); }
+.btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.13); }
+.btn-full { width: 100%; justify-content: center; }
+.btn-sm { padding: 7px 14px; font-size: 0.85rem; }
+.btn-danger { background: linear-gradient(135deg, #ff4444, #cc0000); color: white; font-weight: 600; }
+.btn-danger:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,68,68,0.35); }
+
+/* ── Tabs ── */
+.tab-bar {
+  display: flex; gap: 4px; margin-bottom: 24px;
+  background: rgba(0,0,0,0.2); border-radius: 10px; padding: 4px;
+}
+.tab {
+  flex: 1; padding: 10px 16px; border: none; border-radius: 8px;
+  background: transparent; color: #a0a0a0; font-size: 0.9rem;
+  cursor: pointer; transition: all 0.2s; text-align: center; font-weight: 500;
+}
+.tab.active { background: rgba(255,215,0,0.15); color: #ffd700; font-weight: 600; }
+.tab:hover:not(.active) { color: #e8e8e8; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── Pool selector ── */
+.pool-selector {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.pool-card {
+  background: rgba(0,0,0,0.25); border-radius: 12px; padding: 16px;
+  border: 2px solid rgba(255,255,255,0.08); cursor: pointer;
+  transition: all 0.2s; text-align: center;
+}
+.pool-card:hover { border-color: rgba(255,215,0,0.3); }
+.pool-card.active { border-color: #ffd700; background: rgba(255,215,0,0.08); }
+.pool-card .pool-icon { font-size: 2rem; margin-bottom: 8px; }
+.pool-card .pool-name { color: #ffd700; font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+.pool-card .pool-rate { color: #a0a0a0; font-size: 0.82rem; }
+
+/* ── Config panel ── */
+.config-row {
+  display: flex; gap: 16px; align-items: center; margin-bottom: 14px; flex-wrap: wrap;
+}
+.config-label { color: #a0a0a0; font-size: 0.88rem; min-width: 100px; }
+.config-value { color: #ffd700; font-weight: 700; font-size: 1rem; }
+
+/* ── Stats grid ── */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 14px; margin: 18px 0;
+}
+.stat-card {
+  background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px;
+  text-align: center; border: 1px solid rgba(255,255,255,0.08);
+}
+.stat-card .val { font-size: 1.5rem; font-weight: 700; color: #ffd700; margin-bottom: 4px; }
+.stat-card .lbl { font-size: 0.8rem; color: #a0a0a0; }
+.stat-card.highlight { border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.06); }
+.stat-card.red .val { color: #ef9a9a; }
+.stat-card.green .val { color: #81c784; }
+
+/* ── Chart containers ── */
+.chart-wrap { position: relative; width: 100%; margin: 16px 0; }
+.chart-wrap canvas { display: block; }
+
+/* ── Insight boxes ── */
+.insight-box {
+  background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,183,0,0.04));
+  border-left: 4px solid #ffd700; padding: 18px 20px; border-radius: 0 12px 12px 0; margin: 18px 0;
+}
+.insight-box h3 { color: #ffd700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 1rem; }
+.insight-box p { color: #c0c0c0; line-height: 1.8; font-size: 0.92rem; }
+.insight-box.green { background: linear-gradient(135deg, rgba(76,175,80,0.08), rgba(0,200,0,0.04)); border-left-color: #4CAF50; }
+.insight-box.green h3 { color: #81c784; }
+.insight-box.red { background: linear-gradient(135deg, rgba(255,68,68,0.08), rgba(255,0,0,0.04)); border-left-color: #ff4444; }
+.insight-box.red h3 { color: #ef9a9a; }
+
+/* ── Pull animation ── */
+.pull-result {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; min-height: 40px;
+  justify-content: center;
+}
+.pull-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.pull-dot.miss { background: rgba(255,255,255,0.15); }
+.pull-dot.hit { background: #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.6); }
+@keyframes popIn {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── Gacha visual ── */
+.gacha-display {
+  text-align: center; padding: 30px 20px;
+  background: rgba(0,0,0,0.2); border-radius: 14px;
+  margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.07);
+}
+.gacha-counter {
+  font-size: 3rem; font-weight: 700; color: #ffd700;
+  margin-bottom: 8px; font-variant-numeric: tabular-nums;
+}
+.gacha-label { color: #a0a0a0; font-size: 0.9rem; }
+.gacha-pity { color: #ef9a9a; font-size: 0.85rem; margin-top: 8px; }
+
+/* ── Strategy compare ── */
+.strategy-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0;
+}
+.strategy-card {
+  background: rgba(0,0,0,0.2); border-radius: 12px; padding: 18px;
+  border: 1px solid rgba(255,255,255,0.07); text-align: center;
+}
+.strategy-card h4 { color: #ffd700; font-size: 0.95rem; margin-bottom: 12px; }
+.strategy-card .big { font-size: 2rem; font-weight: 700; margin: 8px 0; }
+.strategy-card .sub { font-size: 0.82rem; color: #a0a0a0; }
+.strategy-card.best { border-color: rgba(76,175,80,0.5); }
+.strategy-card.best .big { color: #81c784; }
+.strategy-card.worst { border-color: rgba(255,68,68,0.3); }
+.strategy-card.worst .big { color: #ef9a9a; }
+
+/* ── Slider ── */
+.slider-group { margin-bottom: 16px; }
+.slider-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 6px; font-size: 0.85rem; color: #a0a0a0;
+}
+.slider-label .val { color: #ffd700; font-weight: 700; font-size: 1rem; }
+input[type="range"] {
+  width: 100%; height: 5px; border-radius: 3px;
+  background: rgba(255,255,255,0.12); outline: none;
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #ffd700; cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(255,215,0,0.2);
+}
+
+/* ── Principle cards ── */
+.principle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 16px; }
+.principle-card {
+  background: rgba(0,0,0,0.2); border-radius: 12px; padding: 18px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.principle-card .num { font-size: 2rem; font-weight: 700; color: rgba(255,215,0,0.3); line-height: 1; margin-bottom: 8px; }
+.principle-card h4 { color: #ffd700; font-size: 0.95rem; margin-bottom: 6px; }
+.principle-card p { color: #a0a0a0; font-size: 0.85rem; line-height: 1.6; }
+
+/* ── Gambler fallacy ── */
+.fallacy-demo {
+  background: rgba(0,0,0,0.2); border-radius: 14px; padding: 20px;
+  border: 1px solid rgba(255,255,255,0.07); margin: 16px 0;
+}
+.streak-display {
+  display: flex; align-items: center; gap: 12px; margin: 12px 0; flex-wrap: wrap;
+}
+.streak-box {
+  padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.9rem;
+}
+.streak-box.cold { background: rgba(100,181,246,0.15); color: #64b5f6; border: 1px solid rgba(100,181,246,0.3); }
+.streak-box.hot { background: rgba(255,215,0,0.15); color: #ffd700; border: 1px solid rgba(255,215,0,0.3); }
+
+/* ── Mobile ── */
+@media (max-width: 680px) {
+  .container { padding: 12px; }
+  .header { padding: 24px 12px 20px; }
+  .header h1 { font-size: 1.6rem; }
+  .section { padding: 16px; }
+  .pool-selector { grid-template-columns: 1fr 1fr; }
+  .strategy-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .principle-grid { grid-template-columns: 1fr; }
+  .tab { font-size: 0.82rem; padding: 8px 10px; }
+}

@@ -77,9 +77,14 @@
       <button class="btn-primary" id="runBtn">
         <i class="ti ti-bolt"></i> 开始抢票
       </button>
-      <button class="btn-secondary" id="batchBtn">
-        <i class="ti ti-repeat"></i> 连抢 <input type="number" id="batchRuns" value="100" min="10" max="10000" step="10" style="width:50px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;padding:4px 6px;text-align:center;"> 次
-      </button>
+      <div class="batch-input-row">
+        <span>连抢</span>
+        <input type="number" id="batchRuns" value="100" min="10" max="10000" step="10">
+        <span>次</span>
+        <button class="btn-secondary" id="batchBtn">
+          <i class="ti ti-repeat"></i> 开始
+        </button>
+      </div>
     </div>
 
   </div>

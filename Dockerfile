@@ -11,5 +11,8 @@ RUN mkdir -p $PROJECT_HOME && mkdir -p $PROJECT_HOME/logs
 
 ARG JAR_FILE
 COPY ${JAR_FILE} $PROJECT_HOME/${JAR_NAME}.jar
+COPY pages/ $PROJECT_HOME/pages/
+
+WORKDIR $PROJECT_HOME
 
 ENTRYPOINT java -Xms256m -Xmx256m -Dvertx.options.eventLoopPoolSize=2 -jar $PROJECT_HOME/$PROJECT_NAME.jar

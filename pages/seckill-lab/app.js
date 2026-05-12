@@ -99,8 +99,32 @@ function runBatch() {
   if (animating) return;
   const s = currentScenario;
   const runs = Math.min(parseInt($('batchRuns').value) || 100, 1000);
-  const batchResult = Engine.batchSimulate(s.n, s.m, s.mean, s.std, s.min, s.max, runs);
-  showBatchResult(batchResult);
+  
+  // 显示运行中状态
+  const btn = $('batchBtn');
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.classList.add('running');
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation: spin 1s linear infinite;"></i> 模拟中...';
+  
+  // 添加 spin 动画（如果没有）
+  if (!document.getElementById('spinStyle')) {
+    const style = document.createElement('style');
+    style.id = 'spinStyle';
+    style.textContent = '@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }';
+    document.head.appendChild(style);
+  }
+  
+  // 用 setTimeout 让 UI 先更新
+  setTimeout(() => {
+    const batchResult = Engine.batchSimulate(s.n, s.m, s.mean, s.std, s.min, s.max, runs);
+    showBatchResult(batchResult);
+    
+    // 恢复按钮状态
+    btn.disabled = false;
+    btn.classList.remove('running');
+    btn.innerHTML = originalText;
+  }, 50);
 }
 
 // ===== 动画 =====

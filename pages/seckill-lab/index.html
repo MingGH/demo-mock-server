@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="为什么秒杀、抢票你永远抢不到？用并发竞速模拟可视化网络延迟的残酷，亲眼看见几千个请求的先后到达顺序。">
+  <title>秒杀抢票模拟器：为什么你永远抢不到 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-bolt"></i> 秒杀抢票模拟器</h1>
+    <p>你和几千人同时点击「抢」，服务器按请求到达顺序分配。谁的延迟低谁先到——网络面前，人人平等吗？</p>
+  </div>
+
+  <!-- ── Canvas 赛车场 ── -->
+  <div class="section">
+    <canvas id="raceCanvas"></canvas>
+  </div>
+
+  <!-- ── 参数面板 ── -->
+  <div class="section">
+    <div class="control-grid">
+
+      <!-- 场景选择 -->
+      <div class="control-card">
+        <h3><i class="ti ti-settings"></i> 抢票场景</h3>
+        <div class="control-row">
+          <select id="scenario">
+            <option value="0">热门演唱会 (2000人抢100张)</option>
+            <option value="1">春运火车票 (5000人抢300张)</option>
+            <option value="2">iPhone 首发 (10000人抢500台)</option>
+            <option value="3">限量球鞋 (5000人抢50双)</option>
+            <option value="4">茅台预约 (10000人抢200瓶)</option>
+            <option value="5">自定义参数</option>
+          </select>
+          <span class="stat-chip"><span class="val" id="scenarioN">2000</span> 人</span>
+          <span class="stat-chip danger"><span class="val" id="scenarioM">100</span> 名额</span>
+        </div>
+        <p class="hint" id="scenarioDesc" style="margin:8px 0 0 0;"></p>
+        <div id="customParams">
+          <label>人数: <input type="number" id="custN" min="100" max="50000" value="1000"></label>
+          <label>库存: <input type="number" id="custM" min="1" max="10000" value="100"></label>
+          <label>平均延迟(ms): <input type="number" id="custMean" min="20" max="500" value="150"></label>
+          <label>延迟标准差: <input type="number" id="custStd" min="10" max="300" value="60"></label>
+        </div>
+      </div>
+
+      <!-- 全局统计 -->
+      <div class="control-card">
+        <h3><i class="ti ti-chart-bar"></i> 所有玩家历史统计</h3>
+        <div class="global-stats">
+          <div class="global-chip">
+            <span class="chip-val" id="globalTotal">--</span>
+            <span class="chip-lab">总模拟次数</span>
+          </div>
+          <div class="global-chip">
+            <span class="chip-val" id="globalWins">--</span>
+            <span class="chip-lab">抢到次数</span>
+          </div>
+          <div class="global-chip">
+            <span class="chip-val" id="globalRate">--</span>
+            <span class="chip-lab">全站胜率</span>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:10px;">每次模拟结束后自动上报，看看大家抢到的概率有多低。</p>
+      </div>
+
+    </div>
+
+    <!-- 按钮 -->
+    <div class="btn-row">
+      <button class="btn-primary" id="runBtn">
+        <i class="ti ti-bolt"></i> 开始抢票
+      </button>
+      <button class="btn-secondary" id="batchBtn">
+        <i class="ti ti-repeat"></i> 连抢 <input type="number" id="batchRuns" value="100" min="10" max="1000" step="10" style="width:50px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;padding:4px 6px;text-align:center;"> 次
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ── 单次结果 ── -->
+  <div class="section result-box" id="resultSection" style="display:none;">
+    <div class="result-icon" id="resultIcon"></div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-stats">
+      <div class="result-stat">
+        你的排名
+        <span class="stat-val" id="resultRank"></span>
+      </div>
+      <div class="result-stat">
+        你的延迟
+        <span class="stat-val" id="resultLatency"></span>
+      </div>
+      <div class="result-stat">
+        抢到线
+        <span class="stat-val" id="resultCutoff"></span>
+      </div>
+      <div class="result-stat">
+        差距
+        <span class="stat-val" id="resultGap"></span>
+      </div>
+    </div>
+    <p class="gap-note" id="gapNote"></p>
+  </div>
+
+  <!-- ── 批量结果 ── -->
+  <div class="section result-box" id="batchSection" style="display:none;">
+    <div class="result-icon"><i class="ti ti-chart-bar"></i></div>
+    <div class="result-title" style="color:#ffd700;">连续模拟结果</div>
+    <div id="batchResult"></div>
+    <p class="gap-note">每次模拟你的延迟都是随机生成的，模拟你在不同网络环境下的运气。</p>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

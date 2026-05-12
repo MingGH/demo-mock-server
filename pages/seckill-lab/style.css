@@ -1,0 +1,326 @@
+/* ===== 秒杀抢票模拟器 ===== */
+canvas#raceCanvas {
+  width: 100%;
+  max-width: 1000px;
+  height: auto;
+  aspect-ratio: 1000 / 300;
+  border-radius: 12px;
+  background: #0a0a0f;
+  display: block;
+  margin: 0 auto;
+}
+
+/* 控制面板 */
+.control-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.control-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.control-card h3 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.control-row select,
+.control-row input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.control-row select:focus,
+.control-row input:focus {
+  border-color: #ffd700;
+}
+
+.control-row select {
+  min-width: 180px;
+  cursor: pointer;
+}
+
+.control-row select option {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+.control-row input[type="number"] {
+  width: 70px;
+  text-align: center;
+}
+
+.control-row input[type="range"] {
+  -webkit-appearance: none;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  border: none;
+  padding: 0;
+  width: 100px;
+}
+
+.control-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffd700;
+  cursor: pointer;
+}
+
+.stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: #ffd700;
+  font-weight: 600;
+}
+
+.stat-chip .val {
+  color: #fff;
+}
+
+.stat-chip.danger {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+/* 按钮 */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #ffd700, #ffb300);
+  color: #1a1a2e;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  transform: none;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.control-row .hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-left: 6px;
+}
+
+/* 自定义参数 */
+#customParams {
+  display: none;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+#customParams label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+#customParams input {
+  width: 60px;
+}
+
+/* 结果区域 */
+.result-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-top: 16px;
+  text-align: center;
+}
+
+.result-icon {
+  font-size: 32px;
+  margin-bottom: 4px;
+}
+
+.result-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+}
+
+.result-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.result-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.result-stat .stat-val {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin-top: 2px;
+}
+
+.gap-note {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 4px 0 0 0;
+  font-style: italic;
+}
+
+/* 批量结果 */
+.batch-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.batch-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+.batch-label {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.batch-value {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.batch-note {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 4px 0 0 0;
+}
+
+/* 全局统计 */
+.global-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.global-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 16px;
+  text-align: center;
+  min-width: 90px;
+}
+
+.global-chip .chip-val {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+.global-chip .chip-lab {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 2px;
+}
+
+/* 响应式 */
+@media (max-width: 700px) {
+  .control-grid {
+    grid-template-columns: 1fr;
+  }
+  .result-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .btn-row {
+    flex-direction: column;
+  }
+}

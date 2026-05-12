@@ -13,6 +13,7 @@ import com.example.demo_mock_server.service.CaptchaStatsService;
 import com.example.demo_mock_server.service.StroopStatsService;
 import com.example.demo_mock_server.service.CascadeFailureService;
 import com.example.demo_mock_server.service.CosmicReaperService;
+import com.example.demo_mock_server.service.SecKillStatsService;
 import com.example.demo_mock_server.service.TimePerceptionService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
@@ -180,6 +181,12 @@ public class RouterConfig {
         CosmicReaperHandler cosmicReaperHandler = new CosmicReaperHandler(cosmicReaperService);
         router.post("/cosmic-reaper/submit").handler(new RateLimitHandler(10, 60)).handler(cosmicReaperHandler);
         router.get("/cosmic-reaper/stats").handler(cosmicReaperHandler);
+
+        // 秒杀抢票模拟器统计
+        SecKillStatsService seckillService = new SecKillStatsService(mysqlPool);
+        SecKillStatsHandler seckillHandler = new SecKillStatsHandler(seckillService);
+        router.post("/seckill/submit").handler(new RateLimitHandler(10, 60)).handler(seckillHandler);
+        router.get("/seckill/stats").handler(seckillHandler);
 
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();

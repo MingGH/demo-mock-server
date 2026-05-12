@@ -98,7 +98,7 @@ function runSimulation() {
 function runBatch() {
   if (animating) return;
   const s = currentScenario;
-  const runs = Math.min(parseInt($('batchRuns').value) || 100, 1000);
+  const runs = Math.min(parseInt($('batchRuns').value) || 100, 10000);
   
   // 显示运行中状态
   const btn = $('batchBtn');

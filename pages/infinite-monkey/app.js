@@ -60,6 +60,7 @@ function init() {
   selectPreset(0);
   renderTarget();
   loadGlobalStats();
+  setInterval(loadGlobalStats, 5000);
 }
 
 function bindEvents() {

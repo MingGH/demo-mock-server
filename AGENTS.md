@@ -74,7 +74,8 @@ python3 scripts/sync.py
 
 ## 部署
 
-- 推送到 `main` 分支 → GitHub Actions 自动构建 Docker 镜像 → 推送到阿里云容器镜像仓库 → K3s 滚动更新
+- **前端：** Cloudflare Pages 直接托管 `pages/`、`components/`、`data/`、`images/` 等静态目录，推送 `main` 后自动同步部署
+- **后端：** GitHub Actions 构建 Docker 镜像 → 阿里云容器镜像仓库 → K3s 滚动更新（`Dockerfile` 只打包 fat jar，不含前端文件）
 - 密钥通过 K3s Secret 注入（MYSQL_HOST/PORT/DB/USER/PASSWORD）
 - 健康检查端点：`GET /chinese-names?n=1`（轻量，返回 200）
 

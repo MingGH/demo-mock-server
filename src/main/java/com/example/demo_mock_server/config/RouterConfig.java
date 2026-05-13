@@ -13,6 +13,7 @@ import com.example.demo_mock_server.service.CaptchaStatsService;
 import com.example.demo_mock_server.service.StroopStatsService;
 import com.example.demo_mock_server.service.CascadeFailureService;
 import com.example.demo_mock_server.service.CosmicReaperService;
+import com.example.demo_mock_server.service.MonkeyStatsService;
 import com.example.demo_mock_server.service.SecKillStatsService;
 import com.example.demo_mock_server.service.TimePerceptionService;
 import com.example.demo_mock_server.service.WordCloudService;
@@ -187,6 +188,12 @@ public class RouterConfig {
         SecKillStatsHandler seckillHandler = new SecKillStatsHandler(seckillService);
         router.post("/seckill/submit").handler(new RateLimitHandler(10, 60)).handler(seckillHandler);
         router.get("/seckill/stats").handler(seckillHandler);
+
+        // 无限猴子打字机统计
+        MonkeyStatsService monkeyService = new MonkeyStatsService(mysqlPool);
+        MonkeyStatsHandler monkeyHandler = new MonkeyStatsHandler(monkeyService);
+        router.post("/monkey/submit").handler(new RateLimitHandler(10, 60)).handler(monkeyHandler);
+        router.get("/monkey/stats").handler(monkeyHandler);
 
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();

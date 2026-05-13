@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="无限猴子定理交互式模拟：猴子随机敲键盘，多久能碰巧打出你输入的文本？用可视化体验组合爆炸的真实威力。">
+  <title>无限猴子打字机：让猴子打出你的名字 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-writing"></i> 无限猴子打字机</h1>
+    <p>一只猴子在键盘上随机敲击，无限时间下能打出莎士比亚全集。你的名字只需要多久？</p>
+  </div>
+
+  <!-- ── 场景 + 控制 ── -->
+  <div class="section">
+    <div class="control-grid">
+      <div class="control-card">
+        <h3><i class="ti ti-target"></i> 目标文本（仅小写字母+空格，最多12字符）</h3>
+        <div class="control-row">
+          <select id="preset">
+            <option value="0">hi (2字符)</option>
+            <option value="1">abc (3字符)</option>
+            <option value="2">cat (3字符)</option>
+            <option value="3">monkey (6字符)</option>
+            <option value="4">to be (5字符)</option>
+            <option value="5">自定义</option>
+          </select>
+          <span id="customRow" style="display:none;">
+            <input type="text" id="customInput" maxlength="12" placeholder="你的名字...">
+          </span>
+        </div>
+        <p class="hint">期望尝试次数 = <code>27<sup>字符数</sup></code>。每多一个字符，难度翻 27 倍。</p>
+      </div>
+      <div class="control-card">
+        <h3><i class="ti ti-speedboat"></i> 猴子手速</h3>
+        <div class="control-row">
+          <span>慢</span>
+          <input type="range" id="speedSlider" min="100" max="20000" value="2000" step="100">
+          <span>快</span>
+          <span class="speed-val" id="speedVal">2,000</span>
+          <span style="font-size:12px;color:rgba(255,255,255,0.4);">次/秒</span>
+        </div>
+        <p class="hint">调节猴子敲键盘的速度。速度越快，等待时间越短。</p>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" id="runBtn">
+        <i class="ti ti-player-play"></i> 开始
+      </button>
+      <button class="btn-secondary" id="retryBtn">
+        <i class="ti ti-refresh"></i> 重试
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 目标展示 ── -->
+  <div class="section">
+    <h3 style="margin:0 0 8px 0;font-size:14px;color:rgba(255,255,255,0.5);text-align:center;">
+      <i class="ti ti-target"></i> 目标文本
+    </h3>
+    <div class="target-row" id="targetCells"></div>
+  </div>
+
+  <!-- ── 纸带区 ── -->
+  <div class="section tape-section">
+    <h3 style="margin:0 0 8px 0;font-size:14px;color:rgba(255,255,255,0.5);text-align:center;">
+      <i class="ti ti-keyboard"></i> 猴子正在敲...
+    </h3>
+    <div class="tape-box" id="tapeView"></div>
+    <div class="tape-bar"><div class="tape-fill" id="tapeFill"></div></div>
+    <div class="tape-label">
+      <span>0%</span>
+      <span>已尝试 vs 期望</span>
+      <span>100%+</span>
+    </div>
+  </div>
+
+  <!-- ── 实时统计 ── -->
+  <div class="section">
+    <div class="live-stats">
+      <div class="stat-item">
+        <span class="sv" id="statsAttempts">0</span>
+        <span class="sl">尝试次数</span>
+      </div>
+      <div class="stat-item">
+        <span class="sv" id="statsChars">0</span>
+        <span class="sl">生成字符</span>
+      </div>
+      <div class="stat-item">
+        <span class="sv expected" id="statsExpected">--</span>
+        <span class="sl">期望尝试次数</span>
+      </div>
+      <div class="stat-item">
+        <span class="sv" id="statsTime">--</span>
+        <span class="sl">耗时</span>
+      </div>
+      <div class="stat-item">
+        <span class="sv" id="statsMatch">0 / 2</span>
+        <span class="sl">最佳前缀匹配</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 成功横幅 ── -->
+  <div class="success-banner" id="successBanner">
+    <div class="sb-icon">🎉</div>
+    <div class="sb-info">
+      <h3>猴子打出了 "<span class="sb-target"></span>"！</h3>
+      <p>在随机敲击 <strong class="sb-attempts"></strong> 次（共 <strong class="sb-chars"></strong> 个字符）后，奇迹发生了。</p>
+    </div>
+    <div class="sb-stats">
+      <div class="sb-stat">
+        <span class="val sb-time"></span>
+        <span class="lab">秒</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 全站统计 ── -->
+  <div class="section">
+    <h3 style="margin:0 0 8px 0;font-size:13px;color:rgba(255,255,255,0.4);">
+      <i class="ti ti-users"></i> 全站猴子战绩
+    </h3>
+    <div class="global-stats" id="globalStats">加载中...</div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

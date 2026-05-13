@@ -26,6 +26,7 @@ let matchedCount = 0;         // 当前尝试连续匹配了几个
 let lastMatchLen = 0;         // 本轮最佳连续匹配长度
 let startTime = 0;
 let success = false;
+let submitted = false;        // 本轮是否已上报（防重复）
 let speed = 2000;             // 每秒尝试次数（每次尝试 = targetLen 个字符）
 let charsPerTick = 1;         // 每帧生成的尝试次数
 
@@ -35,6 +36,7 @@ let statsAttempts, statsChars, statsExpected, statsTime, statsMatch;
 let speedSlider, speedVal;
 let successBanner;
 let globalStatsEl;
+let leaderboardEl;
 
 function $(id) { return document.getElementById(id); }
 
@@ -52,6 +54,7 @@ function init() {
   speedVal = $('speedVal');
   successBanner = $('successBanner');
   globalStatsEl = $('globalStats');
+  leaderboardEl = $('leaderboard');
 
   bindEvents();
   selectPreset(0);
@@ -127,12 +130,16 @@ function run() {
   successBanner.style.display = 'none';
   $('runBtn').innerHTML = '<i class="ti ti-player-pause"></i> 暂停';
   $('runBtn').classList.add('running');
-  if (totalAttempts === 0) startTime = performance.now();
+  if (totalAttempts === 0) {
+    startTime = performance.now();
+    submitted = false;
+  }
   resetAttempt();
   tick();
 }
 
 function pause() {
+  if (!running) return;
   running = false;
   if (animId) cancelAnimationFrame(animId);
   animId = null;
@@ -140,12 +147,21 @@ function pause() {
   $('runBtn').classList.remove('running');
 }
 
+// 上报放弃（暂停或切换目标时，已跑过但未成功）
+function submitAbandon() {
+  if (submitted || totalAttempts === 0) return;
+  submitted = true;
+  submitStats(); // success 此时为 false
+}
+
 function resetAndRun() {
+  submitAbandon();
   totalAttempts = 0;
   totalChars = 0;
   lastMatchLen = 0;
   startTime = 0;
   success = false;
+  submitted = false;
   successBanner.style.display = 'none';
   renderTarget();
   updateStats();
@@ -156,11 +172,13 @@ function resetAndRun() {
 
 function resetStats() {
   pause();
+  submitAbandon();
   totalAttempts = 0;
   totalChars = 0;
   lastMatchLen = 0;
   startTime = 0;
   success = false;
+  submitted = false;
   successBanner.style.display = 'none';
   tapeEl.textContent = '';
   tapeFillEl.style.width = '0%';
@@ -277,6 +295,7 @@ function onSuccess() {
   }
 
   // 上报后端
+  submitted = true;
   submitStats();
 }
 
@@ -295,7 +314,7 @@ function updateStats() {
 
 function updateExpectedDisplay() {
   const expected = Engine.expectedAttempts(targetLen, alphabetSize);
-  statsExpected.innerHTML = '期望 ~' + Engine.formatBigNum(expected) + ' 次尝试';
+  statsExpected.innerHTML = '~' + Engine.formatBigNum(expected) + ' 次';
   statsExpected.title = '基于 ' + alphabetSize + ' 个字符的字母表，期望尝试次数 = ' + alphabetSize + '^' + targetLen + ' = ' + expected.toLocaleString();
 }
 
@@ -311,13 +330,42 @@ function loadGlobalStats() {
 function updateGlobalStats(data) {
   if (!data || data.totalRuns === 0) {
     globalStatsEl.innerHTML = '还没有人让猴子打出过目标...';
+    leaderboardEl.innerHTML = '<div class="lb-empty">暂无成功记录</div>';
     return;
   }
   globalStatsEl.innerHTML =
-    `<span class="gs-chip">🐒 ${data.totalRuns.toLocaleString()} 次挑战</span>` +
-    `<span class="gs-chip">✅ ${data.totalSuccesses.toLocaleString()} 次成功</span>` +
-    `<span class="gs-chip">📊 成功率 ${(Math.round(data.successRate * 1000) / 10).toFixed(1)}%</span>` +
-    (data.longestTarget ? `<span class="gs-chip">🏆 最长目标 "${data.longestTarget}"</span>` : '');
+    `<span class="gs-chip"><i class="ti ti-paw"></i> ${data.totalRuns.toLocaleString()} 次挑战</span>` +
+    `<span class="gs-chip"><i class="ti ti-check"></i> ${data.totalSuccesses.toLocaleString()} 次成功</span>` +
+    `<span class="gs-chip"><i class="ti ti-chart-pie"></i> 成功率 ${(Math.round(data.successRate * 1000) / 10).toFixed(1)}%</span>` +
+    (data.longestTarget ? `<span class="gs-chip"><i class="ti ti-trophy"></i> 最长目标 "${data.longestTarget}"</span>` : '');
+
+  renderLeaderboard(data.leaderboard || []);
+}
+
+function renderLeaderboard(list) {
+  const successList = list.filter(item => item.success);
+  if (successList.length === 0) {
+    leaderboardEl.innerHTML = '<div class="lb-empty">暂无成功记录</div>';
+    return;
+  }
+  let html = '<table class="lb-table"><thead><tr>' +
+    '<th>#</th><th>目标文本</th><th>字符数</th><th>尝试次数</th>' +
+    '</tr></thead><tbody>';
+  successList.forEach((item, i) => {
+    const rankClass = i === 0 ? 'lb-rank' : i === 1 ? 'lb-rank lb-rank-2' : i === 2 ? 'lb-rank lb-rank-3' : 'lb-rank';
+    html += `<tr>` +
+      `<td class="${rankClass}">${i + 1}</td>` +
+      `<td><span class="lb-target">${escapeHtml(item.targetText)}</span></td>` +
+      `<td>${item.targetLength}</td>` +
+      `<td class="lb-attempts">${item.totalAttempts.toLocaleString()}</td>` +
+      `</tr>`;
+  });
+  html += '</tbody></table>';
+  leaderboardEl.innerHTML = html;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function submitStats() {
@@ -340,3 +388,20 @@ function submitStats() {
 
 // ===== 启动 =====
 document.addEventListener('DOMContentLoaded', init);
+
+// 页面关闭时上报未完成的挑战
+window.addEventListener('beforeunload', function() {
+  if (totalAttempts > 0 && !submitted && !success) {
+    submitted = true;
+    const elapsed = startTime > 0 ? Math.round(performance.now() - startTime) : 0;
+    const blob = new Blob([JSON.stringify({
+      targetText: target,
+      targetLength: targetLen,
+      totalAttempts: totalAttempts,
+      totalChars: totalChars,
+      success: false,
+      timeElapsed: elapsed
+    })], { type: 'application/json' });
+    navigator.sendBeacon(API_BASE + '/monkey/submit', blob);
+  }
+});

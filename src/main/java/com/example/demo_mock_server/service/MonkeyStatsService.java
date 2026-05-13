@@ -54,6 +54,7 @@ public class MonkeyStatsService {
     private static final String SQL_LEADERBOARD = """
         SELECT target_text, target_length, total_attempts, total_chars, time_elapsed, success
         FROM monkey_stats
+        WHERE success = 1
         ORDER BY target_length DESC, total_attempts ASC
         LIMIT 10
         """;

@@ -1,341 +1,477 @@
-// ===== 无知之幕 v1 =====
+// ===== 无知之幕 v2 =====
+// 核心改动：先揭示身份让你自私设计，再遮住身份让你重新设计，最后对比差异
 const API_BASE = 'https://numfeel-api.996.ninja';
 
-// 默认政策
-const defaults = {
-  taxRate: 35, eduSpend: 15000, healthLevel: 2, inheritanceTax: 20, basicIncome: 1000
-};
-
-let policies = { ...defaults };
-let attrs = null;
-let result = null;
-let stage = 1;        // 1=设计 2=抽签 3=结果 4=全站
-let cardRevealed = [false, false, false, false];
-let globalScatter = null;  // Chart.js 散点图引用
+let myAttrs = null;          // 你被分配的身份
+let selfishPolicies = null;  // 知道身份时设计的规则
+let veilPolicies = null;     // 无知之幕后设计的规则
+let stage = 1;
+let compareChart = null;
 
 function $(id) { return document.getElementById(id); }
 
-// ===== 初始化 =====
-function init() {
-  bindSliders();
-  bindButtons();
-  goStage(1);
-  loadGlobalStats();
+// ===== 身份描述 =====
+const attrDescriptions = {
+  talent: v => v < 25 ? '天赋很低' : v < 40 ? '天赋偏低' : v < 60 ? '天赋中等' : v < 80 ? '天赋较高' : '天赋极高',
+  family: v => v < 15 ? '赤贫家庭' : v < 35 ? '低收入家庭' : v < 60 ? '普通家庭' : v < 80 ? '富裕家庭' : '顶级富豪',
+  health: v => v < 25 ? '重度疾病' : v < 40 ? '健康较差' : v < 60 ? '健康一般' : v < 80 ? '健康良好' : '身体极好',
+  luck:   v => v < 25 ? '非常倒霉' : v < 40 ? '运气偏差' : v < 60 ? '运气一般' : v < 80 ? '运气不错' : '极其幸运'
+};
+
+const attrIcons = { talent: 'ti-brain', family: 'ti-building-bank', health: 'ti-heart', luck: 'ti-clover' };
+const attrLabels = { talent: '天赋', family: '家庭', health: '健康', luck: '运气' };
+
+function identitySummaryText(attrs) {
+  const avg = (attrs.talent + attrs.family + attrs.health + attrs.luck) / 4;
+  // 生成一个有温度的人设故事
+  const stories = [];
+  if (attrs.family >= 70) {
+    stories.push('你出生在一个富裕家庭，从小不愁吃穿，上的是最好的学校。');
+  } else if (attrs.family >= 40) {
+    stories.push('你的家庭条件普通，父母是工薪阶层，日子过得去但没什么余裕。');
+  } else {
+    stories.push('你家里很穷，父母打零工维生，你从小就知道钱来之不易。');
+  }
+
+  if (attrs.talent >= 70) {
+    stories.push('你天资聪颖，学什么都快，老师们都说你是块好料。');
+  } else if (attrs.talent >= 40) {
+    stories.push('你的智力中等，不算笨但也不是天才，需要努力才能跟上。');
+  } else {
+    stories.push('坦白说，你在学业上一直很吃力，很多东西别人一学就会，你要花三倍时间。');
+  }
+
+  if (attrs.health < 35) {
+    stories.push('更糟的是，你身体不好，经常跑医院，医药费是一笔沉重的负担。');
+  } else if (attrs.health >= 75) {
+    stories.push('好在你身体很棒，几乎不生病。');
+  }
+
+  return stories.join('');
 }
 
-function bindSliders() {
-  const sliders = [
-    { id: 'taxRate', disp: 'taxRateVal', side: 'taxSide' },
-    { id: 'eduSpend', disp: 'eduSpendVal', side: 'eduSide' },
-    { id: 'healthLevel', disp: 'healthLevelVal', side: 'healthSide', isLevel: true },
-    { id: 'inheritanceTax', disp: 'inheritanceTaxVal', side: 'inheritanceSide' },
-    { id: 'basicIncome', disp: 'basicIncomeVal', side: 'basicIncomeSide' }
-  ];
-  sliders.forEach(s => {
-    const el = $(s.id);
-    el.addEventListener('input', () => {
-      policies[s.id] = s.isLevel ? parseInt(el.value) : parseInt(el.value);
-      if (s.isLevel) {
-        const labels = ['','仅保大病','基础医保','全面医保','全民免费'];
-        $(s.disp).textContent = labels[policies[s.id]];
-      } else {
-        $(s.disp).textContent = policies[s.id].toLocaleString();
-      }
-      updateSidebar(s.side, s.id, policies[s.id]);
-      if (stage === 1) recalcPreview();
-    });
-    // 初始化显示
-    if (s.isLevel) {
-      const labels = ['','仅保大病','基础医保','全面医保','全民免费'];
-      $(s.disp).textContent = labels[policies[s.id]];
-    } else {
-      $(s.disp).textContent = policies[s.id].toLocaleString();
-    }
-    updateSidebar(s.side, s.id, policies[s.id]);
-  });
-}
-
-function bindButtons() {
-  $('btnDesign').addEventListener('click', () => goStage(1));
-  $('btnDraw').addEventListener('click', drawAttributes);
-  $('btnRedraw').addEventListener('click', drawAttributes);
-  $('btnResult').addEventListener('click', () => goStage(3));
-  $('btnGlobal').addEventListener('click', () => { goStage(4); loadGlobalStats(); });
-  $('btnReset').addEventListener('click', resetAll);
-  // 卡片点击
-  ['cardTalent','cardFamily','cardHealth','cardLuck'].forEach((id, i) => {
-    $(id).addEventListener('click', () => revealCard(i));
-  });
-}
-
-// ===== 侧栏实时说明 =====
-function updateSidebar(sideId, policyId, val) {
-  const el = $(sideId);
-  switch (policyId) {
-  case 'taxRate':
-    const income = 1500000;
-    el.textContent = `年入 ${(income/10000).toFixed(0)} 万的人：约到手 ${Math.round(income*(1-val/100)/10000)} 万`;
-    break;
-  case 'eduSpend':
-    if (val <= 5000) el.textContent = '≈ 贫困县村小水平（生均经费）';
-    else if (val <= 15000) el.textContent = '≈ 普通县城/乡镇学校水平';
-    else if (val <= 35000) el.textContent = '≈ 二三线城市重点校水平';
-    else el.textContent = '≈ 一线城市国际学校水平';
-    break;
-  case 'healthLevel':
-    el.textContent = ['', '仅保大病，日常看病自负', '基础医保，住院报 60%', '全面医保，门诊+住院报 85%', '全民免费，0 自费'][val];
-    break;
-  case 'inheritanceTax':
-    el.textContent = `富二代继承 1000 万：到手 ${Math.round(1000*(1-val/100))} 万`;
-    break;
-  case 'basicIncome':
-    if (val === 0) el.textContent = '无基本收入，不工作=0 收入';
-    else el.textContent = `不工作每月也领 ¥${val}，年领 ¥${val*12}`;
-    break;
+// 根据身份生成"自私提示"
+function selfishHint(attrs) {
+  const avg = (attrs.talent + attrs.family + attrs.health + attrs.luck) / 4;
+  if (avg >= 65) {
+    const tips = [];
+    if (attrs.family >= 60) tips.push('降低遗产税能保住你的家族财富');
+    if (attrs.talent >= 60) tips.push('降低税率能让你的高收入留更多在手里');
+    tips.push('你条件好，低福利对你影响不大');
+    return '💡 提示：你是这个社会的优势群体。' + tips.join('；') + '。';
+  } else if (avg <= 35) {
+    return '💡 提示：你是这个社会的弱势群体。高税率、高教育投入、高医保、高基本收入对你最有利——但别忘了经济效率。';
+  } else {
+    return '💡 提示：你的条件中等。想想什么规则对你这个位置最有利？';
   }
 }
 
-function recalcPreview() {
-  const a = Engine.generateAttributes();
-  const r = Engine.calculate(policies, a);
-  $('previewQol').textContent = r.qol;
+// ===== 初始化 =====
+function init() {
+  // 生成身份
+  myAttrs = Engine.generateAttributes();
+  renderIdentity();
+  bindAllSliders();
+  bindButtons();
+  goStage(1);
+}
+
+function renderIdentity() {
+  const container = $('identityAttrs');
+  container.innerHTML = '';
+  for (const key of ['talent', 'family', 'health', 'luck']) {
+    const val = myAttrs[key];
+    const barColor = val >= 60 ? '#4caf50' : val >= 35 ? '#ff9800' : '#f44336';
+    container.innerHTML += `
+      <div class="identity-attr-row">
+        <span class="ia-icon"><i class="ti ${attrIcons[key]}"></i></span>
+        <span class="ia-label">${attrLabels[key]}</span>
+        <span class="ia-bar"><span class="ia-bar-fill" style="width:${val}%;background:${barColor}"></span></span>
+        <span class="ia-desc">${attrDescriptions[key](val)}</span>
+        <span class="ia-val">${val}</span>
+      </div>
+    `;
+  }
+  $('identitySummary').textContent = identitySummaryText(myAttrs);
+
+  // 阶段2的身份提醒条 + 自私提示
+  const avg = (myAttrs.talent + myAttrs.family + myAttrs.health + myAttrs.luck) / 4;
+  const reminderColor = avg >= 50 ? 'rgba(76,175,80,0.15)' : 'rgba(244,67,54,0.15)';
+  $('identityReminder').innerHTML = `
+    <div style="background:${reminderColor};border-radius:10px;padding:10px 16px;margin-bottom:12px;font-size:13px;line-height:1.6;">
+      <i class="ti ti-user-check" style="color:#ffd700;"></i>
+      <strong>你的身份：</strong>${attrDescriptions.talent(myAttrs.talent)}、${attrDescriptions.family(myAttrs.family)}、${attrDescriptions.health(myAttrs.health)}、${attrDescriptions.luck(myAttrs.luck)}。
+      综合条件 ${Math.round(avg)} 分。
+    </div>
+    <div style="background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.2);border-radius:10px;padding:10px 16px;margin-bottom:12px;font-size:12px;color:rgba(255,215,0,0.8);">
+      ${selfishHint(myAttrs)}
+    </div>
+  `;
+}
+
+// ===== 滑块绑定 =====
+function bindAllSliders() {
+  // 阶段2滑块（自私）
+  bindSliderGroup('s_', () => updateSelfishPreview());
+  // 阶段3滑块（无知之幕）
+  bindSliderGroup('v_', () => updateVeilPreview());
+}
+
+function bindSliderGroup(prefix, onChange) {
+  const ids = ['taxRate', 'eduSpend', 'healthLevel', 'inheritanceTax', 'basicIncome'];
+  ids.forEach(id => {
+    const el = $(prefix + id);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      updateSliderDisplay(prefix, id, parseInt(el.value));
+      onChange();
+    });
+    // 初始化显示
+    updateSliderDisplay(prefix, id, parseInt(el.value));
+  });
+}
+
+function updateSliderDisplay(prefix, id, val) {
+  const dispEl = $(prefix + id + 'Val');
+  if (!dispEl) return;
+  switch (id) {
+    case 'taxRate': dispEl.textContent = val + '%'; break;
+    case 'eduSpend': dispEl.textContent = '¥' + val.toLocaleString(); break;
+    case 'healthLevel':
+      dispEl.textContent = ['','仅保大病','基础医保','全面医保','全民免费'][val];
+      break;
+    case 'inheritanceTax': dispEl.textContent = val + '%'; break;
+    case 'basicIncome': dispEl.textContent = '¥' + val.toLocaleString(); break;
+  }
+}
+
+function readPolicies(prefix) {
+  return {
+    taxRate: parseInt($(prefix + 'taxRate').value),
+    eduSpend: parseInt($(prefix + 'eduSpend').value),
+    healthLevel: parseInt($(prefix + 'healthLevel').value),
+    inheritanceTax: parseInt($(prefix + 'inheritanceTax').value),
+    basicIncome: parseInt($(prefix + 'basicIncome').value)
+  };
+}
+
+function updateSelfishPreview() {
+  const p = readPolicies('s_');
+  const r = Engine.calculate(p, myAttrs);
   const color = r.qol >= 60 ? '#4caf50' : r.qol >= 30 ? '#ff9800' : '#f44336';
-  $('previewQol').style.color = color;
+  $('selfishQol').textContent = r.qol;
+  $('selfishQol').style.color = color;
+  // 展示收支明细 + 经济效率
+  $('selfishBreakdown').innerHTML = `
+    经济效率 ${r.efficiency}% |
+    市场收入 ¥${r.marketIncome.toLocaleString()} →
+    税后 ¥${r.afterTax.toLocaleString()} +
+    教育 ¥${r.eduBoost.toLocaleString()} +
+    基本收入 ¥${r.basicIncome.toLocaleString()} +
+    遗产 ¥${r.inheritanceAfterTax.toLocaleString()} -
+    医疗 ¥${r.healthBurden.toLocaleString()} =
+    可支配 ¥${r.disposable.toLocaleString()}
+  `.trim().replace(/\n\s+/g, ' ');
+}
+
+function updateVeilPreview() {
+  const p = readPolicies('v_');
+  // 模拟 200 个随机身份
+  const qols = [];
+  for (let i = 0; i < 200; i++) {
+    const a = Engine.generateAttributes();
+    qols.push(Engine.calculate(p, a).qol);
+  }
+  qols.sort((a, b) => a - b);
+  const avg = Math.round(qols.reduce((s, v) => s + v, 0) / qols.length);
+  const worst10 = qols.slice(0, 20);
+  const worstAvg = Math.round(worst10.reduce((s, v) => s + v, 0) / worst10.length);
+
+  $('veilAvgQol').textContent = avg;
+  $('veilAvgQol').style.color = avg >= 50 ? '#4caf50' : avg >= 30 ? '#ff9800' : '#f44336';
+  $('veilWorstQol').textContent = worstAvg;
+  $('veilWorstQol').style.color = worstAvg >= 30 ? '#ff9800' : '#f44336';
+}
+
+// ===== 按钮绑定 =====
+function bindButtons() {
+  $('btnGoSelfish').addEventListener('click', () => goStage(2));
+  $('btnLockSelfish').addEventListener('click', lockSelfish);
+  $('btnLockVeil').addEventListener('click', lockVeil);
+  $('btnRestart').addEventListener('click', restart);
+}
+
+function lockSelfish() {
+  selfishPolicies = readPolicies('s_');
+  // 关键设计：第二轮滑块初始值 = 第一轮的值
+  // 让玩家从自己的"自私规则"出发，主动去改
+  ['taxRate','eduSpend','healthLevel','inheritanceTax','basicIncome'].forEach(id => {
+    const el = $('v_' + id);
+    if (el) el.value = selfishPolicies[id];
+    updateSliderDisplay('v_', id, selfishPolicies[id]);
+  });
+  goStage(3);
+  updateVeilPreview();
+}
+
+function lockVeil() {
+  veilPolicies = readPolicies('v_');
+  goStage(4);
+  renderComparison();
+}
+
+function restart() {
+  myAttrs = Engine.generateAttributes();
+  selfishPolicies = null;
+  veilPolicies = null;
+  renderIdentity();
+  // 重置阶段2滑块
+  $('s_taxRate').value = 35;
+  $('s_eduSpend').value = 15000;
+  $('s_healthLevel').value = 2;
+  $('s_inheritanceTax').value = 20;
+  $('s_basicIncome').value = 1000;
+  ['taxRate','eduSpend','healthLevel','inheritanceTax','basicIncome'].forEach(id => {
+    updateSliderDisplay('s_', id, parseInt($('s_' + id).value));
+  });
+  goStage(1);
 }
 
 // ===== 阶段切换 =====
 function goStage(s) {
   stage = s;
-  ['stage1','stage2','stage3','stage4'].forEach((id, i) => {
-    $(id).style.display = i+1 === s ? '' : 'none';
-  });
-  // 步骤指示器
+  for (let i = 1; i <= 4; i++) {
+    $('stage' + i).style.display = i === s ? 'block' : 'none';
+  }
   document.querySelectorAll('.step-dot').forEach((el, i) => {
-    el.classList.toggle('active', i+1 === s);
-    el.classList.toggle('done', i+1 < s);
+    el.classList.toggle('active', i + 1 === s);
+    el.classList.toggle('done', i + 1 < s);
   });
-  // 按钮状态
-  $('btnDesign').classList.toggle('active-step', s === 1);
-  $('btnDraw').style.display = s === 1 ? '' : 'none';
-  $('btnResult').style.display = (s === 2 && attrs) ? '' : 'none';
-  $('btnGlobal').style.display = (s >= 3) ? '' : 'none';
-  $('btnRedraw').style.display = (s === 2) ? '' : 'none';
+  // 滚动到顶部
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  if (s === 2) renderCards();
-  if (s === 3 && result) renderResult();
-  if (s === 4) loadGlobalStats();
-}
-
-// ===== 抽签 =====
-function drawAttributes() {
-  attrs = Engine.generateAttributes();
-  result = Engine.calculate(policies, attrs);
-  cardRevealed = [false, false, false, false];
-  goStage(2);
-  renderCards();
-  $('revealAllHint').style.display = '';
-}
-
-function renderCards() {
-  if (!attrs) return;
-  const keys = ['talent','family','health','luck'];
-  const labels = ['天赋','家庭财富','健康状况','运气'];
-  const icons = ['ti-brain','ti-building-bank','ti-heart','ti-clover'];
-  keys.forEach((k, i) => {
-    const card = $('card' + k.charAt(0).toUpperCase() + k.slice(1));
-    card.className = 'attr-card' + (cardRevealed[i] ? ' revealed' : '');
-    const iconEl = card.querySelector('.card-icon i');
-    iconEl.className = 'ti ' + icons[i];
-    const labelEl = card.querySelector('.card-label');
-    labelEl.textContent = labels[i];
-    const valEl = card.querySelector('.card-value');
-    if (cardRevealed[i]) {
-      const descs = {
-        talent: ['偏低','平均','偏高'][attrs.talent < 35 ? 0 : attrs.talent < 65 ? 1 : 2],
-        family: ['低保','普通','富裕'][attrs.family < 30 ? 0 : attrs.family < 70 ? 1 : 2],
-        health: ['较差','一般','良好'][attrs.health < 35 ? 0 : attrs.health < 65 ? 1 : 2],
-        luck: attrs.luck < 33 ? '倒霉' : attrs.luck < 66 ? '一般' : '走运'
-      };
-      valEl.textContent = descs[k] + ' (' + attrs[k] + ')';
-      valEl.style.opacity = '1';
-    } else {
-      valEl.textContent = '?';
-      valEl.style.opacity = '0.4';
-    }
-  });
-}
-
-function revealCard(i) {
-  if (!attrs || cardRevealed[i]) return;
-  cardRevealed[i] = true;
-  renderCards();
-  if (cardRevealed.every(v => v)) {
-    $('revealAllHint').style.display = 'none';
-    $('btnResult').style.display = '';
-    $('btnGlobal').style.display = '';
+  if (s === 2) updateSelfishPreview();
+  if (s === 3) {
+    // 播放幕布动画
+    const anim = $('veilAnimation');
+    anim.classList.remove('played');
+    void anim.offsetWidth; // force reflow
+    anim.classList.add('played');
   }
 }
 
-// ===== 结果面板 =====
-function renderResult() {
-  if (!result) return;
-  const r = result;
-  $('qolScore').textContent = r.qol;
-  const color = r.qol >= 70 ? '#4caf50' : r.qol >= 40 ? '#ff9800' : '#f44336';
-  $('qolScore').style.color = color;
-  $('qolBar').style.width = r.qol + '%';
-  $('qolBar').style.background = color;
+// ===== 对比渲染 =====
+function renderComparison() {
+  renderCompareTable();
+  renderInsight();
+  renderCompareChart();
+  renderFairnessCompare();
+}
 
-  // 子项条形图
-  const items = [
-    { label: '市场收入', val: r.marketIncome, max: 20000, icon: 'ti-briefcase' },
-    { label: '税后收入', val: r.afterTax, max: 20000, icon: 'ti-receipt-tax' },
-    { label: '教育助力', val: r.eduBoost, max: 8000, icon: 'ti-school' },
-    { label: '基本收入', val: r.basicIncome, max: 4000, icon: 'ti-cash' },
-    { label: '遗产加成', val: r.inheritanceAfterTax, max: 6000, icon: 'ti-building-bank' },
-    { label: '医疗负担', val: -r.healthBurden, max: 6000, icon: 'ti-heart', neg: true },
-  ];
-  const breakdownEl = $('breakdown');
-  breakdownEl.innerHTML = '';
-  items.forEach(item => {
-    const abs = Math.abs(item.val);
-    const pct = Math.min(100, abs / item.max * 100);
-    const row = document.createElement('div');
-    row.className = 'breakdown-row';
-    row.innerHTML = `
-      <span class="br-label"><i class="ti ${item.icon}"></i> ${item.label}</span>
-      <span class="br-bar-wrap"><span class="br-bar ${item.neg ? 'neg' : ''}" style="width:${pct}%"></span></span>
-      <span class="br-val ${item.neg ? 'neg' : ''}">${item.neg ? '-' : '+'}¥${abs.toLocaleString()}</span>
+function renderCompareTable() {
+  const labels = {
+    taxRate: ['最高税率', v => v + '%'],
+    eduSpend: ['教育投入', v => '¥' + v.toLocaleString()],
+    healthLevel: ['医保等级', v => ['','仅保大病','基础医保','全面医保','全民免费'][v]],
+    inheritanceTax: ['遗产税率', v => v + '%'],
+    basicIncome: ['基本收入', v => '¥' + v.toLocaleString() + '/月']
+  };
+
+  let html = `
+    <div class="ct-header">
+      <span class="ct-col"></span>
+      <span class="ct-col ct-selfish">知道身份时</span>
+      <span class="ct-col ct-veil">无知之幕后</span>
+      <span class="ct-col ct-diff">变化</span>
+    </div>
+  `;
+
+  for (const [key, [label, fmt]] of Object.entries(labels)) {
+    const sv = selfishPolicies[key];
+    const vv = veilPolicies[key];
+    const diff = vv - sv;
+    const diffStr = diff === 0 ? '—' : (diff > 0 ? '↑' + Math.abs(diff) : '↓' + Math.abs(diff));
+    const diffClass = diff === 0 ? '' : diff > 0 ? 'up' : 'down';
+    html += `
+      <div class="ct-row">
+        <span class="ct-col ct-label">${label}</span>
+        <span class="ct-col ct-selfish">${fmt(sv)}</span>
+        <span class="ct-col ct-veil">${fmt(vv)}</span>
+        <span class="ct-col ct-diff ${diffClass}">${diffStr}</span>
+      </div>
     `;
-    breakdownEl.appendChild(row);
-  });
-
-  // 可支配收入
-  $('disposableVal').textContent = '¥' + r.disposable.toLocaleString();
-  $('formulaDetails').style.display = 'none';
-}
-
-function toggleFormula() {
-  $('formulaDetails').style.display =
-    $('formulaDetails').style.display === 'none' ? '' : 'none';
-}
-
-// ===== 全站统计 =====
-function loadGlobalStats() {
-  fetch(API_BASE + '/veil/stats')
-    .then(r => r.json())
-    .then(data => {
-      if (data.status === 200) renderGlobalStats(data.data);
-    }).catch(() => {});
-}
-
-function renderGlobalStats(data) {
-  if (!data || data.totalRuns === 0) {
-    $('globalInfo').textContent = '还没有人参与过无知之幕。你是第一个！';
-    return;
   }
-  $('globalInfo').textContent =
-    `已有 ${data.totalRuns} 人参与。平均 QoL：${data.avgQol} 分。公平系数：${data.avgFairness} 分（满分 100）。`;
-
-  // 散点图
-  if (data.scatter && data.scatter.length > 0) {
-    renderScatter(data.scatter);
-  }
+  $('compareTable').innerHTML = html;
 }
 
-function renderScatter(points) {
-  const canvas = $('scatterCanvas');
-  if (globalScatter) globalScatter.destroy();
+function renderInsight() {
+  const diffs = {
+    taxRate: veilPolicies.taxRate - selfishPolicies.taxRate,
+    eduSpend: veilPolicies.eduSpend - selfishPolicies.eduSpend,
+    healthLevel: veilPolicies.healthLevel - selfishPolicies.healthLevel,
+    inheritanceTax: veilPolicies.inheritanceTax - selfishPolicies.inheritanceTax,
+    basicIncome: veilPolicies.basicIncome - selfishPolicies.basicIncome
+  };
 
-  const ctx = canvas.getContext('2d');
-  globalScatter = new Chart(ctx, {
-    type: 'scatter',
+  const insights = [];
+  const avg = (myAttrs.talent + myAttrs.family + myAttrs.health + myAttrs.luck) / 4;
+  const isPrivileged = avg >= 55;
+
+  // 判断是否有显著变化
+  const totalChange = Math.abs(diffs.taxRate) + Math.abs(diffs.eduSpend / 1000) +
+    Math.abs(diffs.healthLevel * 10) + Math.abs(diffs.inheritanceTax) + Math.abs(diffs.basicIncome / 100);
+
+  if (totalChange < 5) {
+    insights.push('你的两套规则几乎一样！你可能天生就是一个公平主义者，或者你在第一轮就已经考虑到了其他人的处境。');
+  } else {
+    if (isPrivileged) {
+      if (diffs.taxRate > 5) insights.push(`你把税率提高了 ${diffs.taxRate} 个百分点。知道自己是优势群体时，你倾向于低税率保护自己的收入；不知道自己是谁时，你愿意多交税来换取安全网。`);
+      if (diffs.inheritanceTax > 5) insights.push(`遗产税提高了 ${diffs.inheritanceTax} 个百分点。当你不确定自己能否继承财富时，你更愿意限制继承特权。`);
+      if (diffs.basicIncome > 200) insights.push(`基本收入提高了 ¥${diffs.basicIncome}。当你可能是最穷的那个人时，安全网突然变得重要了。`);
+    } else {
+      if (diffs.taxRate < -5) insights.push(`你把税率降低了 ${Math.abs(diffs.taxRate)} 个百分点。有趣——知道自己处于弱势时你想要高税率再分配，但不知道身份后你变得更温和了。`);
+      if (diffs.taxRate > 5) insights.push(`即使不知道身份，你仍然选择了高税率。这说明你认为再分配对所有人都有利。`);
+      if (diffs.eduSpend > 5000) insights.push(`教育投入增加了 ¥${diffs.eduSpend.toLocaleString()}。你意识到教育是最重要的社会流动性引擎。`);
+    }
+
+    if (diffs.healthLevel > 0) insights.push(`医保等级提高了。当健康变成随机变量时，没人愿意赌自己不会生病。`);
+  }
+
+  if (insights.length === 0) {
+    insights.push('无知之幕改变了你的决策方向。Rawls 的核心观点是：公平的规则，是那些你在不知道自己位置时也愿意接受的规则。');
+  }
+
+  $('insightBox').innerHTML = `
+    <div class="insight-title"><i class="ti ti-bulb"></i> 洞察</div>
+    ${insights.map(t => `<p class="insight-text">${t}</p>`).join('')}
+    <p class="insight-rawls">"正义的原则是在无知之幕后面被选择的原则。" —— John Rawls《正义论》</p>
+  `;
+}
+
+function renderCompareChart() {
+  // 模拟 1000 个随机身份，分别用两套规则计算 QoL
+  const N = 1000;
+  const selfishQols = [];
+  const veilQols = [];
+
+  for (let i = 0; i < N; i++) {
+    const a = Engine.generateAttributes();
+    selfishQols.push(Engine.calculate(selfishPolicies, a).qol);
+    veilQols.push(Engine.calculate(veilPolicies, a).qol);
+  }
+
+  // 分桶统计
+  const bins = 10;
+  const selfishBins = new Array(bins).fill(0);
+  const veilBins = new Array(bins).fill(0);
+
+  selfishQols.forEach(q => { selfishBins[Math.min(Math.floor(q / bins), bins - 1)]++; });
+  veilQols.forEach(q => { veilBins[Math.min(Math.floor(q / bins), bins - 1)]++; });
+
+  const labels = [];
+  for (let i = 0; i < bins; i++) labels.push(`${i * 10}-${(i + 1) * 10}`);
+
+  const canvas = $('compareChart');
+  if (compareChart) compareChart.destroy();
+
+  compareChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
     data: {
-      datasets: [{
-        label: '其他玩家',
-        data: points.filter(p => !p.isYou).map(p => ({ x: p.attrAvg, y: p.qol })),
-        backgroundColor: 'rgba(255,255,255,0.12)',
-        borderColor: 'rgba(255,255,255,0.06)',
-        pointRadius: 4,
-        pointHoverRadius: 6
-      }, {
-        label: '你的位置',
-        data: points.filter(p => p.isYou).map(p => ({ x: p.attrAvg, y: p.qol })),
-        backgroundColor: '#ffd700',
-        borderColor: '#ffb300',
-        pointRadius: 8,
-        pointHoverRadius: 10,
-        pointStyle: 'star'
-      }]
+      labels,
+      datasets: [
+        {
+          label: '知道身份时的规则',
+          data: selfishBins,
+          backgroundColor: 'rgba(244,67,54,0.5)',
+          borderColor: 'rgba(244,67,54,0.8)',
+          borderWidth: 1
+        },
+        {
+          label: '无知之幕后的规则',
+          data: veilBins,
+          backgroundColor: 'rgba(76,175,80,0.5)',
+          borderColor: 'rgba(76,175,80,0.8)',
+          borderWidth: 1
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: 'rgba(255,255,255,0.6)' } }
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false }
       },
       scales: {
         x: {
-          title: { display: true, text: '属性综合分（越高条件越好）', color: 'rgba(255,255,255,0.5)' },
+          title: { display: true, text: 'QoL 得分区间', color: 'rgba(255,255,255,0.5)' },
           grid: { color: 'rgba(255,255,255,0.06)' },
-          ticks: { color: 'rgba(255,255,255,0.4)' },
-          min: 0, max: 100
+          ticks: { color: 'rgba(255,255,255,0.4)' }
         },
         y: {
-          title: { display: true, text: 'QoL 得分', color: 'rgba(255,255,255,0.5)' },
+          title: { display: true, text: '人数', color: 'rgba(255,255,255,0.5)' },
           grid: { color: 'rgba(255,255,255,0.06)' },
-          ticks: { color: 'rgba(255,255,255,0.4)' },
-          min: 0, max: 100
+          ticks: { color: 'rgba(255,255,255,0.4)' }
         }
       }
     }
   });
-
-  // 提交你的数据
-  if (attrs && result) {
-    submitStats(points);
-  }
 }
 
-function submitStats(existingPoints) {
-  const body = {
-    policies,
-    attrs,
-    result
-  };
-  fetch(API_BASE + '/veil/submit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  }).then(r => r.json()).then(data => {
-    if (data.status === 200 && data.data.scatter) {
-      renderScatter(data.data.scatter);
-    }
-  }).catch(() => {});
-}
+function renderFairnessCompare() {
+  const N = 500;
+  const samples = [];
+  for (let i = 0; i < N; i++) samples.push(Engine.generateAttributes());
 
-// ===== 重置 =====
-function resetAll() {
-  policies = { ...defaults };
-  attrs = null;
-  result = null;
-  cardRevealed = [false, false, false, false];
-  // 重置滑块
-  Object.entries(defaults).forEach(([k, v]) => {
-    const el = $(k);
-    if (el) el.value = v;
-  });
-  $('taxRateVal').textContent = defaults.taxRate;
-  $('eduSpendVal').textContent = defaults.eduSpend.toLocaleString();
-  $('healthLevelVal').textContent = '基础医保';
-  $('inheritanceTaxVal').textContent = defaults.inheritanceTax;
-  $('basicIncomeVal').textContent = defaults.basicIncome.toLocaleString();
-  updateSidebar('taxSide', 'taxRate', defaults.taxRate);
-  updateSidebar('eduSide', 'eduSpend', defaults.eduSpend);
-  updateSidebar('healthSide', 'healthLevel', defaults.healthLevel);
-  updateSidebar('inheritanceSide', 'inheritanceTax', defaults.inheritanceTax);
-  updateSidebar('basicIncomeSide', 'basicIncome', defaults.basicIncome);
-  goStage(1);
+  const selfishFairness = Engine.fairnessCoefficient(samples, selfishPolicies);
+  const veilFairness = Engine.fairnessCoefficient(samples, veilPolicies);
+
+  // 最差 10% 的平均 QoL
+  const selfishQols = samples.map(s => Engine.calculate(selfishPolicies, s).qol).sort((a, b) => a - b);
+  const veilQols = samples.map(s => Engine.calculate(veilPolicies, s).qol).sort((a, b) => a - b);
+  const bottom10 = Math.floor(N * 0.1);
+  const selfishBottom = Math.round(selfishQols.slice(0, bottom10).reduce((s, v) => s + v, 0) / bottom10);
+  const veilBottom = Math.round(veilQols.slice(0, bottom10).reduce((s, v) => s + v, 0) / bottom10);
+
+  const fairDiff = veilFairness - selfishFairness;
+  const bottomDiff = veilBottom - selfishBottom;
+
+  $('fairnessCompare').innerHTML = `
+    <div class="fc-grid">
+      <div class="fc-card">
+        <div class="fc-label">公平系数</div>
+        <div class="fc-row">
+          <span class="fc-tag selfish">知道身份</span>
+          <span class="fc-val">${selfishFairness}</span>
+        </div>
+        <div class="fc-row">
+          <span class="fc-tag veil">无知之幕</span>
+          <span class="fc-val">${veilFairness}</span>
+        </div>
+        <div class="fc-diff ${fairDiff >= 0 ? 'positive' : 'negative'}">
+          ${fairDiff >= 0 ? '↑' : '↓'} ${Math.abs(fairDiff)} 分
+        </div>
+      </div>
+      <div class="fc-card">
+        <div class="fc-label">最差 10% 的平均 QoL</div>
+        <div class="fc-row">
+          <span class="fc-tag selfish">知道身份</span>
+          <span class="fc-val">${selfishBottom}</span>
+        </div>
+        <div class="fc-row">
+          <span class="fc-tag veil">无知之幕</span>
+          <span class="fc-val">${veilBottom}</span>
+        </div>
+        <div class="fc-diff ${bottomDiff >= 0 ? 'positive' : 'negative'}">
+          ${bottomDiff >= 0 ? '↑' : '↓'} ${Math.abs(bottomDiff)} 分
+        </div>
+      </div>
+    </div>
+    <p class="fc-explain">
+      公平系数 = (1 - 基尼系数) × 100。越高越公平。<br>
+      Rawls 的「差异原则」：好的规则应该让最差位置的人尽可能好。
+    </p>
+  `;
 }
 
 document.addEventListener('DOMContentLoaded', init);

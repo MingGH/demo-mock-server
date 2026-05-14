@@ -15,7 +15,6 @@ import com.example.demo_mock_server.service.CascadeFailureService;
 import com.example.demo_mock_server.service.CosmicReaperService;
 import com.example.demo_mock_server.service.MonkeyStatsService;
 import com.example.demo_mock_server.service.SecKillStatsService;
-import com.example.demo_mock_server.service.VeilOfIgnoranceService;
 import com.example.demo_mock_server.service.TimePerceptionService;
 import com.example.demo_mock_server.service.WordCloudService;
 import io.vertx.core.Vertx;
@@ -195,12 +194,6 @@ public class RouterConfig {
         MonkeyStatsHandler monkeyHandler = new MonkeyStatsHandler(monkeyService);
         router.post("/monkey/submit").handler(new RateLimitHandler(10, 60)).handler(monkeyHandler);
         router.get("/monkey/stats").handler(monkeyHandler);
-
-        // 无知之幕统计
-        VeilOfIgnoranceService veilService = new VeilOfIgnoranceService(mysqlPool);
-        VeilOfIgnoranceHandler veilHandler = new VeilOfIgnoranceHandler(veilService);
-        router.post("/veil/submit").handler(new RateLimitHandler(10, 60)).handler(veilHandler);
-        router.get("/veil/stats").handler(veilHandler);
 
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();

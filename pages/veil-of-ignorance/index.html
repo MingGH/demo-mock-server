@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="无知之幕：你设计社会规则，然后抽签决定你的出身。John Rawls 正义论核心思想交互式模拟。">
+  <title>无知之幕：你设计规则，然后抽签决定你自己 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-eye-off"></i> 无知之幕</h1>
+    <p>John Rawls 1971 年提出的思想实验：你设计社会规则，不知道自己在社会中的出身。打开幕布之前，你会制定怎样的规则？</p>
+  </div>
+
+  <!-- 步骤指示器 -->
+  <div class="step-indicator">
+    <span class="step-dot active"></span>
+    <span class="step-dot"></span>
+    <span class="step-dot"></span>
+    <span class="step-dot"></span>
+  </div>
+
+  <!-- 顶部导航按钮 -->
+  <div class="btn-row" style="justify-content:center;margin-bottom:20px;">
+    <button class="btn-secondary active-step" id="btnDesign"><i class="ti ti-settings"></i> ① 设计规则</button>
+    <button class="btn-secondary" id="btnDraw" style="display:none;"><i class="ti ti-cards"></i> ② 抽签</button>
+    <button class="btn-secondary" id="btnResult" style="display:none;"><i class="ti ti-chart-bar"></i> ③ 结果</button>
+    <button class="btn-secondary" id="btnGlobal" style="display:none;"><i class="ti ti-users"></i> ④ 全站</button>
+    <button class="btn-secondary" id="btnReset"><i class="ti ti-refresh"></i> 重置</button>
+  </div>
+
+  <!-- ═══════ 阶段 1：设计规则 ═══════ -->
+  <div class="section stage-panel" id="stage1">
+    <h2><i class="ti ti-settings"></i> ① 设计社会规则</h2>
+    <p class="stage-desc">拖动滑块制定 5 项核心政策，然后你会被随机分配到社会中的一个位置。想想看：如果你是运气最差的那个人，这些规则对你好吗？</p>
+
+    <div class="policy-grid">
+      <div class="policy-row">
+        <span class="policy-label"><i class="ti ti-receipt-tax"></i> 最高收入税率</span>
+        <span class="policy-slider">
+          <span>5%</span>
+          <input type="range" id="taxRate" min="5" max="75" value="35" step="1">
+          <span>75%</span>
+        </span>
+        <span class="policy-val" id="taxRateVal">35</span>
+        <span class="policy-side" id="taxSide"></span>
+      </div>
+      <div class="policy-row">
+        <span class="policy-label"><i class="ti ti-school"></i> 教育投入/人年</span>
+        <span class="policy-slider">
+          <span>3k</span>
+          <input type="range" id="eduSpend" min="3000" max="60000" value="15000" step="1000">
+          <span>60k</span>
+        </span>
+        <span class="policy-val" id="eduSpendVal">15,000</span>
+        <span class="policy-side" id="eduSide"></span>
+      </div>
+      <div class="policy-row">
+        <span class="policy-label"><i class="ti ti-heart"></i> 医保覆盖</span>
+        <span class="policy-slider">
+          <span>1级</span>
+          <input type="range" id="healthLevel" min="1" max="4" value="2" step="1">
+          <span>4级</span>
+        </span>
+        <span class="policy-val" id="healthLevelVal">基础医保</span>
+        <span class="policy-side" id="healthSide"></span>
+      </div>
+      <div class="policy-row">
+        <span class="policy-label"><i class="ti ti-building-bank"></i> 遗产税率</span>
+        <span class="policy-slider">
+          <span>0%</span>
+          <input type="range" id="inheritanceTax" min="0" max="70" value="20" step="1">
+          <span>70%</span>
+        </span>
+        <span class="policy-val" id="inheritanceTaxVal">20</span>
+        <span class="policy-side" id="inheritanceSide"></span>
+      </div>
+      <div class="policy-row">
+        <span class="policy-label"><i class="ti ti-cash"></i> 基本收入/月</span>
+        <span class="policy-slider">
+          <span>0</span>
+          <input type="range" id="basicIncome" min="0" max="4000" value="1000" step="100">
+          <span>4k</span>
+        </span>
+        <span class="policy-val" id="basicIncomeVal">1,000</span>
+        <span class="policy-side" id="basicIncomeSide"></span>
+      </div>
+    </div>
+
+    <div class="preview-box">
+      <span class="hint">当前规则下，随机抽一个人的 QoL 预览：</span>
+      <span class="pv-score" id="previewQol" style="color:#ffd700;">--</span>
+      <span class="hint">（每次刷新不同身份，仅参考）</span>
+    </div>
+
+    <div class="btn-row" style="justify-content:center;margin-top:16px;">
+      <button class="btn-primary" onclick="
+        // 触发 recalc 后跳到阶段2
+        const r = Engine.calculate(policies, Engine.generateAttributes());
+        document.getElementById('previewQol').textContent = r.qol;
+        drawAttributes();
+      "><i class="ti ti-cards"></i> 抽签</button>
+    </div>
+  </div>
+
+  <!-- ═══════ 阶段 2：抽签 ═══════ -->
+  <div class="section stage-panel" id="stage2" style="display:none;">
+    <h2><i class="ti ti-cards"></i> ② 抽签</h2>
+    <p class="stage-desc">你的出身、天赋、健康和运气已经被随机决定了。点击卡片翻开看。</p>
+
+    <div class="cards-grid">
+      <div class="attr-card" id="cardTalent">
+        <div class="card-icon"><i class="ti ti-brain"></i></div>
+        <div class="card-label">天赋</div>
+        <div class="card-value">?</div>
+      </div>
+      <div class="attr-card" id="cardFamily">
+        <div class="card-icon"><i class="ti ti-building-bank"></i></div>
+        <div class="card-label">家庭财富</div>
+        <div class="card-value">?</div>
+      </div>
+      <div class="attr-card" id="cardHealth">
+        <div class="card-icon"><i class="ti ti-heart"></i></div>
+        <div class="card-label">健康状况</div>
+        <div class="card-value">?</div>
+      </div>
+      <div class="attr-card" id="cardLuck">
+        <div class="card-icon"><i class="ti ti-clover"></i></div>
+        <div class="card-label">运气</div>
+        <div class="card-value">?</div>
+      </div>
+    </div>
+    <p class="hint" id="revealAllHint" style="text-align:center;margin-top:8px;">👆 点击每张卡片翻开</p>
+
+    <div class="btn-row" style="justify-content:center;">
+      <button class="btn-secondary" id="btnRedraw" style="display:none;"><i class="ti ti-refresh"></i> 重新抽签</button>
+    </div>
+  </div>
+
+  <!-- ═══════ 阶段 3：结果 ═══════ -->
+  <div class="section stage-panel" id="stage3" style="display:none;">
+    <h2><i class="ti ti-chart-bar"></i> ③ 你的结果</h2>
+    <p class="stage-desc">你用自己设计的规则来过一个身份的生活。结果是：</p>
+
+    <div class="qol-dashboard">
+      <div class="qol-subtitle">生活质量得分 QoL</div>
+      <div class="qol-score" id="qolScore">--</div>
+      <div class="qol-bar-wrap"><div class="qol-bar-fill" id="qolBar" style="width:0%"></div></div>
+      <div class="qol-subtitle">满分 100</div>
+    </div>
+
+    <h4 style="margin:12px 0 8px;font-size:13px;color:rgba(255,255,255,0.5);">收支明细（月）</h4>
+    <div class="breakdown" id="breakdown"></div>
+    <div class="disposable-box">
+      可支配收入：<span id="disposableVal">--</span>
+    </div>
+
+    <button class="formula-toggle" onclick="toggleFormula()">
+      <i class="ti ti-math-symbols"></i> 查看 QoL 计算公式
+    </button>
+    <div class="formula-details" id="formulaDetails" style="display:none;">
+      <b>市场月收入</b> = 2000 + 天赋×80 + 家庭财富×40 + 运气×25<br>
+      <b>累进税率</b> = 2% + (设定税率 - 2%) × (市场收入/14500)^1.5<br>
+      <b>税后收入</b> = 市场收入 × (1 - 累进税率/100)<br>
+      <b>教育助力</b> = 天赋 × (教育经费/60000) × (1 - 家庭/100) × 80<br>
+      <b>医疗负担</b> = (1 - 健康/100) × (4 - 医保等级)/3 × 6000<br>
+      <b>遗产收入</b> = 家庭财富 × 60 × (1 - 遗产税率/100)<br>
+      <b>可支配收入</b> = 税后收入 + 教育助力 + 基本收入 + 遗产收入 - 医疗负担<br>
+      <b>QoL</b> = clamp(可支配/100, 0, 100)
+    </div>
+  </div>
+
+  <!-- ═══════ 阶段 4：全站数据 ═══════ -->
+  <div class="section stage-panel" id="stage4" style="display:none;">
+    <h2><i class="ti ti-users"></i> ④ 全站数据</h2>
+    <p class="stage-desc">所有参与者的规则与命运。黄点是你。</p>
+
+    <p id="globalInfo" style="font-size:13px;color:rgba(255,255,255,0.4);">加载中...</p>
+    <div class="scatter-wrap">
+      <canvas id="scatterCanvas"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

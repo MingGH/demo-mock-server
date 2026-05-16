@@ -195,6 +195,14 @@ public class RouterConfig {
         router.post("/monkey/submit").handler(new RateLimitHandler(10, 60)).handler(monkeyHandler);
         router.get("/monkey/stats").handler(monkeyHandler);
 
+        // 尼姆游戏对局统计
+        com.example.demo_mock_server.service.NimGameStatsService nimService =
+            new com.example.demo_mock_server.service.NimGameStatsService(mysqlPool);
+        com.example.demo_mock_server.handler.NimGameStatsHandler nimHandler =
+            new com.example.demo_mock_server.handler.NimGameStatsHandler(nimService);
+        router.post("/nim-game/submit").handler(new RateLimitHandler(10, 60)).handler(nimHandler);
+        router.get("/nim-game/stats").handler(nimHandler);
+
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();
         router.get("/doc-track/pixel").handler(docTrackHandler);

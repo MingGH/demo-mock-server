@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="看似简单的取石子游戏，背后藏着二进制异或运算的必胜策略。和AI对弈，实时揭示为什么你总是输——因为数学站在它那边。">
+  <title>尼姆游戏：二进制里的必胜秘密 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-binary-tree"></i> 尼姆游戏</h1>
+    <p>桌上有好几堆石子。两人轮流操作，每次只能选<strong>一堆</strong>，从中取走<strong>至少一颗、最多全部</strong>（但不能跨堆取）。谁取走全场最后一颗石子，谁就赢了。听起来靠运气？其实每一步都有数学上的最优解。</p>
+  </div>
+
+  <!-- ── 游戏区域 ── -->
+  <div class="section" id="gameSection">
+    <h2><i class="ti ti-swords"></i> 人机对弈</h2>
+
+    <div class="rules-box">
+      <h4><i class="ti ti-info-circle"></i> 规则（30秒看懂）</h4>
+      <ul>
+        <li>桌上有 <strong>多堆</strong> 石子（比如 3 堆，分别有 3、5、7 颗）</li>
+        <li>你和 AI 轮流操作，每次 <strong>只能选一堆</strong></li>
+        <li>从选中的那堆里取走 <strong>至少 1 颗，最多全拿走</strong>（不能跨堆）</li>
+        <li>谁取走全场 <strong>最后一颗</strong> 石子，谁赢</li>
+      </ul>
+    </div>
+
+    <div class="game-controls">
+      <label>难度：</label>
+      <select id="difficultySelect">
+        <option value="easy">简单（AI 偶尔犯错）</option>
+        <option value="normal">普通（AI 大概率最优）</option>
+        <option value="hard" selected>困难（AI 完美策略）</option>
+      </select>
+      <label>初始局面：</label>
+      <select id="presetSelect">
+        <option value="classic" selected>经典 [3, 5, 7]</option>
+        <option value="simple">入门 [1, 2, 3]</option>
+        <option value="random">随机</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="startNewGame()">
+        <i class="ti ti-refresh"></i> 新游戏
+      </button>
+      <button class="btn btn-secondary btn-sm" id="hintBtn" onclick="toggleHint()">
+        <i class="ti ti-bulb"></i> 提示
+      </button>
+    </div>
+
+    <div class="status-bar">
+      <span class="status-turn" id="statusTurn">轮到：<span class="highlight">你</span></span>
+      <span class="status-nim-sum" id="statusNimSum">尼姆和：<span class="xor-val">—</span></span>
+    </div>
+
+    <div class="strategy-hint" id="strategyHint"></div>
+
+    <div class="piles-area" id="pilesArea"></div>
+
+    <div class="take-info" id="takeInfo" style="display:none;">
+      已选中 <span class="pile-name" id="selectedPileName">—</span> 的 <span class="count" id="selectedCount">0</span> 颗石子
+    </div>
+
+    <div class="take-controls" id="takeControls" style="display:none;">
+      <button class="btn btn-primary" id="confirmBtn" onclick="confirmTake()">
+        <i class="ti ti-check"></i> 确认取走
+      </button>
+      <button class="btn btn-secondary" id="cancelBtn" onclick="cancelSelection()">
+        <i class="ti ti-x"></i> 取消
+      </button>
+    </div>
+
+    <!-- 游戏结果 -->
+    <div class="game-result" id="gameResult" style="display:none;">
+      <div class="result-icon" id="resultIcon"></div>
+      <div class="result-text" id="resultText"></div>
+      <div class="result-sub" id="resultSub"></div>
+      <button class="btn btn-primary" onclick="startNewGame()">
+        <i class="ti ti-refresh"></i> 再来一局
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 二进制揭秘面板 ── -->
+  <div class="section">
+    <h2><i class="ti ti-binary"></i> 二进制揭秘</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+      每堆石子数转为二进制，逐位做 XOR 运算。当尼姆和 = 0 时，当前行动方必败。
+    </p>
+
+    <div class="binary-panel" id="binaryPanel">
+      <h3><i class="ti ti-cpu"></i> 实时 XOR 计算</h3>
+      <table class="binary-table" id="binaryTable">
+        <thead><tr id="binaryHeader"></tr></thead>
+        <tbody id="binaryBody"></tbody>
+      </table>
+    </div>
+
+    <div class="insight-box blue">
+      <h3><i class="ti ti-bulb"></i> 为什么 XOR = 0 就输了？</h3>
+      <p>XOR = 0 意味着各位上 1 的个数都是偶数。无论你怎么取，都会打破这个平衡（让某些位变成奇数个 1），对手总能找到一步恢复平衡。最终石子取完时，一定轮到你面对空局面——你输了。</p>
+    </div>
+  </div>
+
+  <!-- ── 对局记录 ── -->
+  <div class="section">
+    <h2><i class="ti ti-history"></i> 对局记录</h2>
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="val" id="statTotal">0</div><div class="lbl">总局数</div></div>
+      <div class="stat-card"><div class="val" id="statWin">0</div><div class="lbl">你赢</div></div>
+      <div class="stat-card"><div class="val" id="statLose">0</div><div class="lbl">AI 赢</div></div>
+      <div class="stat-card"><div class="val" id="statRate">0%</div><div class="lbl">胜率</div></div>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+  <!-- ── 全站对局统计 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-bar"></i> 全站对局统计</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+      所有玩家的对局数据汇总，看看 AI 的胜率有多恐怖。
+    </p>
+    <div class="stats-grid" id="globalStats">
+      <div class="stat-card"><div class="val" id="gTotal">—</div><div class="lbl">总对局数</div></div>
+      <div class="stat-card"><div class="val" id="gAiWinRate">—</div><div class="lbl">AI 总胜率</div></div>
+      <div class="stat-card"><div class="val" id="gAiWinRateHard">—</div><div class="lbl">困难模式 AI 胜率</div></div>
+      <div class="stat-card"><div class="val" id="gPlayerWins">—</div><div class="lbl">玩家总胜场</div></div>
+    </div>
+    <div class="insight-box" id="globalInsight" style="display:none;">
+      <h3><i class="ti ti-info-circle"></i> 数据说明</h3>
+      <p id="globalInsightText"></p>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-math-symbols"></i> 数学原理</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>尼姆和（Nim-sum）</h4>
+        <p>把每堆石子数写成二进制，逐位做 XOR。结果叫「尼姆和」。这个值决定了谁必胜。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>必胜条件</h4>
+        <p>尼姆和 ≠ 0 时，当前玩家有必胜策略：找到一堆，取走若干石子使尼姆和变为 0。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>必败陷阱</h4>
+        <p>尼姆和 = 0 时，无论怎么取都会让尼姆和变为非零——把必胜权交给对手。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">04</div>
+        <h4>Sprague-Grundy 定理</h4>
+        <p>尼姆游戏是组合博弈论的基石。任何无偏博弈（Impartial Game）都等价于某个尼姆堆。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-trophy"></i> 怎么赢 AI？</h3>
+      <p>在困难模式下，如果 AI 先手且初始尼姆和 ≠ 0，你几乎不可能赢——因为 AI 每步都走最优。唯一的机会是：选择一个初始尼姆和 = 0 的局面（比如 [1,2,3]），让 AI 先手，它就陷入必败态了。试试「入门 [1,2,3]」局面，让 AI 先走。</p>
+    </div>
+  </div>
+
+  <!-- ── 延伸阅读 ── -->
+  <div class="section">
+    <h2><i class="ti ti-book"></i> 游戏背后的数学世界</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+      尼姆游戏只是冰山一角。很多看似简单的游戏，背后都有深刻的数学结构。
+    </p>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">♟️</div>
+        <h4>巴什博弈</h4>
+        <p>一堆 n 个石子，每次取 1~m 个。n%(m+1)=0 时后手必胜。模运算决定命运。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">🎲</div>
+        <h4>威佐夫博弈</h4>
+        <p>两堆石子，可从一堆取或两堆取相同数量。必胜态与黄金比例 φ 有关。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">🧩</div>
+        <h4>Sprague-Grundy 定理</h4>
+        <p>任何有限无偏博弈都能算出一个 Grundy 值，多个子游戏的 Grundy 值做 XOR 就是总局面的值。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

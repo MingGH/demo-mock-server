@@ -1,0 +1,133 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+}
+.container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 30px; margin-bottom: 30px; }
+.header h1 {
+  font-size: 2.4rem;
+  background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: shimmer 3s linear infinite; margin-bottom: 12px;
+}
+@keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+.header p { font-size: 1rem; color: #a0a0a0; max-width: 700px; margin: 0 auto; }
+
+/* ── Section ── */
+.section {
+  background: rgba(255,255,255,0.05); border-radius: 16px; padding: 28px;
+  margin-bottom: 28px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+}
+.section h2 { font-size: 1.35rem; margin-bottom: 8px; color: #ffd700; display: flex; align-items: center; gap: 10px; }
+.section-desc { color: #808080; font-size: 0.9rem; margin-bottom: 20px; }
+
+/* ── Buttons ── */
+.btn {
+  padding: 11px 22px; border: none; border-radius: 8px; font-size: 0.95rem;
+  cursor: pointer; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 700; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.35); }
+.btn-secondary { background: rgba(255,255,255,0.08); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.18); }
+.btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.13); }
+.btn-sm { padding: 7px 14px; font-size: 0.85rem; }
+
+/* ── Bowls Row ── */
+.bowls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+@media (max-width: 640px) { .bowls-row { grid-template-columns: 1fr; } }
+
+.bowl-card {
+  background: rgba(255,255,255,0.04); border-radius: 14px; padding: 20px;
+  border: 1px solid rgba(255,255,255,0.08); text-align: center;
+}
+.bowl-label {
+  font-size: 1.1rem; font-weight: 700; color: #ccc; margin-bottom: 12px;
+  letter-spacing: 0.05em;
+}
+
+/* ── Bowl Viz ── */
+.bowl-viz {
+  width: 140px; height: 120px; margin: 0 auto 14px; border-radius: 0 0 70px 70px;
+  background: rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.12);
+  position: relative; overflow: hidden; display: flex; align-items: flex-end;
+  justify-content: center; gap: 4px; padding: 8px 12px 0;
+}
+.stone-pile { border-radius: 8px 8px 0 0; transition: height 0.4s ease; min-width: 18px; }
+.black-pile { background: linear-gradient(0deg, #2a2a2a, #555); }
+.white-pile { background: linear-gradient(0deg, #ccc, #eee); }
+
+/* ── Bowl Stats ── */
+.bowl-stats { margin-bottom: 14px; }
+.stat-row {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 0.9rem; margin-bottom: 4px;
+}
+.stat-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.black-dot { background: linear-gradient(135deg, #1a1a1a, #555); border: 1px solid #888; }
+.white-dot { background: linear-gradient(135deg, #ddd, #fff); border: 1px solid #aaa; }
+.total-row { color: #ffd700; font-size: 0.85rem; margin-top: 2px; }
+
+/* ── Sliders ── */
+.slider-group {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.slider-group label { color: #aaa; font-size: 0.85rem; min-width: 48px; text-align: right; }
+.slider-group input { flex: 1; accent-color: #ffd700; }
+.slider-val { color: #ccc; font-size: 0.85rem; min-width: 28px; text-align: left; }
+
+/* ── Probability Display ── */
+.prob-display {
+  background: rgba(255,215,0,0.06); border: 1px solid rgba(255,215,0,0.2);
+  border-radius: 12px; padding: 18px 24px; text-align: center;
+}
+.prob-main { display: flex; align-items: baseline; justify-content: center; gap: 16px; }
+.prob-label { color: #aaa; font-size: 0.95rem; }
+.prob-value { font-size: 2.8rem; font-weight: 800; color: #ffd700; }
+.prob-breakdown { color: #808080; font-size: 0.85rem; margin-top: 6px; }
+.prob-warning { color: #ff9800; font-size: 0.85rem; margin-top: 10px; }
+
+/* ── Presets ── */
+.preset-buttons {
+  margin-top: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.preset-label { color: #888; font-size: 0.85rem; }
+
+/* ── Sim Controls ── */
+.sim-controls {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.sim-controls label { color: #aaa; font-size: 0.9rem; }
+.sim-controls input[type="number"] {
+  padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06); color: #e8e8e8; font-size: 0.9rem;
+}
+.sim-controls span { color: #aaa; }
+
+/* ── Draw Result ── */
+.draw-result {
+  padding: 18px; border-radius: 12px; margin-bottom: 18px; text-align: center;
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+}
+.draw-result.win { background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.3); }
+.draw-result.lose { background: rgba(244,67,54,0.12); border: 1px solid rgba(244,67,54,0.3); }
+.draw-result.invalid { background: rgba(255,152,0,0.12); border: 1px solid rgba(255,152,0,0.3); }
+.result-icon { font-size: 2.2rem; }
+.result-msg { font-size: 1.05rem; }
+
+/* ── MC Summary ── */
+.mc-summary {
+  padding: 16px; border-radius: 10px; margin-top: 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.95rem; text-align: center;
+}
+.mc-summary strong { color: #ffd700; }
+
+/* ── Chart Wrap ── */
+.chart-wrap { position: relative; width: 100%; }

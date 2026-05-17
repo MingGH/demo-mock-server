@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="50颗黑子50颗白子分到两个碗里，蒙眼摸一颗。你能把胜率从50%提升到74.7%吗？《十日终焉》人猪游戏，亲手验证概率分配的威力。">
+  <title>黑白棋：你分配概率，运气听你的 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-dice-5"></i> 黑白棋</h1>
+    <p>《十日终焉》「人猪」游戏 — 50黑50白分到两个碗里，蒙眼摸一颗，摸到黑子赢。<strong>你来分配棋子。</strong>大多数人直觉平分，胜率刚好一半。但最优策略能把胜率拉到74.7%。来试试。</p>
+  </div>
+
+  <!-- ── 分配区域 ── -->
+  <div class="section" id="setupSection">
+    <h2><i class="ti ti-adjustments"></i> 分配棋子</h2>
+    <p class="section-desc">拖动滑块，决定每个碗里放多少黑子和白子。下方实时显示胜率。</p>
+
+    <div class="bowls-row">
+      <!-- 碗 A -->
+      <div class="bowl-card">
+        <div class="bowl-label">碗 A</div>
+        <div class="bowl-viz" id="bowlAViz">
+          <div class="stone-pile black-pile" id="bowlABlack"></div>
+          <div class="stone-pile white-pile" id="bowlAWhite"></div>
+        </div>
+        <div class="bowl-stats">
+          <div class="stat-row"><span class="stat-dot black-dot"></span> 黑子 <strong id="bowlABlackCount">0</strong></div>
+          <div class="stat-row"><span class="stat-dot white-dot"></span> 白子 <strong id="bowlAWhiteCount">0</strong></div>
+          <div class="stat-row total-row">合计 <strong id="bowlATotal">0</strong> 颗</div>
+        </div>
+        <div class="slider-group">
+          <label>黑子数</label>
+          <input type="range" id="blackInA" min="0" max="50" value="25" step="1">
+          <span class="slider-val" id="blackInAVal">25</span>
+        </div>
+        <div class="slider-group">
+          <label>白子数</label>
+          <input type="range" id="whiteInA" min="0" max="50" value="25" step="1">
+          <span class="slider-val" id="whiteInAVal">25</span>
+        </div>
+      </div>
+
+      <!-- 碗 B -->
+      <div class="bowl-card">
+        <div class="bowl-label">碗 B</div>
+        <div class="bowl-viz" id="bowlBViz">
+          <div class="stone-pile black-pile" id="bowlBBlack"></div>
+          <div class="stone-pile white-pile" id="bowlBWhite"></div>
+        </div>
+        <div class="bowl-stats">
+          <div class="stat-row"><span class="stat-dot black-dot"></span> 黑子 <strong id="bowlBBlackCount">25</strong></div>
+          <div class="stat-row"><span class="stat-dot white-dot"></span> 白子 <strong id="bowlBWhiteCount">25</strong></div>
+          <div class="stat-row total-row">合计 <strong id="bowlBTotal">50</strong> 颗</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 胜率显示 -->
+    <div class="prob-display">
+      <div class="prob-main">
+        <span class="prob-label">你的获胜概率</span>
+        <span class="prob-value" id="winProb">50.0%</span>
+      </div>
+      <div class="prob-breakdown">
+        <span>½ × 选中碗A(<span id="probA">50.0</span>%) + ½ × 选中碗B(<span id="probB">50.0</span>%)</span>
+      </div>
+      <div class="prob-warning" id="probWarning" style="display:none;">
+        ⚠️ 其中一个碗是空的，无法抽棋。请确保两个碗各至少 1 颗棋子。
+      </div>
+    </div>
+
+    <!-- 快捷预设 -->
+    <div class="preset-buttons">
+      <span class="preset-label">快捷分配：</span>
+      <button class="btn btn-sm btn-secondary" onclick="applyPreset('naive')">公平分配 (50%)</button>
+      <button class="btn btn-sm btn-secondary" onclick="applyPreset('optimal')">最优策略 (74.7%)</button>
+      <button class="btn btn-sm btn-secondary" onclick="applyPreset('extreme')">极端分配 (50.5%)</button>
+    </div>
+  </div>
+
+  <!-- ── 模拟区域 ── -->
+  <div class="section" id="simSection">
+    <h2><i class="ti ti-play-card"></i> 模拟抽棋</h2>
+    <p class="section-desc">按当前分配方案模拟抽棋，看运气站在哪边。</p>
+
+    <div class="sim-controls">
+      <button class="btn btn-primary" id="drawOnceBtn" onclick="drawOnce()">
+        <i class="ti ti-hand-grab"></i> 摸一次
+      </button>
+      <label>蒙特卡洛：</label>
+      <input type="number" id="simCount" value="1000" min="10" max="100000" step="100" style="width:90px;">
+      <span>次</span>
+      <button class="btn btn-secondary" id="simManyBtn" onclick="runMonteCarlo()">
+        <i class="ti ti-chart-histogram"></i> 批量模拟
+      </button>
+    </div>
+
+    <div class="draw-result" id="drawResult" style="display:none;">
+      <div class="result-icon" id="resultIcon"></div>
+      <div class="result-msg" id="resultMsg"></div>
+    </div>
+
+    <div class="chart-wrap" id="mcChartWrap" style="display:none; height:280px;">
+      <canvas id="mcChart"></canvas>
+    </div>
+    <div class="mc-summary" id="mcSummary" style="display:none;"></div>
+  </div>
+
+  <!-- ── 概率曲面 ── -->
+  <div class="section" id="heatmapSection">
+    <h2><i class="ti ti-chart-3d"></i> 全部分配方案的胜率</h2>
+    <p class="section-desc">横轴：碗A黑子数，纵轴：碗A白子数。颜色越亮，胜率越高。你能找到最高点吗？</p>
+    <div class="chart-wrap" style="height:400px;">
+      <canvas id="heatmapCanvas"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

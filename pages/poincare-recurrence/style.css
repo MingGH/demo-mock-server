@@ -1,0 +1,146 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+}
+.container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 30px; margin-bottom: 30px; }
+.header h1 {
+  font-size: 2.4rem;
+  background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: shimmer 3s linear infinite; margin-bottom: 12px;
+}
+@keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+.header p { font-size: 1rem; color: #a0a0a0; max-width: 640px; margin: 0 auto; }
+
+/* ── Section card ── */
+.section {
+  background: rgba(255,255,255,0.05); border-radius: 16px; padding: 28px;
+  margin-bottom: 28px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+}
+.section h2 { font-size: 1.35rem; margin-bottom: 20px; color: #ffd700; display: flex; align-items: center; gap: 10px; }
+
+/* ── Buttons ── */
+.btn {
+  padding: 11px 22px; border: none; border-radius: 8px; font-size: 0.95rem;
+  cursor: pointer; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 700; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.35); }
+.btn-secondary { background: rgba(255,255,255,0.08); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.18); }
+.btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.13); }
+.btn-sm { padding: 7px 14px; font-size: 0.85rem; }
+
+/* ── Sim layout ── */
+.sim-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .sim-layout { grid-template-columns: 1fr; }
+}
+
+/* ── Canvas panel ── */
+.canvas-panel {
+  background: rgba(0,0,0,0.3); border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+#simCanvas { display: block; width: 100%; }
+
+/* ── Control panel ── */
+.ctrl-panel {
+  background: rgba(0,0,0,0.25); border-radius: 12px;
+  padding: 20px; border: 1px solid rgba(255,255,255,0.1);
+}
+.ctrl-panel h3 { color: #ffd700; font-size: 1rem; margin-bottom: 16px; }
+.ctrl-row { margin-bottom: 16px; }
+.ctrl-row label { display: block; font-size: 0.85rem; color: #a0a0a0; margin-bottom: 6px; }
+.ctrl-row .val { color: #ffd700; float: right; font-weight: 700; }
+.ctrl-row input[type=range] {
+  width: 100%; accent-color: #ffd700;
+}
+.region-options { display: flex; flex-direction: column; gap: 6px; }
+.region-options label {
+  display: flex; align-items: center; gap: 8px; font-size: 0.88rem;
+  cursor: pointer; color: #c0c0c0; padding: 6px 10px; border-radius: 6px;
+  transition: background 0.2s;
+}
+.region-options label:hover { background: rgba(255,255,255,0.05); }
+.region-options input[type=radio] { accent-color: #ffd700; }
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+/* ── Stats grid ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.stat-card {
+  background: rgba(0,0,0,0.2); border-radius: 10px;
+  padding: 12px 14px; text-align: center;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.stat-card .stat-label { font-size: 0.78rem; color: #888; margin-bottom: 4px; }
+.stat-card .stat-value { font-size: 1.2rem; font-weight: 700; color: #fbbf24; }
+.stat-card .stat-sub { font-size: 0.75rem; color: #666; margin-top: 2px; }
+
+.highlight-green .stat-value { color: #51cf66; }
+
+/* ── Chart box ── */
+.chart-box { height: 260px; position: relative; }
+
+/* ── Insight box ── */
+.insight-box {
+  background: rgba(251,191,36,0.06); border-radius: 12px;
+  padding: 18px 22px; border: 1px solid rgba(251,191,36,0.15);
+  margin-top: 20px;
+}
+.insight-box h3 { font-size: 1.05rem; color: #ffd700; margin-bottom: 8px; }
+.insight-box p { font-size: 0.92rem; color: #c0c0c0; line-height: 1.7; }
+
+/* ── Principle grid ── */
+.principle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.principle-card {
+  background: rgba(0,0,0,0.2); border-radius: 12px; padding: 22px;
+  border: 1px solid rgba(255,255,255,0.06); position: relative;
+}
+.principle-card .num {
+  font-size: 2rem; font-weight: 800; color: rgba(255,215,0,0.2);
+  position: absolute; top: 10px; right: 16px;
+}
+.principle-card h4 { font-size: 1rem; color: #ffd700; margin-bottom: 8px; }
+.principle-card p { font-size: 0.88rem; color: #a0a0a0; line-height: 1.65; }
+
+/* ── Theorem callout ── */
+.theorem-callout {
+  background: rgba(251,191,36,0.04); border-left: 3px solid #fbbf24;
+  border-radius: 0 10px 10px 0; padding: 16px 20px;
+  font-size: 0.93rem; color: #c0c0c0; line-height: 1.7; margin-bottom: 20px;
+}
+.theorem-callout strong { color: #ffd700; }
+
+/* ── Table ── */
+.data-table {
+  width: 100%; border-collapse: collapse; font-size: 0.9rem;
+}
+.data-table th, .data-table td {
+  padding: 10px 14px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.data-table th { color: #ffd700; font-weight: 600; }
+.data-table td { color: #c0c0c0; }
+.data-table .mono { font-family: 'SF Mono','Cascadia Code','Fira Code',monospace; color: #fbbf24; }

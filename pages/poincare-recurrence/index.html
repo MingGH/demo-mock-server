@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="庞加莱回归：气体分子会自动回到初始状态吗？用粒子模拟直观感受这个颠覆直觉的定理，看粒子数从2到10，回归时间如何爆炸式增长。">
+  <title>庞加莱回归：粒子何时回家？ | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-atom"></i> 庞加莱回归</h1>
+    <p>所有气体分子同时回到初始位置——理论上一定会发生，但你可能等不到那一天。</p>
+  </div>
+
+  <!-- ── 模拟区 ── -->
+  <div class="section">
+    <h2><i class="ti ti-player-play"></i> 粒子模拟</h2>
+
+    <div class="sim-layout">
+      <!-- 左：画布 -->
+      <div class="canvas-panel">
+        <canvas id="simCanvas"></canvas>
+      </div>
+
+      <!-- 右：控制面板 -->
+      <div class="ctrl-panel">
+        <h3><i class="ti ti-settings"></i> 参数控制</h3>
+
+        <div class="ctrl-row">
+          <label>粒子数量 <span class="val" id="lblN">5</span></label>
+          <input type="range" id="sliderN" min="2" max="15" value="5" step="1">
+        </div>
+
+        <div class="ctrl-row">
+          <label style="margin-bottom:8px;">初始区域</label>
+          <div class="region-options">
+            <label><input type="radio" name="region" value="left-half" checked> 左半边 (1/2)</label>
+            <label><input type="radio" name="region" value="top-left"> 左上角 (1/4)</label>
+            <label><input type="radio" name="region" value="center-small"> 中央 9%</label>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" id="btnPlay">▶ 开始</button>
+          <button class="btn btn-secondary btn-sm" id="btnReset"><i class="ti ti-refresh"></i> 重置</button>
+          <button class="btn btn-secondary btn-sm" id="btnFaster">1x</button>
+          <button class="btn btn-secondary btn-sm" id="btnStrict" style="margin-left:auto;">◯ 区域模式</button>
+        </div>
+
+        <div class="stats-grid" style="margin-top:20px;">
+          <div class="stat-card">
+            <div class="stat-label">模拟步数</div>
+            <div class="stat-value" id="lblSteps">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label" id="concLabel">区域占比</div>
+            <div class="stat-value" id="lblConc">0%</div>
+          </div>
+          <div class="stat-card highlight-green">
+            <div class="stat-label" id="recurrenceLabel">回归次数 (区域)</div>
+            <div class="stat-value" id="lblRecur">0</div>
+            <div class="stat-sub" id="recurrenceHint">所有粒子回到初始区域</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">理论回归周期</div>
+            <div class="stat-value" id="lblPeriod">—</div>
+            <div class="stat-sub">期望步数</div>
+          </div>
+          <div class="stat-card" style="grid-column: 1 / -1;">
+            <div class="stat-label">实际观察到的平均回归间隔</div>
+            <div class="stat-value" id="lblObsPeriod" style="font-size:1rem;">尚无</div>
+          </div>
+          <div class="stat-card" style="grid-column: 1 / -1; font-size:0.78rem; color:#888;">
+            区域回归：<span style="color:#fbbf24;" id="lblRecurRegion">0</span> 次
+            &nbsp;|&nbsp; ε=<span style="color:#fbbf24;">20</span> px（精确模式判定半径）
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;padding:8px 12px;background:rgba(251,191,36,0.06);border-radius:8px;font-size:0.78rem;color:#888;line-height:1.6;" id="modeExplain">
+        <b style="color:#ffd700;">区域回归：</b>所有粒子同时回到<span style="color:#fbbf24;">初始区域</span>即算一次（简化版，直观感受指数规律）。<br><b style="color:#ffd700;">精确回归：</b>所有粒子同时回到各自的<span style="color:#fbbf24;">初始精确位置</span>（半径ε内），这才是严格庞加莱回归。
+      </div>
+    </div>
+
+    <!-- 浓度趋势图 -->
+    <div style="margin-top:20px;">
+      <h3 style="color:#ffd700;font-size:1rem;margin-bottom:10px;"><i class="ti ti-chart-line"></i> 初始区域粒子占比变化</h3>
+      <div class="chart-box">
+        <canvas id="concChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 直观感受 ── -->
+  <div class="section">
+    <h2><i class="ti ti-eye"></i> 用眼睛感受指数爆炸</h2>
+
+    <p style="color:#a0a0a0;font-size:0.92rem;margin-bottom:16px;">
+      把初始区域设为<b style="color:#fbbf24;">左半边（1/2面积）</b>，逐步增加粒子数，观察回归次数的变化：
+    </p>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>粒子数 N</th>
+          <th>回归概率（单步）</th>
+          <th>理论回归周期</th>
+          <th>你的模拟中能看到回归吗？</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">N = 2</td>
+          <td>25%</td>
+          <td class="mono">4 步</td>
+          <td>频繁回归，几乎每几秒一次</td>
+        </tr>
+        <tr>
+          <td class="mono">N = 3</td>
+          <td>12.5%</td>
+          <td class="mono">8 步</td>
+          <td>轻松看到</td>
+        </tr>
+        <tr>
+          <td class="mono">N = 5</td>
+          <td>3.125%</td>
+          <td class="mono">32 步</td>
+          <td>需要等几秒</td>
+        </tr>
+        <tr>
+          <td class="mono">N = 7</td>
+          <td>≈ 0.78%</td>
+          <td class="mono">128 步</td>
+          <td>开几倍速等一会</td>
+        </tr>
+        <tr>
+          <td class="mono">N = 10</td>
+          <td>≈ 0.098%</td>
+          <td class="mono">1,024 步</td>
+          <td>需要耐心</td>
+        </tr>
+        <tr>
+          <td class="mono">N = 12</td>
+          <td>≈ 0.024%</td>
+          <td class="mono">4,096 步</td>
+          <td>开最高倍速可能等到</td>
+        </tr>
+        <tr>
+          <td class="mono">N = 15</td>
+          <td>≈ 0.003%</td>
+          <td class="mono">32,768 步</td>
+          <td>基本看不到</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="insight-box">
+      <h3><i class="ti ti-bulb"></i> 关键发现</h3>
+      <p>N 每增加 1，回归周期大约翻倍。N=15 时需要 3 万步，而 1 mol 气体有 6.02×10²³ 个分子——回归周期是一个天文数字，远超当前宇宙年龄（约 10¹⁷ 秒）。<b>庞加莱回归在数学上必然发生，在物理上等同于不会发生。</b></p>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 庞加莱回归到底说了什么</h2>
+
+    <div class="theorem-callout">
+      <strong>庞加莱回归定理（1890）</strong><br>
+      对于一个保测度的动力系统，在有限区域内，几乎所有初始状态都会在有限时间内任意接近其初始状态。<br><br>
+      用人话翻译：封闭盒子里的气体分子，只要你等得够久，它们一定会同时回到最初的位置。<br><br>
+      <span style="color:#888;font-size:0.83rem;">Henri Poincaré, "Sur le problème des trois corps et les équations de la dynamique", Acta Mathematica, 1890</span>
+    </div>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>直觉的颠覆</h4>
+        <p>热力学第二定律告诉我们熵只增不减——破镜不能重圆，咖啡和牛奶混了分不开。但庞加莱定理说：等得够久，它们会自己分开。这两个结论矛盾吗？</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>概率的解释</h4>
+        <p>不矛盾。热力学第二定律是统计规律——在合理的时间尺度上，熵增加的概率压倒性地大。庞加莱回归的等待时间太长，在宇宙尺度上都不会发生。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>玻尔兹曼的回应</h4>
+        <p>当策梅洛用回归定理质疑热力学第二定律时，玻尔兹曼的回应大致是：「你去等吧。」(1896)<br><br><span style="color:#888;font-size:0.8rem;">* Boltzmann 本人对回归时间的估计大约是 10^(10^20) 年量级。</span></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 数学公式 ── -->
+  <div class="section">
+    <h2><i class="ti ti-math"></i> 回归时间有多长？</h2>
+
+    <div class="theorem-callout">
+      <strong>简化模型下的回归时间估计</strong><br><br>
+      对 N 个独立粒子的简单模型，若初始区域占容器体积的<b>比例 f</b>：<br><br>
+      <strong>单步回归概率：</strong> P = f <sup>N</sup><br>
+      <strong>期望回归步数：</strong> E[T] = 1 / P = (1/f)<sup>N</sup><br><br>
+      表格中左半边区域 f=½，周期为 2<sup>N</sup>。实际气体的值远大于此——因为粒子之间还有相互作用、位置和速度都要同时回归。
+    </div>
+
+    <p style="color:#a0a0a0;font-size:0.9rem;">
+      真实场景下，一个装有 1 mol 气体的盒子，所有分子同时回到初始位置的概率约为 <b style="color:#fbbf24;">10<sup>-10<sup>23</sup></sup></b> 量级——与之相比，宇宙中可观测的原子总数不过大约 10<sup>80</sup>。<br><br>
+      所以玻尔兹曼说「你去等吧」，不是抬杠，是算过账的。
+    </p>
+  </div>
+
+  <!-- ── 应用与延伸 ── -->
+  <div class="section">
+    <h2><i class="ti ti-world"></i> 不只是物理学家的玩具</h2>
+
+    <p style="color:#a0a0a0;font-size:0.92rem;margin-bottom:16px;">庞加莱回归的思想出现在许多意想不到的地方：</p>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <h4>📐 遍历理论</h4>
+        <p>现代动力系统理论的基石。从混沌系统到太阳系稳定性，都建立在庞加莱开创的框架上。</p>
+      </div>
+      <div class="principle-card">
+        <h4>💻 伪随机数生成</h4>
+        <p>线性同余生成器（LCG）是有限状态确定性系统——庞加莱回归意味着它必然会循环。好的 PRNG 只是让循环周期大到实际不会碰到。</p>
+      </div>
+      <div class="principle-card">
+        <h4>🧬 有限状态系统</h4>
+        <p>任何有限状态、确定性的演化规则，最终都会进入循环。这就是为什么「永恒轮回」在哲学上能和庞加莱回归产生共鸣。</p>
+      </div>
+      <div class="principle-card">
+        <h4>🔐 密码学</h4>
+        <p>所有确定性加密算法在有限密钥空间下，理论上都可以暴力破解——安全性的基础是「回归周期大到不可行」。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FAQ ── -->
+  <div class="section">
+    <h2><i class="ti ti-question-mark"></i> 常见疑问</h2>
+
+    <div class="insight-box">
+      <h3>Q：庞加莱回归和「熵增定律」到底冲不冲突？</h3>
+      <p>不冲突。熵增定律说的是「平均趋势」——绝大多数时间熵在增加。庞加莱回归说的是「极端例外」——极少数时间熵会自发降低。两者的时间尺度完全不同。类比：扔 100 枚硬币，大多数时候正面数在 50 附近，但等足够久，一定会出现 100 枚都是正面的时候。热力学第二定律只是说——你大概率等不到。</p>
+    </div>
+
+    <div class="insight-box" style="margin-top:14px;">
+      <h3>Q：现实中观察到过庞加莱回归吗？</h3>
+      <p>在小系统中，是的。2018 年，一支研究团队在超冷原子系统中观测到了多体量子系统的回归现象（Nature Physics, 2018）。但在宏观系统中——0 次。1 mol 气体的回归时间远超宇宙年龄。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

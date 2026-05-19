@@ -50,6 +50,8 @@ ParticleSimulation.prototype._init = function () {
   this.step = 0;
   this.regionRecurrenceSteps = [];
   this.strictRecurrenceSteps = [];
+  this._hasScattered = false;
+  this._hasScatteredStrict = false;
   this.history = [];
   this._record();
 };
@@ -82,8 +84,18 @@ ParticleSimulation.prototype._record = function () {
   var sConc = this.getStrictConcentration();
   this.history.push({ step: this.step, regionConc: rConc, strictConc: sConc });
   if (this.history.length > this.historyMax) this.history.shift();
-  if (rConc >= 0.999) this.regionRecurrenceSteps.push(this.step);
-  if (sConc >= 0.999) this.strictRecurrenceSteps.push(this.step);
+
+  // 只有粒子曾经散开过之后的回归才算有效回归
+  if (!this._hasScattered) {
+    if (rConc < 1) this._hasScattered = true;
+  } else {
+    if (rConc >= 0.999) this.regionRecurrenceSteps.push(this.step);
+  }
+  if (!this._hasScatteredStrict) {
+    if (sConc < 1) this._hasScatteredStrict = true;
+  } else {
+    if (sConc >= 0.999) this.strictRecurrenceSteps.push(this.step);
+  }
 };
 
 // ── 区域回归（简化版，用于直观感受指数规律）

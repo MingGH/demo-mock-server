@@ -70,7 +70,7 @@
           <div class="stat-card">
             <div class="stat-label">理论回归周期</div>
             <div class="stat-value" id="lblPeriod">—</div>
-            <div class="stat-sub">期望步数</div>
+            <div class="stat-sub">独立随机模型估计*</div>
           </div>
           <div class="stat-card" style="grid-column: 1 / -1;">
             <div class="stat-label">实际观察到的平均回归间隔</div>
@@ -84,7 +84,7 @@
       </div>
 
       <div style="margin-top:12px;padding:8px 12px;background:rgba(251,191,36,0.06);border-radius:8px;font-size:0.78rem;color:#888;line-height:1.6;" id="modeExplain">
-        <b style="color:#ffd700;">区域回归：</b>所有粒子同时回到<span style="color:#fbbf24;">初始区域</span>即算一次（简化版，直观感受指数规律）。<br><b style="color:#ffd700;">精确回归：</b>所有粒子同时回到各自的<span style="color:#fbbf24;">初始精确位置</span>（半径ε内），这才是严格庞加莱回归。
+        <b style="color:#ffd700;">区域回归：</b>所有粒子同时回到<span style="color:#fbbf24;">初始区域</span>即算一次（简化版，直观感受指数规律）。<br><b style="color:#ffd700;">精确回归：</b>所有粒子同时回到各自的<span style="color:#fbbf24;">初始精确位置</span>（半径ε内），这才是严格庞加莱回归。<br><b style="color:#ffd700;">*理论周期说明：</b>公式 (1/f)<sup>N</sup> 假设每步各粒子位置独立随机。本模拟是确定性弹跳系统，粒子轨迹高度相关，实际回归间隔会偏离理论值（通常更长）。粒子数越多偏差越大。
       </div>
     </div>
 
@@ -205,7 +205,8 @@
       对 N 个独立粒子的简单模型，若初始区域占容器体积的<b>比例 f</b>：<br><br>
       <strong>单步回归概率：</strong> P = f <sup>N</sup><br>
       <strong>期望回归步数：</strong> E[T] = 1 / P = (1/f)<sup>N</sup><br><br>
-      表格中左半边区域 f=½，周期为 2<sup>N</sup>。实际气体的值远大于此——因为粒子之间还有相互作用、位置和速度都要同时回归。
+      表格中左半边区域 f=½，周期为 2<sup>N</sup>。实际气体的值远大于此——因为粒子之间还有相互作用、位置和速度都要同时回归。<br><br>
+      <span style="color:#888;font-size:0.83rem;">注：上述公式假设每步各粒子位置独立随机分布。上方模拟是确定性弹跳系统（粒子沿固定轨迹运动），各步之间高度相关，实际回归间隔会偏离理论值。粒子数较少时（N≤10）偏差较小，N 较大时实际等待时间通常远长于公式预测。</span>
     </div>
 
     <p style="color:#a0a0a0;font-size:0.9rem;">

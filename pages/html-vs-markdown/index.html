@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HTML 和 Markdown 该怎么选？同一份数据两种格式渲染对比，量化信息密度差异。结论：人类用 Markdown 写，AI 用 HTML 呈现。">
+  <title>HTML vs Markdown：谁该写、谁该读 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-code"></i> HTML vs Markdown 信息密度对比</h1>
+    <p>同一份数据，两种格式渲染。HTML 真的比 Markdown 能多传递多少信息？</p>
+  </div>
+
+  <!-- ── 核心论点 ── -->
+  <div class="thesis-box">
+    <div class="thesis-flow">
+      <div class="flow-step">
+        <strong>人类输入</strong>
+        <small>Markdown</small>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">
+        <strong>AI 处理</strong>
+        <small>理解 + 转换</small>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">
+        <strong>人类阅读</strong>
+        <small>HTML</small>
+      </div>
+    </div>
+    <p class="thesis-note">争论"HTML 取代 Markdown"可能问错了问题。也许答案是各管一段。</p>
+  </div>
+
+  <!-- ── 场景对比 ── -->
+  <div class="section">
+    <h2><i class="ti ti-arrows-exchange"></i> 场景对比实验</h2>
+    <div id="scenarioTabs" class="scenario-tabs"></div>
+    <p id="scenarioDesc" style="color:#999;font-size:0.85rem;margin-bottom:4px;"></p>
+    <p id="scenarioSource" style="color:#666;font-size:0.75rem;margin-bottom:16px;font-style:italic;"></p>
+
+    <!-- 视图切换 -->
+    <div class="source-toggle">
+      <button class="toggle-btn active" data-mode="rendered" onclick="setViewMode('rendered')">渲染结果</button>
+      <button class="toggle-btn" data-mode="source" onclick="setViewMode('source')">查看源码</button>
+    </div>
+
+    <!-- 对比面板 -->
+    <div class="compare-container">
+      <div class="compare-panel">
+        <div class="panel-header md-header">
+          <span class="panel-label">Markdown 渲染</span>
+          <span class="panel-badge">纯文本标记</span>
+        </div>
+        <div class="panel-body">
+          <div class="md-rendered" id="mdRendered"></div>
+          <pre class="source-code" id="mdSource"></pre>
+        </div>
+      </div>
+      <div class="compare-panel">
+        <div class="panel-header html-header">
+          <span class="panel-label">HTML 渲染</span>
+          <span class="panel-badge">富语义标记</span>
+        </div>
+        <div class="panel-body">
+          <div class="html-rendered" id="htmlRendered"></div>
+          <pre class="source-code" id="htmlSource"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- 信息密度对比 -->
+    <div class="density-compare">
+      <div class="density-bar-wrap">
+        <div class="density-bar-label">
+          <span>Markdown 可视信息量</span>
+          <span id="statMdInfo">—</span>
+        </div>
+        <div class="density-bar">
+          <div class="density-bar-fill md-bar" id="mdDensityBar" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="density-bar-wrap">
+        <div class="density-bar-label">
+          <span>HTML 可视信息量</span>
+          <span id="statHtmlInfo">—</span>
+        </div>
+        <div class="density-bar">
+          <div class="density-bar-fill html-bar" id="htmlDensityBar" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="extra-features" id="extraFeatures"></div>
+    </div>
+  </div>
+
+  <!-- ── 量化统计 ── -->
+  <div class="stats-panel">
+    <h3><i class="ti ti-chart-bar"></i> 当前场景量化</h3>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="statMdChars">—</div>
+        <div class="stat-label">Markdown 字符数</div>
+        <div class="stat-sub">人类写入成本</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statHtmlChars">—</div>
+        <div class="stat-label">HTML 字符数</div>
+        <div class="stat-sub">AI 输出成本</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statRatio">—</div>
+        <div class="stat-label">体积膨胀系数</div>
+        <div class="stat-sub">HTML / Markdown</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statInfoGain">—</div>
+        <div class="stat-label">视觉信息增益</div>
+        <div class="stat-sub">HTML 额外传达的信息</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value"><span id="tokenMd">—</span> / <span id="tokenHtml">—</span></div>
+        <div class="stat-label">Token 消耗（估）</div>
+        <div class="stat-sub" id="tokenRatio">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 总览表格 ── -->
+  <div class="summary-section">
+    <h3><i class="ti ti-table"></i> 五个场景汇总</h3>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th>场景</th>
+          <th>MD 字符</th>
+          <th>HTML 字符</th>
+          <th>体积比</th>
+          <th>MD 信息项</th>
+          <th>HTML 信息项</th>
+          <th>信息增益</th>
+        </tr>
+      </thead>
+      <tbody id="summaryBody"></tbody>
+    </table>
+    <div class="summary-note">
+      <strong>结论：</strong>HTML 平均比 Markdown 多消耗 3-6 倍字符，但能多传递 30%-60% 的可视信息。代价是「源码不可读」——而这正好是 AI 擅长的事。<br><br>
+      <strong>最优分工：</strong>人类用 Markdown 描述意图（写得快、diff 友好、版本控制清晰），AI 转成 HTML 呈现给读者（样式丰富、信息密度高、即时可用）。两种格式各管一段，谁也不用取代谁。
+    </div>
+  </div>
+
+  <!-- ── 原理 ── -->
+  <div class="insight-box">
+    <h3><i class="ti ti-bulb"></i> 为什么争论本身可能问错了</h3>
+    <p>Thariq Shihipar（Anthropic Claude Code 工程师）说"HTML is the new Markdown"——他说的场景是 <strong>AI 输出给人看的文档</strong>。在这个场景下 HTML 确实赢了：颜色编码、可交互、信息密度更高。</p>
+    <p>但 Markdown 的主场在 <strong>人类创作层</strong>：写 spec、commit message、会议速记、个人笔记。这些场景要求写得快、diff 清晰、版本控制友好、不需要渲染就能读懂。</p>
+    <p>所以与其争"谁取代谁"，更合理的模型是：人类用 Markdown 输入 → AI 理解意图 → AI 用 HTML 输出。输入层和输出层本来就可以用不同格式。</p>
+  </div>
+
+</div>
+
+<script src="scenarios.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,411 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+}
+.container { max-width: 960px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 30px; margin-bottom: 30px; }
+.header h1 {
+  font-size: 2.4rem;
+  background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: shimmer 3s linear infinite; margin-bottom: 12px;
+}
+@keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+.header p { font-size: 1rem; color: #a0a0a0; max-width: 640px; margin: 0 auto; }
+
+/* ── Section ── */
+.section {
+  background: rgba(255,255,255,0.05); border-radius: 16px; padding: 28px;
+  margin-bottom: 28px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+}
+.section h2 { font-size: 1.35rem; margin-bottom: 20px; color: #ffd700; display: flex; align-items: center; gap: 10px; }
+
+/* ── Tabs ── */
+.game-tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.game-tab {
+  padding: 10px 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05); color: #a0a0a0; cursor: pointer;
+  font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
+  display: flex; align-items: center; gap: 6px;
+}
+.game-tab:hover { background: rgba(255,255,255,0.1); color: #e8e8e8; }
+.game-tab.active { background: rgba(255,215,0,0.15); border-color: rgba(255,215,0,0.4); color: #ffd700; font-weight: 600; }
+
+/* ── Panels ── */
+.game-panel { display: none; }
+.game-panel.active { display: block; }
+
+/* ── Rule box ── */
+.rule-box {
+  background: rgba(0,0,0,0.25); border-radius: 12px; padding: 16px 20px;
+  margin-bottom: 16px; border: 1px solid rgba(255,215,0,0.12);
+}
+.rule-title { color: #ffd700; font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.rule-box ul { list-style: none; padding: 0; }
+.rule-box li { color: #c0c0c0; font-size: 0.88rem; padding: 3px 0; padding-left: 16px; position: relative; }
+.rule-box li::before { content: '•'; position: absolute; left: 0; color: #ffd700; }
+.rule-box li.sub { padding-left: 32px; color: #999; }
+.rule-box li.sub::before { content: ''; }
+.rule-box strong { color: #ffd700; }
+.rule-tip { margin-top: 10px; font-size: 0.82rem; color: #888; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px; }
+.head-text { color: #ffd700; }
+.tail-text { color: #777; }
+
+/* ── Buttons ── */
+.btn {
+  padding: 11px 22px; border: none; border-radius: 8px; font-size: 0.95rem;
+  cursor: pointer; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 700; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.35); }
+.btn-secondary { background: rgba(255,255,255,0.08); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.18); }
+.btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.13); }
+.btn-sm { padding: 7px 14px; font-size: 0.85rem; }
+
+/* ── Start button (green, eye-catching) ── */
+.btn-start {
+  background: linear-gradient(135deg, #00c853, #00e676);
+  color: #fff; font-weight: 700; padding: 12px 28px; font-size: 1rem;
+  border-radius: 10px; border: none; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,200,83,0.4);
+  transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 8px;
+  animation: glow-green 2s ease-in-out infinite alternate;
+}
+.btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,200,83,0.55); }
+.btn-start:active { transform: scale(0.96); }
+@keyframes glow-green {
+  from { box-shadow: 0 4px 16px rgba(0,200,83,0.3); }
+  to { box-shadow: 0 4px 24px rgba(0,230,118,0.6); }
+}
+
+/* ── Settings row ── */
+.settings-row { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.settings-row label { font-size: 0.85rem; color: #a0a0a0; display: flex; align-items: center; gap: 6px; }
+.settings-row select, .settings-row input[type="number"] {
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px; padding: 6px 10px; color: #e8e8e8; font-size: 0.9rem;
+}
+.settings-row select:focus, .settings-row input:focus { border-color: rgba(255,215,0,0.5); outline: none; }
+
+/* ── Game status ── */
+.game-status {
+  text-align: center; padding: 12px 16px; margin: 12px 0;
+  border-radius: 10px; font-size: 0.92rem; font-weight: 500;
+}
+.game-status.your-turn { background: rgba(255,215,0,0.08); color: #ffd700; border: 1px solid rgba(255,215,0,0.15); }
+.game-status.ai-turn { background: rgba(33,150,243,0.08); color: #64b5f6; border: 1px solid rgba(33,150,243,0.15); }
+.game-status.win { background: rgba(76,175,80,0.1); color: #81c784; border: 1px solid rgba(76,175,80,0.2); }
+.game-status.lose { background: rgba(255,68,68,0.08); color: #ef9a9a; border: 1px solid rgba(255,68,68,0.15); }
+
+/* ── Stones display (Bash & Wythoff) ── */
+.stones-counter { text-align: center; margin: 6px 0; color: #a0a0a0; font-size: 0.9rem; }
+.stones-counter strong { color: #ffd700; font-size: 1.3rem; }
+
+.stones-display {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0;
+  padding: 18px; background: rgba(0,0,0,0.2); border-radius: 12px;
+  min-height: 60px; align-items: center; justify-content: center;
+  user-select: none; -webkit-user-select: none;
+}
+.stone {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  box-shadow: 0 2px 8px rgba(255,165,0,0.4);
+  transition: all 0.25s ease; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.stone:hover:not(.taken) { transform: scale(1.2); box-shadow: 0 0 14px rgba(255,215,0,0.7); }
+.stone:active:not(.taken) { transform: scale(0.9); }
+.stone.taken {
+  opacity: 0.12; transform: scale(0.5); cursor: default;
+  background: #555; box-shadow: none;
+}
+.stone.selected {
+  background: linear-gradient(135deg, #ff4444, #cc0000);
+  box-shadow: 0 0 14px rgba(255,68,68,0.7);
+  transform: scale(1.15);
+  animation: wiggle 0.4s ease;
+}
+@keyframes wiggle {
+  0%,100% { transform: scale(1.15) rotate(0); }
+  25% { transform: scale(1.15) rotate(-5deg); }
+  75% { transform: scale(1.15) rotate(5deg); }
+}
+
+.confirm-row { text-align: center; margin: 12px 0; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.sel-hint { font-size: 0.85rem; color: #ffd700; }
+
+/* ── Two piles (Wythoff) ── */
+.two-piles { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 14px 0; }
+.pile-box {
+  background: rgba(0,0,0,0.2); border-radius: 12px; padding: 14px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.pile-box h4 { color: #a0a0a0; font-size: 0.85rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.pile-box .count { color: #ffd700; font-weight: 700; font-size: 1.1rem; margin-left: auto; }
+.pile-stones { display: flex; flex-wrap: wrap; gap: 6px; }
+.pile-stones .stone { width: 26px; height: 26px; }
+
+/* ── Coin display ── */
+.coin-display {
+  display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0;
+  padding: 20px; background: rgba(0,0,0,0.2); border-radius: 12px;
+  justify-content: center; min-height: 80px;
+  user-select: none; -webkit-user-select: none;
+}
+.coin-item {
+  width: 56px; height: 56px; border-radius: 50%; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: all 0.25s ease; position: relative;
+  border: 3px solid transparent;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.coin-item.heads {
+  background: linear-gradient(135deg, #ffd700, #ffb700);
+  color: #1a1a2e; box-shadow: 0 3px 12px rgba(255,215,0,0.4);
+}
+.coin-item.tails {
+  background: rgba(80,80,80,0.6); color: #999;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.coin-item:hover { transform: scale(1.12); }
+.coin-item:active { transform: scale(0.95); }
+.coin-item.selected-main {
+  border-color: #ff4444; box-shadow: 0 0 16px rgba(255,68,68,0.6);
+  transform: scale(1.1);
+}
+.coin-item.selected-also {
+  border-color: #64b5f6; box-shadow: 0 0 16px rgba(100,181,246,0.6);
+  transform: scale(1.1);
+}
+.coin-face { font-weight: 700; font-size: 1.1rem; }
+.coin-idx { font-size: 0.65rem; opacity: 0.7; }
+.step-hint { text-align: center; font-size: 0.82rem; color: #888; margin: 4px 0 8px; }
+
+/* ── Strategy hint ── */
+.strategy-hint {
+  background: rgba(255,215,0,0.05); border: 1px dashed rgba(255,215,0,0.2);
+  border-radius: 10px; padding: 12px 16px; margin: 12px 0;
+  font-size: 0.85rem; color: #c0c0c0; line-height: 1.7;
+}
+.strategy-hint strong { color: #ffd700; }
+.strategy-hint code {
+  background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;
+  font-family: 'SF Mono', Menlo, monospace; font-size: 0.82rem; color: #ffb700;
+}
+
+/* ── Move history ── */
+.move-history {
+  max-height: 180px; overflow-y: auto; margin: 14px 0;
+  background: rgba(0,0,0,0.15); border-radius: 10px; padding: 10px;
+}
+.move-item {
+  display: flex; align-items: center; gap: 8px; padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.83rem;
+}
+.move-item:last-child { border-bottom: none; }
+.move-item .who { font-weight: 600; width: 36px; }
+.move-item .who.player { color: #ffd700; }
+.move-item .who.ai { color: #64b5f6; }
+.move-item .action { color: #a0a0a0; }
+.move-item .remaining { color: #666; margin-left: auto; font-size: 0.78rem; }
+
+/* ── Stats ── */
+.stats-row { display: flex; gap: 14px; margin: 14px 0; flex-wrap: wrap; }
+.stat-box {
+  background: rgba(255,255,255,0.05); border-radius: 10px; padding: 12px 16px;
+  border: 1px solid rgba(255,255,255,0.07); text-align: center; flex: 1; min-width: 80px;
+}
+.stat-box .val { font-size: 1.3rem; font-weight: 700; color: #ffd700; }
+.stat-box .lbl { font-size: 0.75rem; color: #a0a0a0; margin-top: 2px; }
+
+/* ── Cold positions ── */
+.cold-details { margin: 14px 0; }
+.cold-details summary {
+  cursor: pointer; color: #ffd700; font-size: 0.9rem; font-weight: 600;
+  padding: 8px 0; display: flex; align-items: center; gap: 6px;
+}
+.cold-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin: 8px 0; }
+.cold-table th { color: #ffd700; padding: 6px 8px; border-bottom: 1px solid rgba(255,215,0,0.2); text-align: center; font-size: 0.78rem; }
+.cold-table td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: center; color: #c0c0c0; }
+.cold-table tr.current { background: rgba(255,215,0,0.08); }
+.cold-table td.cold-pos { color: #81c784; font-weight: 600; }
+
+/* ── Insight / Principle ── */
+.insight-box {
+  background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,183,0,0.04));
+  border-left: 4px solid #ffd700; padding: 16px 18px; border-radius: 0 12px 12px 0; margin: 16px 0;
+}
+.insight-box h3 { color: #ffd700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+.insight-box p { color: #c0c0c0; line-height: 1.8; font-size: 0.88rem; }
+.insight-box.green { background: linear-gradient(135deg, rgba(76,175,80,0.08), rgba(0,200,0,0.04)); border-left-color: #4CAF50; }
+.insight-box.green h3 { color: #81c784; }
+
+.principle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 14px; }
+.principle-card {
+  background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.principle-card .num { font-size: 1.8rem; font-weight: 700; color: rgba(255,215,0,0.25); line-height: 1; margin-bottom: 6px; }
+.principle-card h4 { color: #ffd700; font-size: 0.92rem; margin-bottom: 5px; }
+.principle-card p { color: #a0a0a0; font-size: 0.82rem; line-height: 1.6; }
+
+/* ── Game Over Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+}
+.modal-overlay.show { opacity: 1; pointer-events: auto; }
+.modal-box {
+  background: linear-gradient(145deg, #1e2a3a, #162235);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px; padding: 36px 32px; text-align: center;
+  max-width: 380px; width: 90%;
+  transform: scale(0.8) translateY(20px);
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-overlay.show .modal-box { transform: scale(1) translateY(0); }
+.modal-icon { font-size: 3.5rem; margin-bottom: 12px; line-height: 1; }
+.modal-box h2 { font-size: 1.5rem; margin-bottom: 8px; }
+.modal-box p { color: #a0a0a0; font-size: 0.9rem; margin-bottom: 16px; line-height: 1.6; }
+.modal-stats {
+  display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;
+}
+.modal-stats .ms-item { text-align: center; }
+.modal-stats .ms-val { font-size: 1.4rem; font-weight: 700; color: #ffd700; }
+.modal-stats .ms-lbl { font-size: 0.75rem; color: #888; }
+.modal-box .btn-start { width: 100%; justify-content: center; animation: none; }
+
+/* Win/Lose specific */
+.modal-box.win h2 { color: #81c784; }
+.modal-box.lose h2 { color: #ef9a9a; }
+
+/* ── Mobile ── */
+@media (max-width: 680px) {
+  .container { padding: 10px; }
+  .header { padding: 20px 10px 16px; margin-bottom: 16px; }
+  .header h1 { font-size: 1.5rem; }
+  .header p { font-size: 0.88rem; }
+  .section { padding: 14px; margin-bottom: 16px; border-radius: 12px; }
+  .section h2 { font-size: 1.15rem; margin-bottom: 14px; }
+
+  /* Tabs: 占满宽度，均分 */
+  .game-tabs { gap: 6px; }
+  .game-tab {
+    padding: 10px 0; font-size: 0.82rem; flex: 1; justify-content: center;
+    border-radius: 8px; min-width: 0;
+  }
+
+  /* 设置行：两行布局 */
+  .settings-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .settings-row label { font-size: 0.82rem; }
+  .settings-row select, .settings-row input[type="number"] {
+    width: 100%; padding: 8px 10px; font-size: 0.88rem;
+  }
+  .settings-row .btn { grid-column: 1 / -1; justify-content: center; padding: 12px; }
+
+  /* 规则盒子：更紧凑 */
+  .rule-box { padding: 12px 14px; margin-bottom: 12px; }
+  .rule-box li { font-size: 0.82rem; }
+  .rule-tip { font-size: 0.78rem; }
+
+  /* 状态栏 */
+  .game-status { font-size: 0.85rem; padding: 10px 12px; margin: 8px 0; }
+
+  /* 石子：加大触摸区域，44px 是 Apple HIG 推荐最小触摸尺寸 */
+  .stones-display { gap: 6px; padding: 14px 10px; }
+  .stone {
+    width: 36px; height: 36px;
+    /* 外边距增加触摸区域，实际可点击区域 > 44px */
+    margin: 2px;
+  }
+  .stone:hover:not(.taken) { transform: none; } /* 手机无 hover */
+  .stone.selected { transform: scale(1.1); }
+
+  /* 两堆棋子：纵向排列 */
+  .two-piles { grid-template-columns: 1fr; gap: 10px; }
+  .pile-box { padding: 12px; }
+  .pile-stones { gap: 5px; }
+  .pile-stones .stone { width: 30px; height: 30px; margin: 2px; }
+
+  /* 硬币：触摸友好尺寸 */
+  .coin-display { gap: 8px; padding: 14px 10px; }
+  .coin-item {
+    width: 52px; height: 52px; border-width: 3px;
+  }
+  .coin-item:hover { transform: none; }
+  .coin-item.selected-main, .coin-item.selected-also { transform: scale(1.05); }
+  .coin-face { font-size: 1rem; }
+  .coin-idx { font-size: 0.6rem; }
+
+  /* 确认按钮：更大、更显眼 */
+  .confirm-row { margin: 10px 0; }
+  .confirm-row .btn {
+    width: 100%; justify-content: center; padding: 14px;
+    font-size: 1rem; border-radius: 10px;
+  }
+  .confirm-row .btn-secondary { width: auto; padding: 10px 16px; font-size: 0.85rem; }
+  .sel-hint { font-size: 0.8rem; flex-basis: 100%; text-align: center; margin-bottom: 6px; }
+
+  /* 开始按钮 */
+  .btn-start { width: 100%; justify-content: center; }
+  .settings-row .btn-start { grid-column: 1 / -1; }
+
+  /* 策略提示：折叠处理 */
+  .strategy-hint { font-size: 0.8rem; padding: 10px 12px; line-height: 1.6; }
+
+  /* 历史记录 */
+  .move-history { max-height: 140px; padding: 8px; margin: 10px 0; }
+  .move-item { font-size: 0.78rem; gap: 6px; }
+  .move-item .who { width: 30px; font-size: 0.78rem; }
+
+  /* 统计 */
+  .stats-row { gap: 8px; margin: 10px 0; }
+  .stat-box { padding: 10px 8px; min-width: 60px; }
+  .stat-box .val { font-size: 1.1rem; }
+  .stat-box .lbl { font-size: 0.7rem; }
+
+  /* 冷局面表 */
+  .cold-details summary { font-size: 0.82rem; }
+  .cold-table { font-size: 0.78rem; }
+
+  /* 原理区 */
+  .principle-grid { grid-template-columns: 1fr; gap: 10px; }
+  .principle-card { padding: 14px; }
+  .principle-card .num { font-size: 1.4rem; }
+  .principle-card h4 { font-size: 0.88rem; }
+  .principle-card p { font-size: 0.8rem; }
+
+  .insight-box { padding: 12px 14px; }
+  .insight-box h3 { font-size: 0.88rem; }
+  .insight-box p { font-size: 0.82rem; line-height: 1.7; }
+
+  /* 计数器 */
+  .stones-counter { font-size: 0.85rem; }
+  .stones-counter strong { font-size: 1.1rem; }
+  .step-hint { font-size: 0.78rem; }
+}
+
+/* ── 极小屏幕（SE / 320px） ── */
+@media (max-width: 380px) {
+  .game-tab { padding: 8px 0; font-size: 0.75rem; }
+  .game-tab i { display: none; } /* 极窄屏隐藏图标只显示文字 */
+  .stone { width: 30px; height: 30px; }
+  .pile-stones .stone { width: 26px; height: 26px; }
+  .coin-item { width: 44px; height: 44px; }
+  .header h1 { font-size: 1.3rem; }
+  .settings-row { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="三个经典必胜策略游戏：巴什博弈、威佐夫博弈、硬币翻转。和AI对弈，学习背后的数学必胜法则。">
+  <title>必胜策略游戏：数学保证你赢 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-trophy"></i> 必胜策略游戏</h1>
+    <p>三个看似靠运气的博弈游戏，背后都藏着数学上的必胜法则。掌握策略的一方 100% 获胜。和 AI 对弈，亲手验证。</p>
+  </div>
+
+  <!-- ── 游戏选择 ── -->
+  <div class="section">
+    <div class="game-tabs">
+      <div class="game-tab active" data-game="bash">
+        <i class="ti ti-stack-2"></i> 巴什博弈
+      </div>
+      <div class="game-tab" data-game="wythoff">
+        <i class="ti ti-diamond"></i> 威佐夫博弈
+      </div>
+      <div class="game-tab" data-game="coin">
+        <i class="ti ti-coin"></i> 硬币翻转
+      </div>
+    </div>
+
+    <!-- ════════ 巴什博弈面板 ════════ -->
+    <div class="game-panel active" id="panel-bash">
+      <h2><i class="ti ti-stack-2"></i> 巴什博弈</h2>
+
+      <div class="rule-box">
+        <div class="rule-title"><i class="ti ti-book"></i> 规则</div>
+        <ul>
+          <li>一堆石子，两人轮流取</li>
+          <li>每次可取 <strong>1 ~ <span id="bashRuleMax">3</span></strong> 个</li>
+          <li>取走<strong>最后一个</strong>石子的人赢</li>
+        </ul>
+      </div>
+
+      <div class="settings-row">
+        <label>石子：<input type="number" id="bashTotal" value="21" min="5" max="50" style="width:55px"></label>
+        <label>上限：<input type="number" id="bashMaxTake" value="3" min="2" max="10" style="width:55px"></label>
+        <label>AI：
+          <select id="bashDifficulty">
+            <option value="easy">简单</option>
+            <option value="normal" selected>普通</option>
+            <option value="hard">困难</option>
+          </select>
+        </label>
+        <button class="btn btn-start" id="bashStart"><i class="ti ti-player-play"></i> 开始</button>
+      </div>
+
+      <div class="strategy-hint" id="bashStrategyHint"></div>
+
+      <div id="bashStatus" class="game-status your-turn">点击「开始」开局</div>
+
+      <div class="stones-counter">剩余：<strong id="bashRemaining">—</strong></div>
+      <div class="stones-display" id="bashStones"></div>
+      <div class="confirm-row">
+        <button class="btn btn-primary" id="bashConfirm" style="display:none" onclick="bashConfirmTake()"><i class="ti ti-check"></i> 确认取走</button>
+      </div>
+
+      <div class="move-history" id="bashHistory"></div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="val" id="bashWins">0</div><div class="lbl">胜</div></div>
+        <div class="stat-box"><div class="val" id="bashLosses">0</div><div class="lbl">负</div></div>
+        <div class="stat-box"><div class="val" id="bashWinRate">—</div><div class="lbl">胜率</div></div>
+      </div>
+    </div>
+
+    <!-- ════════ 威佐夫博弈面板 ════════ -->
+    <div class="game-panel" id="panel-wythoff">
+      <h2><i class="ti ti-diamond"></i> 威佐夫博弈</h2>
+
+      <div class="rule-box">
+        <div class="rule-title"><i class="ti ti-book"></i> 规则</div>
+        <ul>
+          <li>桌上有 <strong>A、B 两堆</strong>棋子</li>
+          <li>每回合你可以做以下<strong>三种操作之一</strong>：</li>
+          <li class="sub">① 只从 A 堆取若干个（≥1）</li>
+          <li class="sub">② 只从 B 堆取若干个（≥1）</li>
+          <li class="sub">③ 从 A、B 两堆各取<strong>相同</strong>数量（≥1）</li>
+          <li>取光<strong>全部</strong>棋子（A 和 B 都为 0）的人赢</li>
+        </ul>
+        <div class="rule-tip">操作方式：逐个点击棋子选中要取走的。只点 A 堆 = 只从 A 取；只点 B 堆 = 只从 B 取；两堆都点且数量相同 = 同时取。</div>
+      </div>
+
+      <div class="settings-row">
+        <label>A堆：<input type="number" id="wythoffInitA" value="5" min="1" max="15" style="width:55px"></label>
+        <label>B堆：<input type="number" id="wythoffInitB" value="8" min="1" max="15" style="width:55px"></label>
+        <label>AI：
+          <select id="wythoffDifficulty">
+            <option value="easy">简单</option>
+            <option value="normal" selected>普通</option>
+            <option value="hard">困难</option>
+          </select>
+        </label>
+        <button class="btn btn-start" id="wythoffStart"><i class="ti ti-player-play"></i> 开始</button>
+      </div>
+
+      <div class="strategy-hint" id="wythoffStrategyHint">
+        <strong>必胜关键：黄金比例 φ = 1.618...</strong><br>
+        冷局面（必败态） = (⌊k·φ⌋, ⌊k·φ²⌋)，把对手逼入冷局面你就赢了。
+      </div>
+
+      <div id="wythoffStatus" class="game-status your-turn">点击「开始」开局</div>
+
+      <div class="two-piles">
+        <div class="pile-box">
+          <h4><i class="ti ti-circle-letter-a"></i> A 堆 <span class="count" id="wythoffCountA">—</span></h4>
+          <div class="pile-stones" id="wythoffStonesA"></div>
+        </div>
+        <div class="pile-box">
+          <h4><i class="ti ti-circle-letter-b"></i> B 堆 <span class="count" id="wythoffCountB">—</span></h4>
+          <div class="pile-stones" id="wythoffStonesB"></div>
+        </div>
+      </div>
+
+      <div class="confirm-row" id="wythoffActions" style="display:none;">
+        <span id="wythoffSelHint" class="sel-hint"></span>
+        <button class="btn btn-secondary btn-sm" onclick="wythoffReset()"><i class="ti ti-x"></i> 重选</button>
+        <button class="btn btn-primary" id="wythoffConfirm" disabled onclick="wythoffConfirmTake()"><i class="ti ti-check"></i> 确认</button>
+      </div>
+
+      <!-- 冷局面表 -->
+      <details class="cold-details">
+        <summary><i class="ti ti-snowflake"></i> 冷局面一览（φ 数列）</summary>
+        <table class="cold-table">
+          <thead><tr><th>k</th><th>冷局面 (a, b)</th><th>差值</th></tr></thead>
+          <tbody id="wythoffColdBody"></tbody>
+        </table>
+      </details>
+
+      <div class="move-history" id="wythoffHistory"></div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="val" id="wythoffWins">0</div><div class="lbl">胜</div></div>
+        <div class="stat-box"><div class="val" id="wythoffLosses">0</div><div class="lbl">负</div></div>
+        <div class="stat-box"><div class="val" id="wythoffWinRate">—</div><div class="lbl">胜率</div></div>
+      </div>
+    </div>
+
+    <!-- ════════ 硬币翻转面板 ════════ -->
+    <div class="game-panel" id="panel-coin">
+      <h2><i class="ti ti-coin"></i> 硬币翻转游戏</h2>
+
+      <div class="rule-box">
+        <div class="rule-title"><i class="ti ti-book"></i> 规则</div>
+        <ul>
+          <li>一排硬币，<strong class="head-text">金色=正面(H)</strong>，<span class="tail-text">灰色=反面(T)</span></li>
+          <li>每回合你<strong>必须</strong>选一枚正面硬币翻为反面</li>
+          <li>同时<strong>可以选择</strong>翻转它左边的任意一枚（正↔反）</li>
+          <li>翻掉最后一枚正面硬币的人赢</li>
+        </ul>
+        <div class="rule-tip">本质：每枚正面硬币的位置相当于一个 Nim 堆。所有位置的 XOR = 0 时行动方必败。</div>
+      </div>
+
+      <div class="settings-row">
+        <label>硬币数：<input type="number" id="coinCount" value="12" min="4" max="16" style="width:55px"></label>
+        <label>AI：
+          <select id="coinDifficulty">
+            <option value="easy">简单</option>
+            <option value="normal" selected>普通</option>
+            <option value="hard">困难</option>
+          </select>
+        </label>
+        <button class="btn btn-start" id="coinStart"><i class="ti ti-player-play"></i> 开始</button>
+      </div>
+
+      <div class="strategy-hint" id="coinStrategyHint"></div>
+
+      <div id="coinStatus" class="game-status your-turn">点击「开始」开局</div>
+      <div id="coinStep" class="step-hint"></div>
+
+      <div class="coin-display" id="coinDisplay"></div>
+
+      <div class="confirm-row">
+        <button class="btn btn-primary" id="coinConfirm" style="display:none" onclick="coinConfirmFlip()"><i class="ti ti-check"></i> 确认翻转</button>
+      </div>
+
+      <div class="move-history" id="coinHistory"></div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="val" id="coinWins">0</div><div class="lbl">胜</div></div>
+        <div class="stat-box"><div class="val" id="coinLosses">0</div><div class="lbl">负</div></div>
+        <div class="stat-box"><div class="val" id="coinWinRate">—</div><div class="lbl">胜率</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 全站战绩 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-bar"></i> 全站战绩</h2>
+    <p style="color:#a0a0a0;font-size:0.88rem;margin-bottom:14px;">所有玩家的累计对局数据，实时更新。</p>
+    <div class="stats-row" id="globalStats">
+      <div class="stat-box"><div class="val">—</div><div class="lbl">总对局</div></div>
+      <div class="stat-box"><div class="val">—</div><div class="lbl">AI 获胜</div></div>
+      <div class="stat-box"><div class="val">—</div><div class="lbl">AI 胜率</div></div>
+      <div class="stat-box"><div class="val">—</div><div class="lbl">玩家获胜</div></div>
+    </div>
+  </div>
+
+  <!-- ── 原理 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么存在必胜策略？</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>巴什博弈：模运算</h4>
+        <p>每次最多取 m 个，核心是「凑 m+1」。先手取 n mod (m+1) 个，之后对手取 k 你取 (m+1)-k。每轮合计消耗固定值，精确归零。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>威佐夫博弈：黄金比例</h4>
+        <p>必败态由 φ = (1+√5)/2 生成的 Beatty 序列定义。这组数对恰好覆盖所有正整数——冷局面之间不重不漏，无处可逃。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>硬币翻转：Nim 等价</h4>
+        <p>每枚正面硬币的位置就是 Nim 堆大小。翻转操作等价于减少/增加堆。所有位置 XOR=0 即必败态——跟经典 Nim 完全同构。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 统一视角：Sprague-Grundy 定理</h3>
+      <p>所有「双人轮流、完全信息、有限步、无随机因素」的博弈，都等价于一个 Nim 游戏（John Conway, 1976）。每个局面有一个 Grundy 值，为 0 即必败。这意味着：只要满足这些条件，必胜策略就一定存在且可计算。</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- 游戏结束弹窗 -->
+<div class="modal-overlay" id="gameOverModal">
+  <div class="modal-box">
+    <div class="modal-icon" id="modalIcon"></div>
+    <h2 id="modalTitle"></h2>
+    <p id="modalDesc"></p>
+    <div class="modal-stats" id="modalStats"></div>
+    <button class="btn btn-start" id="modalReplay" onclick="replayGame()"><i class="ti ti-refresh"></i> 再来一局</button>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

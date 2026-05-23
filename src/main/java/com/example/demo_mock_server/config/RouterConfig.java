@@ -203,6 +203,14 @@ public class RouterConfig {
         router.post("/nim-game/submit").handler(new RateLimitHandler(10, 60)).handler(nimHandler);
         router.get("/nim-game/stats").handler(nimHandler);
 
+        // 必胜策略游戏对局统计
+        com.example.demo_mock_server.service.WinningStrategyStatsService winStratService =
+            new com.example.demo_mock_server.service.WinningStrategyStatsService(mysqlPool);
+        com.example.demo_mock_server.handler.WinningStrategyStatsHandler winStratHandler =
+            new com.example.demo_mock_server.handler.WinningStrategyStatsHandler(winStratService);
+        router.post("/winning-strategy/submit").handler(new RateLimitHandler(10, 60)).handler(winStratHandler);
+        router.get("/winning-strategy/stats").handler(winStratHandler);
+
         // 文档追踪像素
         DocTrackHandler docTrackHandler = new DocTrackHandler();
         router.get("/doc-track/pixel").handler(docTrackHandler);

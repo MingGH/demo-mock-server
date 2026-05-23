@@ -3,20 +3,7 @@ package com.example.demo_mock_server.config;
 import com.example.demo_mock_server.generator.ChineseNameGenerator;
 import com.example.demo_mock_server.generator.FakeDataGenerator;
 import com.example.demo_mock_server.handler.*;
-import com.example.demo_mock_server.service.BarnumStatsService;
-import com.example.demo_mock_server.service.FingerprintService;
-import com.example.demo_mock_server.service.GeoLocationService;
-import com.example.demo_mock_server.service.InferenceLeaderboardService;
-import com.example.demo_mock_server.service.SocialEngineeringService;
-import com.example.demo_mock_server.service.SoritesService;
-import com.example.demo_mock_server.service.CaptchaStatsService;
-import com.example.demo_mock_server.service.StroopStatsService;
-import com.example.demo_mock_server.service.CascadeFailureService;
-import com.example.demo_mock_server.service.CosmicReaperService;
-import com.example.demo_mock_server.service.MonkeyStatsService;
-import com.example.demo_mock_server.service.SecKillStatsService;
-import com.example.demo_mock_server.service.TimePerceptionService;
-import com.example.demo_mock_server.service.WordCloudService;
+import com.example.demo_mock_server.service.*;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
@@ -134,18 +121,14 @@ public class RouterConfig {
         router.get("/captcha/stats").handler(captchaHandler);
 
         // 筑梦师测试统计
-        com.example.demo_mock_server.service.InceptionMazeService inceptionService =
-            new com.example.demo_mock_server.service.InceptionMazeService(mysqlPool);
-        com.example.demo_mock_server.handler.InceptionMazeHandler inceptionHandler =
-            new com.example.demo_mock_server.handler.InceptionMazeHandler(inceptionService);
+        InceptionMazeService inceptionService = new InceptionMazeService(mysqlPool);
+        InceptionMazeHandler inceptionHandler = new InceptionMazeHandler(inceptionService);
         router.post("/inception-maze/submit").handler(new RateLimitHandler(10, 60)).handler(inceptionHandler);
         router.get("/inception-maze/stats").handler(inceptionHandler);
 
         // 恶魔交易诊断统计
-        com.example.demo_mock_server.service.DevilDealService devilDealService =
-            new com.example.demo_mock_server.service.DevilDealService(mysqlPool);
-        com.example.demo_mock_server.handler.DevilDealHandler devilDealHandler =
-            new com.example.demo_mock_server.handler.DevilDealHandler(devilDealService);
+        DevilDealService devilDealService = new DevilDealService(mysqlPool);
+        DevilDealHandler devilDealHandler = new DevilDealHandler(devilDealService);
         router.post("/devil-deal/submit").handler(new RateLimitHandler(10, 60)).handler(devilDealHandler);
         router.get("/devil-deal/stats").handler(devilDealHandler);
 
@@ -164,10 +147,8 @@ public class RouterConfig {
         router.get("/cascade-failure/leaderboard").handler(cascadeFailureHandler);
 
         // 纽科姆悖论统计
-        com.example.demo_mock_server.service.NewcombService newcombService =
-            new com.example.demo_mock_server.service.NewcombService(mysqlPool);
-        com.example.demo_mock_server.handler.NewcombHandler newcombHandler =
-            new com.example.demo_mock_server.handler.NewcombHandler(newcombService);
+        NewcombService newcombService = new NewcombService(mysqlPool);
+        NewcombHandler newcombHandler = new NewcombHandler(newcombService);
         router.post("/newcomb/submit").handler(new RateLimitHandler(10, 60)).handler(newcombHandler);
         router.get("/newcomb/stats").handler(newcombHandler);
 
@@ -196,18 +177,14 @@ public class RouterConfig {
         router.get("/monkey/stats").handler(monkeyHandler);
 
         // 尼姆游戏对局统计
-        com.example.demo_mock_server.service.NimGameStatsService nimService =
-            new com.example.demo_mock_server.service.NimGameStatsService(mysqlPool);
-        com.example.demo_mock_server.handler.NimGameStatsHandler nimHandler =
-            new com.example.demo_mock_server.handler.NimGameStatsHandler(nimService);
+        NimGameStatsService nimService = new NimGameStatsService(mysqlPool);
+        NimGameStatsHandler nimHandler = new NimGameStatsHandler(nimService);
         router.post("/nim-game/submit").handler(new RateLimitHandler(10, 60)).handler(nimHandler);
         router.get("/nim-game/stats").handler(nimHandler);
 
         // 必胜策略游戏对局统计
-        com.example.demo_mock_server.service.WinningStrategyStatsService winStratService =
-            new com.example.demo_mock_server.service.WinningStrategyStatsService(mysqlPool);
-        com.example.demo_mock_server.handler.WinningStrategyStatsHandler winStratHandler =
-            new com.example.demo_mock_server.handler.WinningStrategyStatsHandler(winStratService);
+        WinningStrategyStatsService winStratService = new WinningStrategyStatsService(mysqlPool);
+        WinningStrategyStatsHandler winStratHandler = new WinningStrategyStatsHandler(winStratService);
         router.post("/winning-strategy/submit").handler(new RateLimitHandler(10, 60)).handler(winStratHandler);
         router.get("/winning-strategy/stats").handler(winStratHandler);
 

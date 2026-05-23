@@ -38,15 +38,15 @@ public class WinningStrategyStatsService {
     private static final String SQL_STATS = """
         SELECT
             COUNT(*) AS total,
-            SUM(result = 'win') AS player_wins,
-            SUM(result = 'lose') AS ai_wins,
-            SUM(game = 'bash') AS games_bash,
-            SUM(game = 'wythoff') AS games_wythoff,
-            SUM(game = 'coin') AS games_coin,
-            SUM(result = 'lose' AND difficulty = 'hard') AS ai_wins_hard,
-            SUM(result = 'lose' AND game = 'bash') AS ai_wins_bash,
-            SUM(result = 'lose' AND game = 'wythoff') AS ai_wins_wythoff,
-            SUM(result = 'lose' AND game = 'coin') AS ai_wins_coin
+            IFNULL(SUM(result = 'win'), 0) AS player_wins,
+            IFNULL(SUM(result = 'lose'), 0) AS ai_wins,
+            IFNULL(SUM(game = 'bash'), 0) AS games_bash,
+            IFNULL(SUM(game = 'wythoff'), 0) AS games_wythoff,
+            IFNULL(SUM(game = 'coin'), 0) AS games_coin,
+            IFNULL(SUM(result = 'lose' AND difficulty = 'hard'), 0) AS ai_wins_hard,
+            IFNULL(SUM(result = 'lose' AND game = 'bash'), 0) AS ai_wins_bash,
+            IFNULL(SUM(result = 'lose' AND game = 'wythoff'), 0) AS ai_wins_wythoff,
+            IFNULL(SUM(result = 'lose' AND game = 'coin'), 0) AS ai_wins_coin
         FROM winning_strategy_stats
         """;
 

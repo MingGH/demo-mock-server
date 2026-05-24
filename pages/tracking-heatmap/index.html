@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="访问轨迹监控实验室：你在网页上的每一次鼠标移动、点击、滚动都在被记录。亲眼看看网站如何通过行为数据给你打标签。">
+  <title>访问轨迹监控实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-route"></i> 访问轨迹监控实验室</h1>
+    <p>你以为你在逛网站，其实网站在逛你。下面是一个模拟的电商页面，随便看看——然后点"揭露"按钮，看看你被记录了什么。</p>
+  </div>
+
+  <!-- 提示条 -->
+  <div class="notice-bar" id="noticeBar">
+    <i class="ti ti-eye"></i>
+    <span>追踪已开始，你的鼠标移动、点击、滚动正在被实时记录…</span>
+    <span class="dot-pulse"></span>
+  </div>
+
+  <!-- ═══════ 模拟电商页面 ═══════ -->
+  <div class="fake-page" id="fakePage">
+
+    <!-- 商品头部 -->
+    <div class="product-hero">
+      <div class="product-image">
+        <div class="img-placeholder">
+          <i class="ti ti-photo"></i>
+          <span>商品主图 800×800</span>
+        </div>
+        <div class="img-thumbnails">
+          <div class="thumb active"></div>
+          <div class="thumb"></div>
+          <div class="thumb"></div>
+          <div class="thumb"></div>
+        </div>
+      </div>
+      <div class="product-info">
+        <div class="product-tag">限时折扣</div>
+        <h2 class="product-title">Sony WH-1000XM5 无线降噪耳机 | 行业标杆级降噪</h2>
+        <div class="product-price">
+          <span class="price-current">¥2,299</span>
+          <span class="price-original">¥2,999</span>
+          <span class="price-discount">直降700</span>
+        </div>
+        <div class="product-meta">
+          <span><i class="ti ti-star-filled"></i> 4.8 (12,847条评价)</span>
+          <span><i class="ti ti-shopping-cart"></i> 月销 3,200+</span>
+          <span><i class="ti ti-truck-delivery"></i> 次日达</span>
+        </div>
+        <div class="product-specs">
+          <div class="spec-row"><span class="spec-label">颜色</span>
+            <span class="spec-option active">黑色</span>
+            <span class="spec-option">银色</span>
+            <span class="spec-option">午夜蓝</span>
+          </div>
+          <div class="spec-row"><span class="spec-label">套餐</span>
+            <span class="spec-option active">标准版</span>
+            <span class="spec-option">礼盒版 +199</span>
+          </div>
+        </div>
+        <div class="product-actions">
+          <button class="btn-buy">立即购买</button>
+          <button class="btn-cart">加入购物车</button>
+          <button class="btn-fav"><i class="ti ti-heart"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 商品详情标签页 -->
+    <div class="detail-tabs">
+      <span class="tab active">商品详情</span>
+      <span class="tab">规格参数</span>
+      <span class="tab">用户评价 (12,847)</span>
+      <span class="tab">常见问题</span>
+    </div>
+
+    <!-- 详情内容 -->
+    <div class="detail-content">
+      <div class="detail-section">
+        <h3>核心卖点</h3>
+        <div class="feature-grid">
+          <div class="feature-item">
+            <i class="ti ti-volume-off"></i>
+            <h4>行业领先降噪</h4>
+            <p>8颗麦克风 + V1芯片，每秒处理噪音信号700次，办公室/地铁/飞机全场景静音。</p>
+          </div>
+          <div class="feature-item">
+            <i class="ti ti-battery-charging"></i>
+            <h4>30小时续航</h4>
+            <p>充电3分钟，听歌3小时。一周一充，告别续航焦虑。</p>
+          </div>
+          <div class="feature-item">
+            <i class="ti ti-ear"></i>
+            <h4>自适应声音控制</h4>
+            <p>根据环境自动调节降噪等级，走路时透传环境声，坐下时全降噪。</p>
+          </div>
+          <div class="feature-item">
+            <i class="ti ti-device-mobile"></i>
+            <h4>多点连接</h4>
+            <p>同时连两台设备，电脑开会+手机接电话无缝切换。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>用户评价精选</h3>
+        <div class="review-list">
+          <div class="review-item">
+            <div class="review-header">
+              <span class="review-user">数码发烧友</span>
+              <span class="review-stars">★★★★★</span>
+              <span class="review-date">2025-03-12</span>
+            </div>
+            <p>从XM4换到XM5，降噪提升非常明显。头梁佩戴感轻了很多，连续戴4小时不夹头。音质调了EQ之后完全够用。</p>
+          </div>
+          <div class="review-item">
+            <div class="review-header">
+              <span class="review-user">通勤打工人</span>
+              <span class="review-stars">★★★★☆</span>
+              <span class="review-date">2025-02-28</span>
+            </div>
+            <p>地铁上开降噪世界瞬间安静。唯一不满是折叠后体积比上一代大了，放包里有点占地方。</p>
+          </div>
+          <div class="review-item">
+            <div class="review-header">
+              <span class="review-user">远程办公族</span>
+              <span class="review-stars">★★★★★</span>
+              <span class="review-date">2025-01-15</span>
+            </div>
+            <p>开会通话质量很好，对面说听我说话像在录音棚。多点连接是刚需，再也不用手动切蓝牙了。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3>规格参数</h3>
+        <table class="spec-table">
+          <tr><td>型号</td><td>WH-1000XM5</td></tr>
+          <tr><td>驱动单元</td><td>30mm</td></tr>
+          <tr><td>频率响应</td><td>4Hz - 40,000Hz</td></tr>
+          <tr><td>续航时间</td><td>降噪开30h / 关40h</td></tr>
+          <tr><td>充电时间</td><td>3.5小时（USB-C）</td></tr>
+          <tr><td>重量</td><td>250g</td></tr>
+          <tr><td>蓝牙版本</td><td>5.2</td></tr>
+          <tr><td>编解码器</td><td>LDAC / AAC / SBC</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ 揭露按钮 ═══════ -->
+  <div class="reveal-section">
+    <button class="btn-reveal" id="revealBtn" onclick="revealTracking()">
+      <i class="ti ti-eye-check"></i> 揭露：看看你被记录了什么
+    </button>
+    <p class="reveal-hint">建议先在上方页面浏览 30 秒再点击</p>
+  </div>
+
+  <!-- ═══════ 揭露结果面板 ═══════ -->
+  <div class="result-panel" id="resultPanel" style="display:none;">
+
+    <!-- 统计概览 -->
+    <div class="section-card">
+      <h2><i class="ti ti-chart-bar"></i> 行为统计</h2>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-num" id="statDuration">0s</div>
+          <div class="stat-label">停留时长</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statMouseDist">0px</div>
+          <div class="stat-label">鼠标移动距离</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statClicks">0</div>
+          <div class="stat-label">点击次数</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statScrollDepth">0%</div>
+          <div class="stat-label">滚动深度</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statHovers">0</div>
+          <div class="stat-label">悬停区域</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statSpeed">0</div>
+          <div class="stat-label">平均移动速度</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 热力图 -->
+    <div class="section-card">
+      <h2><i class="ti ti-flame"></i> 注意力热力图</h2>
+      <p class="section-desc">颜色越红的区域，你的鼠标停留时间越长、交互越密集。</p>
+      <div class="heatmap-container" id="heatmapContainer">
+        <canvas id="heatmapCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- 行为时间线 -->
+    <div class="section-card">
+      <h2><i class="ti ti-timeline"></i> 行为时间线</h2>
+      <p class="section-desc">你的每一次操作都被精确记录，精确到毫秒。</p>
+      <div class="timeline" id="timeline"></div>
+    </div>
+
+    <!-- 用户画像标签 -->
+    <div class="section-card">
+      <h2><i class="ti ti-user-scan"></i> 推断的用户画像</h2>
+      <p class="section-desc">仅仅通过浏览行为，平台就能推断出以下标签——这些数据会被用于精准投放广告。</p>
+      <div class="profile-tags" id="profileTags"></div>
+      <div class="profile-detail" id="profileDetail"></div>
+    </div>
+
+    <!-- 点击路径回放 -->
+    <div class="section-card">
+      <h2><i class="ti ti-player-play"></i> 操作路径回放</h2>
+      <p class="section-desc">广告平台可以像监控录像一样回放你的每一步操作。</p>
+      <div class="replay-controls">
+        <button class="btn-sm" id="replayBtn" onclick="startReplay()"><i class="ti ti-player-play"></i> 回放</button>
+        <span class="replay-time" id="replayTime">00:00</span>
+      </div>
+      <div class="replay-container" id="replayContainer">
+        <canvas id="replayCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- 结论 -->
+    <div class="section-card conclusion">
+      <h2><i class="ti ti-alert-triangle"></i> 这只是冰山一角</h2>
+      <div class="conclusion-content">
+        <p>你刚才看到的追踪，<strong>还只是最基础的版本</strong>。真实的商业追踪系统还会额外记录：</p>
+        <ul>
+          <li><strong>键盘输入</strong> — 你在搜索框打了什么又删掉了（犹豫的关键词也被记录）</li>
+          <li><strong>页面可见性</strong> — 你切走了多久又切回来（是不是去比价了）</li>
+          <li><strong>设备倾斜角度</strong> — 手机陀螺仪数据暴露你的使用姿势</li>
+          <li><strong>触摸压力</strong> — 用力点击表示确信，轻触表示犹豫</li>
+          <li><strong>关联设备行为</strong> — 跨设备拼凑你的完整购买决策路径</li>
+        </ul>
+        <p class="safe-note"><i class="ti ti-shield-check"></i> 本实验所有数据仅在你的浏览器本地处理，不上传任何服务器。关闭页面即销毁。</p>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="tracker.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="公平硬币，后手必赢。无论你选什么三位序列，AI总有策略保证胜率超过60%。人机对战+蒙特卡洛模拟+8×8胜率矩阵，亲手验证Penney's Game的反直觉结论。">
+  <title>Penney's Game：公平硬币，后手必赢 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-coin"></i> Penney's Game</h1>
+    <p>公平硬币、对称规则、先手选序列——直觉上先手有利，但后手有一个简单策略保证胜率至少 2/3。来和 AI 对战，看你能赢几局。</p>
+  </div>
+
+  <!-- ── 人机对战 ── -->
+  <div class="section" id="battleSection">
+    <h2><i class="ti ti-swords"></i> 人机对战</h2>
+
+    <div class="game-steps">
+      <div class="game-step active" id="step1"><span class="step-num">1</span>你选序列</div>
+      <div class="game-step" id="step2"><span class="step-num">2</span>AI 选对策</div>
+      <div class="game-step" id="step3"><span class="step-num">3</span>抛硬币决胜</div>
+    </div>
+
+    <div class="game-zone">
+      <!-- 第一步：选择序列 -->
+      <div id="phase1">
+        <div class="seq-selector">
+          <label>选一个三位硬币序列（先手）：</label>
+          <div class="coin-buttons">
+            <button class="coin-btn head" onclick="addCoin('H')">正</button>
+            <button class="coin-btn tail" onclick="addCoin('T')">反</button>
+          </div>
+          <div class="selected-seq" id="playerSeq">
+            <div class="seq-coin empty"></div>
+            <div class="seq-coin empty"></div>
+            <div class="seq-coin empty"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-secondary" onclick="clearSelection()"><i class="ti ti-backspace"></i> 清除</button>
+            <button class="btn btn-primary" id="confirmBtn" onclick="confirmSelection()" disabled><i class="ti ti-check"></i> 确认选择</button>
+          </div>
+          <div style="margin-top:12px;color:#a0a0a0;font-size:0.85rem;">或者快速选：</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+            <button class="btn btn-secondary" onclick="quickSelect('HHH')" style="font-size:0.8rem;">正正正</button>
+            <button class="btn btn-secondary" onclick="quickSelect('HHT')" style="font-size:0.8rem;">正正反</button>
+            <button class="btn btn-secondary" onclick="quickSelect('HTH')" style="font-size:0.8rem;">正反正</button>
+            <button class="btn btn-secondary" onclick="quickSelect('HTT')" style="font-size:0.8rem;">正反反</button>
+            <button class="btn btn-secondary" onclick="quickSelect('THH')" style="font-size:0.8rem;">反正正</button>
+            <button class="btn btn-secondary" onclick="quickSelect('THT')" style="font-size:0.8rem;">反正反</button>
+            <button class="btn btn-secondary" onclick="quickSelect('TTH')" style="font-size:0.8rem;">反反正</button>
+            <button class="btn btn-secondary" onclick="quickSelect('TTT')" style="font-size:0.8rem;">反反反</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第二步：AI 回应 -->
+      <div id="phase2" style="display:none;">
+        <div class="scoreboard">
+          <div class="score-side player">
+            <div class="label">你的序列（先手）</div>
+            <div class="seq-mini" id="sbPlayerSeq"></div>
+            <div class="score-val" id="scorePlayer">0</div>
+          </div>
+          <div class="score-vs">VS</div>
+          <div class="score-side ai">
+            <div class="label">AI 的序列（后手）</div>
+            <div class="seq-mini" id="sbAiSeq"></div>
+            <div class="score-val" id="scoreAi">0</div>
+          </div>
+        </div>
+
+        <div class="ai-response" id="aiResponse">
+          <h4><i class="ti ti-robot"></i> AI 的选择</h4>
+          <div class="seq-display" id="aiSeqDisplay"></div>
+          <div class="win-rate" id="aiWinRate"></div>
+          <p id="aiExplain"></p>
+        </div>
+
+        <!-- 抛硬币区域 -->
+        <div class="flip-zone" id="flipZone">
+          <div class="coin-stream" id="coinStream"></div>
+        </div>
+
+        <div class="flip-controls">
+          <button class="btn btn-primary" id="flipOneBtn" onclick="flipOne()"><i class="ti ti-coin"></i> 抛一次</button>
+          <button class="btn btn-secondary" id="flipAutoBtn" onclick="flipAuto()"><i class="ti ti-player-play"></i> 自动抛</button>
+          <button class="btn btn-secondary" id="flipFastBtn" onclick="flipFast()"><i class="ti ti-fast-forward"></i> 快速结算</button>
+          <button class="btn btn-danger" id="newRoundBtn" onclick="newRound()" style="display:none;"><i class="ti ti-refresh"></i> 再来一局</button>
+        </div>
+
+        <!-- 单局结果 -->
+        <div id="roundResult" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- 多局统计 -->
+    <div id="multiStats" style="display:none;margin-top:20px;">
+      <div class="stats-row">
+        <div class="stat-card"><div class="val" id="statTotal">0</div><div class="label">总局数</div></div>
+        <div class="stat-card"><div class="val" id="statPlayerWin">0</div><div class="label">你赢</div></div>
+        <div class="stat-card"><div class="val" id="statAiWin">0</div><div class="label">AI 赢</div></div>
+        <div class="stat-card"><div class="val" id="statPlayerRate">0%</div><div class="label">你的胜率</div></div>
+      </div>
+      <div class="insight-box" id="statsInsight" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- ── 蒙特卡洛模拟器 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-bar"></i> 蒙特卡洛模拟</h2>
+    <p style="color:#a0a0a0;margin-bottom:16px;">选择两个序列，跑 10000 局模拟验证理论胜率。</p>
+
+    <div class="sim-controls">
+      <label style="color:#a0a0a0;font-size:0.85rem;">甲（先手）：</label>
+      <select id="simSeqA">
+        <option value="HHH">正正正</option>
+        <option value="HHT" selected>正正反</option>
+        <option value="HTH">正反正</option>
+        <option value="HTT">正反反</option>
+        <option value="THH">反正正</option>
+        <option value="THT">反正反</option>
+        <option value="TTH">反反正</option>
+        <option value="TTT">反反反</option>
+      </select>
+      <label style="color:#a0a0a0;font-size:0.85rem;">乙（后手）：</label>
+      <select id="simSeqB">
+        <option value="HHH">正正正</option>
+        <option value="HHT">正正反</option>
+        <option value="HTH">正反正</option>
+        <option value="HTT">正反反</option>
+        <option value="THH" selected>反正正</option>
+        <option value="THT">反正反</option>
+        <option value="TTH">反反正</option>
+        <option value="TTT">反反反</option>
+      </select>
+      <button class="btn btn-primary" onclick="runSimulation()"><i class="ti ti-player-play"></i> 模拟 10000 局</button>
+      <button class="btn btn-secondary" onclick="useOptimalB()"><i class="ti ti-bulb"></i> 自动填最优乙</button>
+    </div>
+
+    <div id="simResult" style="display:none;">
+      <div class="stats-row" id="simStats"></div>
+      <div class="chart-wrap" style="height:250px;"><canvas id="simChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── 8×8 胜率矩阵 ── -->
+  <div class="section">
+    <h2><i class="ti ti-table"></i> 完整胜率矩阵</h2>
+    <p style="color:#a0a0a0;margin-bottom:12px;">每格显示「行序列」打败「列序列」的概率。金色边框 = 针对该列的最优对策。</p>
+    <div class="matrix-wrap" id="matrixWrap"></div>
+
+    <div class="insight-box" style="margin-top:16px;">
+      <h3><i class="ti ti-bulb"></i> 如何阅读这个矩阵</h3>
+      <p>找到你想选的序列（列方向），然后看哪一行的数字最大且带金色边框——那就是后手的最优克制。注意：没有任何一行全部 >50%，说明没有"最强序列"，克制关系形成环。</p>
+    </div>
+  </div>
+
+  <!-- ── 克制关系演示 ── -->
+  <div class="section">
+    <h2><i class="ti ti-arrows-shuffle"></i> 克制关系：没有最强序列</h2>
+    <p style="color:#a0a0a0;margin-bottom:16px;">每个序列都有克星，没有任何一个序列能打败所有其他序列。后手的优势在于"看到对方选了什么再做决定"。</p>
+
+    <div id="cycleDemo"></div>
+
+    <div class="insight-box green" style="margin-top:16px;">
+      <h3><i class="ti ti-bulb"></i> 为什么后手必赢？</h3>
+      <p>关键在于"看到对方选择后再决定"这个信息优势。每个序列都有克星，但先手没有信息来避开克星。后手则可以精准选择克制序列。这和石头剪刀布的道理一样——如果你能看到对方出什么再出手，你就永远不会输。</p>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么会这样？</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>序列有重叠</h4>
+        <p>关键在于序列之间存在前缀-后缀重叠。当硬币序列快要匹配 A 时，它可能更早就已经匹配了 B。乙的序列被设计成"拦截"甲的序列。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>Conway 算法</h4>
+        <p>John Horton Conway 发现了一个优雅的算法：只看两个序列的自身重叠结构，就能精确计算胜率。不需要遍历所有可能的硬币序列。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>最优对策公式</h4>
+        <p>甲选 ABC，乙选 A̅AB（A的反面 + 甲的前两位）。这个简单规则在 8 种情况中有 6 种给出最优解，另外 2 种也给出接近最优的对策。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 历史背景 ── -->
+  <div class="section">
+    <h2><i class="ti ti-history"></i> 历史背景</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">74</div>
+        <h4>Walter Penney, 1969</h4>
+        <p>在 Journal of Recreational Mathematics 上首次提出这个问题。一个看似公平的硬币序列游戏，却隐藏着后手的巨大优势。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">∞</div>
+        <h4>Conway 的贡献</h4>
+        <p>John Conway 不仅给出了精确的胜率计算方法（Leading Number Algorithm），还证明了在所有长度 ≥ 3 的序列博弈中，后手都有优势。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

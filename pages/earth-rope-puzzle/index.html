@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="地球赤道绑绳子多出1米，能抬多高？答案和球的大小无关。拖动滑块亲手验证这个经典反直觉几何问题。">
+  <title>地球绑绳子问题：多1米能抬多高 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-world"></i> 地球绑绳子问题</h1>
+    <p>赤道绑一根绳子，多出1米，绳子能抬多高？答案会让你怀疑数学。</p>
+  </div>
+
+  <!-- ====== Module 1: Intuition Test ====== -->
+  <div class="section" id="intuitionTest">
+    <h2><i class="ti ti-bulb"></i> 先猜一猜</h2>
+    <p>
+      假设地球是一个完美球体，赤道周长约 <strong>40,075 公里</strong>。
+      在赤道上绑一根紧贴地面的绳子，现在把绳子加长 <strong>1 米</strong>，然后均匀抬起使其形成一个更大的同心圆。<br>
+      问：<strong>绳子和地面之间的间隙大约有多高？</strong>
+    </p>
+    <p class="guess-subtitle">选择一个你认为最接近的答案：</p>
+    <div class="guess-options" id="guessOptions"></div>
+    <div class="reveal-area" id="revealArea"></div>
+  </div>
+
+  <!-- ====== Module 2: Visualization ====== -->
+  <div class="section" id="visualization">
+    <h2><i class="ti ti-eye"></i> 可视化演示</h2>
+    <div class="viz-controls">
+      <label>
+        <i class="ti ti-adjustments"></i> 增加的绳长：
+        <strong id="deltaLabel">1.0 米</strong>
+      </label>
+      <input type="range" id="deltaSlider" min="0" max="10" step="0.1" value="1">
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="vizCanvas"></canvas>
+    </div>
+    <div class="viz-data">
+      <div class="data-item">
+        <div class="label">间隙高度</div>
+        <div class="value highlight" id="gapValue">0.159 m</div>
+      </div>
+      <div class="data-item">
+        <div class="label">增加的绳长</div>
+        <div class="value" id="addedLength">1.0 米</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== Module 3: Independence ====== -->
+  <div class="section" id="independence">
+    <h2><i class="ti ti-planet"></i> 与球的大小无关</h2>
+    <p>
+      这是最反直觉的部分——<strong>间隙高度与球体半径完全无关</strong>。
+      无论你选篮球、地球还是太阳，多出 1 米绳子，间隙始终约为 <strong>16 厘米</strong>。
+    </p>
+    <p>选择不同球体验证：</p>
+    <div class="sphere-selector" id="sphereBtns"></div>
+    <div class="sphere-info" id="sphereStats"></div>
+    <div class="formula-box">
+      <span class="math-line">原始周长 <span class="math-highlight">C</span> = 2πR</span>
+      <span class="math-line">新周长 <span class="math-highlight">C + ΔL</span> = 2π(R + h)</span>
+      <span class="math-line">→ <span class="math-highlight">h</span> = ΔL / (2π)</span>
+      <span class="math-line">→ <span class="math-highlight">h</span> = 1 / (2π) ≈ <span class="math-result">0.159 m ≈ 16 cm</span></span>
+      <span class="math-line" style="margin-top:8px;color:#f87171;"><strong>注意：h 与 R 完全无关！</strong></span>
+    </div>
+  </div>
+
+  <!-- ====== Module 4: Extension ====== -->
+  <div class="section" id="extension">
+    <h2><i class="ti ti-math-function"></i> 延伸探索</h2>
+
+    <p>正问题：已知增加的绳长，算间隙高度</p>
+    <div class="calc-row">
+      <div class="input-group">
+        <label>增加的绳长</label>
+        <div class="input-wrap">
+          <input type="number" id="extensionInput" value="1" min="0" step="0.1" placeholder="输入长度">
+          <span class="unit">米</span>
+        </div>
+      </div>
+    </div>
+    <div class="calc-result" id="extensionResult"></div>
+
+    <p style="margin-top: 24px;">反问题：已知目标间隙高度，算需要增加的绳长</p>
+    <div class="calc-row">
+      <div class="input-group">
+        <label>目标间隙高度</label>
+        <div class="input-wrap">
+          <input type="number" id="targetInput" value="1" min="0" step="0.01" placeholder="输入高度">
+          <span class="unit">米</span>
+        </div>
+      </div>
+    </div>
+    <div class="calc-result" id="targetResult"></div>
+  </div>
+
+  <!-- ====== Module 5: Explanation ====== -->
+  <div class="section" id="explanation">
+    <h2><i class="ti ti-question-mark"></i> 为什么反直觉？</h2>
+    <ul class="explain-list">
+      <li>
+        <strong>大数恐吓：</strong>地球周长 4 万公里，1 米相对于 40,000,000 米确实微不足道（约 2.5×10⁻⁸）。
+        人脑习惯性地把<strong>增量与总量比较</strong>，而不是与 2π 比较，所以直觉觉得"什么都不会发生"。
+      </li>
+      <li>
+        <strong>错误的直觉框架：</strong>如果问题是"把地球半径增加 16cm"，大多数人会认为这是微不足道的改动。
+        但绳子问题本质正是如此：增加 1 米绳长 ≈ 把地球半径增加 16cm。
+      </li>
+      <li>
+        <strong>线性关系的盲区：</strong>周长和半径的关系 C = 2πR 是<strong>线性的</strong>。ΔC 无论相对 C 多小，ΔR = ΔC/(2π) 都只与 ΔC 有关，与 R 无关。
+        这是一个常数单位换算，却被我们当成了比例问题。
+      </li>
+      <li>
+        <strong>规模恒定性：</strong>这是线性关系的自然推论：如果 ΔC = 1m，ΔR ≈ 16cm。微观弹簧加了 1m 会增大 16cm 半径，星系加了 1m 也一样。尺度的巨大差异不影响结果。
+      </li>
+    </ul>
+  </div>
+
+</div>
+<script src="math.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

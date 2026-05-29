@@ -601,10 +601,12 @@
     function renderComparisons(currentThickness) {
       const container = document.getElementById('visualCompare');
       const maxLog = Math.log10(Math.max(currentThickness, MOON_DISTANCE));
+      const minLog = Math.log10(0.1); // 最小值：一张纸 0.1mm
+      const range = maxLog - minLog;
       
       container.innerHTML = comparisons.map(c => {
         const logValue = Math.log10(c.mm);
-        const percent = (logValue / maxLog) * 100;
+        const percent = ((logValue - minLog) / range) * 100;
         const isCurrent = currentThickness >= c.mm * 0.5 && currentThickness < c.mm * 5;
         
         return `
@@ -613,7 +615,7 @@
             <div class="compare-bar-container">
               <div class="compare-name">${c.name}</div>
               <div class="compare-bar">
-                <div class="compare-bar-fill" style="width: ${percent}%"></div>
+                <div class="compare-bar-fill" style="width: ${Math.max(1, percent)}%"></div>
               </div>
             </div>
             <div class="compare-value">${formatDistance(c.mm)}</div>
@@ -624,14 +626,14 @@
       // 添加当前厚度
       if (currentThickness > 0.1) {
         const logValue = Math.log10(currentThickness);
-        const percent = (logValue / maxLog) * 100;
+        const percent = ((logValue - minLog) / range) * 100;
         container.innerHTML += `
           <div class="compare-row" style="background: rgba(255,217,61,0.2); border: 2px solid #ffd93d;">
             <div class="compare-icon">📄</div>
             <div class="compare-bar-container">
               <div class="compare-name" style="color: #ffd93d;">当前纸张厚度 (${foldCount}次对折)</div>
               <div class="compare-bar">
-                <div class="compare-bar-fill" style="width: ${percent}%; background: linear-gradient(90deg, #ffd93d, #f59e0b);"></div>
+                <div class="compare-bar-fill" style="width: ${Math.max(1, percent)}%; background: linear-gradient(90deg, #ffd93d, #f59e0b);"></div>
               </div>
             </div>
             <div class="compare-value" style="color: #ffd93d;">${formatDistance(currentThickness)}</div>

@@ -120,6 +120,8 @@
       border-color: rgba(255,215,0,0.5);
       color: #ffd700;
     }
+    .ti-spin { animation: spin 1s linear infinite; display: inline-block; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .btn:hover { transform: translateY(-1px); }
     .upload-zone {
       border: 2px dashed rgba(255,215,0,0.35);
@@ -715,12 +717,18 @@
 
       const imagePath = SAMPLE_IMAGE_PATHS[kind];
       if (imagePath) {
+        // 显示加载提示
+        if (activeBtn) activeBtn.dataset.origText = activeBtn.innerHTML;
+        if (activeBtn) activeBtn.innerHTML = '<i class="ti ti-loader-2 ti-spin"></i> 加载中…';
+        document.querySelectorAll('.sample-btn').forEach(btn => btn.disabled = true);
+
         const img = new Image();
         img.crossOrigin = 'anonymous';
         const resolvedUrl = new URL(imagePath, window.location.href).toString();
         img.onload = () => {
           const scaled = scaleImageToPixels(img);
           setOriginalPixels(scaled.pixels, scaled.width, scaled.height, SAMPLE_NAMES[kind]);
+          restoreSampleBtns(activeBtn);
         };
         img.onerror = () => {
           const width = 320;
@@ -728,6 +736,7 @@
           const fallbackKind = SAMPLE_FALLBACKS[kind] || 'portrait';
           const pixels = ImageRetroLabLogic.generateSampleScene(width, height, fallbackKind);
           setOriginalPixels(pixels, width, height, SAMPLE_NAMES[kind] + '（加载失败时回退）');
+          restoreSampleBtns(activeBtn);
         };
         img.src = resolvedUrl;
         return;
@@ -736,6 +745,13 @@
       const height = 320;
       const pixels = ImageRetroLabLogic.generateSampleScene(width, height, kind);
       setOriginalPixels(pixels, width, height, SAMPLE_NAMES[kind]);
+    }
+
+    function restoreSampleBtns(activeBtn) {
+      if (activeBtn && activeBtn.dataset.origText) {
+        activeBtn.innerHTML = activeBtn.dataset.origText;
+      }
+      document.querySelectorAll('.sample-btn').forEach(btn => btn.disabled = false);
     }
 
     function scaleImageToPixels(image) {

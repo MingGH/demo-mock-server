@@ -1,7 +1,7 @@
 package com.example.demo_mock_server.generator;
 
-import com.github.javafaker.Faker;
 import io.vertx.core.json.JsonObject;
+import net.datafaker.Faker;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -41,7 +41,7 @@ public class FakeDataGenerator {
             .put("phone", FAKER.phoneNumber().cellPhone())
             .put("address", FAKER.address().fullAddress())
             .put("company", FAKER.company().name())
-            .put("dob", FAKER.date().birthday(18, 65).toString())
+            .put("dob", FAKER.timeAndDate().birthday(18, 65).toString())
             .put("job", FAKER.job().title());
     }
 }

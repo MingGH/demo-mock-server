@@ -1,6 +1,6 @@
 package com.example.demo_mock_server.generator;
 
-import com.github.javafaker.Faker;
+import net.datafaker.Faker;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;

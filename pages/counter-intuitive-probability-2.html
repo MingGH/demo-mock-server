@@ -787,17 +787,20 @@ C vs A: C的7能赢A的2,4，C的5能赢A的2,4 → C赢的概率 = 5/9
       if (lv > rv) diceStats.leftWin++;
 
       if (animate !== false) {
-        document.getElementById('diceADisplay').textContent = left === 'A' || right === 'A' ? (left === 'A' ? lv : rv) : '·';
-        document.getElementById('diceBDisplay').textContent = left === 'B' || right === 'B' ? (left === 'B' ? lv : rv) : '·';
-        document.getElementById('diceCDisplay').textContent = left === 'C' || right === 'C' ? (left === 'C' ? lv : rv) : '·';
+        // 所有骰子都掷出结果，参与对决的显示实际值，未参与的也随机掷一次
+        const aVal = left === 'A' ? lv : (right === 'A' ? rv : rollOneDie(DICE.A));
+        const bVal = left === 'B' ? lv : (right === 'B' ? rv : rollOneDie(DICE.B));
+        const cVal = left === 'C' ? lv : (right === 'C' ? rv : rollOneDie(DICE.C));
+        document.getElementById('diceADisplay').textContent = aVal;
+        document.getElementById('diceBDisplay').textContent = bVal;
+        document.getElementById('diceCDisplay').textContent = cVal;
       }
       updateDiceStats(left, right);
     }
 
     function rollDiceMany(n) {
-      for (let i = 0; i < n; i++) rollDice(false);
-      const [left, right] = getMatchup();
-      updateDiceStats(left, right);
+      for (let i = 0; i < n - 1; i++) rollDice(false);
+      rollDice(true); // 最后一次带动画，更新骰子显示
     }
 
     function updateDiceStats(left, right) {

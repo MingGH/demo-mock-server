@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="一个小学生都能理解的规则，数学家80年证不出来。输入任意正整数，看它如何在3n+1的规则下飞升又坠落，最终回到1。">
+  <title>Collatz 猜想：最简单的未解之谜 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-infinity"></i> Collatz 猜想</h1>
+    <p>偶数除以2，奇数乘3加1，反复操作。所有正整数最终都会到1吗？规则小学生都懂，但80年来没有人能证明。</p>
+  </div>
+
+  <!-- ── 单数探索 ── -->
+  <div class="section">
+    <h2><i class="ti ti-rocket"></i> 轨迹探索器</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">输入一个正整数，观察它的 Collatz 之旅——先飞升，再坠落，最终回到1。</p>
+
+    <div class="input-area">
+      <input type="number" id="inputN" placeholder="输入正整数（如 27）" min="1" max="99999999" value="27">
+      <button class="btn btn-primary" id="runBtn" onclick="runSingle()">
+        <i class="ti ti-player-play"></i> 运行
+      </button>
+      <button class="btn btn-secondary" id="animBtn" onclick="runAnimated()">
+        <i class="ti ti-player-track-next"></i> 动画演示
+      </button>
+    </div>
+
+    <div class="stats-row" id="singleStats" style="display:none;">
+      <div class="stat-badge"><div class="val" id="statSteps">—</div><div class="lbl">总步数</div></div>
+      <div class="stat-badge"><div class="val" id="statMax">—</div><div class="lbl">最高飞行高度</div></div>
+      <div class="stat-badge"><div class="val" id="statRatio">—</div><div class="lbl">高度/起始值</div></div>
+    </div>
+
+    <div class="sequence-container" id="seqContainer" style="display:none;">
+      <div class="sequence-flow" id="seqFlow"></div>
+    </div>
+
+    <div class="chart-wrap" style="height:280px;" id="singleChartWrap">
+      <canvas id="singleChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── 经典难缠数字 ── -->
+  <div class="section">
+    <h2><i class="ti ti-flame"></i> 名场面：这些数字最难缠</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">有些很小的数字，轨迹却出乎意料地长。点击数字试试。</p>
+
+    <table class="famous-table">
+      <thead>
+        <tr><th>起始值</th><th>步数</th><th>最高飞行高度</th><th>飞行高度/起始值</th></tr>
+      </thead>
+      <tbody id="famousBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ── 批量散点图 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-dots"></i> 步数分布全景图</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">每个点代表一个数，纵轴是回到1所需步数。你会发现——看不出任何规律，这正是它困难的原因。</p>
+
+    <div class="range-controls">
+      <label>范围：</label>
+      <select id="rangeSelect" onchange="runBatch()">
+        <option value="1000">1 ~ 1,000</option>
+        <option value="5000" selected>1 ~ 5,000</option>
+        <option value="10000">1 ~ 10,000</option>
+        <option value="50000">1 ~ 50,000</option>
+      </select>
+      <button class="btn btn-sm btn-secondary" onclick="runBatch()"><i class="ti ti-refresh"></i> 刷新</button>
+    </div>
+
+    <div class="record-highlight" id="batchRecords">
+      <div class="record-card"><div class="val" id="recLongestN">—</div><div class="lbl">最难缠的数</div></div>
+      <div class="record-card"><div class="val" id="recLongestSteps">—</div><div class="lbl">最多步数</div></div>
+      <div class="record-card"><div class="val" id="recHighestN">—</div><div class="lbl">飞得最高的数</div></div>
+      <div class="record-card"><div class="val" id="recHighestVal">—</div><div class="lbl">最高飞行高度</div></div>
+    </div>
+
+    <div class="chart-wrap" style="height:320px;">
+      <canvas id="batchChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── 步数频率分布 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-histogram"></i> 步数频率分布</h2>
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">统计 1~10000 中，各个步数对应多少个起始数。</p>
+    <div class="chart-wrap" style="height:280px;">
+      <canvas id="distChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── 为什么难 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么这么难证明？</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>混沌行为</h4>
+        <p>相邻的两个数（如 26 和 27），轨迹长度相差数十倍。起始值微小变化导致完全不同的行为，无法建立统一规律。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>乘法与除法纠缠</h4>
+        <p>3n+1 是乘法运算（让数字膨胀），n/2 是除法（让数字收缩）。这两种运算在数论中的交互行为极难分析。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>缺乏代数结构</h4>
+        <p>不像费马大定理有椭圆曲线作为工具，Collatz 问题目前没有已知的深层代数结构可以利用。</p>
+      </div>
+    </div>
+
+    <div class="insight-box" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 大数学家怎么说</h3>
+      <p>保罗·厄多斯说过：「数学还没有准备好解决这样的问题。」（Mathematics is not yet ready for such problems.）陶哲轩在2019年取得了部分进展——证明了「几乎所有」正整数的 Collatz 轨迹都会到达足够小的值，但完整证明仍然遥远。</p>
+    </div>
+
+    <div class="insight-box green" style="margin-top:16px;">
+      <h3><i class="ti ti-trophy"></i> 验证进度</h3>
+      <p>截至2024年，计算机已验证 2⁶⁸（约 2.95×10²⁰）以内的所有正整数都满足 Collatz 猜想。没有反例，但没有反例不等于证明。这就像用望远镜看了宇宙的99.99%都是暗的，但不能证明宇宙每个角落都是暗的。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

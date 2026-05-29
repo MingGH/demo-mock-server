@@ -265,12 +265,13 @@
           ⚛️ 生成随机数
         </button>
         <button class="btn btn-secondary" onclick="clearAll()">🔄 清空</button>
-        <select id="countSelect" style="padding: 10px 15px; border-radius: 8px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+        <select id="countSelect" onchange="updateCountHint()" style="padding: 10px 15px; border-radius: 8px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
           <option value="100">100 个</option>
           <option value="500" selected>500 个</option>
           <option value="1000">1000 个</option>
           <option value="2000">2000 个</option>
         </select>
+        <span id="countHint" style="font-size:0.82rem;color:rgba(255,255,255,0.5);display:none;">⏳ 2000个需要约15秒，请耐心等待</span>
       </div>
       
       <div class="visualizer-grid">
@@ -356,6 +357,12 @@
     const API_BASE = 'https://numfeel-api.996.ninja';
     let quantumNumbers = [];
     let pseudoNumbers = [];
+
+    function updateCountHint() {
+      const val = document.getElementById('countSelect').value;
+      const hint = document.getElementById('countHint');
+      hint.style.display = val === '2000' ? 'inline' : 'none';
+    }
     
     async function generateNumbers() {
       const btn = document.getElementById('generateBtn');

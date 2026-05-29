@@ -346,20 +346,25 @@ function runFlips() {
   var btn = document.getElementById('flip-btn');
   btn.disabled = true;
   var strip = document.getElementById('coin-strip');
-  var delay = flipCount <= 50 ? 60 : flipCount <= 200 ? 15 : 2;
   var i = 0;
 
-  function step() {
-    if (i >= flipCount) {
-      btn.disabled = false;
-      showFlipInsight();
-      return;
-    }
-    var result = Math.random() < 0.5 ? 1 : 0;
-    if (result) flipHeads++; else flipTails++;
-    i++;
+  // 每帧处理的批次大小和总帧数控制
+  var batchSize, useRAF;
+  if (flipCount <= 50) {
+    batchSize = 1; useRAF = false; // 逐个动画，用setTimeout
+  } else if (flipCount <= 200) {
+    batchSize = 1; useRAF = false;
+  } else if (flipCount <= 1000) {
+    batchSize = 20; useRAF = true; // 每帧处理20个
+  } else {
+    batchSize = 100; useRAF = true; // 每帧处理100个
+  }
 
+  var delay = flipCount <= 50 ? 60 : 15;
+
+  function updateDisplay() {
     var total = flipHeads + flipTails;
+    if (total === 0) return;
     var pct = flipHeads / total;
     var dev = Math.abs(pct - 0.5);
 
@@ -374,17 +379,40 @@ function runFlips() {
     document.getElementById('flip-total').textContent = total;
     document.getElementById('flip-deviation').textContent = (dev * 100).toFixed(1) + '%';
     document.getElementById('freq-bar').style.width = (pct * 100) + '%';
+  }
 
-    if (flipCount <= 200) {
-      var tag = document.createElement('div');
-      tag.className = 'coin-tag ' + (result ? 'heads' : 'tails');
-      tag.textContent = result ? 'H' : 'T';
-      strip.appendChild(tag);
-      strip.scrollTop = strip.scrollHeight;
+  function step() {
+    if (i >= flipCount) {
+      updateDisplay();
+      btn.disabled = false;
+      showFlipInsight();
+      return;
     }
 
-    if (delay > 5) setTimeout(step, delay);
-    else { for (var j = i; j < flipCount; j++) { var r = Math.random() < 0.5 ? 1 : 0; if (r) flipHeads++; else flipTails++; } i = flipCount; step(); }
+    var end = Math.min(i + batchSize, flipCount);
+    for (var j = i; j < end; j++) {
+      var result = Math.random() < 0.5 ? 1 : 0;
+      if (result) flipHeads++; else flipTails++;
+
+      if (flipCount <= 200) {
+        var tag = document.createElement('div');
+        tag.className = 'coin-tag ' + (result ? 'heads' : 'tails');
+        tag.textContent = result ? 'H' : 'T';
+        strip.appendChild(tag);
+      }
+    }
+    i = end;
+
+    updateDisplay();
+    if (flipCount <= 200) strip.scrollTop = strip.scrollHeight;
+
+    if (i < flipCount) {
+      if (useRAF) requestAnimationFrame(step);
+      else setTimeout(step, delay);
+    } else {
+      btn.disabled = false;
+      showFlipInsight();
+    }
   }
   step();
 }

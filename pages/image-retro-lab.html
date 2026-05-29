@@ -115,6 +115,11 @@
       color: #e8e8e8;
       border: 1px solid rgba(255,255,255,0.18);
     }
+    .sample-btn.active {
+      background: rgba(255,215,0,0.15);
+      border-color: rgba(255,215,0,0.5);
+      color: #ffd700;
+    }
     .btn:hover { transform: translateY(-1px); }
     .upload-zone {
       border: 2px dashed rgba(255,215,0,0.35);
@@ -325,12 +330,12 @@
         <input type="file" id="fileInput" accept="image/*" style="display:none">
       </div>
 
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="loadSample('portrait')"><i class="ti ti-user"></i> 花园人像</button>
-        <button class="btn btn-secondary" onclick="loadSample('street')"><i class="ti ti-building-skyscraper"></i> 夜景街头</button>
-        <button class="btn btn-secondary" onclick="loadSample('poster')"><i class="ti ti-sun"></i> 复古海报</button>
-        <button class="btn btn-secondary" onclick="loadSample('still-life')"><i class="ti ti-camera"></i> 室内静物</button>
-        <button class="btn btn-secondary" onclick="loadSample('autumn')"><i class="ti ti-leaf"></i> 秋天街景</button>
+      <div class="btn-row" id="sampleBtnRow">
+        <button class="btn btn-secondary sample-btn active" data-sample="portrait" onclick="loadSample('portrait')"><i class="ti ti-user"></i> 花园人像</button>
+        <button class="btn btn-secondary sample-btn" data-sample="street" onclick="loadSample('street')"><i class="ti ti-building-skyscraper"></i> 夜景街头</button>
+        <button class="btn btn-secondary sample-btn" data-sample="poster" onclick="loadSample('poster')"><i class="ti ti-sun"></i> 复古海报</button>
+        <button class="btn btn-secondary sample-btn" data-sample="still-life" onclick="loadSample('still-life')"><i class="ti ti-camera"></i> 室内静物</button>
+        <button class="btn btn-secondary sample-btn" data-sample="autumn" onclick="loadSample('autumn')"><i class="ti ti-leaf"></i> 秋天街景</button>
         <button class="btn btn-primary" onclick="downloadProcessed()"><i class="ti ti-download"></i> 下载处理结果</button>
       </div>
 
@@ -492,11 +497,11 @@
     };
 
     const SAMPLE_IMAGE_PATHS = {
-      portrait: '../data/image-retro-lab/花园人像.png',
-      street: '../data/image-retro-lab/夜景街头.png',
-      poster: '../data/image-retro-lab/复古海报感场景.png',
-      'still-life': '../data/image-retro-lab/室内静物.png',
-      autumn: '../data/image-retro-lab/秋天街景.png'
+      portrait: 'https://img.996.ninja/ninjutsu/5d0c7a02aea2fde8891dd50e554ed573.png',
+      street: 'https://img.996.ninja/ninjutsu/9d6c1113ebbb5a568fa9506ccba01e56.png',
+      poster: 'https://img.996.ninja/ninjutsu/945df049c0785c5121dd2d28978ca6e1.png',
+      'still-life': 'https://img.996.ninja/ninjutsu/3302b77b001024b3fc4b3f4d6c0866fc.png',
+      autumn: 'https://img.996.ninja/ninjutsu/2e9b71eff63c6326d8b82a2d1917a115.png'
     };
 
     const SAMPLE_NAMES = {
@@ -703,9 +708,15 @@
     }
 
     function loadSample(kind) {
+      // 高亮当前选中的按钮
+      document.querySelectorAll('.sample-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.querySelector(`.sample-btn[data-sample="${kind}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
+
       const imagePath = SAMPLE_IMAGE_PATHS[kind];
       if (imagePath) {
         const img = new Image();
+        img.crossOrigin = 'anonymous';
         const resolvedUrl = new URL(imagePath, window.location.href).toString();
         img.onload = () => {
           const scaled = scaleImageToPixels(img);

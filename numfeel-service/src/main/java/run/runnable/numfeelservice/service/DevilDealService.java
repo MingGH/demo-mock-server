@@ -27,10 +27,22 @@ public class DevilDealService {
         this.template = template;
     }
 
+    /**
+     * 校验交易类型是否在预定义的六种有效类型范围内。
+     *
+     * @param type 交易类型字符串
+     * @return true 表示类型有效
+     */
     public boolean isValidType(String type) {
         return type != null && VALID_TYPES.contains(type);
     }
 
+    /**
+     * 校验百分比值是否在 0-100 的有效范围内。
+     *
+     * @param pct 百分比数值
+     * @return true 表示百分比有效
+     */
     public boolean isValidPct(Integer pct) {
         return pct != null && pct >= 0 && pct <= 100;
     }
@@ -48,6 +60,11 @@ public class DevilDealService {
                 .map(rows -> toSubmitResponse(rows, dealType));
     }
 
+    /**
+     * 查询恶魔交易诊断全局统计数据，包括六种欲望占比均值与首选交易类型分布。
+     *
+     * @return 包含全局指标与类型分布的统计响应
+     */
     public Mono<DevilDealStatsResponse> stats() {
         return ServiceSupport.selectAll(template, DevilDealResult.class)
                 .map(this::toStatsResponse);

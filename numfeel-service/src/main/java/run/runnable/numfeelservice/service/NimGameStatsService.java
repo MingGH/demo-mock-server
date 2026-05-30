@@ -18,11 +18,25 @@ public class NimGameStatsService {
         this.template = template;
     }
 
+    /**
+     * 提交一次尼姆游戏对局结果，并返回最新的全局统计。
+     *
+     * @param result     对局结果（win 或 lose）
+     * @param difficulty 难度级别（easy、normal 或 hard）
+     * @param rounds     对局回合数
+     * @param preset     预设配置
+     * @return 更新后的全局统计响应
+     */
     public Mono<NimGameStatsResponse> submit(String result, String difficulty, int rounds, String preset) {
         NimGameStat entity = new NimGameStat(null, result, difficulty, rounds, preset, System.currentTimeMillis());
         return template.insert(NimGameStat.class).using(entity).then(getStats());
     }
 
+    /**
+     * 查询尼姆游戏全局统计数据，包括玩家胜率、AI 胜率和不同难度下的对局分布。
+     *
+     * @return 包含全局指标与难度分布的统计响应
+     */
     public Mono<NimGameStatsResponse> getStats() {
         return ServiceSupport.selectAll(template, NimGameStat.class)
                 .map(this::toStatsResponse);

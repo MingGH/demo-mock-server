@@ -18,12 +18,26 @@ public class WinningStrategyStatsService {
         this.template = template;
     }
 
+    /**
+     * 提交一次必胜策略游戏对局结果，并返回最新的全局统计。
+     *
+     * @param game       博弈模式（bash、wythoff 或 coin）
+     * @param result     对局结果（win 或 lose）
+     * @param difficulty 难度级别
+     * @param rounds     对局回合数
+     * @return 更新后的全局统计响应
+     */
     public Mono<WinningStrategyStatsResponse> submit(String game, String result, String difficulty, int rounds) {
         WinningStrategyStat entity = new WinningStrategyStat(
                 null, game, result, difficulty, rounds, System.currentTimeMillis());
         return template.insert(WinningStrategyStat.class).using(entity).then(getStats());
     }
 
+    /**
+     * 查询必胜策略游戏全局统计数据，包括总胜率、模式分布以及 AI 在不同模式/难度下的胜场数据。
+     *
+     * @return 包含全局指标与模式分布的统计响应
+     */
     public Mono<WinningStrategyStatsResponse> getStats() {
         return ServiceSupport.selectAll(template, WinningStrategyStat.class)
                 .map(this::toStatsResponse);

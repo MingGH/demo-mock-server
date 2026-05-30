@@ -23,9 +23,22 @@ public class StroopStatsService {
         this.template = template;
     }
 
+    /**
+     * 提交一次斯特鲁普效应挑战结果，并返回当前 Stroop 效应的历史排名反馈。
+     *
+     * @param total        总题数
+     * @param correctCount 正确数量
+     * @param accuracy     正确率
+     * @param avgRT        平均反应时（毫秒）
+     * @param conAvgRT     一致条件平均反应时（毫秒）
+     * @param incAvgRT     不一致条件平均反应时（毫秒）
+     * @param stroopEffect Stroop 效应值（毫秒）
+     * @param grade        评级
+     * @return 包含排名、总样本数和百分位的提交响应
+     */
     public Mono<StroopSubmitResponse> submit(int total, int correctCount, double accuracy,
-                                             double avgRT, double conAvgRT, double incAvgRT,
-                                             double stroopEffect, String grade) {
+                                              double avgRT, double conAvgRT, double incAvgRT,
+                                              double stroopEffect, String grade) {
         StroopResult entity = new StroopResult(
                 null, total, correctCount, accuracy, avgRT, conAvgRT, incAvgRT, stroopEffect, grade, System.currentTimeMillis());
         return template.insert(StroopResult.class)
@@ -34,6 +47,11 @@ public class StroopStatsService {
                 .map(rows -> toSubmitResponse(rows, stroopEffect));
     }
 
+    /**
+     * 查询斯特鲁普效应挑战全局统计数据，包括平均效应值、反应时、正确率和评级分布。
+     *
+     * @return 包含全局指标与评级分布的统计响应
+     */
     public Mono<StroopStatsResponse> stats() {
         return ServiceSupport.selectAll(template, StroopResult.class)
                 .map(this::toStatsResponse);

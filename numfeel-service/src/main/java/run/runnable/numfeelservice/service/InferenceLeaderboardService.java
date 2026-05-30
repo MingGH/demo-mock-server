@@ -24,6 +24,16 @@ public class InferenceLeaderboardService {
         this.template = template;
     }
 
+    /**
+     * 提交一次统计侦探得分记录，并返回当前成绩的历史排名反馈。
+     *
+     * @param name   玩家名称
+     * @param score  总得分
+     * @param rounds 回合数
+     * @param wins   获胜次数
+     * @param grade  评级
+     * @return 包含排名信息的提交响应
+     */
     public Mono<InferenceLeaderboardSubmitResponse> submit(String name, int score, int rounds, int wins, String grade) {
         InferenceLeaderboardEntry entity = new InferenceLeaderboardEntry(
                 null, name, score, rounds, wins, grade, System.currentTimeMillis());

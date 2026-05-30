@@ -22,6 +22,17 @@ public class BarnumStatsService {
         this.template = template;
     }
 
+    /**
+     * 提交一次巴纳姆效应盲测结果。
+     *
+     * @param userGroup 用户所在实验组别（tarot 或 random）
+     * @param rating1   第一条描述的认同评分
+     * @param rating2   第二条描述的认同评分
+     * @param rating3   第三条描述的认同评分
+     * @param rating4   第四条描述的认同评分
+     * @param rating5   第五条描述的认同评分
+     * @return 空 Mono，表示异步写入完成
+     */
     public Mono<Void> submit(String userGroup,
                              int rating1, int rating2, int rating3, int rating4, int rating5) {
         BarnumResult entity = new BarnumResult(
@@ -30,6 +41,11 @@ public class BarnumStatsService {
         return template.insert(BarnumResult.class).using(entity).then();
     }
 
+    /**
+     * 查询巴纳姆效应盲测全局统计数据，包括两组平均分、样本量和评分分布。
+     *
+     * @return 包含两组对比数据的统计响应
+     */
     public Mono<BarnumStatsResponse> stats() {
         return ServiceSupport.selectAll(template, BarnumResult.class)
                 .map(this::buildStatsResponse);

@@ -12,7 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 筑梦师测试 — 业务逻辑层（R2DBC 重写）。
+ * 筑梦师测试
  */
 @Service
 public class InceptionMazeService {
@@ -23,6 +23,12 @@ public class InceptionMazeService {
         this.template = template;
     }
 
+    /**
+     * 提交一次筑梦师迷宫测试结果，并返回当前绕路系数的历史排名反馈。
+     *
+     * @param request 包含网格大小、路径长度、绕路系数和梦境层级等信息的提交请求
+     * @return 包含排名、总样本数和百分位的提交响应
+     */
     public Mono<InceptionMazeSubmitResponse> submit(InceptionMazeSubmitRequest request) {
         double detourRatio = request.detourRatio();
         InceptionMazeResult entity = new InceptionMazeResult(

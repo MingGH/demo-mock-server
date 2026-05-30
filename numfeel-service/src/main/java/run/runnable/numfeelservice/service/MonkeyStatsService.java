@@ -24,6 +24,17 @@ public class MonkeyStatsService {
         this.template = template;
     }
 
+    /**
+     * 提交一次无限猴子打字机实验结果，并返回最新的全局统计反馈。
+     *
+     * @param targetText   目标文本
+     * @param targetLength 目标文本长度
+     * @param totalAttempts 总尝试次数
+     * @param totalChars   总生成字符数
+     * @param success      是否成功生成目标文本
+     * @param timeElapsed  耗时（秒）
+     * @return 包含总运行次数、成功率和最长成功文本的提交响应
+     */
     public Mono<MonkeySubmitResponse> submit(String targetText, int targetLength, long totalAttempts,
                                             long totalChars, boolean success, int timeElapsed) {
         MonkeyStat entity = new MonkeyStat(
@@ -47,6 +58,11 @@ public class MonkeyStatsService {
                 });
     }
 
+    /**
+     * 查询无限猴子打字机全局统计数据，包括成功率、最长成功文本和成功样本排行榜。
+     *
+     * @return 包含全局指标与排行榜的统计响应
+     */
     public Mono<MonkeyStatsResponse> stats() {
         return ServiceSupport.selectAll(template, MonkeyStat.class)
                 .map(this::toStatsResponse);

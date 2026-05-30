@@ -7,16 +7,14 @@ import run.runnable.numfeelservice.model.TrackingEntities.BrowserFingerprint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 浏览器指纹业务逻辑层（R2DBC 重写）。
- * <p>
- * 保留旧版的内存兜底计数：当 MySQL 不可用时，{@code collect} 返回内存计数结果。
+ * 浏览器指纹采集与统计（基于 DatabaseClient + SQL，内存兜底）。
  */
 @Service
 public class FingerprintService {
@@ -30,7 +28,17 @@ public class FingerprintService {
         this.template = template;
     }
 
-    /** 保存一条指纹记录，返回总量、同指纹数量、上次出现时间与数据源。 */
+    /**
+     * 采集一条指纹记录并返回即时统计。
+     * <p>
+     * 先 INSERT 到 {@code browser_fingerprints} 表，再通过 SQL 子查询
+     * 获取总量、同指纹历史数量及上一次出现的时间戳。
+     * 若 MySQL 不可用则落入内存计数兜底。
+     *
+     * @param r 前端上报的指纹记录
+     * @return 包含 {@code total}、{@code sameHashCount}、
+     *         {@code lastSeenAt} 和 {@code source} 的响应 Mono
+     */
     public Mono<BrowserFingerprintCollectResponse> collect(FingerprintRecord r) {
         BrowserFingerprint entity = new BrowserFingerprint(
                 null,
@@ -52,57 +60,92 @@ public class FingerprintService {
                 System.currentTimeMillis()
         );
 
+        DatabaseClient client = template.getDatabaseClient();
         return template.insert(BrowserFingerprint.class)
                 .using(entity)
-                .then(ServiceSupport.selectAll(template, BrowserFingerprint.class))
-                .map(rows -> toCollectResponse(rows, r.fullHash()))
+                .then(client.sql("""
+                        SELECT
+                          (SELECT COUNT(*) FROM browser_fingerprints) AS total,
+                          (SELECT COUNT(*) FROM browser_fingerprints
+                           WHERE full_hash = :full_hash) AS same_hash_count,
+                          (SELECT created_at FROM browser_fingerprints
+                           WHERE full_hash = :full_hash
+                           ORDER BY created_at DESC
+                           LIMIT 1 OFFSET 1) AS last_seen_at
+                        """)
+                        .bind("full_hash", r.fullHash())
+                        .map((row, meta) -> {
+                            long total = number(row.get("total")).longValue();
+                            long sameHashCount = number(row.get("same_hash_count")).longValue();
+                            Object lastSeenObj = row.get("last_seen_at");
+                            Long lastSeenAt = lastSeenObj instanceof Number n ? n.longValue() : null;
+                            return new BrowserFingerprintCollectResponse(
+                                    total, sameHashCount, lastSeenAt, "mysql");
+                        })
+                        .one())
                 .onErrorResume(err -> {
                     log.error("Fingerprint collect failed: {}", err.getMessage());
                     long total = memTotal.incrementAndGet();
-                    return Mono.just(new BrowserFingerprintCollectResponse(total, null, null, "memory"));
+                    return Mono.just(new BrowserFingerprintCollectResponse(
+                            total, null, null, "memory"));
                 });
     }
 
-    /** 查询全站统计数据。 */
+    /**
+     * 查询全站浏览器指纹统计数据。
+     * <p>
+     * 一条 SQL 完成总量、各维度去重计数和平均熵值计算，
+     * 平均访问次数由 {@code total / unique_full} 在应用层得出。
+     *
+     * @return 包含各维度统计值的响应 Mono
+     */
     public Mono<BrowserFingerprintStatsResponse> stats() {
-        return ServiceSupport.selectAll(template, BrowserFingerprint.class)
-                .map(this::toStatsResponse);
+        DatabaseClient client = template.getDatabaseClient();
+        return client.sql("""
+                        SELECT
+                          COUNT(*) AS total,
+                          COUNT(DISTINCT full_hash) AS unique_full,
+                          COUNT(DISTINCT canvas_hash) AS unique_canvas,
+                          COUNT(DISTINCT font_hash) AS unique_font,
+                          COUNT(DISTINCT webgl_hash) AS unique_webgl,
+                          COUNT(DISTINCT timezone) AS unique_timezone,
+                          COUNT(DISTINCT screen_info) AS unique_screen,
+                          COUNT(DISTINCT platform) AS unique_platform,
+                          COALESCE(AVG(entropy_bits), 0) AS avg_entropy
+                        FROM browser_fingerprints
+                        """)
+                .map((row, meta) -> {
+                    long total = number(row.get("total")).longValue();
+                    long uniqueFull = number(row.get("unique_full")).longValue();
+                    double avgEntropy = number(row.get("avg_entropy")).doubleValue();
+                    double avgVisits = uniqueFull > 0
+                            ? ServiceSupport.round((double) total / uniqueFull, 2)
+                            : 0;
+                    return new BrowserFingerprintStatsResponse(
+                            total,
+                            uniqueFull,
+                            avgVisits,
+                            number(row.get("unique_canvas")).longValue(),
+                            number(row.get("unique_font")).longValue(),
+                            number(row.get("unique_webgl")).longValue(),
+                            number(row.get("unique_timezone")).longValue(),
+                            number(row.get("unique_screen")).longValue(),
+                            number(row.get("unique_platform")).longValue(),
+                            ServiceSupport.round(avgEntropy, 2)
+                    );
+                })
+                .one()
+                .defaultIfEmpty(new BrowserFingerprintStatsResponse(
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
     }
 
-    /** 根据当前总指纹的历史记录生成“认出你了”提示所需数据。 */
-    private BrowserFingerprintCollectResponse toCollectResponse(java.util.List<BrowserFingerprint> rows, String fullHash) {
-        long total = rows.size();
-        java.util.List<BrowserFingerprint> sameHashRows = rows.stream()
-                .filter(row -> fullHash.equals(row.fullHash()))
-                .sorted(Comparator.comparingLong(BrowserFingerprint::createdAt).reversed())
-                .toList();
-        Long lastSeenAt = sameHashRows.size() >= 2 ? sameHashRows.get(1).createdAt() : null;
-        return new BrowserFingerprintCollectResponse(total, (long) sameHashRows.size(), lastSeenAt, "mysql");
-    }
-
-    /** 聚合浏览器指纹维度统计，供全站统计面板展示。 */
-    private BrowserFingerprintStatsResponse toStatsResponse(java.util.List<BrowserFingerprint> rows) {
-        long total = rows.size();
-        long uniqueFull = ServiceSupport.distinctNonNullCount(rows, BrowserFingerprint::fullHash);
-        double avgVisits = uniqueFull > 0 ? ServiceSupport.round(total / (double) uniqueFull, 2) : 0;
-        double avgEntropy = rows.stream()
-                .map(BrowserFingerprint::entropyBits)
-                .filter(java.util.Objects::nonNull)
-                .mapToDouble(Double::doubleValue)
-                .average()
-                .orElse(0);
-
-        return new BrowserFingerprintStatsResponse(
-                total,
-                uniqueFull,
-                avgVisits,
-                ServiceSupport.distinctNonNullCount(rows, BrowserFingerprint::canvasHash),
-                ServiceSupport.distinctNonNullCount(rows, BrowserFingerprint::fontHash),
-                ServiceSupport.distinctNonNullCount(rows, BrowserFingerprint::webglHash),
-                ServiceSupport.distinctNonNullCount(rows, BrowserFingerprint::timezone),
-                ServiceSupport.distinctNonNullCount(rows, BrowserFingerprint::screenInfo),
-                ServiceSupport.distinctNonNullCount(rows, BrowserFingerprint::platform),
-                ServiceSupport.round(avgEntropy, 2)
-        );
+    /**
+     * 将可能为 {@code null} 或非数值类型的列值安全转为 {@link Number}。
+     *
+     * @param value 行数据中取出的列值
+     * @return 值本身（如果是 Number 实例），否则返回 0
+     */
+    private Number number(Object value) {
+        return value instanceof Number number ? number : 0;
     }
 }

@@ -23,6 +23,12 @@ public class NewcombService {
         this.template = template;
     }
 
+    /**
+     * 校验选择是否在有效的单盒（one）或双盒（two）范围内。
+     *
+     * @param choice 选择字符串
+     * @return true 表示选择有效
+     */
     public boolean isValidChoice(String choice) {
         return choice != null && VALID_CHOICES.contains(choice);
     }

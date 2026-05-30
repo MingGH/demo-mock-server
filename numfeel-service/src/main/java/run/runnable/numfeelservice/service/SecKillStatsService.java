@@ -24,6 +24,17 @@ public class SecKillStatsService {
         this.template = template;
     }
 
+    /**
+     * 提交一次秒杀抢票实验结果，并返回最新的全局胜率统计。
+     *
+     * @param participants 参与人数
+     * @param stock        库存数量
+     * @param userWon      用户是否抢到
+     * @param userRank     用户排名
+     * @param userLatency  用户延迟（毫秒）
+     * @param latencyGap   延迟差距（毫秒）
+     * @return 包含总运行次数、总胜场和胜率的提交响应
+     */
     public Mono<SecKillSubmitResponse> submit(int participants, int stock, boolean userWon,
                                              int userRank, double userLatency, double latencyGap) {
         SecKillStat entity = new SecKillStat(

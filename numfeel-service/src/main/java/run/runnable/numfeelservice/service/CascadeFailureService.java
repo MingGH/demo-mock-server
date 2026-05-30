@@ -27,9 +27,24 @@ public class CascadeFailureService {
         this.template = template;
     }
 
+    /**
+     * 提交一次级联故障模拟实验结果，并返回当前实验的排名反馈。
+     *
+     * @param topology     网络拓扑类型
+     * @param coupling     耦合强度
+     * @param capacity     节点容量
+     * @param strategy     容错策略
+     * @param triggerPos   故障触发位置
+     * @param survivalRate 最终存活率
+     * @param cascadeSteps 级联步数
+     * @param maxComponent 最大连通分量
+     * @param totalNodes   总节点数
+     * @param score        综合得分
+     * @return 包含总样本数和个人得分的提交响应
+     */
     public Mono<CascadeFailureSubmitResponse> submit(String topology, int coupling, int capacity, String strategy,
-                                                     String triggerPos, double survivalRate, int cascadeSteps,
-                                                     int maxComponent, int totalNodes, int score) {
+                                                      String triggerPos, double survivalRate, int cascadeSteps,
+                                                      int maxComponent, int totalNodes, int score) {
         CascadeFailureResult entity = new CascadeFailureResult(
                 null, topology, coupling, capacity, strategy, triggerPos, survivalRate,
                 cascadeSteps, maxComponent, totalNodes, score, System.currentTimeMillis());
@@ -39,11 +54,22 @@ public class CascadeFailureService {
                 .map(total -> new CascadeFailureSubmitResponse(total, score));
     }
 
+    /**
+     * 查询级联故障模拟器全局统计数据，包括平均存活率、级联步数和拓扑维度统计。
+     *
+     * @return 包含全局指标与拓扑分布的统计响应
+     */
     public Mono<CascadeFailureStatsResponse> stats() {
         return ServiceSupport.selectAll(template, CascadeFailureResult.class)
                 .map(this::toStatsResponse);
     }
 
+    /**
+     * 查询级联故障模拟器排行榜前 N 名，按得分和存活率降序排列。
+     *
+     * @param limit 返回的最大记录数，取值范围 1-100
+     * @return 包含排行榜列表和总样本数的响应
+     */
     public Mono<CascadeFailureLeaderboardResponse> leaderboard(int limit) {
         int safeLimit = ServiceSupport.clampLimit(limit, 1, 100);
         DatabaseClient client = template.getDatabaseClient();

@@ -28,10 +28,24 @@ public class TimePerceptionService {
         this.template = template;
     }
 
+    /**
+     * 提交一次时间感知扭曲实验结果，并返回当前总分的历史排名反馈。
+     *
+     * @param playerName           玩家名称
+     * @param totalScore           总分
+     * @param weberScore           韦伯分数
+     * @param avgAbsDistortion     平均绝对扭曲值
+     * @param blankAvgDistortion   空白组平均扭曲值
+     * @param loadAvgDistortion    认知负荷组平均扭曲值
+     * @param emotionAvgDistortion 情绪组平均扭曲值
+     * @param biasDirection        偏差方向（overestimator 或 underestimator）
+     * @param grade                评级
+     * @return 包含排名和总样本数的提交响应
+     */
     public Mono<TimePerceptionSubmitResponse> submit(String playerName, int totalScore, double weberScore,
-                                                     double avgAbsDistortion,
-                                                     double blankAvgDistortion, double loadAvgDistortion,
-                                                     double emotionAvgDistortion, String biasDirection, String grade) {
+                                                      double avgAbsDistortion,
+                                                      double blankAvgDistortion, double loadAvgDistortion,
+                                                      double emotionAvgDistortion, String biasDirection, String grade) {
         TimePerceptionResult entity = new TimePerceptionResult(
                 null, playerName, totalScore, weberScore, avgAbsDistortion, blankAvgDistortion,
                 loadAvgDistortion, emotionAvgDistortion, biasDirection, grade, System.currentTimeMillis());
@@ -41,11 +55,22 @@ public class TimePerceptionService {
                 .map(rows -> new TimePerceptionSubmitResponse(rankByScore(rows, totalScore), rows.size()));
     }
 
+    /**
+     * 查询时间感知扭曲实验全局统计数据，包括平均分、扭曲指标、偏差分布和评级分布。
+     *
+     * @return 包含全局指标与评级分布的统计响应
+     */
     public Mono<TimePerceptionStatsResponse> stats() {
         return ServiceSupport.selectAll(template, TimePerceptionResult.class)
                 .map(this::toStatsResponse);
     }
 
+    /**
+     * 查询时间感知扭曲实验排行榜前 N 名，按总分降序排列，相同分数并列名次。
+     *
+     * @param limit 返回的最大记录数，取值范围 1-100
+     * @return 包含排行榜列表和总样本数的响应
+     */
     public Mono<TimePerceptionLeaderboardResponse> leaderboard(int limit) {
         int safeLimit = ServiceSupport.clampLimit(limit, 1, 100);
         return ServiceSupport.selectAll(template, TimePerceptionResult.class)

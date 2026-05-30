@@ -26,6 +26,12 @@ public class CaptchaStatsService {
         this.template = template;
     }
 
+    /**
+     * 提交一次 CAPTCHA 攻防挑战结果，并返回当前成绩的历史排名反馈。
+     *
+     * @param request 包含通关数量、总耗时、评级和各关卡等级信息的提交请求
+     * @return 包含排名、总样本数和百分位的提交响应
+     */
     public Mono<CaptchaSubmitResponse> submit(CaptchaSubmitRequest request) {
         int passedCount = request.passedCount();
         int totalTimeMs = request.totalTimeMs();
@@ -37,6 +43,11 @@ public class CaptchaStatsService {
                 .map(rows -> toSubmitResponse(rows, passedCount, totalTimeMs));
     }
 
+    /**
+     * 查询 CAPTCHA 攻防实验室全局统计数据，包括关卡通过率、平均耗时和评级分布。
+     *
+     * @return 包含全局指标与评级分布的统计响应
+     */
     public Mono<CaptchaStatsResponse> stats() {
         return ServiceSupport.selectAll(template, CaptchaResult.class)
                 .map(this::toStatsResponse);

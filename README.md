@@ -38,7 +38,6 @@
 - **Java 17** + **Spring Boot 4** + **WebFlux**（Netty）
 - **R2DBC MySQL** — 反应式数据库访问
 - **Bucket4j + Caffeine** — IP 级别限流（1000次/分钟全局，写接口按路由分桶）
-- **MaxMind GeoIP2** — IP 地理位置查询
 - **Jieba** — 中文分词（词云）
 - **Datafaker** — 假数据生成
 - **Docker** + **K3s**（阿里云香港）

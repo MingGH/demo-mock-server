@@ -8,7 +8,6 @@ Numfeel 后端服务 — 从 Vert.x 迁移至 Spring Boot WebFlux。
 - **R2DBC MySQL**（`io.asyncer:r2dbc-mysql`）反应式数据库访问
 - **Bucket4j** — IP 级别限流
 - **Caffeine** — 本地缓存（限流桶、文档追踪、词云）
-- **MaxMind GeoIP2** — IP 地理位置查询
 - **Jieba** — 中文分词（词云）
 - **Datafaker** — 假数据生成
 

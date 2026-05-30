@@ -111,6 +111,15 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>com.spotify</groupId>
+				<artifactId>dockerfile-maven-plugin</artifactId>
+				<version>1.4.13</version>
+				<configuration>
+					<repository>registry.cn-hongkong.aliyuncs.com/runnable-run/${project.artifactId}</repository>
+					<tag>${project.version}</tag>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>

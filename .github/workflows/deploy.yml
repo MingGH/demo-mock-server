@@ -49,5 +49,5 @@ jobs:
           chmod 600 K3S_KUBE_CONFIG.yaml
       - name: Deploy to K3s
         run: |
-          kubectl --kubeconfig=K3S_KUBE_CONFIG.yaml apply -f k3s-deployment-prod.yaml
+          kubectl --kubeconfig=K3S_KUBE_CONFIG.yaml apply -f numfeel-service/k3s-deployment-prod.yaml
           kubectl --kubeconfig=K3S_KUBE_CONFIG.yaml patch deployment demo-mock-server-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"date\":\"`date +'%s'`\"}}}}}" -n runnable-run

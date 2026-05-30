@@ -18,4 +18,4 @@ EXPOSE 8080
 # - 运行时数据目录（GeoLite2 / HuChenFeng）自动下载到 ./data
 # - 静态前端（pages/components）单独部署在 numfeel.996.ninja，本服务默认不托管；
 #   如需本服务托管，可挂载目录并设置 static.pages-location / static.components-location
-ENTRYPOINT ["java", "-Xms256m", "-Xmx384m", "-jar", "/usr/local/numfeel-service/numfeel-service.jar"]
+ENTRYPOINT ["java", "-Xms256m", "-Xmx600m", "-jar", "/usr/local/numfeel-service/numfeel-service.jar"]

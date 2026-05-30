@@ -20,12 +20,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.concurrent.Executors;
 
 /**
- * IP 地理位置查询服务（迁移自 Vert.x 版）。
- * <p>
- * 启动后在后台线程下载并加载 GeoLite2 数据库（best-effort，失败不阻断服务）。
- * {@code lookup} 为同步阻塞调用，调用方需在 boundedElastic 调度器上执行。
+ * IP 地理位置查询服务。
+ * 启动后异步下载并加载 GeoLite2 数据库。
  */
 @Service
 public class GeoLocationService {
@@ -37,30 +36,29 @@ public class GeoLocationService {
     private static final String DATA_DIR = "data/GeoLite2";
 
     private volatile DatabaseReader reader;
-    private volatile boolean isCityDb = false;
+    private volatile boolean isCityDb;
 
     @EventListener(ApplicationReadyEvent.class)
     public void initOnStartup() {
-        startBackgroundInit();
-    }
-
-    /** 在后台守护线程中初始化 GeoIP，避免阻塞主线程启动。 */
-    private void startBackgroundInit() {
-        Thread thread = new Thread(() -> {
+        Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "geoip-init");
+            t.setDaemon(true);
+            return t;
+        }).submit(() -> {
             try {
                 init();
             } catch (Exception e) {
                 log.warn("GeoIP init failed (geolocation disabled): {}", e.getMessage());
             }
-        }, "geoip-init");
-        thread.setDaemon(true);
-        thread.start();
+        });
     }
 
-    /** 确保本地数据库目录存在，并按需下载后加载 GeoIP 数据库。 */
+    /** 确保本地数据库目录存在，按需下载并加载。 */
     public void init() throws Exception {
         Path dir = Paths.get(DATA_DIR);
-        if (!Files.exists(dir)) Files.createDirectories(dir);
+        if (!Files.exists(dir)) {
+            Files.createDirectories(dir);
+        }
         downloadIfMissing(dir.resolve("GeoLite2-City.mmdb"), CITY_DB_URL);
         downloadIfMissing(dir.resolve("GeoLite2-Country.mmdb"), COUNTRY_DB_URL);
         loadDatabase();
@@ -76,23 +74,17 @@ public class GeoLocationService {
         }
     }
 
-    /** 优先加载 City 库，若不存在再回退到 Country 库。 */
     private void loadDatabase() {
         try {
-            if (tryLoadCityDatabase()) {
+            if (tryLoadCityDatabase() || tryLoadCountryDatabase()) {
                 return;
             }
-            if (tryLoadCountryDatabase()) {
-                log.info("GeoIP Country database loaded");
-            } else {
-                log.warn("GeoIP database not found in {}, geolocation disabled", DATA_DIR);
-            }
+            log.warn("GeoIP database not found in {}, geolocation disabled", DATA_DIR);
         } catch (Exception e) {
             log.error("Failed to load GeoIP database: {}", e.getMessage(), e);
         }
     }
 
-    /** 尝试加载包含经纬度与城市信息的 City 数据库。 */
     private boolean tryLoadCityDatabase() throws IOException {
         File cityFile = new File(DATA_DIR, "GeoLite2-City.mmdb");
         if (!cityFile.exists()) {
@@ -104,7 +96,6 @@ public class GeoLocationService {
         return true;
     }
 
-    /** 加载仅包含国家级信息的 Country 数据库。 */
     private boolean tryLoadCountryDatabase() throws IOException {
         File countryFile = new File(DATA_DIR, "GeoLite2-Country.mmdb");
         if (!countryFile.exists()) {
@@ -112,59 +103,47 @@ public class GeoLocationService {
         }
         reader = new DatabaseReader.Builder(countryFile).build();
         isCityDb = false;
+        log.info("GeoIP Country database loaded");
         return true;
     }
 
-    /** 查询 IP 地理位置。 */
+    /** 查询 IP 地理位置（同步阻塞，调用方需在 boundedElastic 上执行）。 */
     public GeoLocationResponse lookup(String ipAddress) {
         if (reader == null) {
             return new GeoLocationResponse("Unknown", null, null, null, null);
         }
-
-        String countryName = "Unknown";
-        String countryCode = null;
-        Double lat = null;
-        Double lng = null;
-        String city = null;
         try {
             InetAddress ip = InetAddress.getByName(ipAddress);
             if (isCityDb) {
-                GeoLocationResponse response = lookupCity(ip);
-                countryName = response.country();
-                countryCode = response.countryCode();
-                lat = response.lat();
-                lng = response.lng();
-                city = response.city();
-            } else {
-                GeoLocationResponse response = lookupCountry(ip);
-                countryName = response.country();
-                countryCode = response.countryCode();
+                return lookupCity(ip);
             }
-        } catch (Exception ignored) {
-            // 查不到地理位置不影响主流程
+            return lookupCountry(ip);
+        } catch (Exception e) {
+            log.debug("GeoIP lookup failed for {}: {}", ipAddress, e.getMessage());
+            return new GeoLocationResponse("Unknown", null, null, null, null);
         }
-        return new GeoLocationResponse(countryName, countryCode, lat, lng, city);
     }
 
-    /** 使用 City 库查询国家、城市和经纬度信息。 */
     private GeoLocationResponse lookupCity(InetAddress ip) throws Exception {
         CityResponse response = reader.city(ip);
         Country country = response.getCountry();
-        String countryName = country != null && country.getName() != null ? country.getName() : "Unknown";
-        String countryCode = country != null ? country.getIsoCode() : null;
         Location location = response.getLocation();
-        Double lat = location != null ? location.getLatitude() : null;
-        Double lng = location != null ? location.getLongitude() : null;
-        String city = response.getCity() != null ? response.getCity().getName() : null;
-        return new GeoLocationResponse(countryName, countryCode, lat, lng, city);
+        return new GeoLocationResponse(
+                country != null && country.getName() != null ? country.getName() : "Unknown",
+                country != null ? country.getIsoCode() : null,
+                location != null ? location.getLatitude() : null,
+                location != null ? location.getLongitude() : null,
+                response.getCity() != null ? response.getCity().getName() : null
+        );
     }
 
-    /** 使用 Country 库查询国家级信息。 */
     private GeoLocationResponse lookupCountry(InetAddress ip) throws Exception {
         var response = reader.country(ip);
         Country country = response.getCountry();
-        String countryName = country != null && country.getName() != null ? country.getName() : "Unknown";
-        String countryCode = country != null ? country.getIsoCode() : null;
-        return new GeoLocationResponse(countryName, countryCode, null, null, null);
+        return new GeoLocationResponse(
+                country != null && country.getName() != null ? country.getName() : "Unknown",
+                country != null ? country.getIsoCode() : null,
+                null, null, null
+        );
     }
 }

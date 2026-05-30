@@ -9,7 +9,7 @@ import reactor.core.scheduler.Schedulers;
 import java.util.Locale;
 
 /**
- * 中文名生成器（迁移自 Vert.x 版，逻辑不变）。
+ * 中文名生成器
  */
 @Component
 public class ChineseNameGenerator {

@@ -1,0 +1,832 @@
+{
+  "info": {
+    "name": "Numfeel Service API",
+    "description": "numfeel-service 全部接口（Spring Boot WebFlux），包含请求示例。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "WordCloud",
+      "item": [
+        {
+          "name": "GET /word-cloud",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/word-cloud",
+              "host": ["{{baseUrl}}"],
+              "path": ["word-cloud"]
+            }
+          }
+        },
+        {
+          "name": "GET /word-cloud?search=",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/word-cloud?search=我们",
+              "host": ["{{baseUrl}}"],
+              "path": ["word-cloud"],
+              "query": [
+                { "key": "search", "value": "我们" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Generator",
+      "item": [
+        {
+          "name": "GET /mock",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/mock?n=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["mock"],
+              "query": [
+                { "key": "n", "value": "10", "description": "生成条数 (200-1000000)" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /chinese-names",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/chinese-names?n=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["chinese-names"],
+              "query": [
+                { "key": "n", "value": "5", "description": "生成个数 (1-100000)" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "BlockIP",
+      "item": [
+        {
+          "name": "GET /blockip/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/blockip/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["blockip", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "BrowserFingerprint",
+      "item": [
+        {
+          "name": "POST /fingerprint/collect",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/fingerprint/collect",
+              "host": ["{{baseUrl}}"],
+              "path": ["fingerprint", "collect"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullHash\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\n  \"canvasHash\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\n  \"fontHash\": \"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\n  \"webglHash\": \"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\n  \"screenInfo\": \"1920x1080@24bit\",\n  \"timezone\": \"Asia/Shanghai\",\n  \"language\": \"zh-CN\",\n  \"platform\": \"MacIntel\",\n  \"hardwareConcurrency\": 8,\n  \"deviceMemory\": 8,\n  \"touchSupport\": false,\n  \"colorDepth\": 24,\n  \"pixelRatio\": 2,\n  \"entropyBits\": 52\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /fingerprint/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/fingerprint/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["fingerprint", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SocialEngineering",
+      "item": [
+        {
+          "name": "POST /social-engineering/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/social-engineering/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["social-engineering", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"11111111-1111-1111-1111-111111111111\",\n  \"total\": 3,\n  \"correct\": 2,\n  \"questions\": [\n    { \"questionId\": 1, \"tactic\": \"authority\", \"isFake\": true, \"correct\": true },\n    { \"questionId\": 2, \"tactic\": \"urgency\", \"isFake\": true, \"correct\": false },\n    { \"questionId\": 3, \"tactic\": \"real\", \"isFake\": false, \"correct\": true }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /social-engineering/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/social-engineering/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["social-engineering", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "InferenceLeaderboard",
+      "item": [
+        {
+          "name": "POST /inference/leaderboard",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/inference/leaderboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["inference", "leaderboard"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"回归测试\",\n  \"score\": 420,\n  \"rounds\": 6,\n  \"wins\": 4,\n  \"grade\": \"数据侦探\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /inference/leaderboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inference/leaderboard?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["inference", "leaderboard"],
+              "query": [
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /inference/leaderboard",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/inference/leaderboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["inference", "leaderboard"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "MemoryChallenge",
+      "item": [
+        {
+          "name": "POST /memory-challenge/leaderboard",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/memory-challenge/leaderboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["memory-challenge", "leaderboard"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Regression\",\n  \"capacity\": 12,\n  \"history\": [\n    { \"n\": 8, \"accuracy\": 100 },\n    { \"n\": 12, \"accuracy\": 92 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /memory-challenge/leaderboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/memory-challenge/leaderboard?limit=3",
+              "host": ["{{baseUrl}}"],
+              "path": ["memory-challenge", "leaderboard"],
+              "query": [
+                { "key": "limit", "value": "3" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stroop",
+      "item": [
+        {
+          "name": "POST /stroop/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/stroop/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["stroop", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"total\": 20,\n  \"correctCount\": 18,\n  \"accuracy\": 1,\n  \"avgRT\": 520,\n  \"conAvgRT\": 450,\n  \"incAvgRT\": 620,\n  \"stroopEffect\": 170,\n  \"grade\": \"正常水平\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /stroop/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/stroop/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["stroop", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "BarnumTest",
+      "item": [
+        {
+          "name": "POST /barnum-test/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/barnum-test/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["barnum-test", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userGroup\": \"tarot\",\n  \"rating1\": 4,\n  \"rating2\": 5,\n  \"rating3\": 3,\n  \"rating4\": 4,\n  \"rating5\": 5\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /barnum-test/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/barnum-test/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["barnum-test", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Captcha",
+      "item": [
+        {
+          "name": "POST /captcha/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/captcha/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["captcha", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"passedCount\": 6,\n  \"totalTimeMs\": 49600,\n  \"grade\": \"A\",\n  \"levels\": {\n    \"text\": 1,\n    \"math\": 1,\n    \"slider\": 1,\n    \"grid\": 1,\n    \"click\": 0,\n    \"rotate\": 1,\n    \"spatial\": 0,\n    \"behavior\": 1,\n    \"timeText\": 5200,\n    \"timeMath\": 3100,\n    \"timeSlider\": 4500,\n    \"timeGrid\": 8200,\n    \"timeClick\": 6300,\n    \"timeRotate\": 7100,\n    \"timeSpatial\": 5800,\n    \"timeBehavior\": 9400\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /captcha/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/captcha/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["captcha", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "InceptionMaze",
+      "item": [
+        {
+          "name": "POST /inception-maze/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/inception-maze/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["inception-maze", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"gridSize\": 20,\n  \"pathLength\": 167,\n  \"minPath\": 39,\n  \"detourRatio\": 4,\n  \"dreamLevel\": 5,\n  \"wallCount\": 186\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /inception-maze/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/inception-maze/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["inception-maze", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "DevilDeal",
+      "item": [
+        {
+          "name": "POST /devil-deal/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/devil-deal/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["devil-deal", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dealType\": \"money\",\n  \"secondType\": \"love\",\n  \"powerPct\": 30,\n  \"lovePct\": 55,\n  \"moneyPct\": 80,\n  \"revengePct\": 10,\n  \"recognitionPct\": 40,\n  \"knowledgePct\": 25\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /devil-deal/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/devil-deal/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["devil-deal", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "TimePerception",
+      "item": [
+        {
+          "name": "POST /time-perception/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/time-perception/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["time-perception", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"回归测试\",\n  \"totalScore\": 75,\n  \"weberScore\": 0,\n  \"avgAbsDistortion\": 0,\n  \"blankAvgDistortion\": 0,\n  \"loadAvgDistortion\": 0,\n  \"emotionAvgDistortion\": 0,\n  \"biasDirection\": \"overestimator\",\n  \"grade\": \"良好时感\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /time-perception/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/time-perception/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["time-perception", "stats"]
+            }
+          }
+        },
+        {
+          "name": "GET /time-perception/leaderboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/time-perception/leaderboard?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["time-perception", "leaderboard"],
+              "query": [
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CascadeFailure",
+      "item": [
+        {
+          "name": "POST /cascade-failure/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/cascade-failure/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["cascade-failure", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topology\": \"scale-free\",\n  \"coupling\": 55,\n  \"capacity\": 12,\n  \"strategy\": \"none\",\n  \"triggerPos\": \"hub\",\n  \"survivalRate\": 1,\n  \"cascadeSteps\": 0,\n  \"maxComponent\": 79,\n  \"totalNodes\": 80,\n  \"score\": 99\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /cascade-failure/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cascade-failure/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["cascade-failure", "stats"]
+            }
+          }
+        },
+        {
+          "name": "GET /cascade-failure/leaderboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cascade-failure/leaderboard?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["cascade-failure", "leaderboard"],
+              "query": [
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Newcomb",
+      "item": [
+        {
+          "name": "POST /newcomb/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/newcomb/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["newcomb", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"choice\": \"one\",\n  \"prediction\": \"one\",\n  \"hit\": true,\n  \"payoff\": 1000000\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /newcomb/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/newcomb/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["newcomb", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sorites",
+      "item": [
+        {
+          "name": "POST /sorites/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/sorites/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["sorites", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sandBoundary\": 1500,\n  \"sandSharpness\": \"sharp\",\n  \"baldBoundary\": 5000,\n  \"colorBoundary\": 45\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /sorites/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/sorites/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["sorites", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CosmicReaper",
+      "item": [
+        {
+          "name": "POST /cosmic-reaper/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/cosmic-reaper/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["cosmic-reaper", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"strategy\": \"balanced\",\n  \"escaped\": true,\n  \"turns\": 12,\n  \"score\": 88,\n  \"finalTech\": 75,\n  \"finalSignal\": 40,\n  \"finalStealth\": 65\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /cosmic-reaper/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/cosmic-reaper/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["cosmic-reaper", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "SecKill",
+      "item": [
+        {
+          "name": "POST /seckill/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/seckill/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["seckill", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"participants\": 2000,\n  \"stock\": 100,\n  \"userWon\": false,\n  \"userRank\": 342,\n  \"userLatency\": 94,\n  \"latencyGap\": 43\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /seckill/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/seckill/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["seckill", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Monkey",
+      "item": [
+        {
+          "name": "POST /monkey/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/monkey/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["monkey", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetText\": \"abc\",\n  \"targetLength\": 3,\n  \"totalAttempts\": 13281,\n  \"totalChars\": 13281,\n  \"success\": true,\n  \"timeElapsed\": 6486\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /monkey/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/monkey/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["monkey", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "NimGame",
+      "item": [
+        {
+          "name": "POST /nim-game/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/nim-game/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["nim-game", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"lose\",\n  \"difficulty\": \"hard\",\n  \"rounds\": 8,\n  \"preset\": \"classic\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /nim-game/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/nim-game/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["nim-game", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "WinningStrategy",
+      "item": [
+        {
+          "name": "POST /winning-strategy/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/winning-strategy/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["winning-strategy", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"game\": \"bash\",\n  \"result\": \"win\",\n  \"difficulty\": \"hard\",\n  \"rounds\": 5\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /winning-strategy/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/winning-strategy/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["winning-strategy", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "DocTrack",
+      "item": [
+        {
+          "name": "GET /doc-track/events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/doc-track/events?id=test-doc",
+              "host": ["{{baseUrl}}"],
+              "path": ["doc-track", "events"],
+              "query": [
+                { "key": "id", "value": "test-doc", "description": "文档ID (必填, max 64)" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /doc-track/pixel",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/doc-track/pixel?id=test-doc",
+              "host": ["{{baseUrl}}"],
+              "path": ["doc-track", "pixel"],
+              "query": [
+                { "key": "id", "value": "test-doc", "description": "文档ID (必填, max 64)" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quantum",
+      "item": [
+        {
+          "name": "GET /quantum/numbers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/quantum/numbers?count=5&min=1&max=10&unique=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["quantum", "numbers"],
+              "query": [
+                { "key": "count", "value": "5", "description": "数量 (1-2000)" },
+                { "key": "min", "value": "1" },
+                { "key": "max", "value": "10" },
+                { "key": "unique", "value": "true", "description": "是否去重" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /quantum/available",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/quantum/available",
+              "host": ["{{baseUrl}}"],
+              "path": ["quantum", "available"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "StatsProxy",
+      "item": [
+        {
+          "name": "GET /stats?action=getAll",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/stats?action=getAll",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats"],
+              "query": [
+                { "key": "action", "value": "getAll" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /stats?action=get",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/stats?action=get&key=wealth-btn-players",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats"],
+              "query": [
+                { "key": "action", "value": "get" },
+                { "key": "key", "value": "wealth-btn-players" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /stats?action=incr",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/stats?action=incr&key=wealth-btn-players&n=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats"],
+              "query": [
+                { "key": "action", "value": "incr" },
+                { "key": "key", "value": "wealth-btn-players" },
+                { "key": "n", "value": "1" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

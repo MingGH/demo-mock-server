@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 /**
- * 假数据生成器（迁移自 Vert.x 版，JsonObject 换成 Jackson ObjectNode）。
+ * 假数据生成器
  */
 @Component
 public class FakeDataGenerator {

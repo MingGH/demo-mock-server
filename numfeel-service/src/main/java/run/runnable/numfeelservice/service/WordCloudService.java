@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -73,16 +75,18 @@ public class WordCloudService {
 
     @EventListener(ApplicationReadyEvent.class)
     public void initOnStartup() {
-        Thread t = new Thread(() -> {
+        Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "wordcloud-init");
+            t.setDaemon(true);
+            return t;
+        }).submit(() -> {
             try {
                 initData();
             } catch (Exception e) {
                 log.warn("Word cloud data init failed: {}", e.getMessage());
             }
             warmUp();
-        }, "wordcloud-init");
-        t.setDaemon(true);
-        t.start();
+        });
     }
 
     public void warmUp() {

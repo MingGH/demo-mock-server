@@ -1,6 +1,10 @@
 -- 所有业务表建表语句（迁移自旧版 Vert.x 各 Service 中的 DDL）。
--- 由 Spring R2DBC ConnectionFactoryInitializer 在启动时执行（IF NOT EXISTS 幂等）。
+-- 由 SchemaInitializer 在应用启动后逐条执行。
+-- 约定：
+-- 1. 这里只放幂等的建表语句，不放 DROP / TRUNCATE / DELETE 等破坏性操作。
+-- 2. 所有表统一使用 IF NOT EXISTS，避免重复启动时报错。
 
+-- 浏览器指纹与追踪
 CREATE TABLE IF NOT EXISTS browser_fingerprints (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     full_hash VARCHAR(64) NOT NULL,
@@ -24,6 +28,7 @@ CREATE TABLE IF NOT EXISTS browser_fingerprints (
     INDEX idx_font_hash (font_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 社会工程学测试：场次汇总
 CREATE TABLE IF NOT EXISTS se_sessions (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     session_id  VARCHAR(36) NOT NULL,
@@ -35,6 +40,7 @@ CREATE TABLE IF NOT EXISTS se_sessions (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 社会工程学测试：题目级明细
 CREATE TABLE IF NOT EXISTS se_question_results (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     session_id  VARCHAR(36) NOT NULL,
@@ -47,6 +53,7 @@ CREATE TABLE IF NOT EXISTS se_question_results (
     INDEX idx_question_id (question_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 推理排行榜成绩
 CREATE TABLE IF NOT EXISTS inference_leaderboard (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     name       VARCHAR(32)    NOT NULL,
@@ -59,6 +66,7 @@ CREATE TABLE IF NOT EXISTS inference_leaderboard (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Stroop 测试结果
 CREATE TABLE IF NOT EXISTS stroop_results (
     id                BIGINT AUTO_INCREMENT PRIMARY KEY,
     total             SMALLINT   NOT NULL,
@@ -74,6 +82,7 @@ CREATE TABLE IF NOT EXISTS stroop_results (
     INDEX idx_stroop  (stroop_effect)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 巴纳姆效应评分结果
 CREATE TABLE IF NOT EXISTS barnum_results (
     id            BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_group    VARCHAR(10) NOT NULL,
@@ -88,6 +97,7 @@ CREATE TABLE IF NOT EXISTS barnum_results (
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 验证码挑战综合结果
 CREATE TABLE IF NOT EXISTS captcha_results (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     passed_count    SMALLINT    NOT NULL,
@@ -114,6 +124,7 @@ CREATE TABLE IF NOT EXISTS captcha_results (
     INDEX idx_grade   (grade)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 筑梦迷宫测试结果
 CREATE TABLE IF NOT EXISTS inception_maze_results (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     grid_size       TINYINT     NOT NULL,
@@ -128,6 +139,7 @@ CREATE TABLE IF NOT EXISTS inception_maze_results (
     INDEX idx_detour      (detour_ratio)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 恶魔交易选择结果
 CREATE TABLE IF NOT EXISTS devil_deal_results (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     deal_type       VARCHAR(16)  NOT NULL,
@@ -143,6 +155,7 @@ CREATE TABLE IF NOT EXISTS devil_deal_results (
     INDEX idx_deal_type (deal_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 时间知觉测试结果
 CREATE TABLE IF NOT EXISTS time_perception_results (
     id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
     player_name             VARCHAR(24)  NOT NULL,
@@ -160,6 +173,7 @@ CREATE TABLE IF NOT EXISTS time_perception_results (
     INDEX idx_grade   (grade)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 级联失效实验结果
 CREATE TABLE IF NOT EXISTS cascade_failure_results (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     topology        VARCHAR(16)  NOT NULL,
@@ -177,6 +191,7 @@ CREATE TABLE IF NOT EXISTS cascade_failure_results (
     INDEX idx_score   (score)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Newcomb 悖论选择结果
 CREATE TABLE IF NOT EXISTS newcomb_results (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     choice      VARCHAR(4)  NOT NULL,
@@ -188,6 +203,7 @@ CREATE TABLE IF NOT EXISTS newcomb_results (
     INDEX idx_choice  (choice)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 沙堆悖论测试结果
 CREATE TABLE IF NOT EXISTS sorites_results (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     sand_boundary   INT          NOT NULL,
@@ -198,6 +214,7 @@ CREATE TABLE IF NOT EXISTS sorites_results (
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 宇宙死神策略测试结果
 CREATE TABLE IF NOT EXISTS cosmic_reaper_results (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     strategy        VARCHAR(16)  NOT NULL,
@@ -212,6 +229,7 @@ CREATE TABLE IF NOT EXISTS cosmic_reaper_results (
     INDEX idx_score   (score)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 秒杀实验统计
 CREATE TABLE IF NOT EXISTS seckill_stats (
     id            BIGINT AUTO_INCREMENT PRIMARY KEY,
     participants  INT       NOT NULL,
@@ -224,6 +242,7 @@ CREATE TABLE IF NOT EXISTS seckill_stats (
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 无限猴子实验统计
 CREATE TABLE IF NOT EXISTS monkey_stats (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     target_text     VARCHAR(12)  NOT NULL,
@@ -237,6 +256,7 @@ CREATE TABLE IF NOT EXISTS monkey_stats (
     INDEX idx_success (success)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Nim 博弈对局统计
 CREATE TABLE IF NOT EXISTS nim_game_stats (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     result      ENUM('win', 'lose') NOT NULL COMMENT '玩家视角：win=玩家赢, lose=AI赢',
@@ -249,6 +269,7 @@ CREATE TABLE IF NOT EXISTS nim_game_stats (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 必胜策略小游戏统计
 CREATE TABLE IF NOT EXISTS winning_strategy_stats (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     game        ENUM('bash', 'wythoff', 'coin') NOT NULL COMMENT '游戏类型',

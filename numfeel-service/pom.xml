@@ -8,7 +8,7 @@
 		<version>4.0.6</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>ninja.996</groupId>
+	<groupId>run.runnable</groupId>
 	<artifactId>numfeel-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>numfeel-service</name>
@@ -21,6 +21,7 @@
 		<jieba.version>1.0.2</jieba.version>
 		<datafaker.version>2.4.2</datafaker.version>
 		<caffeine.version>3.1.8</caffeine.version>
+		<bucket4j.version>8.10.1</bucket4j.version>
 	</properties>
 
 	<dependencies>
@@ -30,7 +31,6 @@
 			<artifactId>spring-boot-starter-webflux</artifactId>
 		</dependency>
 
-		<!-- Reactive web client for upstream proxying (api.996.ninja / blockip) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webclient</artifactId>
@@ -73,6 +73,13 @@
 			<groupId>com.github.ben-manes.caffeine</groupId>
 			<artifactId>caffeine</artifactId>
 			<version>${caffeine.version}</version>
+		</dependency>
+
+		<!-- Rate limiting -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j_jdk17-core</artifactId>
+			<version>${bucket4j.version}</version>
 		</dependency>
 
 		<dependency>

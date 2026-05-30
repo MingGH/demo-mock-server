@@ -29,12 +29,6 @@ public class WebClientConfig {
         return buildTrustAllClient().baseUrl(ninjaApiBaseUrl).build();
     }
 
-    /** 通用 trust-all 客户端（用于 blockip 等绝对地址请求）。 */
-    @Bean
-    public WebClient genericWebClient() {
-        return buildTrustAllClient().build();
-    }
-
     private WebClient.Builder buildTrustAllClient() {
         HttpClient httpClient = HttpClient.create()
                 .responseTimeout(Duration.ofSeconds(30))

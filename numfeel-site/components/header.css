@@ -843,9 +843,21 @@ body.numfeel-shell.detail-page .related-cards {
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
-@media (max-width: 720px) {
+@media (max-width: 640px) {
+  body.numfeel-shell.detail-page .related-footer-inner,
+  body.numfeel-shell.detail-page .related-cards {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+  }
   body.numfeel-shell.detail-page .related-cards {
     grid-template-columns: 1fr;
+    justify-items: center;
+  }
+  body.numfeel-shell.detail-page .related-card {
+    width: 100%;
+    max-width: 380px;
+    justify-self: center;
   }
 }
 body.numfeel-shell.detail-page .related-card {

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="把默认勾选、关闭按钮缩小、取消订阅路径藏深等 10 种常见套路画成一页图鉴。纯内容页面，适合直接截图传播。">
+  <title>国内 App 操纵性界面设计图鉴 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <section class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">纯内容 Demo</span>
+      <h1><i class="ti ti-alert-octagon"></i> 国内 App 操纵性界面设计图鉴</h1>
+      <p class="hero-sub">把最让人冒火的 10 种设计，直接画成 10 张手机界面。默认勾选、缩小关闭按钮、退订入口藏深、情绪勒索挽留，全都摆到桌面上。</p>
+    </div>
+  </section>
+
+  <section class="note-strip">
+    <div class="note-item"><i class="ti ti-photo-scan"></i> 所有界面均为抽象示意图，不对应单一品牌</div>
+    <div class="note-item"><i class="ti ti-copy"></i> 页面本身就是内容，可直接截图配文使用</div>
+    <div class="note-item"><i class="ti ti-scale-outline"></i> 文末附上法规和对照尺子</div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-head">
+      <span class="section-tag">第一组</span>
+      <h2>掏钱前先动手脚</h2>
+      <p>这组套路集中出现在开会员、开试用、开连续包月。它们不跟你正面吵，专门往你手滑的地方下手。</p>
+    </div>
+
+    <div class="exhibit-grid">
+      <article class="exhibit-card">
+        <div class="exhibit-top">
+          <span class="badge">套路 01</span>
+          <span class="level hot">高频</span>
+        </div>
+        <h3>默认勾选自动续费</h3>
+        <p class="summary">用户以为自己只是在买一个月，系统已经替他把下个月也安排好了。</p>
+        <div class="phone-mock scene-paywall">
+          <div class="mock-stage">
+            <div class="phone-screen">
+              <div class="status-row"><span>9:41</span><span>5G 92%</span></div>
+              <div class="app-title">会员开通页</div>
+              <div class="card large"></div>
+              <div class="plan-row active"></div>
+              <div class="plan-row"></div>
+              <div class="check-row checked">
+                <span class="check-box"></span>
+                <span>已同意连续包月，到期自动续费</span>
+              </div>
+              <div class="disclaimer tiny-line"></div>
+              <div class="cta primary">¥18 立即开通</div>
+            </div>
+            <div class="mock-notes">
+              <div class="callout left">默认勾上</div>
+              <div class="callout bottom">关键条件放在支付前最后一屏</div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">你是来买会员的，平台想卖的是一段持续扣费关系。</p>
+      </article>
+
+      <article class="exhibit-card">
+        <div class="exhibit-top">
+          <span class="badge">套路 02</span>
+          <span class="level hot">高频</span>
+        </div>
+        <h3>关闭按钮故意缩小</h3>
+        <p class="summary">弹窗一打开，最大的可点区域是“去看看”，最小的可点区域才是“关掉”。</p>
+        <div class="phone-mock scene-popup">
+          <div class="mock-stage">
+            <div class="phone-screen dark">
+              <div class="status-row"><span>20:15</span><span>Wi-Fi</span></div>
+              <div class="overlay-card promo">
+                <div class="ribbon">限时领券</div>
+                <div class="promo-box"></div>
+                <div class="cta primary">立即领取</div>
+              </div>
+              <div class="mini-close"></div>
+            </div>
+            <div class="mock-notes">
+              <div class="callout right">关闭点位又小又淡</div>
+              <div class="callout bottom">大面积高亮区域引导误触</div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">很多人不是想点开活动，只是没点中那个几乎看不见的叉。</p>
+      </article>
+
+      <article class="exhibit-card">
+        <div class="exhibit-top">
+          <span class="badge">套路 03</span>
+          <span class="level warm">常见</span>
+        </div>
+        <h3>关键条件用灰字塞角落</h3>
+        <p class="summary">价格最亮，优惠最大，恢复原价和扣费周期最淡。</p>
+        <div class="phone-mock scene-price">
+          <div class="mock-stage">
+            <div class="phone-screen">
+              <div class="status-row"><span>10:08</span><span>4G</span></div>
+              <div class="hero-price">首月 1 元</div>
+              <div class="price-sub">立刻解锁全部权益</div>
+              <div class="info-stack">
+                <div class="info-line"></div>
+                <div class="info-line short faint"></div>
+                <div class="info-line short faint"></div>
+              </div>
+              <div class="cta primary">立即享受优惠</div>
+              <div class="price-terms">
+                <div class="price-term-line">首月优惠后按 29 元/月自动续费</div>
+                <div class="price-term-line">续费前 24 小时扣款，可在支付设置中取消</div>
+              </div>
+            </div>
+            <div class="mock-notes">
+              <div class="callout left">高亮只打价格甜头</div>
+              <div class="callout bottom">原价和续费节奏压成灰色小字</div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">用户看到的是便宜，平台藏着的是后续成本。</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-head">
+      <span class="section-tag">第二组</span>
+      <h2>弹窗把你往前推</h2>
+      <p>这组设计靠的是注意力抢跑。你还没想明白，倒计时和按钮层级已经替你做决定了。</p>
+    </div>
+
+    <div class="exhibit-grid">
+      <article class="exhibit-card">
+        <div class="exhibit-top">
+          <span class="badge">套路 04</span>
+          <span class="level hot">高频</span>
+        </div>
+        <h3>跳过键延迟出现</h3>
+        <p class="summary">广告不直接拦你，它只是先把“跳过”藏 5 秒，顺手再放个动画。</p>
+        <div class="phone-mock scene-splash">
+          <div class="mock-stage">
+            <div class="phone-screen gradient">
+              <div class="status-row"><span>7:30</span><span>5G</span></div>
+              <div class="splash-art"></div>
+              <div class="countdown">5s</div>
+              <div class="ghost-text">跳过</div>
+            </div>
+            <div class="mock-notes">
+              <div class="callout right">跳过按钮先弱化，再延迟出现</div>
+              <div class="callout bottom">多停几秒，误触和曝光都涨</div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">广告主买的是停留时长，用户付的是耐心税。</p>
+      </article>
+
+      <article class="exhibit-card">
+        <div class="exhibit-top">
+          <span class="badge">套路 05</span>
+          <span class="level warm">常见</span>
+        </div>
+        <h3>两个按钮看着像一条路</h3>
+        <p class="summary">“继续体验”和“暂不开启”同时出现，但视觉权重差到像主路和排水沟。</p>
+        <div class="phone-mock scene-choice">
+          <div class="mock-stage">
+            <div class="phone-screen">
+              <div class="status-row"><span>14:06</span><span>Wi-Fi</span></div>
+              <div class="modal-card">
+                <div class="modal-title">开启消息提醒</div>
+                <div class="modal-copy"></div>
+                <div class="cta primary wide">继续体验</div>
+                <div class="cta ghost thin">暂不开启</div>
+              </div>
+            </div>
+            <div class="mock-notes">
+              <div class="callout left">主要按钮像唯一出口</div>
+              <div class="callout bottom">次级选项故意做轻</div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">表面上给了两个选择，手指感受到的其实只有一个。</p>
+      </article>
+
+      <article class="exhibit-card">
+        <div class="exhibit-top">
+          <span class="badge">套路 06</span>
+          <span class="level warm">常见</span>
+        </div>
+        <h3>摇一摇和全屏热区诱导</h3>
+        <p class="summary">你只是想关弹窗，结果页面任何地方都能被解释成“去看看”。</p>
+        <div class="phone-mock scene-hotzone">
+          <div class="mock-stage">
+            <div class="phone-screen dark">
+              <div class="status-row"><span>16:20</span><span>5G</span></div>
+              <div class="heatmap"></div>
+              <div class="hint-chip">摇一摇领惊喜</div>
+            </div>
+            <div class="mock-notes">
+              <div class="callout right">整页几乎都能触发跳转</div>
+              <div class="callout bottom">用户动作被系统提前定义</div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">你以为自己在操作手机，平台觉得你在给它做转化。</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-head">
+      <span class="section-tag">第三组</span>
+      <h2>退订时开始玩密室逃脱</h2>
+      <p>真正把人气到的，往往发生在你想退出的时候。开通一步到位，取消开始层层上楼。</p>
+    </div>
+
+    <div class="exhibit-grid">
+      <article class="exhibit-card">
+        <div class="exhibit-top">
+          <span class="badge">套路 07</span>
+          <span class="level hot">高频</span>
+        </div>
+        <h3>取消订阅路径藏十八层深</h3>
+        <p class="summary">首页没有，会员页没有，支付页没有。你以为快到了，结果后面还有一长串设置、确认和挽留页等着你。</p>
+        <div class="phone-mock scene-maze">
+          <div class="mock-stage">
+            <div class="phone-screen">
+              <div class="status-row"><span>18:44</span><span>5G</span></div>
+              <div class="maze-list">
+                <div class="maze-step active">我的</div>
+                <div class="maze-step">设置</div>
+                <div class="maze-step">支付管理</div>
+                <div class="maze-step">自动扣款</div>
+                <div class="maze-step">会员中心</div>
+                <div class="maze-gap">...</div>
+                <div class="maze-step">续费详情</div>
+                <div class="maze-step">续费管理</div>
+                <div class="maze-step">关闭原因</div>
+                <div class="maze-step">确认放弃权益</div>
+                <div class="maze-step danger">关闭服务</div>
+              </div>
+            </div>
+            <div class="mock-notes">
+              <div class="callout left">路径越深，放弃率越高</div>
+              <div class="callout bottom">开通 1 步，关闭 18 步</div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">很多订阅不是“用户想留着”，只是“用户懒得再找了”。当取消路径长到离谱，平台赚的就是你的嫌麻烦。</p>
+      </article>
+
+      <article class="exhibit-card">
+        <div class="exhibit-top">
+          <span class="badge">套路 08</span>
+          <span class="level warm">常见</span>
+        </div>
+        <h3>挽留页先给你上情绪价值</h3>
+        <p class="summary">一旦点击关闭，就开始给你看“你将失去”“大家都在看”“真的舍得吗”。</p>
+        <div class="phone-mock scene-guilt">
+          <div class="mock-stage">
+            <div class="phone-screen gradient-soft">
+              <div class="status-row"><span>21:10</span><span>Wi-Fi</span></div>
+              <div class="sad-face"></div>
+              <div class="guilt-title">再想想吧</div>
+              <div class="guilt-copy"></div>
+              <div class="bullet-line"></div>
+              <div class="bullet-line short"></div>
+              <div class="cta primary">继续保留会员</div>
+              <div class="cta ghost thin">狠心关闭</div>
+            </div>
+            <div class="mock-notes">
+              <div class="callout right">把取消包装成损失</div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">按钮文案越像情绪审判，说明它越怕你真的走。</p>
+      </article>
+
+      <article class="exhibit-card">
+        <div class="exhibit-top">
+          <span class="badge">套路 09</span>
+          <span class="level warm">常见</span>
+        </div>
+        <h3>关闭前先塞一个更便宜的钩子</h3>
+        <p class="summary">你明明是来退订的，页面却先给一个“续一年更划算”的拦截层。</p>
+        <div class="phone-mock scene-retain">
+          <div class="mock-stage">
+            <div class="phone-screen">
+              <div class="status-row"><span>11:55</span><span>4G</span></div>
+              <div class="retain-card">
+                <div class="price-chip">立减 30%</div>
+                <div class="retain-title">等等，先别走</div>
+                <div class="retain-box"></div>
+                <div class="cta primary">改成年费更省</div>
+                <div class="cta ghost thin">仍然取消</div>
+              </div>
+            </div>
+            <div class="mock-notes">
+              <div class="callout left">把退订页改造成二次销售页</div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">用户想结束关系，平台还想再做一单。</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section-block">
+    <div class="section-head">
+      <span class="section-tag">第四组</span>
+      <h2>设置页里埋长期收益点</h2>
+      <p>最隐蔽的一类不在付款页，也不在弹窗里，而是在“你平时根本不会翻”的设置页。</p>
+    </div>
+
+    <div class="exhibit-grid single-row">
+      <article class="exhibit-card wide-card">
+        <div class="exhibit-top">
+          <span class="badge">套路 10</span>
+          <span class="level warm">常见</span>
+        </div>
+        <h3>关闭个性化推荐和营销推送要绕路</h3>
+        <p class="summary">开关当然有，只是被塞进二级、三级、四级设置里，名字还写得特别像系统术语。</p>
+        <div class="phone-mock scene-settings wide-mock">
+          <div class="mock-stage">
+            <div class="phone-screen">
+              <div class="status-row"><span>13:27</span><span>5G</span></div>
+              <div class="settings-group">
+                <div class="settings-row">账号与安全</div>
+                <div class="settings-row">通用</div>
+                <div class="settings-row">隐私设置</div>
+                <div class="settings-row active">个性化管理</div>
+                <div class="settings-row indent">推荐偏好</div>
+                <div class="settings-row indent">营销内容偏好</div>
+                <div class="toggle-row off"><span>个性化广告</span><span class="toggle"></span></div>
+                <div class="toggle-row off"><span>活动提醒</span><span class="toggle"></span></div>
+              </div>
+            </div>
+            <div class="mock-notes">
+              <div class="callout left">用户保护自己的入口埋得最深</div>
+              <div class="callout right">能关，但不想让你轻松关</div>
+            </div>
+          </div>
+        </div>
+        <p class="caption">增长入口放首页，退出入口放设置深处，这套优先级已经说明很多问题。</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="pattern-panel">
+    <div class="panel-card">
+      <h2><i class="ti ti-brain"></i> 这 10 种套路，核心都抓哪三件事</h2>
+      <ul class="bullet-list">
+        <li><strong>赶时间：</strong>把按钮做得失衡，让你来不及判断。</li>
+        <li><strong>怕麻烦：</strong>把关闭、退订、拒绝推荐的路径拉长。</li>
+        <li><strong>怕损失：</strong>用“马上失去权益”“错过优惠”把理性挤掉。</li>
+      </ul>
+    </div>
+    <div class="panel-card">
+      <h2><i class="ti ti-eye-check"></i> 一眼识别法</h2>
+      <ul class="bullet-list">
+        <li>主要按钮特别亮，次级按钮像背景字，先停 2 秒。</li>
+        <li>出现“连续包月”“自动续费”时，先找勾选框状态。</li>
+        <li>取消功能如果躲到设置深处，顺手去支付渠道也查一遍。</li>
+        <li>看到“首月 1 元”，第一反应先看下月恢复价和续费周期。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sources-card">
+    <h2><i class="ti ti-scale"></i> 几把现成的尺子</h2>
+    <p>下面这些条文和官方说明，足够给上面的套路量一量尺寸：</p>
+    <ul class="source-list">
+      <li><a href="http://www.npc.gov.cn/zgrdw/npc/xinwen/2018-08/31/content_2060172.htm" target="_blank" rel="noreferrer">《电子商务法》第十九条</a>：搭售商品或者服务，应当以显著方式提请消费者注意，不得作为默认同意选项。</li>
+      <li><a href="http://paper.people.com.cn/rmrb/html/2023-03/17/nw.D110000renmrb_20230317_1-06.htm" target="_blank" rel="noreferrer">人民日报梳理工信部通知</a>：自动续订、自动续费应征得用户同意，不得默认勾选；关闭按钮应清晰有效，不得利用全屏热力图和高灵敏度摇一摇诱导操作。</li>
+      <li><a href="https://www.waizi.org.cn/doc/105411.html" target="_blank" rel="noreferrer">《网络交易监督管理办法》第十八条</a>：自动续费要在服务前和续费前 5 日显著提醒，并提供显著、简便的随时取消或变更选项。</li>
+      <li><a href="https://support.apple.com/en-us/118428" target="_blank" rel="noreferrer">Apple 官方取消订阅说明</a>：`设置 → Apple 账户 → 订阅 → 取消订阅`，路径清楚，按钮直接可见。</li>
+    </ul>
+  </section>
+</div>
+</body>
+</html>

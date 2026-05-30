@@ -56,7 +56,6 @@
 | 词云 | `GET /word-cloud[?search=]` | 词云数据 / 单词搜索 |
 | 量子随机数 | `GET /quantum/numbers` | ANU 量子随机数（失败降级伪随机） |
 | | `GET /quantum/available` | 上游量子 API 可用量查询 |
-| BlockIP | `GET /blockip/stats` | SSH 攻击 IP 统计（5分钟缓存） |
 | 指纹 | `POST /fingerprint/collect` | 浏览器指纹采集 |
 | | `GET /fingerprint/stats` | 指纹统计 |
 | 统计代理 | `GET\|POST /stats` | 上游统计数据代理 |

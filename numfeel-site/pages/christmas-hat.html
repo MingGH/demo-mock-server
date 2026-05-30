@@ -5,65 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="description" content="上传头像添加圣诞贴图，支持拖拽、缩放、旋转，可叠加多个贴图，一键下载。">
   <title>圣诞帽头像生成器 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #1a472a 0%, #2d5a3f 50%, #c41e3a 100%);
-      min-height: 100vh;
-      padding: 15px;
+    .container { max-width: 520px; margin: 0 auto; }
+    .page-header {
+      text-align: center;
+      margin-bottom: 24px;
     }
-    .container { max-width: 500px; margin: 0 auto; }
-    .back-link {
-      display: inline-block;
-      color: rgba(255,255,255,0.9);
-      text-decoration: none;
-      margin-bottom: 15px;
+    .page-header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--nf-paper);
+      margin-bottom: 6px;
+    }
+    .page-header .subtitle {
+      color: var(--nf-muted);
       font-size: 0.9rem;
     }
-    .back-link:hover { text-decoration: underline; }
-    h1 {
-      color: white;
-      text-align: center;
-      margin-bottom: 8px;
-      font-size: 1.8rem;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
-    .subtitle {
-      color: rgba(255,255,255,0.85);
-      text-align: center;
-      margin-bottom: 20px;
-      font-size: 0.95rem;
-    }
-    .main-card {
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    }
     .upload-area {
-      border: 3px dashed #ddd;
+      background: var(--nf-panel);
+      border: 2px dashed var(--nf-line);
       border-radius: 12px;
       padding: 40px 20px;
       text-align: center;
       cursor: pointer;
       transition: all 0.3s;
     }
-    .upload-area:hover { border-color: #c41e3a; background: #fff5f5; }
-    .upload-area.dragover { border-color: #1a472a; background: #f0fff4; }
+    .upload-area:hover {
+      border-color: var(--nf-accent);
+      background: var(--nf-accent-soft);
+    }
+    .upload-area.dragover {
+      border-color: var(--nf-moss);
+      background: rgba(136,149,74,0.12);
+    }
     .upload-icon { font-size: 48px; margin-bottom: 10px; }
-    .upload-text { color: #666; font-size: 0.95rem; }
+    .upload-text { color: var(--nf-muted); font-size: 0.95rem; }
     #fileInput { display: none; }
-    
     .editor { display: none; }
     .editor.active { display: block; }
-    
     .canvas-container {
       position: relative;
       width: 100%;
       aspect-ratio: 1;
-      background: #f5f5f5;
+      background: var(--nf-panel);
       border-radius: 12px;
+      border: 1px solid var(--nf-line);
       overflow: hidden;
       touch-action: none;
     }
@@ -95,8 +83,8 @@
       position: absolute;
       width: 28px;
       height: 28px;
-      background: white;
-      border: 2px solid #c41e3a;
+      background: var(--nf-paper);
+      border: 2px solid var(--nf-accent);
       border-radius: 50%;
       cursor: nwse-resize;
       right: -14px;
@@ -105,13 +93,13 @@
       align-items: center;
       justify-content: center;
       font-size: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      box-shadow: var(--nf-shadow);
     }
     .sticker .delete-handle {
       position: absolute;
       width: 24px;
       height: 24px;
-      background: #ff4444;
+      background: #d94040;
       color: white;
       border-radius: 50%;
       cursor: pointer;
@@ -122,16 +110,16 @@
       justify-content: center;
       font-size: 14px;
       font-weight: bold;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      box-shadow: var(--nf-shadow);
     }
-    
     .hat-selector {
-      margin-top: 15px;
+      margin-top: 16px;
     }
     .hat-selector h3 {
-      color: #333;
-      font-size: 0.95rem;
+      color: var(--nf-paper);
+      font-size: 0.9rem;
       margin-bottom: 10px;
+      font-weight: 500;
     }
     .hat-grid {
       display: grid;
@@ -140,111 +128,117 @@
     }
     .hat-item {
       aspect-ratio: 1;
-      border: 2px solid #eee;
+      border: 2px solid var(--nf-line);
       border-radius: 8px;
       cursor: pointer;
       overflow: hidden;
       transition: all 0.2s;
-      background: #fafafa;
+      background: var(--nf-panel);
       padding: 4px;
     }
-    .hat-item:hover { border-color: #c41e3a; transform: scale(1.05); }
+    .hat-item:hover {
+      border-color: var(--nf-accent);
+      transform: scale(1.05);
+    }
     .hat-item img {
       width: 100%;
       height: 100%;
       object-fit: contain;
     }
-    
     .btn-group {
       display: flex;
       gap: 10px;
-      margin-top: 15px;
+      margin-top: 16px;
     }
     .btn {
       flex: 1;
-      padding: 14px;
+      padding: 12px;
       border: none;
       border-radius: 10px;
-      font-size: 1rem;
+      font-size: 0.95rem;
       cursor: pointer;
       transition: all 0.2s;
       font-weight: 500;
+      font-family: inherit;
     }
     .btn-primary {
-      background: linear-gradient(135deg, #c41e3a, #a01830);
+      background: var(--nf-accent);
       color: white;
     }
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(196, 30, 58, 0.4);
+      filter: brightness(1.15);
+      transform: translateY(-1px);
     }
-    .btn-secondary { background: #f0f0f0; color: #333; }
-    .btn-secondary:hover { background: #e0e0e0; }
-    
+    .btn-secondary {
+      background: var(--nf-panel);
+      color: var(--nf-paper);
+      border: 1px solid var(--nf-line);
+    }
+    .btn-secondary:hover {
+      background: var(--nf-panel-strong);
+    }
     .tips {
-      background: #fff9e6;
-      border-left: 4px solid #ffc107;
+      background: var(--nf-accent-soft);
+      border-left: 3px solid var(--nf-accent);
       padding: 12px 15px;
       border-radius: 0 8px 8px 0;
-      margin-top: 15px;
+      margin-top: 16px;
       font-size: 0.85rem;
-      color: #666;
+      color: var(--nf-muted);
       line-height: 1.6;
     }
-    .tips strong { color: #856404; }
-    
+    .tips strong { color: var(--nf-accent); }
     .culture-note {
-      background: rgba(255,255,255,0.95);
+      background: var(--nf-panel);
+      border: 1px solid var(--nf-line);
       border-radius: 12px;
       padding: 18px;
-      margin-top: 15px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      margin-top: 20px;
     }
     .culture-note h3 {
-      color: #c41e3a;
+      color: var(--nf-accent);
       margin-bottom: 10px;
-      font-size: 1rem;
+      font-size: 0.95rem;
     }
     .culture-note p {
-      color: #555;
+      color: var(--nf-muted);
       line-height: 1.8;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
     }
   </style>
 </head>
-<body>
+<body class="numfeel-shell">
   <div class="container">
-    <a href="../index.html" class="back-link">← 返回首页</a>
-    <h1>🎅 圣诞帽头像生成器</h1>
-    <p class="subtitle">上传头像 → 选择贴图 → 拖拽调整 → 下载</p>
+    <div class="page-header">
+      <h1>🎅 圣诞帽头像生成器</h1>
+      <p class="subtitle">上传头像 → 选择贴图 → 拖拽调整 → 下载</p>
+    </div>
     
-    <div class="main-card">
-      <div class="upload-area" id="uploadArea">
-        <div class="upload-icon">📷</div>
-        <p class="upload-text">点击或拖拽上传头像</p>
-        <p class="upload-text" style="color: #999; font-size: 0.8rem; margin-top: 8px;">支持 JPG、PNG 格式</p>
-        <input type="file" id="fileInput" accept="image/*">
+    <div class="upload-area" id="uploadArea">
+      <div class="upload-icon">📷</div>
+      <p class="upload-text">点击或拖拽上传头像</p>
+      <p class="upload-text" style="font-size: 0.8rem; margin-top: 8px;">支持 JPG、PNG 格式</p>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    
+    <div class="editor" id="editor">
+      <div class="canvas-container" id="canvasContainer">
+        <canvas id="avatarCanvas"></canvas>
+        <div class="sticker-layer" id="stickerLayer"></div>
       </div>
       
-      <div class="editor" id="editor">
-        <div class="canvas-container" id="canvasContainer">
-          <canvas id="avatarCanvas"></canvas>
-          <div class="sticker-layer" id="stickerLayer"></div>
-        </div>
-        
-        <div class="hat-selector">
-          <h3>🎄 点击添加圣诞贴图（可添加多个）</h3>
-          <div class="hat-grid" id="hatGrid"></div>
-        </div>
-        
-        <div class="btn-group">
-          <button class="btn btn-secondary" id="resetBtn">🔄 重新上传</button>
-          <button class="btn btn-primary" id="downloadBtn">💾 下载头像</button>
-        </div>
-        
-        <div class="tips">
-          <strong>操作提示：</strong>拖拽移动贴图位置，拖拽右下角↘️缩放+旋转，点击❌删除
-        </div>
+      <div class="hat-selector">
+        <h3>🎄 点击添加圣诞贴图（可添加多个）</h3>
+        <div class="hat-grid" id="hatGrid"></div>
+      </div>
+      
+      <div class="btn-group">
+        <button class="btn btn-secondary" id="resetBtn">🔄 重新上传</button>
+        <button class="btn btn-primary" id="downloadBtn">💾 下载头像</button>
+      </div>
+      
+      <div class="tips">
+        <strong>操作提示：</strong>拖拽移动贴图位置，拖拽右下角↘️缩放+旋转，点击❌删除
       </div>
     </div>
     
@@ -260,7 +254,6 @@
   </div>
 
   <script>
-    // 贴图素材列表
     const hatImages = Array.from({length: 18}, (_, i) => `../images/christmas/${i + 1}.png`);
     
     const uploadArea = document.getElementById('uploadArea');
@@ -277,7 +270,6 @@
     let stickers = [];
     let stickerIdCounter = 0;
 
-    // 初始化贴图选择器
     hatImages.forEach((src, index) => {
       const item = document.createElement('div');
       item.className = 'hat-item';
@@ -286,7 +278,6 @@
       hatGrid.appendChild(item);
     });
 
-    // 上传事件
     uploadArea.onclick = () => fileInput.click();
     uploadArea.ondragover = (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); };
     uploadArea.ondragleave = () => uploadArea.classList.remove('dragover');
@@ -305,10 +296,7 @@
           userImage = img;
           uploadArea.style.display = 'none';
           editor.classList.add('active');
-          // 等待 DOM 更新后再初始化 canvas
-          requestAnimationFrame(() => {
-            initCanvas();
-          });
+          requestAnimationFrame(() => { initCanvas(); });
         };
         img.src = e.target.result;
       };
@@ -317,7 +305,6 @@
 
     function initCanvas() {
       const containerWidth = canvasContainer.clientWidth;
-      // 如果容器宽度为0，等待下一帧
       if (containerWidth === 0) {
         requestAnimationFrame(initCanvas);
         return;
@@ -331,8 +318,6 @@
     function drawAvatar() {
       if (!userImage) return;
       ctx.clearRect(0, 0, canvasSize, canvasSize);
-      
-      // 居中裁剪绘制
       const size = Math.min(userImage.width, userImage.height);
       const sx = (userImage.width - size) / 2;
       const sy = (userImage.height - size) / 2;
@@ -388,7 +373,6 @@
         stickers = stickers.filter(s => s.id !== data.id);
       };
 
-      // 拖拽移动
       sticker.onpointerdown = (e) => {
         if (e.target === resizeHandle || e.target === deleteHandle) return;
         isDragging = true;
@@ -403,22 +387,18 @@
       sticker.onpointermove = (e) => {
         if (!isDragging) return;
         const rect = canvasContainer.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        data.x = startLeft + (x - startX);
-        data.y = startTop + (y - startY);
+        data.x = startLeft + (e.clientX - rect.left - startX);
+        data.y = startTop + (e.clientY - rect.top - startY);
         sticker.style.left = data.x + 'px';
         sticker.style.top = data.y + 'px';
       };
 
       sticker.onpointerup = () => { isDragging = false; };
 
-      // 缩放+旋转
       resizeHandle.onpointerdown = (e) => {
         e.stopPropagation();
         isResizing = true;
         resizeHandle.setPointerCapture(e.pointerId);
-        
         const rect = canvasContainer.getBoundingClientRect();
         centerX = data.x + data.size / 2;
         centerY = data.y + data.size / 2;
@@ -426,8 +406,6 @@
         startY = e.clientY - rect.top;
         startSize = data.size;
         startRotation = data.rotation;
-        
-        // 计算初始角度和距离
         const dx = startX - centerX;
         const dy = startY - centerY;
         this.startAngle = Math.atan2(dy, dx);
@@ -437,28 +415,18 @@
       resizeHandle.onpointermove = (e) => {
         if (!isResizing) return;
         const rect = canvasContainer.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        const dx = x - centerX;
-        const dy = y - centerY;
+        const dx = (e.clientX - rect.left) - centerX;
+        const dy = (e.clientY - rect.top) - centerY;
         const angle = Math.atan2(dy, dx);
         const dist = Math.sqrt(dx * dx + dy * dy);
-        
-        // 计算新的旋转角度
-        const angleDiff = (angle - this.startAngle) * 180 / Math.PI;
-        data.rotation = startRotation + angleDiff;
-        
-        // 计算新的大小
-        const scale = dist / this.startDist;
-        const newSize = Math.max(40, Math.min(canvasSize * 0.9, startSize * scale));
+        data.rotation = startRotation + (angle - this.startAngle) * 180 / Math.PI;
+        const newSize = Math.max(40, Math.min(canvasSize * 0.9, startSize * (dist / this.startDist)));
         const sizeDiff = newSize - data.size;
         data.size = newSize;
         data.x -= sizeDiff / 2;
         data.y -= sizeDiff / 2;
         centerX = data.x + data.size / 2;
         centerY = data.y + data.size / 2;
-        
         sticker.style.width = data.size + 'px';
         sticker.style.height = data.size + 'px';
         sticker.style.left = data.x + 'px';
@@ -469,7 +437,6 @@
       resizeHandle.onpointerup = () => { isResizing = false; };
     }
 
-    // 重置
     document.getElementById('resetBtn').onclick = () => {
       stickerLayer.innerHTML = '';
       stickers = [];
@@ -478,21 +445,16 @@
       fileInput.value = '';
     };
 
-    // 下载
     document.getElementById('downloadBtn').onclick = async () => {
       const exportCanvas = document.createElement('canvas');
       const exportSize = 800;
       exportCanvas.width = exportSize;
       exportCanvas.height = exportSize;
       const exportCtx = exportCanvas.getContext('2d');
-      
-      // 绘制头像
       const size = Math.min(userImage.width, userImage.height);
       const sx = (userImage.width - size) / 2;
       const sy = (userImage.height - size) / 2;
       exportCtx.drawImage(userImage, sx, sy, size, size, 0, 0, exportSize, exportSize);
-      
-      // 绘制所有贴图
       const scale = exportSize / canvasSize;
       for (const s of stickers) {
         await new Promise(resolve => {
@@ -500,47 +462,40 @@
           img.onload = () => {
             const cx = (s.x + s.size / 2) * scale;
             const cy = (s.y + s.size / 2) * scale;
-            const drawSize = s.size * scale;
-            
             exportCtx.save();
             exportCtx.translate(cx, cy);
             exportCtx.rotate(s.rotation * Math.PI / 180);
-            exportCtx.drawImage(img, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+            exportCtx.drawImage(img, -s.size * scale / 2, -s.size * scale / 2, s.size * scale, s.size * scale);
             exportCtx.restore();
             resolve();
           };
           img.src = s.src;
         });
       }
-      
       const link = document.createElement('a');
       link.download = 'christmas-avatar.png';
       link.href = exportCanvas.toDataURL('image/png');
       link.click();
     };
 
-    // 窗口大小变化时重新计算
     window.onresize = () => {
-      if (userImage) {
-        const oldSize = canvasSize;
-        const newSize = canvasContainer.clientWidth;
-        const scale = newSize / oldSize;
-        canvasSize = newSize;
-        canvas.width = canvasSize;
-        canvas.height = canvasSize;
-        drawAvatar();
-        
-        // 缩放所有贴图
-        stickers.forEach(s => {
-          s.x *= scale;
-          s.y *= scale;
-          s.size *= scale;
-          s.element.style.left = s.x + 'px';
-          s.element.style.top = s.y + 'px';
-          s.element.style.width = s.size + 'px';
-          s.element.style.height = s.size + 'px';
-        });
-      }
+      if (!userImage) return;
+      const oldSize = canvasSize;
+      const newSize = canvasContainer.clientWidth;
+      canvasSize = newSize;
+      canvas.width = canvasSize;
+      canvas.height = canvasSize;
+      drawAvatar();
+      const scale = newSize / oldSize;
+      stickers.forEach(s => {
+        s.x *= scale;
+        s.y *= scale;
+        s.size *= scale;
+        s.element.style.left = s.x + 'px';
+        s.element.style.top = s.y + 'px';
+        s.element.style.width = s.size + 'px';
+        s.element.style.height = s.size + 'px';
+      });
     };
   </script>
 </body>

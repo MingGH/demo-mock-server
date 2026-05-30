@@ -6,6 +6,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: numfeel-service
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -17,20 +20,19 @@ jobs:
       - name: Get project version
         id: get_version
         run: |
-          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "Project version is $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Build with Maven
         run: |
-          mvn clean package dockerfile:build -DskipTests
+          ./mvnw clean package dockerfile:build -DskipTests
       - name: Log in to Ali Container
         run: |
           docker login --username=${{ secrets.ALI_CONTAINER_USER }} --password="${{ secrets.ALI_CONTAINER_PWD }}" registry.cn-hongkong.aliyuncs.com
       - name: Push Docker image to Ali Container
-        #  docker push registry.cn-hongkong.aliyuncs.com/runnable-run/demo-mock-server:${{ env.VERSION }}
         run: |
-          docker tag registry.cn-hongkong.aliyuncs.com/runnable-run/demo-mock-server:${{ env.VERSION }} registry.cn-hongkong.aliyuncs.com/runnable-run/demo-mock-server:latest
-          docker push registry.cn-hongkong.aliyuncs.com/runnable-run/demo-mock-server:latest
+          docker tag registry.cn-hongkong.aliyuncs.com/runnable-run/numfeel-service:${{ env.VERSION }} registry.cn-hongkong.aliyuncs.com/runnable-run/numfeel-service:latest
+          docker push registry.cn-hongkong.aliyuncs.com/runnable-run/numfeel-service:latest
   deploy:
     runs-on: ubuntu-latest
     needs: build
@@ -49,5 +51,3 @@ jobs:
         run: |
           kubectl --kubeconfig=K3S_KUBE_CONFIG.yaml apply -f k3s-deployment-prod.yaml
           kubectl --kubeconfig=K3S_KUBE_CONFIG.yaml patch deployment demo-mock-server-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"date\":\"`date +'%s'`\"}}}}}" -n runnable-run
-
-

@@ -40,7 +40,6 @@
 - **Bucket4j + Caffeine** — IP 级别限流（1000次/分钟全局，写接口按路由分桶）
 - **Jieba** — 中文分词（词云）
 - **Datafaker** — 假数据生成
-- **Docker** + **K3s**（阿里云香港）
 
 ### 前端（numfeel-site）
 - 原生 HTML/CSS/JavaScript + Chart.js
@@ -114,3 +113,7 @@ kubectl create secret generic ninja-api-secret \
 ## 作者
 
 **知乎：** [@Asher](https://www.zhihu.com/people/han-ming-45-96)
+
+## 项目贡献
+
+[知乎用户770416](https://www.zhihu.com/people/770416-77)

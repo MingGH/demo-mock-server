@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
@@ -43,12 +44,17 @@ public class RateLimitWebFilter implements WebFilter {
     /** 单条限流规则：匹配条件 + token bucket 配置 + 独立 bucket 缓存。 */
     private static final class Rule {
         final Predicate<ServerHttpRequest> matches;
+        final Function<ServerHttpRequest, String> keyFunction;
         final long maxRequests;
         final long windowSeconds;
         final Cache<String, Bucket> buckets;
 
-        Rule(Predicate<ServerHttpRequest> matches, long maxRequests, long windowSeconds) {
+        Rule(Predicate<ServerHttpRequest> matches,
+             Function<ServerHttpRequest, String> keyFunction,
+             long maxRequests,
+             long windowSeconds) {
             this.matches = matches;
+            this.keyFunction = keyFunction;
             this.maxRequests = maxRequests;
             this.windowSeconds = windowSeconds;
             this.buckets = Caffeine.newBuilder()
@@ -66,8 +72,9 @@ public class RateLimitWebFilter implements WebFilter {
         /**
          * @return 命中上限时返回需要等待的秒数；返回 0 表示本次可放行。
          */
-        long tryAcquire(String ip) {
-            Bucket bucket = buckets.get(ip, k -> newBucket());
+        long tryAcquire(ServerHttpRequest request, String ip) {
+            String key = keyFunction.apply(request).replace('\n', ' ');
+            Bucket bucket = buckets.get(ip + "|" + key, k -> newBucket());
             ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
             if (probe.isConsumed()) {
                 return 0;
@@ -80,13 +87,13 @@ public class RateLimitWebFilter implements WebFilter {
 
     public RateLimitWebFilter() {
         // 全局：200/min
-        rules.add(new Rule(req -> true, 200, 60));
+        rules.add(new Rule(req -> true, req -> "global", 200, 60));
         // 指纹采集：60/min
-        rules.add(new Rule(isPost("/fingerprint/collect"), 60, 60));
+        rules.add(new Rule(isPost("/fingerprint/collect"), RateLimitWebFilter::routeKey, 60, 60));
         // 社工防骗提交：30/min
-        rules.add(new Rule(isPost("/social-engineering/submit"), 30, 60));
+        rules.add(new Rule(isPost("/social-engineering/submit"), RateLimitWebFilter::routeKey, 30, 60));
         // 其余写接口：10/min
-        rules.add(new Rule(req -> isWriteThrottled(req), 10, 60));
+        rules.add(new Rule(RateLimitWebFilter::isWriteThrottled, RateLimitWebFilter::routeKey, 10, 60));
     }
 
     private static Predicate<ServerHttpRequest> isPost(String path) {
@@ -103,6 +110,10 @@ public class RateLimitWebFilter implements WebFilter {
         return "POST".equals(method) && path.endsWith("/inference/leaderboard");
     }
 
+    private static String routeKey(ServerHttpRequest req) {
+        return req.getMethod().name() + " " + req.getPath().value();
+    }
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
@@ -110,7 +121,7 @@ public class RateLimitWebFilter implements WebFilter {
 
         for (Rule rule : rules) {
             if (rule.matches.test(request)) {
-                long retryAfter = rule.tryAcquire(ip);
+                long retryAfter = rule.tryAcquire(request, ip);
                 if (retryAfter > 0) {
                     return tooManyRequests(exchange.getResponse(), retryAfter);
                 }

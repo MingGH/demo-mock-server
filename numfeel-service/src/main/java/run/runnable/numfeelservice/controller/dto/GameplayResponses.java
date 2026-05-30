@@ -190,6 +190,15 @@ public final class GameplayResponses {
     ) {
     }
 
+    /** @param totalRuns 总实验数 @param totalSuccesses 成功次数 @param successRate 成功率 @param longestTarget 成功样本中最长目标文本 */
+    public record MonkeySubmitResponse(
+            long totalRuns,
+            long totalSuccesses,
+            double successRate,
+            String longestTarget
+    ) {
+    }
+
     /** @param total 总样本数 @param oneBox 单盒人数 @param twoBox 双盒人数 @param hits 预测命中次数 @param hitRate 命中率 @param oneBoxPct 单盒占比 @param twoBoxPct 双盒占比 @param avgOnePayoff 单盒平均收益 @param avgTwoPayoff 双盒平均收益 */
     public record NewcombStatsResponse(
             long total,
@@ -233,6 +242,14 @@ public final class GameplayResponses {
             long totalWins,
             double winRate,
             List<SecKillScenarioStats> byScenario
+    ) {
+    }
+
+    /** @param totalRuns 总实验数 @param totalWins 抢到次数 @param winRate 总抢到率 */
+    public record SecKillSubmitResponse(
+            long totalRuns,
+            long totalWins,
+            double winRate
     ) {
     }
 

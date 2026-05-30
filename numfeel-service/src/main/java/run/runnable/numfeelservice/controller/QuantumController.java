@@ -3,7 +3,6 @@ package run.runnable.numfeelservice.controller;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ArrayNode;
 import run.runnable.numfeelservice.controller.dto.UtilityRequests.QuantumNumbersQuery;
-import run.runnable.numfeelservice.controller.dto.UtilityResponses.NumericStatusResponse;
 import run.runnable.numfeelservice.controller.dto.UtilityResponses.QuantumNumbersResponse;
 import run.runnable.numfeelservice.web.ApiResponse;
 import org.slf4j.Logger;
@@ -107,10 +106,10 @@ public class QuantumController {
         return webClient.get()
                 .uri("/random/available")
                 .header("X-Api-Token", apiToken)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .map(this::toNumericStatusResponse)
-                .map(ApiResponse::raw)
+                .exchangeToMono(response ->
+                        response.bodyToMono(JsonNode.class)
+                                .map(ApiResponse::raw)
+                )
                 .onErrorResume(err -> Mono.just(ApiResponse.error(500, err.getMessage())));
     }
 
@@ -142,14 +141,5 @@ public class QuantumController {
         } catch (NumberFormatException e) {
             return def;
         }
-    }
-
-    private NumericStatusResponse toNumericStatusResponse(JsonNode body) {
-        int status = body != null && body.has("status") ? body.get("status").asInt(200) : 200;
-        Long data = body != null && body.has("data") && body.get("data").isNumber()
-                ? body.get("data").asLong() : null;
-        String message = body != null && body.has("message") && !body.get("message").isNull()
-                ? body.get("message").asText() : null;
-        return new NumericStatusResponse(status, data, message);
     }
 }

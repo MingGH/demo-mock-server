@@ -2,6 +2,7 @@ package run.runnable.numfeelservice.service;
 
 import run.runnable.numfeelservice.controller.dto.GameplayResponses.MonkeyLeaderboardEntry;
 import run.runnable.numfeelservice.controller.dto.GameplayResponses.MonkeyStatsResponse;
+import run.runnable.numfeelservice.controller.dto.GameplayResponses.MonkeySubmitResponse;
 import run.runnable.numfeelservice.model.GameplayEntities.MonkeyStat;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.stereotype.Service;
@@ -23,11 +24,27 @@ public class MonkeyStatsService {
         this.template = template;
     }
 
-    public Mono<MonkeyStatsResponse> submit(String targetText, int targetLength, long totalAttempts,
+    public Mono<MonkeySubmitResponse> submit(String targetText, int targetLength, long totalAttempts,
                                             long totalChars, boolean success, int timeElapsed) {
         MonkeyStat entity = new MonkeyStat(
                 null, targetText, targetLength, totalAttempts, totalChars, success, timeElapsed, System.currentTimeMillis());
-        return template.insert(MonkeyStat.class).using(entity).then(stats());
+        return template.insert(MonkeyStat.class).using(entity).then(submitStats());
+    }
+
+    private Mono<MonkeySubmitResponse> submitStats() {
+        return ServiceSupport.selectAll(template, MonkeyStat.class)
+                .map(rows -> {
+                    long totalRuns = rows.size();
+                    long totalSuccesses = rows.stream().filter(MonkeyStat::success).count();
+                    double successRate = totalRuns == 0 ? 0.0 : round3((double) totalSuccesses / totalRuns);
+                    List<MonkeyStat> successRows = ServiceSupport.sorted(
+                            rows.stream().filter(MonkeyStat::success).toList(),
+                            Comparator.comparingInt(MonkeyStat::targetLength).reversed()
+                                    .thenComparingLong(MonkeyStat::totalAttempts)
+                    );
+                    String longestTarget = successRows.isEmpty() ? null : successRows.get(0).targetText();
+                    return new MonkeySubmitResponse(totalRuns, totalSuccesses, successRate, longestTarget);
+                });
     }
 
     public Mono<MonkeyStatsResponse> stats() {

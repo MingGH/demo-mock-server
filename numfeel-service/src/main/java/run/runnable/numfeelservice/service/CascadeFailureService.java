@@ -8,6 +8,7 @@ import run.runnable.numfeelservice.controller.dto.GameplayResponses.CascadeFailu
 import run.runnable.numfeelservice.controller.dto.GameplayResponses.CascadeFailureTopologyStats;
 import run.runnable.numfeelservice.model.GameplayEntities.CascadeFailureResult;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -45,8 +46,47 @@ public class CascadeFailureService {
 
     public Mono<CascadeFailureLeaderboardResponse> leaderboard(int limit) {
         int safeLimit = ServiceSupport.clampLimit(limit, 1, 100);
-        return ServiceSupport.selectAll(template, CascadeFailureResult.class)
-                .map(rows -> toLeaderboardResponse(rows, safeLimit));
+        DatabaseClient client = template.getDatabaseClient();
+        Mono<List<CascadeFailureLeaderboardEntry>> leadersMono = client.sql("""
+                        SELECT topology, strategy, survival_rate, cascade_steps, score, created_at
+                        FROM cascade_failure_results
+                        ORDER BY score DESC, survival_rate DESC
+                        LIMIT ?
+                        """)
+                .bind(0, safeLimit)
+                .map((row, metadata) -> new CascadeFailureLeaderboardEntry(
+                        row.get("topology", String.class),
+                        row.get("strategy", String.class),
+                        number(row.get("survival_rate")).doubleValue(),
+                        number(row.get("cascade_steps")).intValue(),
+                        number(row.get("score")).intValue(),
+                        number(row.get("created_at")).longValue(),
+                        0
+                ))
+                .all()
+                .collectList()
+                .map(rows -> {
+                    List<CascadeFailureLeaderboardEntry> ranked = new ArrayList<>();
+                    int rank = 1;
+                    for (CascadeFailureLeaderboardEntry row : rows) {
+                        ranked.add(new CascadeFailureLeaderboardEntry(
+                                row.topology(),
+                                row.strategy(),
+                                row.survivalRate(),
+                                row.cascadeSteps(),
+                                row.score(),
+                                row.time(),
+                                rank++
+                        ));
+                    }
+                    return ranked;
+                });
+        Mono<Integer> totalMono = client.sql("SELECT COUNT(*) AS total FROM cascade_failure_results")
+                .map((row, metadata) -> number(row.get("total")).intValue())
+                .one()
+                .defaultIfEmpty(0);
+        return Mono.zip(leadersMono, totalMono)
+                .map(tuple -> new CascadeFailureLeaderboardResponse(tuple.getT1(), tuple.getT2()));
     }
 
     /** 聚合全局指标与拓扑维度统计。 */
@@ -86,34 +126,15 @@ public class CascadeFailureService {
         return byTopology;
     }
 
-    /** 按得分与存活率排序生成排行榜。 */
-    private CascadeFailureLeaderboardResponse toLeaderboardResponse(List<CascadeFailureResult> rows, int limit) {
-        List<CascadeFailureResult> sortedRows = ServiceSupport.sorted(
-                rows,
-                java.util.Comparator.comparingInt(CascadeFailureResult::score).reversed()
-                        .thenComparing(java.util.Comparator.comparingDouble(CascadeFailureResult::survivalRate).reversed())
-        );
-        List<CascadeFailureLeaderboardEntry> leaders = new ArrayList<>();
-        int rank = 1;
-        for (CascadeFailureResult row : sortedRows.stream().limit(limit).toList()) {
-            leaders.add(new CascadeFailureLeaderboardEntry(
-                    row.topology(),
-                    row.strategy(),
-                    row.survivalRate(),
-                    row.cascadeSteps(),
-                    row.score(),
-                    row.createdAt(),
-                    rank++
-            ));
-        }
-        return new CascadeFailureLeaderboardResponse(leaders, rows.size());
-    }
-
     private double round1(double value) {
         return ServiceSupport.round(value, 1);
     }
 
     private double round3(double value) {
         return ServiceSupport.round(value, 3);
+    }
+
+    private Number number(Object value) {
+        return value instanceof Number number ? number : 0;
     }
 }

@@ -21,7 +21,6 @@ public final class TrackingResponses {
      * @param lastSeenAt 同一指纹上一次出现的时间戳；首次出现时为空
      * @param source 当前响应的数据来源，例如 `mysql` 或 `memory`
      */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record BrowserFingerprintCollectResponse(
             long total,
             Long sameHashCount,

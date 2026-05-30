@@ -4,6 +4,8 @@
 
 ## 在线预览
 
+![](https://img.996.ninja/ninjutsu/d2ee5b735380bc524a6918a7d68ff72e.png)
+
 | 环境 | 地址 |
 |------|------|
 | 前端 | https://numfeel.996.ninja |

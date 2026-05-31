@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>404 | 数字直觉</title>
+  <script src="components/header.js" defer></script>
+  <link rel="stylesheet" href="components/header.css">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
+  <style>
+    :root {
+      --nf-bg: #120d0a;
+      --nf-panel: rgba(35, 25, 19, 0.78);
+      --nf-paper: #f2e4cf;
+      --nf-muted: rgba(242, 228, 207, 0.68);
+      --nf-line: rgba(242, 228, 207, 0.12);
+      --nf-accent: #c96b33;
+      --nf-accent-soft: rgba(201, 107, 51, 0.18);
+      --nf-moss: #88954a;
+    }
+
+    html { background: var(--nf-bg); }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      font-family: "Inter", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--nf-paper);
+      background:
+        radial-gradient(circle at 20% 30%, rgba(201, 107, 51, 0.18), transparent 35%),
+        radial-gradient(circle at 80% 70%, rgba(136, 149, 74, 0.14), transparent 30%),
+        radial-gradient(circle at 50% 50%, rgba(227, 157, 92, 0.08), transparent 40%),
+        linear-gradient(160deg, #130e0b 0%, #1a130e 50%, #0f0b09 100%);
+    }
+
+    canvas#starfield {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .main {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .orbit-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid var(--nf-line);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .orbit-ring.r1 { width: 520px; height: 520px; }
+    .orbit-ring.r2 { width: 720px; height: 720px; }
+    .orbit-ring.r3 { width: 920px; height: 920px; }
+
+    .code-block {
+      position: relative;
+      margin-bottom: 8px;
+    }
+
+    .code-digit {
+      display: inline-block;
+      font-size: clamp(7rem, 18vw, 14rem);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--nf-accent) 0%, #e39d5c 50%, var(--nf-accent) 100%);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 60px rgba(201, 107, 51, 0.5))
+              drop-shadow(0 0 120px rgba(201, 107, 51, 0.25));
+      opacity: 0;
+      transform: translateY(60px);
+    }
+
+    .code-glitch {
+      position: absolute;
+      inset: 0;
+      font-size: clamp(7rem, 18vw, 14rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      color: rgba(201, 107, 51, 0.15);
+      opacity: 0;
+      pointer-events: none;
+      filter: blur(8px);
+    }
+
+    .divider {
+      width: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--nf-accent), transparent);
+      margin: 8px auto 24px;
+      opacity: 0;
+    }
+
+    .error-title {
+      font-size: clamp(1.1rem, 3vw, 1.4rem);
+      font-weight: 500;
+      color: var(--nf-paper);
+      letter-spacing: 0.15em;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .error-desc {
+      color: var(--nf-muted);
+      font-size: 0.9rem;
+      line-height: 1.8;
+      max-width: 380px;
+      margin: 16px auto 32px;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      background: var(--nf-accent);
+      color: #fff;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: filter 0.3s, transform 0.3s, box-shadow 0.3s;
+    }
+    .home-link:hover {
+      filter: brightness(1.2);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(201, 107, 51, 0.35);
+    }
+
+    .links-row {
+      margin-top: 36px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      opacity: 0;
+    }
+    .links-row a {
+      color: var(--nf-muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      padding: 6px 14px;
+      border: 1px solid var(--nf-line);
+      border-radius: 20px;
+      transition: all 0.25s;
+    }
+    .links-row a:hover {
+      color: var(--nf-paper);
+      border-color: var(--nf-accent);
+      background: var(--nf-accent-soft);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+
+  <div class="main">
+    <div class="orbit-ring r1"></div>
+    <div class="orbit-ring r2"></div>
+    <div class="orbit-ring r3"></div>
+
+    <div class="code-block">
+      <div class="code-glitch" aria-hidden="true">404</div>
+      <span class="code-digit">4</span>
+      <span class="code-digit">0</span>
+      <span class="code-digit">4</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <h1 class="error-title">页面不存在</h1>
+    <p class="error-desc">
+      你寻找的页面可能已被移除、重命名，<br>或者从未在这个宇宙中存在过。
+    </p>
+    <a href="/" class="home-link">← 返回首页</a>
+
+    <div class="links-row">
+      <a href="/pages/monty-hall-simulator.html">蒙提霍尔</a>
+      <a href="/pages/survivor-bias.html">幸存者偏差</a>
+      <a href="/pages/gambler-ruin.html">赌徒破产</a>
+      <a href="/pages/compound-power.html">复利的威力</a>
+      <a href="/pages/quantum-random-visualizer.html">量子随机数</a>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var master = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      master
+        .to('.orbit-ring', { opacity: 0.35, duration: 2, stagger: 0.3 })
+        .addLabel('digits', '-=1.2')
+        .to('.code-digit', { opacity: 1, y: 0, duration: 1.2, stagger: 0.12, ease: 'back.out(1.4)' }, 'digits')
+        .to('.code-glitch', {
+          opacity: [0, 0.6, 0],
+          duration: 0.15,
+          repeat: 2,
+          repeatDelay: 0.4,
+          ease: 'power2.inOut'
+        }, 'digits+=0.6')
+        .to('.divider', { width: '60%', opacity: 1, duration: 1, ease: 'power2.inOut' }, '-=0.3')
+        .to('.error-title', { opacity: 1, y: 0, duration: 0.7 }, '-=0.5')
+        .to('.error-desc', { opacity: 1, y: 0, duration: 0.7 }, '-=0.4')
+        .to('.home-link', { opacity: 1, y: 0, duration: 0.7 }, '-=0.3')
+        .to('.links-row', { opacity: 1, duration: 0.7 }, '-=0.2');
+
+      // animate gradient on digits
+      gsap.to('.code-digit', {
+        backgroundPosition: '200% 200%',
+        duration: 6,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut'
+      });
+    })();
+
+    // starfield
+    (function() {
+      var c = document.getElementById('starfield');
+      var ctx = c.getContext('2d');
+      var stars = [];
+      var w, h;
+
+      function resize() {
+        w = c.width = window.innerWidth;
+        h = c.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      for (var i = 0; i < 120; i++) {
+        stars.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: Math.random() * 1.5 + 0.3,
+          a: Math.random(),
+          speed: Math.random() * 0.3 + 0.1,
+          pulse: Math.random() * Math.PI * 2
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        var t = performance.now() * 0.001;
+        for (var i = 0; i < stars.length; i++) {
+          var s = stars[i];
+          s.y += s.speed;
+          if (s.y > h + 5) { s.y = -5; s.x = Math.random() * w; }
+          var alpha = 0.25 + Math.sin(t * 0.8 + s.pulse) * 0.2 + 0.2;
+          alpha = Math.max(0.15, Math.min(0.55, alpha));
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(242,228,207,' + alpha.toFixed(2) + ')';
+          ctx.fill();
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+  </script>
+</body>
+</html>

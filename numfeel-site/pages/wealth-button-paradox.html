@@ -6,6 +6,7 @@
   <meta name="description" content="50%概率翻9倍，50%概率变0.1，期望值为正但你敢按吗？用模拟揭示期望值陷阱，理解为什么正期望不一定赚钱。">
   <title>50%财富按钮悖论 — 期望值陷阱 | 数字直觉</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
   <script src="../components/header.js" defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -79,6 +80,11 @@
       color: white;
       transition: all 0.15s;
       text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+      will-change: transform;
+      --shine-x: -140%;
+      --shine-rotate: 18deg;
     }
     .big-button:hover {
       transform: scale(1.05);
@@ -90,6 +96,17 @@
       transform: scale(0.95);
       box-shadow: 0 5px 20px rgba(255, 107, 107, 0.3),
                   inset 0 5px 20px rgba(0,0,0,0.3);
+    }
+    .big-button::before {
+      content: '';
+      position: absolute;
+      inset: -35%;
+      background: linear-gradient(120deg,
+        transparent 20%,
+        rgba(255,255,255,0.35) 45%,
+        transparent 70%);
+      transform: translateX(var(--shine-x)) rotate(var(--shine-rotate));
+      pointer-events: none;
     }
     .big-button:disabled {
       background: #666;
@@ -406,6 +423,8 @@
       text-align: center;
       padding: 40px;
       max-width: 500px;
+      transform-origin: center;
+      will-change: transform, opacity;
     }
     .game-over-skull {
       font-size: 120px;
@@ -494,6 +513,7 @@
       margin-top: 0;
       min-width: 148px;
       padding: 14px 28px;
+      will-change: transform, opacity;
     }
     .game-over-btn.secondary {
       background: rgba(255,255,255,0.08);
@@ -799,6 +819,8 @@
     let wealthHistory = [100000];
     let chart = null;
     let distributionChart = null;
+    let pulseAnimation = null;
+    let shimmerAnimation = null;
     
     function formatMoney(num) {
       if (num >= 1e12) return '¥' + (num/1e12).toFixed(2) + '万亿';
@@ -843,6 +865,132 @@
     }
     
     const FEE = 5; // 每次按钮手续费
+
+    function initButtonAnimations() {
+      if (!window.anime) return;
+
+      const mainButton = document.getElementById('pressBtn');
+      if (!mainButton || mainButton.dataset.animated === 'true') return;
+
+      mainButton.dataset.animated = 'true';
+      mainButton.addEventListener('mouseenter', () => animatePrimaryButtonHover(true));
+      mainButton.addEventListener('mouseleave', () => animatePrimaryButtonHover(false));
+      mainButton.addEventListener('click', () => animatePrimaryButtonPress());
+    }
+
+    function startPrimaryButtonIdleAnimation() {
+      if (!window.anime) return;
+
+      const mainButton = document.getElementById('pressBtn');
+      if (!mainButton || mainButton.disabled) return;
+
+      if (pulseAnimation) pulseAnimation.pause();
+      if (shimmerAnimation) shimmerAnimation.pause();
+
+      anime.remove(mainButton);
+
+      pulseAnimation = anime({
+        targets: mainButton,
+        scale: [1, 1.035],
+        translateY: [0, -4],
+        duration: 1800,
+        easing: 'easeInOutSine',
+        direction: 'alternate',
+        loop: true
+      });
+
+      shimmerAnimation = anime({
+        targets: mainButton,
+        duration: 2200,
+        easing: 'linear',
+        loop: true,
+        update: function(anim) {
+          const progress = anim.progress / 100;
+          const offset = -140 + progress * 250;
+          mainButton.style.setProperty('--shine-x', offset + '%');
+          mainButton.style.setProperty('--shine-rotate', '18deg');
+        }
+      });
+    }
+
+    function stopPrimaryButtonIdleAnimation() {
+      const mainButton = document.getElementById('pressBtn');
+      if (!mainButton) return;
+
+      if (pulseAnimation) pulseAnimation.pause();
+      if (shimmerAnimation) shimmerAnimation.pause();
+      anime.remove(mainButton);
+      mainButton.style.transform = '';
+      mainButton.style.setProperty('--shine-x', '-140%');
+    }
+
+    function animatePrimaryButtonHover(isHovering) {
+      if (!window.anime) return;
+
+      const mainButton = document.getElementById('pressBtn');
+      if (!mainButton || mainButton.disabled) return;
+
+      anime.remove(mainButton);
+      anime({
+        targets: mainButton,
+        scale: isHovering ? 1.08 : 1.03,
+        translateY: isHovering ? -6 : -2,
+        duration: 220,
+        easing: 'easeOutQuad',
+        complete: function() {
+          if (!isHovering) startPrimaryButtonIdleAnimation();
+        }
+      });
+    }
+
+    function animatePrimaryButtonPress() {
+      if (!window.anime) return;
+
+      const mainButton = document.getElementById('pressBtn');
+      if (!mainButton || mainButton.disabled) return;
+
+      anime.remove(mainButton);
+      anime({
+        targets: mainButton,
+        keyframes: [
+          { scale: 0.94, translateY: 2, duration: 90, easing: 'easeOutQuad' },
+          { scale: 1.07, translateY: -5, duration: 180, easing: 'easeOutBack' },
+          { scale: 1.03, translateY: -2, duration: 150, easing: 'easeOutQuad' }
+        ],
+        complete: function() {
+          if (!mainButton.disabled) startPrimaryButtonIdleAnimation();
+        }
+      });
+    }
+
+    function animateGameOverModal() {
+      if (!window.anime) return;
+
+      const content = document.querySelector('.game-over-content');
+      const actionButtons = document.querySelectorAll('.game-over-actions .game-over-btn');
+      if (!content) return;
+
+      anime.remove(content);
+      anime.remove(actionButtons);
+
+      anime({
+        targets: content,
+        opacity: [0, 1],
+        scale: [0.88, 1],
+        translateY: [24, 0],
+        duration: 420,
+        easing: 'easeOutCubic'
+      });
+
+      anime({
+        targets: actionButtons,
+        opacity: [0, 1],
+        translateY: [18, 0],
+        delay: anime.stagger(90, { start: 180 }),
+        duration: 320,
+        easing: 'easeOutQuad'
+      });
+    }
     
     function pressButton() {
       // 检查游戏是否已结束
@@ -909,6 +1057,7 @@
       btn.disabled = true;
       btn.innerHTML = '游戏结束<br>💀';
       btn.style.background = '#666';
+      stopPrimaryButtonIdleAnimation();
       
       // 记录破产
       recordBankrupt();
@@ -927,6 +1076,7 @@
       document.getElementById('finalFees').textContent = '¥' + (pressCount * FEE);
       
       modal.classList.add('show');
+      animateGameOverModal();
     }
     
     function closeGameOverAndReset() {
@@ -1089,6 +1239,7 @@
       
       updateDisplay();
       renderHistory();
+      startPrimaryButtonIdleAnimation();
     }
     
     function runBatchSimulation() {
@@ -1309,9 +1460,11 @@
     
     // 初始化
     document.getElementById('initialWealth').addEventListener('change', resetGame);
+    initButtonAnimations();
     updateDisplay();
     renderHistory();
     loadGlobalStats(); // 加载全球统计
+    startPrimaryButtonIdleAnimation();
     
     // 每2秒自动刷新统计
     setInterval(loadGlobalStats, 2000);

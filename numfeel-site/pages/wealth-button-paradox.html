@@ -483,6 +483,33 @@
       transform: translateY(-3px) scale(1.05);
       box-shadow: 0 15px 40px rgba(255, 107, 107, 0.5);
     }
+    .game-over-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+    .game-over-actions .game-over-btn {
+      margin-top: 0;
+      min-width: 148px;
+      padding: 14px 28px;
+    }
+    .game-over-btn.secondary {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: none;
+    }
+    .game-over-btn.secondary:hover {
+      box-shadow: none;
+    }
+    .game-over-btn.share {
+      background: linear-gradient(135deg, #00d4ff, #7c3aed);
+      box-shadow: 0 10px 30px rgba(0, 212, 255, 0.28);
+    }
+    .game-over-btn.share:hover {
+      box-shadow: 0 15px 40px rgba(0, 212, 255, 0.35);
+    }
     .glitch-text {
       position: relative;
     }
@@ -600,6 +627,33 @@
       </div>
     </div>
     
+    <!-- 全球统计 -->
+    <div class="card global-stats-card">
+      <h2 style="margin-bottom: 20px; color: #00d4ff; text-align: center;">🌍 全球玩家统计</h2>
+      <div class="global-stats">
+        <div class="global-stat">
+          <div class="global-stat-icon">👥</div>
+          <div class="global-stat-value" id="globalPlayers">-</div>
+          <div class="global-stat-label">参与人数</div>
+        </div>
+        <div class="global-stat bankrupt">
+          <div class="global-stat-icon">💀</div>
+          <div class="global-stat-value" id="globalBankrupt">-</div>
+          <div class="global-stat-label">破产人数</div>
+          <div class="global-stat-rate" id="globalBankruptRate">-</div>
+        </div>
+        <div class="global-stat billionaire">
+          <div class="global-stat-icon">💎</div>
+          <div class="global-stat-value" id="globalBillionaire">-</div>
+          <div class="global-stat-label">资产过亿</div>
+          <div class="global-stat-rate" id="billionaireRate">-</div>
+        </div>
+      </div>
+      <p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 0.8rem; margin-top: 15px;">
+        数据实时统计，看看你是幸运儿还是大多数
+      </p>
+    </div>
+
     <div class="card">
       <h2 style="margin-bottom: 15px; color: #ffd700;">🎲 蒙特卡洛模拟：1000个人各按100次</h2>
       <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
@@ -697,32 +751,6 @@
       </p>
     </div>
     
-    <!-- 全球统计 -->
-    <div class="card global-stats-card">
-      <h2 style="margin-bottom: 20px; color: #00d4ff; text-align: center;">🌍 全球玩家统计</h2>
-      <div class="global-stats">
-        <div class="global-stat">
-          <div class="global-stat-icon">👥</div>
-          <div class="global-stat-value" id="globalPlayers">-</div>
-          <div class="global-stat-label">参与人数</div>
-        </div>
-        <div class="global-stat bankrupt">
-          <div class="global-stat-icon">💀</div>
-          <div class="global-stat-value" id="globalBankrupt">-</div>
-          <div class="global-stat-label">破产人数</div>
-          <div class="global-stat-rate" id="globalBankruptRate">-</div>
-        </div>
-        <div class="global-stat billionaire">
-          <div class="global-stat-icon">💎</div>
-          <div class="global-stat-value" id="globalBillionaire">-</div>
-          <div class="global-stat-label">资产过亿</div>
-          <div class="global-stat-rate" id="billionaireRate">-</div>
-        </div>
-      </div>
-      <p style="text-align: center; color: rgba(255,255,255,0.4); font-size: 0.8rem; margin-top: 15px;">
-        数据实时统计，看看你是幸运儿还是大多数
-      </p>
-    </div>
   </div>
   
   <!-- 游戏结束弹窗 -->
@@ -753,7 +781,11 @@
         这就是期望值陷阱的残酷现实——<br>
         <span class="highlight">大多数人都会走向破产</span>。
       </p>
-      <button class="game-over-btn" onclick="closeGameOverAndReset()">🔄 东山再起</button>
+      <div class="game-over-actions">
+        <button class="game-over-btn secondary" onclick="closeGameOverModal()">先看看页面</button>
+        <button class="game-over-btn share" onclick="shareGameOverResult()">分享结果</button>
+        <button class="game-over-btn" onclick="closeGameOverAndReset()">🔄 东山再起</button>
+      </div>
     </div>
   </div>
 
@@ -900,6 +932,78 @@
     function closeGameOverAndReset() {
       document.getElementById('gameOverModal').classList.remove('show');
       resetGame();
+    }
+
+    function closeGameOverModal() {
+      document.getElementById('gameOverModal').classList.remove('show');
+    }
+
+    function copyTextFallback(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+
+      let copied = false;
+      try {
+        copied = document.execCommand('copy');
+      } catch (err) {
+        copied = false;
+      }
+
+      document.body.removeChild(textarea);
+      return copied;
+    }
+
+    function buildShareText() {
+      const returnRate = ((wealth / initialWealth - 1) * 100);
+      return [
+        '我在「50%财富按钮悖论」里玩破产了',
+        `初始资产：${formatMoney(initialWealth)}`,
+        `最终资产：${formatMoney(wealth)}`,
+        `总收益率：${returnRate.toFixed(2)}%`,
+        `按下次数：${pressCount} 次`,
+        `累计手续费：¥${pressCount * FEE}`,
+        '你敢试试这个正期望但高概率破产的按钮吗？',
+        'https://numfeel.996.ninja/pages/wealth-button-paradox'
+      ].join('\n');
+    }
+
+    async function shareGameOverResult() {
+      const shareText = buildShareText();
+      const shareData = {
+        title: '50%财富按钮悖论',
+        text: shareText,
+        url: 'https://numfeel.996.ninja/pages/wealth-button-paradox'
+      };
+
+      if (navigator.share) {
+        try {
+          await navigator.share(shareData);
+          return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') {
+            return;
+          }
+        }
+      }
+
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareText);
+          alert('分享文案已复制，快发给朋友看看。');
+          return;
+        }
+      } catch (err) {}
+
+      if (copyTextFallback(shareText)) {
+        alert('分享文案已复制，快发给朋友看看。');
+      } else {
+        alert(shareText);
+      }
     }
     
     function pressMultiple(times) {

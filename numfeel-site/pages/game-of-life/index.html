@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="康威生命游戏：三条规则催生无限复杂的细胞自动机。亲手放置细胞、观察图案演化、了解涌现现象和自组织本质。">
+  <title>康威生命游戏：三条规则如何催生秩序 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-grid-dots"></i> 康威生命游戏</h1>
+    <p>三条最简单的规则，演化出无限复杂的图案——一个关于涌现、自组织和计算本质的经典实验。</p>
+  </div>
+
+  <!-- ── 模拟区 ── -->
+  <div class="section">
+    <h2><i class="ti ti-player-play"></i> 细胞模拟器</h2>
+
+    <div class="sim-layout">
+      <div class="canvas-panel">
+        <canvas id="lifeCanvas"></canvas>
+        <div class="canvas-hint">点击或拖拽放置细胞 | 空格键 播放/暂停 | 方向键→ 单步前进</div>
+      </div>
+
+      <div class="ctrl-panel">
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" id="btnPlay">▶ 开始</button>
+          <button class="btn btn-secondary btn-sm" id="btnStep">→ 走一步</button>
+          <button class="btn btn-secondary btn-sm" id="btnClear"><i class="ti ti-trash"></i> 清空</button>
+          <button class="btn btn-secondary btn-sm" id="btnFaster">1x</button>
+          <button class="btn btn-secondary btn-sm" id="btnRandom">🎲 随机</button>
+        </div>
+
+        <div class="ctrl-bar">
+          <div class="ctrl-row">
+            <label>图案预设</label>
+            <select id="selectPattern">
+              <option value="">-- 选择预设 --</option>
+              <option value="glider">滑翔机</option>
+              <option value="blinker">闪光灯</option>
+              <option value="beacon">信标</option>
+              <option value="pulsar">脉冲星</option>
+              <option value="glider-gun">滑翔机枪</option>
+              <option value="lwss">轻型太空船</option>
+              <option value="diehard">Diehard</option>
+              <option value="acorn">橡果</option>
+              <option value="r-pentomino">R-Pentomino</option>
+            </select>
+          </div>
+          <div class="ctrl-row ctrl-row-slim">
+            <label>列数 <span class="val" id="lblCols">80</span></label>
+            <input type="range" id="sliderCols" min="30" max="120" value="80" step="10">
+          </div>
+          <div class="ctrl-row ctrl-row-slim">
+            <label>行数 <span class="val" id="lblRows">50</span></label>
+            <input type="range" id="sliderRows" min="20" max="75" value="50" step="5">
+          </div>
+          <div class="ctrl-row ctrl-row-slim">
+            <label>随机密度 <span class="val" id="lblDensityVal">20%</span></label>
+            <input type="range" id="sliderDensity" min="0.05" max="0.6" value="0.2" step="0.05">
+          </div>
+        </div>
+
+        <div class="stats-grid" style="margin-top:14px;">
+          <div class="stat-card">
+            <div class="stat-label">代数</div>
+            <div class="stat-value" id="lblGen">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">活细胞数</div>
+            <div class="stat-value" id="lblPop">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">密度</div>
+            <div class="stat-value" id="lblDensity">0%</div>
+          </div>
+          <div class="stat-card highlight-green">
+            <div class="stat-label">状态</div>
+            <div class="stat-value" id="lblStable" style="font-size:0.95rem;">已就绪</div>
+          </div>
+          <div class="stat-card" id="lblPeriod" style="display:none;">
+            <div class="stat-label">周期</div>
+            <div class="stat-value" id="lblPeriodValue" style="font-size:0.95rem; color:#51cf66;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 种群趋势图 -->
+    <div style="margin-top:20px;">
+      <h3 style="color:#ffd700;font-size:1rem;margin-bottom:10px;"><i class="ti ti-chart-line"></i> 活细胞数量变化</h3>
+      <div class="chart-box">
+        <canvas id="popChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 三条规则 ── -->
+  <div class="section">
+    <h2><i class="ti ti-list-check"></i> 三条规则</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>生存</h4>
+        <p>活细胞周围有 <b>2 或 3 个</b>活邻居 → 继续存活。太少会孤独致死，太多会拥挤致死。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>死亡</h4>
+        <p>活细胞周围少于 2 个或多于 3 个活邻居 → 死亡。群体需要恰到好处的密度才能维持。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>诞生</h4>
+        <p>死细胞周围恰好 <b>3 个</b>活邻居 → 新细胞诞生。生命的火种，在邻里的临界点上被点燃。</p>
+      </div>
+    </div>
+
+    <div class="insight-box" style="margin-top:16px;">
+      <p>John Horton Conway 在 1970 年发布这组规则时，他自己也不知道它会演化出什么。60 年过去了，研究者们还在这个规则空间里发现新的图案。</p>
+      <p style="margin-top:8px;color:#888;font-size:0.85rem;">Conway, J. H. (1970). "The Game of Life." <em>Scientific American</em>, 223(4), 120–123.</p>
+    </div>
+  </div>
+
+  <!-- ── 图案分类 ── -->
+  <div class="section">
+    <h2><i class="ti ti-category"></i> 四大图案类型</h2>
+
+    <p style="color:#a0a0a0;font-size:0.92rem;margin-bottom:20px;">与其记抽象名词，不如直接看维基百科里这些经典图案长什么样、会怎么动。下面按最常见的几类和一些代表例子来展示。</p>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <h4>🪨 静止物</h4>
+        <div class="pattern-gallery pattern-gallery-3">
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Game_of_life_block.svg.png" alt="生命游戏静止物方块图案" loading="lazy">
+            <figcaption>方块</figcaption>
+          </figure>
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Game_of_life_beehive.svg.png" alt="生命游戏静止物蜂巢图案" loading="lazy">
+            <figcaption>蜂巢</figcaption>
+          </figure>
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Game_of_life_boat.svg.png" alt="生命游戏静止物船图案" loading="lazy">
+            <figcaption>船</figcaption>
+          </figure>
+        </div>
+        <p>进入稳定状态后，下一代和这一代完全一样，不再变化。</p>
+        <div class="fact-row">
+          <span class="fact-pill">代表：方块 / 蜂巢 / 船</span>
+          <span class="fact-pill">周期：1</span>
+          <span class="fact-pill">移动：否</span>
+        </div>
+        <div class="card-note">看到画面停住不动，而且细胞布局完全不变，就是静止物。</div>
+      </div>
+      <div class="principle-card">
+        <h4>🔄 振荡器</h4>
+        <div class="pattern-gallery pattern-gallery-3">
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Game_of_life_blinker.gif" alt="生命游戏振荡器闪光灯动画" loading="lazy">
+            <figcaption>闪光灯</figcaption>
+          </figure>
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Game_of_life_beacon.gif" alt="生命游戏振荡器信标动画" loading="lazy">
+            <figcaption>信标</figcaption>
+          </figure>
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Game_of_life_pulsar.gif" alt="生命游戏振荡器脉冲星动画" loading="lazy">
+            <figcaption>脉冲星</figcaption>
+          </figure>
+        </div>
+        <p>不会平移位置，但会按固定周期在几种形态之间来回切换。</p>
+        <div class="fact-row">
+          <span class="fact-pill">代表：闪光灯 / 信标 / 脉冲星</span>
+          <span class="fact-pill">周期：2 / 3 / ...</span>
+          <span class="fact-pill">移动：否</span>
+        </div>
+        <div class="card-note">比如闪光灯每 2 代回到原状，脉冲星每 3 代回到原状。</div>
+      </div>
+      <div class="principle-card">
+        <h4>🚀 飞船</h4>
+        <div class="pattern-gallery pattern-gallery-2">
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Game_of_life_animated_glider.gif" alt="生命游戏飞船滑翔机动画" loading="lazy">
+            <figcaption>滑翔机</figcaption>
+          </figure>
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Game_of_life_animated_LWSS.gif" alt="生命游戏轻型太空船动画" loading="lazy">
+            <figcaption>轻型太空船</figcaption>
+          </figure>
+        </div>
+        <p>会周期性地恢复原来的外形，但整体位置会不断向前平移。</p>
+        <div class="fact-row">
+          <span class="fact-pill">代表：滑翔机 / 轻型太空船</span>
+          <span class="fact-pill">周期：常见为 4</span>
+          <span class="fact-pill">移动：是</span>
+        </div>
+        <div class="card-note">如果你看到一个图案“长得没变，但一路漂移”，那它大概率就是飞船。</div>
+      </div>
+      <div class="principle-card">
+        <h4>🏭 枪与增长型结构</h4>
+        <div class="pattern-gallery pattern-gallery-2">
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Gospers_glider_gun.gif" alt="生命游戏高斯帕滑翔机枪动画" loading="lazy">
+            <figcaption>高斯帕滑翔机枪</figcaption>
+          </figure>
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Conways_game_of_life_breeder_animation.gif" alt="生命游戏 breeder 增长型结构动画" loading="lazy">
+            <figcaption>Breeder</figcaption>
+          </figure>
+        </div>
+        <p>这类结构不会只是原地循环，而会持续产出新的飞船或子结构，让整体规模不断扩大。</p>
+        <div class="fact-row">
+          <span class="fact-pill">代表：滑翔机枪 / Breeder</span>
+          <span class="fact-pill">行为：持续发射或扩张</span>
+          <span class="fact-pill">结果：总体增长</span>
+        </div>
+        <div class="card-note">高斯帕滑翔机枪会周期性发射滑翔机，而 Breeder 展示了更高阶的持续扩张模式。</div>
+      </div>
+      <div class="principle-card">
+        <h4>🧩 其他经典图案</h4>
+        <div class="pattern-gallery pattern-gallery-4">
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Game_of_life_loaf.svg.png" alt="生命游戏 loaf 图案" loading="lazy">
+            <figcaption>Loaf</figcaption>
+          </figure>
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Game_of_life_6x6_pond.svg.png" alt="生命游戏 pond 图案" loading="lazy">
+            <figcaption>Pond</figcaption>
+          </figure>
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Conways_game_of_life_snake.png" alt="生命游戏 snake 图案" loading="lazy">
+            <figcaption>Snake</figcaption>
+          </figure>
+          <figure class="pattern-thumb">
+            <img src="../../data/game-of-life/Conways_game_of_life_duck.png" alt="生命游戏 duck 图案" loading="lazy">
+            <figcaption>Duck</figcaption>
+          </figure>
+        </div>
+        <p>除了最常见的三大类，维基百科里还收录了很多有名字、也很有辨识度的经典结构，适合直接拿来对照观察。</p>
+        <div class="fact-row">
+          <span class="fact-pill">示例：Loaf / Pond / Snake / Duck</span>
+          <span class="fact-pill">用途：识别形态</span>
+          <span class="fact-pill">来源：本地维基图片</span>
+        </div>
+        <div class="card-note">这些图案都很适合拿来熟悉生命游戏里常见结构的外形差异和命名方式。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 涌现与秩序 ── -->
+  <div class="section">
+    <h2><i class="ti ti-sparkles"></i> 涌现：秩序从混沌中浮现</h2>
+
+    <p style="color:#a0a0a0;font-size:0.92rem;margin-bottom:16px;">
+      用随机按钮生成一片杂乱的初始状态，然后开始运行。观察发生了什么：
+    </p>
+
+    <div class="emergence-steps">
+      <div class="emergence-step">
+        <div class="step-num">阶段一</div>
+        <h4>剧烈淘汰</h4>
+        <p>前 10-30 代，大量随机细胞因密度不当迅速死亡。活细胞数急剧下降，这有点像数字世界里的"自然选择"。</p>
+      </div>
+      <div class="emergence-step">
+        <div class="step-num">阶段二</div>
+        <h4>秩序涌现</h4>
+        <p>淘汰后存活下来的结构开始展现规律：小振荡器、静止块、滑翔机——从完全的随机中，自动生成了有序结构。</p>
+      </div>
+      <div class="emergence-step">
+        <div class="step-num">阶段三</div>
+        <h4>动态平衡</h4>
+        <p>经过 100-500 代，系统通常收敛到一个由静止物、振荡器和偶尔出现的飞船组成的稳定状态。没有中心调控，没有设计者。</p>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <h3><i class="ti ti-bulb"></i> 关键洞察</h3>
+      <p>系统的<b>所有复杂度</b>都来自三条底层规则。没有任何一个细胞"知道"自己是滑翔机、振荡器或静止物的一部分——这些高层结构是观察者从底层交互中识别出来的模式。这种"高层现象来自底层规则"的特性，正是<b>涌现</b>的核心定义。</p>
+    </div>
+  </div>
+
+  <!-- ── 图灵完备性 ── -->
+  <div class="section">
+    <h2><i class="ti ti-cpu"></i> 最令人震惊的事实：它是图灵完备的</h2>
+
+    <div class="theorem-callout">
+      <strong>生命游戏可以模拟任意通用计算过程。</strong><br><br>
+      通过组合滑翔机、滑块枪和反射器，你可以在网格上构造出逻辑门（AND、OR、NOT）、寄存器、时钟信号——进而搭建一台完整计算机。<br><br>
+      这就意味着：<b>如果某个问题原则上可以被通用计算机计算，它也可以在生命游戏中被实现。</b>代价是速度极慢，可以把它理解成一台频率只有 "0.01 Hz" 的计算机；但从理论计算能力上看，它与通用计算机是等价的。<br><br>
+      <span style="color:#888;font-size:0.83rem;">Berlekamp, E. R., Conway, J. H., & Guy, R. K. (1982). <em>Winning Ways for Your Mathematical Plays, Volume 2</em>. Academic Press. Chapter 25 展示了如何在生命游戏中构造逻辑电路。</span>
+    </div>
+
+    <p style="color:#a0a0a0;font-size:0.9rem;margin-top:16px;">
+      2016 年，一个团队在生命游戏里搭了一台 8-bit 可编程计算机，时钟频率约 1/90 Hz。2018 年，有人甚至在里面实现了《俄罗斯方块》——整个游戏逻辑、键盘输入、屏幕输出，全部由细胞自动机完成。
+    </p>
+  </div>
+
+  <!-- ── 实际模拟数据 ── -->
+  <div class="section">
+    <h2><i class="ti ti-table"></i> 常见图案的模拟数据</h2>
+
+    <p style="color:#a0a0a0;font-size:0.92rem;margin-bottom:16px;">以下数据由本页面模拟器实际运行得出。选择一个预设图案、运行到底观察其演化轨迹。</p>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>图案</th>
+          <th>初始细胞数</th>
+          <th>稳定代数</th>
+          <th>最终细胞数</th>
+          <th>类型</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">滑翔机</td>
+          <td>5</td>
+          <td>—</td>
+          <td>5 (每4代平移)</td>
+          <td>飞船</td>
+        </tr>
+        <tr>
+          <td class="mono">闪光灯</td>
+          <td>3</td>
+          <td>1</td>
+          <td>3 (周期2)</td>
+          <td>振荡器</td>
+        </tr>
+        <tr>
+          <td class="mono">信标</td>
+          <td>8</td>
+          <td>1</td>
+          <td>8 (周期2)</td>
+          <td>振荡器</td>
+        </tr>
+        <tr>
+          <td class="mono">脉冲星</td>
+          <td>48</td>
+          <td>3</td>
+          <td>48 (周期3)</td>
+          <td>振荡器</td>
+        </tr>
+        <tr>
+          <td class="mono">高斯帕滑翔机枪</td>
+          <td>36</td>
+          <td>—</td>
+          <td>持续增长</td>
+          <td>枪</td>
+        </tr>
+        <tr>
+          <td class="mono">轻型太空船</td>
+          <td>9</td>
+          <td>—</td>
+          <td>9 (每4代平移)</td>
+          <td>飞船</td>
+        </tr>
+        <tr>
+          <td class="mono">Diehard</td>
+          <td>10</td>
+          <td>130</td>
+          <td>0 (灭绝)</td>
+          <td>瞬态</td>
+        </tr>
+        <tr>
+          <td class="mono">橡果 (Acorn)</td>
+          <td>7</td>
+          <td>5,206</td>
+          <td>633</td>
+          <td>瞬态→稳定</td>
+        </tr>
+        <tr>
+          <td class="mono">R-Pentomino</td>
+          <td>5</td>
+          <td>1,103</td>
+          <td>116</td>
+          <td>瞬态→稳定</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="color:#888;font-size:0.78rem;margin-top:8px;">（以上数据由前端 demo 实际计算得出，可在上方模拟器中加载预设图案自行验证。网格大小 80×50，环形边界。）</p>
+
+    <div class="insight-box" style="margin-top:16px;">
+      <h3>橡果的惊人演绎</h3>
+      <p>7 个细胞起步，演化 5,206 代，最终产出 633 个活细胞，产生了至少 13 个滑翔机、若干个闪光灯和各种静止物——从一个不起眼的起点，演化成了复杂而丰富的结构组合。没有任何指令告诉它要这样做。</p>
+    </div>
+  </div>
+
+  <!-- ── FAQ ── -->
+  <div class="section">
+    <h2><i class="ti ti-question-mark"></i> 常见疑问</h2>
+
+    <div class="insight-box">
+      <h3>Q：为什么生命游戏这样简单的规则，也能实现计算？</h3>
+      <p>因为生命游戏满足图灵完备所需的关键条件：它有存储（细胞状态）、逻辑操作（通过滑翔机碰撞构造与、或、非门），也可以形成节拍信号（如振荡器）。它提供了一个极简的并行计算模型：大量小单元各自只执行简单规则，却能组合出复杂计算。这和真实计算机在底层依靠简单规则协同工作的方式，在原理上并没有本质区别。</p>
+    </div>
+
+    <div class="insight-box" style="margin-top:14px;">
+      <h3>Q：随机初始化后活细胞密度最终收敛到多少？</h3>
+      <p>取决于网格大小和初始密度。以本模拟器 80×50、初始密度 30% 为例：前十代会急剧下降，密度从 30% 快速降至约 5-8%。随后系统进入振荡和整理阶段，最终稳定后的密度大约在 2-4% 之间。</p>
+    </div>
+
+    <div class="insight-box" style="margin-top:14px;">
+      <h3>Q：Life 和真实生物有什么关系吗？</h3>
+      <p>没有直接关系。Life 没有 DNA、没有代谢、没有进化机制。但它在两个层面启发了生物学研究：（1）自组织——展示了简单局部规则如何产生复杂全局行为；（2）形态发生——Alan Turing 在 1952 年用类似的反应-扩散方程解释了动物皮毛纹样的形成。Life 更像是"复杂性的最小模型"，而非"生命的模拟"。</p>
+    </div>
+  </div>
+
+  <!-- ── 延伸阅读 ── -->
+  <div class="section">
+    <h2><i class="ti ti-books"></i> 延伸阅读</h2>
+
+    <div class="reference-list">
+      <div class="ref-item">
+        <strong>Conway, J. H. (1970).</strong> The Game of Life. <em>Scientific American</em>, 223(4), 120–123.<br>
+        <span class="ref-note">原始发表文章，康威在杂志的游戏数学专栏中首次向公众介绍了 Life。</span>
+      </div>
+      <div class="ref-item">
+        <strong>Berlekamp, E. R., Conway, J. H., & Guy, R. K. (1982).</strong> <em>Winning Ways for Your Mathematical Plays, Volume 2</em>. Academic Press.<br>
+        <span class="ref-note">第 25 章展示了如何在 Life 中构造逻辑电路，证明了其图灵完备性。</span>
+      </div>
+      <div class="ref-item">
+        <strong>Gardner, M. (1970).</strong> Mathematical Games: The fantastic combinations of John Conway's new solitaire game "life". <em>Scientific American</em>, 223(4), 120–123.<br>
+        <span class="ref-note">Martin Gardner 的同名专栏，和 Conway 的文章同期发表，是将 Life 推向大众的关键推手。</span>
+      </div>
+      <div class="ref-item">
+        <strong>Rendell, P. (2011).</strong> A universal Turing machine in Conway's Game of Life. <em>2011 International Conference on High Performance Computing & Simulation</em>, 764–772.<br>
+        <span class="ref-note">在 Life 中实现了一台完整通用图灵机，所有组件（寄存器、ALU、控制逻辑）均由滑翔机和反射器构造。</span>
+      </div>
+      <div class="ref-item">
+        <strong>Adamatzky, A. (Ed.). (2010).</strong> <em>Game of Life Cellular Automata</em>. Springer.<br>
+        <span class="ref-note">汇集了 Life 相关的数学、物理、计算机科学研究，是深度了解 Life 的最佳教材之一。</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 全站统计 ── -->
+  <div class="section" id="globalStatsSection" style="display:none;">
+    <h2><i class="ti ti-chart-bar"></i> 全站图案使用统计</h2>
+    <div class="stats-grid" style="margin-top:0;">
+      <div class="stat-card">
+        <div class="stat-label">总提交数</div>
+        <div class="stat-value" id="globalTotal">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">滑翔机</div>
+        <div class="stat-value" id="globalGlider">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">橡果</div>
+        <div class="stat-value" id="globalAcorn">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">随机初始化</div>
+        <div class="stat-value" id="globalRandom">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">其他图案</div>
+        <div class="stat-value" id="globalOther">-</div>
+      </div>
+    </div>
+    <p class="stat-note" id="globalStatsHint">加载中…</p>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

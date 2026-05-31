@@ -697,6 +697,38 @@
       ]
     },
     {
+      "name": "GameOfLife",
+      "item": [
+        {
+          "name": "POST /game-of-life/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/game-of-life/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["game-of-life", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patternKey\": \"glider\",\n  \"gridData\": \"[]\",\n  \"gridCols\": 80,\n  \"gridRows\": 50,\n  \"description\": \"\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /game-of-life/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/game-of-life/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["game-of-life", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "DocTrack",
       "item": [
         {

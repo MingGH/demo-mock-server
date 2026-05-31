@@ -293,4 +293,22 @@ public final class GameplayRequests {
             Integer rounds
     ) {
     }
+
+    /**
+     * 康威生命游戏图案提交参数。
+     *
+     * @param patternKey 图案类型标识，如 glider、blinker、random
+     * @param gridData 当前网格数据的 JSON 字符串（二维数组）
+     * @param gridCols 网格列数
+     * @param gridRows 网格行数
+     * @param description 可选描述
+     */
+    public record GameOfLifeSubmitRequest(
+            String patternKey,
+            String gridData,
+            Integer gridCols,
+            Integer gridRows,
+            String description
+    ) {
+    }
 }

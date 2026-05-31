@@ -214,4 +214,17 @@ public final class GameplayEntities {
             @Column("created_at") long createdAt
     ) {
     }
+
+    /** 康威生命游戏图案提交记录表映射。 */
+    @Table("game_of_life_patterns")
+    public record GameOfLifePattern(
+            @Id Long id,
+            @Column("pattern_key") String patternKey,
+            @Column("grid_data") String gridData,
+            @Column("grid_cols") int gridCols,
+            @Column("grid_rows") int gridRows,
+            String description,
+            @Column("created_at") long createdAt
+    ) {
+    }
 }

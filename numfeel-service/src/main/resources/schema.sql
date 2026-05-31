@@ -282,3 +282,16 @@ CREATE TABLE IF NOT EXISTS winning_strategy_stats (
     INDEX idx_difficulty (difficulty),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 康威生命游戏图案记录
+CREATE TABLE IF NOT EXISTS game_of_life_patterns (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    pattern_key  VARCHAR(32) NOT NULL COMMENT '图案类型标识，如 glider、blinker',
+    grid_data    MEDIUMTEXT NOT NULL COMMENT '当前网格的 JSON 序列化',
+    grid_cols    SMALLINT NOT NULL,
+    grid_rows    SMALLINT NOT NULL,
+    description  VARCHAR(256) DEFAULT '',
+    created_at   BIGINT NOT NULL,
+    INDEX idx_pattern_key (pattern_key),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

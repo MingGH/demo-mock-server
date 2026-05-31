@@ -363,4 +363,16 @@ public final class GameplayResponses {
             long aiWinsCoin
     ) {
     }
+
+    /**
+     * 康威生命游戏图案统计响应。
+     *
+     * @param total 总提交数
+     * @param patternCounts 各图案类型的提交次数分布
+     */
+    public record GameOfLifePatternStatsResponse(
+            long total,
+            java.util.Map<String, Long> patternCounts
+    ) {
+    }
 }

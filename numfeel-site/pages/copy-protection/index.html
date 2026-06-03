@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HTML 怎么防止用户复制？8 种防复制技术亲手开关测试，攻防模拟看不同水平的人多久能绕过，附真实网站方案。结论：前端防复制只能防君子。">
+  <title>防复制实验室：HTML 能拦住复制吗 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-copy-off"></i> 防复制实验室</h1>
+    <p>HTML 真能拦住用户复制吗？把 8 种防复制技术做成开关，你亲手开启、亲手绕过，看看前端防护到底有多少斤两。</p>
+  </div>
+
+  <!-- ── Tab 切换 ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('lab')"><i class="ti ti-flask"></i> 实验台</button>
+    <button class="tab-btn" onclick="switchTab('battle')"><i class="ti ti-swords"></i> 攻防模拟</button>
+    <button class="tab-btn" onclick="switchTab('cases')"><i class="ti ti-building-store"></i> 真实案例</button>
+  </div>
+
+  <!-- ══════════ 实验一：防护实验台 ══════════ -->
+  <div class="tab-content active" id="tab-lab">
+    <div class="section">
+      <h2><i class="ti ti-target"></i> 实验目标文字</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        下面这段文字是你的「保护对象」。在右侧启用不同防护后，回来试着选中它、右键它、Ctrl+C 复制它，再粘贴到别处看看效果。
+      </p>
+
+      <div class="meter-container">
+        <span style="font-size:0.9rem;color:#a0a0a0;">防护强度</span>
+        <div class="meter-bar"><div class="meter-fill" id="meterFill"></div></div>
+        <span class="meter-score" id="meterScore">0</span>
+        <span class="meter-label" id="meterLabel">无防护</span>
+      </div>
+
+      <div class="demo-area" id="demoArea">
+        <div class="demo-text">这段文字用来测试防复制效果。尝试选中、右键、Ctrl+C，看看哪些操作被拦截了。如果你能把这段话完整粘贴到别处，说明防护已被你绕过。</div>
+      </div>
+
+      <h3 style="color:#ffd700;margin-bottom:12px;font-size:1rem;"><i class="ti ti-list"></i> 拦截日志</h3>
+      <div class="log-area" id="actionLog"></div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-shield-cog"></i> 防护技术开关</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        点「启用」把每种技术加到目标文字上。难度数字表示绕过它需要的技术水平——数字越大越难破，但没有一个是破不了的。
+      </p>
+      <div class="tech-grid" id="techGrid"></div>
+
+      <div class="insight-box red">
+        <h3><i class="ti ti-alert-circle"></i> 核心事实</h3>
+        <p>
+          浏览器拿到的所有内容，最终都要渲染成用户能看见的像素。能看见，就能截图；是 DOM 文本，就能从源码里抠出来；是图片或 Canvas，就能 OCR。
+          前端防复制拦得住顺手 Ctrl+C 的普通用户，拦不住打开 F12 的人。它提高的是复制的「麻烦程度」，不是「可能性」。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 实验二：攻防模拟 ══════════ -->
+  <div class="tab-content" id="tab-battle">
+    <div class="section">
+      <h2><i class="ti ti-swords"></i> 攻防模拟</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        选一个攻击者水平，让他来破你在「实验台」启用的那套防护（没启用就默认用前三种）。看看每道防线撑多久。
+      </p>
+
+      <div class="battle-controls">
+        <label style="color:#a0a0a0;font-size:0.9rem;">攻击者水平：</label>
+        <select id="attackerLevel">
+          <option value="1">普通用户（只会 Ctrl+C）</option>
+          <option value="2">前端初学者（会按 F12）</option>
+          <option value="3" selected>前端开发者（懂 DOM 和事件）</option>
+          <option value="4">安全研究员（会逆向字体/抓 Canvas）</option>
+          <option value="5">专业爬虫（带 OCR 和自动化工具）</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="runBattle()"><i class="ti ti-player-play"></i> 开始对抗</button>
+      </div>
+
+      <div id="battleResult" style="display:none;"></div>
+
+      <div class="insight-box">
+        <h3><i class="ti ti-bulb"></i> 怎么看这个结果</h3>
+        <p>
+          防护真正的价值在于「把绕过成本抬到攻击者放弃」，「绝对拦住」这件事前端做不到。
+          对付随手复制的访客，一行 <code>user-select:none</code> 就够；
+          对付批量抓取内容的爬虫，字体混淆能拖慢它，但配合 OCR 仍会被攻破。
+          所以真正的内容保护从来不在前端，而在后端的权限控制和法律手段。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 实验三：真实案例 ══════════ -->
+  <div class="tab-content" id="tab-cases">
+    <div class="section">
+      <h2><i class="ti ti-building-store"></i> 真实网站怎么做的</h2>
+      <p style="color:#a0a0a0;font-size:0.9rem;margin-bottom:16px;">
+        下面是一些常见网站的防复制方案（基于公开可观察到的行为整理）。注意它们几乎都采用「组合拳」，而且大多走「复制时追加来源」这条路，很少彻底禁止。
+      </p>
+      <div class="case-grid" id="realCases"></div>
+
+      <div class="insight-box green">
+        <h3><i class="ti ti-bulb"></i> 主流思路的转变</h3>
+        <p>
+          早期网站爱用「禁止选中 + 禁右键」硬拦，结果是把正常用户也得罪了（想引用一句话都不行）。
+          现在主流做法换成了「允许复制，但在剪贴板里追加来源链接和版权声明」——既不影响体验，又能在内容被转载时留下出处。
+          知乎、纽约时报、CSDN 走的都是这条路。
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-scale"></i> 各方案对比</h2>
+      <table class="conclusion-table">
+        <thead>
+          <tr><th>方案</th><th>拦得住谁</th><th>副作用</th><th>建议场景</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>禁止选中 + 禁右键</td><td>普通用户</td><td>伤害正常引用体验</td><td>基本别用</td></tr>
+          <tr><td>复制时追加来源</td><td>不拦，只溯源</td><td>几乎无</td><td>博客、新闻、问答</td></tr>
+          <tr><td>字体混淆</td><td>普通爬虫</td><td>SEO 受损、无障碍差</td><td>付费小说章节</td></tr>
+          <tr><td>Canvas/图片渲染</td><td>DOM 爬虫</td><td>性能差、不可搜索</td><td>付费文档预览</td></tr>
+          <tr><td>后端权限控制</td><td>所有未授权访问</td><td>需要登录体系</td><td>真正的机密内容</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

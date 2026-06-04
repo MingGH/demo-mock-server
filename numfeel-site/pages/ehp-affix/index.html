@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="最大生命值+5%和免伤+5%哪个更强？用EHP公式和交互式图表揭示答案：取决于你当前的免伤值，以及为什么游戏要同时设计两个词条。">
+  <title>生命值+5% vs 免伤+5%：哪个词条更强 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-shield-half-filled"></i> 生命+5% vs 免伤+5%</h1>
+    <p>两个看起来差不多的词条，实际收益可以差几倍。先做个直觉测试，然后用 EHP 公式验证。</p>
+  </div>
+
+  <!-- ── 第一关：直觉测试 ── -->
+  <div class="section" id="quizSection">
+    <h2><i class="ti ti-brain"></i> 直觉测试：你觉得哪个更强？</h2>
+    <p class="section-desc">不用算，凭直觉选。三道题测完告诉你答案。</p>
+
+    <div class="quiz-container" id="quizContainer">
+      <div class="quiz-progress">
+        <span class="quiz-step" id="quizStep">第 1 题 / 共 3 题</span>
+        <div class="quiz-bar"><div class="quiz-bar-fill" id="quizBarFill" style="width:0%"></div></div>
+      </div>
+
+      <div class="quiz-card" id="quizCard">
+        <div class="quiz-scenario" id="quizScenario"></div>
+        <div class="quiz-choices">
+          <button class="quiz-btn hp" id="btnChoiceHP" onclick="quizChoose('hp')">
+            <i class="ti ti-heart-filled"></i>
+            <span id="btnHPText">生命+5%</span>
+          </button>
+          <button class="quiz-btn same" onclick="quizChoose('same')">
+            <i class="ti ti-equal"></i>
+            <span>差不多</span>
+          </button>
+          <button class="quiz-btn dr" id="btnChoiceDR" onclick="quizChoose('dr')">
+            <i class="ti ti-shield-filled"></i>
+            <span id="btnDRText">免伤+5%</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 测试结果 -->
+    <div id="quizResult" style="display:none;">
+      <div class="quiz-score-card">
+        <div class="quiz-score-icon" id="quizScoreIcon"></div>
+        <div class="quiz-score-text" id="quizScoreText"></div>
+      </div>
+      <div class="quiz-answers" id="quizAnswers"></div>
+      <div style="text-align:center;margin-top:20px;">
+        <button class="btn btn-primary" onclick="startExplorer()">
+          <i class="ti ti-arrow-right"></i> 进入对比模拟器，看为什么
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 第二关：交互式模拟器 ── -->
+  <div class="section" id="explorerSection" style="display:none;">
+    <h2><i class="ti ti-adjustments-horizontal"></i> EHP 对比模拟器</h2>
+    <p class="section-desc">拖动滑块，实时看两个词条对「有效生命值」的贡献差异。</p>
+
+    <!-- 预设场景快捷按钮 -->
+    <div class="preset-row">
+      <span class="preset-label">快速切换：</span>
+      <button class="preset-btn" onclick="applyPreset(10000,30,5,5)">前期坦克</button>
+      <button class="preset-btn" onclick="applyPreset(25000,60,5,5)">中期战士</button>
+      <button class="preset-btn" onclick="applyPreset(40000,80,5,5)">满配坦克</button>
+      <button class="preset-btn" onclick="applyPreset(8000,20,10,3)">大HP小DR</button>
+    </div>
+
+    <div class="control-group">
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-heart"></i> 当前生命值</span>
+        <input type="range" id="sliderHP" min="500" max="50000" step="100" value="10000">
+        <span class="control-val" id="valHP">10,000</span>
+      </div>
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-shield"></i> 当前免伤</span>
+        <input type="range" id="sliderDR" min="0" max="90" step="1" value="30">
+        <span class="control-val" id="valDR">30%</span>
+      </div>
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-heart-plus"></i> 生命词条幅度</span>
+        <input type="range" id="sliderHPPct" min="1" max="20" step="1" value="5">
+        <span class="control-val" id="valHPPct">5%</span>
+      </div>
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-shield-plus"></i> 免伤词条幅度</span>
+        <input type="range" id="sliderDRFlat" min="1" max="20" step="1" value="5">
+        <span class="control-val" id="valDRFlat">5%</span>
+      </div>
+    </div>
+
+    <!-- 动画伤害模拟 -->
+    <div class="damage-sim">
+      <div class="damage-header">
+        <i class="ti ti-swords"></i> 承受伤害模拟（点击攻击）
+      </div>
+      <div class="health-bars">
+        <div class="bar-group">
+          <div class="bar-label">选了 <strong>生命+X%</strong></div>
+          <div class="bar-outer"><div class="bar-inner hp-bar" id="barHP" style="width:100%"></div></div>
+          <div class="bar-numbers"><span id="barHPText">10,500 / 10,500</span></div>
+        </div>
+        <div class="bar-group">
+          <div class="bar-label">选了 <strong>免伤+X%</strong></div>
+          <div class="bar-outer"><div class="bar-inner dr-bar" id="barDR" style="width:100%"></div></div>
+          <div class="bar-numbers"><span id="barDRText">10,000 / 10,000</span></div>
+        </div>
+      </div>
+      <div class="damage-controls">
+        <button class="btn btn-secondary" onclick="dealDamage(500)"><i class="ti ti-sword"></i> 轻击 500</button>
+        <button class="btn btn-secondary" onclick="dealDamage(2000)"><i class="ti ti-axe"></i> 重击 2000</button>
+        <button class="btn btn-secondary" onclick="dealDamage(5000)"><i class="ti ti-flame"></i> 暴击 5000</button>
+        <button class="btn btn-sm btn-ghost" onclick="resetBars()"><i class="ti ti-refresh"></i> 重置</button>
+      </div>
+      <div class="damage-insight" id="damageInsight">点击上面的攻击按钮，看看谁先倒下</div>
+    </div>
+
+    <!-- 结果卡片 -->
+    <div class="result-grid">
+      <div class="result-card base">
+        <span class="tag">当前 EHP</span>
+        <div class="big" id="resBase">—</div>
+        <div class="sub">基准有效生命</div>
+      </div>
+      <div class="result-card hp" id="cardHP">
+        <span class="tag">生命+5%</span>
+        <div class="big" id="resHP">—</div>
+        <div class="sub" id="resHPSub">—</div>
+      </div>
+      <div class="result-card dr" id="cardDR">
+        <span class="tag">免伤+5%</span>
+        <div class="big" id="resDR">—</div>
+        <div class="sub" id="resDRSub">—</div>
+      </div>
+    </div>
+
+    <div class="crossover-badge" id="crossoverBadge">
+      <i class="ti ti-arrows-cross"></i>
+      <span id="crossoverText">临界免伤：—</span>
+    </div>
+
+    <div class="insight-box" id="insightLive">
+      <h3><i class="ti ti-bulb"></i> 当前结论</h3>
+      <p id="insightLiveText">—</p>
+    </div>
+  </div>
+
+  <!-- ── 第三关：EHP 增益曲线 ── -->
+  <div class="section" id="chartSection" style="display:none;">
+    <h2><i class="ti ti-chart-line"></i> EHP 增益率随免伤变化</h2>
+    <p class="section-desc">横轴是当前免伤值，纵轴是选择对应词条后 EHP 的增益百分比。两条线交叉的地方就是临界点。</p>
+    <div class="chart-wrap">
+      <canvas id="gainChart"></canvas>
+    </div>
+    <div class="insight-box green">
+      <h3><i class="ti ti-bulb"></i> 看懂这张图</h3>
+      <p><strong>绿线（生命）</strong>是水平的——无论免伤多少，加血的增益率恒定。<br><strong>蓝线（免伤）</strong>是上翘的——免伤越高，再加免伤的边际收益越大（凸函数）。<br>两线交叉处就是临界点：左边选生命更划算，右边选免伤更划算。</p>
+    </div>
+  </div>
+
+  <!-- ── 第四关：预算分配最优解 ── -->
+  <div class="section" id="allocSection" style="display:none;">
+    <h2><i class="ti ti-puzzle"></i> 多词条位最优分配</h2>
+    <p class="section-desc">假设你有 N 个词条位，每个只能选「生命」或「免伤」。最优组合是什么？</p>
+
+    <div class="control-group">
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-stack-2"></i> 词条位数量</span>
+        <input type="range" id="sliderSlots" min="1" max="10" step="1" value="4">
+        <span class="control-val" id="valSlots">4</span>
+      </div>
+    </div>
+
+    <div class="alloc-result" id="allocResult">
+      <div class="alloc-bar" id="allocBar">
+        <div class="hp-part" style="width:50%"></div>
+        <div class="dr-part" style="width:50%"></div>
+      </div>
+      <div class="alloc-text" id="allocText">—</div>
+    </div>
+
+    <table class="data-table" id="allocTable">
+      <thead>
+        <tr><th>分配方案</th><th>生命词条</th><th>免伤词条</th><th>最终 EHP</th><th>增益</th></tr>
+      </thead>
+      <tbody id="allocBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section" id="theorySection" style="display:none;">
+    <h2><i class="ti ti-math-function"></i> 为什么要同时设计两个词条</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>EHP 是乘法结构</h4>
+        <p>EHP = HP ÷ (1 − DR)。生命值乘在前面，免伤除在后面。两者对 EHP 的贡献是相乘关系——一个高另一个低时，提升低的那个边际收益更大。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>免伤的边际收益递增</h4>
+        <p>从 0% 到 5%，EHP 涨 5.3%。从 80% 到 85%，EHP 涨 33%。免伤是凸函数——越高越值钱，这让纯堆免伤在后期变得极其诱人。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>生命值是线性兜底</h4>
+        <p>无论免伤多高，生命+5% 的增益始终稳定在 5%（相对增益率）。它是保底项，在免伤还低的阶段性价比更高。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">04</div>
+        <h4>游戏设计的平衡杠杆</h4>
+        <p>如果只有一个维度，堆满即可；有两个维度且存在交叉点，玩家就必须根据当前面板做选择，给装备搭配和 build 多样性创造了空间。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 一句话结论</h3>
+      <p>免伤低于临界值时堆生命更划算，高于临界值时堆免伤更划算。两个词条同时存在，是为了让「最优 build」随面板状态而变——这才是装备搭配的乐趣所在。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

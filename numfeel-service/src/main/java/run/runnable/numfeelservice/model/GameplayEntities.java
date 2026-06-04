@@ -227,4 +227,19 @@ public final class GameplayEntities {
             @Column("created_at") long createdAt
     ) {
     }
+
+    /** EHP词条对比直觉测试结果表映射。 */
+    @Table("ehp_quiz_results")
+    public record EhpQuizResult(
+            @Id Long id,
+            @Column("total_questions") int totalQuestions,
+            @Column("correct_count") int correctCount,
+            @Column("q1_correct") boolean q1Correct,
+            @Column("q2_correct") boolean q2Correct,
+            @Column("q3_correct") boolean q3Correct,
+            @Column("q4_correct") boolean q4Correct,
+            @Column("q5_correct") boolean q5Correct,
+            @Column("created_at") long createdAt
+    ) {
+    }
 }

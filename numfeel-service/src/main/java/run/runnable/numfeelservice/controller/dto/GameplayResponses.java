@@ -375,4 +375,28 @@ public final class GameplayResponses {
             java.util.Map<String, Long> patternCounts
     ) {
     }
+
+    /**
+     * EHP词条对比直觉测试统计响应。
+     *
+     * @param totalSessions 总参与人数
+     * @param avgCorrect 平均答对数
+     * @param allCorrectRate 全对率
+     * @param q1CorrectRate 第1题正确率
+     * @param q2CorrectRate 第2题正确率
+     * @param q3CorrectRate 第3题正确率
+     * @param q4CorrectRate 第4题正确率
+     * @param q5CorrectRate 第5题正确率
+     */
+    public record EhpQuizStatsResponse(
+            long totalSessions,
+            double avgCorrect,
+            double allCorrectRate,
+            double q1CorrectRate,
+            double q2CorrectRate,
+            double q3CorrectRate,
+            double q4CorrectRate,
+            double q5CorrectRate
+    ) {
+    }
 }

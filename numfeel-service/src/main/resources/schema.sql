@@ -295,3 +295,18 @@ CREATE TABLE IF NOT EXISTS game_of_life_patterns (
     INDEX idx_pattern_key (pattern_key),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- EHP词条对比直觉测试结果
+CREATE TABLE IF NOT EXISTS ehp_quiz_results (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    total_questions TINYINT    NOT NULL,
+    correct_count   TINYINT    NOT NULL,
+    q1_correct      TINYINT(1) NOT NULL DEFAULT 0,
+    q2_correct      TINYINT(1) NOT NULL DEFAULT 0,
+    q3_correct      TINYINT(1) NOT NULL DEFAULT 0,
+    q4_correct      TINYINT(1) NOT NULL DEFAULT 0,
+    q5_correct      TINYINT(1) NOT NULL DEFAULT 0,
+    created_at      BIGINT     NOT NULL,
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

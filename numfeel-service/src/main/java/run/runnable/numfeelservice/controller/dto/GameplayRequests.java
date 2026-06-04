@@ -311,4 +311,26 @@ public final class GameplayRequests {
             String description
     ) {
     }
+
+    /**
+     * EHP词条对比直觉测试提交参数。
+     *
+     * @param totalQuestions 题目总数
+     * @param correctCount 答对题数
+     * @param q1Correct 第1题是否正确
+     * @param q2Correct 第2题是否正确
+     * @param q3Correct 第3题是否正确
+     * @param q4Correct 第4题是否正确
+     * @param q5Correct 第5题是否正确
+     */
+    public record EhpQuizSubmitRequest(
+            Integer totalQuestions,
+            Integer correctCount,
+            Boolean q1Correct,
+            Boolean q2Correct,
+            Boolean q3Correct,
+            Boolean q4Correct,
+            Boolean q5Correct
+    ) {
+    }
 }

@@ -21,7 +21,7 @@
   <!-- ── 第一关：直觉测试 ── -->
   <div class="section" id="quizSection">
     <h2><i class="ti ti-brain"></i> 直觉测试：你觉得哪个更强？</h2>
-    <p class="section-desc">不用算，凭直觉选。三道题测完告诉你答案。</p>
+    <p class="section-desc">不用算，凭直觉选。五道题测完告诉你答案。</p>
 
     <div class="quiz-container" id="quizContainer">
       <div class="quiz-progress">
@@ -55,6 +55,7 @@
         <div class="quiz-score-text" id="quizScoreText"></div>
       </div>
       <div class="quiz-answers" id="quizAnswers"></div>
+      <div class="community-stats-section" id="communityStats" style="display:none;"></div>
       <div style="text-align:center;margin-top:20px;">
         <button class="btn btn-primary" onclick="startExplorer()">
           <i class="ti ti-arrow-right"></i> 进入对比模拟器，看为什么
@@ -68,13 +69,25 @@
     <h2><i class="ti ti-adjustments-horizontal"></i> EHP 对比模拟器</h2>
     <p class="section-desc">拖动滑块，实时看两个词条对「有效生命值」的贡献差异。</p>
 
+    <!-- EHP 概念解释 -->
+    <div class="ehp-explain">
+      <div class="ehp-formula">
+        <div class="formula-box">EHP = HP ÷ (1 − DR)</div>
+      </div>
+      <div class="ehp-desc">
+        <p><strong>EHP（Effective HP，有效生命值）</strong>= 敌人需要打出多少原始伤害才能击杀你。</p>
+        <p>举例：10000 血 + 50% 免伤 → 敌人要打 20000 伤害你才会死。你的 EHP 就是 20000。</p>
+        <p>比较两个词条，就是比较哪个让 EHP 涨得更多。EHP 涨得越多 = 你越肉。</p>
+      </div>
+    </div>
+
     <!-- 预设场景快捷按钮 -->
     <div class="preset-row">
       <span class="preset-label">快速切换：</span>
-      <button class="preset-btn" onclick="applyPreset(10000,30,5,5)">前期坦克</button>
-      <button class="preset-btn" onclick="applyPreset(25000,60,5,5)">中期战士</button>
-      <button class="preset-btn" onclick="applyPreset(40000,80,5,5)">满配坦克</button>
-      <button class="preset-btn" onclick="applyPreset(8000,20,10,3)">大HP小DR</button>
+      <button class="preset-btn" onclick="applyPreset(10000,30,5,5)"><img src="images/early-tank.jpg" class="preset-icon"> 前期坦克</button>
+      <button class="preset-btn" onclick="applyPreset(25000,60,5,5)"><img src="images/mid-warrior.jpg" class="preset-icon"> 中期战士</button>
+      <button class="preset-btn" onclick="applyPreset(40000,80,5,5)"><img src="images/endgame-paladin.jpg" class="preset-icon"> 满配坦克</button>
+      <button class="preset-btn" onclick="applyPreset(8000,20,10,3)"><img src="images/berserker.jpg" class="preset-icon"> 大HP小DR</button>
     </div>
 
     <div class="control-group">
@@ -103,16 +116,16 @@
     <!-- 动画伤害模拟 -->
     <div class="damage-sim">
       <div class="damage-header">
-        <i class="ti ti-swords"></i> 承受伤害模拟（点击攻击）
+        <img src="images/icon-sword.jpg" class="damage-header-icon"> 承受伤害模拟（点击攻击）
       </div>
       <div class="health-bars">
         <div class="bar-group">
-          <div class="bar-label">选了 <strong>生命+X%</strong></div>
+          <div class="bar-label"><img src="images/icon-potion.jpg" class="bar-icon"> 选了 <strong>生命+X%</strong></div>
           <div class="bar-outer"><div class="bar-inner hp-bar" id="barHP" style="width:100%"></div></div>
           <div class="bar-numbers"><span id="barHPText">10,500 / 10,500</span></div>
         </div>
         <div class="bar-group">
-          <div class="bar-label">选了 <strong>免伤+X%</strong></div>
+          <div class="bar-label"><img src="images/icon-shield.jpg" class="bar-icon"> 选了 <strong>免伤+X%</strong></div>
           <div class="bar-outer"><div class="bar-inner dr-bar" id="barDR" style="width:100%"></div></div>
           <div class="bar-numbers"><span id="barDRText">10,000 / 10,000</span></div>
         </div>

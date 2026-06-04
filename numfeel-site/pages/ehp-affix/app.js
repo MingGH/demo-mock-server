@@ -1,22 +1,49 @@
 // ========== 直觉测试 ==========
 const QUIZ_DATA = [
   {
-    scenario: '你的角色：10000 血，30% 免伤。选一个词条：',
+    scenario: '刚到30级的铁甲战士，10000 血，30% 免伤。打副本前最后一个词条位：',
     hpLabel: '生命+5%', drLabel: '免伤+5%',
     hp: 10000, dr: 0.30, hpPct: 0.05, drFlat: 0.05,
-    answer: 'dr', explain: '免伤+5% → EHP +7.69%，生命+5% → EHP +5.00%。免伤赢，多出 2.69 个百分点。'
+    answer: 'dr',
+    explain: '免伤+5% → EHP +7.69%，生命+5% → EHP +5.00%。免伤赢，多出 2.69 个百分点。',
+    image: 'images/early-tank.jpg',
+    role: '铁甲战士 · Lv.30'
   },
   {
-    scenario: '满配坦克：40000 血，80% 免伤。最后一个词条位：',
+    scenario: '治疗牧师，5000 血，10% 免伤。PVP 被刺客盯上，想多活一秒等队友支援：',
+    hpLabel: '生命+5%', drLabel: '免伤+5%',
+    hp: 5000, dr: 0.10, hpPct: 0.05, drFlat: 0.05,
+    answer: 'dr',
+    explain: '免伤+5% → EHP +5.88%，生命+5% → EHP +5.00%。虽然差距不大，但免伤依然略优——即使只有10%免伤，加法5%的边际收益也比乘法5%高。',
+    image: 'images/priest.jpg',
+    role: '神恩牧师 · 奶妈'
+  },
+  {
+    scenario: '暗影盗贼，6000 血，45% 闪避（算作免伤）。要摸到 BOSS 背后：',
+    hpLabel: '生命+5%', drLabel: '免伤+5%',
+    hp: 6000, dr: 0.45, hpPct: 0.05, drFlat: 0.05,
+    answer: 'dr',
+    explain: '免伤+5% → EHP +10.0%，生命+5% → EHP +5.0%。45%免伤时差距已经翻倍，继续堆闪避/免伤的收益远超加血。',
+    image: 'images/rogue.jpg',
+    role: '暗影盗贼 · 刺客'
+  },
+  {
+    scenario: '满配神圣骑士，40000 血，80% 免伤。毕业装最后一个词条怎么洗：',
     hpLabel: '生命+5%', drLabel: '免伤+5%',
     hp: 40000, dr: 0.80, hpPct: 0.05, drFlat: 0.05,
-    answer: 'dr', explain: '免伤+5% → EHP +33.3%，生命+5% → EHP +5.0%。高免伤下免伤词条的优势是碾压级的。'
+    answer: 'dr',
+    explain: '免伤+5% → EHP +33.3%，生命+5% → EHP +5.0%。高免伤下免伤词条的优势是碾压级的——差了6.7倍。',
+    image: 'images/endgame-paladin.jpg',
+    role: '神圣骑士 · 满配'
   },
   {
-    scenario: '特殊情况：8000 血，20% 免伤。词条选项不对称：',
+    scenario: '蛮荒狂战士，8000 血，20% 免伤。装备只给两个选项（注意幅度不同）：',
     hpLabel: '生命+10%', drLabel: '免伤+3%',
     hp: 8000, dr: 0.20, hpPct: 0.10, drFlat: 0.03,
-    answer: 'hp', explain: '生命+10% → EHP +10.0%，免伤+3% → EHP +3.9%。当生命词条幅度远大于免伤时，低免伤阶段生命更优。'
+    answer: 'hp',
+    explain: '生命+10% → EHP +10.0%，免伤+3% → EHP +3.9%。当生命词条幅度远大于免伤时，低免伤阶段加血反而更划算。这就是游戏设计两个词条的原因。',
+    image: 'images/berserker.jpg',
+    role: '狂战士 · 血牛流'
   }
 ];
 
@@ -33,7 +60,20 @@ function showQuizQuestion() {
   const q = QUIZ_DATA[quizIdx];
   document.getElementById('quizStep').textContent = `第 ${quizIdx + 1} 题 / 共 ${QUIZ_DATA.length} 题`;
   document.getElementById('quizBarFill').style.width = (quizIdx / QUIZ_DATA.length * 100) + '%';
-  document.getElementById('quizScenario').innerHTML = `<p>${q.scenario}</p>`;
+  document.getElementById('quizScenario').innerHTML = `
+    <div class="quiz-scene-layout">
+      <div class="quiz-char-img">
+        <img src="${q.image}" alt="${q.role}">
+        <span class="quiz-char-role">${q.role}</span>
+      </div>
+      <div class="quiz-scene-text">
+        <p>${q.scenario}</p>
+        <div class="quiz-stats">
+          <span class="stat-hp"><i class="ti ti-heart-filled"></i> ${q.hp.toLocaleString()}</span>
+          <span class="stat-dr"><i class="ti ti-shield-filled"></i> ${(q.dr * 100).toFixed(0)}%</span>
+        </div>
+      </div>
+    </div>`;
   document.getElementById('btnHPText').textContent = q.hpLabel;
   document.getElementById('btnDRText').textContent = q.drLabel;
   // reset button states
@@ -83,15 +123,15 @@ function showQuizResult() {
   const iconEl = document.getElementById('quizScoreIcon');
   const textEl = document.getElementById('quizScoreText');
 
-  if (score === 3) {
+  if (score === QUIZ_DATA.length) {
     iconEl.innerHTML = '<i class="ti ti-crown" style="color:#ffd700;font-size:3rem;"></i>';
     textEl.innerHTML = `<strong>全对！</strong>你已经有很好的数值直觉。下面用模拟器验证你的判断。`;
-  } else if (score >= 1) {
+  } else if (score >= 3) {
     iconEl.innerHTML = '<i class="ti ti-bulb" style="color:#ffa726;font-size:3rem;"></i>';
     textEl.innerHTML = `对了 ${score}/${QUIZ_DATA.length}。有些场景的答案可能和直觉相反——下面模拟器会告诉你为什么。`;
   } else {
     iconEl.innerHTML = '<i class="ti ti-mood-puzzled" style="color:#ef5350;font-size:3rem;"></i>';
-    textEl.innerHTML = `全错了……但别担心，看完模拟器你就会明白这两个词条的数学本质。`;
+    textEl.innerHTML = `对了 ${score}/${QUIZ_DATA.length}。直觉在这种数学问题上经常翻车——看完模拟器你就懂了。`;
   }
 
   // 答案解析
@@ -100,8 +140,91 @@ function showQuizResult() {
     const icon = a.correct ? '<i class="ti ti-check" style="color:#66bb6a;"></i>' : '<i class="ti ti-x" style="color:#ef5350;"></i>';
     return `<div class="quiz-answer-row">${icon} <span class="quiz-answer-text">${a.q.explain}</span></div>`;
   }).join('');
+
+  // 提交统计 + 加载全局数据
+  submitQuizStats(score);
 }
 
+
+// ========== 后端统计 ==========
+const API_BASE = 'https://numfeel-api.996.ninja/ehp-quiz';
+
+function submitQuizStats(score) {
+  const payload = {
+    totalQuestions: QUIZ_DATA.length,
+    correctCount: score,
+    q1Correct: quizAnswers[0] ? quizAnswers[0].correct : false,
+    q2Correct: quizAnswers[1] ? quizAnswers[1].correct : false,
+    q3Correct: quizAnswers[2] ? quizAnswers[2].correct : false,
+    q4Correct: quizAnswers[3] ? quizAnswers[3].correct : false,
+    q5Correct: quizAnswers[4] ? quizAnswers[4].correct : false
+  };
+
+  fetch(API_BASE + '/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(r => r.json())
+    .then(res => {
+      if (res.status === 200 && res.data) {
+        renderCommunityStats(res.data);
+      }
+    })
+    .catch(() => {
+      // 静默失败，不影响用户体验
+      loadStats();
+    });
+}
+
+function loadStats() {
+  fetch(API_BASE + '/stats')
+    .then(r => r.json())
+    .then(res => {
+      if (res.status === 200 && res.data) {
+        renderCommunityStats(res.data);
+      }
+    })
+    .catch(() => {});
+}
+
+function renderCommunityStats(data) {
+  const el = document.getElementById('communityStats');
+  if (!el || data.totalSessions < 1) return;
+  el.style.display = '';
+
+  const qNames = ['铁甲战士', '神恩牧师', '暗影盗贼', '神圣骑士', '狂战士'];
+  const rates = [data.q1CorrectRate, data.q2CorrectRate, data.q3CorrectRate, data.q4CorrectRate, data.q5CorrectRate];
+
+  el.innerHTML = `
+    <div class="community-header">
+      <i class="ti ti-users-group"></i>
+      <span>社区统计（共 ${data.totalSessions} 人参与）</span>
+    </div>
+    <div class="community-grid">
+      <div class="community-stat">
+        <div class="community-val">${data.avgCorrect}</div>
+        <div class="community-lbl">平均答对</div>
+      </div>
+      <div class="community-stat">
+        <div class="community-val">${data.allCorrectRate}%</div>
+        <div class="community-lbl">全对率</div>
+      </div>
+    </div>
+    <div class="community-bars">
+      ${rates.map((r, i) => `
+        <div class="community-bar-row">
+          <span class="community-bar-label">${qNames[i]}</span>
+          <div class="community-bar-outer">
+            <div class="community-bar-fill" style="width:${r}%"></div>
+          </div>
+          <span class="community-bar-pct">${r}%</span>
+        </div>
+      `).join('')}
+    </div>
+    <div class="community-note">第5题（幅度不对称）正确率最低——大多数人以为免伤永远更优</div>
+  `;
+}
 
 // ========== 进入模拟器 ==========
 function startExplorer() {

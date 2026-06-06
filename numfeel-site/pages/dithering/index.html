@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Floyd-Steinberg 抖动算法交互演示：上传图片实时体验误差扩散的暴力美学，对比多种抖动算法，观看逐像素处理动画。">
+  <title>Floyd-Steinberg 抖动：暴力美学的像素炼金术 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-grid-dots"></i> Floyd-Steinberg 抖动</h1>
+    <p>只有黑和白两种颜色，却能骗过你的眼睛看到连续灰度。每个像素做一个最简单的决定——变黑或变白——然后把「犯的错」甩给邻居。</p>
+  </div>
+
+  <!-- ── 主交互区 ── -->
+  <div class="section">
+    <h2><i class="ti ti-photo"></i> 实时体验</h2>
+
+    <div class="upload-area" id="uploadArea">
+      <div class="upload-content">
+        <i class="ti ti-cloud-upload" style="font-size: 2.5rem; color: #ffd700;"></i>
+        <p>拖入图片或点击上传</p>
+        <span class="upload-hint">支持 JPG / PNG / WebP</span>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+
+    <div class="canvas-area" id="canvasArea" style="display:none;">
+      <div class="canvas-pair">
+        <div class="canvas-box">
+          <div class="canvas-label">原图（灰度）</div>
+          <canvas id="originalCanvas"></canvas>
+        </div>
+        <div class="canvas-box">
+          <div class="canvas-label" id="resultLabel">Floyd-Steinberg 抖动</div>
+          <canvas id="ditherCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="zoom-compare" id="zoomCompare" style="display:none;">
+        <h3><i class="ti ti-zoom-in"></i> 局部放大（4×）</h3>
+        <div class="canvas-pair">
+          <div class="canvas-box small">
+            <canvas id="zoomOriginal"></canvas>
+          </div>
+          <div class="canvas-box small">
+            <canvas id="zoomDither"></canvas>
+          </div>
+        </div>
+        <p class="zoom-hint-text">在上方图片上点击任意位置查看局部放大</p>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <h3><i class="ti ti-adjustments"></i> 算法选择</h3>
+          <div class="algo-options" id="algoOptions">
+            <button class="algo-btn active" data-algo="floyd-steinberg">Floyd-Steinberg</button>
+            <button class="algo-btn" data-algo="atkinson">Atkinson (Mac 风格)</button>
+            <button class="algo-btn" data-algo="sierra">Sierra Lite</button>
+            <button class="algo-btn" data-algo="ordered">有序抖动 (Bayer 8×8)</button>
+            <button class="algo-btn" data-algo="random">随机抖动</button>
+            <button class="algo-btn" data-algo="threshold">纯阈值（无抖动）</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3><i class="ti ti-settings"></i> 参数</h3>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>阈值</span>
+              <span class="val" id="thresholdVal">128</span>
+            </div>
+            <input type="range" id="thresholdSlider" min="1" max="255" value="128">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary btn-sm" id="reuploadBtn"><i class="ti ti-upload"></i> 换一张</button>
+            <button class="btn btn-secondary btn-sm" id="downloadBtn"><i class="ti ti-download"></i> 下载结果</button>
+            <button class="btn btn-secondary btn-sm" id="animateBtn"><i class="ti ti-player-play"></i> 逐像素动画</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-item"><span class="val" id="statSize">—</span><span class="lbl">图片尺寸</span></div>
+        <div class="stat-item"><span class="val" id="statBlack">—</span><span class="lbl">黑色像素</span></div>
+        <div class="stat-item"><span class="val" id="statWhite">—</span><span class="lbl">白色像素</span></div>
+        <div class="stat-item"><span class="val" id="statTime">—</span><span class="lbl">处理耗时</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 动画进度 ── -->
+  <div class="section" id="animSection" style="display:none;">
+    <h2><i class="ti ti-player-play"></i> 误差扩散过程</h2>
+    <p style="color:#a0a0a0; margin-bottom:16px; font-size:0.9rem;">
+      观看算法逐像素处理：每个像素被强制变为黑或白后，误差按权重分配给右方和下方邻居。
+    </p>
+    <div class="anim-canvas-wrap">
+      <canvas id="animCanvas"></canvas>
+    </div>
+    <div class="anim-controls">
+      <button class="btn btn-primary btn-sm" id="animPlayBtn"><i class="ti ti-player-play"></i> 播放</button>
+      <button class="btn btn-secondary btn-sm" id="animPauseBtn"><i class="ti ti-player-pause"></i> 暂停</button>
+      <div class="slider-group" style="flex:1; margin:0;">
+        <div class="slider-label">
+          <span>速度</span>
+          <span class="val" id="animSpeedVal">中</span>
+        </div>
+        <input type="range" id="animSpeedSlider" min="1" max="3" value="2" step="1">
+      </div>
+    </div>
+    <div class="anim-progress">
+      <div class="anim-progress-fill" id="animProgress"></div>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么只有黑白也能看到灰度</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>量化决策</h4>
+        <p>每个像素只有一个选择：变黑(0)还是变白(255)。没有中间地带。如果原值是 180，离 255 更近，所以变白。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>误差不能凭空消失</h4>
+        <p>180 变成 255，误差是 -75（变亮了 75）。这个误差不能吞掉——它被按比例分配给右边和下面的邻居像素。邻居变暗了一点来"偿还"。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>空间积分欺骗视觉</h4>
+        <p>人眼的空间分辨率有限。当黑白点足够密时，大脑自动对一小片区域"取平均"，感知到连续灰度。黑点密 → 暗区，白点密 → 亮区。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 暴力在哪</h3>
+      <p>没有频域分析，没有傅里叶变换，没有任何"聪明"的数学工具。就是逐像素从左上到右下扫一遍，每个像素做一次加减法和一次比较。整张图只遍历一次，O(n) 时间，O(1) 额外空间。这是你能想到的最暴力的图像处理：一个 for 循环解决一切。</p>
+    </div>
+  </div>
+
+  <!-- ── 核心代码 ── -->
+  <div class="section">
+    <h2><i class="ti ti-code"></i> 核心代码</h2>
+    <div class="code-block">
+      <pre><code>for (let y = 0; y < height; y++) {
+  for (let x = 0; x < width; x++) {
+    let old = pixels[y][x];
+    let neu = old > 128 ? 255 : 0;  // 暴力二值化
+    pixels[y][x] = neu;
+    let err = old - neu;             // 计算误差
+
+    // 把误差甩给邻居
+    pixels[y][x+1]   += err * 7/16;  // →  右
+    pixels[y+1][x-1] += err * 3/16;  // ↙ 左下
+    pixels[y+1][x]   += err * 5/16;  // ↓  下
+    pixels[y+1][x+1] += err * 1/16;  // ↘ 右下
+  }
+}</code></pre>
+    </div>
+    <p style="color:#a0a0a0; margin-top:12px; font-size:0.88rem;">
+      12 行代码。没有任何依赖库，没有矩阵运算，没有 GPU。一个双重循环，四次加法，完成一切。
+    </p>
+  </div>
+
+  <!-- ── 应用场景 ── -->
+  <div class="section">
+    <h2><i class="ti ti-history"></i> 实际应用</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-printer"></i></div>
+        <h4>报纸与激光打印</h4>
+        <p>墨点要么有，要么没有。报纸上那些看起来有灰度的照片，全靠抖动算法实现。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-device-desktop"></i></div>
+        <h4>初代 Macintosh</h4>
+        <p>1984 年的 Mac 只有黑白屏幕。Atkinson 抖动（Bill Atkinson 发明）让系统界面看起来有灰度层次。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-device-gamepad"></i></div>
+        <h4>Game Boy 打印机</h4>
+        <p>热敏纸只能打黑点。Game Boy Camera 拍的照片通过抖动在小票纸上"还原"灰度。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-cut"></i></div>
+        <h4>激光雕刻 / CNC</h4>
+        <p>激光要么烧要么不烧。把照片雕刻在木头上，靠的就是抖动后的黑白点阵控制激光开关。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="dither.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

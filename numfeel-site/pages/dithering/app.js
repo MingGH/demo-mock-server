@@ -60,8 +60,12 @@ function loadImage(src) {
   img.crossOrigin = 'anonymous';
   img.onload = () => {
     currentImage = img;
-    // 限制最大尺寸以平衡速度和显示效果
-    const maxDim = 1200;
+    // 计算目标尺寸：确保 canvas 像素数 >= 显示物理像素数
+    // 这样浏览器缩小渲染时自动混合像素，抖动效果才自然
+    const containerWidth = canvasArea.getBoundingClientRect().width / 2 - 16;
+    const dpr = window.devicePixelRatio || 1;
+    const targetDisplayPx = Math.round(containerWidth * dpr);
+    const maxDim = Math.max(targetDisplayPx, 800);
     let w = img.width;
     let h = img.height;
     if (w > maxDim || h > maxDim) {

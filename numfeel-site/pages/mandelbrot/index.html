@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="曼德勃罗集交互式可视化：用鼠标无限放大分形边界，切换配色方案，探索海马谷、象谷等经典结构，体验「简单规则生成无限复杂」的数学之美。">
+  <title>曼德勃罗集：无限放大的数学宇宙 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-atom-2"></i> 曼德勃罗集</h1>
+    <p>z² + c，两个符号，一条规则。从中涌现出的图形复杂度超越人类任何一幅画作。点击放大，每一层都是新的宇宙。</p>
+  </div>
+
+  <!-- ── 可视化区域 ── -->
+  <div class="section">
+    <h2><i class="ti ti-eye"></i> 实时渲染</h2>
+
+    <div class="canvas-container" id="canvasContainer">
+      <canvas id="mandelbrotCanvas"></canvas>
+      <div class="canvas-overlay">
+        <div class="canvas-info">中心 <span class="val" id="infoCenter">-0.5 + 0i</span></div>
+        <div class="canvas-info">缩放 <span class="val" id="infoZoom">1×</span></div>
+        <div class="canvas-info">迭代 <span class="val" id="infoIter">200</span></div>
+      </div>
+      <div class="zoom-hint" id="zoomHint">点击放大 · 右键缩小 · 滚轮缩放</div>
+      <div class="render-progress"><div class="render-progress-fill" id="progressBar"></div></div>
+    </div>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat-item"><span class="val" id="statTime">—</span><span class="lbl">渲染耗时</span></div>
+      <div class="stat-item"><span class="val" id="statPixels">—</span><span class="lbl">像素数</span></div>
+      <div class="stat-item"><span class="val" id="statInSet">—</span><span class="lbl">集合内部</span></div>
+      <div class="stat-item"><span class="val" id="statBoundary">—</span><span class="lbl">边界点</span></div>
+    </div>
+
+    <div class="controls">
+      <!-- 预设位置 -->
+      <div class="control-group">
+        <h3><i class="ti ti-map-pin"></i> 经典坐标</h3>
+        <div class="preset-grid" id="presetGrid"></div>
+      </div>
+
+      <!-- 参数调节 -->
+      <div class="control-group">
+        <h3><i class="ti ti-adjustments"></i> 参数</h3>
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>最大迭代次数</span>
+            <span class="val" id="iterVal">200</span>
+          </div>
+          <input type="range" id="iterSlider" min="50" max="2000" value="200" step="50">
+        </div>
+
+        <h3 style="margin-top:14px;"><i class="ti ti-palette"></i> 配色方案</h3>
+        <div class="color-options" id="colorOptions">
+          <button class="color-btn active" data-scheme="default">深空</button>
+          <button class="color-btn" data-scheme="fire">火焰</button>
+          <button class="color-btn" data-scheme="ice">冰蓝</button>
+          <button class="color-btn" data-scheme="rainbow">彩虹</button>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" id="resetBtn"><i class="ti ti-refresh"></i> 重置</button>
+          <button class="btn btn-secondary btn-sm" id="downloadBtn"><i class="ti ti-download"></i> 下载图片</button>
+          <button class="btn btn-secondary btn-sm" id="highResBtn"><i class="ti ti-photo"></i> 高清渲染</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Julia 集联动 ── -->
+  <div class="section">
+    <h2><i class="ti ti-arrows-split"></i> Julia 集联动</h2>
+    <p style="color:#a0a0a0; margin-bottom:12px; font-size:0.9rem;">
+      在上方画布上移动鼠标，下方实时显示对应参数 c 的 Julia 集。曼德勃罗集是所有 Julia 集的"目录"：集合内部的 c 对应连通的 Julia 集，外部的 c 对应断裂的 Julia 集。
+    </p>
+    <div class="julia-container">
+      <div class="julia-canvas-wrap">
+        <canvas id="juliaCanvas"></canvas>
+      </div>
+      <div class="julia-info">
+        <p>当前参数：</p>
+        <div class="julia-coord" id="juliaCoord">c = -0.5 + 0i</div>
+        <p style="margin-top:12px;">Julia 集公式：z → z² + c，其中 c 固定，z₀ 遍历整个复平面。和曼德勃罗集的区别仅在于「谁是变量，谁是参数」。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么两个符号能生成无限复杂</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>迭代放大差异</h4>
+        <p>z² + c 每次执行都是「取平方再偏移」。两个初始值差 0.0001，经过 100 次迭代后命运完全不同——一个逃逸到无穷，一个永远困在原地。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>边界无限复杂</h4>
+        <p>集合的边界（黑色与彩色的交界处）具有无限细节。无论你放大多少倍，边界永远不会变成一条光滑曲线——这就是分形维度。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>自相似但不完全相同</h4>
+        <p>放大后会看到"小曼德勃罗集"反复出现，但每一个周围的装饰图案都略有不同。数学家证明了完全自相似的分形反而很简单（如 Sierpinski 三角），正是这种"几乎相似"制造了无穷的新意。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 关键洞察</h3>
+      <p>曼德勃罗集的面积是有限的（约 1.5065...），周长却是无穷大。一个有限面积的图形拥有无穷长的边界——这在欧几里得几何中不可能，但分形几何中却是自然的。你在上方每次放大，都是在探索这条无穷长的边界线。</p>
+    </div>
+  </div>
+
+  <!-- ── 数学公式 ── -->
+  <div class="section">
+    <h2><i class="ti ti-math-function"></i> 数学定义</h2>
+    <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:20px; font-family:'SF Mono','Fira Code',monospace; font-size:0.9rem; color:#e8e8e8; line-height:2;">
+      <p>给定复数 c = a + bi，定义迭代序列：</p>
+      <p style="color:#ffd700; font-size:1.1rem; margin:12px 0;">z₀ = 0，z<sub>n+1</sub> = z<sub>n</sub>² + c</p>
+      <p>曼德勃罗集 M = { c ∈ ℂ : lim<sub>n→∞</sub> |z<sub>n</sub>| ≠ ∞ }</p>
+      <p style="margin-top:12px; color:#a0a0a0; font-size:0.82rem;">
+        判据：若在迭代过程中 |z<sub>n</sub>| > 2，则 c 一定不在集合中（逃逸半径为 2）。<br>
+        在实际渲染中，记录逃逸所需的迭代次数并映射为颜色——迭代越多（越接近边界），颜色越"深"。
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

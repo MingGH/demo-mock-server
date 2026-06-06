@@ -60,8 +60,8 @@ function loadImage(src) {
   img.crossOrigin = 'anonymous';
   img.onload = () => {
     currentImage = img;
-    // 限制最大尺寸，避免过慢
-    const maxDim = 800;
+    // 限制最大尺寸以平衡速度和显示效果
+    const maxDim = 1200;
     let w = img.width;
     let h = img.height;
     if (w > maxDim || h > maxDim) {

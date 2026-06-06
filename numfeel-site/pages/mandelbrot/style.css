@@ -263,4 +263,58 @@ input[type="range"]::-moz-range-thumb {
   .julia-container { flex-direction: column; }
   .julia-canvas-wrap { width: 100%; height: 200px; }
   .stats-row { gap: 10px; }
+  .canvas-overlay { top: 8px; left: 8px; }
+  .canvas-info { font-size: 0.7rem; padding: 4px 8px; }
+  .principle-grid { grid-template-columns: 1fr; }
+  .desktop-hint { display: none; }
+  .mobile-hint { display: inline; }
+}
+
+/* ── 桌面端/手机端提示切换 ── */
+.mobile-hint { display: none; }
+.desktop-hint { display: inline; }
+
+/* ── 手机端缩放按钮 ── */
+.mobile-zoom-bar {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 10px 0;
+}
+.zoom-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,215,0,0.3);
+  background: rgba(255,215,0,0.1);
+  color: #ffd700;
+  font-size: 1.2rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.zoom-btn:active {
+  background: rgba(255,215,0,0.25);
+  transform: scale(0.9);
+}
+.zoom-level {
+  font-size: 0.9rem;
+  color: #ffd700;
+  font-weight: 700;
+  min-width: 60px;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .mobile-zoom-bar { display: flex; }
+}
+
+/* ── 触摸设备画布 ── */
+@media (pointer: coarse) {
+  .canvas-container { cursor: default; }
+  .mobile-zoom-bar { display: flex; }
+  .desktop-hint { display: none; }
+  .mobile-hint { display: inline; }
 }

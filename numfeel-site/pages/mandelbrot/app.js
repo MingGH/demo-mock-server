@@ -97,11 +97,14 @@ function setupControls() {
   // 高清渲染
   document.getElementById('highResBtn').onclick = renderHighRes;
 
-  // 画布交互
+  // ── 桌面端事件 ──
   canvas.addEventListener('click', onCanvasClick);
   canvas.addEventListener('contextmenu', onCanvasRightClick);
   canvas.addEventListener('wheel', onCanvasWheel, { passive: false });
   canvas.addEventListener('mousemove', onCanvasMouseMove);
+
+  // ── 触摸事件（手机端） ──
+  setupTouchEvents();
 
   // 窗口 resize
   let resizeTimer;
@@ -114,14 +117,126 @@ function setupControls() {
   });
 }
 
-// ── 画布事件 ──
+// ── 触摸手势处理 ──
+const touchState = {
+  lastTap: 0,
+  pinchStartDist: 0,
+  pinchStartZoom: 0,
+  isPinching: false,
+  panStartX: 0,
+  panStartY: 0,
+  panCenterX: 0,
+  panCenterY: 0,
+  isPanning: false,
+  moved: false,
+};
+
+function setupTouchEvents() {
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+  canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+  canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+}
+
+function onTouchStart(e) {
+  e.preventDefault();
+  touchState.moved = false;
+
+  if (e.touches.length === 2) {
+    // 双指 pinch 缩放
+    touchState.isPinching = true;
+    touchState.isPanning = false;
+    touchState.pinchStartDist = getTouchDist(e.touches);
+    touchState.pinchStartZoom = zoom;
+  } else if (e.touches.length === 1) {
+    // 单指：准备拖拽
+    touchState.isPanning = true;
+    touchState.isPinching = false;
+    touchState.panStartX = e.touches[0].clientX;
+    touchState.panStartY = e.touches[0].clientY;
+    touchState.panCenterX = centerX;
+    touchState.panCenterY = centerY;
+  }
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  touchState.moved = true;
+
+  if (touchState.isPinching && e.touches.length === 2) {
+    const dist = getTouchDist(e.touches);
+    const factor = dist / touchState.pinchStartDist;
+    zoom = Math.max(0.5, touchState.pinchStartZoom * factor);
+    clearPresetActive();
+    render();
+  } else if (touchState.isPanning && e.touches.length === 1) {
+    // 单指拖拽平移
+    const dx = e.touches[0].clientX - touchState.panStartX;
+    const dy = e.touches[0].clientY - touchState.panStartY;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = canvas.width / rect.width;
+    const scale = 4.0 / (canvas.width * zoom);
+
+    centerX = touchState.panCenterX - dx * dpr * scale;
+    centerY = touchState.panCenterY - dy * dpr * scale;
+    clearPresetActive();
+    render();
+  }
+}
+
+function onTouchEnd(e) {
+  e.preventDefault();
+
+  if (e.touches.length < 2) touchState.isPinching = false;
+
+  if (e.touches.length === 0) {
+    // 单指点击（没有移动过）→ 双击检测
+    if (!touchState.moved) {
+      const now = Date.now();
+      if (now - touchState.lastTap < 300) {
+        // 双击放大
+        const touch = e.changedTouches[0];
+        const pos = touchToComplex(touch);
+        centerX = pos.cx;
+        centerY = pos.cy;
+        zoom *= 3;
+        clearPresetActive();
+        render();
+        touchState.lastTap = 0;
+      } else {
+        touchState.lastTap = now;
+      }
+    }
+    touchState.isPanning = false;
+  }
+}
+
+function getTouchDist(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function touchToComplex(touch) {
+  const rect = canvas.getBoundingClientRect();
+  const px = (touch.clientX - rect.left) / rect.width * canvas.width;
+  const py = (touch.clientY - rect.top) / rect.height * canvas.height;
+  const scale = 4.0 / (canvas.width * zoom);
+  return {
+    cx: centerX + (px - canvas.width / 2) * scale,
+    cy: centerY + (py - canvas.height / 2) * scale
+  };
+}
+
+// ── 桌面端画布事件 ──
 function onCanvasClick(e) {
+  // 忽略触摸设备的 click 事件（由 touch 事件处理）
+  if ('ontouchstart' in window) return;
   e.preventDefault();
   const pos = canvasToComplex(e);
   centerX = pos.cx;
   centerY = pos.cy;
   zoom *= 3;
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  clearPresetActive();
   render();
 }
 
@@ -131,7 +246,7 @@ function onCanvasRightClick(e) {
   centerX = pos.cx;
   centerY = pos.cy;
   zoom = Math.max(0.5, zoom / 3);
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  clearPresetActive();
   render();
 }
 
@@ -139,12 +254,11 @@ function onCanvasWheel(e) {
   e.preventDefault();
   const pos = canvasToComplex(e);
   const factor = e.deltaY < 0 ? 1.5 : 1 / 1.5;
-  // 向鼠标位置缩放
   centerX += (pos.cx - centerX) * (1 - 1 / factor);
   centerY += (pos.cy - centerY) * (1 - 1 / factor);
   zoom *= factor;
   zoom = Math.max(0.5, zoom);
-  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  clearPresetActive();
   render();
 }
 
@@ -164,6 +278,10 @@ function canvasToComplex(e) {
     cx: centerX + (px - canvas.width / 2) * scale,
     cy: centerY + (py - canvas.height / 2) * scale
   };
+}
+
+function clearPresetActive() {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
 }
 
 // ── 渲染曼德勃罗集 ──
@@ -303,6 +421,9 @@ function updateInfo() {
     `${centerX.toFixed(8)} ${sign} ${Math.abs(centerY).toFixed(8)}i`;
   document.getElementById('infoZoom').textContent = formatZoom(zoom);
   document.getElementById('infoIter').textContent = maxIter;
+  // 同步手机端缩放显示
+  const mzl = document.getElementById('mobileZoomLevel');
+  if (mzl) mzl.textContent = formatZoom(zoom);
 }
 
 function updateStats(elapsed, totalPixels, inSet, boundary) {
@@ -391,5 +512,34 @@ function renderHighRes() {
   chunk();
 }
 
+// ── 手机端缩放按钮 ──
+function setupMobileZoom() {
+  const zoomInBtn = document.getElementById('zoomInBtn');
+  const zoomOutBtn = document.getElementById('zoomOutBtn');
+
+  if (zoomInBtn) {
+    zoomInBtn.onclick = () => {
+      zoom *= 2.5;
+      clearPresetActive();
+      render();
+      updateMobileZoomLevel();
+    };
+  }
+  if (zoomOutBtn) {
+    zoomOutBtn.onclick = () => {
+      zoom = Math.max(0.5, zoom / 2.5);
+      clearPresetActive();
+      render();
+      updateMobileZoomLevel();
+    };
+  }
+}
+
+function updateMobileZoomLevel() {
+  const el = document.getElementById('mobileZoomLevel');
+  if (el) el.textContent = formatZoom(zoom);
+}
+
 // ── 启动 ──
 init();
+setupMobileZoom();

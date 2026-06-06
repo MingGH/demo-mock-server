@@ -28,8 +28,18 @@
         <div class="canvas-info">缩放 <span class="val" id="infoZoom">1×</span></div>
         <div class="canvas-info">迭代 <span class="val" id="infoIter">200</span></div>
       </div>
-      <div class="zoom-hint" id="zoomHint">点击放大 · 右键缩小 · 滚轮缩放</div>
+      <div class="zoom-hint" id="zoomHint">
+        <span class="desktop-hint">点击放大 · 右键缩小 · 滚轮缩放</span>
+        <span class="mobile-hint">双击放大 · 单指拖拽 · 双指缩放</span>
+      </div>
       <div class="render-progress"><div class="render-progress-fill" id="progressBar"></div></div>
+    </div>
+
+    <!-- 手机端缩放按钮 -->
+    <div class="mobile-zoom-bar" id="mobileZoomBar">
+      <button class="zoom-btn" id="zoomOutBtn" aria-label="缩小"><i class="ti ti-minus"></i></button>
+      <span class="zoom-level" id="mobileZoomLevel">1×</span>
+      <button class="zoom-btn" id="zoomInBtn" aria-label="放大"><i class="ti ti-plus"></i></button>
     </div>
 
     <div class="stats-row" id="statsRow">

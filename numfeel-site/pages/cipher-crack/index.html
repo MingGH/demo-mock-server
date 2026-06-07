@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="用频率分析破解古典密码：从凯撒到维吉尼亚，亲手体验 850 年阿拉伯学者发明、欧洲遗失 600 年又被重新发现的密码破解术。">
+  <title>频率分析：破解古典密码的千年技术 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-lock-open"></i> 频率分析：千年密码破解术</h1>
+    <p>公元 850 年被发明，遗失 600 年后被欧洲重新发现。<br>你能用字母频率破解下面的密文吗？</p>
+  </div>
+
+  <!-- ── 引导区：快速开始 ── -->
+  <div class="section hero-section">
+    <div class="hero-prompt">
+      <div class="hero-icon"><i class="ti ti-spy"></i></div>
+      <h2>截获了一段加密通信</h2>
+      <p class="hero-desc">情报机构拦截到以下密文。你的任务：找出加密方式，还原明文。</p>
+    </div>
+    <div class="hero-cipher" id="heroCipher">
+      <code>WKH TXLFN EURZQ IRA MXPSV RYHU WKH ODCB GRJ</code>
+    </div>
+    <div class="hero-hint">
+      <i class="ti ti-bulb"></i> 提示：这是最简单的凯撒密码——每个字母被统一偏移了几位。只有 26 种可能，全试一遍就行。
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn-primary btn-lg" onclick="startCrackHero()"><i class="ti ti-bolt"></i> 开始破解</button>
+      <button class="btn btn-secondary" onclick="switchMode('encrypt');scrollToEl('encryptSection')"><i class="ti ti-lock"></i> 我想先自己加密试试</button>
+    </div>
+  </div>
+
+  <!-- ── 模式选择 ── -->
+  <div class="section" id="modeSection">
+    <h2><i class="ti ti-adjustments"></i> 选择挑战</h2>
+    <div class="mode-tabs" id="modeTabs">
+      <div class="mode-tab active" data-mode="caesar" onclick="switchMode('caesar')">
+        <i class="ti ti-rotate-clockwise"></i> 凯撒密码
+      </div>
+      <div class="mode-tab" data-mode="vigenere" onclick="switchMode('vigenere')">
+        <i class="ti ti-key"></i> 维吉尼亚密码
+      </div>
+      <div class="mode-tab" data-mode="encrypt" onclick="switchMode('encrypt')">
+        <i class="ti ti-lock"></i> 加密工坊
+      </div>
+    </div>
+
+    <!-- 预设密文 -->
+    <div id="presetSection">
+      <p class="preset-label"><i class="ti ti-file-text"></i> 选一段密文来挑战：</p>
+      <div class="preset-grid" id="presetGrid"></div>
+    </div>
+  </div>
+
+  <!-- ── 凯撒模式 ── -->
+  <div class="section" id="caesarSection">
+    <h2><i class="ti ti-rotate-clockwise"></i> 凯撒密码破解</h2>
+    <div class="method-explain">
+      <p><span class="tag-easy">难度：入门</span> 凯撒密码把每个字母统一偏移 N 位。密钥空间只有 25 种——暴力尝试即可。</p>
+    </div>
+
+    <div class="io-grid">
+      <div class="io-panel">
+        <h3><i class="ti ti-file-text"></i> 密文</h3>
+        <textarea id="caesarInput" placeholder="粘贴密文，或点击上方预设卡片加载..."></textarea>
+      </div>
+      <div class="io-panel">
+        <h3><i class="ti ti-file-check"></i> 明文</h3>
+        <textarea id="caesarOutput" readonly placeholder="点击「暴力破解」后结果显示在这里"></textarea>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="crackCaesar()"><i class="ti ti-bolt"></i> 暴力破解（试遍 26 种偏移）</button>
+      <button class="btn btn-secondary" onclick="clearCaesar()"><i class="ti ti-trash"></i> 清空</button>
+    </div>
+
+    <!-- 频率对比图 -->
+    <div class="chart-container" id="caesarFreqContainer" style="display:none;">
+      <h3><i class="ti ti-chart-bar"></i> 字母频率对比</h3>
+      <p class="chart-explain">金色 = 密文中的频率，蓝色 = 英文标准频率。形状相同但错位 → 偏移量就是错位距离。</p>
+      <div class="freq-bars" id="caesarFreqBars"></div>
+      <div class="freq-legend">
+        <span><span class="dot cipher"></span> 密文频率</span>
+        <span><span class="dot english"></span> 英文标准频率</span>
+      </div>
+    </div>
+
+    <!-- 所有偏移结果 -->
+    <div id="caesarResultsContainer" style="display:none;">
+      <p class="results-label"><i class="ti ti-list-numbers"></i> 全部 26 种偏移结果（点击任意行查看解密）：</p>
+      <div class="crack-results" id="caesarResults"></div>
+    </div>
+  </div>
+
+  <!-- ── 维吉尼亚模式 ── -->
+  <div class="section" id="vigenereSection" style="display:none;">
+    <h2><i class="ti ti-key"></i> 维吉尼亚密码破解</h2>
+    <div class="method-explain">
+      <p><span class="tag-medium">难度：进阶</span> 多表替换密码，每个字母用不同偏移加密。被称「不可破译」长达 300 年——直到有人发现了重合指数。</p>
+    </div>
+
+    <div class="io-grid">
+      <div class="io-panel">
+        <h3><i class="ti ti-file-text"></i> 密文</h3>
+        <textarea id="vigenereInput" placeholder="粘贴维吉尼亚密文..."></textarea>
+      </div>
+      <div class="io-panel">
+        <h3><i class="ti ti-file-check"></i> 明文</h3>
+        <textarea id="vigenereOutput" readonly placeholder="逐步破解后结果显示在这里"></textarea>
+      </div>
+    </div>
+
+    <!-- 分步按钮 -->
+    <div class="step-buttons">
+      <button class="btn btn-primary" id="vStep1Btn" onclick="vigenereStep1()"><i class="ti ti-number-1"></i> 第一步：推断密钥长度</button>
+      <button class="btn btn-primary" id="vStep2Btn" onclick="vigenereStep2()" disabled><i class="ti ti-number-2"></i> 第二步：逐位破解密钥</button>
+      <button class="btn btn-primary" id="vStep3Btn" onclick="vigenereStep3()" disabled><i class="ti ti-number-3"></i> 第三步：解密全文</button>
+      <button class="btn btn-secondary" onclick="clearVigenere()"><i class="ti ti-trash"></i> 清空</button>
+    </div>
+
+    <!-- 步骤进度 -->
+    <div class="step-progress" id="vStepProgress">
+      <div class="step-item" id="vStepItem1">
+        <div class="step-num">1</div>
+        <div class="step-label">推断密钥长度</div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-item" id="vStepItem2">
+        <div class="step-num">2</div>
+        <div class="step-label">逐位频率分析</div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-item" id="vStepItem3">
+        <div class="step-num">3</div>
+        <div class="step-label">还原明文</div>
+      </div>
+    </div>
+
+    <!-- IC 分析 -->
+    <div id="vigenereICSection" style="display:none;">
+      <div class="chart-container">
+        <h3><i class="ti ti-chart-dots"></i> 重合指数（IC）分析</h3>
+        <p class="chart-explain">英文文本 IC ≈ 0.067，随机字符 IC ≈ 0.038。按某个长度分组后 IC 接近英文值 → 那就是密钥长度。</p>
+        <table class="ic-table" id="icTable">
+          <thead><tr><th>密钥长度</th><th>平均 IC</th><th>匹配度</th></tr></thead>
+          <tbody id="icTableBody"></tbody>
+        </table>
+        <div class="ic-verdict" id="icVerdict"></div>
+      </div>
+    </div>
+
+    <!-- 密钥结果 -->
+    <div id="vigenereKeySection" style="display:none;">
+      <div class="insight-box">
+        <h3><i class="ti ti-key"></i> 密钥破解结果</h3>
+        <p>推断密钥长度：<strong id="vKeyLength" class="highlight-num">?</strong></p>
+        <p>逐位频率分析得到密钥：</p>
+        <div class="key-display" id="vKeyResult">?</div>
+        <p class="key-explain">每个字母对应一位偏移量（A=0, B=1, ... Z=25），循环使用。</p>
+      </div>
+    </div>
+
+    <!-- 频率图 -->
+    <div class="chart-container" id="vigenereFreqContainer" style="display:none;">
+      <h3><i class="ti ti-chart-bar"></i> 解密后频率分布</h3>
+      <p class="chart-explain">如果解密正确，频率分布应该回归英文标准形状。</p>
+      <div class="freq-bars" id="vigenereFreqBars"></div>
+      <div class="freq-legend">
+        <span><span class="dot cipher"></span> 解密后频率</span>
+        <span><span class="dot english"></span> 英文标准频率</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 加密工坊 ── -->
+  <div class="section" id="encryptSection" style="display:none;">
+    <h2><i class="ti ti-lock"></i> 加密工坊</h2>
+    <div class="method-explain">
+      <p><span class="tag-fun">模式：动手</span> 先加密一段文本，再发送到破解模块，亲眼看自己的密码如何被频率分析击穿。</p>
+    </div>
+
+    <div class="mode-tabs" id="encryptTypeTabs">
+      <div class="mode-tab active" data-type="caesar" onclick="switchEncryptType('caesar')">凯撒</div>
+      <div class="mode-tab" data-type="vigenere" onclick="switchEncryptType('vigenere')">维吉尼亚</div>
+    </div>
+
+    <div class="io-grid">
+      <div class="io-panel">
+        <h3><i class="ti ti-file-text"></i> 明文</h3>
+        <textarea id="encryptInput" placeholder="输入一段英文文本...&#10;&#10;例如: THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG"></textarea>
+      </div>
+      <div class="io-panel">
+        <h3><i class="ti ti-lock"></i> 密文</h3>
+        <textarea id="encryptOutput" readonly placeholder="加密结果将显示在这里"></textarea>
+      </div>
+    </div>
+
+    <div class="control-row" id="caesarEncryptControls">
+      <label>偏移量：</label>
+      <input type="number" id="encryptShift" min="1" max="25" value="3">
+      <button class="btn btn-primary" onclick="doEncrypt()"><i class="ti ti-lock"></i> 加密</button>
+      <button class="btn btn-danger" onclick="sendToCrack()"><i class="ti ti-arrow-right"></i> 发送去破解，看看能不能扛住</button>
+    </div>
+    <div class="control-row" id="vigenereEncryptControls" style="display:none;">
+      <label>密钥词：</label>
+      <input type="text" id="encryptKey" value="SECRET" placeholder="密钥词">
+      <button class="btn btn-primary" onclick="doEncrypt()"><i class="ti ti-lock"></i> 加密</button>
+      <button class="btn btn-danger" onclick="sendToCrack()"><i class="ti ti-arrow-right"></i> 发送去破解，看看能不能扛住</button>
+    </div>
+  </div>
+
+  <!-- ── 历史时间线 ── -->
+  <div class="section">
+    <h2><i class="ti ti-history"></i> 密码术的遗失与重新发明</h2>
+    <p class="section-intro">同一个技术被发明了多少次？看时间线就知道——每次「遗失」背后都有一个荒诞的原因。</p>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-year">约公元前 50 年</div>
+        <div class="timeline-text"><strong>凯撒密码</strong>诞生。尤利乌斯·凯撒用字母偏移给将领写信。简单替换，当时无人能破。</div>
+      </div>
+      <div class="timeline-item lost">
+        <div class="timeline-year">约 850 年</div>
+        <div class="timeline-text">阿拉伯学者 <strong>Al-Kindi</strong> 写下《论破译加密信息》，发明<strong>频率分析法</strong>——统计字母频率即可破解任何替换密码。</div>
+      </div>
+      <div class="timeline-item lost">
+        <div class="timeline-year">850 – 1400 年 <span class="lost-badge">遗失 600 年</span></div>
+        <div class="timeline-text">这本书<strong>在欧洲完全不为人知</strong>。欧洲人继续用单表替换密码 600 年，以为它安全。</div>
+      </div>
+      <div class="timeline-item reinvent">
+        <div class="timeline-year">约 1460 年 <span class="reinvent-badge">重新发明</span></div>
+        <div class="timeline-text">Alberti「重新发明」频率分析，并提出<strong>多表替换</strong>来对抗它。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-year">1553 年</div>
+        <div class="timeline-text">Bellaso 发明<strong>维吉尼亚密码</strong>。被称「不可破译之密码」持续 300 年。</div>
+      </div>
+      <div class="timeline-item lost">
+        <div class="timeline-year">1854 年 <span class="lost-badge">保密</span></div>
+        <div class="timeline-text">Babbage 悄悄破解了维吉尼亚密码，因克里米亚战争<strong>未公开发表</strong>。</div>
+      </div>
+      <div class="timeline-item reinvent">
+        <div class="timeline-year">1863 年 <span class="reinvent-badge">重新发明</span></div>
+        <div class="timeline-text">Kasiski 独立发表破解方法——比 Babbage 晚了 9 年。</div>
+      </div>
+      <div class="timeline-item lost">
+        <div class="timeline-year">1970–74 年 <span class="lost-badge">机密</span></div>
+        <div class="timeline-text">GCHQ 的 Ellis/Cocks/Williamson 秘密发明公钥密码（≈RSA + DH），锁进保险柜。</div>
+      </div>
+      <div class="timeline-item reinvent">
+        <div class="timeline-year">1976–77 年 <span class="reinvent-badge">重新发明</span></div>
+        <div class="timeline-text">Diffie-Hellman 和 RSA <strong>独立重新发明</strong>公钥密码。直到 1997 年 GCHQ 解密才知道。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 原理说明 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么频率分析能破解密码</h2>
+    <div class="insight-box green">
+      <h3><i class="ti ti-bulb"></i> 核心原理</h3>
+      <p>英文中 E 占 12.7%、T 占 9.1%、A 占 8.2%……这个分布是语言的「指纹」。无论你怎么替换字母，频率分布会原封不动地从明文「泄漏」到密文中。只要密文够长，统计就能暴露一切。</p>
+    </div>
+    <p style="color:#a0a0a0;font-size:0.85rem;margin-top:12px;">频率数据来源：Robert Lewand, <em>Cryptological Mathematics</em>, Mathematical Association of America, 2000.</p>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -246,6 +246,8 @@ textarea::placeholder { color: #555; }
 .ic-table td {
   padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,0.04);
 }
+.ic-table tr { transition: background 0.2s; }
+.ic-table tr:hover { background: rgba(255,215,0,0.05); }
 .ic-table tr.highlight { background: rgba(255,215,0,0.08); }
 .ic-table .ic-bar {
   height: 6px; border-radius: 3px; background: rgba(255,215,0,0.5);
@@ -305,6 +307,15 @@ textarea::placeholder { color: #555; }
   background: rgba(129,199,132,0.15); color: #81c784; border: 1px solid rgba(129,199,132,0.3);
   padding: 1px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: 600;
 }
+
+/* ── 短文本警告 ── */
+.short-warn {
+  background: rgba(255,183,77,0.1); border: 1px solid rgba(255,183,77,0.3);
+  border-radius: 8px; padding: 10px 14px; margin: 12px 0;
+  font-size: 0.82rem; color: #ffb74d;
+  display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;
+}
+.short-warn i { flex-shrink: 0; margin-top: 2px; }
 
 /* ── 滚动条 ── */
 ::-webkit-scrollbar { width: 5px; }

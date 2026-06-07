@@ -125,6 +125,18 @@ function crackCaesar() {
   const input = document.getElementById('caesarInput').value.trim();
   if (!input) return;
 
+  // 统计字母数量，太短时提示
+  const letterCount = input.replace(/[^a-zA-Z]/g, '').length;
+  const warnEl = document.getElementById('caesarShortWarn');
+  if (warnEl) {
+    if (letterCount < 30) {
+      warnEl.style.display = '';
+      warnEl.innerHTML = `<i class="ti ti-alert-triangle"></i> 只有 ${letterCount} 个字母，样本太少，频率分析可能不准确。建议使用 50+ 字母的密文以获得可靠结果。`;
+    } else {
+      warnEl.style.display = 'none';
+    }
+  }
+
   const results = bruteForceCaesar(input);
 
   // 最佳结果
@@ -189,7 +201,7 @@ function vigenereStep1() {
   const bestLen = icResults[0].length;
   vState.keyLength = bestLen;
   document.getElementById('icVerdict').innerHTML =
-    `<i class="ti ti-check"></i> 最可能的密钥长度：<strong>${bestLen}</strong>（IC = ${icResults[0].ic.toFixed(4)}，最接近英文水平 0.067）`;
+    `<i class="ti ti-check"></i> 推荐密钥长度：<strong>${bestLen}</strong>（IC = ${icResults[0].ic.toFixed(4)}）。不确定的话，<strong>点击表格的行</strong>可以换一个长度试试。`;
 
   // 启用第二步
   document.getElementById('vStep1Btn').disabled = true;
@@ -245,12 +257,27 @@ function renderICTable(results) {
   tbody.innerHTML = results.slice(0, 10).map((r, i) => {
     const pct = (r.ic / maxIC * 100).toFixed(0);
     const isHighlight = i === 0;
-    return `<tr class="${isHighlight ? 'highlight' : ''}">
+    return `<tr class="${isHighlight ? 'highlight' : ''}" onclick="selectKeyLength(${r.length})" style="cursor:pointer;" title="点击选择此长度">
       <td style="color:${isHighlight ? '#ffd700' : '#c0c0c0'};font-weight:${isHighlight?'700':'400'}">${r.length}</td>
       <td style="font-family:monospace;color:${isHighlight ? '#ffd700' : '#c0c0c0'}">${r.ic.toFixed(4)}</td>
       <td><div class="ic-bar" style="width:${pct}%;${isHighlight ? 'background:rgba(255,215,0,0.8);' : ''}"></div></td>
     </tr>`;
   }).join('');
+}
+
+function selectKeyLength(len) {
+  vState.keyLength = len;
+  document.getElementById('icVerdict').innerHTML =
+    `<i class="ti ti-check"></i> 已选择密钥长度：<strong>${len}</strong>`;
+  // 高亮选中行
+  document.querySelectorAll('#icTableBody tr').forEach(tr => {
+    tr.classList.remove('highlight');
+    const td = tr.querySelector('td');
+    if (td && parseInt(td.textContent) === len) tr.classList.add('highlight');
+  });
+  // 确保第二步按钮可用
+  document.getElementById('vStep2Btn').disabled = false;
+  document.getElementById('vStepItem2').classList.add('active');
 }
 
 function clearVigenere() {

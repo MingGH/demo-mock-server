@@ -285,7 +285,25 @@ function icKeyLengthEstimate(ciphertext, maxLen) {
     });
   }
 
-  results.sort((a, b) => a.closeness - b.closeness);
+  // Sort by IC descending — higher IC means more English-like when grouped by this length
+  results.sort((a, b) => b.ic - a.ic);
+
+  // 启发式：top1 可能是真实密钥长度的倍数（如真密钥4，长度8/12的IC也会高）
+  // 如果 top5 中有更短的能整除 top1 且IC也不错（差距在 0.01 以内），选更短的
+  if (results.length >= 2) {
+    const top1 = results[0];
+    for (let i = 1; i < Math.min(5, results.length); i++) {
+      const c = results[i];
+      if (c.length >= 3 && c.length < top1.length
+          && top1.length % c.length === 0
+          && (top1.ic - c.ic) < 0.01) {
+        results.splice(i, 1);
+        results.unshift(c);
+        break;
+      }
+    }
+  }
+
   return results;
 }
 

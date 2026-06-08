@@ -60,18 +60,26 @@ public class P2pSpyService {
     private final Cache<String, PeerDiscoveryResult> resultCache;
     private final Map<String, Mono<PeerDiscoveryResult>> inflightQueries = new java.util.concurrent.ConcurrentHashMap<>();
     private final boolean dhtEnabled;
+    private final GeoIpService geoIpService;
 
-    public P2pSpyService() {
-        this(true);
+    /** Spring 注入构造器。 */
+    public P2pSpyService(GeoIpService geoIpService) {
+        this(true, geoIpService);
     }
 
-    /** 支持测试时关闭 DHT 查询。 */
-    public P2pSpyService(boolean dhtEnabled) {
+    /** 支持测试时关闭 DHT 查询并可选注入 GeoIpService。 */
+    public P2pSpyService(boolean dhtEnabled, GeoIpService geoIpService) {
         this.dhtEnabled = dhtEnabled;
+        this.geoIpService = geoIpService;
         this.resultCache = Caffeine.newBuilder()
                 .expireAfterWrite(10, TimeUnit.MINUTES)
                 .maximumSize(10)
                 .build();
+    }
+
+    /** 测试便捷构造器（无 GeoIP）。 */
+    public P2pSpyService(boolean dhtEnabled) {
+        this(dhtEnabled, null);
     }
 
     /**
@@ -147,15 +155,29 @@ public class P2pSpyService {
         }
     }
 
-    // ── IP 地理定位（基于 IP 段粗略映射） ──────────────────────────────
+    // ── IP 地理定位（优先 GeoLite2，降级为 IANA 段推测） ──────────────────
 
-    /** 根据 IP 首字节粗略判断国家（IANA 分配段）。 */
+    /** 用 GeoLite2 精确定位，如果不可用则按 IP 段粗略推测。 */
     private PeerInfo enrichWithGeo(DhtPeerDiscovery.DiscoveredPeer raw) {
-        GeoHint geo = guessGeoByIp(raw.ip());
+        if (geoIpService != null && geoIpService.isAvailable()) {
+            GeoIpService.GeoResult geo = geoIpService.lookup(raw.ip());
+            if (geo != null && geo.country() != null) {
+                return new PeerInfo(
+                        raw.ip(), raw.port(),
+                        geo.country(), geo.countryCode() != null ? geo.countryCode() : "XX",
+                        geo.city(),
+                        geo.lat() != null ? geo.lat() : 0.0,
+                        geo.lng() != null ? geo.lng() : 0.0,
+                        System.currentTimeMillis()
+                );
+            }
+        }
+        // 降级：粗略推测
+        GeoHint hint = guessGeoByIp(raw.ip());
         return new PeerInfo(
                 raw.ip(), raw.port(),
-                geo.country(), geo.countryCode(), null,
-                geo.lat(), geo.lng(),
+                hint.country(), hint.countryCode(), null,
+                hint.lat(), hint.lng(),
                 System.currentTimeMillis()
         );
     }

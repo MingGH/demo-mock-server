@@ -4,7 +4,7 @@ let mapChart = null;
 let currentData = null;
 
 async function init() {
-  initMap();
+  await initMap();
   initTradeoffSlider();
   await loadTorrents();
   await loadPeers(0);
@@ -12,7 +12,16 @@ async function init() {
 }
 
 // ========== ECharts 世界地图 ==========
-function initMap() {
+async function initMap() {
+  // 加载世界地图 GeoJSON 并注册
+  try {
+    const res = await fetch('https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/json/world.json');
+    const worldJson = await res.json();
+    echarts.registerMap('world', worldJson);
+  } catch (e) {
+    console.warn('Failed to load world map:', e);
+  }
+
   mapChart = echarts.init(document.getElementById('worldMap'), null, { renderer: 'canvas' });
   mapChart.setOption({
     backgroundColor: 'transparent',
@@ -20,9 +29,9 @@ function initMap() {
       map: 'world',
       roam: false,
       silent: true,
-      itemStyle: { areaColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', borderWidth: 0.5 },
+      itemStyle: { areaColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 0.4 },
       emphasis: { disabled: true },
-      projection: { project: (p) => [p[0] / 180 * Math.PI, -Math.log(Math.tan((Math.PI / 2 + p[1] / 180 * Math.PI) / 2))], unproject: (p) => [p[0] * 180 / Math.PI, 2 * 180 / Math.PI * Math.atan(Math.exp(p[1])) - 90] }
+      label: { show: false }
     },
     series: [{
       type: 'effectScatter',
@@ -38,8 +47,10 @@ function initMap() {
 
 function updateMap(peers) {
   if (!mapChart) return;
-  const data = peers.map(p => ({ value: [p.lng, p.lat], name: p.country }))
-      .filter(p => p.value[0] !== 0 || p.value[1] !== 0);
+  // 只展示有有效经纬度的 peer
+  const data = peers
+      .filter(p => !(p.lat === 0 && p.lng === 0))
+      .map(p => ({ value: [p.lng, p.lat], name: p.country }));
   mapChart.setOption({ series: [{ data }] });
 }
 

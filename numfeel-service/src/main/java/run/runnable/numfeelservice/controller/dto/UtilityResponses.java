@@ -163,4 +163,51 @@ public final class UtilityResponses {
             String job
     ) {
     }
+
+    /**
+     * P2P 隐私透视镜 — 单个 peer 信息（IP 已打码）。
+     *
+     * @param ip 打码后的 IP（如 "104.25.*.*"）
+     * @param port 端口号
+     * @param country 国家名称
+     * @param countryCode ISO 国家代码
+     * @param city 城市名称
+     * @param lat 纬度
+     * @param lng 经度
+     * @param discoveredAt 发现时间戳（毫秒）
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record P2pPeerResponse(
+            String ip, int port, String country, String countryCode,
+            String city, double lat, double lng, long discoveredAt
+    ) {
+    }
+
+    /**
+     * P2P 隐私透视镜 — torrent 概要。
+     *
+     * @param index 预设索引
+     * @param name torrent 文件名
+     * @param infohash SHA1 infohash
+     */
+    public record P2pTorrentResponse(int index, String name, String infohash) {
+    }
+
+    /**
+     * P2P 隐私透视镜 — peer 发现结果。
+     *
+     * @param torrentName torrent 文件名
+     * @param infohash SHA1 infohash
+     * @param totalPeers 发现的 peer 总数
+     * @param countryDistribution 按国家统计的 peer 分布
+     * @param sampleLog 最近 20 条 peer 样本（IP 已打码）
+     * @param updatedAt 数据更新时间戳
+     */
+    public record P2pDiscoveryResponse(
+            String torrentName, String infohash, int totalPeers,
+            java.util.Map<String, Long> countryDistribution,
+            List<P2pPeerResponse> sampleLog,
+            long updatedAt
+    ) {
+    }
 }

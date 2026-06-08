@@ -795,6 +795,38 @@
       ]
     },
     {
+      "name": "P2P Spy",
+      "item": [
+        {
+          "name": "GET /p2p/torrents",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/p2p/torrents",
+              "host": ["{{baseUrl}}"],
+              "path": ["p2p", "torrents"]
+            },
+            "description": "获取预设 torrent 列表（Ubuntu、Debian 等合法公开资源）"
+          }
+        },
+        {
+          "name": "GET /p2p/peers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/p2p/peers?index=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["p2p", "peers"],
+              "query": [
+                { "key": "index", "value": "0", "description": "预设 torrent 索引 (0=Ubuntu, 1=Debian)" }
+              ]
+            },
+            "description": "获取指定 torrent 的真实 DHT peer 列表（IP 已打码），含国家分布统计"
+          }
+        }
+      ]
+    },
+    {
       "name": "StatsProxy",
       "item": [
         {

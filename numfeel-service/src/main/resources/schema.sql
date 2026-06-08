@@ -310,3 +310,20 @@ CREATE TABLE IF NOT EXISTS ehp_quiz_results (
     created_at      BIGINT     NOT NULL,
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- DHT peer 发现缓存（P2P 隐私透视镜）
+CREATE TABLE IF NOT EXISTS dht_peers (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    infohash        VARCHAR(40)  NOT NULL,
+    ip              VARCHAR(45)  NOT NULL,
+    port            INT          NOT NULL,
+    country         VARCHAR(64)  NOT NULL DEFAULT 'Unknown',
+    country_code    VARCHAR(2)   NOT NULL DEFAULT 'XX',
+    city            VARCHAR(128) NOT NULL DEFAULT '',
+    lat             DOUBLE       NULL,
+    lng             DOUBLE       NULL,
+    torrent_name    VARCHAR(256) NOT NULL DEFAULT '',
+    discovered_at   BIGINT       NOT NULL,
+    INDEX idx_infohash (infohash),
+    INDEX idx_discovered (discovered_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

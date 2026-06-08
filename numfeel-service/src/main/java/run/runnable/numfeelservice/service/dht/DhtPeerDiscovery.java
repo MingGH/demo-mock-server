@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 最小化 DHT 客户端，实现 BEP-5 的 get_peers 查询。
@@ -40,9 +41,12 @@ public class DhtPeerDiscovery implements AutoCloseable {
     };
 
     private static final int SOCKET_TIMEOUT_MS = 2000;
-    private static final int MAX_ITERATIONS = 4;
-    private static final int MAX_PEERS = 500;
-    private static final long MAX_TOTAL_MS = 12_000; // 整体查询硬上限 12 秒
+    private static final int BATCH_RECV_TIMEOUT_MS = 600;
+    private static final int BATCH_TOTAL_MS = 3500;
+    private static final int MAX_BATCH_SIZE = 50;
+    private static final int MAX_ITERATIONS = 8;
+    private static final int MAX_PEERS = 1000;
+    private static final long MAX_TOTAL_MS = 18_000;
 
     private final byte[] nodeId;
     private final DatagramSocket socket;
@@ -83,45 +87,27 @@ public class DhtPeerDiscovery implements AutoCloseable {
 
         log.info("Bootstrap complete, got {} initial nodes", nodesToQuery.size());
 
-        // 第二步：迭代 get_peers
+        // 第二步：批量迭代 get_peers（同一轮节点全部并发发出，再统一收回复）
         Set<String> queriedNodes = new HashSet<>();
         for (int iter = 0; iter < MAX_ITERATIONS && peers.size() < MAX_PEERS; iter++) {
-            if (System.currentTimeMillis() - startTime > MAX_TOTAL_MS) {
-                log.info("Time limit reached after {} iterations, returning {} peers", iter, peers.size());
+            if (elapsed(startTime) > MAX_TOTAL_MS) break;
+
+            List<NodeInfo> batch = nodesToQuery.stream()
+                    .filter(n -> queriedNodes.add(nodeKey(n)))
+                    .limit(MAX_BATCH_SIZE)
+                    .collect(Collectors.toList());
+
+            if (batch.isEmpty()) break;
+
+            try {
+                socket.setSoTimeout(BATCH_RECV_TIMEOUT_MS);
+            } catch (java.net.SocketException e) {
+                log.warn("Failed to set batch timeout: {}", e.getMessage());
                 break;
             }
-            List<NodeInfo> nextRound = new ArrayList<>();
-
-            for (NodeInfo node : nodesToQuery) {
-                if (peers.size() >= MAX_PEERS) break;
-                if (System.currentTimeMillis() - startTime > MAX_TOTAL_MS) break;
-                String nodeKey = node.address().getHostAddress() + ":" + node.port();
-                if (queriedNodes.contains(nodeKey)) continue;
-                queriedNodes.add(nodeKey);
-
-                try {
-                    GetPeersResult result = sendGetPeers(node.address(), node.port(), infohash);
-                    if (result.peers() != null) {
-                        for (DiscoveredPeer peer : result.peers()) {
-                            String peerKey = peer.ip() + ":" + peer.port();
-                            if (seenPeers.add(peerKey)) {
-                                peers.add(peer);
-                            }
-                        }
-                    }
-                    if (result.nodes() != null) {
-                        nextRound.addAll(result.nodes());
-                    }
-                } catch (SocketTimeoutException e) {
-                    // 超时正常，跳过
-                } catch (Exception e) {
-                    log.debug("get_peers to {} failed: {}", nodeKey, e.getMessage());
-                }
-            }
-
+            List<NodeInfo> nextRound = batchQueryGetPeers(batch, infohash, seenPeers, peers);
             nodesToQuery = nextRound;
-            if (nodesToQuery.isEmpty()) break;
-            log.debug("Iteration {}: {} peers found, {} nodes to query next",
+            log.debug("Iteration {}: {} peers found, {} nodes for next round",
                     iter + 1, peers.size(), nodesToQuery.size());
         }
 
@@ -135,6 +121,102 @@ public class DhtPeerDiscovery implements AutoCloseable {
         if (socket != null && !socket.isClosed()) {
             socket.close();
         }
+    }
+
+    // ── 批量 get_peers 查询 ──────────────────────────────────────────
+
+    /**
+     * 批量 get_peers：对所有待查节点并发发出 UDP 查询，再循环收回复。
+     * <p>
+     * 相比串行逐个发收，此方法在同一时间段内可查询数十个节点。
+     */
+    @SuppressWarnings("unchecked")
+    private List<NodeInfo> batchQueryGetPeers(List<NodeInfo> nodes, byte[] infohash,
+                                               Set<String> seenPeers, List<DiscoveredPeer> peers) {
+        Map<String, NodeInfo> pending = new LinkedHashMap<>();
+
+        for (NodeInfo node : nodes) {
+            String txId = nextTxId();
+            try {
+                byte[] encoded = buildGetPeersQuery(txId, infohash);
+                DatagramPacket packet = new DatagramPacket(encoded, encoded.length,
+                        node.address(), node.port());
+                socket.send(packet);
+                pending.put(txId, node);
+            } catch (Exception e) {
+                log.debug("Send to {} failed: {}", node.address(), e.getMessage());
+            }
+        }
+
+        if (pending.isEmpty()) return List.of();
+
+        long deadline = System.currentTimeMillis() + BATCH_TOTAL_MS;
+        List<NodeInfo> nextRound = new ArrayList<>();
+        byte[] buf = new byte[4096];
+
+        while (!pending.isEmpty() && System.currentTimeMillis() < deadline) {
+            try {
+                DatagramPacket recv = new DatagramPacket(buf, buf.length);
+                socket.receive(recv);
+                byte[] data = new byte[recv.getLength()];
+                System.arraycopy(recv.getData(), recv.getOffset(), data, 0, recv.getLength());
+
+                Map<String, Object> decoded = (Map<String, Object>) Bencode.decode(data);
+                String txId = decoded.get("t") instanceof byte[] tb
+                        ? new String(tb, java.nio.charset.StandardCharsets.UTF_8) : null;
+                if (txId == null) continue;
+
+                NodeInfo node = pending.remove(txId);
+                if (node == null) continue;
+
+                Map<String, Object> r = (Map<String, Object>) decoded.get("r");
+                if (r == null) continue;
+
+                Object valuesObj = r.get("values");
+                if (valuesObj instanceof List<?> valuesList) {
+                    for (Object v : valuesList) {
+                        if (v instanceof byte[] compact && compact.length == 6) {
+                            DiscoveredPeer peer = parsePeerCompact(compact);
+                            if (seenPeers.add(peer.ip() + ":" + peer.port())) {
+                                peers.add(peer);
+                            }
+                        }
+                    }
+                }
+
+                Object nodesObj = r.get("nodes");
+                if (nodesObj instanceof byte[] nodesBytes) {
+                    nextRound.addAll(parseCompactNodes(nodesBytes));
+                }
+            } catch (SocketTimeoutException e) {
+                break;
+            } catch (Exception e) {
+                log.debug("Failed to process batch response: {}", e.getMessage());
+            }
+        }
+
+        return nextRound;
+    }
+
+    /** 构建 get_peers 查询消息的 bencode 字节。 */
+    private byte[] buildGetPeersQuery(String txId, byte[] infohash) throws Exception {
+        Map<String, Object> query = new LinkedHashMap<>();
+        query.put("t", txId);
+        query.put("y", "q");
+        query.put("q", "get_peers");
+        Map<String, Object> args = new LinkedHashMap<>();
+        args.put("id", nodeId);
+        args.put("info_hash", infohash);
+        query.put("a", args);
+        return Bencode.encode(query);
+    }
+
+    private static long elapsed(long startTime) {
+        return System.currentTimeMillis() - startTime;
+    }
+
+    private static String nodeKey(NodeInfo node) {
+        return node.address().getHostAddress() + ":" + node.port();
     }
 
     // ── KRPC 消息构建与解析 ──────────────────────────────────────────

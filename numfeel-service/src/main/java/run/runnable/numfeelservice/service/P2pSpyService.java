@@ -94,8 +94,8 @@ public class P2pSpyService {
         return Mono.just(summaries);
     }
 
-    /** 定时任务：每 30 分钟刷新所有预设 torrent 的 peer 数据。 */
-    @Scheduled(fixedDelay = 1800_000, initialDelay = 10_000)
+    /** 定时任务：每 30 分钟刷新所有预设 torrent 的 peer 数据。启动 30 秒后首次执行（等待建表完成）。 */
+    @Scheduled(fixedDelay = 1800_000, initialDelay = 30_000)
     public void scheduledRefresh() {
         log.info("Scheduled DHT refresh starting for {} torrents", PRESET_TORRENTS.size());
         PRESET_TORRENTS.forEach(this::triggerAsyncRefresh);
@@ -123,7 +123,11 @@ public class P2pSpyService {
                         row.get("discovered_at") != null ? ((Number) row.get("discovered_at")).longValue() : 0L
                 ))
                 .all()
-                .collectList();
+                .collectList()
+                .onErrorResume(err -> {
+                    log.warn("Failed to load peers from DB: {}", err.getMessage());
+                    return Mono.just(List.of());
+                });
     }
 
     private Mono<Void> savePeersToDb(String infohash, String torrentName, List<PeerInfo> peers) {
@@ -170,10 +174,11 @@ public class P2pSpyService {
                         .thenReturn(peers.size()))
                 .doOnSuccess(count -> log.info("DHT refresh complete for {}: {} peers saved to DB",
                         meta.name(), count))
-                .doOnError(err -> log.warn("DHT refresh failed for {}: {}",
-                        meta.name(), err.getMessage()))
                 .doFinally(signal -> flag.set(false))
-                .subscribe();
+                .subscribe(
+                        count -> {},
+                        err -> log.warn("DHT refresh failed for {}: {}", meta.name(), err.getMessage())
+                );
     }
 
     private List<PeerInfo> executeDhtQuery(TorrentMeta meta) throws Exception {

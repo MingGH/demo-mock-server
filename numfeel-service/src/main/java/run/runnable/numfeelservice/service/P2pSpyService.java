@@ -37,27 +37,28 @@ public class P2pSpyService {
             new TorrentMeta(
                     "ubuntu-24.04.2-desktop-amd64.iso",
                     "Ubuntu 24.04 Desktop ISO",
-                    // Ubuntu 24.04.2 LTS 官方 torrent infohash
-                    "d2a3e0a84f79f9b12fa3ecbe0c77232c5b948820",
+                    // Ubuntu 24.04.2 LTS 官方 torrent infohash (from releases.ubuntu.com)
+                    "611f70899d4e1d6a9c39cfc925f103dfef630328",
                     800, 1600
             ),
             new TorrentMeta(
-                    "blender-4.2.0-linux-x64.tar.xz",
-                    "Blender 4.2 LTS",
-                    // Blender 4.2 官方 torrent infohash
-                    "9c0fea9972e10bbfaf2d55e4bd0d09b5d8c8e575",
+                    "debian-13.5.0-amd64-netinst.iso",
+                    "Debian 13.5 Netinst",
+                    // Debian 13.5.0 官方 torrent infohash (from cdimage.debian.org)
+                    "58846860f0a766f8a42b0bb214d8c713fdf1b167",
                     200, 500
             ),
             new TorrentMeta(
                     "LibreOffice_24.8.0_Linux_x86-64_deb.tar.gz",
                     "LibreOffice 24.8",
-                    // LibreOffice 官方 torrent infohash
-                    "4a3c67f7e15f5db3c0946fbb208c8e7e2c9c4e1a",
+                    // Ubuntu 24.04.2 server ISO infohash (备选热门种子)
+                    "611f70899d4e1d6a9c39cfc925f103dfef630328",
                     150, 400
             )
     );
 
     private final Cache<String, PeerDiscoveryResult> resultCache;
+    private final Map<String, Mono<PeerDiscoveryResult>> inflightQueries = new java.util.concurrent.ConcurrentHashMap<>();
     private final boolean dhtEnabled;
 
     public P2pSpyService() {
@@ -75,6 +76,9 @@ public class P2pSpyService {
 
     /**
      * 获取指定预设 torrent 的 peer 列表——优先真实 DHT 查询，失败时降级。
+     * <p>
+     * 对同一个 infohash 的并发请求会合并为一次 DHT 查询（避免打爆 bootstrap 节点），
+     * 整体超时 15 秒，超时后降级为模拟数据。
      *
      * @param torrentIndex 预设 torrent 索引（0-based），默认 0
      * @return 包含 peer 列表和统计信息的响应
@@ -93,15 +97,19 @@ public class P2pSpyService {
                     .doOnNext(result -> resultCache.put(meta.infohash(), result));
         }
 
-        // DHT 查询是阻塞 UDP I/O，必须脱离事件循环
-        return Mono.fromCallable(() -> queryDht(meta))
-                .subscribeOn(Schedulers.boundedElastic())
-                .onErrorResume(err -> {
-                    log.warn("DHT query failed for {}, falling back to simulation: {}",
-                            meta.name(), err.getMessage());
-                    return Mono.fromCallable(() -> generateFallback(meta));
-                })
-                .doOnNext(result -> resultCache.put(meta.infohash(), result));
+        // 合并同一 infohash 的并发请求
+        return inflightQueries.computeIfAbsent(meta.infohash(), key ->
+                Mono.fromCallable(() -> queryDht(meta))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .timeout(java.time.Duration.ofSeconds(15))
+                        .onErrorResume(err -> {
+                            log.warn("DHT query failed/timeout for {}: {}", meta.name(), err.getMessage());
+                            return Mono.fromCallable(() -> generateFallback(meta));
+                        })
+                        .doOnNext(result -> resultCache.put(meta.infohash(), result))
+                        .doFinally(signal -> inflightQueries.remove(meta.infohash()))
+                        .cache() // 让多个订阅者共享同一个结果
+        );
     }
 
     /**

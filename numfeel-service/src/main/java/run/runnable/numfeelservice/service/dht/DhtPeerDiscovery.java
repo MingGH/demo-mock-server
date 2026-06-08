@@ -39,9 +39,10 @@ public class DhtPeerDiscovery implements AutoCloseable {
             {"dht.libtorrent.org", "25401"}
     };
 
-    private static final int SOCKET_TIMEOUT_MS = 3000;
-    private static final int MAX_ITERATIONS = 6;
+    private static final int SOCKET_TIMEOUT_MS = 2000;
+    private static final int MAX_ITERATIONS = 4;
     private static final int MAX_PEERS = 500;
+    private static final long MAX_TOTAL_MS = 12_000; // 整体查询硬上限 12 秒
 
     private final byte[] nodeId;
     private final DatagramSocket socket;
@@ -65,9 +66,11 @@ public class DhtPeerDiscovery implements AutoCloseable {
         Set<String> seenPeers = new HashSet<>();
         List<DiscoveredPeer> peers = new ArrayList<>();
         List<NodeInfo> nodesToQuery = new ArrayList<>();
+        long startTime = System.currentTimeMillis();
 
         // 第一步：从 bootstrap 节点获取初始节点
         for (String[] bootstrap : BOOTSTRAP_NODES) {
+            if (System.currentTimeMillis() - startTime > MAX_TOTAL_MS) break;
             try {
                 InetAddress addr = InetAddress.getByName(bootstrap[0]);
                 int port = Integer.parseInt(bootstrap[1]);
@@ -83,10 +86,15 @@ public class DhtPeerDiscovery implements AutoCloseable {
         // 第二步：迭代 get_peers
         Set<String> queriedNodes = new HashSet<>();
         for (int iter = 0; iter < MAX_ITERATIONS && peers.size() < MAX_PEERS; iter++) {
+            if (System.currentTimeMillis() - startTime > MAX_TOTAL_MS) {
+                log.info("Time limit reached after {} iterations, returning {} peers", iter, peers.size());
+                break;
+            }
             List<NodeInfo> nextRound = new ArrayList<>();
 
             for (NodeInfo node : nodesToQuery) {
                 if (peers.size() >= MAX_PEERS) break;
+                if (System.currentTimeMillis() - startTime > MAX_TOTAL_MS) break;
                 String nodeKey = node.address().getHostAddress() + ":" + node.port();
                 if (queriedNodes.contains(nodeKey)) continue;
                 queriedNodes.add(nodeKey);
@@ -117,7 +125,8 @@ public class DhtPeerDiscovery implements AutoCloseable {
                     iter + 1, peers.size(), nodesToQuery.size());
         }
 
-        log.info("DHT discovery complete for {}: {} peers found", infohashHex.substring(0, 8), peers.size());
+        log.info("DHT discovery complete for {}: {} peers found in {}ms",
+                infohashHex.substring(0, 8), peers.size(), System.currentTimeMillis() - startTime);
         return peers;
     }
 

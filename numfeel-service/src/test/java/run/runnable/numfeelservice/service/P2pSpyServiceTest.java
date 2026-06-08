@@ -1,142 +1,57 @@
 package run.runnable.numfeelservice.service;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import reactor.test.StepVerifier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * P2pSpyService 单元测试 — 侧重可测试的纯函数逻辑。
+ * （数据库交互和 DHT 查询由集成测试覆盖。）
+ */
 class P2pSpyServiceTest {
 
-    private P2pSpyService service;
-
-    @BeforeEach
-    void setUp() {
-        // 测试环境关闭 DHT，避免网络依赖和超时
-        service = new P2pSpyService(false);
+    @Test
+    void maskIpShouldHideLastTwoOctets() {
+        assertEquals("104.25.*.*", P2pSpyService.maskIp("104.25.1.100"));
+        assertEquals("192.168.*.*", P2pSpyService.maskIp("192.168.0.1"));
+        assertEquals("10.0.*.*", P2pSpyService.maskIp("10.0.255.255"));
     }
 
     @Test
-    void getPeersShouldReturnPeersForDefaultTorrent() {
-        // DHT 查询在测试环境可能失败（无网络），但 fallback 应能工作
-        StepVerifier.create(service.getPeers(0))
-                .assertNext(result -> {
-                    assertEquals("ubuntu-24.04.2-desktop-amd64.iso", result.torrentName());
-                    assertNotNull(result.infohash());
-                    assertTrue(result.totalPeers() > 0);
-                    assertFalse(result.countryDistribution().isEmpty());
-                    assertFalse(result.allPeers().isEmpty());
-                    assertNotNull(result.updatedAt());
-                    assertNotNull(result.source());
-                })
-                .verifyComplete();
+    void maskIpShouldHandleNull() {
+        assertEquals("*.*.*.*", P2pSpyService.maskIp(null));
     }
 
     @Test
-    void getPeersShouldClampNegativeIndex() {
-        StepVerifier.create(service.getPeers(-1))
-                .assertNext(result -> {
-                    assertEquals("ubuntu-24.04.2-desktop-amd64.iso", result.torrentName());
-                })
-                .verifyComplete();
+    void maskIpShouldHandleInvalidFormat() {
+        assertEquals("abc", P2pSpyService.maskIp("abc"));
+        assertEquals("1.2.3", P2pSpyService.maskIp("1.2.3"));
     }
 
     @Test
-    void getPeersShouldClampTooLargeIndex() {
-        StepVerifier.create(service.getPeers(999))
-                .assertNext(result -> {
-                    assertEquals("LibreOffice_24.8.0_Linux_x86-64_deb.tar.gz", result.torrentName());
-                })
-                .verifyComplete();
+    void maskPeerShouldPreserveOtherFields() {
+        P2pSpyService.PeerInfo original = new P2pSpyService.PeerInfo(
+                "104.25.1.100", 6881, "United States", "US",
+                "San Francisco", 37.77, -122.42, 1000L);
+        P2pSpyService.PeerInfo masked = P2pSpyService.maskPeer(original);
+
+        assertEquals("104.25.*.*", masked.ip());
+        assertEquals(6881, masked.port());
+        assertEquals("United States", masked.country());
+        assertEquals("US", masked.countryCode());
+        assertEquals("San Francisco", masked.city());
+        assertEquals(37.77, masked.lat());
+        assertEquals(-122.42, masked.lng());
+        assertEquals(1000L, masked.discoveredAt());
     }
 
     @Test
-    void getPeersShouldCacheResults() {
-        P2pSpyService.PeerDiscoveryResult first = service.getPeers(0).block();
-        P2pSpyService.PeerDiscoveryResult second = service.getPeers(0).block();
-        assertNotNull(first);
-        assertNotNull(second);
-        assertEquals(first.totalPeers(), second.totalPeers());
-        assertEquals(first.allPeers().get(0).ip(), second.allPeers().get(0).ip());
-    }
-
-    @Test
-    void getPeersShouldReturnValidGeoData() {
-        StepVerifier.create(service.getPeers(0))
-                .assertNext(result -> {
-                    for (P2pSpyService.PeerInfo peer : result.allPeers()) {
-                        assertNotNull(peer.ip());
-                        assertFalse(peer.ip().isBlank());
-                        assertTrue(peer.port() > 0 && peer.port() < 65536);
-                        assertNotNull(peer.country());
-                        assertNotNull(peer.countryCode());
-                    }
-                })
-                .verifyComplete();
-    }
-
-    @Test
-    void getPeersShouldReturnCountryDistributionSumMatchingTotalPeers() {
-        StepVerifier.create(service.getPeers(0))
-                .assertNext(result -> {
-                    long distSum = result.countryDistribution().values().stream()
-                            .mapToLong(Long::longValue).sum();
-                    assertEquals(result.totalPeers(), (int) distSum);
-                })
-                .verifyComplete();
-    }
-
-    @Test
-    void getPeersShouldReturnSampleLogMaxTwenty() {
-        StepVerifier.create(service.getPeers(0))
-                .assertNext(result -> {
-                    assertTrue(result.sampleLog().size() <= 20);
-                    assertTrue(result.sampleLog().size() > 0);
-                })
-                .verifyComplete();
-    }
-
-    @Test
-    void listTorrentsShouldReturnAllPresets() {
-        StepVerifier.create(service.listTorrents())
-                .assertNext(list -> {
-                    assertEquals(3, list.size());
-                    assertEquals(0, list.get(0).index());
-                    assertEquals(1, list.get(1).index());
-                    assertEquals(2, list.get(2).index());
-                    assertNotNull(list.get(0).name());
-                    assertNotNull(list.get(0).infohash());
-                })
-                .verifyComplete();
-    }
-
-    @Test
-    void generateIpShouldReturnValidFormat() {
-        String ip = service.generateIp("US");
-        assertNotNull(ip);
-        String[] parts = ip.split("\\.");
-        assertEquals(4, parts.length);
-        for (String part : parts) {
-            int n = Integer.parseInt(part);
-            assertTrue(n >= 0 && n <= 255);
-        }
-    }
-
-    @Test
-    void generateFallbackShouldRespectMinMaxBounds() {
-        P2pSpyService.TorrentMeta meta = new P2pSpyService.TorrentMeta(
-                "test", "test.iso", "abcdef0123456789abcdef0123456789abcdef01", 10, 20);
-        P2pSpyService.PeerDiscoveryResult result = service.generateFallback(meta);
-        assertTrue(result.totalPeers() >= 10);
-        assertTrue(result.totalPeers() <= 20);
-        assertEquals("simulated", result.source());
-    }
-
-    @Test
-    void guessGeoByIpShouldReturnValidHint() {
-        P2pSpyService.GeoHint hint = P2pSpyService.guessGeoByIp("104.25.1.1");
-        assertNotNull(hint);
-        assertNotNull(hint.country());
-        assertNotNull(hint.countryCode());
+    void listTorrentsShouldReturnPresets() {
+        // PRESET_TORRENTS 包含 2 个 torrent
+        assertEquals(2, P2pSpyService.PRESET_TORRENTS.size());
+        assertEquals("611f70899d4e1d6a9c39cfc925f103dfef630328",
+                P2pSpyService.PRESET_TORRENTS.get(0).infohash());
+        assertEquals("58846860f0a766f8a42b0bb214d8c713fdf1b167",
+                P2pSpyService.PRESET_TORRENTS.get(1).infohash());
     }
 }

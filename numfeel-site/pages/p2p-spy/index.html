@@ -8,6 +8,8 @@
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/map/js/world.js"></script>
 </head>
 <body>
 <div class="container">
@@ -45,7 +47,7 @@
     <h2><i class="ti ti-world"></i> 全球 Peer 分布</h2>
     <p style="color:#888;font-size:0.88rem;margin-bottom:16px;">每个亮点是一个正在下载的 peer。点亮 = 暴露。</p>
     <div class="map-container">
-      <canvas id="worldMap"></canvas>
+      <div id="worldMap" style="width:100%;height:100%;"></div>
     </div>
     <div class="country-grid" id="countryGrid"></div>
   </div>

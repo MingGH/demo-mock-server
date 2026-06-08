@@ -59,8 +59,10 @@ body {
 /* ── World map ── */
 .map-container {
   position: relative; width: 100%; aspect-ratio: 2/1;
-  background: rgba(0,0,0,0.3); border-radius: 14px; overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.08);
+  background: radial-gradient(ellipse at center, rgba(10,30,60,0.8) 0%, rgba(5,15,35,0.95) 100%);
+  border-radius: 14px; overflow: hidden;
+  border: 1px solid rgba(255,215,0,0.1);
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
 }
 .map-container canvas { width: 100%; height: 100%; display: block; }
 

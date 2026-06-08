@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="BT下载时你的IP对所有人可见。选一个合法torrent，实时查看全球peer的IP和地理位置，体验P2P网络的零隐私特性。">
+  <title>P2P 隐私透视镜：谁在看你下载 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-eye-bolt"></i> P2P 隐私透视镜</h1>
+    <p>你以为 BT 下载是匿名的？看看一个合法 torrent 的 peer 列表——所有人的 IP 和位置都是公开的。</p>
+  </div>
+
+  <!-- ── 第一步：震撼数字 ── -->
+  <div class="section" id="heroSection">
+    <div class="hero-stats">
+      <div class="hero-big-number" id="heroNumber">—</div>
+      <div class="hero-desc">
+        <strong id="heroTorrent">—</strong> 的下载者此刻正在裸奔。<br>
+        任何人加入同一个 swarm 就能看到他们全部的 IP 地址。
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:10px;color:#666;font-size:0.82rem;">
+      <span id="updateTime">数据生成中…</span>
+    </div>
+  </div>
+
+  <!-- ── 第二步：选择 torrent ── -->
+  <div class="section">
+    <h2><i class="ti ti-select-all"></i> 选择一个合法 torrent</h2>
+    <p style="color:#888;font-size:0.88rem;margin-bottom:16px;">以下都是开源软件的官方发行版，完全合法。但 peer 列表对任何人公开。</p>
+    <div class="torrent-selector" id="torrentSelector">
+      <div class="loading"><div class="spinner"></div>加载中…</div>
+    </div>
+  </div>
+
+  <!-- ── 第三步：世界地图 ── -->
+  <div class="section">
+    <h2><i class="ti ti-world"></i> 全球 Peer 分布</h2>
+    <p style="color:#888;font-size:0.88rem;margin-bottom:16px;">每个亮点是一个正在下载的 peer。点亮 = 暴露。</p>
+    <div class="map-container">
+      <canvas id="worldMap"></canvas>
+    </div>
+    <div class="country-grid" id="countryGrid"></div>
+  </div>
+
+  <!-- ── 第四步：监控者日志 ── -->
+  <div class="section">
+    <h2><i class="ti ti-spy"></i> 监控者视角</h2>
+    <p style="color:#888;font-size:0.88rem;margin-bottom:16px;">如果有人在 swarm 中放一个「蜜罐节点」，它能记录以下所有信息——无需任何黑客技术。</p>
+    <div class="spy-log" id="spyLog">
+      <div class="spy-log-header">
+        <span class="blink"></span>
+        <span>MONITORING ACTIVE — 实时采集中</span>
+      </div>
+      <div id="logEntries">
+        <div class="loading"><div class="spinner"></div>等待数据…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 第五步：对比 ── -->
+  <div class="section">
+    <h2><i class="ti ti-arrows-exchange"></i> BT 下载 vs HTTPS 直连</h2>
+    <div class="compare-grid">
+      <div class="compare-card danger">
+        <h3><i class="ti ti-alert-triangle"></i> BT / 磁力链下载</h3>
+        <ul>
+          <li>你的 IP 对所有 peer 公开</li>
+          <li>下载内容（infohash）对所有人可见</li>
+          <li>协议加密（PE/MSE）只防ISP，不防同 swarm 的人</li>
+          <li>任何人可做「蜜罐节点」批量取证</li>
+          <li>DHT 网络 = 公开电话簿</li>
+        </ul>
+      </div>
+      <div class="compare-card safe">
+        <h3><i class="ti ti-shield-check"></i> HTTPS 直连下载</h3>
+        <ul>
+          <li>IP 仅对服务器可见</li>
+          <li>TLS 全程加密，内容不可嗅探</li>
+          <li>第三方无法知道你下了什么</li>
+          <li>服务器日志受隐私法约束</li>
+          <li>没有公开的「peer 列表」</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 第六步：Trade-off 滑块 ── -->
+  <div class="section tradeoff-section">
+    <h2><i class="ti ti-adjustments-horizontal"></i> 匿名性 vs 下载速度</h2>
+    <p style="color:#888;font-size:0.88rem;margin-bottom:20px;">P2P 协议中，隐私和效率是不可调和的矛盾。拖动滑块体验。</p>
+    <div class="tradeoff-labels">
+      <span class="left"><i class="ti ti-shield-lock"></i> 完全匿名</span>
+      <span class="right"><i class="ti ti-bolt"></i> 最高速度</span>
+    </div>
+    <input type="range" class="tradeoff-slider" id="tradeoffSlider" min="0" max="100" value="80">
+    <div class="tradeoff-result" id="tradeoffResult"></div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么 BT 做不到隐私？</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>分发必须可达</h4>
+        <p>要从别人那拿数据，别人必须能联系到你——必须公开你的 IP + 端口。这是 P2P 的前提条件。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>DHT = 公开电话簿</h4>
+        <p>分布式哈希表（DHT）让任何人用 get_peers 查到谁在下载什么。不需要 tracker，不需要权限，谁都能查。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>匿名 vs 效率不可兼得</h4>
+        <p>Tor 能匿名但带宽极低（适合网页），BT 要高带宽直连。多跳路由每多一层延迟翻倍。选了速度就选了裸奔。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">04</div>
+        <h4>监管成本极低</h4>
+        <p>执法机构只需要做一个蜜罐节点加入 swarm，就能批量收集所有下载者的 IP、时间、内容哈希——完整证据链。</p>
+      </div>
+    </div>
+
+    <div class="insight-box red" style="margin-top:24px;">
+      <h3><i class="ti ti-alert-circle"></i> 核心结论</h3>
+      <p>BT 协议的设计哲学是「牺牲隐私换效率」。这不是 bug，是 feature。所有的后续补丁（VPN、协议加密、I2P）都只能缓解，无法根治——因为「要分发必须可达」这个物理约束无法绕开。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

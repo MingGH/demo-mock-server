@@ -170,19 +170,20 @@ const TETRIS = (() => {
   }
 
   function calcUtilization() {
-    let filled = 0;
-    // count cells from top to the lowest filled row
-    let lowestRow = -1;
+    // Find the highest row that has any filled cell
+    let topRow = -1;
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
-        if (grid[r][c]) { lowestRow = r; break; }
+        if (grid[r][c]) { topRow = r; break; }
       }
+      if (topRow !== -1) break;
     }
-    if (lowestRow === -1) return 0;
-    // area = cols * (rows from lowestRow to bottom)
-    const height = ROWS - lowestRow;
+    if (topRow === -1) return 0;
+    // Total area = cols * height from topRow to bottom
+    const height = ROWS - topRow;
     const totalArea = COLS * height;
-    for (let r = lowestRow; r < ROWS; r++) {
+    let filled = 0;
+    for (let r = topRow; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         if (grid[r][c]) filled++;
       }

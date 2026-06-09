@@ -100,6 +100,7 @@ body {
 #suitcaseCanvas {
   display: block; width: 100%; border-radius: 8px;
   border: 2px solid rgba(255,215,0,0.3); background: rgba(0,0,0,0.4);
+  touch-action: none; cursor: grab;
 }
 .suitcase-stats {
   display: flex; justify-content: space-between; margin-top: 8px;
@@ -192,8 +193,13 @@ body {
   .section { padding: 16px; }
   .tetris-area { flex-direction: column; align-items: center; }
   .packing-area { grid-template-columns: 1fr; }
+  .items-panel { order: -1; }
+  .items-list { flex-direction: row; flex-wrap: wrap; max-height: none; }
+  .item-chip { padding: 6px 10px; font-size: 0.8rem; }
+  #suitcaseCanvas { height: auto; aspect-ratio: 4/3; }
   .compare-grid { grid-template-columns: 1fr; }
   .algo-canvas-row { grid-template-columns: 1fr; }
   .mapping-grid { grid-template-columns: 1fr 1fr; }
   .principle-grid { grid-template-columns: 1fr; }
+  .suitcase-wrap { touch-action: none; }
 }

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="俄罗斯方块教会你的装箱问题：不知道下一个形状是什么，要实时决定放哪里。对比人类直觉和经典算法的空间利用率。">
+  <title>俄罗斯方块与装箱问题 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-box-multiple"></i> 俄罗斯方块与装箱问题</h1>
+    <p>玩 30 秒俄罗斯方块，你就在解一个让计算机科学家头疼 50 年的 NP-hard 问题。</p>
+  </div>
+
+  <!-- ── 第一屏：迷你俄罗斯方块 ── -->
+  <div class="section" id="tetrisSection">
+    <h2><i class="ti ti-grid-dots"></i> 先来一局</h2>
+    <p class="section-desc">规则变了：方块不会消行，你的目标是把空间塞得越满越好。15 个方块后自动结束。</p>
+
+    <div class="tetris-area">
+      <div class="tetris-sidebar">
+        <div class="next-box">
+          <div class="next-label">下一个</div>
+          <canvas id="nextCanvas" width="80" height="80"></canvas>
+        </div>
+        <div class="stat-mini">
+          <div class="stat-mini-item">
+            <span class="stat-mini-val" id="pieceCount">0</span>
+            <span class="stat-mini-lbl">/ 15</span>
+          </div>
+        </div>
+      </div>
+      <div class="tetris-board-wrap">
+        <canvas id="tetrisCanvas" width="180" height="300"></canvas>
+        <div class="tetris-controls">
+          <button class="ctrl-btn" id="ctrlLeft" aria-label="左移"><i class="ti ti-arrow-left"></i></button>
+          <button class="ctrl-btn" id="ctrlRotate" aria-label="旋转"><i class="ti ti-rotate-clockwise"></i></button>
+          <button class="ctrl-btn" id="ctrlRight" aria-label="右移"><i class="ti ti-arrow-right"></i></button>
+          <button class="ctrl-btn" id="ctrlDrop" aria-label="快落"><i class="ti ti-arrow-down"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tetris-start-overlay" id="tetrisOverlay">
+      <button class="btn btn-primary btn-lg" id="startTetrisBtn">
+        <i class="ti ti-player-play"></i> 开始堆方块
+      </button>
+      <p class="overlay-hint">键盘 ← → 移动 · ↑ 旋转 · ↓ 加速 · 空格硬降</p>
+    </div>
+
+    <div class="tetris-result" id="tetrisResult" style="display:none;">
+      <div class="result-banner">
+        <span class="result-label">你的空间利用率</span>
+        <span class="result-value" id="tetrisUtilization">—</span>
+      </div>
+      <p class="result-comment" id="tetrisComment"></p>
+      <button class="btn btn-secondary" id="retryTetrisBtn">
+        <i class="ti ti-refresh"></i> 再来一局
+      </button>
+      <button class="btn btn-primary" id="goPackingBtn">
+        <i class="ti ti-arrow-down"></i> 看看算法能做多好
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 第二屏：行李箱装箱挑战 ── -->
+  <div class="section" id="packingSection">
+    <h2><i class="ti ti-luggage"></i> 行李箱装箱挑战</h2>
+    <p class="section-desc">把右边的物品拖进行李箱。放完后对比算法的结果，看你的直觉能打败 First-Fit 吗。</p>
+
+    <div class="packing-area">
+      <div class="suitcase-wrap">
+        <div class="suitcase-label">行李箱 <span id="suitcaseSize">400×300</span></div>
+        <canvas id="suitcaseCanvas" width="400" height="300"></canvas>
+        <div class="suitcase-stats">
+          <span>已用：<strong id="usedPercent">0%</strong></span>
+          <span>剩余：<strong id="remainPercent">100%</strong></span>
+        </div>
+      </div>
+      <div class="items-panel">
+        <div class="items-label">待装物品（可拖拽）</div>
+        <div class="items-list" id="itemsList"></div>
+        <div class="packing-actions">
+          <button class="btn btn-secondary btn-sm" id="resetPackingBtn">
+            <i class="ti ti-refresh"></i> 重置
+          </button>
+          <button class="btn btn-primary btn-sm" id="compareBtn">
+            <i class="ti ti-robot"></i> 对比算法
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-result" id="compareResult" style="display:none;">
+      <h3><i class="ti ti-chart-bar"></i> 对比结果</h3>
+      <div class="compare-grid">
+        <div class="compare-card human">
+          <span class="compare-tag">你的方案</span>
+          <span class="compare-val" id="humanUtil">—</span>
+        </div>
+        <div class="compare-card algo1">
+          <span class="compare-tag">First-Fit Decreasing</span>
+          <span class="compare-val" id="ffdUtil">—</span>
+        </div>
+        <div class="compare-card algo2">
+          <span class="compare-tag">Best-Fit Decreasing</span>
+          <span class="compare-val" id="bfdUtil">—</span>
+        </div>
+      </div>
+      <div class="algo-canvas-row">
+        <div class="algo-canvas-wrap">
+          <div class="algo-canvas-label">First-Fit Decreasing</div>
+          <canvas id="ffdCanvas" width="400" height="300"></canvas>
+        </div>
+        <div class="algo-canvas-wrap">
+          <div class="algo-canvas-label">Best-Fit Decreasing</div>
+          <canvas id="bfdCanvas" width="400" height="300"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 第三屏：现实连接 ── -->
+  <div class="section">
+    <h2><i class="ti ti-world"></i> 同一个问题的不同面孔</h2>
+    <p class="section-desc">你在俄罗斯方块里练了几十年的技能，计算机科学叫它「在线装箱问题」。</p>
+
+    <div class="mapping-grid">
+      <div class="mapping-card">
+        <div class="mapping-icon"><i class="ti ti-luggage"></i></div>
+        <h4>搬家装箱</h4>
+        <p>衣服、书本、锅碗瓢盆塞进有限的纸箱。经典 2D/3D 装箱问题，物流公司每天都在解。</p>
+      </div>
+      <div class="mapping-card">
+        <div class="mapping-icon"><i class="ti ti-ship"></i></div>
+        <h4>集装箱装货</h4>
+        <p>马士基每年运 1200 万个集装箱，每个集装箱的空间利用率提高 1% = 节省数亿美元。</p>
+      </div>
+      <div class="mapping-card">
+        <div class="mapping-icon"><i class="ti ti-cpu"></i></div>
+        <h4>内存分配</h4>
+        <p>操作系统把程序塞进 RAM，malloc() 用的就是 First-Fit / Best-Fit 策略。碎片化 = 空隙。</p>
+      </div>
+      <div class="mapping-card">
+        <div class="mapping-icon"><i class="ti ti-cloud"></i></div>
+        <h4>云服务器调度</h4>
+        <p>AWS 把虚拟机塞进物理机器。VM 大小不一，和俄罗斯方块的方块一模一样。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 第四屏：为什么是 NP-hard ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么计算机也解不好</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>NP-hard：没有快速最优解</h4>
+        <p>装箱问题已被证明是 NP-hard（Garey & Johnson, 1979）。物品数量一多，穷举所有可能摆放方式的时间超过宇宙年龄。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>在线 vs 离线</h4>
+        <p>离线版本可以先看完所有物品再决定（你打包行李时可以这样做）。在线版本一个一个来，放下就不能动——俄罗斯方块就是在线版本。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>人类直觉出奇地好</h4>
+        <p>研究表明人类在 2D 装箱任务中平均能达到最优解的 85-92%。你的大脑在做一种快速的「视觉启发式搜索」。</p>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <h3><i class="ti ti-bulb"></i> 关键洞察</h3>
+      <p>俄罗斯方块是在线 2D 装箱问题的一个变体。每次落下一个方块，你在有限信息下做出不可撤销的决策。这跟 AWS 分配虚拟机、快递员装车、操作系统分配内存，本质上是同一件事。区别只在于：游戏里失误了可以重来，现实里不行。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="tetris.js"></script>
+<script src="packing.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

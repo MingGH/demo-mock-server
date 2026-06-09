@@ -109,7 +109,6 @@ public class P2pSpyService {
                 FROM dht_peers
                 WHERE infohash = :infohash
                 ORDER BY discovered_at DESC
-                LIMIT 500
                 """)
                 .bind("infohash", infohash)
                 .map((row, meta) -> new PeerInfo(

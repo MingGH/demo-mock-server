@@ -1,0 +1,725 @@
+/* ── 布隆过滤器 Demo 样式 ── */
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.header h1 {
+  font-size: 1.8rem;
+  color: #ffd700;
+  margin-bottom: 12px;
+}
+
+.header p {
+  color: #aaa;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 32px;
+}
+
+.section h2 {
+  color: #e0e0e0;
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+}
+
+.section-desc {
+  color: #888;
+  font-size: 0.88rem;
+  margin-bottom: 20px;
+}
+
+/* ── 模块一：密码查询 ── */
+
+.check-area {
+  margin-bottom: 20px;
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.input-row input {
+  flex: 1;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-row input:focus {
+  border-color: #ffd700;
+}
+
+.btn-primary {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  border: none;
+  border-radius: 8px;
+  color: #1a1a2e;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.1s;
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  transform: scale(1.02);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  color: #ffd700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 215, 0, 0.2);
+}
+
+.preset-passwords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.preset-label {
+  color: #888;
+  font-size: 0.82rem;
+}
+
+.preset-btn {
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #90caf9;
+  font-size: 0.82rem;
+  font-family: monospace;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.preset-btn:hover {
+  background: rgba(144, 202, 249, 0.1);
+  border-color: #90caf9;
+}
+
+/* ── 查询结果对比 ── */
+
+.result-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 600px) {
+  .result-compare {
+    grid-template-columns: 1fr;
+  }
+}
+
+.result-card {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bloom-result {
+  background: rgba(255, 215, 0, 0.04);
+  border-color: rgba(255, 215, 0, 0.2);
+}
+
+.hibp-result {
+  background: rgba(144, 202, 249, 0.04);
+  border-color: rgba(144, 202, 249, 0.2);
+}
+
+.result-header {
+  font-size: 0.85rem;
+  color: #aaa;
+  margin-bottom: 12px;
+}
+
+.bloom-result .result-header { color: #ffd700; }
+.hibp-result .result-header { color: #90caf9; }
+
+.result-status {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.status-danger { color: #ff6b6b; }
+.status-safe { color: #81c784; }
+.status-loading { color: #aaa; }
+.status-error { color: #ff9800; }
+
+.result-time {
+  font-size: 0.82rem;
+  color: #888;
+  font-family: monospace;
+  margin-bottom: 8px;
+}
+
+.result-note {
+  font-size: 0.78rem;
+  color: #666;
+}
+
+/* ── 哈希可视化 ── */
+
+.hash-visualization {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.hash-visualization h3 {
+  color: #ccc;
+  font-size: 0.95rem;
+  margin-bottom: 16px;
+}
+
+.hash-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.hash-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.step-label {
+  color: #888;
+  font-size: 0.8rem;
+  min-width: 100px;
+}
+
+.step-value {
+  color: #ffd700;
+  font-family: monospace;
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+.bit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.bit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 0.65rem;
+  font-family: monospace;
+  border-radius: 3px;
+}
+
+.bit-zero {
+  background: rgba(255, 255, 255, 0.05);
+  color: #555;
+}
+
+.bit-one {
+  background: rgba(144, 202, 249, 0.2);
+  color: #90caf9;
+}
+
+.bit-hit {
+  background: rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  font-weight: bold;
+  box-shadow: 0 0 6px rgba(255, 215, 0, 0.3);
+}
+
+.bit-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.bit-legend .bit {
+  width: 16px;
+  height: 16px;
+  font-size: 0.6rem;
+  margin-right: 4px;
+}
+
+/* ── 模块二：参数调优实验室 ── */
+
+.lab-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-group label {
+  color: #aaa;
+  font-size: 0.85rem;
+  min-width: 130px;
+}
+
+.control-group input[type="range"] {
+  flex: 1;
+  accent-color: #ffd700;
+}
+
+.control-value {
+  color: #ffd700;
+  font-family: monospace;
+  font-size: 0.85rem;
+  min-width: 100px;
+  text-align: right;
+}
+
+.lab-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.metric-card.highlight {
+  border-color: rgba(255, 215, 0, 0.3);
+  background: rgba(255, 215, 0, 0.04);
+}
+
+.metric-label {
+  color: #888;
+  font-size: 0.78rem;
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  color: #ffd700;
+  font-size: 1.3rem;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.metric-formula {
+  color: #666;
+  font-size: 0.72rem;
+  font-family: monospace;
+  margin-top: 6px;
+}
+
+.bit-array-display {
+  margin-bottom: 20px;
+}
+
+.bit-array-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.bit-array-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.grid-bit {
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+}
+
+.grid-bit.bit-zero {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.grid-bit.bit-one {
+  background: #90caf9;
+}
+
+.experiment-result {
+  padding: 16px;
+  background: rgba(129, 199, 132, 0.06);
+  border: 1px solid rgba(129, 199, 132, 0.2);
+  border-radius: 10px;
+}
+
+.experiment-result h4 {
+  color: #81c784;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+.experiment-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.stat-item strong {
+  color: #ffd700;
+  font-family: monospace;
+}
+
+/* ── 模块三：内存对决 ── */
+
+.memory-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.memory-slider-row input[type="range"] {
+  flex: 1;
+  accent-color: #ffd700;
+}
+
+.memory-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 600px) {
+  .memory-compare-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.memory-card {
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hashset-card {
+  background: rgba(255, 107, 107, 0.06);
+  border-color: rgba(255, 107, 107, 0.2);
+}
+
+.bloom-card {
+  background: rgba(129, 199, 132, 0.06);
+  border-color: rgba(129, 199, 132, 0.2);
+}
+
+.memory-card-header {
+  font-size: 0.85rem;
+  color: #aaa;
+  margin-bottom: 12px;
+}
+
+.hashset-card .memory-card-header { color: #ff6b6b; }
+.bloom-card .memory-card-header { color: #81c784; }
+
+.memory-card-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: monospace;
+  margin-bottom: 8px;
+}
+
+.hashset-card .memory-card-value { color: #ff6b6b; }
+.bloom-card .memory-card-value { color: #81c784; }
+
+.memory-card-note {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.memory-chart-container {
+  height: 300px;
+  margin-bottom: 24px;
+  position: relative;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+/* ── 原理卡片 ── */
+
+.principle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.principle-card {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.principle-card .num {
+  color: #ffd700;
+  font-size: 1.5rem;
+  font-weight: 700;
+  opacity: 0.5;
+  margin-bottom: 8px;
+}
+
+.principle-card h4 {
+  color: #e0e0e0;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.principle-card p {
+  color: #888;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+/* ── 洞察框 ── */
+
+.insight-box {
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.insight-box.gold {
+  background: rgba(255, 215, 0, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.insight-box h3 {
+  color: #ffd700;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.insight-box p {
+  color: #ccc;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+/* ── 移动端适配 ── */
+
+@media (max-width: 768px) {
+  .container {
+    padding: 12px;
+  }
+
+  .header h1 {
+    font-size: 1.3rem;
+  }
+
+  .header p {
+    font-size: 0.85rem;
+  }
+
+  .section {
+    padding: 18px 14px;
+    margin-bottom: 20px;
+  }
+
+  .section h2 {
+    font-size: 1.1rem;
+  }
+
+  .input-row {
+    flex-direction: column;
+  }
+
+  .input-row input {
+    width: 100%;
+  }
+
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+  }
+
+  .preset-passwords {
+    justify-content: flex-start;
+  }
+
+  .result-compare {
+    grid-template-columns: 1fr;
+  }
+
+  .result-status {
+    font-size: 1rem;
+  }
+
+  .hash-step {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .step-label {
+    min-width: unset;
+  }
+
+  .step-value {
+    font-size: 0.75rem;
+  }
+
+  .bit {
+    width: 16px;
+    height: 16px;
+    font-size: 0.55rem;
+  }
+
+  .bit-legend {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .control-group {
+    flex-wrap: wrap;
+  }
+
+  .control-group label {
+    min-width: unset;
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  .control-value {
+    min-width: 80px;
+    font-size: 0.8rem;
+  }
+
+  .lab-metrics {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .metric-value {
+    font-size: 1rem;
+  }
+
+  .metric-formula {
+    font-size: 0.65rem;
+  }
+
+  .grid-bit {
+    width: 6px;
+    height: 6px;
+  }
+
+  .experiment-stats {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .memory-compare-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .memory-card-value {
+    font-size: 1.3rem;
+  }
+
+  .memory-chart-container {
+    height: 220px;
+  }
+
+  .memory-slider-row {
+    flex-wrap: wrap;
+  }
+
+  .memory-slider-row label {
+    width: 100%;
+  }
+
+  .principle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .insight-box p {
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .header h1 {
+    font-size: 1.1rem;
+  }
+
+  .lab-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .preset-btn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+
+  .memory-chart-container {
+    height: 180px;
+  }
+}

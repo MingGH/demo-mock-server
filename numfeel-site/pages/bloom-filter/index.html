@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="10亿条泄露密码，10ms查出你中没中招。布隆过滤器用1.7GB内存做到HashSet需要40GB才能做的事，代价仅0.1%误判率。亲手体验原理。">
+  <title>布隆过滤器：10ms 查出你的密码有没有泄露 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-filter-bolt"></i> 布隆过滤器：10ms 查出你的密码有没有泄露</h1>
+    <p>10 亿条泄露密码，HashSet 要 40GB 内存，布隆过滤器只要 1.7GB，代价是 0.1% 的误判。亲手感受这个 trade-off。</p>
+  </div>
+
+  <!-- ── 模块一：密码泄露查询 ── -->
+  <div class="section" id="checkSection">
+    <h2><i class="ti ti-shield-lock"></i> 你的密码中招了吗</h2>
+    <p class="section-desc">输入任意密码，同时用布隆过滤器（本地）和 HIBP 官方 API（网络）查询，对比速度和结果。所有计算在浏览器本地完成，密码不会上传。</p>
+    
+    <div class="check-area">
+      <div class="input-row">
+        <input type="text" id="passwordInput" placeholder="输入密码试试..." autocomplete="off">
+        <button id="checkBtn" class="btn-primary"><i class="ti ti-search"></i> 查询</button>
+      </div>
+      <div class="preset-passwords">
+        <span class="preset-label">常见弱密码：</span>
+        <button class="preset-btn" data-pwd="123456">123456</button>
+        <button class="preset-btn" data-pwd="password">password</button>
+        <button class="preset-btn" data-pwd="qwerty">qwerty</button>
+        <button class="preset-btn" data-pwd="abc123">abc123</button>
+        <button class="preset-btn" data-pwd="letmein">letmein</button>
+        <button class="preset-btn" data-pwd="iloveyou">iloveyou</button>
+      </div>
+    </div>
+
+    <div class="result-compare" id="resultCompare" style="display:none;">
+      <div class="result-card bloom-result">
+        <div class="result-header">
+          <i class="ti ti-bolt"></i> 布隆过滤器（本地）
+        </div>
+        <div class="result-status" id="bloomStatus">—</div>
+        <div class="result-time" id="bloomTime">—</div>
+        <div class="result-note">10万条常见弱密码，误判率 ≈ 1%</div>
+      </div>
+      <div class="result-card hibp-result">
+        <div class="result-header">
+          <i class="ti ti-world"></i> HIBP 官方 API（网络）
+        </div>
+        <div class="result-status" id="hibpStatus">—</div>
+        <div class="result-time" id="hibpTime">—</div>
+        <div class="result-note">9亿+条泄露密码，精确查询，k-Anonymity 保护隐私</div>
+      </div>
+    </div>
+
+    <div class="hash-visualization" id="hashViz" style="display:none;">
+      <h3><i class="ti ti-hash"></i> 哈希过程可视化</h3>
+      <div class="hash-steps" id="hashSteps"></div>
+      <div class="bit-array-viz" id="bitArrayViz"></div>
+    </div>
+  </div>
+
+  <!-- ── 模块二：参数调优实验室 ── -->
+  <div class="section" id="labSection">
+    <h2><i class="ti ti-adjustments-horizontal"></i> 参数调优实验室</h2>
+    <p class="section-desc">调节三个参数，实时观察布隆过滤器的填充率和误判率变化。理解为什么 k=7 时误判率最低。</p>
+
+    <div class="lab-controls">
+      <div class="control-group">
+        <label>元素数量 (n)</label>
+        <input type="range" id="sliderN" min="100" max="10000" value="1000" step="100">
+        <span class="control-value" id="valueN">1,000</span>
+      </div>
+      <div class="control-group">
+        <label>位数组大小 (m)</label>
+        <input type="range" id="sliderM" min="1000" max="100000" value="10000" step="1000">
+        <span class="control-value" id="valueM">10,000 bits</span>
+      </div>
+      <div class="control-group">
+        <label>哈希函数数量 (k)</label>
+        <input type="range" id="sliderK" min="1" max="20" value="7" step="1">
+        <span class="control-value" id="valueK">7</span>
+      </div>
+    </div>
+
+    <div class="lab-metrics">
+      <div class="metric-card">
+        <div class="metric-label">理论误判率</div>
+        <div class="metric-value" id="theoreticalFPR">—</div>
+        <div class="metric-formula">P = (1 - e<sup>-kn/m</sup>)<sup>k</sup></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">位数组填充率</div>
+        <div class="metric-value" id="fillRate">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">最优 k 值</div>
+        <div class="metric-value" id="optimalK">—</div>
+        <div class="metric-formula">k<sub>opt</sub> = (m/n) × ln2</div>
+      </div>
+      <div class="metric-card highlight">
+        <div class="metric-label">内存占用</div>
+        <div class="metric-value" id="memoryUsage">—</div>
+      </div>
+    </div>
+
+    <div class="bit-array-display">
+      <div class="bit-array-header">
+        <span>位数组状态（前 512 位）</span>
+        <button id="runExperimentBtn" class="btn-secondary"><i class="ti ti-player-play"></i> 插入 n 个元素</button>
+      </div>
+      <div class="bit-array-grid" id="bitArrayGrid"></div>
+    </div>
+
+    <div class="experiment-result" id="experimentResult" style="display:none;">
+      <h4>实验结果</h4>
+      <div class="experiment-stats">
+        <span>测试 1000 个不存在的随机串：</span>
+        <span class="stat-item">误判数 <strong id="fpCount">—</strong></span>
+        <span class="stat-item">实际误判率 <strong id="actualFPR">—</strong></span>
+        <span class="stat-item">理论预测 <strong id="predictedFPR">—</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 模块三：内存对决 ── -->
+  <div class="section" id="memorySection">
+    <h2><i class="ti ti-chart-bar"></i> 内存对决：布隆过滤器 vs HashSet</h2>
+    <p class="section-desc">存 N 个元素，两种方案各需要多少内存？随着 N 增大，差距指数级拉开。</p>
+
+    <div class="memory-slider-row">
+      <label>元素数量：</label>
+      <input type="range" id="memorySliderN" min="4" max="10" value="7" step="0.5">
+      <span class="control-value" id="memorySliderValue">10,000,000</span>
+    </div>
+
+    <div class="memory-compare-grid">
+      <div class="memory-card hashset-card">
+        <div class="memory-card-header">HashSet / HashMap</div>
+        <div class="memory-card-value" id="hashsetMemory">—</div>
+        <div class="memory-card-note">每个元素 ~40 bytes（对象头 + 哈希 + 指针 + 字符串）</div>
+      </div>
+      <div class="memory-card bloom-card">
+        <div class="memory-card-header">布隆过滤器（0.1% 误判）</div>
+        <div class="memory-card-value" id="bloomMemory">—</div>
+        <div class="memory-card-note">每个元素 ~14.4 bits（由误判率决定）</div>
+      </div>
+    </div>
+
+    <div class="memory-chart-container">
+      <canvas id="memoryChart"></canvas>
+    </div>
+
+    <div class="insight-box gold">
+      <h3><i class="ti ti-bulb"></i> 关键洞察</h3>
+      <p id="memoryInsight">存 10 亿个元素：HashSet 需要 ~40 GB，布隆过滤器只需要 ~1.7 GB。节省 95.7% 内存，代价仅 0.1% 误判率。</p>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 布隆过滤器的核心直觉</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>一个比特值千金</h4>
+        <p>HashSet 存完整元素（字符串、对象），一个元素 40+ bytes。布隆过滤器只在位数组上翻几个 bit，一个元素 ~14 bits。代价是放弃了"存原始数据"的能力。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>多个哈希函数 = 交叉验证</h4>
+        <p>一个哈希函数容易碰撞，k 个哈希函数同时命中才判定"存在"。碰撞概率从 1/m 降到 (1/m)^k。k 越大越准——但填得也越快。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>单向安全</h4>
+        <p>说"不在"就一定不在（零漏报），说"在"可能误判。这正好适合安全场景：宁可多查一次数据库，不能放过一个危险密码。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">04</div>
+        <h4>现实中的布隆过滤器</h4>
+        <p>Chrome 恶意网址检测（本地快速过滤）、Medium 文章去重推荐、Cassandra/HBase 读优化、爬虫 URL 去重——都在用它省内存。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="bloom.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

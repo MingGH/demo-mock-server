@@ -469,7 +469,7 @@
     const renderChart = () => {
       const ctx = document.getElementById('memoryChart').getContext('2d');
       const dataPoints = [];
-      for (let exp = 4; exp <= 10; exp += 0.5) {
+      for (let exp = 6; exp <= 9; exp += 0.5) {
         const n = Math.round(Math.pow(10, exp));
         dataPoints.push({
           n: n,
@@ -521,7 +521,6 @@
               grid: { color: 'rgba(255,255,255,0.05)' }
             },
             y: {
-              type: 'logarithmic',
               ticks: {
                 color: '#aaa',
                 callback: function(value) { return formatBytes(value); }

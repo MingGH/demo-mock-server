@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="10亿条泄露密码，10ms查出你中没中招。布隆过滤器用1.7GB内存做到HashSet需要40GB才能做的事，代价仅0.1%误判率。亲手体验原理。">
-  <title>布隆过滤器：10ms 查出你的密码有没有泄露 | 数字直觉</title>
+  <meta name="description" content="用 171MB 内存装下 1 亿个元素的判定能力，查询只要几次数组访问。亲手操作布隆过滤器，感受概率数据结构的 trade-off。">
+  <title>布隆过滤器：用 1% 的内存做 99% 的事 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
   <link rel="stylesheet" href="style.css">
@@ -14,61 +14,14 @@
 <div class="container">
 
   <div class="header">
-    <h1><i class="ti ti-filter-bolt"></i> 布隆过滤器：10ms 查出你的密码有没有泄露</h1>
-    <p>10 亿条泄露密码，HashSet 要 40GB 内存，布隆过滤器只要 1.7GB，代价是 0.1% 的误判。亲手感受这个 trade-off。</p>
+    <h1><i class="ti ti-filter-bolt"></i> 布隆过滤器：用 1% 的内存做 99% 的事</h1>
+    <p>1 亿个元素，HashSet 要 3.7GB，布隆过滤器只要 171MB。代价是千分之一的概率骗你"在"——但它说"不在"就绝对不在。</p>
   </div>
 
-  <!-- ── 模块一：密码泄露查询 ── -->
-  <div class="section" id="checkSection">
-    <h2><i class="ti ti-shield-lock"></i> 你的密码中招了吗</h2>
-    <p class="section-desc">输入任意密码，同时用布隆过滤器（本地）和 HIBP 官方 API（网络）查询，对比速度和结果。所有计算在浏览器本地完成，密码不会上传。</p>
-    
-    <div class="check-area">
-      <div class="input-row">
-        <input type="text" id="passwordInput" placeholder="输入密码试试..." autocomplete="off">
-        <button id="checkBtn" class="btn-primary"><i class="ti ti-search"></i> 查询</button>
-      </div>
-      <div class="preset-passwords">
-        <span class="preset-label">常见弱密码：</span>
-        <button class="preset-btn" data-pwd="123456">123456</button>
-        <button class="preset-btn" data-pwd="password">password</button>
-        <button class="preset-btn" data-pwd="qwerty">qwerty</button>
-        <button class="preset-btn" data-pwd="abc123">abc123</button>
-        <button class="preset-btn" data-pwd="letmein">letmein</button>
-        <button class="preset-btn" data-pwd="iloveyou">iloveyou</button>
-      </div>
-    </div>
-
-    <div class="result-compare" id="resultCompare" style="display:none;">
-      <div class="result-card bloom-result">
-        <div class="result-header">
-          <i class="ti ti-bolt"></i> 布隆过滤器（本地）
-        </div>
-        <div class="result-status" id="bloomStatus">—</div>
-        <div class="result-time" id="bloomTime">—</div>
-        <div class="result-note">10万条常见弱密码，误判率 ≈ 1%</div>
-      </div>
-      <div class="result-card hibp-result">
-        <div class="result-header">
-          <i class="ti ti-world"></i> HIBP 官方 API（网络）
-        </div>
-        <div class="result-status" id="hibpStatus">—</div>
-        <div class="result-time" id="hibpTime">—</div>
-        <div class="result-note">9亿+条泄露密码，精确查询，k-Anonymity 保护隐私</div>
-      </div>
-    </div>
-
-    <div class="hash-visualization" id="hashViz" style="display:none;">
-      <h3><i class="ti ti-hash"></i> 哈希过程可视化</h3>
-      <div class="hash-steps" id="hashSteps"></div>
-      <div class="bit-array-viz" id="bitArrayViz"></div>
-    </div>
-  </div>
-
-  <!-- ── 模块一点五：手动布隆过滤器 ── -->
+  <!-- ── 模块一：亲手玩布隆过滤器 ── -->
   <div class="section" id="playgroundSection">
     <h2><i class="ti ti-hand-click"></i> 亲手玩一个布隆过滤器</h2>
-    <p class="section-desc">一个 64 位的迷你布隆过滤器，3 个哈希函数。你来插入元素、查询元素，看位数组怎么变化。</p>
+    <p class="section-desc">一个 64 位的迷你布隆过滤器，3 个哈希函数。插入元素看位数组亮起来，查询不存在的元素看它怎么判定。多插几个试试能不能碰到误判。</p>
 
     <div class="playground-area">
       <div class="playground-input-row">
@@ -107,7 +60,48 @@
     </div>
   </div>
 
-  <!-- ── 模块二：参数调优实验室 ── -->
+  <!-- ── 模块二：误判挑战 ── -->
+  <div class="section" id="challengeSection">
+    <h2><i class="ti ti-target-arrow"></i> 误判挑战：你能让它说谎吗</h2>
+    <p class="section-desc">一个 1024 位的布隆过滤器，7 个哈希函数。每插入一个词，系统自动用 100 个随机串检测误判。看你插到第几个词时它会第一次骗你。</p>
+
+    <div class="challenge-area">
+      <div class="challenge-input-row">
+        <input type="text" id="challengeInput" placeholder="输入一个词插入..." autocomplete="off">
+        <button id="challengeAddBtn" class="btn-primary"><i class="ti ti-plus"></i> 插入并检测</button>
+      </div>
+      <div class="challenge-presets">
+        <span class="preset-label">快速填充：</span>
+        <button id="challengeBatch10" class="btn-secondary">+10 个随机词</button>
+        <button id="challengeBatch50" class="btn-secondary">+50 个随机词</button>
+        <button id="challengeReset" class="btn-reset"><i class="ti ti-refresh"></i> 重置</button>
+      </div>
+
+      <div class="challenge-stats">
+        <div class="challenge-stat-card">
+          <div class="challenge-stat-label">已插入</div>
+          <div class="challenge-stat-value" id="challengeCount">0</div>
+        </div>
+        <div class="challenge-stat-card">
+          <div class="challenge-stat-label">填充率</div>
+          <div class="challenge-stat-value" id="challengeFill">0%</div>
+        </div>
+        <div class="challenge-stat-card">
+          <div class="challenge-stat-label">累计误判</div>
+          <div class="challenge-stat-value" id="challengeFP">0</div>
+        </div>
+        <div class="challenge-stat-card highlight">
+          <div class="challenge-stat-label">首次误判于第</div>
+          <div class="challenge-stat-value" id="challengeFirstFP">—</div>
+          <div class="challenge-stat-sub">个元素</div>
+        </div>
+      </div>
+
+      <div class="challenge-log" id="challengeLog"></div>
+    </div>
+  </div>
+
+  <!-- ── 模块三：参数调优实验室 ── -->
   <div class="section" id="labSection">
     <h2><i class="ti ti-adjustments-horizontal"></i> 参数调优实验室</h2>
     <p class="section-desc">调节三个参数，实时观察布隆过滤器的填充率和误判率变化。理解为什么 k=7 时误判率最低。</p>
@@ -170,7 +164,7 @@
     </div>
   </div>
 
-  <!-- ── 模块三：内存对决 ── -->
+  <!-- ── 模块四：内存对决 ── -->
   <div class="section" id="memorySection">
     <h2><i class="ti ti-chart-bar"></i> 内存对决：布隆过滤器 vs HashSet</h2>
     <p class="section-desc">存 N 个元素，两种方案各需要多少内存？随着 N 增大，差距指数级拉开。</p>

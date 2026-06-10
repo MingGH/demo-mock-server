@@ -933,3 +933,113 @@
     gap: 12px;
   }
 }
+
+/* ── 误判挑战模块 ── */
+
+.challenge-area {
+  margin-top: 16px;
+}
+
+.challenge-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.challenge-input-row input {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.challenge-input-row input:focus {
+  border-color: #ffd700;
+}
+
+.challenge-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.challenge-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.challenge-stat-card {
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.challenge-stat-card.highlight {
+  border-color: rgba(255, 107, 107, 0.3);
+  background: rgba(255, 107, 107, 0.04);
+}
+
+.challenge-stat-label {
+  color: #888;
+  font-size: 0.75rem;
+  margin-bottom: 6px;
+}
+
+.challenge-stat-value {
+  color: #ffd700;
+  font-size: 1.3rem;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.challenge-stat-sub {
+  color: #666;
+  font-size: 0.7rem;
+  margin-top: 4px;
+}
+
+.challenge-log {
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+  font-family: monospace;
+  line-height: 1.8;
+  color: #aaa;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.challenge-log .log-add { color: #81c784; }
+.challenge-log .log-fp { color: #ff6b6b; }
+
+@media (max-width: 768px) {
+  .challenge-input-row {
+    flex-direction: column;
+  }
+
+  .challenge-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .challenge-presets {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 380px) {
+  .challenge-stats {
+    grid-template-columns: 1fr;
+  }
+}

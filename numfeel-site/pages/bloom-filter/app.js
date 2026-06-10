@@ -208,6 +208,131 @@
   }
 
 
+  // ── 模块 1.5：手动布隆过滤器 Playground ──
+  const PLAY_M = 64;
+  const PLAY_K = 3;
+  const playFilter = new BloomFilter(PLAY_M, PLAY_K);
+  const playInserted = new Set(); // 记录真正插入过的元素
+
+  const playInput = document.getElementById('playInput');
+  const playAddBtn = document.getElementById('playAddBtn');
+  const playQueryBtn = document.getElementById('playQueryBtn');
+  const playResetBtn = document.getElementById('playResetBtn');
+  const playBitsEl = document.getElementById('playBits');
+  const playBitIndexEl = document.getElementById('playBitIndex');
+  const playCountEl = document.getElementById('playCount');
+  const playFillEl = document.getElementById('playFill');
+  const playLogEl = document.getElementById('playLog');
+
+  function initPlayground() {
+    let bitsHtml = '';
+    let indexHtml = '';
+    for (let i = 0; i < PLAY_M; i++) {
+      bitsHtml += `<span class="pbit off" data-pos="${i}">0</span>`;
+      indexHtml += `<span>${i}</span>`;
+    }
+    playBitsEl.innerHTML = bitsHtml;
+    playBitIndexEl.innerHTML = indexHtml;
+  }
+
+  function updatePlayUI() {
+    const bits = playBitsEl.querySelectorAll('.pbit');
+    for (let i = 0; i < PLAY_M; i++) {
+      const val = playFilter.getBit(i);
+      bits[i].textContent = val;
+      bits[i].className = 'pbit ' + (val ? 'on' : 'off');
+    }
+    playCountEl.textContent = playInserted.size;
+    const fillBits = Array.from(playFilter.bitArray).reduce((sum, byte) => {
+      let count = 0;
+      let b = byte;
+      while (b) { count += b & 1; b >>= 1; }
+      return sum + count;
+    }, 0);
+    playFillEl.textContent = Math.round(fillBits / PLAY_M * 100) + '%';
+  }
+
+  function highlightBits(positions, className) {
+    const bits = playBitsEl.querySelectorAll('.pbit');
+    // 先清除所有高亮
+    bits.forEach(b => b.classList.remove('hit', 'miss'));
+    positions.forEach(pos => {
+      bits[pos].classList.add(className);
+    });
+    // 2 秒后恢复
+    setTimeout(() => {
+      bits.forEach(b => b.classList.remove('hit', 'miss'));
+    }, 2000);
+  }
+
+  function addLog(html) {
+    playLogEl.innerHTML = html + '<br>' + playLogEl.innerHTML;
+    // 限制日志条数
+    const lines = playLogEl.innerHTML.split('<br>');
+    if (lines.length > 20) {
+      playLogEl.innerHTML = lines.slice(0, 20).join('<br>');
+    }
+  }
+
+  playAddBtn.addEventListener('click', () => {
+    const val = playInput.value.trim();
+    if (!val) return;
+    const positions = playFilter.getPositions(val);
+    playFilter.add(val);
+    playInserted.add(val);
+    updatePlayUI();
+    highlightBits(positions, 'hit');
+    addLog(`<span class="log-add">+ 插入 "${val}" → 位置 [${positions.join(', ')}]</span>`);
+    playInput.value = '';
+    playInput.focus();
+  });
+
+  playQueryBtn.addEventListener('click', () => {
+    const val = playInput.value.trim();
+    if (!val) return;
+    const positions = playFilter.getPositions(val);
+    const result = playFilter.mightContain(val);
+    const reallyExists = playInserted.has(val);
+
+    if (result && reallyExists) {
+      highlightBits(positions, 'hit');
+      addLog(`<span class="log-found">? 查询 "${val}" → 存在 ✓（确实插入过）</span>`);
+    } else if (result && !reallyExists) {
+      highlightBits(positions, 'hit');
+      addLog(`<span class="log-fp">? 查询 "${val}" → 误判！位置 [${positions.join(', ')}] 全是 1，但从未插入过</span>`);
+    } else {
+      highlightBits(positions, 'miss');
+      addLog(`<span class="log-not-found">? 查询 "${val}" → 一定不存在（位置 [${positions.join(', ')}] 有 0）</span>`);
+    }
+  });
+
+  playResetBtn.addEventListener('click', () => {
+    playFilter.reset();
+    playInserted.clear();
+    updatePlayUI();
+    playLogEl.innerHTML = '';
+    addLog('<span style="color:#666;">已重置，位数组清零</span>');
+  });
+
+  playInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (e.shiftKey) {
+        playQueryBtn.click();
+      } else {
+        playAddBtn.click();
+      }
+    }
+  });
+
+  document.querySelectorAll('.play-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      playInput.value = btn.dataset.val;
+      playInput.focus();
+    });
+  });
+
+  initPlayground();
+
   // ── 模块二：参数调优实验室 ──
   const sliderN = document.getElementById('sliderN');
   const sliderM = document.getElementById('sliderM');

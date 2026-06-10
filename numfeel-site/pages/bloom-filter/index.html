@@ -65,6 +65,48 @@
     </div>
   </div>
 
+  <!-- ── 模块一点五：手动布隆过滤器 ── -->
+  <div class="section" id="playgroundSection">
+    <h2><i class="ti ti-hand-click"></i> 亲手玩一个布隆过滤器</h2>
+    <p class="section-desc">一个 64 位的迷你布隆过滤器，3 个哈希函数。你来插入元素、查询元素，看位数组怎么变化。</p>
+
+    <div class="playground-area">
+      <div class="playground-input-row">
+        <input type="text" id="playInput" placeholder="输入任意文字..." autocomplete="off">
+        <button id="playAddBtn" class="btn-primary"><i class="ti ti-plus"></i> 插入</button>
+        <button id="playQueryBtn" class="btn-secondary"><i class="ti ti-search"></i> 查询</button>
+      </div>
+      <div class="playground-presets">
+        <span class="preset-label">试试：</span>
+        <button class="play-preset" data-val="apple">apple</button>
+        <button class="play-preset" data-val="banana">banana</button>
+        <button class="play-preset" data-val="cat">cat</button>
+        <button class="play-preset" data-val="dog">dog</button>
+        <button class="play-preset" data-val="fish">fish</button>
+      </div>
+
+      <div class="playground-bit-array">
+        <div class="playground-bits" id="playBits"></div>
+        <div class="playground-bit-index" id="playBitIndex"></div>
+      </div>
+
+      <div class="playground-info">
+        <div class="playground-stat">
+          <span class="stat-label">已插入</span>
+          <span class="stat-val" id="playCount">0</span>
+          <span class="stat-label">个元素</span>
+        </div>
+        <div class="playground-stat">
+          <span class="stat-label">填充率</span>
+          <span class="stat-val" id="playFill">0%</span>
+        </div>
+        <button id="playResetBtn" class="btn-reset"><i class="ti ti-refresh"></i> 重置</button>
+      </div>
+
+      <div class="playground-log" id="playLog"></div>
+    </div>
+  </div>
+
   <!-- ── 模块二：参数调优实验室 ── -->
   <div class="section" id="labSection">
     <h2><i class="ti ti-adjustments-horizontal"></i> 参数调优实验室</h2>

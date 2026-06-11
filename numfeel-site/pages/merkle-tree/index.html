@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="默克尔树交互式可视化：亲手构建一棵默克尔树，改动一个字节看整条路径哈希连锁崩塌，理解区块链存证的数学根基。">
+  <title>默克尔树：改一个字，整棵树都知道 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-binary-tree-2"></i> 默克尔树：改一个字，整棵树都知道</h1>
+    <p>区块链最核心的数据结构，比特币每个区块头里都有一棵。亲手构建、亲手篡改、亲手验证。</p>
+  </div>
+
+  <!-- ── 模块一：构建默克尔树 ── -->
+  <div class="section" id="buildSection">
+    <h2><i class="ti ti-hammer"></i> 第一步：构建一棵默克尔树</h2>
+    <p class="section-desc">点击预设数据块，或输入自定义内容，看叶子节点如何两两配对生成根哈希。</p>
+
+    <div class="preset-blocks">
+      <button class="preset-btn" onclick="addPreset('合同A：甲方向乙方支付10万元')"><i class="ti ti-file-text"></i> 合同A</button>
+      <button class="preset-btn" onclick="addPreset('照片B：2024-03-15 故宫.jpg SHA256')"><i class="ti ti-photo"></i> 照片B</button>
+      <button class="preset-btn" onclick="addPreset('日记C：今天决定离职了')"><i class="ti ti-notebook"></i> 日记C</button>
+      <button class="preset-btn" onclick="addPreset('代码D：function hello() { return 42; }')"><i class="ti ti-code"></i> 代码D</button>
+    </div>
+
+    <div class="input-row">
+      <input type="text" id="customInput" placeholder="或者输入自定义内容..." maxlength="100">
+      <button class="btn btn-primary" onclick="addCustom()"><i class="ti ti-plus"></i> 添加</button>
+    </div>
+
+    <div class="leaf-list" id="leafList">
+      <div class="empty-hint"><i class="ti ti-arrow-up"></i> 点击上方按钮添加数据块（至少2个）</div>
+    </div>
+
+    <div class="tree-actions">
+      <button class="btn btn-primary btn-full" id="buildBtn" onclick="buildTree()" disabled>
+        <i class="ti ti-binary-tree-2"></i> 构建默克尔树
+      </button>
+      <button class="btn btn-secondary" onclick="resetAll()"><i class="ti ti-trash"></i> 清空</button>
+    </div>
+
+    <!-- 树可视化区域 -->
+    <div id="treeViz" class="tree-viz" style="display:none;">
+      <canvas id="treeCanvas"></canvas>
+      <div class="root-hash-box">
+        <span class="label">Merkle Root</span>
+        <code id="rootHashDisplay">—</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 模块二：篡改检测 ── -->
+  <div class="section" id="tamperSection" style="display:none;">
+    <h2><i class="ti ti-alert-triangle"></i> 第二步：篡改一个叶子</h2>
+    <p class="section-desc">点击任意叶子节点，修改内容。看整条路径的哈希如何连锁变化——这就是"雪崩效应"。</p>
+
+    <div class="tamper-panel">
+      <div class="tamper-select">
+        <label>选择要篡改的叶子：</label>
+        <select id="tamperTarget"></select>
+      </div>
+      <div class="input-row">
+        <input type="text" id="tamperInput" placeholder="输入篡改后的内容...">
+        <button class="btn btn-danger" onclick="tamperLeaf()"><i class="ti ti-virus"></i> 篡改</button>
+      </div>
+    </div>
+
+    <div id="tamperResult" class="tamper-result" style="display:none;">
+      <div class="diff-header">
+        <span class="tag tag-danger"><i class="ti ti-alert-triangle"></i> 篡改检测</span>
+        <span class="affected-count" id="affectedCount"></span>
+      </div>
+      <div class="diff-list" id="diffList"></div>
+      <div class="insight-box red">
+        <p><i class="ti ti-bulb"></i> 改了 1 个叶子，从该叶子到根节点路径上的所有哈希全部变化。任何人只要保留了原始根哈希，就能立即发现数据被动过。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 模块三：Merkle Proof ── -->
+  <div class="section" id="proofSection" style="display:none;">
+    <h2><i class="ti ti-certificate"></i> 第三步：Merkle Proof（轻验证）</h2>
+    <p class="section-desc">不需要下载整棵树的数据，只需要 log₂(n) 个哈希就能证明某条数据在树里。这就是比特币 SPV 轻钱包的原理。</p>
+
+    <div class="proof-panel">
+      <div class="tamper-select">
+        <label>选择要验证的叶子：</label>
+        <select id="proofTarget"></select>
+      </div>
+      <button class="btn btn-primary" onclick="showProof()"><i class="ti ti-check"></i> 生成 Merkle Proof</button>
+    </div>
+
+    <div id="proofResult" class="proof-result" style="display:none;">
+      <div class="proof-steps" id="proofSteps"></div>
+      <div class="proof-summary" id="proofSummary"></div>
+    </div>
+  </div>
+
+  <!-- ── 模块四：区块链 & 存证 ── -->
+  <div class="section" id="chainSection" style="display:none;">
+    <h2><i class="ti ti-link"></i> 第四步：从默克尔树到区块链</h2>
+    <p class="section-desc">每个比特币区块头里都有一个默克尔根，把这个区块包含的所有交易"压缩"成一个 32 字节的指纹。</p>
+
+    <div class="chain-viz" id="chainViz">
+      <div class="block-chain">
+        <div class="block" id="block0">
+          <div class="block-header">区块 #700000</div>
+          <div class="block-field"><span>前区块哈希</span><code>0000...7a3f</code></div>
+          <div class="block-field highlight"><span>Merkle Root</span><code>4a5e...b9a8</code></div>
+          <div class="block-field"><span>时间戳</span><code>2021-09-11</code></div>
+          <div class="block-txns">2,875 笔交易</div>
+        </div>
+        <div class="chain-arrow"><i class="ti ti-arrow-right"></i></div>
+        <div class="block" id="block1">
+          <div class="block-header">区块 #700001</div>
+          <div class="block-field"><span>前区块哈希</span><code>0000...9c2d</code></div>
+          <div class="block-field highlight"><span>Merkle Root</span><code>8b3e...1f7c</code></div>
+          <div class="block-field"><span>时间戳</span><code>2021-09-11</code></div>
+          <div class="block-txns">1,943 笔交易</div>
+        </div>
+        <div class="chain-arrow"><i class="ti ti-arrow-right"></i></div>
+        <div class="block" id="block2">
+          <div class="block-header">区块 #700002</div>
+          <div class="block-field"><span>前区块哈希</span><code>0000...e4b1</code></div>
+          <div class="block-field highlight"><span>Merkle Root</span><code id="yourMerkleRoot">你的树→</code></div>
+          <div class="block-field"><span>时间戳</span><code>现在</code></div>
+          <div class="block-txns" id="yourTxnCount">— 条记录</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box green">
+      <h3><i class="ti ti-bulb"></i> 为什么这很重要</h3>
+      <p>你的默克尔根一旦被写入区块链，就等于把"这些数据在此刻存在"这个事实锚定到了全球数万个节点上。之后任何人想篡改其中一条记录，都会导致默克尔根变化，进而让整个区块哈希对不上——所有节点会拒绝这个篡改。</p>
+    </div>
+
+    <div class="fossilize-card">
+      <div class="fossilize-header">
+        <i class="ti ti-fossil"></i>
+        <span>真实产品：fossilize</span>
+      </div>
+      <p>上面演示的原理，已经有人做成了完整的服务。<a href="https://fossilize.996.ninja/" target="_blank" rel="noopener">fossilize</a> 基于 <a href="https://opentimestamps.org/" target="_blank" rel="noopener">OpenTimestamps</a> 协议，把你的文件哈希聚合进默克尔树、最终锚定到比特币区块链上。整个过程免费、开源、可独立验证。</p>
+      <p class="fossilize-flow">你的文件 → SHA-256 哈希 → 聚合进默克尔树 → 根哈希写入比特币交易 → 全球节点永久保存</p>
+    </div>
+  </div>
+
+  <!-- ── 原理总结 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么默克尔树这么重要</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>高效验证</h4>
+        <p>100 万条数据，只需 20 个哈希就能证明某条数据确实在集合里。传统方式要遍历全部数据。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>篡改即暴露</h4>
+        <p>任何一个叶子的改动都会逐层传导到根。保留根哈希的人可以随时验证数据完整性。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>节省带宽</h4>
+        <p>比特币 SPV 钱包不下载完整区块（~2MB），只下载区块头（80字节）+ Merkle Proof，就能确认交易。</p>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-val">2008</div>
+        <div class="stat-label">中本聪白皮书引用默克尔树</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val">20</div>
+        <div class="stat-label">验证 100 万条数据只需的哈希数</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val">80 B</div>
+        <div class="stat-label">比特币区块头大小（含默克尔根）</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

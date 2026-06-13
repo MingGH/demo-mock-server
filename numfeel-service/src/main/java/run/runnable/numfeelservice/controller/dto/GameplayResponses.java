@@ -399,4 +399,22 @@ public final class GameplayResponses {
             double q5CorrectRate
     ) {
     }
+
+    /**
+     * 信息茧房模拟器全局统计响应。
+     *
+     * @param totalSessions 总实验次数
+     * @param avgEntropyDrop 平均信息熵下降百分比
+     * @param avgDominantPct 平均主导类型占比
+     * @param avgConvergeRound 平均收敛轮次
+     * @param dominantCatDist 各主导类型的出现次数分布
+     */
+    public record FilterBubbleStatsResponse(
+            long totalSessions,
+            double avgEntropyDrop,
+            double avgDominantPct,
+            double avgConvergeRound,
+            Map<String, Long> dominantCatDist
+    ) {
+    }
 }

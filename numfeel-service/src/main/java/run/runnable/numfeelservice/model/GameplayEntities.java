@@ -242,4 +242,18 @@ public final class GameplayEntities {
             @Column("created_at") long createdAt
     ) {
     }
+
+    /** 信息茧房模拟器实验结果表映射。 */
+    @Table("filter_bubble_results")
+    public record FilterBubbleResult(
+            @Id Long id,
+            @Column("entropy_drop") double entropyDrop,
+            @Column("dominant_cat") String dominantCat,
+            @Column("dominant_pct") double dominantPct,
+            @Column("converge_round") int convergeRound,
+            @Column("total_rounds") int totalRounds,
+            @Column("click_sequence") String clickSequence,
+            @Column("created_at") long createdAt
+    ) {
+    }
 }

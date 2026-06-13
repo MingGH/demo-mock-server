@@ -333,4 +333,24 @@ public final class GameplayRequests {
             Boolean q5Correct
     ) {
     }
+
+    /**
+     * 信息茧房模拟器实验提交参数。
+     *
+     * @param entropyDrop 信息熵下降百分比
+     * @param dominantCat 主导内容类型
+     * @param dominantPct 主导类型占比
+     * @param convergeRound 收敛轮次（-1表示未收敛）
+     * @param totalRounds 总轮次
+     * @param clickSequence 点击序列JSON
+     */
+    public record FilterBubbleSubmitRequest(
+            Double entropyDrop,
+            String dominantCat,
+            Double dominantPct,
+            Integer convergeRound,
+            Integer totalRounds,
+            String clickSequence
+    ) {
+    }
 }

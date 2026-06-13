@@ -13,17 +13,16 @@ jobs:
         working-directory: numfeel-service
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'zulu'
-          cache: 'maven'
       - name: Get project version
         id: get_version
         run: |
-          VERSION=$(grep -m1 '<version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+          VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
           echo "Project version is $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Build with Maven
@@ -41,13 +40,11 @@ jobs:
     needs: build
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            numfeel-service/k3s-deployment-prod.yaml
-          sparse-checkout-cone-mode: false
+        uses: actions/checkout@v3
       - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y kubectl
       - name: Set up KUBE_CONFIG
         run: |
           echo "${{ secrets.KUBE_CONFIG }}" > K3S_KUBE_CONFIG.yaml

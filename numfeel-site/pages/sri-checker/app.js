@@ -1,262 +1,205 @@
-// ========== SRI 安全检测器 ==========
-const API = 'https://numfeel-api.996.ninja/sri/check';
-let currentData = null;
-let donutChart = null;
+// ========== SRI 安全实验室 ==========
+const API_BASE = 'https://numfeel-api.996.ninja/sri';
+let integrityHash = null;
 
-// ── 初始化 ──
-document.addEventListener('DOMContentLoaded', () => {
-  // 预设按钮绑定
-  document.querySelectorAll('#presetSites button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.getElementById('urlInput').value = btn.dataset.url;
-      startCheck();
-    });
-  });
-
-  // 回车触发检测
-  document.getElementById('urlInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') startCheck();
-  });
-});
-
-// ── 核心检测逻辑 ──
-async function startCheck() {
-  const input = document.getElementById('urlInput');
-  let url = input.value.trim();
-  if (!url) return;
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = 'https://' + url;
-    input.value = url;
-  }
-
-  // UI 状态
-  toggleSection('loadingSection', true);
-  toggleSection('summarySection', false);
-  toggleSection('resourceSection', false);
-  toggleSection('attackSection', false);
-  toggleSection('fixSection', false);
-  document.getElementById('checkBtn').disabled = true;
-
+// ── 初始化：获取正常脚本的哈希值 ──
+async function init() {
   try {
-    const resp = await fetch(API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url })
-    });
-    const json = await resp.json();
-
-    if (json.status !== 200) {
-      throw new Error(json.message || '检测失败');
-    }
-
-    currentData = json.data;
-    renderResults(currentData);
-  } catch (err) {
-    alert('检测失败: ' + err.message);
-  } finally {
-    toggleSection('loadingSection', false);
-    document.getElementById('checkBtn').disabled = false;
+    const resp = await fetch(`${API_BASE}/demo-hash`);
+    integrityHash = await resp.text();
+  } catch (e) {
+    console.warn('Failed to fetch integrity hash, using fallback');
+    integrityHash = null;
   }
 }
 
-// ── 渲染结果 ──
-function renderResults(data) {
-  const { summary, resources } = data;
+init();
 
-  // 摘要卡片
-  document.getElementById('totalCount').textContent = summary.total;
-  document.getElementById('thirdPartyCount').textContent = summary.thirdParty;
-  document.getElementById('protectedCount').textContent = summary.protected;
-  document.getElementById('unprotectedCount').textContent = summary.unprotected;
+// ── 正常加载 ──
+function loadNormal() {
+  const safeSrc = buildPageHtml(false, true);
+  const unsafeSrc = buildPageHtml(false, false);
 
-  // 甜甜圈图
-  renderDonut(summary);
+  setIframe('frameSafe', safeSrc);
+  setIframe('frameUnsafe', unsafeSrc);
 
-  // 资源列表
-  renderResourceTable(resources);
+  hideOverlays();
+  setState('normal', '正常状态：两个页面都加载了未篡改的脚本');
+  document.getElementById('btnTamper').disabled = false;
 
-  // 显示面板
-  toggleSection('summarySection', true);
-  toggleSection('resourceSection', true);
-
-  // 如果有未保护资源，显示修复建议
-  const unprotected = resources.filter(r => r.thirdParty && !r.hasSri);
-  if (unprotected.length > 0) {
-    renderFixSuggestion(unprotected[0]);
-    toggleSection('fixSection', true);
-  }
+  showExplanation('normal');
 }
 
-// ── 甜甜圈图 ──
-function renderDonut(summary) {
-  const ctx = document.getElementById('donutChart').getContext('2d');
-  if (donutChart) donutChart.destroy();
+// ── 模拟篡改 ──
+function loadTampered() {
+  const safeSrc = buildPageHtml(true, true);
+  const unsafeSrc = buildPageHtml(true, false);
 
-  const protectedCount = summary.protected;
-  const unprotectedCount = summary.unprotected;
-  const firstParty = summary.total - summary.thirdParty;
+  setIframe('frameSafe', safeSrc);
+  setIframe('frameUnsafe', unsafeSrc);
 
-  donutChart = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['有 SRI 保护', '无保护（危险）', '同域资源'],
-      datasets: [{
-        data: [protectedCount, unprotectedCount, firstParty],
-        backgroundColor: [
-          'rgba(129, 199, 132, 0.8)',
-          'rgba(255, 107, 107, 0.8)',
-          'rgba(136, 136, 136, 0.4)'
-        ],
-        borderColor: [
-          'rgba(129, 199, 132, 1)',
-          'rgba(255, 107, 107, 1)',
-          'rgba(136, 136, 136, 0.6)'
-        ],
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      cutout: '65%',
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { color: '#ccc', font: { size: 12 } }
-        }
-      }
-    }
-  });
+  hideOverlays();
+  setState('tampered', 'CDN 被篡改：脚本内容已被替换为恶意代码');
+
+  showExplanation('tampered');
 }
 
-// ── 资源列表 ──
-function renderResourceTable(resources) {
-  const tbody = document.getElementById('resourceTableBody');
-  tbody.innerHTML = '';
-
-  resources.forEach((res, idx) => {
-    const tr = document.createElement('tr');
-    if (!res.thirdParty) {
-      tr.className = 'first-party';
-    } else if (res.hasSri) {
-      tr.className = 'protected';
-    } else {
-      tr.className = 'unprotected';
-      tr.style.cursor = 'pointer';
-      tr.addEventListener('click', () => showAttackSimulation(res));
-    }
-
-    const tagIcon = res.tag === 'script' ? 'ti-file-code' : 'ti-palette';
-    const sriStatus = !res.thirdParty ? 'na' : (res.hasSri ? 'yes' : 'no');
-    const sriText = !res.thirdParty ? '同域' : (res.hasSri ? '有' : '无');
-
-    tr.innerHTML = `
-      <td><i class="ti ${tagIcon}"></i> ${res.tag}</td>
-      <td class="src-cell" title="${escapeHtml(res.src)}">${escapeHtml(shortenUrl(res.src))}</td>
-      <td>${res.thirdParty ? '是' : '否'}</td>
-      <td><span class="sri-badge ${sriStatus}">${sriText}</span></td>
-    `;
-    tbody.appendChild(tr);
-  });
+// ── 重置 ──
+function resetAll() {
+  document.getElementById('frameSafe').srcdoc = '';
+  document.getElementById('frameUnsafe').srcdoc = '';
+  document.getElementById('overlaySafe').classList.remove('hidden');
+  document.getElementById('overlayUnsafe').classList.remove('hidden');
+  document.getElementById('btnTamper').disabled = true;
+  setState('idle', '等待操作…');
+  document.getElementById('explanationSection').classList.add('hidden');
 }
 
-// ── 攻击模拟 ──
-function showAttackSimulation(resource) {
-  toggleSection('attackSection', true);
+// ── 构建 iframe 内嵌 HTML ──
+function buildPageHtml(tampered, withSri) {
+  const scriptUrl = `${API_BASE}/demo.js${tampered ? '?tampered=true' : ''}`;
+  const integrityAttr = (withSri && integrityHash)
+    ? ` integrity="${integrityHash}" crossorigin="anonymous"`
+    : '';
 
-  document.getElementById('attackTarget').textContent =
-    `目标文件: ${shortenUrl(resource.src)}`;
-
-  const steps = getAttackSteps(resource);
-  const list = document.getElementById('attackSteps');
-  list.innerHTML = '';
-
-  steps.forEach((step, i) => {
-    const li = document.createElement('li');
-    li.innerHTML = `<span class="step-num">Step ${i + 1}</span>${step}`;
-    list.appendChild(li);
-    // 逐步动画
-    setTimeout(() => li.classList.add('visible'), (i + 1) * 400);
-  });
-
-  // 滚动到攻击面板
-  document.getElementById('attackSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
-
-function getAttackSteps(resource) {
-  if (resource.tag === 'script') {
-    return [
-      '攻击者入侵 CDN 服务器或利用供应链漏洞，篡改目标 JS 文件',
-      '用户访问你的网站，浏览器从 CDN 加载被篡改的脚本——因为没有 SRI，浏览器无法识别篡改',
-      '恶意脚本在用户浏览器中执行，拥有和你自己的代码完全相同的权限',
-      '注入键盘记录器：监听所有 input 事件，实时上报用户输入（密码、信用卡号）',
-      '窃取 Cookie / LocalStorage / SessionToken，发送到攻击者服务器',
-      '修改页面 DOM：插入虚假登录框、支付页面，实施钓鱼',
-      '所有经过你网站的用户都受影响，直到你发现问题为止'
-    ];
-  } else {
-    return [
-      '攻击者篡改 CDN 上的 CSS 文件',
-      '浏览器加载恶意 CSS——没有 SRI 则无校验直接应用',
-      '利用 CSS 覆盖关键元素：隐藏安全警告、移动按钮位置实施点击劫持',
-      '通过 CSS content + 外部 url() 泄露页面内容',
-      '注入虚假 UI 元素诱导用户操作（如"账号异常，请重新登录"）'
-    ];
-  }
+.status-container {
+  text-align: center;
+  padding: 24px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
 }
-
-// ── 修复建议 ──
-function renderFixSuggestion(resource) {
-  const tag = resource.tag === 'script' ? 'script' : 'link';
-  let fixHtml;
-
-  if (tag === 'script') {
-    fixHtml = `&lt;script src="${escapeHtml(resource.src)}"
-        integrity="sha384-{用 openssl 生成的哈希值}"
-        crossorigin="anonymous"&gt;&lt;/script&gt;`;
-  } else {
-    fixHtml = `&lt;link rel="stylesheet"
-      href="${escapeHtml(resource.src)}"
-      integrity="sha384-{用 openssl 生成的哈希值}"
-      crossorigin="anonymous"&gt;`;
-  }
-
-  document.getElementById('fixPre').innerHTML = fixHtml;
+.status-container.safe {
+  background: rgba(129,199,132,0.1);
+  border: 2px solid rgba(129,199,132,0.4);
 }
-
-function copyFix() {
-  const pre = document.getElementById('fixPre');
-  const text = pre.textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.querySelector('.copy-btn');
-    btn.textContent = '已复制';
-    setTimeout(() => btn.textContent = '复制', 2000);
-  });
+.status-container.hacked {
+  background: rgba(255,107,107,0.1);
+  border: 2px solid rgba(255,107,107,0.4);
+  animation: pulse-red 1s ease-in-out 3;
+}
+@keyframes pulse-red {
+  0%, 100% { border-color: rgba(255,107,107,0.4); }
+  50% { border-color: rgba(255,107,107,1); box-shadow: 0 0 20px rgba(255,107,107,0.3); }
+}
+.status-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.status-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+.status-container.safe .status-title { color: #81c784; }
+.status-container.hacked .status-title { color: #ff6b6b; }
+.status-desc { font-size: 0.85rem; color: #999; margin-bottom: 12px; }
+.attack-list { list-style: none; text-align: left; padding: 12px; }
+.attack-item {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-size: 0.82rem;
+  color: #ccc;
+  transition: color 0.3s;
+}
+.attack-item.done { color: #ff6b6b; font-weight: 600; }
+.keylog-box {
+  margin-top: 16px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: left;
+}
+.keylog-title { font-size: 0.78rem; color: #ff6b6b; margin-bottom: 6px; font-weight: 600; }
+.keylog-output {
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: #ffd700;
+  min-height: 20px;
+  word-break: break-all;
+}
+.sri-blocked {
+  text-align: center;
+  padding: 24px;
+  background: rgba(129,199,132,0.08);
+  border: 2px solid rgba(129,199,132,0.3);
+  border-radius: 12px;
+}
+.sri-blocked .icon { font-size: 2.5rem; margin-bottom: 12px; }
+.sri-blocked .title { color: #81c784; font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; }
+.sri-blocked .desc { color: #999; font-size: 0.85rem; }
+.loading { text-align: center; color: #666; padding: 40px; }
+</style>
+</head>
+<body>
+<div id="sri-demo-status">
+  <div class="loading">加载中…</div>
+</div>
+<script src="${scriptUrl}"${integrityAttr}
+  onerror="document.getElementById('sri-demo-status').innerHTML='<div class=sri-blocked><div class=icon>\\u{1F6E1}\\uFE0F</div><div class=title>SRI 保护生效 — 脚本被拦截</div><div class=desc>浏览器检测到文件哈希不匹配，拒绝执行被篡改的脚本。<br>页面安全。攻击者无法得逞。</div></div>';document.getElementById('sri-demo-status').className='status-container safe';">
+</script>
+</body>
+</html>`;
 }
 
 // ── 工具函数 ──
-function toggleSection(id, show) {
-  const el = document.getElementById(id);
-  if (show) el.classList.remove('hidden');
-  else el.classList.add('hidden');
+function setIframe(id, srcdoc) {
+  document.getElementById(id).srcdoc = srcdoc;
 }
 
-function shortenUrl(url) {
-  try {
-    const u = new URL(url);
-    const path = u.pathname.length > 30
-      ? '...' + u.pathname.slice(-27)
-      : u.pathname;
-    return u.host + path;
-  } catch {
-    return url.length > 60 ? url.slice(0, 57) + '...' : url;
+function hideOverlays() {
+  document.getElementById('overlaySafe').classList.add('hidden');
+  document.getElementById('overlayUnsafe').classList.add('hidden');
+}
+
+function setState(type, text) {
+  const el = document.getElementById('currentState');
+  const dotClass = type === 'normal' ? 'safe' : type === 'tampered' ? 'danger' : 'idle';
+  el.innerHTML = `<span class="state-dot ${dotClass}"></span> ${text}`;
+}
+
+function showExplanation(mode) {
+  const section = document.getElementById('explanationSection');
+  const content = document.getElementById('explanationContent');
+  section.classList.remove('hidden');
+
+  if (mode === 'normal') {
+    content.innerHTML = `
+      <div class="explain-card">
+        <h3><i class="ti ti-check"></i> 两边都正常</h3>
+        <p>此时 CDN 上的脚本没有被篡改，文件内容是原始的。两个页面都正常加载，没有安全问题。</p>
+        <p class="explain-hint">点击「模拟 CDN 被篡改」看看攻击发生时的差异。</p>
+      </div>`;
+  } else {
+    content.innerHTML = `
+      <div class="explain-grid">
+        <div class="explain-card safe-explain">
+          <h3><i class="ti ti-shield-check"></i> 左侧：有 SRI 保护</h3>
+          <p>浏览器下载了被篡改的脚本，计算哈希后发现与 integrity 属性不匹配。</p>
+          <p><strong>结果：拒绝执行</strong>。脚本触发 onerror 事件，页面显示「已拦截」。攻击者的代码从未运行。</p>
+        </div>
+        <div class="explain-card danger-explain">
+          <h3><i class="ti ti-shield-off"></i> 右侧：无 SRI 保护</h3>
+          <p>浏览器下载了被篡改的脚本，没有 integrity 属性 → 不做任何校验 → 直接执行。</p>
+          <p><strong>结果：恶意代码全部运行</strong>。键盘记录器注入、Cookie 被窃取、页面即将被重定向。</p>
+        </div>
+      </div>
+      <div class="explain-conclusion">
+        <strong>区别只在一个 HTML 属性。</strong>加了 integrity 属性的页面能抵御 CDN 被黑，没加的页面直接沦陷。
+      </div>`;
   }
-}
-
-function escapeHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // 导出供测试使用
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { shortenUrl, escapeHtml, getAttackSteps };
+  module.exports = { buildPageHtml, setState, showExplanation, setIntegrityHash: (h) => { integrityHash = h; } };
 }

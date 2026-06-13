@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="推荐算法的信息茧房模拟器：亲手点击10轮，看你的信息流如何从丰富多彩收敛到只剩一类内容，用信息熵量化多样性坍缩过程。">
+  <title>信息茧房模拟器：你的推荐是怎么变窄的 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-bubble"></i> 信息茧房模拟器</h1>
+    <p>推荐系统优化的指标是点击率和停留时长。你每点一次，算法就更了解你——然后你能看到的世界就更小一点。</p>
+  </div>
+
+  <!-- ── Hero 区：行动指引 ── -->
+  <div class="section hero-section">
+    <div class="hero-inner">
+      <div class="hero-left">
+        <h2><i class="ti ti-player-play"></i> 开始实验</h2>
+        <p class="hero-desc">模拟一个推荐系统。你有 <strong>10 轮</strong>点击机会，每轮从推荐列表中选一条你感兴趣的内容。算法会根据你的点击实时调整推荐权重。</p>
+        <p class="hero-hint">实验结束后，看看你的信息流多样性下降了多少。</p>
+      </div>
+      <div class="hero-right">
+        <div class="metric-card">
+          <div class="metric-label">当前信息熵</div>
+          <div class="metric-value" id="currentEntropy">3.32</div>
+          <div class="metric-unit">bits（满分 3.32）</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">多样性</div>
+          <div class="metric-value" id="diversityPercent">100%</div>
+          <div class="metric-unit">内容类型覆盖率</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 推荐模拟区 ── -->
+  <div class="section" id="simSection">
+    <div class="round-bar">
+      <span class="round-label">第 <strong id="roundNum">1</strong> / 10 轮</span>
+      <span class="algo-label" id="algoLabel">算法：协同过滤 + 兴趣衰减</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 从下面的推荐列表中点击一条你感兴趣的内容，算法将据此调整下一轮推荐。</p>
+
+    <div class="feed-list" id="feedList">
+      <!-- JS 渲染 -->
+    </div>
+  </div>
+
+  <!-- ── 权重实时面板 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-bar"></i> 算法内部：兴趣权重分布</h2>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 每次点击后，对应类型的权重增加，其他类型衰减。柱状图实时反映算法对你的"画像"。</p>
+    <div class="chart-container">
+      <canvas id="weightChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── 信息熵曲线 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-line"></i> 信息熵变化曲线</h2>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 信息熵衡量推荐内容的多样性。熵越高 = 内容越丰富，熵越低 = 越单一。观察它如何随你的点击逐轮下降。</p>
+    <div class="chart-container">
+      <canvas id="entropyChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── 实验结果（10轮后显示） ── -->
+  <div class="section" id="resultSection" style="display:none;">
+    <h2><i class="ti ti-report-analytics"></i> 实验结果</h2>
+
+    <div class="result-grid">
+      <div class="result-card">
+        <div class="result-icon"><i class="ti ti-arrow-down-right"></i></div>
+        <div class="result-num" id="resEntropyDrop">—</div>
+        <div class="result-label">信息熵下降</div>
+      </div>
+      <div class="result-card">
+        <div class="result-icon"><i class="ti ti-category"></i></div>
+        <div class="result-num" id="resDominant">—</div>
+        <div class="result-label">主导类型占比</div>
+      </div>
+      <div class="result-card">
+        <div class="result-icon"><i class="ti ti-repeat"></i></div>
+        <div class="result-num" id="resConvergeRound">—</div>
+        <div class="result-label">收敛轮次</div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <h3><i class="ti ti-bulb"></i> 发生了什么</h3>
+      <p id="resultInsight"></p>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="pieChart"></canvas>
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-primary" onclick="restart()"><i class="ti ti-refresh"></i> 重新实验</button>
+      <button class="btn btn-secondary" onclick="runAutoSim()"><i class="ti ti-robot"></i> 让 AI 用户跑 100 轮</button>
+    </div>
+  </div>
+
+  <!-- ── 自动模拟结果 ── -->
+  <div class="section" id="autoSimSection" style="display:none;">
+    <h2><i class="ti ti-robot"></i> 自动模拟：100 轮后的信息流</h2>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 模拟一个只点击「感兴趣」内容的典型用户，观察长期使用后推荐系统的收敛行为。</p>
+    <div class="chart-container">
+      <canvas id="autoEntropyChart"></canvas>
+    </div>
+    <div class="auto-stats" id="autoStats"></div>
+  </div>
+
+  <!-- ── 对比实验：有/无探索机制 ── -->
+  <div class="section" id="compareSection">
+    <h2><i class="ti ti-arrows-split-2"></i> 对比：加入探索机制后的差异</h2>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 左边是纯点击率优化（贪心），右边加入了 15% 的随机探索（ε-greedy）。点击按钮观察 50 轮后的差异。</p>
+    <button class="btn btn-primary" id="compareBtn" onclick="runCompare()"><i class="ti ti-player-play"></i> 运行对比模拟</button>
+    <div class="compare-grid" id="compareGrid" style="display:none;">
+      <div class="compare-panel">
+        <h3 class="compare-title bad"><i class="ti ti-flame"></i> 贪心模式（只优化点击率）</h3>
+        <div class="chart-container small">
+          <canvas id="greedyChart"></canvas>
+        </div>
+        <div class="compare-stat" id="greedyStat"></div>
+      </div>
+      <div class="compare-panel">
+        <h3 class="compare-title good"><i class="ti ti-compass"></i> 探索模式（15% 随机推荐）</h3>
+        <div class="chart-container small">
+          <canvas id="exploreChart"></canvas>
+        </div>
+        <div class="compare-stat" id="exploreStat"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 全站统计 ── -->
+  <div class="section" id="globalStatsSection" style="display:none;">
+    <h2><i class="ti ti-users"></i> 全站实验数据</h2>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 来自所有访客的真实实验结果汇总。</p>
+    <div class="result-grid">
+      <div class="result-card">
+        <div class="result-icon"><i class="ti ti-users"></i></div>
+        <div class="result-num" id="gsTotalSessions">—</div>
+        <div class="result-label">总实验次数</div>
+      </div>
+      <div class="result-card">
+        <div class="result-icon"><i class="ti ti-arrow-down-right"></i></div>
+        <div class="result-num" id="gsAvgDrop">—</div>
+        <div class="result-label">平均熵下降</div>
+      </div>
+      <div class="result-card">
+        <div class="result-icon"><i class="ti ti-category"></i></div>
+        <div class="result-num" id="gsAvgPct">—</div>
+        <div class="result-label">平均主导占比</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:12px;">
+      <span style="color:#888;font-size:0.85rem;">平均收敛轮次：<strong style="color:#ffd700;" id="gsAvgConverge">—</strong></span>
+    </div>
+    <div style="margin-top:12px;text-align:center;">
+      <span style="color:#888;font-size:0.8rem;">最常被「困住」的类型：</span>
+      <div id="gsCatDist" style="margin-top:8px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么推荐系统必然制造茧房</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>优化目标决定行为</h4>
+        <p>推荐系统的 KPI 是点击率（CTR）和停留时长。用户点什么，算法就推更多类似的——因为这能让指标涨。多样性从来不在优化目标里。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>正反馈循环</h4>
+        <p>你点了科技新闻 → 算法推更多科技 → 你看到的都是科技所以继续点 → 权重进一步集中。这是一个自我强化的闭环，没有外力打破它只会越来越窄。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>探索的代价</h4>
+        <p>随机推荐一条你可能不感兴趣的内容 = 短期点击率下降 = KPI 受损。对于优化指标的工程师来说，探索是有成本的，而这个成本由用户的信息视野买单。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 行业数据 ── -->
+  <div class="section">
+    <h2><i class="ti ti-file-analytics"></i> 真实世界的数据</h2>
+    <div class="data-cards">
+      <div class="data-card">
+        <div class="data-num">66%</div>
+        <div class="data-desc">YouTube 推荐观看的视频中，66% 来自用户已有兴趣类别</div>
+        <div class="data-source">来源：Mozilla Foundation "YouTube Regrets" 报告, 2021</div>
+      </div>
+      <div class="data-card">
+        <div class="data-num">70%</div>
+        <div class="data-desc">Netflix 用户观看的内容中约 70% 来自推荐系统</div>
+        <div class="data-source">来源：Netflix Tech Blog, 2016</div>
+      </div>
+      <div class="data-card">
+        <div class="data-num">30%</div>
+        <div class="data-desc">TikTok 用户在使用3天后，推荐视频的主题多样性下降约30%</div>
+        <div class="data-source">来源：Wall Street Journal "TikTok Rabbit Hole" 调查, 2021</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

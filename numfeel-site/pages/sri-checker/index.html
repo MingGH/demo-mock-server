@@ -3,150 +3,120 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="输入任意网站URL，检测其引用的第三方JS/CSS是否有SRI保护。没有SRI的资源一旦CDN被黑，攻击者可以做任何事。">
-  <title>SRI 安全检测器：你的网站在裸奔吗 | 数字直觉</title>
+  <meta name="description" content="两个页面引用同一个CDN脚本，一个加了SRI保护一个没加。点击「模拟CDN被篡改」，亲眼看到没有SRI的页面被攻击者接管。">
+  <title>SRI 安全实验室：亲眼见证一次供应链攻击 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <div class="container">
 
   <div class="header">
-    <h1><i class="ti ti-shield-search"></i> SRI 安全检测器</h1>
-    <p>你引用的第三方 JS/CSS 有没有加 SRI？如果没有，CDN 一旦被黑，攻击者能对你的用户做任何事。</p>
+    <h1><i class="ti ti-shield-search"></i> SRI 安全实验室</h1>
+    <p>两个页面引用同一个 CDN 脚本。一个加了 SRI 保护，一个没加。<br>点击按钮模拟 CDN 被黑客篡改，看看会发生什么。</p>
   </div>
 
-  <!-- ── 第一步：输入 URL ── -->
-  <div class="section">
-    <h2><i class="ti ti-search"></i> 输入目标网站</h2>
-    <p style="color:#888;font-size:0.82rem;margin-bottom:14px;">输入一个网站 URL，检测它引用的所有第三方资源的 SRI 保护情况。</p>
-    <div class="preset-sites" id="presetSites">
-      <button data-url="https://www.bilibili.com">bilibili</button>
-      <button data-url="https://juejin.cn">掘金</button>
-      <button data-url="https://www.zhihu.com">知乎</button>
-      <button data-url="https://github.com">GitHub</button>
-      <button data-url="https://stackoverflow.com">StackOverflow</button>
+  <!-- ── 操作区 ── -->
+  <div class="section control-section">
+    <h2><i class="ti ti-player-play"></i> 操作面板</h2>
+    <p class="section-hint">分两步体验：先看正常状态，再模拟攻击</p>
+    <div class="btn-group">
+      <button class="btn btn-safe" id="btnNormal" onclick="loadNormal()">
+        <i class="ti ti-check"></i> 第一步：正常加载
+      </button>
+      <button class="btn btn-danger" id="btnTamper" onclick="loadTampered()" disabled>
+        <i class="ti ti-virus"></i> 第二步：模拟 CDN 被篡改
+      </button>
+      <button class="btn btn-reset" id="btnReset" onclick="resetAll()">
+        <i class="ti ti-refresh"></i> 重置
+      </button>
     </div>
-    <p class="preset-hint">点击预设网站快速体验，或输入自定义 URL</p>
-    <div class="input-group">
-      <input type="url" id="urlInput" placeholder="https://example.com" autocomplete="url">
-      <button id="checkBtn" onclick="startCheck()"><i class="ti ti-radar"></i> 检测</button>
-    </div>
-  </div>
-
-  <!-- ── 加载状态 ── -->
-  <div class="section hidden" id="loadingSection">
-    <div class="loading-state">
-      <div class="spinner"></div>
-      <p>正在抓取并分析目标页面…</p>
+    <div class="current-state" id="currentState">
+      <span class="state-dot idle"></span> 等待操作…
     </div>
   </div>
 
-  <!-- ── 第二步：结果概览 ── -->
-  <div class="section hidden" id="summarySection">
-    <h2><i class="ti ti-chart-pie"></i> 检测结果</h2>
-    <div class="summary-grid">
-      <div class="summary-card info">
-        <div class="number" id="totalCount">0</div>
-        <div class="label">外部资源总数</div>
+  <!-- ── 并排对比区 ── -->
+  <div class="section compare-section">
+    <div class="compare-header">
+      <div class="compare-label safe-label">
+        <i class="ti ti-shield-check"></i> 有 SRI 保护
+        <code>integrity="sha384-..."</code>
       </div>
-      <div class="summary-card warn">
-        <div class="number" id="thirdPartyCount">0</div>
-        <div class="label">第三方资源</div>
-      </div>
-      <div class="summary-card safe">
-        <div class="number" id="protectedCount">0</div>
-        <div class="label">有 SRI 保护</div>
-      </div>
-      <div class="summary-card danger">
-        <div class="number" id="unprotectedCount">0</div>
-        <div class="label">无保护（危险）</div>
+      <div class="compare-label unsafe-label">
+        <i class="ti ti-shield-off"></i> 无 SRI 保护
+        <code>无 integrity 属性</code>
       </div>
     </div>
-    <div class="chart-container">
-      <canvas id="donutChart"></canvas>
-    </div>
-  </div>
-
-  <!-- ── 第三步：资源列表 ── -->
-  <div class="section hidden" id="resourceSection">
-    <h2><i class="ti ti-list-details"></i> 资源清单</h2>
-    <p style="color:#888;font-size:0.82rem;margin-bottom:12px;">绿色 = 有 SRI 保护，红色 = 无保护（可被篡改），灰色 = 同域资源。点击红色行查看攻击模拟。</p>
-    <div style="overflow-x:auto;">
-      <table class="resource-table">
-        <thead>
-          <tr>
-            <th>类型</th>
-            <th>资源地址</th>
-            <th>第三方</th>
-            <th>SRI</th>
-          </tr>
-        </thead>
-        <tbody id="resourceTableBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ── 第四步：攻击模拟 ── -->
-  <div class="section hidden" id="attackSection">
-    <h2><i class="ti ti-alert-triangle"></i> 攻击模拟：如果这个 CDN 被黑</h2>
-    <p style="color:#888;font-size:0.82rem;margin-bottom:12px;">假设攻击者篡改了下面这个资源文件，以下是他能做的事情：</p>
-    <div class="attack-panel">
-      <h3 id="attackTarget">—</h3>
-      <ol class="attack-steps" id="attackSteps"></ol>
-    </div>
-  </div>
-
-  <!-- ── 第五步：修复建议 ── -->
-  <div class="section hidden" id="fixSection">
-    <h2><i class="ti ti-shield-check"></i> 一键修复</h2>
-    <p style="color:#888;font-size:0.82rem;margin-bottom:12px;">给无保护的第三方资源添加 integrity 属性后，浏览器会校验文件哈希值。一旦文件被篡改，浏览器拒绝加载。</p>
-    <div class="fix-panel">
-      <h3><i class="ti ti-code"></i> 修复示例（为第一个无保护资源生成）</h3>
-      <div class="fix-code" id="fixCode">
-        <button class="copy-btn" onclick="copyFix()">复制</button>
-        <pre id="fixPre">检测完成后自动生成…</pre>
+    <div class="iframe-grid">
+      <div class="iframe-wrapper">
+        <iframe id="frameSafe" src="about:blank" sandbox="allow-scripts allow-same-origin"></iframe>
+        <div class="iframe-overlay" id="overlaySafe">点击上方按钮开始</div>
+      </div>
+      <div class="iframe-wrapper">
+        <iframe id="frameUnsafe" src="about:blank" sandbox="allow-scripts allow-same-origin"></iframe>
+        <div class="iframe-overlay" id="overlayUnsafe">点击上方按钮开始</div>
       </div>
     </div>
+  </div>
 
-    <div class="insight-box blue" style="margin-top:16px;">
-      <h3><i class="ti ti-info-circle"></i> 如何生成 integrity 值</h3>
-      <p>在终端执行：<code style="color:#ffd700;">curl -s URL | openssl dgst -sha384 -binary | openssl base64 -A</code><br>
-      然后拼接前缀 <code style="color:#ffd700;">sha384-</code> 即可。也可使用 <a href="https://www.srihash.org/" target="_blank" style="color:#90caf9;">srihash.org</a> 在线生成。</p>
-    </div>
+  <!-- ── 发生了什么 ── -->
+  <div class="section hidden" id="explanationSection">
+    <h2><i class="ti ti-info-circle"></i> 发生了什么</h2>
+    <div class="explanation-content" id="explanationContent"></div>
   </div>
 
   <!-- ── 原理解释 ── -->
   <div class="section">
-    <h2><i class="ti ti-brain"></i> SRI 是什么，为什么重要</h2>
+    <h2><i class="ti ti-brain"></i> SRI 的工作原理</h2>
     <div class="principle-grid">
       <div class="principle-card">
         <div class="num">01</div>
-        <h4>CDN 不是你的服务器</h4>
-        <p>你引用的 jQuery、Bootstrap、Analytics 脚本托管在第三方 CDN 上。CDN 被入侵 = 你的网站被入侵。</p>
+        <h4>引用第三方脚本时加上哈希值</h4>
+        <p>开发者在 &lt;script&gt; 标签中写入文件内容的 SHA-384 哈希值作为 integrity 属性。</p>
       </div>
       <div class="principle-card">
         <div class="num">02</div>
-        <h4>SRI = 文件指纹锁</h4>
-        <p>integrity 属性存储文件的 SHA 哈希值。浏览器下载后先校验，不匹配则拒绝执行——即使 CDN 已被篡改。</p>
+        <h4>浏览器下载后先校验</h4>
+        <p>浏览器从 CDN 下载文件后，计算实际内容的哈希值，与 integrity 属性对比。</p>
       </div>
       <div class="principle-card">
         <div class="num">03</div>
-        <h4>成本几乎为零</h4>
-        <p>加一个 integrity 属性就完事了。不影响性能，不影响缓存，唯一代价是资源更新时需要同步更新哈希值。</p>
+        <h4>不匹配则拒绝执行</h4>
+        <p>如果文件被篡改，哈希值不匹配，浏览器直接丢弃该文件，脚本不会执行。页面虽然少了一个功能，但不会被攻击者控制。</p>
       </div>
       <div class="principle-card">
         <div class="num">04</div>
-        <h4>现实中几乎没人用</h4>
-        <p>HTTP Archive 数据显示，仅约 3-5% 的网站对第三方脚本使用了 SRI。剩下 95% 都在裸奔。</p>
+        <h4>成本：一行代码</h4>
+        <p>加一个 integrity 属性和 crossorigin="anonymous" 就完事了。不影响性能，不影响缓存。</p>
       </div>
     </div>
 
-    <div class="insight-box red" style="margin-top:24px;">
-      <h3><i class="ti ti-alert-circle"></i> 真实案例：British Airways 事件</h3>
-      <p>2018 年，攻击者通过篡改 British Airways 网站加载的第三方脚本，窃取了 38 万名用户的信用卡信息。如果这些脚本有 SRI 保护，篡改后的代码根本不会被浏览器执行。BA 最终被 ICO 罚款 2000 万英镑。</p>
+    <div class="insight-box red">
+      <h3><i class="ti ti-alert-circle"></i> 真实案例：British Airways 2018</h3>
+      <p>攻击者篡改了 BA 网站加载的第三方脚本，22 行恶意 JS 窃取了 38 万用户的信用卡信息。ICO 罚款 2000 万英镑。如果有 SRI 保护，篡改后的脚本根本不会执行。</p>
+    </div>
+  </div>
+
+  <!-- ── 代码对比 ── -->
+  <div class="section">
+    <h2><i class="ti ti-code"></i> 代码差异：就差一个属性</h2>
+    <div class="code-compare">
+      <div class="code-block safe-code">
+        <div class="code-label"><i class="ti ti-shield-check"></i> 有保护</div>
+        <pre><code>&lt;script
+  src="https://cdn.example.com/lib.js"
+  <span class="highlight">integrity="sha384-oqVuAf..."</span>
+  <span class="highlight">crossorigin="anonymous"</span>
+&gt;&lt;/script&gt;</code></pre>
+      </div>
+      <div class="code-block unsafe-code">
+        <div class="code-label"><i class="ti ti-shield-off"></i> 无保护（99%的网站）</div>
+        <pre><code>&lt;script
+  src="https://cdn.example.com/lib.js"
+&gt;&lt;/script&gt;</code></pre>
+      </div>
     </div>
   </div>
 

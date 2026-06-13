@@ -13,9 +13,9 @@ jobs:
         working-directory: numfeel-service
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'zulu'
@@ -41,16 +41,14 @@ jobs:
     needs: build
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: 'numfeel-service/k3s-deployment-prod.yaml'
       - name: Set up kubectl
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y kubectl
-      - name: Set up KUBE_CONFIG
+        uses: azure/setup-kubectl@v4
+      - name: Deploy to K3s
         run: |
           echo "${{ secrets.KUBE_CONFIG }}" > K3S_KUBE_CONFIG.yaml
           chmod 600 K3S_KUBE_CONFIG.yaml
-      - name: Deploy to K3s
-        run: |
           kubectl --kubeconfig=K3S_KUBE_CONFIG.yaml apply -f numfeel-service/k3s-deployment-prod.yaml
           kubectl --kubeconfig=K3S_KUBE_CONFIG.yaml patch deployment demo-mock-server-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"date\":\"`date +'%s'`\"}}}}}" -n runnable-run

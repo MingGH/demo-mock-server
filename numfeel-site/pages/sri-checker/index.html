@@ -94,6 +94,24 @@
     </div>
   </div>
 
+  <!-- ── SRI 生成器 ── -->
+  <div class="section">
+    <h2><i class="ti ti-hash"></i> SRI 生成器：输入 URL，生成带 integrity 的标签</h2>
+    <p class="section-hint">输入一个 CDN 上的 JS 或 CSS 文件地址，后端会抓取文件内容、计算 SHA-384 哈希，生成可直接复制使用的标签。</p>
+    <div class="gen-input-group">
+      <input type="url" id="genUrl" placeholder="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" autocomplete="url" />
+      <button id="genBtn" onclick="generateSri()"><i class="ti ti-arrow-right"></i> 生成</button>
+    </div>
+    <div class="gen-result hidden" id="genResult">
+      <div class="gen-integrity" id="genIntegrity"></div>
+      <div class="gen-tag-wrapper">
+        <pre class="gen-tag" id="genTag"></pre>
+        <button class="gen-copy-btn" onclick="copyGenTag()"><i class="ti ti-copy"></i> 复制</button>
+      </div>
+    </div>
+    <div class="gen-error hidden" id="genError"></div>
+  </div>
+
   <!-- ── 原理 ── -->
   <div class="section">
     <h2><i class="ti ti-brain"></i> SRI 工作原理</h2>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="两个页面引用同一个CDN脚本，一个加了SRI保护一个没加。点击「模拟CDN被篡改」，亲眼看到没有SRI的页面被攻击者接管。">
+  <meta name="description" content="两个页面引用同一个CDN脚本，一个加了SRI保护一个没加。点击模拟CDN被篡改，亲眼看到没有SRI的页面被攻击者接管。">
   <title>SRI 安全实验室：亲眼见证一次供应链攻击 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
@@ -14,31 +14,18 @@
 
   <div class="header">
     <h1><i class="ti ti-shield-search"></i> SRI 安全实验室</h1>
-    <p>两个页面引用同一个 CDN 脚本。一个加了 SRI 保护，一个没加。<br>点击按钮模拟 CDN 被黑客篡改，看看会发生什么。</p>
+    <p>下面是两个「银行登录页」，它们引用同一个第三方 CDN 脚本。<br>唯一区别：左边加了 SRI 保护，右边没加。</p>
   </div>
 
-  <!-- ── 操作区 ── -->
-  <div class="section control-section">
-    <h2><i class="ti ti-player-play"></i> 操作面板</h2>
-    <p class="section-hint">分两步体验：先看正常状态，再模拟攻击</p>
-    <div class="btn-group">
-      <button class="btn btn-safe" id="btnNormal" onclick="loadNormal()">
-        <i class="ti ti-check"></i> 第一步：正常加载
-      </button>
-      <button class="btn btn-danger" id="btnTamper" onclick="loadTampered()" disabled>
-        <i class="ti ti-virus"></i> 第二步：模拟 CDN 被篡改
-      </button>
-      <button class="btn btn-reset" id="btnReset" onclick="resetAll()">
-        <i class="ti ti-refresh"></i> 重置
-      </button>
-    </div>
-    <div class="current-state" id="currentState">
-      <span class="state-dot idle"></span> 等待操作…
-    </div>
+  <!-- ── Step 1: 引导 ── -->
+  <div class="section step-section" id="step1">
+    <div class="step-badge">Step 1</div>
+    <h2><i class="ti ti-pencil"></i> 先试试在两边的登录页里打字</h2>
+    <p class="section-hint">两边都是正常的，随便输入用户名和密码体验一下。这是 CDN 没有被攻击时的正常状态。</p>
   </div>
 
   <!-- ── 并排对比区 ── -->
-  <div class="section compare-section">
+  <div class="compare-section">
     <div class="compare-header">
       <div class="compare-label safe-label">
         <i class="ti ti-shield-check"></i> 有 SRI 保护
@@ -50,71 +37,106 @@
       </div>
     </div>
     <div class="iframe-grid">
-      <div class="iframe-wrapper">
-        <iframe id="frameSafe" src="about:blank" sandbox="allow-scripts allow-same-origin"></iframe>
-        <div class="iframe-overlay" id="overlaySafe">点击上方按钮开始</div>
+      <div class="iframe-wrapper" id="wrapperSafe">
+        <iframe id="frameSafe" sandbox="allow-scripts allow-same-origin"></iframe>
       </div>
-      <div class="iframe-wrapper">
-        <iframe id="frameUnsafe" src="about:blank" sandbox="allow-scripts allow-same-origin"></iframe>
-        <div class="iframe-overlay" id="overlayUnsafe">点击上方按钮开始</div>
+      <div class="iframe-wrapper" id="wrapperUnsafe">
+        <iframe id="frameUnsafe" sandbox="allow-scripts allow-same-origin"></iframe>
       </div>
     </div>
   </div>
 
-  <!-- ── 发生了什么 ── -->
-  <div class="section hidden" id="explanationSection">
-    <h2><i class="ti ti-info-circle"></i> 发生了什么</h2>
-    <div class="explanation-content" id="explanationContent"></div>
+  <!-- ── Step 2: 篡改按钮 ── -->
+  <div class="section step-section" id="step2">
+    <div class="step-badge">Step 2</div>
+    <h2><i class="ti ti-virus"></i> 现在，模拟黑客篡改了 CDN 上的脚本文件</h2>
+    <p class="section-hint">点击下面的按钮。两个页面会重新加载 — 但这次 CDN 上的 JS 文件已经被「替换」成恶意代码。</p>
+    <button class="tamper-btn" id="tamperBtn" onclick="simulateTamper()">
+      <i class="ti ti-skull"></i> 模拟 CDN 被黑客篡改
+    </button>
   </div>
 
-  <!-- ── 原理解释 ── -->
+  <!-- ── Step 3: 结果解释（篡改后显示） ── -->
+  <div class="section step-section hidden" id="step3">
+    <div class="step-badge">Step 3</div>
+    <h2><i class="ti ti-eye-check"></i> 观察两边的差异</h2>
+    <div class="result-grid">
+      <div class="result-card safe-result">
+        <h3><i class="ti ti-shield-check"></i> 左边 — 有 SRI</h3>
+        <p>浏览器下载了被篡改的文件，计算哈希后发现与 integrity 不匹配 → <strong>拒绝执行</strong>。恶意代码从未运行，登录页完好无损。</p>
+      </div>
+      <div class="result-card danger-result">
+        <h3><i class="ti ti-shield-off"></i> 右边 — 无 SRI</h3>
+        <p>浏览器下载了被篡改的文件，没有校验 → <strong>直接执行</strong>。恶意脚本注入了键盘记录器、3秒后弹出钓鱼弹窗。在右边的输入框里打字试试。</p>
+      </div>
+    </div>
+    <div class="conclusion-box">
+      <strong>区别只在一个 HTML 属性。</strong> 加 <code>integrity="sha384-..."</code> = 免疫 CDN 被黑。不加 = 攻击者全面接管你的页面。
+    </div>
+    <button class="reset-btn" onclick="resetDemo()"><i class="ti ti-refresh"></i> 重来一次</button>
+  </div>
+
+  <!-- ── 下载对比 HTML ── -->
   <div class="section">
-    <h2><i class="ti ti-brain"></i> SRI 的工作原理</h2>
+    <h2><i class="ti ti-download"></i> 下载到本地自己验证</h2>
+    <p class="section-hint">不信？下载这两个 HTML 文件，用浏览器打开，打开 DevTools 的 Console 看看发生了什么。</p>
+    <div class="download-grid">
+      <div class="download-card">
+        <h4><i class="ti ti-shield-check"></i> safe.html</h4>
+        <p>带 integrity 属性，篡改后脚本不会执行</p>
+        <button class="dl-btn" onclick="downloadSafe()"><i class="ti ti-download"></i> 下载 safe.html</button>
+      </div>
+      <div class="download-card">
+        <h4><i class="ti ti-shield-off"></i> unsafe.html</h4>
+        <p>不带 integrity，篡改后恶意代码直接运行</p>
+        <button class="dl-btn dl-btn-danger" onclick="downloadUnsafe()"><i class="ti ti-download"></i> 下载 unsafe.html</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 原理 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> SRI 工作原理</h2>
     <div class="principle-grid">
       <div class="principle-card">
         <div class="num">01</div>
-        <h4>引用第三方脚本时加上哈希值</h4>
-        <p>开发者在 &lt;script&gt; 标签中写入文件内容的 SHA-384 哈希值作为 integrity 属性。</p>
+        <h4>引用时写入文件哈希</h4>
+        <p>开发者在 script 标签的 integrity 属性中写入 JS 文件的 SHA-384 哈希值。</p>
       </div>
       <div class="principle-card">
         <div class="num">02</div>
-        <h4>浏览器下载后先校验</h4>
-        <p>浏览器从 CDN 下载文件后，计算实际内容的哈希值，与 integrity 属性对比。</p>
+        <h4>浏览器下载后校验</h4>
+        <p>浏览器下载文件后计算实际哈希，与 integrity 对比。不匹配则拒绝执行。</p>
       </div>
       <div class="principle-card">
         <div class="num">03</div>
-        <h4>不匹配则拒绝执行</h4>
-        <p>如果文件被篡改，哈希值不匹配，浏览器直接丢弃该文件，脚本不会执行。页面虽然少了一个功能，但不会被攻击者控制。</p>
+        <h4>零成本防御</h4>
+        <p>加一个属性就完事。不影响性能、不影响缓存、全浏览器支持。</p>
       </div>
       <div class="principle-card">
         <div class="num">04</div>
-        <h4>成本：一行代码</h4>
-        <p>加一个 integrity 属性和 crossorigin="anonymous" 就完事了。不影响性能，不影响缓存。</p>
+        <h4>95% 的网站没用</h4>
+        <p>HTTP Archive 数据显示绝大多数网站的第三方脚本没有 SRI 保护，CDN 一旦被黑就全面沦陷。</p>
       </div>
-    </div>
-
-    <div class="insight-box red">
-      <h3><i class="ti ti-alert-circle"></i> 真实案例：British Airways 2018</h3>
-      <p>攻击者篡改了 BA 网站加载的第三方脚本，22 行恶意 JS 窃取了 38 万用户的信用卡信息。ICO 罚款 2000 万英镑。如果有 SRI 保护，篡改后的脚本根本不会执行。</p>
     </div>
   </div>
 
   <!-- ── 代码对比 ── -->
   <div class="section">
-    <h2><i class="ti ti-code"></i> 代码差异：就差一个属性</h2>
+    <h2><i class="ti ti-code"></i> 代码差异：就一个属性</h2>
     <div class="code-compare">
       <div class="code-block safe-code">
         <div class="code-label"><i class="ti ti-shield-check"></i> 有保护</div>
         <pre><code>&lt;script
-  src="https://cdn.example.com/lib.js"
-  <span class="highlight">integrity="sha384-oqVuAf..."</span>
-  <span class="highlight">crossorigin="anonymous"</span>
+  src="https://cdn.example.com/analytics.js"
+  <span class="hl">integrity="sha384-oqVuAf..."</span>
+  <span class="hl">crossorigin="anonymous"</span>
 &gt;&lt;/script&gt;</code></pre>
       </div>
       <div class="code-block unsafe-code">
-        <div class="code-label"><i class="ti ti-shield-off"></i> 无保护（99%的网站）</div>
+        <div class="code-label"><i class="ti ti-shield-off"></i> 无保护</div>
         <pre><code>&lt;script
-  src="https://cdn.example.com/lib.js"
+  src="https://cdn.example.com/analytics.js"
 &gt;&lt;/script&gt;</code></pre>
       </div>
     </div>

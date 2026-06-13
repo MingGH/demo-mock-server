@@ -827,6 +827,38 @@
       ]
     },
     {
+      "name": "FilterBubble",
+      "item": [
+        {
+          "name": "POST /filter-bubble/submit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/filter-bubble/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["filter-bubble", "submit"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entropyDrop\": 85.2,\n  \"dominantCat\": \"tech\",\n  \"dominantPct\": 92.3,\n  \"convergeRound\": 6,\n  \"totalRounds\": 10,\n  \"clickSequence\": \"[\\\"tech\\\",\\\"tech\\\",\\\"tech\\\",\\\"food\\\",\\\"tech\\\",\\\"tech\\\",\\\"tech\\\",\\\"tech\\\",\\\"tech\\\",\\\"tech\\\"]\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /filter-bubble/stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/filter-bubble/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["filter-bubble", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "StatsProxy",
       "item": [
         {

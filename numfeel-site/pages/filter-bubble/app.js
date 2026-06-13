@@ -409,9 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── 后端统计 ──
-const API_BASE = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
-  ? 'http://localhost:8080'
-  : 'https://numfeel-api.996.ninja';
+const API_BASE = 'https://numfeel-api.996.ninja';
 
 function submitResult() {
   const summary = engine.getSummary();

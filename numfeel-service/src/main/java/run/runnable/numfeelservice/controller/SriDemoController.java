@@ -27,95 +27,58 @@ public class SriDemoController {
     private static final MediaType JS_MEDIA_TYPE = MediaType.parseMediaType("application/javascript; charset=utf-8");
 
     /**
-     * 正常版本：在页面上显示安全状态。
+     * 正常版本：在模拟银行页面上不做任何事（脚本只是一个空操作）。
      */
     private static final String NORMAL_SCRIPT = """
             (function() {
-              var container = document.getElementById('sri-demo-status');
-              if (!container) return;
-              container.innerHTML = '<div class="status-safe">' +
-                '<div class="status-icon">\\u2705</div>' +
-                '<div class="status-title">脚本正常加载</div>' +
-                '<div class="status-desc">文件内容未被篡改，一切正常运行。</div>' +
-                '</div>';
-              container.className = 'status-container safe';
+              // 正常的第三方脚本 — 例如一个无害的 analytics 库
+              // 不修改页面，不窃取数据
+              var el = document.getElementById('script-status');
+              if (el) {
+                el.textContent = '第三方脚本已加载 (analytics.js v3.2.1)';
+                el.className = 'script-status normal';
+              }
             })();
             """;
 
     /**
-     * "恶意"版本：模拟攻击行为 — 读取真实浏览器信息，让用户感知到代码真正在执行。
+     * "恶意"版本：在模拟银行页面上注入键盘记录、伪造弹窗。
      */
     private static final String TAMPERED_SCRIPT = """
             (function() {
-              var container = document.getElementById('sri-demo-status');
-              if (!container) return;
+              var el = document.getElementById('script-status');
+              if (el) {
+                el.textContent = '第三方脚本已加载 (analytics.js v3.2.1 — 已被篡改)';
+                el.className = 'script-status hacked';
+              }
 
-              // ── 真实读取用户环境信息 ──
-              var ua = navigator.userAgent;
-              var lang = navigator.language;
-              var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-              var screen = window.screen.width + 'x' + window.screen.height;
-              var cores = navigator.hardwareConcurrency || '?';
-              var mem = navigator.deviceMemory ? navigator.deviceMemory + 'GB' : '未知';
-              var platform = navigator.platform || '未知';
-              var cookies = document.cookie || '(HttpOnly 不可读，但 JS 可读的已窃取)';
-              var lsKeys = [];
-              try { for(var i=0;i<localStorage.length&&i<5;i++) lsKeys.push(localStorage.key(i)); } catch(e){}
+              // 1. 键盘记录 — 截获所有输入框内容
+              var logPanel = document.getElementById('keylog-panel');
+              if (logPanel) logPanel.style.display = 'block';
 
-              container.innerHTML = '<div class="status-hacked">' +
-                '<div class="status-icon">\\u26A0\\uFE0F</div>' +
-                '<div class="status-title">恶意脚本正在执行</div>' +
-                '<div class="status-desc">这不是模拟文本，以下是脚本此刻从你的浏览器中读取到的真实数据：</div>' +
-                '<div class="stolen-data">' +
-                  '<div class="data-row"><span class="data-label">\\uD83D\\uDCBB 系统</span><span class="data-value">' + platform + '</span></div>' +
-                  '<div class="data-row"><span class="data-label">\\uD83C\\uDF10 语言/时区</span><span class="data-value">' + lang + ' / ' + tz + '</span></div>' +
-                  '<div class="data-row"><span class="data-label">\\uD83D\\uDDA5 分辨率</span><span class="data-value">' + screen + '</span></div>' +
-                  '<div class="data-row"><span class="data-label">\\u2699\\uFE0F CPU核心</span><span class="data-value">' + cores + ' 核 / 内存 ' + mem + '</span></div>' +
-                  '<div class="data-row"><span class="data-label">\\uD83C\\uDF6A Cookie</span><span class="data-value cookie-val">' + (cookies.substring(0,60) || '空') + '</span></div>' +
-                  '<div class="data-row"><span class="data-label">\\uD83D\\uDCC2 LocalStorage</span><span class="data-value">' + (lsKeys.length ? lsKeys.join(', ') : '空') + '</span></div>' +
-                '</div>' +
-                '<div class="upload-progress">' +
-                  '<div class="progress-text" id="progress-text">\\u2B06\\uFE0F 正在上传到 evil-server.com...</div>' +
-                  '<div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>' +
-                '</div>' +
-                '<div class="keylog-section">' +
-                  '<div class="keylog-title">\\u2328\\uFE0F 键盘记录器 (已激活)</div>' +
-                  '<div class="keylog-hint">试试在下面的输入框打字 \\u2193</div>' +
-                  '<input type="text" class="keylog-input" id="keylog-input" placeholder="输入密码试试..." autocomplete="off" />' +
-                  '<div class="keylog-output" id="keylog-output"></div>' +
-                '</div>' +
-                '</div>';
-              container.className = 'status-container hacked';
-
-              // 页面抖动效果
-              document.body.style.animation = 'shake 0.3s ease-in-out 3';
-              var style = document.createElement('style');
-              style.textContent = '@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}';
-              document.head.appendChild(style);
-
-              // 上传进度条动画
-              var fill = document.getElementById('progress-fill');
-              var pText = document.getElementById('progress-text');
-              var progress = 0;
-              var timer = setInterval(function() {
-                progress += Math.random() * 15 + 5;
-                if (progress >= 100) {
-                  progress = 100;
-                  clearInterval(timer);
-                  if (pText) pText.textContent = '\\u2705 数据已上传完毕 — 攻击者已获得你的所有信息';
-                  if (fill) fill.style.background = '#ff6b6b';
-                }
-                if (fill) fill.style.width = progress + '%';
-              }, 400);
-
-              // 真实键盘记录
-              var input = document.getElementById('keylog-input');
-              var output = document.getElementById('keylog-output');
-              if (input && output) {
+              var inputs = document.querySelectorAll('input');
+              inputs.forEach(function(input) {
                 input.addEventListener('input', function() {
-                  output.textContent = '\\u{1F4E1} 已截获: ' + input.value;
+                  var log = document.getElementById('keylog-content');
+                  if (!log) return;
+                  var label = input.getAttribute('placeholder') || input.type;
+                  log.innerHTML += '<div class="log-line"><span class="log-field">' + label + ':</span> ' + input.value + '</div>';
+                  log.scrollTop = log.scrollHeight;
                 });
-                input.focus();
+                // 红色边框提示被监听
+                input.style.boxShadow = '0 0 0 2px rgba(255,50,50,0.6)';
+              });
+
+              // 2. 3秒后弹出伪造的"安全验证"覆盖层
+              setTimeout(function() {
+                var overlay = document.getElementById('phishing-overlay');
+                if (overlay) overlay.style.display = 'flex';
+              }, 3000);
+
+              // 3. 读取 cookie 并显示
+              var cookieEl = document.getElementById('stolen-cookie');
+              if (cookieEl) {
+                cookieEl.textContent = document.cookie || 'session_token=a8f3...x2k; uid=10492';
               }
             })();
             """;

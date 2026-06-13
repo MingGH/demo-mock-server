@@ -20,10 +20,10 @@ class SriDemoControllerTest {
                     assertEquals(200, resp.getStatusCode().value());
                     String body = resp.getBody();
                     assertNotNull(body);
-                    assertTrue(body.contains("脚本正常加载"));
-                    assertTrue(body.contains("status-safe"));
-                    assertFalse(body.contains("恶意代码"));
-                    assertFalse(body.contains("键盘记录器"));
+                    assertTrue(body.contains("script-status"));
+                    assertTrue(body.contains("analytics.js"));
+                    assertFalse(body.contains("键盘记录"));
+                    assertFalse(body.contains("phishing"));
                 })
                 .verifyComplete();
     }
@@ -37,11 +37,10 @@ class SriDemoControllerTest {
                     assertEquals(200, resp.getStatusCode().value());
                     String body = resp.getBody();
                     assertNotNull(body);
-                    assertTrue(body.contains("恶意脚本正在执行"));
-                    assertTrue(body.contains("navigator.userAgent"));
-                    assertTrue(body.contains("键盘记录器"));
-                    assertTrue(body.contains("status-hacked"));
-                    assertTrue(body.contains("evil-server.com"));
+                    assertTrue(body.contains("已被篡改"));
+                    assertTrue(body.contains("键盘记录"));
+                    assertTrue(body.contains("keylog-panel"));
+                    assertTrue(body.contains("phishing-overlay"));
                 })
                 .verifyComplete();
     }

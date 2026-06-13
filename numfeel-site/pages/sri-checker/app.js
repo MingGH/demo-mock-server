@@ -56,7 +56,7 @@ function resetAll() {
   document.getElementById('explanationSection').classList.add('hidden');
 }
 
-// ── 构建 iframe 内嵌 HTML ──
+// ── 构建 iframe 内嵌 HTML：模拟银行登录页 ──
 function buildPageHtml(tampered, withSri) {
   const scriptUrl = `${API_BASE}/demo.js${tampered ? '?tampered=true' : ''}`;
   const integrityAttr = (withSri && integrityHash)
@@ -71,80 +71,129 @@ function buildPageHtml(tampered, withSri) {
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #1a1a2e;
+  background: #0f1923;
   color: #e0e0e0;
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
 }
-.status-container {
+.bank-card {
+  width: 100%; max-width: 340px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 28px 24px;
+}
+.bank-logo {
+  text-align: center; margin-bottom: 18px;
+  font-size: 1.1rem; font-weight: 700; color: #90caf9;
+}
+.bank-logo span { opacity: 0.6; font-size: 0.75rem; font-weight: 400; display: block; margin-top: 2px; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 0.78rem; color: #888; margin-bottom: 5px; }
+.form-group input {
+  width: 100%; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3);
+  color: #fff; font-size: 0.9rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-group input:focus { border-color: #90caf9; }
+.login-btn {
+  width: 100%; padding: 11px; border: none; border-radius: 8px;
+  background: linear-gradient(135deg, #42a5f5, #1e88e5); color: #fff;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer; margin-top: 6px;
+}
+.login-btn:hover { opacity: 0.9; }
+.script-status {
+  text-align: center; font-size: 0.68rem; margin-top: 14px; padding: 5px 8px;
+  border-radius: 4px; background: rgba(255,255,255,0.03);
+}
+.script-status.normal { color: #666; }
+.script-status.hacked { color: #ff6b6b; background: rgba(255,50,50,0.08); }
+/* 键盘记录面板 */
+#keylog-panel {
+  display: none; margin-top: 14px; background: rgba(255,50,50,0.06);
+  border: 1px solid rgba(255,50,50,0.3); border-radius: 8px; padding: 10px;
+}
+#keylog-panel .panel-title { font-size: 0.75rem; color: #ff6b6b; font-weight: 600; margin-bottom: 6px; }
+#keylog-content { font-family: monospace; font-size: 0.72rem; color: #ffd700; max-height: 80px; overflow-y: auto; }
+.log-line { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.log-field { color: #ff6b6b; }
+#stolen-cookie { font-family: monospace; font-size: 0.7rem; color: #ffd700; margin-top: 4px; word-break: break-all; }
+/* 钓鱼覆盖层 */
+#phishing-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  align-items: center; justify-content: center; z-index: 999;
+}
+.phishing-box {
+  background: #1a1a2e; border: 2px solid #ff6b6b; border-radius: 12px;
+  padding: 24px; max-width: 300px; text-align: center;
+}
+.phishing-box .title { color: #ff6b6b; font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; }
+.phishing-box .desc { color: #ccc; font-size: 0.8rem; margin-bottom: 12px; }
+.phishing-box input {
+  width: 100%; padding: 8px 10px; border-radius: 6px; margin-bottom: 8px;
+  border: 1px solid rgba(255,50,50,0.4); background: rgba(0,0,0,0.4); color: #fff; font-size: 0.82rem;
+}
+.phishing-box button {
+  width: 100%; padding: 9px; border: none; border-radius: 6px;
+  background: #ff6b6b; color: #fff; font-weight: 600; cursor: pointer;
+}
+/* SRI 拦截状态 */
+.sri-blocked-banner {
+  margin-top: 14px; padding: 12px; border-radius: 8px;
+  background: rgba(129,199,132,0.08); border: 1px solid rgba(129,199,132,0.3);
   text-align: center;
-  padding: 24px;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 400px;
 }
-.status-container.safe {
-  background: rgba(129,199,132,0.1);
-  border: 2px solid rgba(129,199,132,0.4);
-}
-.status-container.hacked {
-  background: rgba(255,107,107,0.1);
-  border: 2px solid rgba(255,107,107,0.4);
-  animation: pulse-red 1s ease-in-out 3;
-}
-@keyframes pulse-red {
-  0%, 100% { border-color: rgba(255,107,107,0.4); }
-  50% { border-color: rgba(255,107,107,1); box-shadow: 0 0 20px rgba(255,107,107,0.3); }
-}
-.status-icon { font-size: 2.5rem; margin-bottom: 12px; }
-.status-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
-.status-container.safe .status-title { color: #81c784; }
-.status-container.hacked .status-title { color: #ff6b6b; }
-.status-desc { font-size: 0.85rem; color: #999; margin-bottom: 12px; }
-.stolen-data { text-align: left; margin: 12px 0; }
-.data-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 10px; margin-bottom: 4px;
-  background: rgba(0,0,0,0.3); border-radius: 6px; font-size: 0.78rem;
-}
-.data-label { color: #ff6b6b; font-weight: 600; white-space: nowrap; margin-right: 8px; }
-.data-value { color: #ffd700; font-family: monospace; text-align: right; word-break: break-all; }
-.cookie-val { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
-.upload-progress { margin: 14px 0; text-align: left; }
-.progress-text { font-size: 0.78rem; color: #ff6b6b; margin-bottom: 6px; }
-.progress-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
-.progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, #ffd700, #ff6b6b); border-radius: 3px; transition: width 0.3s; }
-.keylog-section { margin-top: 14px; text-align: left; background: rgba(0,0,0,0.4); border-radius: 8px; padding: 12px; }
-.keylog-title { font-size: 0.82rem; color: #ff6b6b; font-weight: 700; margin-bottom: 4px; }
-.keylog-hint { font-size: 0.75rem; color: #888; margin-bottom: 8px; }
-.keylog-input {
-  width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,107,107,0.4);
-  background: rgba(0,0,0,0.3); color: #fff; font-size: 0.85rem; outline: none; margin-bottom: 6px;
-}
-.keylog-input:focus { border-color: #ff6b6b; box-shadow: 0 0 8px rgba(255,107,107,0.3); }
-.keylog-output { font-family: monospace; font-size: 0.82rem; color: #ffd700; min-height: 18px; word-break: break-all; }
-.sri-blocked {
-  text-align: center;
-  padding: 24px;
-  background: rgba(129,199,132,0.08);
-  border: 2px solid rgba(129,199,132,0.3);
-  border-radius: 12px;
-}
-.sri-blocked .icon { font-size: 2.5rem; margin-bottom: 12px; }
-.sri-blocked .title { color: #81c784; font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; }
-.sri-blocked .desc { color: #999; font-size: 0.85rem; }
-.loading { text-align: center; color: #666; padding: 40px; }
+.sri-blocked-banner .title { color: #81c784; font-weight: 700; font-size: 0.85rem; margin-bottom: 4px; }
+.sri-blocked-banner .desc { color: #999; font-size: 0.75rem; }
 </style>
 </head>
 <body>
-<div id="sri-demo-status">
-  <div class="loading">加载中…</div>
+
+<div class="bank-card">
+  <div class="bank-logo">SecureBank Online<span>模拟银行登录页</span></div>
+  <div class="form-group">
+    <label>账号</label>
+    <input type="text" placeholder="手机号/邮箱" autocomplete="off" />
+  </div>
+  <div class="form-group">
+    <label>密码</label>
+    <input type="password" placeholder="输入密码" autocomplete="off" />
+  </div>
+  <button class="login-btn">登 录</button>
+  <div class="script-status" id="script-status">加载第三方脚本中...</div>
+
+  <!-- 键盘记录面板（恶意脚本激活后显示） -->
+  <div id="keylog-panel">
+    <div class="panel-title">攻击者后台 — 实时截获</div>
+    <div id="keylog-content"></div>
+    <div id="stolen-cookie"></div>
+  </div>
+
+  <!-- SRI 拦截提示（onerror 时显示） -->
+  <div class="sri-blocked-banner" id="sri-blocked" style="display:none;">
+    <div class="title">SRI 保护生效 — 脚本被拦截</div>
+    <div class="desc">浏览器检测到文件被篡改，拒绝执行。页面正常使用不受影响。</div>
+  </div>
 </div>
+
+<!-- 钓鱼覆盖层（恶意脚本 3 秒后弹出） -->
+<div id="phishing-overlay">
+  <div class="phishing-box">
+    <div class="title">安全验证</div>
+    <div class="desc">检测到异常登录，请重新验证身份</div>
+    <input type="text" placeholder="重新输入手机号" />
+    <input type="password" placeholder="重新输入密码" />
+    <button>确认验证</button>
+    <div style="margin-top:8px;font-size:0.65rem;color:#ff6b6b;">这是攻击者注入的虚假弹窗</div>
+  </div>
+</div>
+
 <script src="${scriptUrl}"${integrityAttr}
-  onerror="document.getElementById('sri-demo-status').innerHTML='<div class=sri-blocked><div class=icon>\\u{1F6E1}\\uFE0F</div><div class=title>SRI 保护生效 — 脚本被拦截</div><div class=desc>浏览器检测到文件哈希不匹配，拒绝执行被篡改的脚本。<br>页面安全。攻击者无法得逞。</div></div>';document.getElementById('sri-demo-status').className='status-container safe';">
+  onerror="document.getElementById('script-status').style.display='none';document.getElementById('sri-blocked').style.display='block';">
 </script>
 </body>
 </html>`;

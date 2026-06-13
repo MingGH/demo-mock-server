@@ -2,11 +2,16 @@ package run.runnable.numfeelservice.controller;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import run.runnable.numfeelservice.web.ApiResponse;
+
+import java.security.MessageDigest;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Base64;
+import java.util.Map;
 
 /**
  * SRI 演示用动态脚本接口。
@@ -25,6 +30,13 @@ import reactor.core.publisher.Mono;
 public class SriDemoController {
 
     private static final MediaType JS_MEDIA_TYPE = MediaType.parseMediaType("application/javascript; charset=utf-8");
+    private final WebClient webClient;
+
+    public SriDemoController(WebClient.Builder webClientBuilder) {
+        this.webClient = webClientBuilder
+                .codecs(c -> c.defaultCodecs().maxInMemorySize(5 * 1024 * 1024))
+                .build();
+    }
 
     /**
      * 正常版本：在模拟银行页面上不做任何事（脚本只是一个空操作）。
@@ -102,9 +114,9 @@ public class SriDemoController {
     @GetMapping(value = "/demo-hash")
     public Mono<ResponseEntity<String>> demoHash() {
         try {
-            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-384");
-            byte[] hash = digest.digest(NORMAL_SCRIPT.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            String base64Hash = java.util.Base64.getEncoder().encodeToString(hash);
+            MessageDigest digest = MessageDigest.getInstance("SHA-384");
+            byte[] hash = digest.digest(NORMAL_SCRIPT.getBytes(StandardCharsets.UTF_8));
+            String base64Hash = Base64.getEncoder().encodeToString(hash);
             String integrity = "sha384-" + base64Hash;
             return Mono.just(ResponseEntity.ok()
                     .contentType(MediaType.TEXT_PLAIN)
@@ -112,5 +124,60 @@ public class SriDemoController {
         } catch (Exception e) {
             return Mono.just(ResponseEntity.internalServerError().body("Error computing hash"));
         }
+    }
+
+    /**
+     * SRI 生成器：输入 CDN URL，返回带 integrity 的完整 script/link 标签。
+     * <p>
+     * POST /sri/generate  body: {"url": "https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"}
+     */
+    @PostMapping("/generate")
+    public Mono<ResponseEntity<Object>> generate(@RequestBody Map<String, String> body) {
+        String url = body.get("url");
+        if (url == null || url.isBlank()) {
+            return Mono.just(ResponseEntity.badRequest().body(Map.of("error", "url 不能为空")));
+        }
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            return Mono.just(ResponseEntity.badRequest().body(Map.of("error", "URL 必须以 http:// 或 https:// 开头")));
+        }
+
+        boolean isCss = url.endsWith(".css");
+
+        return webClient.get()
+                .uri(url)
+                .header("User-Agent", "Mozilla/5.0 (compatible; SRI-Generator/1.0)")
+                .retrieve()
+                .bodyToMono(byte[].class)
+                .timeout(Duration.ofSeconds(10))
+                .map(bytes -> {
+                    try {
+                        MessageDigest digest = MessageDigest.getInstance("SHA-384");
+                        byte[] hash = digest.digest(bytes);
+                        String base64Hash = Base64.getEncoder().encodeToString(hash);
+                        String integrity = "sha384-" + base64Hash;
+
+                        String tag;
+                        if (isCss) {
+                            tag = "<link rel=\"stylesheet\" href=\"" + url + "\"\n" +
+                                  "      integrity=\"" + integrity + "\"\n" +
+                                  "      crossorigin=\"anonymous\">";
+                        } else {
+                            tag = "<script src=\"" + url + "\"\n" +
+                                  "        integrity=\"" + integrity + "\"\n" +
+                                  "        crossorigin=\"anonymous\"></script>";
+                        }
+
+                        return ResponseEntity.ok().body((Object) Map.of(
+                                "url", url,
+                                "integrity", integrity,
+                                "tag", tag
+                        ));
+                    } catch (Exception e) {
+                        return ResponseEntity.internalServerError().body((Object) Map.of("error", "哈希计算失败"));
+                    }
+                })
+                .onErrorResume(err -> Mono.just(
+                        ResponseEntity.status(502).body(Map.of("error", "无法下载文件: " + err.getMessage()))
+                ));
     }
 }

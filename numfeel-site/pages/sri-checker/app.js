@@ -126,6 +126,55 @@ function downloadFile(filename, content) {
   URL.revokeObjectURL(url);
 }
 
+// ── SRI 生成器 ──
+async function generateSri() {
+  const input = document.getElementById('genUrl');
+  const url = input.value.trim();
+  if (!url) return;
+
+  const resultEl = document.getElementById('genResult');
+  const errorEl = document.getElementById('genError');
+  const btn = document.getElementById('genBtn');
+  resultEl.classList.add('hidden');
+  errorEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = '生成中...';
+
+  try {
+    const resp = await fetch(`${API_BASE}/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      errorEl.textContent = data.error;
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    document.getElementById('genIntegrity').textContent = data.integrity;
+    document.getElementById('genTag').textContent = data.tag;
+    resultEl.classList.remove('hidden');
+  } catch (e) {
+    errorEl.textContent = '请求失败: ' + e.message;
+    errorEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '生成';
+  }
+}
+
+function copyGenTag() {
+  const tag = document.getElementById('genTag').textContent;
+  navigator.clipboard.writeText(tag).then(() => {
+    const btn = document.querySelector('.gen-copy-btn');
+    btn.innerHTML = '<i class="ti ti-check"></i> 已复制';
+    setTimeout(() => { btn.innerHTML = '<i class="ti ti-copy"></i> 复制'; }, 2000);
+  });
+}
+
 // 导出供测试使用（Node.js 环境）
 try {
   if (typeof module !== 'undefined' && module.exports) {

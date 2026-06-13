@@ -2,6 +2,7 @@ package run.runnable.numfeelservice.controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -9,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class SriDemoControllerTest {
 
-    private final SriDemoController controller = new SriDemoController();
+    private final SriDemoController controller = new SriDemoController(WebClient.builder());
 
     @Test
     void demoScript_normalVersion_returnsNonMaliciousCode() {

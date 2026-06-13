@@ -47,7 +47,7 @@ jobs:
             numfeel-service/k3s-deployment-prod.yaml
           sparse-checkout-cone-mode: false
       - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@v3
       - name: Set up KUBE_CONFIG
         run: |
           echo "${{ secrets.KUBE_CONFIG }}" > K3S_KUBE_CONFIG.yaml

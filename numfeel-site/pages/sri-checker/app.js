@@ -105,52 +105,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f1923;
 </body></html>`;
 }
 
-// ── 下载 HTML 文件 ──
+// ── 下载 HTML 文件（和 iframe 内容一致，只差 SRI 属性） ──
 function downloadSafe() {
-  const html = buildDownloadHtml(true);
+  const html = buildPageHtml(true, true);
   downloadFile('safe.html', html);
 }
 
 function downloadUnsafe() {
-  const html = buildDownloadHtml(false);
+  const html = buildPageHtml(true, false);
   downloadFile('unsafe.html', html);
-}
-
-function buildDownloadHtml(withSri) {
-  const scriptUrl = `${API_BASE}/demo.js?tampered=true`;
-  const integrityLine = withSri && integrityHash
-    ? `        integrity="${integrityHash}"\n        crossorigin="anonymous"\n`
-    : '';
-
-  return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <title>${withSri ? '有 SRI 保护' : '无 SRI 保护'} — SRI 演示</title>
-  <style>
-    body { font-family: sans-serif; background: #0f1923; color: #e0e0e0; padding: 40px; text-align: center; }
-    h1 { color: ${withSri ? '#81c784' : '#ff6b6b'}; }
-    .info { margin: 20px auto; max-width: 500px; text-align: left; background: rgba(255,255,255,0.05); padding: 16px; border-radius: 8px; font-size: 14px; }
-    code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; }
-    #status { margin-top: 20px; padding: 16px; border-radius: 8px; }
-  </style>
-</head>
-<body>
-  <h1>${withSri ? '有 SRI 保护的页面' : '无 SRI 保护的页面'}</h1>
-  <div class="info">
-    <p>这个页面引用了一个<strong>已被篡改</strong>的第三方脚本。</p>
-    <p>${withSri
-      ? '由于 script 标签带有 <code>integrity</code> 属性，浏览器会校验哈希值。篡改后的文件哈希不匹配 → 拒绝执行。'
-      : '由于 script 标签<strong>没有</strong> <code>integrity</code> 属性，浏览器不会校验 → 直接执行恶意代码。'}</p>
-    <p>打开浏览器 DevTools (F12) → Console 查看详细信息。</p>
-  </div>
-  <div id="status">等待脚本加载...</div>
-  <script
-    src="${scriptUrl}"
-${integrityLine}    onerror="document.getElementById('status').innerHTML='<span style=color:#81c784>SRI 保护生效 — 脚本被拦截。打开 Console 可以看到加载错误。</span>';document.getElementById('status').style.border='2px solid #81c784';"
-  ></script>
-</body>
-</html>`;
 }
 
 function downloadFile(filename, content) {
@@ -166,6 +129,6 @@ function downloadFile(filename, content) {
 // 导出供测试使用（Node.js 环境）
 try {
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { buildPageHtml, buildDownloadHtml, setIntegrityHash: (h) => { integrityHash = h; } };
+    module.exports = { buildPageHtml, setIntegrityHash: (h) => { integrityHash = h; } };
   }
 } catch (e) { /* browser environment, ignore */ }

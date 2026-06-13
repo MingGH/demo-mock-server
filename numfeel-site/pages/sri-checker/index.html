@@ -79,16 +79,16 @@
   <!-- ── 下载对比 HTML ── -->
   <div class="section">
     <h2><i class="ti ti-download"></i> 下载到本地自己验证</h2>
-    <p class="section-hint">不信？下载这两个 HTML 文件，用浏览器打开，打开 DevTools 的 Console 看看发生了什么。</p>
+    <p class="section-hint">两个文件内容完全一样（同一个银行登录页、同一个被篡改的 CDN 脚本），唯一区别是那一行 integrity 属性。下载后用浏览器分别打开，对比效果。你也可以用 diff 工具查看它们的代码差异——只有一行不同。</p>
     <div class="download-grid">
       <div class="download-card">
         <h4><i class="ti ti-shield-check"></i> safe.html</h4>
-        <p>带 integrity 属性，篡改后脚本不会执行</p>
+        <p>带 integrity 属性 → 篡改脚本被浏览器拒绝</p>
         <button class="dl-btn" onclick="downloadSafe()"><i class="ti ti-download"></i> 下载 safe.html</button>
       </div>
       <div class="download-card">
         <h4><i class="ti ti-shield-off"></i> unsafe.html</h4>
-        <p>不带 integrity，篡改后恶意代码直接运行</p>
+        <p>不带 integrity → 恶意代码正常执行</p>
         <button class="dl-btn dl-btn-danger" onclick="downloadUnsafe()"><i class="ti ti-download"></i> 下载 unsafe.html</button>
       </div>
     </div>

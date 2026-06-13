@@ -11,7 +11,7 @@ global.location = { protocol: 'http:' };
 global.URL = class { constructor() {} static createObjectURL() { return ''; } static revokeObjectURL() {} };
 global.Blob = class {};
 
-const { buildPageHtml, buildDownloadHtml, setIntegrityHash } = require('./app.js');
+const { buildPageHtml, setIntegrityHash } = require('./app.js');
 setIntegrityHash('sha384-testHash123');
 
 console.log('\n=== SRI 安全实验室 单元测试 ===\n');
@@ -38,15 +38,16 @@ const tamperedUnsafe = buildPageHtml(true, false);
 assert(tamperedUnsafe.includes('tampered=true'), '篡改+无SRI → URL 含 tampered=true');
 assert(!tamperedUnsafe.includes('integrity='), '篡改+无SRI → 无 integrity');
 
-console.log('\nbuildDownloadHtml:');
-const dlSafe = buildDownloadHtml(true);
+console.log('\n下载验证（和iframe内容一致）:');
+setIntegrityHash('sha384-testHash123');
+const dlSafe = buildPageHtml(true, true);
+const dlUnsafe = buildPageHtml(true, false);
 assert(dlSafe.includes('integrity='), '下载safe → 含 integrity');
-assert(dlSafe.includes('tampered=true'), '下载safe → 引用篡改版本脚本');
-assert(dlSafe.includes('有 SRI 保护'), '下载safe → 标题正确');
-
-const dlUnsafe = buildDownloadHtml(false);
 assert(!dlUnsafe.includes('integrity='), '下载unsafe → 不含 integrity');
-assert(dlUnsafe.includes('无 SRI 保护'), '下载unsafe → 标题正确');
+assert(dlSafe.includes('SecureBank'), '下载safe → 同样是银行页面');
+assert(dlUnsafe.includes('SecureBank'), '下载unsafe → 同样是银行页面');
+// 除了 integrity 行之外，两个文件的其他内容应该基本一致
+assert(dlSafe.includes('tampered=true') && dlUnsafe.includes('tampered=true'), '两个文件都引用篡改版脚本');
 
 console.log('\n无 hash 时:');
 setIntegrityHash(null);

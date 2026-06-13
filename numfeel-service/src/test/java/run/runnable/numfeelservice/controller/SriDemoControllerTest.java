@@ -37,10 +37,11 @@ class SriDemoControllerTest {
                     assertEquals(200, resp.getStatusCode().value());
                     String body = resp.getBody();
                     assertNotNull(body);
-                    assertTrue(body.contains("CDN 已被篡改"));
+                    assertTrue(body.contains("恶意脚本正在执行"));
+                    assertTrue(body.contains("navigator.userAgent"));
                     assertTrue(body.contains("键盘记录器"));
-                    assertTrue(body.contains("Cookie"));
                     assertTrue(body.contains("status-hacked"));
+                    assertTrue(body.contains("evil-server.com"));
                 })
                 .verifyComplete();
     }

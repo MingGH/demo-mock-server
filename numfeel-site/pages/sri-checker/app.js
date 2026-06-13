@@ -5,6 +5,7 @@ let integrityHash = null;
 // ── 初始化：获取正常脚本的哈希值 ──
 async function init() {
   try {
+    if (typeof fetch === 'undefined' || location.protocol === 'file:') return;
     const resp = await fetch(`${API_BASE}/demo-hash`);
     integrityHash = await resp.text();
   } catch (e) {
@@ -103,30 +104,28 @@ body {
 .status-container.safe .status-title { color: #81c784; }
 .status-container.hacked .status-title { color: #ff6b6b; }
 .status-desc { font-size: 0.85rem; color: #999; margin-bottom: 12px; }
-.attack-list { list-style: none; text-align: left; padding: 12px; }
-.attack-item {
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  font-size: 0.82rem;
-  color: #ccc;
-  transition: color 0.3s;
+.stolen-data { text-align: left; margin: 12px 0; }
+.data-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 10px; margin-bottom: 4px;
+  background: rgba(0,0,0,0.3); border-radius: 6px; font-size: 0.78rem;
 }
-.attack-item.done { color: #ff6b6b; font-weight: 600; }
-.keylog-box {
-  margin-top: 16px;
-  background: rgba(0,0,0,0.4);
-  border-radius: 8px;
-  padding: 12px;
-  text-align: left;
+.data-label { color: #ff6b6b; font-weight: 600; white-space: nowrap; margin-right: 8px; }
+.data-value { color: #ffd700; font-family: monospace; text-align: right; word-break: break-all; }
+.cookie-val { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.upload-progress { margin: 14px 0; text-align: left; }
+.progress-text { font-size: 0.78rem; color: #ff6b6b; margin-bottom: 6px; }
+.progress-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, #ffd700, #ff6b6b); border-radius: 3px; transition: width 0.3s; }
+.keylog-section { margin-top: 14px; text-align: left; background: rgba(0,0,0,0.4); border-radius: 8px; padding: 12px; }
+.keylog-title { font-size: 0.82rem; color: #ff6b6b; font-weight: 700; margin-bottom: 4px; }
+.keylog-hint { font-size: 0.75rem; color: #888; margin-bottom: 8px; }
+.keylog-input {
+  width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(255,107,107,0.4);
+  background: rgba(0,0,0,0.3); color: #fff; font-size: 0.85rem; outline: none; margin-bottom: 6px;
 }
-.keylog-title { font-size: 0.78rem; color: #ff6b6b; margin-bottom: 6px; font-weight: 600; }
-.keylog-output {
-  font-family: monospace;
-  font-size: 0.82rem;
-  color: #ffd700;
-  min-height: 20px;
-  word-break: break-all;
-}
+.keylog-input:focus { border-color: #ff6b6b; box-shadow: 0 0 8px rgba(255,107,107,0.3); }
+.keylog-output { font-family: monospace; font-size: 0.82rem; color: #ffd700; min-height: 18px; word-break: break-all; }
 .sri-blocked {
   text-align: center;
   padding: 24px;
@@ -199,7 +198,9 @@ function showExplanation(mode) {
   }
 }
 
-// 导出供测试使用
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { buildPageHtml, setState, showExplanation, setIntegrityHash: (h) => { integrityHash = h; } };
-}
+// 导出供测试使用（Node.js 环境）
+try {
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { buildPageHtml, setState, showExplanation, setIntegrityHash: (h) => { integrityHash = h; } };
+  }
+} catch (e) { /* browser environment, ignore */ }

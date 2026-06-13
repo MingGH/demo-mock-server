@@ -22,7 +22,7 @@ jobs:
       - name: Get project version
         id: get_version
         run: |
-          VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+          VERSION=$(awk '/<parent>/,/<\/parent>/{next} /<version>/{gsub(/.*<version>|<\/version>.*/,"");print;exit}' pom.xml)
           echo "Project version is $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Build with Maven

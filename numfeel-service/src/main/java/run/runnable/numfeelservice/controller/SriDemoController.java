@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono;
  * <p>
  * GET /sri/demo.js          — 正常脚本（显示安全状态）
  * GET /sri/demo.js?tampered=true — "篡改"版本（模拟恶意注入）
+ * GET /sri/demo-hash         — 返回正常版本的 SHA-384 哈希（供前端 integrity 属性使用）
  * <p>
  * 前端 safe.html 用 integrity 属性引用此脚本（哈希基于正常版本计算），
  * unsafe.html 不加 integrity。当 tampered=true 时：

@@ -92,8 +92,6 @@ public class RateLimitWebFilter implements WebFilter {
         rules.add(new Rule(isPost("/fingerprint/collect"), RateLimitWebFilter::routeKey, 60, 60));
         // 社工防骗提交：30/min
         rules.add(new Rule(isPost("/social-engineering/submit"), RateLimitWebFilter::routeKey, 30, 60));
-        // SRI 检测：10/min（抓取操作较重）
-        rules.add(new Rule(isPost("/sri/check"), RateLimitWebFilter::routeKey, 10, 60));
         // 其余写接口：10/min
         rules.add(new Rule(RateLimitWebFilter::isWriteThrottled, RateLimitWebFilter::routeKey, 10, 60));
     }

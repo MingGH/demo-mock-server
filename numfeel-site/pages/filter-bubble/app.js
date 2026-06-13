@@ -409,7 +409,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── 后端统计 ──
-const API_BASE = 'https://numfeel-api.996.ninja';
+const API_BASE = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+  ? 'http://localhost:8080'
+  : 'https://numfeel-api.996.ninja';
 
 function submitResult() {
   const summary = engine.getSummary();
@@ -442,14 +444,28 @@ function submitResult() {
 }
 
 function loadGlobalStats() {
+  const section = document.getElementById('globalStatsSection');
+  if (!section) return;
+
   fetch(`${API_BASE}/filter-bubble/stats`)
     .then(r => r.json())
     .then(res => {
-      if (res.status === 200 && res.data && res.data.totalSessions > 0) {
-        renderGlobalStats(res.data);
+      if (res.status === 200 && res.data) {
+        if (res.data.totalSessions > 0) {
+          renderGlobalStats(res.data);
+        } else {
+          // 有连接但没数据，显示空状态
+          section.style.display = 'block';
+          document.getElementById('gsTotalSessions').textContent = '0';
+          document.getElementById('gsAvgDrop').textContent = '—';
+          document.getElementById('gsAvgPct').textContent = '—';
+          document.getElementById('gsAvgConverge').textContent = '—';
+        }
       }
     })
-    .catch(() => {});
+    .catch(() => {
+      // 后端不可用时静默隐藏
+    });
 }
 
 function renderGlobalStats(data) {

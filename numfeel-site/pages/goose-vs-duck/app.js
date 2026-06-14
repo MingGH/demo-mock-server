@@ -173,6 +173,50 @@ function restart() {
   startQuiz();
 }
 
+/* ══════════════ 首页加载简要统计（不含每题答案） ══════════════ */
+function loadIntroStats() {
+  const container = document.getElementById('introGlobalStats');
+  if (!container) return;
+
+  fetch(`${API_BASE}/goose-duck/stats`)
+    .then(r => r.json())
+    .then(res => {
+      const data = res.data || res;
+      const totalPlayers = data.totalPlayers || 0;
+      const avgScore = data.avgScore || 0;
+      const avgAccuracy = data.avgAccuracy || 0;
+
+      if (totalPlayers === 0) {
+        container.innerHTML = '<p style="color:#888;text-align:center">暂无数据，你来当第一个参与者！</p>';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="stats-grid">
+          <div class="stats-card">
+            <div class="stats-card-value">${totalPlayers}</div>
+            <div class="stats-card-label">已参与</div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-card-value">${(avgAccuracy * 100).toFixed(1)}%</div>
+            <div class="stats-card-label">平均正确率</div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-card-value">${avgScore.toFixed(1)}<span style="font-size:0.8rem;color:#888"> /10</span></div>
+            <div class="stats-card-label">平均得分</div>
+          </div>
+        </div>
+        <p style="color:#666;font-size:0.78rem;text-align:center;margin-top:12px">做完题后可查看每题正确率详情</p>
+      `;
+    })
+    .catch(() => {
+      container.innerHTML = '<p style="color:#888;text-align:center">暂无数据，你来当第一个参与者！</p>';
+    });
+}
+
+// 页面加载时获取简要统计
+document.addEventListener('DOMContentLoaded', loadIntroStats);
+
 /* ══════════════ 工具函数 ══════════════ */
 function shuffleArray(arr) {
   for (let i = arr.length - 1; i > 0; i--) {

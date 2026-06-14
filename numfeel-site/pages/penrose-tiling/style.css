@@ -1,0 +1,418 @@
+/* ── Penrose Tiling 页面样式 ── */
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.header h1 {
+  font-size: 2rem;
+  color: #ffd700;
+  margin-bottom: 8px;
+}
+.header p {
+  color: #a0a0a0;
+  font-size: 1rem;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.section {
+  margin-bottom: 40px;
+}
+.section h2 {
+  font-size: 1.3rem;
+  color: #ffd700;
+  margin-bottom: 16px;
+}
+.section h2 i {
+  margin-right: 6px;
+}
+
+/* ── 画布区 ── */
+.canvas-wrapper {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0d1117;
+  border: 1px solid #30363d;
+}
+#penroseCanvas {
+  display: block;
+  width: 100%;
+  height: 520px;
+  cursor: grab;
+  touch-action: none;
+}
+#penroseCanvas:active {
+  cursor: grabbing;
+}
+.canvas-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.78rem;
+  color: #666;
+  pointer-events: none;
+}
+
+/* ── 控制面板 ── */
+.ctrl-panel {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+.ctrl-group {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 14px 18px;
+  flex: 1;
+  min-width: 220px;
+}
+.ctrl-group h3 {
+  font-size: 0.85rem;
+  color: #ffd700;
+  margin-bottom: 10px;
+}
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.ctrl-row:last-child {
+  margin-bottom: 0;
+}
+.ctrl-row label {
+  font-size: 0.82rem;
+  color: #ccc;
+  min-width: 80px;
+}
+.ctrl-row .val {
+  color: #ffd700;
+  font-weight: 600;
+  margin-left: 4px;
+}
+.ctrl-row input[type="range"] {
+  flex: 1;
+  accent-color: #ffd700;
+}
+.ctrl-row select {
+  flex: 1;
+  background: #161b22;
+  color: #e6edf3;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+/* ── 按钮 ── */
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  font-weight: 500;
+}
+.btn:active {
+  transform: scale(0.96);
+}
+.btn-primary {
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  color: #1a1a2e;
+}
+.btn-secondary {
+  background: rgba(255,255,255,0.08);
+  color: #e6edf3;
+  border: 1px solid #30363d;
+}
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.12);
+}
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+/* ── 预设场景卡片 ── */
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.preset-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.preset-card:hover {
+  border-color: #ffd700;
+  transform: translateY(-2px);
+}
+.preset-card.active {
+  border-color: #ffd700;
+  box-shadow: 0 0 12px rgba(255,215,0,0.15);
+}
+.preset-card h4 {
+  font-size: 0.9rem;
+  color: #e6edf3;
+  margin-bottom: 4px;
+}
+.preset-card p {
+  font-size: 0.78rem;
+  color: #888;
+  margin: 0;
+}
+.preset-card .tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  margin-top: 6px;
+}
+.tag-easy {
+  background: rgba(129,199,132,0.15);
+  color: #81c784;
+}
+.tag-medium {
+  background: rgba(255,183,77,0.15);
+  color: #ffb74d;
+}
+.tag-fun {
+  background: rgba(206,147,216,0.15);
+  color: #ce93d8;
+}
+
+/* ── 统计卡 ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.stat-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+.stat-label {
+  font-size: 0.72rem;
+  color: #888;
+  margin-bottom: 4px;
+}
+.stat-value {
+  font-size: 1.1rem;
+  color: #ffd700;
+  font-weight: 700;
+}
+
+/* ── 配色方案选择 ── */
+.color-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.swatch:hover {
+  transform: scale(1.1);
+}
+.swatch.active {
+  border-color: #ffd700;
+  box-shadow: 0 0 8px rgba(255,215,0,0.3);
+}
+
+/* ── 知识卡片 ── */
+.insight-box {
+  background: rgba(144,202,249,0.06);
+  border: 1px solid rgba(144,202,249,0.2);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-top: 14px;
+}
+.insight-box h3 {
+  font-size: 0.9rem;
+  color: #90caf9;
+  margin-bottom: 8px;
+}
+.insight-box p {
+  font-size: 0.88rem;
+  color: #c0c0c0;
+  line-height: 1.7;
+}
+
+.theorem-callout {
+  background: rgba(255,215,0,0.05);
+  border-left: 4px solid #ffd700;
+  border-radius: 0 10px 10px 0;
+  padding: 16px 20px;
+  font-size: 0.9rem;
+  color: #e0e0e0;
+  line-height: 1.8;
+}
+
+/* ── 原理卡片 ── */
+.principle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.principle-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 18px;
+}
+.principle-card .num {
+  font-size: 1.8rem;
+  color: #ffd700;
+  font-weight: 700;
+  opacity: 0.4;
+  margin-bottom: 4px;
+}
+.principle-card h4 {
+  font-size: 1rem;
+  color: #e6edf3;
+  margin-bottom: 8px;
+}
+.principle-card p {
+  font-size: 0.85rem;
+  color: #a0a0a0;
+  line-height: 1.6;
+}
+
+/* ── 步骤 ── */
+.steps-list {
+  list-style: none;
+  padding: 0;
+  counter-reset: step-counter;
+}
+.steps-list li {
+  counter-increment: step-counter;
+  padding: 12px 16px 12px 52px;
+  position: relative;
+  margin-bottom: 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  border: 1px solid #30363d;
+  font-size: 0.88rem;
+  color: #c0c0c0;
+  line-height: 1.6;
+}
+.steps-list li::before {
+  content: counter(step-counter);
+  position: absolute;
+  left: 16px;
+  top: 12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255,215,0,0.15);
+  color: #ffd700;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── 动画控制 ── */
+.anim-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  border: 1px solid #30363d;
+}
+.anim-controls label {
+  font-size: 0.82rem;
+  color: #ccc;
+}
+.anim-controls .val {
+  color: #ffd700;
+  font-weight: 600;
+}
+
+/* ── 对比模式 ── */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 14px;
+}
+.compare-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+.compare-card h4 {
+  font-size: 0.9rem;
+  color: #e6edf3;
+  margin-bottom: 8px;
+}
+.compare-card canvas {
+  width: 100%;
+  height: 200px;
+  border-radius: 6px;
+  background: #0d1117;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 640px) {
+  .header h1 {
+    font-size: 1.5rem;
+  }
+  #penroseCanvas {
+    height: 360px;
+  }
+  .ctrl-panel {
+    flex-direction: column;
+  }
+  .ctrl-group {
+    min-width: 100%;
+  }
+  .principle-grid {
+    grid-template-columns: 1fr;
+  }
+  .compare-grid {
+    grid-template-columns: 1fr;
+  }
+  .preset-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

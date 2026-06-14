@@ -353,4 +353,18 @@ public final class GameplayRequests {
             String clickSequence
     ) {
     }
+
+    /**
+     * 鹅腿 vs 鸭腿测评提交参数。
+     *
+     * @param correctCount 答对题数
+     * @param total 总题数
+     * @param answers 各题作答详情 JSON 字符串
+     */
+    public record GooseDuckSubmitRequest(
+            Integer correctCount,
+            Integer total,
+            String answers
+    ) {
+    }
 }

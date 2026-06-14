@@ -417,4 +417,32 @@ public final class GameplayResponses {
             Map<String, Long> dominantCatDist
     ) {
     }
+
+    /**
+     * 鹅腿 vs 鸭腿测评每题正确率。
+     *
+     * @param questionId 题目 ID
+     * @param correctRate 正确率
+     */
+    public record GooseDuckQuestionRate(
+            int questionId,
+            double correctRate
+    ) {
+    }
+
+    /**
+     * 鹅腿 vs 鸭腿测评全局统计响应。
+     *
+     * @param totalPlayers 总参与人数
+     * @param avgScore 平均得分
+     * @param avgAccuracy 平均正确率
+     * @param perQuestion 每题正确率列表
+     */
+    public record GooseDuckStatsResponse(
+            long totalPlayers,
+            double avgScore,
+            double avgAccuracy,
+            List<GooseDuckQuestionRate> perQuestion
+    ) {
+    }
 }

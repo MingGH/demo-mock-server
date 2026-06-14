@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="鹅腿阿姨卖了两年鹅腿竟然是鸭腿？12张烤腿照片，你能分辨哪个是鹅腿哪个是鸭腿吗？投票看全网正确率。">
+  <title>鹅腿 vs 鸭腿：你能分辨吗 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-meat"></i> 鹅腿 vs 鸭腿：你能分辨吗</h1>
+    <p>清华北大学生排队两年的「鹅腿」竟然是鸭腿——你的眼睛比他们更靠谱吗？</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 1：开始页
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase active" id="phase-intro">
+    <div class="card">
+      <div class="intro-card">
+        <span class="intro-icon"><i class="ti ti-meat" style="font-size:3.5rem"></i></span>
+        <div class="intro-text">
+          2023 年底，北京「鹅腿阿姨」在清华、北大、人大之间引发抢购大战。<br>
+          2026 年 6 月，她承认卖了多年的「鹅腿」其实全是鸭腿。<br>
+          如果连顶级高校的学生都分不清，你能吗？
+        </div>
+        <div class="intro-stats">
+          <div class="intro-stat">
+            <span class="intro-stat-num">3所</span>
+            <span class="intro-stat-label">顶级高校争抢</span>
+          </div>
+          <div class="intro-stat">
+            <span class="intro-stat-num">2年+</span>
+            <span class="intro-stat-label">无人识破</span>
+          </div>
+          <div class="intro-stat">
+            <span class="intro-stat-num">16元</span>
+            <span class="intro-stat-label">一根「鹅腿」售价</span>
+          </div>
+        </div>
+        <div class="intro-steps">
+          <div class="intro-step">
+            <div class="intro-step-num">1</div>
+            <div class="intro-step-text">依次看 <strong>10 张烤腿照片</strong>，判断每张是鹅腿还是鸭腿</div>
+          </div>
+          <div class="intro-step">
+            <div class="intro-step-num">2</div>
+            <div class="intro-step-text">答完后揭晓答案，计算你的<strong>正确率</strong></div>
+          </div>
+          <div class="intro-step">
+            <div class="intro-step-num">3</div>
+            <div class="intro-step-text">对比<strong>全网投票数据</strong>，看看大家是不是和你一样分不清</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="startQuiz()">
+          <i class="ti ti-player-play"></i> 开始挑战
+        </button>
+        <div style="margin-top:12px;font-size:0.8rem;color:#a0a0a0">约 2 分钟 · 图片仅供测试用途</div>
+      </div>
+    </div>
+
+    <div class="card knowledge-card">
+      <h3><i class="ti ti-bulb"></i> 冷知识：鹅腿和鸭腿到底怎么分？</h3>
+      <div class="knowledge-grid">
+        <div class="knowledge-item">
+          <div class="knowledge-label">体型</div>
+          <div class="knowledge-value">鹅腿明显更粗大，单根重量通常 200g+；鸭腿较细，约 100-150g</div>
+        </div>
+        <div class="knowledge-item">
+          <div class="knowledge-label">骨骼</div>
+          <div class="knowledge-value">鹅腿骨更粗壮、长；鸭腿骨细且短</div>
+        </div>
+        <div class="knowledge-item">
+          <div class="knowledge-label">皮肤</div>
+          <div class="knowledge-value">鹅皮较厚、毛孔粗；鸭皮薄、细腻</div>
+        </div>
+        <div class="knowledge-item">
+          <div class="knowledge-label">肉质</div>
+          <div class="knowledge-value">鹅肉纤维粗、口感紧实；鸭肉纤维细、相对嫩滑</div>
+        </div>
+        <div class="knowledge-item">
+          <div class="knowledge-label">价格</div>
+          <div class="knowledge-value">鹅肉市场价约 35-50 元/斤；鸭肉约 15-25 元/斤</div>
+        </div>
+      </div>
+      <p class="knowledge-note">但经过腌制、烤制后，外观差异被大幅掩盖，这正是鹅腿阿姨能蒙混过关的原因。</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 2：答题
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-quiz">
+    <div class="card">
+      <div class="progress-wrap">
+        <span class="progress-label" id="progressLabel">1 / 10</span>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="quiz-image-wrap" id="quizImageWrap">
+        <img id="quizImage" src="" alt="待判断的烤腿照片">
+        <div class="quiz-hint" id="quizHint"></div>
+      </div>
+
+      <div class="quiz-buttons">
+        <button class="btn btn-goose" onclick="answer('goose')">
+          <i class="ti ti-feather"></i> 鹅腿
+        </button>
+        <button class="btn btn-duck" onclick="answer('duck')">
+          <i class="ti ti-egg-cracked"></i> 鸭腿
+        </button>
+      </div>
+      <p class="quiz-tip">仔细看大小、骨骼粗细、皮肤纹理</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       Phase 3：结果
+  ══════════════════════════════════════════════════════════ -->
+  <div class="phase" id="phase-result">
+    <div class="card result-summary">
+      <h2><i class="ti ti-chart-bar"></i> 你的成绩</h2>
+      <div class="result-score">
+        <span class="score-number" id="scoreNumber">0</span>
+        <span class="score-total">/ 10</span>
+      </div>
+      <div class="result-grade" id="resultGrade"></div>
+      <div class="result-msg" id="resultMsg"></div>
+    </div>
+
+    <div class="card">
+      <h3><i class="ti ti-list-check"></i> 逐题回顾</h3>
+      <div class="review-list" id="reviewList"></div>
+    </div>
+
+    <div class="card">
+      <h3><i class="ti ti-chart-pie"></i> 全网统计</h3>
+      <p class="stats-note">所有参与者的数据汇总（实时更新）</p>
+      <div class="global-stats" id="globalStats">
+        <div class="stats-loading"><i class="ti ti-loader-2"></i> 加载中...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><i class="ti ti-bulb"></i> 为什么这么难分辨？</h3>
+      <div class="explanation-content">
+        <p>鹅腿阿姨能「骗」过清华北大学生两年多，原因主要有三：</p>
+        <ol>
+          <li><strong>烹饪掩盖差异</strong>：经过腌制、烤制后，两者外观颜色接近，且调料味道覆盖了原始肉味差异</li>
+          <li><strong>锚定效应</strong>：摊主自称「鹅腿」，顾客从一开始就带着「这是鹅腿」的预设去品尝</li>
+          <li><strong>缺乏对比</strong>：多数顾客没有同时吃过真正的鹅腿和鸭腿做A/B对照</li>
+        </ol>
+        <p>这正是<strong>确认偏误</strong>的经典案例：当你已经相信某个结论时，你会无意识地忽略与之矛盾的信息。</p>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="restart()" style="margin-top:20px">
+      <i class="ti ti-refresh"></i> 再来一次
+    </button>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

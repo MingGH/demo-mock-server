@@ -256,4 +256,15 @@ public final class GameplayEntities {
             @Column("created_at") long createdAt
     ) {
     }
+
+    /** 鹅腿 vs 鸭腿测评结果表映射。 */
+    @Table("goose_duck_results")
+    public record GooseDuckResult(
+            @Id Long id,
+            @Column("correct_count") int correctCount,
+            @Column("total") int total,
+            @Column("answers") String answers,
+            @Column("created_at") long createdAt
+    ) {
+    }
 }

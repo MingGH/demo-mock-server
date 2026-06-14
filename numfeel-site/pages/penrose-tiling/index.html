@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Penrose铺砖：只用两种形状铺满无限平面却永远不重复。亲手操作递归细分、切换配色、缩放探索非周期性的数学之美。">
+  <title>Penrose 铺砖：两块砖铺出永不重复的宇宙 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-hexagonal-prism-plus"></i> Penrose 铺砖</h1>
+    <p>只用两种形状，就能铺满无限平面，且永远不重复。点击「细分」观察图案如何从简单走向无穷复杂。</p>
+  </div>
+
+  <!-- ── 主画布 ── -->
+  <div class="section">
+    <h2><i class="ti ti-vector-triangle"></i> 铺砖画布</h2>
+    <p style="color:#888;font-size:0.82rem;margin-bottom:10px;">拖拽平移 | 滚轮/双指缩放 | 点击「细分」增加层级</p>
+
+    <div class="canvas-wrapper">
+      <canvas id="penroseCanvas"></canvas>
+      <div class="canvas-hint">当前层级: <span id="lblDepth">0</span> | 三角形数: <span id="lblCount">10</span></div>
+    </div>
+
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn btn-primary" id="btnSubdivide"><i class="ti ti-arrows-split-2"></i> 细分一层</button>
+      <button class="btn btn-secondary" id="btnReset"><i class="ti ti-refresh"></i> 重置</button>
+      <button class="btn btn-secondary" id="btnFitView"><i class="ti ti-arrows-maximize"></i> 适应画布</button>
+      <button class="btn btn-secondary" id="btnExport"><i class="ti ti-download"></i> 导出PNG</button>
+    </div>
+  </div>
+
+  <!-- ── 预设场景 ── -->
+  <div class="section">
+    <h2><i class="ti ti-template"></i> 预设场景</h2>
+    <p style="color:#888;font-size:0.82rem;margin-bottom:10px;">点击卡片切换初始图案，再用「细分」按钮逐层展开。</p>
+
+    <div class="preset-grid">
+      <div class="preset-card active" data-preset="sun">
+        <h4><i class="ti ti-sun"></i> 太阳轮</h4>
+        <p>10个大三角形围成圆环，经典起始图案</p>
+        <span class="tag tag-easy">入门</span>
+      </div>
+      <div class="preset-card" data-preset="star">
+        <h4><i class="ti ti-star"></i> 五角星</h4>
+        <p>10个小三角形组成星形，细分后出现瘦菱形</p>
+        <span class="tag tag-easy">入门</span>
+      </div>
+      <div class="preset-card" data-preset="sun5">
+        <h4><i class="ti ti-sun-high"></i> 太阳轮 × 5层</h4>
+        <p>预计算5层细分，直接看到密铺效果</p>
+        <span class="tag tag-medium">进阶</span>
+      </div>
+      <div class="preset-card" data-preset="star5">
+        <h4><i class="ti ti-sparkles"></i> 五角星 × 5层</h4>
+        <p>预计算5层细分，观察非周期性细节</p>
+        <span class="tag tag-medium">进阶</span>
+      </div>
+      <div class="preset-card" data-preset="sun7">
+        <h4><i class="ti ti-atom-2"></i> 太阳轮 × 7层</h4>
+        <p>7层约46000个三角形，性能测试</p>
+        <span class="tag tag-fun">挑战</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 配色与显示 ── -->
+  <div class="section">
+    <h2><i class="ti ti-palette"></i> 配色方案</h2>
+    <p style="color:#888;font-size:0.82rem;margin-bottom:10px;">切换不同配色，观察胖菱形和瘦菱形的分布。</p>
+
+    <div class="ctrl-panel">
+      <div class="ctrl-group">
+        <h3>配色</h3>
+        <div class="color-swatches" id="colorSwatches">
+          <div class="swatch active" data-scheme="classic" style="background:linear-gradient(135deg,#ff6b6b,#ffd700)" title="经典红金"></div>
+          <div class="swatch" data-scheme="ocean" style="background:linear-gradient(135deg,#00b4d8,#90e0ef)" title="海洋蓝"></div>
+          <div class="swatch" data-scheme="forest" style="background:linear-gradient(135deg,#81c784,#c8e6c9)" title="森林绿"></div>
+          <div class="swatch" data-scheme="sunset" style="background:linear-gradient(135deg,#ff8a65,#ffcc02)" title="日落橙"></div>
+          <div class="swatch" data-scheme="cosmic" style="background:linear-gradient(135deg,#ce93d8,#4a148c)" title="宇宙紫"></div>
+          <div class="swatch" data-scheme="neon" style="background:linear-gradient(135deg,#39ff14,#ff073a)" title="霓虹"></div>
+          <div class="swatch" data-scheme="pastel" style="background:linear-gradient(135deg,#ffc3a0,#a0d2db)" title="莫兰迪"></div>
+          <div class="swatch" data-scheme="aurora" style="background:linear-gradient(135deg,#00ffc8,#7b2ff7)" title="极光"></div>
+          <div class="swatch" data-scheme="ember" style="background:linear-gradient(135deg,#ff4500,#ff8c00)" title="余烬"></div>
+          <div class="swatch" data-scheme="mono" style="background:linear-gradient(135deg,#e0e0e0,#424242)" title="黑白"></div>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <h3>显示</h3>
+        <div class="ctrl-row">
+          <label>描边</label>
+          <input type="range" id="sliderStroke" min="0" max="3" value="1" step="0.5">
+          <span class="val" id="lblStroke">1</span>
+        </div>
+        <div class="ctrl-row">
+          <label><input type="checkbox" id="chkShowEdges" checked> 显示边线</label>
+        </div>
+        <div class="ctrl-row">
+          <label><input type="checkbox" id="chkShowArcs"> 显示弧线标记</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 统计数据 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-pie"></i> 铺砖统计</h2>
+    <p style="color:#888;font-size:0.82rem;margin-bottom:10px;">当前铺砖的数量比例。随着细分层数增加，胖/瘦比趋近黄金比例 φ ≈ 1.618。</p>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">总三角形</div>
+        <div class="stat-value" id="statTotal">10</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">胖菱形(BL)</div>
+        <div class="stat-value" id="statKite">10</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">瘦菱形(BS)</div>
+        <div class="stat-value" id="statDart">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">胖/瘦 比</div>
+        <div class="stat-value" id="statRatio">∞</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">φ (目标)</div>
+        <div class="stat-value" style="color:#81c784;">1.618</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">细分层数</div>
+        <div class="stat-value" id="statDepth">0</div>
+      </div>
+    </div>
+
+    <div class="insight-box" style="margin-top:14px;">
+      <h3><i class="ti ti-bulb"></i> 黄金比例在铺砖中的角色</h3>
+      <p>Penrose 铺砖中，胖菱形和瘦菱形的数量比精确趋向 φ = (1+√5)/2。这不是巧合——递归细分的规则本身就编码了黄金比例：大三角形分出 2 大 1 小，小三角形分出 1 大 1 小，这个增长矩阵的特征值恰好是 φ。</p>
+    </div>
+  </div>
+
+  <!-- ── 核心原理 ── -->
+  <div class="section">
+    <h2><i class="ti ti-math-symbols"></i> 为什么永远不重复</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>匹配规则</h4>
+        <p>胖菱形和瘦菱形的边上有弧线标记，拼接时必须弧线对齐。这个约束排除了所有周期性排列方式。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>自相似性</h4>
+        <p>每层细分后的图案在更大尺度上重现了上一层的结构，但永远不会完全重复。就像无理数的小数位——无限不循环。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>局部同构性</h4>
+        <p>任何有限大小的局部图案，在无限铺砖中都会出现无穷多次。你永远能找到"看起来一样"的区域，但全局排列绝不重复。</p>
+      </div>
+    </div>
+
+    <div class="theorem-callout" style="margin-top:16px;">
+      <strong>定理 (Penrose, 1974)：</strong>存在只用两种砖型就能完成的非周期铺砖——即：能铺满无限平面，但不存在任何平移向量使整个图案与自身重合。<br><br>
+      <span style="color:#888;font-size:0.83rem;">Penrose, R. (1974). "The Role of Aesthetics in Pure and Applied Mathematical Research." <em>Bulletin of the Institute of Mathematics and its Applications</em>, 10, 266–271.</span>
+    </div>
+  </div>
+
+  <!-- ── 递归细分动画 ── -->
+  <div class="section">
+    <h2><i class="ti ti-arrows-split-2"></i> 细分过程：从简单到复杂</h2>
+    <p style="color:#888;font-size:0.82rem;margin-bottom:10px;">点击「自动播放」观察细分逐层展开的过程，每层三角形数量约增长 2.6 倍。</p>
+
+    <div class="anim-controls">
+      <button class="btn btn-primary btn-sm" id="btnAutoPlay"><i class="ti ti-player-play"></i> 自动播放</button>
+      <button class="btn btn-secondary btn-sm" id="btnAutoStop"><i class="ti ti-player-stop"></i> 停止</button>
+      <label>间隔 <span class="val" id="lblInterval">1.5</span>s</label>
+      <input type="range" id="sliderInterval" min="0.5" max="4" value="1.5" step="0.5" style="width:120px;">
+      <label>目标层数 <span class="val" id="lblTarget">6</span></label>
+      <input type="range" id="sliderTarget" min="3" max="10" value="6" step="1" style="width:100px;">
+    </div>
+  </div>
+
+  <!-- ── 对比：周期 vs 非周期 ── -->
+  <div class="section">
+    <h2><i class="ti ti-arrows-exchange"></i> 对比：周期铺砖 vs Penrose 铺砖</h2>
+    <p style="color:#888;font-size:0.82rem;margin-bottom:10px;">左侧是常见的周期性菱形铺砖（可平移重合），右侧是 Penrose 铺砖（不可平移重合）。</p>
+
+    <div class="compare-grid">
+      <div class="compare-card">
+        <h4>周期铺砖</h4>
+        <canvas id="periodicCanvas"></canvas>
+        <p style="font-size:0.78rem;color:#888;margin-top:6px;">任意平移 a 向量后与自身完全重合</p>
+      </div>
+      <div class="compare-card">
+        <h4>Penrose 铺砖</h4>
+        <canvas id="aperiodioCanvas"></canvas>
+        <p style="font-size:0.78rem;color:#888;margin-top:6px;">不存在任何平移向量使全局图案重合</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 历史与应用 ── -->
+  <div class="section">
+    <h2><i class="ti ti-history"></i> 历史与现实应用</h2>
+
+    <ol class="steps-list">
+      <li><strong>1961年</strong> — 王浩（Hao Wang）提出能否用一组砖型非周期铺满平面的问题</li>
+      <li><strong>1966年</strong> — Robert Berger 找到第一组非周期砖组（20426 种）</li>
+      <li><strong>1974年</strong> — Roger Penrose 将砖型数量缩减到仅 2 种（kite & dart）</li>
+      <li><strong>1982年</strong> — Dan Shechtman 发现准晶体，其衍射图与 Penrose 铺砖的傅里叶变换几乎一致</li>
+      <li><strong>1984年</strong> — de Bruijn 证明 Penrose 铺砖等价于五维空间到二维的投影切割</li>
+      <li><strong>2011年</strong> — Shechtman 因准晶体发现获诺贝尔化学奖</li>
+      <li><strong>2023年</strong> — Smith 等人找到只需 1 种砖型的非周期铺砖（"einstein"/"hat"）</li>
+    </ol>
+
+    <div class="insight-box" style="margin-top:16px;">
+      <h3><i class="ti ti-atom"></i> 准晶体：Penrose 铺砖的物理实现</h3>
+      <p>1982 年 Shechtman 在铝锰合金中观察到五重对称的电子衍射图——传统晶体学认为这不可能存在。后来人们发现，这种材料的原子排列正是 Penrose 铺砖在三维空间的推广。2011 年这项发现获得诺贝尔化学奖。现实中，伦敦千禧桥步道、伊斯兰建筑镶嵌画都采用了类 Penrose 图案。</p>
+    </div>
+  </div>
+
+  <!-- ── FAQ ── -->
+  <div class="section">
+    <h2><i class="ti ti-question-mark"></i> 常见疑问</h2>
+
+    <div class="insight-box">
+      <h3>Q：如果不加匹配规则，两种砖型能铺出周期图案吗？</h3>
+      <p>能。胖菱形和瘦菱形如果忽略弧线约束，完全可以组成周期性排列。Penrose 铺砖的非周期性来自匹配规则的强制——它禁止了所有可能产生平移对称的拼法。</p>
+    </div>
+
+    <div class="insight-box" style="margin-top:14px;">
+      <h3>Q：Penrose 铺砖是唯一的非周期铺砖吗？</h3>
+      <p>不是。Penrose 铺砖有无穷多种不同的合法排列（它们的局部都相同，但全局不同）。而且 2023 年发现的"hat"砖只用一种形状就能做到非周期铺砖，比 Penrose 的两种更少。</p>
+    </div>
+
+    <div class="insight-box" style="margin-top:14px;">
+      <h3>Q：递归能无限细分下去吗？</h3>
+      <p>数学上可以无限细分，每层三角形数量乘以约 φ²≈2.618。实际受浏览器内存和渲染性能限制，层数越高越卡，但本 demo 不设上限——你可以一直点下去，亲手体验指数增长。</p>
+    </div>
+  </div>
+
+  <!-- ── 延伸阅读 ── -->
+  <div class="section">
+    <h2><i class="ti ti-books"></i> 延伸阅读</h2>
+
+    <div class="insight-box">
+      <p style="margin-bottom:8px;"><strong>Penrose, R. (1974).</strong> "The Role of Aesthetics in Pure and Applied Mathematical Research." <em>Bulletin of the Institute of Mathematics and its Applications</em>, 10, 266–271.</p>
+      <p style="margin-bottom:8px;"><strong>de Bruijn, N.G. (1981).</strong> "Algebraic theory of Penrose's non-periodic tilings of the plane." <em>Indagationes Mathematicae</em>, 84(1), 39–66.</p>
+      <p style="margin-bottom:8px;"><strong>Grünbaum, B. & Shephard, G.C. (1987).</strong> <em>Tilings and Patterns</em>. W.H. Freeman.</p>
+      <p style="margin-bottom:8px;"><strong>Shechtman, D. et al. (1984).</strong> "Metallic Phase with Long-Range Orientational Order and No Translational Symmetry." <em>Physical Review Letters</em>, 53(20), 1951–1953.</p>
+      <p><strong>Smith, D. et al. (2023).</strong> "An aperiodic monotile." arXiv:2303.10798.</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

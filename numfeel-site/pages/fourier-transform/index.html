@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="傅里叶变换交互实验室：亲手把方波拆成正弦波，听音色的频率配方，看JPEG压缩的数学原理。一个被拉格朗日否决的理论，如今藏在你每一张照片里。">
+  <title>傅里叶变换：被否决的论文统治了整个数字世界 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-wave-sine"></i> 傅里叶变换实验室</h1>
+    <p>1807 年被法国科学院否决的论文，如今藏在你的每一张照片、每一通电话、每一首歌里。亲手拆解波形，看它怎么运作。</p>
+  </div>
+
+  <img src="hero.jpg" alt="傅里叶变换概念图" class="hero-img">
+
+  <!-- ══ 模块一：波形合成器 ══ -->
+  <div class="section" id="synthSection">
+    <h2><i class="ti ti-wave-sine"></i> 波形合成器</h2>
+    <p class="section-desc">选一种目标波形，拖动滑块增加谐波数量，看正弦波如何一步步逼近它。</p>
+
+    <div class="btn-group" id="waveTypeGroup">
+      <button class="btn btn-secondary active" data-type="square" onclick="setWaveType('square')">方波</button>
+      <button class="btn btn-secondary" data-type="sawtooth" onclick="setWaveType('sawtooth')">锯齿波</button>
+      <button class="btn btn-secondary" data-type="triangle" onclick="setWaveType('triangle')">三角波</button>
+    </div>
+
+    <div class="controls-row">
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>谐波数量</span>
+          <span class="val" id="harmonicVal">1</span>
+        </div>
+        <input type="range" id="harmonicSlider" min="1" max="50" value="1" oninput="updateSynth()">
+      </div>
+      <button class="btn btn-primary btn-sm" id="animateBtn" onclick="toggleAnimate()">
+        <i class="ti ti-player-play"></i> 动画
+      </button>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="synthCanvas" height="280"></canvas>
+    </div>
+
+    <!-- 频谱 -->
+    <div class="spectrum-bars" id="spectrumBars"></div>
+
+    <div class="stats-row">
+      <span class="stat-badge"><span class="label">RMSE</span> <span id="rmseVal">—</span></span>
+      <span class="stat-badge"><span class="label">保留能量</span> <span id="energyVal">—</span></span>
+      <span class="stat-badge"><span class="label">频率分量</span> <span id="freqCountVal">—</span></span>
+    </div>
+
+    <div class="insight-box" style="margin-top:18px;">
+      <h3><i class="ti ti-bulb"></i> 观察</h3>
+      <p id="synthInsight">拖动滑块到 1，看第一个正弦波和方波的差距。逐步增加到 5、10、20——你会看到逼近速度越来越慢，边角处总有「超调」（Gibbs 现象）。这解释了为什么 JPEG 在锐利边缘容易出现色块。</p>
+    </div>
+  </div>
+
+  <!-- ══ 模块二：音色实验 ══ -->
+  <div class="section" id="soundSection">
+    <h2><i class="ti ti-music"></i> 音色实验</h2>
+    <p class="section-desc">同一个音高（440Hz），谐波配方不同 = 音色不同。点击听对比，感受「频率的配方」。</p>
+
+    <div class="sound-grid" id="soundGrid">
+      <div class="sound-btn" onclick="playTone('sine')">
+        <span class="note"><i class="ti ti-wave-sine"></i></span>
+        纯正弦波
+      </div>
+      <div class="sound-btn" onclick="playTone('square')">
+        <span class="note"><i class="ti ti-square"></i></span>
+        方波音色
+      </div>
+      <div class="sound-btn" onclick="playTone('sawtooth')">
+        <span class="note"><i class="ti ti-triangle"></i></span>
+        锯齿波音色
+      </div>
+      <div class="sound-btn" onclick="playTone('triangle')">
+        <span class="note"><i class="ti ti-activity"></i></span>
+        三角波音色
+      </div>
+    </div>
+
+    <div class="insight-box blue" style="margin-top:18px;">
+      <h3><i class="ti ti-info-circle"></i> 为什么同一个「do」听起来不一样</h3>
+      <p>钢琴和小提琴弹同一个音，频率相同（都是 440Hz），但钢琴的泛音比例偏向奇次谐波，小提琴的高次泛音更丰富。你听到的「音色」，就是傅里叶级数的系数配方。</p>
+    </div>
+  </div>
+
+  <!-- ══ 模块三：JPEG 压缩 ══ -->
+  <div class="section" id="jpegSection">
+    <h2><i class="ti ti-photo"></i> JPEG 压缩原理</h2>
+    <p class="section-desc">JPEG 的核心是 DCT（离散余弦变换）——傅里叶变换的表亲。拖动质量滑块，看同一张图片保留多少频率信息。</p>
+
+    <div class="controls-row">
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>JPEG 质量</span>
+          <span class="val" id="jpegQualVal">50</span><span style="color:#888;font-size:0.8rem;">%</span>
+        </div>
+        <input type="range" id="jpegQualSlider" min="1" max="100" value="50" oninput="updateJpeg()">
+      </div>
+    </div>
+
+    <div class="jpeg-grid">
+      <div class="jpeg-panel">
+        <canvas id="jpegOriginal" width="256" height="256"></canvas>
+        <div class="caption">原图</div>
+      </div>
+      <div class="jpeg-panel">
+        <canvas id="jpegCompressed" width="256" height="256"></canvas>
+        <div class="caption">压缩后 · 保留 <strong id="jpegKeepPct">—</strong> 的频率系数</div>
+      </div>
+    </div>
+
+    <div class="stats-row" style="margin-top:14px;">
+      <span class="stat-badge"><span class="label">非零系数</span> <span id="jpegNonZero">—</span></span>
+      <span class="stat-badge"><span class="label">压缩比</span> <span id="jpegRatio">—</span></span>
+      <span class="stat-badge"><span class="label">PSNR</span> <span id="jpegPsnr">—</span> dB</span>
+    </div>
+
+    <div class="insight-box" style="margin-top:18px;">
+      <h3><i class="ti ti-bulb"></i> 为什么能压缩</h3>
+      <p>人眼对高频细节不敏感（你很难分辨「第 47 次谐波」存不存在）。DCT 变换后，大量高频系数接近零，量化舍去后图片体积大幅缩小，但视觉差异很小。质量调到 10% 以下你才会明显看到色块——那就是信息真的丢太多了。</p>
+    </div>
+  </div>
+
+  <!-- ══ 历史时间线 ══ -->
+  <div class="section">
+    <h2><i class="ti ti-history"></i> 从「荒谬」到「无处不在」</h2>
+    <p class="section-desc">一个被院士否决的理论，如何用 200 年征服了整个技术世界。</p>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="year">1807</div>
+        <div class="event">傅里叶向法国科学院提交论文《热的传播》，声称任意函数都能分解为正弦波叠加。审稿人拉格朗日当场否定：「不可能。」论文未获发表。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="year">1822</div>
+        <div class="event">傅里叶绕过审稿流程，以专著形式出版《热的解析理论》(Théorie analytique de la chaleur)。数学界开始正视这套方法。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="year">1965</div>
+        <div class="event">Cooley 与 Tukey 发表快速傅里叶变换算法（FFT），将 N 个点的计算复杂度从 O(N²) 降至 O(N log N)。傅里叶变换从理论走向实时计算。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="year">1992</div>
+        <div class="event">JPEG 标准正式发布（ITU-T T.81），核心算法 DCT 直接源于傅里叶变换。此后每一张数码照片都在执行这个运算。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="year">2024</div>
+        <div class="event">全球每天产生约 1.4 万亿张图片（来源：Photutorial, 2024 估算），每一张经过 DCT 压缩。5G 信号用 OFDM 调制（本质是逆 FFT），WiFi 6 同理。手机芯片里集成了专用 FFT 硬件加速器。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 应用全景 ══ -->
+  <div class="section">
+    <h2><i class="ti ti-world"></i> 傅里叶变换的征服版图</h2>
+
+    <div class="app-grid">
+      <div class="app-card">
+        <div class="icon"><i class="ti ti-photo"></i></div>
+        <h4>图片压缩</h4>
+        <p>JPEG / HEIF / WebP 的核心——DCT 变换后丢弃人眼不敏感的高频分量</p>
+        <span class="year-tag">1992 年至今</span>
+      </div>
+      <div class="app-card">
+        <div class="icon"><i class="ti ti-music"></i></div>
+        <h4>音频编码</h4>
+        <p>MP3 / AAC / Opus 用 MDCT 分析频率，只保留人耳能听到的部分</p>
+        <span class="year-tag">1993 年至今</span>
+      </div>
+      <div class="app-card">
+        <div class="icon"><i class="ti ti-antenna-bars-5"></i></div>
+        <h4>无线通信</h4>
+        <p>4G/5G 的 OFDM 调制 = 逆 FFT。你的手机每秒执行数十亿次傅里叶变换</p>
+        <span class="year-tag">2009 年至今</span>
+      </div>
+      <div class="app-card">
+        <div class="icon"><i class="ti ti-scan"></i></div>
+        <h4>医学成像</h4>
+        <p>CT 和 MRI 的图像重建依赖 2D/3D 傅里叶变换，从频率域还原空间信息</p>
+        <span class="year-tag">1971 年至今</span>
+      </div>
+      <div class="app-card">
+        <div class="icon"><i class="ti ti-brain"></i></div>
+        <h4>AI / 信号处理</h4>
+        <p>语音识别的梅尔频谱图、图像去噪的频域滤波，都建立在 FFT 基础上</p>
+        <span class="year-tag">2012 年至今</span>
+      </div>
+      <div class="app-card">
+        <div class="icon"><i class="ti ti-telescope"></i></div>
+        <h4>天文观测</h4>
+        <p>射电望远镜阵列用 FFT 合成图像。2019 年首张黑洞照片的核心算法之一</p>
+        <span class="year-tag">1974 年至今</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

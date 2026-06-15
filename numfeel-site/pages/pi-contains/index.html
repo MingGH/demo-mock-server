@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="圆周率π是无限不循环小数，它真的包含你的银行卡密码吗？输入任意数字序列，在π的前100万位中搜索，用概率论和πfs项目揭示答案。">
+  <title>π 包含一切：你的密码藏在圆周率里 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-math-pi"></i> π 包含一切</h1>
+    <p>圆周率是无限不循环小数。如果它的数字分布足够「随机」，那么你的银行卡密码、手机号、身份证号，全都藏在里面。输入任意数字，看看它在 π 的第几位。</p>
+    <p style="margin-top: 8px; font-size: 0.85rem;"><i class="ti ti-database"></i> π 数据状态：<span id="piStatus" style="color: #ffd700;">加载中...</span></p>
+    <img src="pi-universe.jpg" alt="π 的数字流包含一切" style="width: 100%; max-width: 600px; border-radius: 16px; margin-top: 20px; opacity: 0.85; box-shadow: 0 10px 40px rgba(0,0,0,0.4);">
+  </div>
+
+  <!-- ── 模块1: 搜索 Hero ── -->
+  <div class="section">
+    <h2><i class="ti ti-search"></i> 在 π 里找你的密码</h2>
+    <p style="color: #888; font-size: 0.88rem; margin-bottom: 16px;">输入任意纯数字序列（1~12位），在 π 的前100万位小数中搜索它的位置。</p>
+
+    <div class="hero-action">
+      <div class="hero-input-row">
+        <input type="text" id="searchInput" class="hero-input" placeholder="输入数字..." maxlength="12" inputmode="numeric" pattern="[0-9]*">
+        <button class="btn btn-primary" onclick="doSearch()">
+          <i class="ti ti-search"></i> 搜索
+        </button>
+      </div>
+    </div>
+
+    <div class="search-progress" id="searchProgress">
+      <div class="bar"></div>
+    </div>
+
+    <!-- 快速场景卡片 -->
+    <p style="color: #666; font-size: 0.82rem; margin-bottom: 10px;">或者试试这些场景：</p>
+    <div class="scenario-grid">
+      <div class="scenario-card" onclick="fillScenario('password')">
+        <div class="icon"><i class="ti ti-lock"></i></div>
+        <div class="title">随机6位密码</div>
+        <div class="desc">银行卡支付密码</div>
+      </div>
+      <div class="scenario-card" onclick="fillScenario('birthday')">
+        <div class="icon"><i class="ti ti-cake"></i></div>
+        <div class="title">生日 19900314</div>
+        <div class="desc">8位日期格式</div>
+      </div>
+      <div class="scenario-card" onclick="fillScenario('phone')">
+        <div class="icon"><i class="ti ti-phone"></i></div>
+        <div class="title">手机号前5位</div>
+        <div class="desc">号段识别码</div>
+      </div>
+      <div class="scenario-card" onclick="fillScenario('lottery')">
+        <div class="icon"><i class="ti ti-ticket"></i></div>
+        <div class="title">随机彩票号</div>
+        <div class="desc">5位数字组合</div>
+      </div>
+      <div class="scenario-card" onclick="fillScenario('pi-self')">
+        <div class="icon"><i class="ti ti-math-pi"></i></div>
+        <div class="title">π 自身 31415926</div>
+        <div class="desc">π 里能找到自己吗</div>
+      </div>
+      <div class="scenario-card" onclick="fillScenario('id-last4')">
+        <div class="icon"><i class="ti ti-id"></i></div>
+        <div class="title">身份证后4位</div>
+        <div class="desc">4位数字</div>
+      </div>
+    </div>
+
+    <!-- 搜索结果 -->
+    <div class="result-box" id="resultBox">
+      <div class="result-header">
+        <div class="result-status" id="resultIcon"></div>
+        <div>
+          <div class="result-title" id="resultTitle"></div>
+          <div class="result-subtitle" id="resultSubtitle"></div>
+        </div>
+      </div>
+      <div class="result-highlight" id="resultHighlight"></div>
+      <div class="stats-row" id="resultStats"></div>
+    </div>
+  </div>
+
+  <!-- ── 模块2: 概率分析 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-bar"></i> 不同长度序列的搜索难度</h2>
+    <p style="color: #888; font-size: 0.88rem; margin-bottom: 16px;">序列越长，在有限位数的 π 中越难找到。6位银行卡密码在100万位中几乎必然存在，但11位手机号就极其渺茫。</p>
+
+    <div class="chart-wrap">
+      <canvas id="expectedChart"></canvas>
+    </div>
+
+    <div class="compare-table-wrap" style="overflow-x: auto;">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>数据类型</th>
+            <th>位数</th>
+            <th>100万位中找到概率</th>
+            <th>期望出现位置</th>
+            <th>需要的 π 位数</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>4位PIN码</td>
+            <td>4</td>
+            <td style="color: #81c784;">99.99%</td>
+            <td>第 1万 位</td>
+            <td>~10万位</td>
+          </tr>
+          <tr>
+            <td>6位银行卡密码</td>
+            <td>6</td>
+            <td style="color: #81c784;">63.2%</td>
+            <td>第 100万 位</td>
+            <td>~1000万位</td>
+          </tr>
+          <tr>
+            <td>8位日期(如生日)</td>
+            <td>8</td>
+            <td style="color: #ffb74d;">1.0%</td>
+            <td>第 1亿 位</td>
+            <td>~10亿位</td>
+          </tr>
+          <tr>
+            <td>11位手机号</td>
+            <td>11</td>
+            <td style="color: #ff6b6b;">0.001%</td>
+            <td>第 1000亿 位</td>
+            <td>~1万亿位</td>
+          </tr>
+          <tr>
+            <td>18位身份证号</td>
+            <td>18</td>
+            <td style="color: #ff6b6b;">≈0</td>
+            <td>第 10^18 位</td>
+            <td>~10^19位</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="insight-box blue">
+      <h3><i class="ti ti-info-circle"></i> 关键点</h3>
+      <p>6位密码（如银行卡密码）在 π 的前100万位中有约 <strong>63.2%</strong> 的概率被找到。这意味着多数人的银行卡密码确实存在于 π 已经被计算出的部分里。但这并不构成安全威胁——因为你不知道该去哪个位置找它。</p>
+    </div>
+  </div>
+
+  <!-- ── 模块3: πfs 模拟 ── -->
+  <div class="section">
+    <h2><i class="ti ti-folder"></i> πfs：用 π 当硬盘的荒诞实验</h2>
+    <p style="color: #888; font-size: 0.88rem; margin-bottom: 16px;">GitHub 上有个项目叫 <a href="https://github.com/philipl/pifs" target="_blank" rel="noopener" style="color: #90caf9;">πfs</a>，它的逻辑是：既然 π 包含一切文件，为什么还要用硬盘？只需要记住文件在 π 中的偏移量就行了。输入一句话，体验完整的「存储 → 读取」流程。</p>
+
+    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px;">
+      <input type="text" id="pifsInput" placeholder="输入一句话，如：你好世界" maxlength="30" value="Hello world" style="flex: 1; max-width: 320px; height: 42px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(0,0,0,0.3); color: #e8e8e8; font-size: 0.95rem; outline: none;">
+      <button class="btn btn-primary" onclick="runPifsStore()">
+        <i class="ti ti-upload"></i> 存入 π
+      </button>
+      <button class="btn btn-secondary" id="pifsReadBtn" onclick="runPifsRead()" disabled>
+        <i class="ti ti-download"></i> 从 π 读取
+      </button>
+    </div>
+
+    <!-- 存储过程终端 -->
+    <div class="pifs-demo" id="pifsStoreOutput" style="display: none;"></div>
+
+    <!-- 元数据（中间产物） -->
+    <div id="pifsMetaSection" style="display: none; margin: 16px 0;">
+      <p style="color: #888; font-size: 0.82rem; margin-bottom: 8px;"><i class="ti ti-file-text"></i> πfs 生成的元数据文件（这才是真正占空间的东西）：</p>
+      <div style="background: rgba(0,0,0,0.35); border-radius: 10px; padding: 14px; font-family: 'Courier New', monospace; font-size: 0.8rem; color: #90caf9; max-height: 120px; overflow-y: auto; word-break: break-all;" id="pifsMetaContent"></div>
+    </div>
+
+    <!-- 读取过程终端 -->
+    <div class="pifs-demo" id="pifsReadOutput" style="display: none;"></div>
+
+    <!-- 统计 -->
+    <div class="stats-row" id="pifsStats" style="display: none;">
+      <div class="stat-item">
+        <div class="val green" id="pifsOrigSize">-</div>
+        <div class="lbl">原始数据</div>
+      </div>
+      <div class="stat-item">
+        <div class="val" style="color: #ff6b6b;" id="pifsMetaSize">-</div>
+        <div class="lbl">元数据（偏移量）</div>
+      </div>
+      <div class="stat-item">
+        <div class="val" id="pifsRatio">-</div>
+        <div class="lbl">「压缩率」</div>
+      </div>
+      <div class="stat-item">
+        <div class="val green" id="pifsVerify">-</div>
+        <div class="lbl">还原验证</div>
+      </div>
+    </div>
+
+    <div class="insight-box red">
+      <h3><i class="ti ti-alert-triangle"></i> 为什么 πfs 是个笑话</h3>
+      <p>πfs 的「100% 压缩」是自欺欺人：为了记住每个字节在 π 中的位置，你需要存储一个偏移量——这个偏移量本身比原始数据还大。更致命的是，要在 π 中找到一个长序列所需的计算量是天文数字级的。存储 1KB 文件需要的计算时间可能超过宇宙年龄。</p>
+    </div>
+  </div>
+
+  <!-- ── 模块4: 已知π中各类数据的出现次数 ── -->
+  <div class="section">
+    <h2><i class="ti ti-database"></i> 105万亿位 π 里藏了多少秘密</h2>
+    <p style="color: #888; font-size: 0.88rem; margin-bottom: 16px;">截至2024年，人类已计算出 π 的前 105 万亿位（StorageReview, 2024）。在这么多位里，不同长度的数字序列各出现了多少次？</p>
+
+    <div class="chart-wrap">
+      <canvas id="occurrenceChart"></canvas>
+    </div>
+
+    <div class="insight-box green">
+      <h3><i class="ti ti-bulb"></i> 数据解读</h3>
+      <p>在已计算的 105 万亿位 π 中：每个6位密码平均出现约 <strong>1.05 亿次</strong>；每个8位日期出现约 <strong>105 万次</strong>；但完整的11位手机号只出现约 <strong>1050 次</strong>；完整的18位身份证号出现的期望次数约为 10^-4 次——也就是说，大概率还没出现过。</p>
+    </div>
+  </div>
+
+  <!-- ── 模块5: 正规数猜想 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> π 真的「包含一切」吗</h2>
+
+    <div class="insight-box">
+      <h3><i class="ti ti-math-pi"></i> 正规数猜想</h3>
+      <p>
+        所有论证都基于一个<strong>未经证明的猜想</strong>：π 是「正规数」。<br><br>
+        正规数的定义：在给定进制下，每个数字出现频率相同，每个两位数序列频率也相同，以此类推。<br><br>
+        如果 π 是正规数，它就是「析取序列」——任意有限数字串都会出现。<br><br>
+        现状：在已计算的 105 万亿位中，0~9 每个数字的出现频率确实非常接近 10%（偏差小于 0.001%）。但数学家至今<strong>无法证明</strong> π 是正规数。
+      </p>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <h3 style="color: #ffd700; margin-bottom: 14px; font-size: 1rem;"><i class="ti ti-list-check"></i> 常见误解澄清</h3>
+      <table class="compare-table">
+        <thead>
+          <tr><th>误解</th><th>事实</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>「无限不循环」= 包含一切</td>
+            <td style="color: #81c784;">错。0.101001000100001... 无限不循环但只含0和1</td>
+          </tr>
+          <tr>
+            <td>π 包含莎士比亚全集的ASCII码</td>
+            <td style="color: #ffb74d;">未证明。理论上可能，实际上找到的概率趋近于零</td>
+          </tr>
+          <tr>
+            <td>π 包含一切 = 世界的信息都在里面</td>
+            <td style="color: #ff6b6b;">无意义。随机噪声也「包含」一切，但没有提取信息的方式</td>
+          </tr>
+          <tr>
+            <td>这构成安全威胁</td>
+            <td style="color: #81c784;">不构成。不知道位置就等于不存在。暴力搜索成本远超直接破解</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 模块6: 分享 ── -->
+  <div class="section" style="text-align: center;">
+    <h2 style="justify-content: center;"><i class="ti ti-share"></i> 分享给朋友</h2>
+    <p style="color: #888; font-size: 0.88rem; margin-bottom: 16px;">让朋友也来找找他们的密码</p>
+    <button class="btn btn-secondary" id="copyBtn" onclick="copyShareText()">
+      <i class="ti ti-copy"></i> 复制分享文案
+    </button>
+  </div>
+
+</div>
+
+<script src="../../data/pi-1m.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

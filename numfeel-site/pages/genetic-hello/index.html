@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="用遗传算法从随机字符进化出 hello world。调参数、看种群、追踪适应度曲线，亲手操控一次自然选择。">
+  <title>遗传算法进化 Hello World | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-dna-2"></i> 遗传算法进化 Hello World</h1>
+    <p>从一堆随机乱码出发，通过选择、交叉、变异，让字符串自己「长」成 hello world。调参数，看它进化多快。</p>
+  </div>
+
+  <!-- ── 目标 & 预设 ── -->
+  <div class="section">
+    <h2><i class="ti ti-target"></i> 选择目标</h2>
+    <p style="color:#888;font-size:0.85rem;margin-bottom:14px;">点击预设卡片快速开始，或自定义任意字符串作为进化目标。</p>
+
+    <div class="preset-grid" id="presetGrid">
+      <div class="preset-card active" data-target="hello world">
+        <div class="title">hello world</div>
+        <div class="sub"><span class="tag tag-easy">入门</span>11字符</div>
+      </div>
+      <div class="preset-card" data-target="to be or not to be">
+        <div class="title">to be or not to be</div>
+        <div class="sub"><span class="tag tag-medium">中等</span>18字符</div>
+      </div>
+      <div class="preset-card" data-target="I think therefore I am">
+        <div class="title">I think therefore I am</div>
+        <div class="sub"><span class="tag tag-medium">中等</span>22字符</div>
+      </div>
+      <div class="preset-card" data-target="42">
+        <div class="title">42</div>
+        <div class="sub"><span class="tag tag-fun">趣味</span>极简</div>
+      </div>
+    </div>
+
+    <div class="custom-input-row">
+      <input type="text" class="custom-input" id="customTarget" placeholder="或者输入自定义目标字符串..." maxlength="50">
+      <button class="btn btn-secondary btn-sm" onclick="setCustomTarget()">确定</button>
+    </div>
+
+    <div class="hero-target">
+      <div class="label">当前目标</div>
+      <div class="target-text" id="targetDisplay">hello world</div>
+    </div>
+  </div>
+
+  <!-- ── 参数面板 ── -->
+  <div class="section">
+    <h2><i class="ti ti-adjustments"></i> 进化参数</h2>
+    <p style="color:#888;font-size:0.85rem;margin-bottom:14px;">拖动滑块调整参数，观察对进化速度的影响。</p>
+
+    <div class="params-grid">
+      <div class="param-item">
+        <div class="param-label"><span>种群大小</span><span class="val" id="popSizeVal">200</span></div>
+        <input type="range" id="popSize" min="20" max="1000" value="200" step="10" oninput="updateParam('popSize')">
+      </div>
+      <div class="param-item">
+        <div class="param-label"><span>变异率</span><span class="val" id="mutRateVal">1.0%</span></div>
+        <input type="range" id="mutRate" min="0.1" max="10" value="1" step="0.1" oninput="updateParam('mutRate')">
+      </div>
+      <div class="param-item">
+        <div class="param-label"><span>交叉率</span><span class="val" id="crossRateVal">70%</span></div>
+        <input type="range" id="crossRate" min="0" max="100" value="70" step="5" oninput="updateParam('crossRate')">
+      </div>
+      <div class="param-item">
+        <div class="param-label"><span>精英保留</span><span class="val" id="eliteVal">2</span></div>
+        <input type="range" id="elite" min="0" max="10" value="2" step="1" oninput="updateParam('elite')">
+      </div>
+    </div>
+
+    <div class="speed-control">
+      <label>进化速度：</label>
+      <select id="speedSelect">
+        <option value="200">慢（观察详细）</option>
+        <option value="50" selected>中速</option>
+        <option value="10">快（冲刺）</option>
+        <option value="0">全速（无动画）</option>
+      </select>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-primary" id="startBtn" onclick="startEvolution()">
+        <i class="ti ti-player-play"></i> 开始进化
+      </button>
+      <button class="btn btn-secondary" id="pauseBtn" onclick="pauseEvolution()" disabled>
+        <i class="ti ti-player-pause"></i> 暂停
+      </button>
+      <button class="btn btn-secondary" id="stepBtn" onclick="stepEvolution()">
+        <i class="ti ti-player-skip-forward"></i> 单步
+      </button>
+      <button class="btn btn-danger" id="resetBtn" onclick="resetEvolution()">
+        <i class="ti ti-refresh"></i> 重置
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 进化过程 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-line"></i> 进化过程</h2>
+
+    <div class="evo-display">
+      <div class="evo-stats">
+        <div class="evo-stat"><div class="val" id="genNum">0</div><div class="lbl">代数</div></div>
+        <div class="evo-stat"><div class="val" id="bestFit">0%</div><div class="lbl">最优适应度</div></div>
+        <div class="evo-stat"><div class="val" id="avgFit">0%</div><div class="lbl">平均适应度</div></div>
+        <div class="evo-stat"><div class="val" id="diversity">0%</div><div class="lbl">种群多样性</div></div>
+      </div>
+
+      <div class="best-display" id="bestDisplay">
+        <span style="color:#666;">点击「开始进化」启动</span>
+      </div>
+    </div>
+
+    <!-- 适应度曲线 -->
+    <div class="chart-wrap" style="height:260px;margin:16px 0;">
+      <canvas id="fitnessChart"></canvas>
+    </div>
+
+    <!-- 种群查看器 -->
+    <details style="margin-top:12px;">
+      <summary style="color:#888;cursor:pointer;font-size:0.85rem;">查看种群前 10 名</summary>
+      <div class="pop-viewer" id="popViewer"></div>
+    </details>
+
+    <!-- 日志 -->
+    <div class="log-console" id="logConsole"></div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么这算「高端」</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>不写答案，写规则</h4>
+        <p>程序员从不告诉程序「hello world 长什么样」。只给适应度函数（离目标多远），让群体自己摸索出答案。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>盲目搜索 → 定向进化</h4>
+        <p>每一代的选择压力淘汰差的，变异产生新可能，交叉组合优势基因。全局最优从混沌中涌现。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>搜索空间多大？</h4>
+        <p>11个字符，每位95种可能（可打印ASCII），总共 95¹¹ ≈ 5.7 × 10²¹ 种组合。穷举要跑到宇宙热寂，遗传算法几百代搞定。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 关键观察</h3>
+      <p>注意适应度曲线的形状：开头进步飞快（容易找到「大方向对」的个体），越到后面越慢（最后几个字符最难对齐）。这就是进化中的「收益递减」——和现实中学习新技能的曲线一模一样。</p>
+    </div>
+  </div>
+
+  <!-- ── 参数对比实验 ── -->
+  <div class="section">
+    <h2><i class="ti ti-flask"></i> 参数对比实验</h2>
+    <p style="color:#888;font-size:0.85rem;margin-bottom:14px;">点击按钮批量运行不同参数，对比收敛速度。每组跑 10 次取平均。</p>
+
+    <div class="btn-group" style="margin-top:0;margin-bottom:16px;">
+      <button class="btn btn-primary btn-sm" onclick="runExperiment('mutRate')">
+        <i class="ti ti-flask"></i> 变异率对比
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="runExperiment('popSize')">
+        <i class="ti ti-flask"></i> 种群大小对比
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="runExperiment('crossRate')">
+        <i class="ti ti-flask"></i> 交叉率对比
+      </button>
+    </div>
+
+    <div class="chart-wrap" style="height:280px;">
+      <canvas id="experimentChart"></canvas>
+    </div>
+    <div id="experimentResult" style="margin-top:12px;color:#888;font-size:0.85rem;"></div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

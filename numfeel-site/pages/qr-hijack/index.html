@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="你扫的每一个二维码，都是在盲签一份合同。亲身体验 QRLjacking 攻击全流程，理解为什么扫码登录可能让你丢掉账号。">
+  <title>二维码劫持实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-qrcode"></i> 二维码劫持实验室</h1>
+    <p>你扫的每一个二维码，都是在盲签一份合同。亲身体验 QRLjacking 攻击，看看「扫一下」能有多危险。</p>
+  </div>
+
+  <!-- ── 科普区：什么是 QRLjacking ── -->
+  <div class="section" id="explainSection">
+    <h2><i class="ti ti-info-circle"></i> 什么是 QRLjacking？</h2>
+    <p class="section-desc">QRLjacking = QR Code Login Jacking，劫持二维码登录。微信网页版、WhatsApp Web、Discord 等「扫码登录」都可能被利用。</p>
+
+    <div class="attack-flow">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-icon"><i class="ti ti-device-laptop"></i></div>
+        <div class="step-text">网站生成登录二维码<br><span class="step-sub">包含一个临时 session ID</span></div>
+      </div>
+      <div class="flow-arrow"><i class="ti ti-arrow-right"></i></div>
+      <div class="flow-step danger">
+        <div class="step-num">2</div>
+        <div class="step-icon"><i class="ti ti-spy"></i></div>
+        <div class="step-text">攻击者截获二维码<br><span class="step-sub">伪装成「WiFi」「红包」「签到」</span></div>
+      </div>
+      <div class="flow-arrow"><i class="ti ti-arrow-right"></i></div>
+      <div class="flow-step victim">
+        <div class="step-num">3</div>
+        <div class="step-icon"><i class="ti ti-device-mobile"></i></div>
+        <div class="step-text">受害者扫码确认<br><span class="step-sub">以为是连WiFi，实际在授权登录</span></div>
+      </div>
+      <div class="flow-arrow"><i class="ti ti-arrow-right"></i></div>
+      <div class="flow-step danger">
+        <div class="step-num">4</div>
+        <div class="step-icon"><i class="ti ti-lock-open"></i></div>
+        <div class="step-text">攻击者获得账号<br><span class="step-sub">不需要密码，不触发 2FA</span></div>
+      </div>
+    </div>
+
+    <div class="insight-box red" style="margin-top: 20px;">
+      <h3><i class="ti ti-alert-triangle"></i> 为什么危险</h3>
+      <p>整个过程受害者只做了一个动作：扫码。没输密码、没点额外确认，双因素认证完全无效——因为是你自己亲手「授权」的。</p>
+    </div>
+  </div>
+
+  <!-- ── 实战体验区 ── -->
+  <div class="section" id="demoSection">
+    <h2><i class="ti ti-flask"></i> 实战体验：你来当「受害者」</h2>
+    <p class="section-desc">下面模拟一次完整的 QRLjacking 攻击。你扮演受害者，亲身走一遍流程。</p>
+
+    <div class="demo-steps">
+      <!-- Step 1: 生成登录码 -->
+      <div class="demo-step" id="step1">
+        <div class="demo-step-header">
+          <span class="demo-step-badge">第 1 步</span>
+          <span class="demo-step-title">「网站」生成登录二维码</span>
+        </div>
+        <div class="demo-step-body">
+          <p class="step-explain">模拟某网站在 PC 端展示「扫码登录」二维码。点击按钮生成。</p>
+          <button class="btn btn-primary" id="generateBtn" onclick="generateSession()">
+            <i class="ti ti-qrcode"></i> 生成登录码
+          </button>
+          <div id="qrArea" class="qr-area" style="display:none;">
+            <div class="qr-wrapper">
+              <canvas id="qrCanvas"></canvas>
+              <div class="qr-overlay" id="qrOverlay">
+                <i class="ti ti-scan"></i>
+              </div>
+            </div>
+            <div class="qr-info">
+              <div class="qr-status" id="qrStatus">等待扫码…</div>
+              <div class="qr-timer" id="qrTimer">有效期：120 秒</div>
+              <div class="qr-token">Session: <code id="tokenDisplay">—</code></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: 扫码 -->
+      <div class="demo-step locked" id="step2">
+        <div class="demo-step-header">
+          <span class="demo-step-badge">第 2 步</span>
+          <span class="demo-step-title">用手机扫这个码</span>
+        </div>
+        <div class="demo-step-body">
+          <p class="step-explain">用手机浏览器（或任何扫码工具）扫描上方二维码。扫完会打开一个确认页面。</p>
+          <p class="step-explain" style="margin-top:8px;">没手机在身边？也可以点击下方按钮模拟扫码：</p>
+          <button class="btn btn-secondary" id="mockScanBtn" onclick="mockScan()" disabled>
+            <i class="ti ti-device-mobile"></i> 模拟扫码（不用手机）
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: 结果 -->
+      <div class="demo-step locked" id="step3">
+        <div class="demo-step-header">
+          <span class="demo-step-badge">第 3 步</span>
+          <span class="demo-step-title">看看发生了什么</span>
+        </div>
+        <div class="demo-step-body" id="resultBody">
+          <p class="step-explain">等待扫码结果…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 对比挑战区 ── -->
+  <div class="section" id="challengeSection">
+    <h2><i class="ti ti-eye"></i> 火眼金睛：你能分辨吗？</h2>
+    <p class="section-desc">两个二维码外观几乎一样。一个指向正规网站，一个指向钓鱼站。你能选对吗？</p>
+
+    <div id="challengeArea">
+      <div class="challenge-round" id="challengeRound">
+        <span class="challenge-label">第 <span id="challengeNum">1</span> / 5 题</span>
+      </div>
+      <div class="challenge-grid" id="challengeGrid">
+        <!-- JS 填充 -->
+      </div>
+      <div id="challengeResult" class="challenge-result" style="display:none;"></div>
+      <div id="challengeFinal" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- ── Payload 展览馆 ── -->
+  <div class="section" id="payloadSection">
+    <h2><i class="ti ti-package"></i> 二维码能装什么？</h2>
+    <p class="section-desc">二维码不只是 URL。点击查看各种危险 payload，了解每种的风险。</p>
+
+    <div class="payload-grid" id="payloadGrid">
+      <!-- JS 填充 -->
+    </div>
+    <div id="payloadDetail" class="payload-detail" style="display:none;"></div>
+  </div>
+
+  <!-- ── 防御指南 ── -->
+  <div class="section" id="defenseSection">
+    <h2><i class="ti ti-shield-check"></i> 防御指南</h2>
+    <div class="defense-grid">
+      <div class="defense-card">
+        <div class="defense-icon"><i class="ti ti-eye-check"></i></div>
+        <h4>扫码后先看 URL</h4>
+        <p>任何扫码器扫完后都会预览 URL，不要无脑点确认。检查域名是否为官方。</p>
+      </div>
+      <div class="defense-card">
+        <div class="defense-icon"><i class="ti ti-clock"></i></div>
+        <h4>注意有效期</h4>
+        <p>正规登录码有效期很短（通常 1~2 分钟）。如果码是别人转给你的，很可能是过期再生成的攻击码。</p>
+      </div>
+      <div class="defense-card">
+        <div class="defense-icon"><i class="ti ti-device-mobile-off"></i></div>
+        <h4>拒绝可疑场景</h4>
+        <p>WiFi 连接不需要扫码登录第三方、红包不需要授权账号。场景对不上就不要扫。</p>
+      </div>
+      <div class="defense-card">
+        <div class="defense-icon"><i class="ti ti-fingerprint"></i></div>
+        <h4>启用登录通知</h4>
+        <p>开启「异地登录提醒」，一旦有人通过扫码登录你的账号，立刻收到通知并踢下线。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 全局统计 ── -->
+  <div class="section" id="statsSection">
+    <h2><i class="ti ti-chart-bar"></i> 全站实验数据</h2>
+    <p class="section-desc">看看已经有多少人体验了这个演示。</p>
+    <div class="stats-grid" id="globalStats">
+      <div class="stat-card">
+        <div class="val" id="statTotal">—</div>
+        <div class="lbl">总体验次数</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statScanned">—</div>
+        <div class="lbl">成功「劫持」</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statRate">—</div>
+        <div class="lbl">劫持率</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

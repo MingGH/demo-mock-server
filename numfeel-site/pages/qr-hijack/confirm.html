@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>确认登录</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e8e8e8; display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      max-width: 400px; width: 100%; background: rgba(255,255,255,0.06);
+      border-radius: 20px; padding: 36px 28px; text-align: center;
+      border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+    }
+    .logo { font-size: 3rem; margin-bottom: 16px; }
+    h1 { font-size: 1.4rem; margin-bottom: 8px; color: #ffd700; }
+    .desc { color: #a0a0a0; font-size: 0.9rem; margin-bottom: 24px; line-height: 1.6; }
+    .btn {
+      width: 100%; padding: 14px; border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.25s;
+      margin-bottom: 12px;
+    }
+    .btn-confirm {
+      background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e;
+    }
+    .btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.3); }
+    .btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-cancel {
+      background: rgba(255,255,255,0.08); color: #a0a0a0; border: 1px solid rgba(255,255,255,0.15);
+    }
+    .result { margin-top: 16px; padding: 16px; border-radius: 12px; font-size: 0.9rem; line-height: 1.7; display: none; }
+    .result.success { background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3); color: #ef9a9a; display: block; }
+    .result.error { background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.2); color: #ff6b6b; display: block; }
+    .warn { margin-top: 20px; font-size: 0.78rem; color: #555; line-height: 1.5; }
+    .warn a { color: #90caf9; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo"><i class="ti ti-device-laptop"></i></div>
+    <h1>确认登录</h1>
+    <div class="desc">
+      有设备请求通过扫码方式登录你的账号。<br>
+      点击「确认登录」将授权该设备访问。
+    </div>
+    <button class="btn btn-confirm" id="confirmBtn" onclick="confirmLogin()">确认登录</button>
+    <button class="btn btn-cancel" onclick="cancelLogin()">取消</button>
+    <div class="result" id="result"></div>
+    <div class="warn">
+      这是 <a href="https://numfeel.996.ninja/pages/qr-hijack/">二维码劫持实验室</a> 的演示页面。<br>
+      不会采集任何个人信息，仅用于安全教育。
+    </div>
+  </div>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+  <script>
+    const API = 'https://numfeel-api.996.ninja/qr-hijack';
+
+    function getToken() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('token');
+    }
+
+    function confirmLogin() {
+      const token = getToken();
+      if (!token) {
+        showResult('error', '无效的二维码：缺少 token 参数');
+        return;
+      }
+      const btn = document.getElementById('confirmBtn');
+      btn.disabled = true;
+      btn.textContent = '确认中…';
+
+      fetch(API + '/scan/' + token, { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+          if (res.status === 200 && res.data.success) {
+            showResult('success',
+              '<strong>⚠️ 你刚刚「授权」了一次登录</strong><br><br>' +
+              '在真实攻击中，攻击者此刻已经获得了你的账号访问权。<br>' +
+              '整个过程你没输密码，也没收到验证码——因为是你自己主动「确认」的。<br><br>' +
+              '<a href="https://numfeel.996.ninja/pages/qr-hijack/" style="color:#ffd700;">← 返回实验室查看完整分析</a>'
+            );
+          } else {
+            showResult('error', res.data ? res.data.message : '操作失败');
+            btn.disabled = false;
+            btn.textContent = '确认登录';
+          }
+        })
+        .catch(() => {
+          showResult('error', '网络错误，请稍后重试');
+          btn.disabled = false;
+          btn.textContent = '确认登录';
+        });
+    }
+
+    function cancelLogin() {
+      showResult('error', '你选择了取消——这是正确的安全意识！<br>对任何来路不明的扫码请求，都应该拒绝。');
+    }
+
+    function showResult(type, html) {
+      const el = document.getElementById('result');
+      el.className = 'result ' + type;
+      el.innerHTML = html;
+    }
+
+    // 检查 token 有效性
+    (function() {
+      const token = getToken();
+      if (!token) {
+        document.querySelector('.desc').innerHTML =
+          '<span style="color:#ff6b6b;">无效链接：缺少 token 参数</span><br>请从实验室页面扫码进入。';
+        document.getElementById('confirmBtn').disabled = true;
+      }
+    })();
+  </script>
+</body>
+</html>

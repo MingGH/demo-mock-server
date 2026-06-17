@@ -351,3 +351,18 @@ CREATE TABLE IF NOT EXISTS goose_duck_results (
     created_at      BIGINT       NOT NULL,
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- 二维码劫持（QRLjacking）演示 session 记录
+CREATE TABLE IF NOT EXISTS qr_hijack_sessions (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    token       VARCHAR(16) NOT NULL COMMENT '登录 session token',
+    status      VARCHAR(10) NOT NULL DEFAULT 'pending' COMMENT 'pending / scanned',
+    scanned_by  VARCHAR(64) NOT NULL DEFAULT '' COMMENT '扫码设备描述',
+    created_at  BIGINT      NOT NULL,
+    scanned_at  BIGINT      NOT NULL DEFAULT 0,
+    hijacked    TINYINT(1)  NOT NULL DEFAULT 0,
+    INDEX idx_token (token),
+    INDEX idx_created (created_at),
+    INDEX idx_hijacked (hijacked)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="同一个密码，MD5瞬间破解，bcrypt要800年。亲眼看四种哈希算法的破解速度差距，再体验一下80ms的登录延迟到底能不能感知。">
+  <title>密码哈希破解竞速：80ms换800年 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-shield-lock"></i> 密码哈希破解竞速</h1>
+    <p>同一个密码，用不同哈希算法存储，被暴力破解的时间差多少？选一个密码，看四种算法同时"开跑"。</p>
+  </div>
+
+  <!-- ══════ 场景选择 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-cursor-text"></i> 选择密码场景</h2>
+    <p class="section-hint">点击预设场景，或自定义密码参数。这些预设代表了真实用户最常见的密码习惯。</p>
+
+    <div class="preset-grid" id="presetGrid"></div>
+
+    <div style="margin-top:16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;" class="custom-row">
+      <label style="color:#a0a0a0; font-size:0.85rem;">自定义：</label>
+      <input type="number" id="customLength" min="1" max="64" value="8" style="width:60px; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.3); color:#e8e8e8; font-size:0.9rem;">
+      <span style="color:#888; font-size:0.85rem;">位</span>
+      <select id="customCharset" style="padding:8px 12px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.3); color:#e8e8e8; font-size:0.85rem;">
+        <option value="digits">纯数字 (0-9)</option>
+        <option value="lower">纯小写 (a-z)</option>
+        <option value="lower_digits">小写+数字</option>
+        <option value="mixed">大小写字母</option>
+        <option value="mixed_digits" selected>大小写+数字</option>
+        <option value="full">全部可打印字符</option>
+      </select>
+      <button class="btn btn-secondary" onclick="runCustom()"><i class="ti ti-player-play"></i> 开始破解</button>
+    </div>
+  </div>
+
+  <!-- ══════ 破解竞速 ══════ -->
+  <div class="section" id="raceSection" style="display:none;">
+    <h2><i class="ti ti-run"></i> 破解竞速</h2>
+    <p class="section-hint" id="raceDesc"></p>
+
+    <div class="race-track" id="raceTrack"></div>
+
+    <div class="result-grid" id="resultGrid"></div>
+
+    <div class="insight-box gold" id="insightBox" style="display:none;">
+      <h3><i class="ti ti-bulb"></i> 关键数据</h3>
+      <p id="insightText"></p>
+    </div>
+  </div>
+
+  <!-- ══════ 登录延迟感知测试 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-clock-pause"></i> 登录延迟感知测试</h2>
+    <p class="section-hint">慢哈希让登录"变慢" 80ms。能感受到吗？点击下面两个按钮，猜猜哪个是 20ms，哪个是 100ms。</p>
+
+    <div class="latency-test">
+      <div class="latency-btn-wrap">
+        <button class="latency-btn" id="latencyBtnA" onclick="handleLatencyClick('A')">
+          <span class="latency-icon"><i class="ti ti-letter-a"></i></span>
+          点我登录
+        </button>
+        <div class="latency-label">按钮 A</div>
+      </div>
+      <div class="latency-btn-wrap">
+        <button class="latency-btn" id="latencyBtnB" onclick="handleLatencyClick('B')">
+          <span class="latency-icon"><i class="ti ti-letter-b"></i></span>
+          点我登录
+        </button>
+        <div class="latency-label">按钮 B</div>
+      </div>
+    </div>
+
+    <div class="latency-result" id="latencyResult">
+      <p>分别点击两个按钮试试，然后猜哪个延迟更高。</p>
+      <div class="latency-guess-row" id="guessRow" style="display:none;">
+        <button class="guess-btn" onclick="guessLatency('A')">A 更慢</button>
+        <button class="guess-btn" onclick="guessLatency('B')">B 更慢</button>
+        <button class="guess-btn" onclick="guessLatency('same')">感觉一样</button>
+      </div>
+    </div>
+
+    <div class="insight-box" id="latencyInsight" style="display:none;">
+      <h3><i class="ti ti-bulb"></i> 结论</h3>
+      <p id="latencyInsightText"></p>
+    </div>
+  </div>
+
+  <!-- ══════ 对比总表 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-table"></i> 各场景破解时间总表</h2>
+    <p class="section-hint">基于单块 RTX 4090 显卡的 Hashcat 实测速度。数据来源：Hashcat v6.2.6 benchmark。</p>
+
+    <div class="table-scroll">
+    <table class="compare-table" id="compareTable">
+      <thead>
+        <tr>
+          <th>密码类型</th>
+          <th>MD5</th>
+          <th>SHA-256</th>
+          <th>bcrypt(10)</th>
+          <th>Argon2id</th>
+        </tr>
+      </thead>
+      <tbody id="compareBody"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- ══════ 核心论点 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么中小项目也该用慢哈希</h2>
+
+    <div class="result-grid" style="margin-top:0;">
+      <div class="result-card">
+        <div class="result-label">登录频率</div>
+        <div class="result-value" style="color:#ffd700;">1 次/会话</div>
+        <div class="result-sub">你的用户一天最多登录几次，80ms 完全无感</div>
+      </div>
+      <div class="result-card">
+        <div class="result-label">攻击者要付出</div>
+        <div class="result-value" style="color:#81c784;">×2800万 倍</div>
+        <div class="result-sub">bcrypt 让每次哈希计算慢 2800 万倍（相对 MD5）</div>
+      </div>
+      <div class="result-card">
+        <div class="result-label">小站被拖库概率</div>
+        <div class="result-value" style="color:#ff6b6b;">很高</div>
+        <div class="result-sub">攻击者批量攻击小站做撞库弹药，不是专门盯你</div>
+      </div>
+    </div>
+
+    <div class="insight-box gold" style="margin-top:20px;">
+      <h3><i class="ti ti-quote"></i> 一句话</h3>
+      <p>你感受不到的 80ms，是攻击者多等 800 年的原因。bcrypt 一行代码的事，没有"项目太小不需要"这种说法。</p>
+    </div>
+  </div>
+
+  <!-- ══════ 分享 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-share"></i> 分享结果</h2>
+    <div class="share-text" id="shareText">选择一个密码场景开始竞速后，这里会生成分享文本。</div>
+    <button class="btn btn-secondary btn-full" id="copyBtn" onclick="copyShare()" disabled>
+      <i class="ti ti-copy"></i> 复制到剪贴板
+    </button>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

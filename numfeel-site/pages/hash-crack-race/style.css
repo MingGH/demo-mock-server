@@ -1,0 +1,239 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+}
+.container { max-width: 960px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 30px; margin-bottom: 30px; }
+.header h1 {
+  font-size: 2.2rem;
+  background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: shimmer 3s linear infinite; margin-bottom: 12px;
+}
+@keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+.header p { font-size: 1rem; color: #a0a0a0; max-width: 640px; margin: 0 auto; }
+
+/* ── Section card ── */
+.section {
+  background: rgba(255,255,255,0.05); border-radius: 16px; padding: 28px;
+  margin-bottom: 28px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+}
+.section h2 { font-size: 1.3rem; margin-bottom: 16px; color: #ffd700; display: flex; align-items: center; gap: 10px; }
+.section-hint { color: #888; font-size: 0.85rem; margin-bottom: 16px; }
+
+/* ── Buttons ── */
+.btn {
+  padding: 11px 22px; border: none; border-radius: 8px; font-size: 0.95rem;
+  cursor: pointer; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 8px;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 700; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.35); }
+.btn-secondary { background: rgba(255,255,255,0.08); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.18); }
+.btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.13); }
+.btn-full { width: 100%; justify-content: center; }
+
+/* ── Tags ── */
+.tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+.tag-easy { background: rgba(129,199,132,0.15); color: #81c784; }
+.tag-medium { background: rgba(255,183,77,0.15); color: #ffb74d; }
+.tag-fun { background: rgba(206,147,216,0.15); color: #ce93d8; }
+
+/* ── Preset cards ── */
+.preset-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px; margin-bottom: 20px;
+}
+.preset-card {
+  background: rgba(0,0,0,0.25); border-radius: 12px; padding: 14px 16px;
+  cursor: pointer; border: 2px solid transparent; transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.preset-card:hover { border-color: rgba(255,215,0,0.4); transform: translateY(-2px); }
+.preset-card:active { transform: scale(0.97); }
+.preset-card.active { border-color: #ffd700; background: rgba(255,215,0,0.08); }
+.preset-card .preset-title { font-size: 0.9rem; font-weight: 600; color: #e8e8e8; margin-bottom: 4px; }
+.preset-card .preset-detail { font-size: 0.8rem; color: #888; }
+.preset-card .preset-example { font-family: monospace; color: #90caf9; font-size: 0.8rem; margin-top: 4px; }
+
+/* ── Race track ── */
+.race-section { margin-top: 20px; }
+.race-track {
+  background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px;
+  margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.06);
+}
+.race-item { margin-bottom: 20px; }
+.race-item:last-child { margin-bottom: 0; }
+.race-label {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; flex-wrap: wrap; gap: 4px;
+}
+.race-algo-name { font-weight: 700; font-size: 0.95rem; }
+.race-speed { font-size: 0.8rem; color: #888; }
+.race-bar-wrap {
+  height: 32px; background: rgba(255,255,255,0.06); border-radius: 8px;
+  overflow: hidden; position: relative;
+}
+.race-bar {
+  height: 100%; border-radius: 8px; transition: width 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: flex; align-items: center; padding-left: 12px;
+  font-size: 0.8rem; font-weight: 700; color: #1a1a2e; min-width: 0;
+}
+.race-time {
+  font-size: 0.85rem; margin-top: 6px; font-weight: 600;
+}
+
+/* ── Result summary ── */
+.result-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px; margin-top: 20px;
+}
+.result-card {
+  background: rgba(0,0,0,0.25); border-radius: 12px; padding: 18px; text-align: center;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.result-card .result-label { font-size: 0.8rem; color: #888; margin-bottom: 6px; }
+.result-card .result-value { font-size: 1.4rem; font-weight: 700; }
+.result-card .result-sub { font-size: 0.8rem; color: #a0a0a0; margin-top: 4px; }
+
+/* ── Latency test ── */
+.latency-test {
+  display: flex; gap: 20px; align-items: stretch; flex-wrap: wrap;
+}
+.latency-btn-wrap { flex: 1; min-width: 200px; text-align: center; }
+.latency-btn {
+  width: 100%; padding: 24px 16px; border-radius: 12px; border: 2px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.3); color: #e8e8e8; font-size: 1rem; cursor: pointer;
+  transition: all 0.15s ease; font-weight: 600; -webkit-tap-highlight-color: transparent;
+  min-height: 100px;
+}
+.latency-btn:hover { border-color: rgba(255,215,0,0.5); }
+.latency-btn:active { transform: scale(0.97); }
+.latency-btn .latency-icon { font-size: 2rem; margin-bottom: 8px; display: block; }
+.latency-label { font-size: 0.8rem; color: #888; margin-top: 10px; }
+.latency-result {
+  margin-top: 16px; padding: 14px; background: rgba(0,0,0,0.25);
+  border-radius: 10px; font-size: 0.9rem; text-align: center;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.latency-result.revealed { border-color: rgba(255,215,0,0.3); }
+.latency-guess-row {
+  display: flex; gap: 12px; justify-content: center; margin-top: 12px; flex-wrap: wrap;
+}
+.guess-btn {
+  padding: 8px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06); color: #e8e8e8; cursor: pointer; font-size: 0.9rem;
+  transition: all 0.2s;
+}
+.guess-btn:hover { background: rgba(255,215,0,0.15); border-color: #ffd700; }
+.guess-btn.correct { background: rgba(129,199,132,0.2); border-color: #81c784; color: #81c784; }
+.guess-btn.wrong { background: rgba(255,107,107,0.2); border-color: #ff6b6b; color: #ff6b6b; }
+
+/* ── Insight box ── */
+.insight-box {
+  background: rgba(144,202,249,0.08); border: 1px solid rgba(144,202,249,0.25);
+  border-radius: 12px; padding: 18px 20px; margin-top: 20px;
+}
+.insight-box h3 { color: #90caf9; font-size: 1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.insight-box p { color: #c0c0c0; font-size: 0.9rem; }
+.insight-box.gold { background: rgba(255,215,0,0.06); border-color: rgba(255,215,0,0.25); }
+.insight-box.gold h3 { color: #ffd700; }
+
+/* ── Comparison table ── */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.compare-table {
+  width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.85rem;
+}
+.compare-table th, .compare-table td {
+  padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.compare-table th { color: #ffd700; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+.compare-table td { color: #c0c0c0; }
+.compare-table .col-time { font-weight: 700; font-family: monospace; }
+
+/* ── Multiplier badge ── */
+.multiplier {
+  display: inline-block; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 0.85rem;
+}
+.multiplier.huge { background: rgba(129,199,132,0.15); color: #81c784; }
+.multiplier.medium { background: rgba(255,183,77,0.15); color: #ffb74d; }
+
+/* ── Copy button ── */
+.share-text {
+  background: rgba(0,0,0,0.3); border-radius: 10px; padding: 14px;
+  font-size: 0.85rem; color: #a0a0a0; margin-bottom: 12px;
+  white-space: pre-wrap; word-break: break-all;
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+  background: rgba(0,0,0,0.85); color: #ffd700; padding: 12px 24px; border-radius: 10px;
+  font-size: 0.9rem; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 999;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .container { padding: 10px; }
+  .header { padding: 28px 12px 20px; margin-bottom: 20px; }
+  .header h1 { font-size: 1.6rem; }
+  .header p { font-size: 0.9rem; }
+  .section { padding: 16px; margin-bottom: 20px; }
+  .section h2 { font-size: 1.15rem; }
+
+  /* Preset grid: single column on small screens */
+  .preset-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* Custom input row: stack vertically */
+  .custom-row { flex-direction: column !important; align-items: stretch !important; gap: 10px !important; }
+  .custom-row .btn { width: 100%; justify-content: center; }
+
+  /* Race bars */
+  .race-track { padding: 14px; }
+  .race-label { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .race-algo-name { font-size: 0.88rem; }
+  .race-speed { font-size: 0.75rem; }
+  .race-bar-wrap { height: 28px; }
+  .race-bar { font-size: 0.7rem; padding-left: 8px; }
+  .race-time { font-size: 0.8rem; }
+
+  /* Result grid: stack */
+  .result-grid { grid-template-columns: 1fr; gap: 12px; }
+  .result-card { padding: 14px; }
+  .result-card .result-value { font-size: 1.2rem; }
+
+  /* Latency test: stack buttons */
+  .latency-test { flex-direction: column; gap: 14px; }
+  .latency-btn { padding: 20px 14px; }
+  .latency-btn .latency-icon { font-size: 1.6rem; }
+
+  /* Compare table: horizontal scroll */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px; }
+  .compare-table { font-size: 0.72rem; min-width: 480px; }
+  .compare-table th, .compare-table td { padding: 8px 6px; white-space: nowrap; }
+
+  /* Insight boxes */
+  .insight-box { padding: 14px 16px; }
+  .insight-box p { font-size: 0.85rem; }
+
+  /* Share */
+  .share-text { font-size: 0.8rem; padding: 12px; }
+}
+
+@media (max-width: 400px) {
+  .preset-grid { grid-template-columns: 1fr; }
+  .header h1 { font-size: 1.4rem; }
+  .result-grid { gap: 10px; }
+}
+
+
+/* ── Spin animation for loading icon ── */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.ti-spin { display: inline-block; animation: spin 0.8s linear infinite; }

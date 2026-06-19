@@ -174,12 +174,57 @@
       </table>
     </div>
 
+    <!-- Diceware 生成器 -->
+    <div class="diceware-section">
+      <h3 style="color:#ffd700;margin-top:24px;font-size:1.05rem;"><i class="ti ti-dice-5"></i> Diceware 生成器：掷骰子造密码</h3>
+      <p style="color:#888;font-size:0.82rem;margin-bottom:14px;">Arnold Reinhold 1995 年提出：用骰子从 7776 个词中随机选词拼成密码。好记、好输入、无可预测模式。</p>
+
+      <div class="diceware-controls">
+        <div class="dice-word-count">
+          <span style="color:#a0a0a0;font-size:0.85rem;">词数：</span>
+          <button class="dice-count-btn" onclick="setDicewordCount(4)">4</button>
+          <button class="dice-count-btn active" onclick="setDicewordCount(5)">5</button>
+          <button class="dice-count-btn" onclick="setDicewordCount(6)">6</button>
+          <button class="dice-count-btn" onclick="setDicewordCount(7)">7</button>
+        </div>
+        <button class="btn btn-primary" id="dicewareBtn" onclick="generateDiceware()">
+          <i class="ti ti-dice-5"></i> 掷骰子
+        </button>
+      </div>
+
+      <div class="diceware-result" id="dicewareResult" style="display:none;">
+        <div class="dice-animation" id="diceAnimation"></div>
+        <div class="diceware-output">
+          <div class="diceware-words" id="dicewareWords"></div>
+          <button class="btn btn-secondary btn-sm" onclick="copyDiceware()" id="copyDiceBtn">
+            <i class="ti ti-copy"></i> 复制
+          </button>
+        </div>
+        <div class="diceware-stats">
+          <div class="dw-stat">
+            <span class="label">熵</span>
+            <span class="value" id="dwEntropy">—</span>
+          </div>
+          <div class="dw-stat">
+            <span class="label">词典大小</span>
+            <span class="value" id="dwDictSize">—</span>
+          </div>
+          <div class="dw-stat">
+            <span class="label">GPU集群破解</span>
+            <span class="value" id="dwCrackTime">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="insight-box" style="margin-top:20px;">
       <h4><i class="ti ti-bulb"></i> NIST 的立场转变</h4>
       <p>
-        美国国家标准与技术研究院（NIST）在 2017 年发布的 <strong>SP 800-63B</strong> 数字身份指南中，
-        明确反对强制「大小写+数字+特殊字符」规则，建议鼓励用户使用长密码（passphrases）而非短而复杂的密码。
-        理由：人类在面对复杂规则时倾向于选择可预测的模式（首字母大写、末尾加!、用@替代a），
+        美国国家标准与技术研究院（NIST）在 SP 800-63B 第三版（2017）中首次反对强制字符类型规则，
+        第四版（2024）进一步收紧：Section 3.1.1.2 第5条明确写道
+        "SHALL NOT impose other composition rules (e.g., requiring mixtures of different character types)"，
+        同时将单因素密码最低长度从 8 位提高到 15 位。
+        理由：组合规则导致用户选择可预测的模式（首字母大写、末尾加!、用@替代a），
         这些模式会被字典攻击优先尝试，实际安全性远低于计算熵。
       </p>
     </div>
@@ -221,6 +266,7 @@
 
 </div>
 
+<script src="wordlist.js"></script>
 <script src="engine.js"></script>
 <script src="app.js"></script>
 </body>

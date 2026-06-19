@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>被证伪的常识：随机≠均匀 & 复杂≠安全 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-flask-off"></i> 被证伪的常识</h1>
+    <p>两个科学早已推翻、大众仍深信不疑的「常识」。动手试试，看你的直觉会不会翻车。</p>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- 模块一：聚类错觉 -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="section" id="quizSection">
+    <h2><i class="ti ti-dots"></i> 常识一：「随机 = 均匀散布」</h2>
+    <p class="section-desc">下面两幅图各有 200 个点。一幅是真正的随机分布，一幅是人为均匀打散的。猜猜哪个是真随机？</p>
+
+    <div class="score-tracker">
+      <span class="label">正确率</span>
+      <span class="score" id="scoreDisplay">0</span>
+      <span class="total">/ <span id="roundTotal">5</span></span>
+      <span style="margin-left:auto;color:#888;font-size:0.82rem;" id="roundNum">1 / 5</span>
+    </div>
+
+    <div id="sourceBadge" class="source-badge" style="display:none;"></div>
+
+    <div id="quizInteraction">
+      <div class="dual-canvas">
+        <div>
+          <div class="canvas-wrap">
+            <canvas id="canvasLeft" width="400" height="400" style="width:100%;aspect-ratio:1;"></canvas>
+          </div>
+          <div class="canvas-label" id="labelLeft">图 A</div>
+        </div>
+        <div>
+          <div class="canvas-wrap">
+            <canvas id="canvasRight" width="400" height="400" style="width:100%;aspect-ratio:1;"></canvas>
+          </div>
+          <div class="canvas-label" id="labelRight">图 B</div>
+        </div>
+      </div>
+
+      <div class="quiz-row">
+        <button class="quiz-btn" id="btnLeft" onclick="handleQuizAnswer('left')">
+          <i class="ti ti-arrow-left"></i> 图 A 是真随机
+        </button>
+        <button class="quiz-btn" id="btnRight" onclick="handleQuizAnswer('right')">
+          图 B 是真随机 <i class="ti ti-arrow-right"></i>
+        </button>
+      </div>
+
+      <div class="result-box" id="roundResult">
+        <div class="result-title" id="resultTitle"></div>
+        <div class="result-text" id="resultText"></div>
+        <div style="text-align:center;margin-top:16px;">
+          <button class="btn btn-primary" id="nextRoundBtn" onclick="generateNewRound()">下一轮</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 最终结果 -->
+    <div class="result-box" id="finalResult">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="label">正确率</div>
+          <div class="value" id="finalAccuracy">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">得分</div>
+          <div class="value" id="finalScore">—</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin:16px 0;">
+        <p style="color:#ccc;font-size:0.95rem;" id="finalComment"></p>
+      </div>
+      <div style="text-align:center;">
+        <button class="btn btn-primary" onclick="restartQuiz()"><i class="ti ti-refresh"></i> 再来一次</button>
+      </div>
+    </div>
+
+    <!-- 科普解释 -->
+    <div class="insight-box" style="margin-top:24px;">
+      <h4><i class="ti ti-bulb"></i> 为什么大脑会被骗？</h4>
+      <p>
+        人类进化出「模式识别」本能——在随机噪声中寻找规律曾是生存优势（草丛中发现猛兽）。
+        但这也意味着：真正的随机分布里自然出现的团簇和空洞，会被大脑误判为「有规律」。
+        心理学称之为<strong>聚类错觉（Clustering Illusion）</strong>。
+      </p>
+      <p style="margin-top:8px;">
+        苹果公司 2005 年被迫修改 iTunes Shuffle 算法：真随机播放时用户投诉「总重复同一歌手」，
+        乔布斯说「我们让它变得不那么随机，好让人觉得更随机」。
+      </p>
+    </div>
+
+    <div class="insight-box green" style="margin-top:12px;">
+      <h4><i class="ti ti-chart-bar"></i> Clark-Evans R 指数</h4>
+      <p>
+        量化点分布的空间模式：R = 观察最近邻距离 / 期望最近邻距离。
+        R ≈ 1.0 → 完全随机；R &lt; 1 → 聚集；R &gt; 1.5 → 人为均匀。
+        上面的测试里，真随机的 R 在 0.93~1.15 之间波动，而蓝噪声打散后 R 稳定在 1.65~1.70。
+      </p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- 模块二：密码熵 -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-lock"></i> 常识二：「密码越复杂越安全」</h2>
+    <p class="section-desc">点击预设密码对比，或输入自己的密码看实际熵值。越长的随机词组打败越短的复杂密码。</p>
+
+    <div class="preset-grid" id="presetGrid"></div>
+
+    <div class="password-input-wrap">
+      <input type="text" id="passwordInput" placeholder="输入或粘贴一个密码试试..." autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="entropy-bar">
+      <div class="entropy-bar-fill" id="entropyBarFill" style="width:0%"></div>
+    </div>
+
+    <div class="password-detail">
+      <div class="password-detail-item">
+        <div class="label">有效熵</div>
+        <div class="value" id="entropyBits">—</div>
+      </div>
+      <div class="password-detail-item">
+        <div class="label">强度评级</div>
+        <div class="value" id="strengthLabel">—</div>
+      </div>
+      <div class="password-detail-item">
+        <div class="label">字符集</div>
+        <div class="value" id="charsetInfo">—</div>
+      </div>
+      <div class="password-detail-item">
+        <div class="label">GPU集群破解</div>
+        <div class="value" id="crackTimeOffline">—</div>
+      </div>
+    </div>
+
+    <div class="password-detail" style="margin-top:0;">
+      <div class="password-detail-item">
+        <div class="label">在线爆破</div>
+        <div class="value" id="crackTimeOnline">—</div>
+      </div>
+      <div class="password-detail-item" id="weakPatterns" style="display:none;grid-column:span 1;">
+      </div>
+    </div>
+
+    <!-- 对比表格 -->
+    <h3 style="color:#ffd700;margin-top:24px;font-size:1.05rem;"><i class="ti ti-table"></i> 正面对决：复杂短密码 vs 简单长密码</h3>
+    <p style="color:#888;font-size:0.82rem;margin-bottom:12px;">攻击假设：离线GPU集群，100亿次/秒（hashcat + 8×RTX 4090 的量级）</p>
+
+    <div style="overflow-x:auto;">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>复杂短密码</th><th>熵(bits)</th><th>破解时间</th>
+            <th>简单长密码</th><th>熵(bits)</th><th>破解时间</th>
+          </tr>
+        </thead>
+        <tbody id="comparisonBody"></tbody>
+        <tbody>
+          <tr id="liveCompareRow" style="border-top:2px solid rgba(255,215,0,0.3);"></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="insight-box" style="margin-top:20px;">
+      <h4><i class="ti ti-bulb"></i> NIST 的立场转变</h4>
+      <p>
+        美国国家标准与技术研究院（NIST）在 2017 年发布的 <strong>SP 800-63B</strong> 数字身份指南中，
+        明确反对强制「大小写+数字+特殊字符」规则，建议鼓励用户使用长密码（passphrases）而非短而复杂的密码。
+        理由：人类在面对复杂规则时倾向于选择可预测的模式（首字母大写、末尾加!、用@替代a），
+        这些模式会被字典攻击优先尝试，实际安全性远低于计算熵。
+      </p>
+    </div>
+
+    <div class="insight-box green" style="margin-top:12px;">
+      <h4><i class="ti ti-math-function"></i> 熵的数学</h4>
+      <p>
+        信息熵 H = L × log₂(N)，其中 L = 密码长度，N = 字符集大小。<br>
+        <code>P@$$w0rd!</code>：9 × log₂(95) ≈ 59 bits（理论值），但实际有效熵因弱模式扣减后约 36 bits。<br>
+        <code>correct horse battery staple</code>：4 × log₂(2048) ≈ 44 bits（词典模型），但如果使用 7776 词的 EFF 列表则是 4 × log₂(7776) ≈ 51 bits。
+        关键差异：后者的熵是实打实的——没有可预测的模式可以利用。
+      </p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- 总结 -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-clipboard-check"></i> 总结</h2>
+    <div class="stats-row" style="margin-bottom:16px;">
+      <div class="stat-card">
+        <div class="label">被证伪的常识 #1</div>
+        <div class="value" style="font-size:1rem;">随机 = 均匀</div>
+        <div class="sub">Clark-Evans (1954) 已量化证伪</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">被证伪的常识 #2</div>
+        <div class="value" style="font-size:1rem;">复杂 = 安全</div>
+        <div class="sub">NIST SP 800-63B (2017) 明确反对</div>
+      </div>
+    </div>
+    <p style="color:#a0a0a0;font-size:0.9rem;line-height:1.8;">
+      这两个「常识」的共同点：它们都是人类直觉的产物，在日常生活中看似合理，却经不起统计学和信息论的检验。
+      人脑倾向于把「复杂」等同于「好」——复杂的图案一定有规律，复杂的密码一定难破解。
+      但数学告诉我们：真正的安全来自<strong>不可预测性（熵）</strong>，而非表面的复杂度。
+    </p>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

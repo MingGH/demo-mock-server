@@ -333,3 +333,109 @@ body {
   /* source badge */
   .source-badge { font-size: 0.7rem; padding: 3px 8px; }
 }
+
+/* ── Diceware generator ── */
+.diceware-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.diceware-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.dice-word-count {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dice-count-btn {
+  width: 36px; height: 36px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  background: rgba(0,0,0,0.2);
+  color: #a0a0a0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.dice-count-btn:hover { border-color: #ffd700; color: #ffd700; }
+.dice-count-btn.active {
+  background: rgba(255,215,0,0.15);
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+.diceware-result {
+  background: rgba(0,0,0,0.25);
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid rgba(255,215,0,0.12);
+}
+.dice-animation {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  min-height: 32px;
+}
+.dice-roll {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255,215,0,0.1);
+  border: 1px solid rgba(255,215,0,0.2);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  color: #ffd700;
+  animation: popIn 0.3s ease;
+}
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.diceware-output {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.diceware-words {
+  font-family: 'Courier New', monospace;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #81c784;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+
+.diceware-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.dw-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dw-stat .label { font-size: 0.72rem; color: #888; }
+.dw-stat .value { font-size: 0.95rem; font-weight: 600; color: #ffd700; }
+
+@media (max-width: 480px) {
+  .diceware-controls { flex-direction: column; align-items: stretch; }
+  .diceware-controls .btn-primary { width: 100%; justify-content: center; }
+  .diceware-words { font-size: 1rem; }
+  .diceware-stats { gap: 12px; }
+  .dw-stat .value { font-size: 0.85rem; }
+}

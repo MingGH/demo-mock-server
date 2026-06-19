@@ -408,3 +408,92 @@ function updateLiveComparison(password, entropy) {
 function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+
+// ========================================
+// 模块三：Diceware 生成器
+// ========================================
+
+let dicewordCount = 5;
+
+function setDicewordCount(n) {
+  dicewordCount = n;
+  document.querySelectorAll('.dice-count-btn').forEach(function (btn) {
+    btn.classList.toggle('active', parseInt(btn.textContent) === n);
+  });
+}
+
+async function generateDiceware() {
+  var btn = document.getElementById('dicewareBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2"></i> 掷骰子中...';
+
+  var resultBox = document.getElementById('dicewareResult');
+  resultBox.style.display = 'block';
+
+  var animBox = document.getElementById('diceAnimation');
+  animBox.innerHTML = '';
+
+  // 尝试用量子随机数选词
+  var indices = [];
+  var isQuantum = false;
+  try {
+    var resp = await fetch(API_BASE + '/quantum/numbers?count=' + dicewordCount + '&min=0&max=' + (DICEWARE_SIZE - 1));
+    var data = await resp.json();
+    if (data.status === 200 && data.data) {
+      indices = data.data;
+      isQuantum = true;
+    }
+  } catch (e) {}
+
+  // 回退到本地随机
+  if (indices.length === 0) {
+    for (var i = 0; i < dicewordCount; i++) {
+      indices.push(Math.floor(Math.random() * DICEWARE_SIZE));
+    }
+  }
+
+  // 动画：逐个显示骰子滚动
+  var words = [];
+  for (var i = 0; i < indices.length; i++) {
+    var word = DICEWARE_LIST[indices[i]];
+    words.push(word);
+
+    // 显示骰子动画
+    var diceEl = document.createElement('span');
+    diceEl.className = 'dice-roll';
+    diceEl.textContent = (isQuantum ? '⚛️' : '🎲') + ' → ' + word;
+    diceEl.style.animationDelay = (i * 0.1) + 's';
+    animBox.appendChild(diceEl);
+  }
+
+  // 显示结果
+  var passphrase = words.join(' ');
+  document.getElementById('dicewareWords').textContent = passphrase;
+
+  // 计算熵
+  var entropy = dicewordCount * Math.log2(DICEWARE_SIZE);
+  var crackTime = crackTimeSeconds(entropy, 1e10);
+
+  document.getElementById('dwEntropy').textContent = entropy.toFixed(1) + ' bits';
+  document.getElementById('dwDictSize').textContent = DICEWARE_SIZE.toLocaleString() + ' 词';
+  document.getElementById('dwCrackTime').textContent = formatCrackTime(crackTime);
+
+  // 同步更新上方的密码分析器
+  document.getElementById('passwordInput').value = passphrase;
+  analyzePassword(passphrase);
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="ti ti-dice-5"></i> 再掷一次';
+}
+
+function copyDiceware() {
+  var text = document.getElementById('dicewareWords').textContent;
+  navigator.clipboard.writeText(text).then(function () {
+    var btn = document.getElementById('copyDiceBtn');
+    btn.innerHTML = '<i class="ti ti-check"></i> 已复制';
+    setTimeout(function () {
+      btn.innerHTML = '<i class="ti ti-copy"></i> 复制';
+    }, 2000);
+  });
+}

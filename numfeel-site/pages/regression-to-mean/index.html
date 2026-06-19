@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>回归均值：高考考砸了该不该复读 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-chart-arrows-vertical"></i> 高考考砸了，该复读吗</h1>
+    <p>平时稳定600，高考只考540——复读后大概率回到多少？用「回归均值」帮你算一笔账。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 模块一：考砸自测工具（核心） -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="section highlight-section">
+    <h2><i class="ti ti-calculator"></i> 考砸自测 <span class="tag tag-fun">动手测</span></h2>
+    <p class="section-desc">输入你平时几次大考的成绩和这次高考分，判断你是「真考砸」还是「正常波动」。这决定了复读值不值。</p>
+
+    <div class="assess-form">
+      <div class="field">
+        <label>平时大考成绩 <span class="hint">用逗号分隔，至少2次</span></label>
+        <input type="text" id="pastScores" inputmode="decimal" placeholder="例如：590, 605, 600, 595, 610" value="590, 605, 600, 595, 610">
+      </div>
+      <div class="field">
+        <label>这次高考分数</label>
+        <input type="number" id="examScore" inputmode="numeric" placeholder="例如：540" value="540">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="runAssess()"><i class="ti ti-player-play"></i> 开始诊断</button>
+    </div>
+
+    <div id="assessError" class="assess-error" style="display:none;"></div>
+
+    <div id="assessResult" style="display:none;">
+      <div class="verdict-box" id="verdictBox">
+        <div class="verdict-title" id="verdictTitle"></div>
+        <div class="verdict-advice" id="verdictAdvice"></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="label">你的平时均值</div>
+          <div class="value" id="aMean">—</div>
+          <div class="sub-label">真实水平估计</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">平时波动（标准差）</div>
+          <div class="value" id="aSd">—</div>
+          <div class="sub-label">越小越稳定</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">这次偏离</div>
+          <div class="value" id="aZ">—</div>
+          <div class="sub-label">个标准差</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">复读期望提分</div>
+          <div class="value" id="aGain">—</div>
+          <div class="sub-label">仅靠回归均值</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 模块二：直觉测试 -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 先做个直觉测试</h2>
+    <p class="section-desc">小王平时稳定考600分，高考只考了540。如果他复读一年（水平没变），下次高考最可能的结果是？点一个看答案。</p>
+
+    <div class="scenario-grid choices">
+      <div class="scenario-card" onclick="selectAnswer('low')" id="cardLow">
+        <h4><i class="ti ti-arrow-down"></i> 还是540左右</h4>
+        <p>考砸说明他本来就是这个水平</p>
+      </div>
+      <div class="scenario-card" onclick="selectAnswer('right')" id="cardRight">
+        <h4><i class="ti ti-arrow-up"></i> 回到580-600附近</h4>
+        <p>上次是坏运气，不会连续两年这么差</p>
+      </div>
+      <div class="scenario-card" onclick="selectAnswer('high')" id="cardHigh">
+        <h4><i class="ti ti-rocket"></i> 超过600（更努力了）</h4>
+        <p>复读一年肯定有提升</p>
+      </div>
+    </div>
+    <div id="answerReveal" style="display:none;">
+      <div class="insight-box">
+        <h3><i class="ti ti-bulb"></i> 揭秘</h3>
+        <p id="answerText"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 模块三：模拟考试 -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-school"></i> 1000人考两次，会发生什么</h2>
+    <p class="section-desc">一届考生参加两次独立考试（满分750）。把第一次的前/后10%拎出来，看他们第二次考多少。拖动滑块感受「运气成分」的影响。</p>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>单次考试的运气波动 <span id="noiseLabel" class="range-val">45</span></label>
+        <input type="range" id="noiseSlider" min="10" max="100" value="45" oninput="updateNoiseLabel(); runTeacherMode();">
+      </div>
+      <div class="control-group">
+        <label>筛选比例 <span id="percentLabel" class="range-val">10%</span></label>
+        <input type="range" id="percentSlider" min="5" max="30" value="10" oninput="updatePercentLabel(); runTeacherMode();">
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="runTeacherMode()"><i class="ti ti-refresh"></i> 换一批考生</button>
+    </div>
+
+    <div id="teacherResults">
+      <div class="teacher-grid">
+        <div class="group-card">
+          <h4><i class="ti ti-star"></i> 第一次的高分组</h4>
+          <div class="big-num" id="topExam1">—</div>
+          <div class="arrow" id="topArrow">—</div>
+          <div class="big-num red" id="topExam2">—</div>
+          <p class="ability-note">真实水平: <span id="topAbility">—</span></p>
+        </div>
+        <div class="group-card">
+          <h4><i class="ti ti-alert-triangle"></i> 第一次的低分组（考砸的）</h4>
+          <div class="big-num" id="bottomExam1">—</div>
+          <div class="arrow" id="bottomArrow">—</div>
+          <div class="big-num green" id="bottomExam2">—</div>
+          <p class="ability-note">真实水平: <span id="bottomAbility">—</span></p>
+        </div>
+      </div>
+
+      <div class="insight-box">
+        <h3><i class="ti ti-info-circle"></i> 发生了什么？</h3>
+        <p id="teacherInsight"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 模块四：散点图 -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-chart-dots-3"></i> 每个点是一名考生</h2>
+    <p class="section-desc">横轴第一次、纵轴第二次。虚线是「成绩不变」线。注意两端极端分数的点，第二次都在往中间靠。</p>
+
+    <div class="chart-container">
+      <canvas id="scatterChart"></canvas>
+    </div>
+    <div class="stats-row" id="scatterStats" style="display:none;">
+      <div class="stat-card">
+        <div class="label">两次考试相关系数 r</div>
+        <div class="value" id="corrValue">—</div>
+        <div class="sub-label">越低回归越强</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">前10%平均回落</div>
+        <div class="value" id="topDropValue">—</div>
+        <div class="sub negative" id="topDropSub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">后10%平均回升</div>
+        <div class="value" id="bottomRiseValue">—</div>
+        <div class="sub" id="bottomRiseSub"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 模块五：现实中的回归均值 -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-sparkles"></i> 不只是高考</h2>
+    <p class="section-desc">同一个规律藏在生活的各个角落。点一张卡片看看。</p>
+
+    <div class="scenario-grid">
+      <div class="scenario-card" onclick="loadScenario('sports', this)">
+        <h4><i class="ti ti-trophy"></i> 体育画报诅咒</h4>
+        <p>上封面的运动员下赛季表现变差，是诅咒还是回归？</p>
+      </div>
+      <div class="scenario-card" onclick="loadScenario('fund', this)">
+        <h4><i class="ti ti-chart-line"></i> 冠军基金经理</h4>
+        <p>去年排名前10%的基金，今年还能保持吗？</p>
+      </div>
+      <div class="scenario-card" onclick="loadScenario('extreme', this)">
+        <h4><i class="ti ti-flame"></i> 极端运气</h4>
+        <p>运气成分极大时，回归均值有多猛烈？</p>
+      </div>
+    </div>
+
+    <div id="scenarioResult" style="display:none;">
+      <div class="stats-row" id="scenarioStats"></div>
+      <div class="insight-box">
+        <h3><i class="ti ti-math-function"></i> 一句话公式</h3>
+        <p>成绩 = 真实水平 + 运气。运气不可复制，所以极端表现之后，下一次更可能<span class="highlight">回归到真实水平附近</span>。</p>
+        <p class="formula-note">回归幅度 ≈ (1 − r) × 偏离量。r 是两次成绩的相关系数，r 越低（运气占比越大），回归越猛。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="regression.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

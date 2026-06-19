@@ -58,17 +58,28 @@ async function generateNewRound() {
     b.classList.remove('correct', 'wrong');
   });
 
-  // 尝试获取量子随机数
+  // 获取量子随机数（必须成功）
   const quantumNums = await fetchQuantumNumbers(POINT_COUNT * 2);
 
-  let trueRandomPoints;
-  if (quantumNums) {
-    trueRandomPoints = quantumNumbersToPoints(quantumNums, CANVAS_SIZE);
-    showSourceBadge(true);
-  } else {
-    trueRandomPoints = generateUniformPoints(POINT_COUNT, CANVAS_SIZE);
+  if (!quantumNums) {
+    // 量子API不可用，提示用户
+    const btns = document.querySelectorAll('.quiz-btn');
+    btns.forEach(function (b) { b.disabled = true; });
     showSourceBadge(false);
+    document.getElementById('roundResult').classList.add('show');
+    document.getElementById('resultTitle').textContent = '量子随机数获取失败';
+    document.getElementById('resultTitle').style.color = '#ff6b6b';
+    document.getElementById('resultText').innerHTML = '本测试需要真随机数据（来自 ANU 量子真空涨落），伪随机数不具备说服力。<br>请检查网络连接后重试。';
+    document.getElementById('nextRoundBtn').textContent = '重试';
+    document.getElementById('nextRoundBtn').onclick = function () {
+      quizState.round--;
+      generateNewRound();
+    };
+    return;
   }
+
+  const trueRandomPoints = quantumNumbersToPoints(quantumNums, CANVAS_SIZE);
+  showSourceBadge(true);
 
   const blueNoisePoints = generateBlueNoisePoints(POINT_COUNT, CANVAS_SIZE, 20);
 
@@ -107,8 +118,11 @@ function showSourceBadge(isQuantum) {
     badge.innerHTML = '<i class="ti ti-atom"></i> 量子真随机（ANU 量子真空涨落）';
     badge.style.display = 'inline-flex';
   } else {
-    badge.innerHTML = '<i class="ti ti-cpu"></i> 伪随机数（Math.random）';
+    badge.innerHTML = '<i class="ti ti-alert-triangle"></i> 量子API不可用';
     badge.style.display = 'inline-flex';
+    badge.style.borderColor = 'rgba(255,107,107,0.3)';
+    badge.style.color = '#ff6b6b';
+    badge.style.background = 'rgba(255,107,107,0.08)';
   }
 }
 

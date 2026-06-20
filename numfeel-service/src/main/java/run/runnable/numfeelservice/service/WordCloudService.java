@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,8 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -75,18 +75,17 @@ public class WordCloudService {
 
     @EventListener(ApplicationReadyEvent.class)
     public void initOnStartup() {
-        Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "wordcloud-init");
-            t.setDaemon(true);
-            return t;
-        }).submit(() -> {
-            try {
-                initData();
-            } catch (Exception e) {
-                log.warn("Word cloud data init failed: {}", e.getMessage());
-            }
-            warmUp();
-        });
+        // 下载/解压/分词均为阻塞 I/O，放到 boundedElastic 调度器执行，避免阻塞事件循环。
+        Mono.fromRunnable(() -> {
+                    try {
+                        initData();
+                    } catch (Exception e) {
+                        log.warn("Word cloud data init failed: {}", e.getMessage());
+                    }
+                    warmUp();
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe();
     }
 
     public void warmUp() {

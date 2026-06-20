@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="带图 Markdown 为什么必须打包文件夹？现场把同一份文档打成 ZIP、base64 内嵌、自包含 HTML 三种单文件，对比真实体积和可 diff/可编辑/双击即看属性，并一键下载。">
+  <title>带图 Markdown 单文件打包实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-package"></i> 带图 Markdown 单文件打包实验室</h1>
+    <p>把一份带 3 张截图的文档，现场打成 ZIP、base64 内嵌、自包含 HTML 三种「单文件」，对比真实体积和你真正在乎的属性。结论可能和你想的相反。</p>
+  </div>
+
+  <!-- ── Hero / 行动指引 ── -->
+  <div class="hero">
+    <div class="hero-claim">
+      <span class="hero-tag">先别急着下结论</span>
+      <h2>「单文件自包含 Markdown 标准」<br>其实早就有，只是没一个赢下来</h2>
+      <p>下面这份样例文档有正文 + 3 张真实截图。点一下，看它分别打成三种单文件后有多大、丢了什么。</p>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn-primary btn-lg" id="runSampleBtn"><i class="ti ti-player-play"></i> 用内置样例跑一遍</button>
+      <button class="btn btn-secondary" id="useOwnBtn"><i class="ti ti-upload"></i> 换成我自己的文档</button>
+    </div>
+    <p class="hero-hint" id="ownHint" style="display:none;">
+      选一个 <code>.md</code> 文件 + 它引用的图片（图片文件名要和 <code>![]( )</code> 里写的一致）。文件不上传，全部在你浏览器里处理。
+    </p>
+    <div class="upload-row" id="uploadRow" style="display:none;">
+      <label class="file-pick"><i class="ti ti-file-text"></i> 选 .md<input type="file" id="mdFile" accept=".md,.markdown,text/markdown" hidden></label>
+      <label class="file-pick"><i class="ti ti-photo"></i> 选图片（可多选）<input type="file" id="imgFiles" accept="image/*" multiple hidden></label>
+      <button class="btn btn-primary" id="runOwnBtn"><i class="ti ti-player-play"></i> 跑我的文档</button>
+      <span class="upload-status" id="uploadStatus"></span>
+    </div>
+  </div>
+
+  <!-- ── 文档预览 ── -->
+  <div class="section" id="previewSection" style="display:none;">
+    <h2><i class="ti ti-eye"></i> 这就是要分发的文档</h2>
+    <p class="section-hint">左边是渲染效果，右边是源码。注意源码里图片只是一行 <code>![](文件名)</code>——所以单独发 .md 文件，对方看到的是裂图。</p>
+    <div class="preview-grid">
+      <div class="preview-pane">
+        <div class="pane-head"><i class="ti ti-article"></i> 渲染效果</div>
+        <div class="md-rendered" id="mdRendered"></div>
+      </div>
+      <div class="preview-pane">
+        <div class="pane-head"><i class="ti ti-code"></i> Markdown 源码</div>
+        <pre class="md-source" id="mdSource"></pre>
+      </div>
+    </div>
+    <div class="doc-meta" id="docMeta"></div>
+  </div>
+
+  <!-- ── 三种打包方案 ── -->
+  <div class="section" id="resultSection" style="display:none;">
+    <h2><i class="ti ti-arrows-split"></i> 三种「打成单文件」的办法</h2>
+    <p class="section-hint">体积是现场算出来的真实字节数（真实 PNG、真实 base64、真实 ZIP 字节流）。每张卡片都能直接下载，对方拿到就能用。</p>
+
+    <div class="strategy-grid" id="strategyGrid"></div>
+
+    <div class="chart-wrap">
+      <canvas id="sizeChart"></canvas>
+    </div>
+
+    <div class="insight-box" id="sizeInsight">
+      <h3><i class="ti ti-bulb"></i> 体积上的发现</h3>
+      <p id="sizeInsightText"></p>
+    </div>
+  </div>
+
+  <!-- ── 你真正在乎的属性 ── -->
+  <div class="section" id="matrixSection" style="display:none;">
+    <h2><i class="ti ti-table-options"></i> 体积只是表象，这张表才是关键</h2>
+    <p class="section-hint">把常见格式摆在一起看。<span class="legend ok">✓ 支持</span> <span class="legend partial">△ 部分/有条件</span> <span class="legend no">✗ 不支持</span>。没有任何一种格式能同时占满「单文件 + 可 diff + 可文本编辑 + 双击即看」。</p>
+    <div class="matrix-scroll">
+      <table class="matrix-table" id="matrixTable"></table>
+    </div>
+    <p class="matrix-source">格式说明参考各自规范：<a href="https://textbundle.org/" target="_blank" rel="noopener">TextBundle</a>、<a href="https://nbformat.readthedocs.io/" target="_blank" rel="noopener">Jupyter nbformat</a>、<a href="https://pandoc.org/MANUAL.html#option--embed-resources" target="_blank" rel="noopener">Pandoc --embed-resources</a>、<a href="https://commonmark.org/" target="_blank" rel="noopener">CommonMark</a>。</p>
+  </div>
+
+  <!-- ── 原理 ── -->
+  <div class="section" id="whySection" style="display:none;">
+    <h2><i class="ti ti-help-hexagon"></i> 那为什么没有一个「赢家」</h2>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="num">01</div>
+        <h4>纯文本是命根子</h4>
+        <p>Markdown 的全部价值在于它是纯文本：能 <code>git diff</code>、能 <code>grep</code>、任何编辑器都能改。塞进 ZIP 或 base64，这些立刻全废。自包含和纯文本天生打架。</p>
+      </div>
+      <div class="why-card">
+        <div class="num">02</div>
+        <h4>没有「钦定」格式的人</h4>
+        <p>Markdown 没有统一标准机构，CommonMark、GFM 各管一摊。DOCX 背后是微软 + ISO，JAR 背后是 Sun/Oracle，单一推手才能形成网络效应。Markdown 没有。</p>
+      </div>
+      <div class="why-card">
+        <div class="num">03</div>
+        <h4>问题已经被「分工」解决</h4>
+        <p>创作态用纯文本 .md + assets（保留 diff 和可编辑），分发态渲染成自包含 HTML 或 PDF。你要的「单文件」其实就是 <code>pandoc --embed-resources</code> 出来的那个 HTML，它一直都在。</p>
+      </div>
+    </div>
+    <div class="insight-box green">
+      <h3><i class="ti ti-bulb"></i> 一句话</h3>
+      <p>base64 内嵌让文件膨胀约 33%（3 字节编码成 4 个字符，数学上跑不掉），还杀死了纯文本属性；ZIP 体积最小却要先解压；自包含 HTML 双击即看却不再是 Markdown。三个方向各有取舍，谁也没法既当源格式又当分发格式——这才是「没有统一标准」的真正原因。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="samples.js"></script>
+<script src="packer.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

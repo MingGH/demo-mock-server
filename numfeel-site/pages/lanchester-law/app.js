@@ -563,6 +563,49 @@
     });
   }
 
+  // ── 平方律计算器 ──────────────────────────────────────
+  function fmtSurv(n) {
+    // 幸存人数：四舍五入到 1 位小数，去掉多余的 .0
+    var r = Math.round(n * 10) / 10;
+    return (r % 1 === 0) ? String(r) : r.toFixed(1);
+  }
+  function winnerLabel(res) {
+    if (res.winner === 'draw') return '同归于尽';
+    return (res.winner === 'A' ? '我方' : '对面') + '获胜，幸存';
+  }
+  function updateCalc() {
+    var a = Math.max(0, parseFloat($('calcA').value) || 0);
+    var b = Math.max(0, parseFloat($('calcB').value) || 0);
+    var sA = Math.max(0, parseFloat($('calcSA').value));
+    var sB = Math.max(0, parseFloat($('calcSB').value));
+    if (!(sA > 0)) sA = 1;
+    if (!(sB > 0)) sB = 1;
+
+    var sq = L.predictSquare(a, b, sA, sB);
+    var lin = L.predictLinear(a, b, sA, sB);
+
+    $('calcSquareSurv').textContent = sq.winner === 'draw' ? '0' : fmtSurv(sq.survivors);
+    $('calcSquareLabel').textContent = winnerLabel(sq);
+    $('calcLinearSurv').textContent = lin.winner === 'draw' ? '0' : fmtSurv(lin.survivors);
+    $('calcLinearLabel').textContent = winnerLabel(lin);
+
+    var lhs = (sA === 1 ? '' : sA + '×') + a + '²';
+    var rhs = (sB === 1 ? '' : sB + '×') + b + '²';
+    $('calcEq').textContent = lhs + ' − ' + rhs + ' = ' + fmtSurv(sq.k);
+    if (sq.winner === 'draw') {
+      $('calcExplain').textContent = '两边平方战力相等，注定同归于尽。';
+    } else {
+      var win = sq.winner === 'A' ? '我方' : '对面';
+      $('calcExplain').textContent = '守恒量不为零，' + win + '在集火下碾压获胜，幸存 ≈ √|差值/单兵强度|。';
+    }
+  }
+  function bindCalc() {
+    ['calcA', 'calcB', 'calcSA', 'calcSB'].forEach(function (id) {
+      $(id).addEventListener('input', updateCalc);
+    });
+    updateCalc();
+  }
+
   // ── 工具 ──────────────────────────────────────────────
   function debounce(fn, ms) {
     var t;
@@ -575,6 +618,7 @@
   // ── 启动 ──────────────────────────────────────────────
   function boot() {
     bindEvents();
+    bindCalc();
     try {
       if (!window.PIXI) throw new Error('PIXI not loaded');
       initPixi();

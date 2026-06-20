@@ -157,6 +157,49 @@
     </div>
   </div>
 
+  <!-- ── 平方律计算器 ── -->
+  <div class="section">
+    <h2><i class="ti ti-calculator"></i> 兰彻斯特平方律计算器</h2>
+    <p class="section-hint">不用开打，直接输入两边人数（和单兵强度），立刻算出按平方律谁会赢、赢家剩几人，并和「线性直觉」对比。</p>
+    <div class="calc-grid">
+      <div class="calc-field calc-a">
+        <label><i class="ti ti-shield"></i> 我方人数</label>
+        <input type="number" id="calcA" min="0" step="1" value="5">
+      </div>
+      <div class="calc-field calc-a">
+        <label>我方单兵强度</label>
+        <input type="number" id="calcSA" min="0" step="0.1" value="1">
+      </div>
+      <div class="calc-field calc-b">
+        <label><i class="ti ti-skull"></i> 对面人数</label>
+        <input type="number" id="calcB" min="0" step="1" value="4">
+      </div>
+      <div class="calc-field calc-b">
+        <label>对面单兵强度</label>
+        <input type="number" id="calcSB" min="0" step="0.1" value="1">
+      </div>
+    </div>
+    <div class="result-grid">
+      <div class="result-card linear">
+        <div class="rc-head"><i class="ti ti-brain"></i> 线性直觉（一对一）</div>
+        <div class="rc-big" id="calcLinearSurv">—</div>
+        <div class="rc-sub" id="calcLinearLabel">赢家幸存</div>
+        <div class="rc-note">战力 ∝ 人数，少一个就只少一点。</div>
+      </div>
+      <div class="result-card square">
+        <div class="rc-head"><i class="ti ti-math-function"></i> 平方律（集火）</div>
+        <div class="rc-big" id="calcSquareSurv">—</div>
+        <div class="rc-sub" id="calcSquareLabel">赢家幸存</div>
+        <div class="rc-note">战力 ∝ 人数²，差距被平方放大。</div>
+      </div>
+    </div>
+    <div class="formula-box">
+      <div class="fb-title"><i class="ti ti-equals"></i> 守恒量算给你看</div>
+      <div class="fb-eq" id="calcEq">—</div>
+      <div class="fb-explain" id="calcExplain">改一改上面的数字试试。</div>
+    </div>
+  </div>
+
   <!-- ── 兵力曲线 ── -->
   <div class="section chart-section hidden" id="chartSection">
     <h2><i class="ti ti-chart-line"></i> 兵力随时间衰减</h2>

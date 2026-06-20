@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="为什么团战少一个人就会被打到团灭，而对面只死两三个？兰彻斯特平方律告诉你：有集火时战力正比于人数的平方，5打4不是稍微吃亏，而是注定的屠杀。亲手把队友拖走，看着团灭发生。">
+  <title>少一个队友，为什么团战会输得这么惨？ | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-swords"></i> 少一个队友，团战为什么输得这么惨？</h1>
+    <p>一个人落单，五五开的硬币瞬间变成注定的屠杀。这背后是一条冷酷的军事数学——兰彻斯特平方律。</p>
+  </div>
+
+  <!-- ── Hero 行动指引 ── -->
+  <div class="section hero-section">
+    <p class="hero-lead">先别急着看公式。点下面这颗按钮，<strong>跑一场公平的 5v5 团战</strong>，记住它有多胶着——然后你会亲手把一个队友拖走，看会发生什么。</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary btn-big" id="heroFightBtn">
+        <i class="ti ti-player-play-filled"></i> 模拟一场 5v5 团战
+      </button>
+      <button class="btn btn-danger btn-big" id="heroPullBtn" disabled>
+        <i class="ti ti-user-minus"></i> 把一个队友抬走（变 4v5）
+      </button>
+    </div>
+    <p class="hero-tip" id="heroTip">蓝色是我方，红色是对面。开火时所有人会集中火力打同一个目标——这就是关键。</p>
+  </div>
+
+  <!-- ── 战场 ── -->
+  <div class="section battle-section">
+    <div class="battle-scoreboard">
+      <div class="team-score team-a">
+        <span class="ts-label"><i class="ti ti-shield"></i> 我方</span>
+        <span class="ts-count" id="scoreA">5</span>
+        <span class="ts-sub">存活</span>
+      </div>
+      <div class="battle-status" id="battleStatus">准备就绪</div>
+      <div class="team-score team-b">
+        <span class="ts-label"><i class="ti ti-skull"></i> 对面</span>
+        <span class="ts-count" id="scoreB">5</span>
+        <span class="ts-sub">存活</span>
+      </div>
+    </div>
+
+    <div class="canvas-wrap" id="battleWrap">
+      <div class="battle-overlay" id="battleOverlay"></div>
+    </div>
+
+    <div class="battle-controls">
+      <div class="stepper-group">
+        <label><i class="ti ti-shield"></i> 我方人数</label>
+        <div class="stepper">
+          <button class="step-btn" data-team="a" data-dir="-1">−</button>
+          <span class="step-val" id="teamAVal">5</span>
+          <button class="step-btn" data-team="a" data-dir="1">+</button>
+        </div>
+      </div>
+      <div class="stepper-group">
+        <label><i class="ti ti-skull"></i> 对面人数</label>
+        <div class="stepper">
+          <button class="step-btn" data-team="b" data-dir="-1">−</button>
+          <span class="step-val" id="teamBVal">5</span>
+          <button class="step-btn" data-team="b" data-dir="1">+</button>
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-primary" id="fightBtn"><i class="ti ti-swords"></i> 开打</button>
+        <button class="btn btn-secondary" id="resetBtn"><i class="ti ti-refresh"></i> 重置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 预设场景 ── -->
+  <div class="section">
+    <h2><i class="ti ti-layout-grid"></i> 一键试试这些场景</h2>
+    <p class="section-hint">点一张卡片直接开打，感受人数差一点点，结果差多少。</p>
+    <div class="preset-grid" id="presetGrid">
+      <button class="preset-card" data-a="5" data-b="5">
+        <span class="preset-tag tag-fun">抛硬币</span>
+        <span class="preset-title">5 v 5 公平局</span>
+        <span class="preset-desc">两边对等，打到最后所剩无几，谁手快谁赢。</span>
+      </button>
+      <button class="preset-card" data-a="4" data-b="5">
+        <span class="preset-tag tag-danger">屠杀</span>
+        <span class="preset-title">4 v 5 落单局</span>
+        <span class="preset-desc">就少一个人，我方团灭，对面剩 3 个全身而退。</span>
+      </button>
+      <button class="preset-card" data-a="5" data-b="3">
+        <span class="preset-tag tag-easy">完胜</span>
+        <span class="preset-title">5 v 3 抓人成功</span>
+        <span class="preset-desc">先手抓死两个，剩下的仗几乎白送。</span>
+      </button>
+      <button class="preset-card" data-a="5" data-b="2">
+        <span class="preset-tag tag-easy">Gank</span>
+        <span class="preset-title">5 v 2 越塔强杀</span>
+        <span class="preset-desc">人数碾压时，自己几乎零伤亡。</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 模式开关 ── -->
+  <div class="section">
+    <h2><i class="ti ti-adjustments"></i> 战斗模式</h2>
+    <p class="section-hint">主模式严格按兰彻斯特方程逐拍解算，结果确定；打开随机性会加入暴击和伤害波动，模拟真实团战的运气成分。</p>
+    <div class="mode-toggle">
+      <button class="mode-pill active" data-mode="pure">
+        <i class="ti ti-math-function"></i>
+        <span class="mp-title">纯方程</span>
+        <span class="mp-desc">确定性 · 结果可复现</span>
+      </button>
+      <button class="mode-pill" data-mode="random">
+        <i class="ti ti-dice"></i>
+        <span class="mp-title">加入随机性</span>
+        <span class="mp-desc">暴击 + 伤害波动</span>
+      </button>
+    </div>
+    <div class="mc-row hidden" id="mcRow">
+      <span class="mc-hint"><i class="ti ti-repeat"></i> 随机模式下，同一局结果会浮动。跑 200 次看看胜负和幸存人数的分布：</span>
+      <button class="btn btn-secondary btn-sm" id="mcBtn"><i class="ti ti-player-play"></i> 跑 200 场</button>
+    </div>
+  </div>
+
+  <!-- ── 结果对比 ── -->
+  <div class="section result-section hidden" id="resultSection">
+    <h2><i class="ti ti-report-analytics"></i> 直觉 vs 现实</h2>
+    <p class="section-hint">同一场 <span id="resMatchup">5v4</span>，看「线性直觉」和「平方律」给出的结局差多远。</p>
+    <div class="result-grid">
+      <div class="result-card linear">
+        <div class="rc-head"><i class="ti ti-brain"></i> 线性直觉（一对一）</div>
+        <div class="rc-big" id="linearSurv">1</div>
+        <div class="rc-sub">赢家幸存</div>
+        <div class="rc-note">「少一个人，少 1/5 战力」——你以为是这样。</div>
+      </div>
+      <div class="result-card square">
+        <div class="rc-head"><i class="ti ti-math-function"></i> 平方律（集火）</div>
+        <div class="rc-big" id="squareSurv">3</div>
+        <div class="rc-sub">赢家幸存</div>
+        <div class="rc-note">战力 ∝ 人数²，差距被平方放大。</div>
+      </div>
+      <div class="result-card actual">
+        <div class="rc-head"><i class="ti ti-swords"></i> 这场实战</div>
+        <div class="rc-big" id="actualSurv">—</div>
+        <div class="rc-sub" id="actualSubLabel">赢家幸存</div>
+        <div class="rc-note" id="actualNote">点「开打」看真实结果。</div>
+      </div>
+    </div>
+    <div class="formula-box" id="formulaBox">
+      <div class="fb-title"><i class="ti ti-equals"></i> 守恒量算给你看</div>
+      <div class="fb-eq" id="formulaEq">5² − 5² = 0</div>
+      <div class="fb-explain" id="formulaExplain">两边平方相等，同归于尽。</div>
+    </div>
+  </div>
+
+  <!-- ── 兵力曲线 ── -->
+  <div class="section chart-section hidden" id="chartSection">
+    <h2><i class="ti ti-chart-line"></i> 兵力随时间衰减</h2>
+    <p class="section-hint">看双方人数怎么一路掉到 0。注意领先一方的曲线越往后掉得越慢——这就是雪球。</p>
+    <div class="chart-wrap"><canvas id="curveChart"></canvas></div>
+  </div>
+
+  <!-- ── 蒙特卡洛分布 ── -->
+  <div class="section chart-section hidden" id="mcSection">
+    <h2><i class="ti ti-chart-histogram"></i> 跑 200 场的结局分布</h2>
+    <p class="section-hint">即使加了随机性，人多的一方依旧压倒性获胜，幸存人数集中在平方律预测附近。</p>
+    <div id="mcSummary" class="mc-summary"></div>
+    <div class="chart-wrap"><canvas id="mcChart"></canvas></div>
+  </div>
+
+  <!-- ── 原理讲解 ── -->
+  <div class="section">
+    <h2><i class="ti ti-bulb"></i> 为什么是平方，不是线性</h2>
+    <div class="insight-grid">
+      <div class="insight-card">
+        <div class="ic-icon"><i class="ti ti-crosshair"></i></div>
+        <h3>集火是引擎</h3>
+        <p>所有人打同一个目标，每杀掉对面一个，对面的总输出就少一截，而你这边火力不减。领先方掉血越来越慢，劣势方越打越快崩——这就是「平方」的来源。</p>
+      </div>
+      <div class="insight-card">
+        <div class="ic-icon"><i class="ti ti-user-minus"></i></div>
+        <h3>落单的代价不止一条命</h3>
+        <p>他没死之前是 5v5 抛硬币，他一死直接变成 4v5 必败局。这一条命撬动的是整场团战的结果，价值远超一个人头。</p>
+      </div>
+      <div class="insight-card">
+        <div class="ic-icon"><i class="ti ti-history"></i></div>
+        <h3>从一战空战到现代战术</h3>
+        <p>这条定律由工程师兰彻斯特在一战时为空战推导。纳尔逊在特拉法加把敌方舰队切成几段、局部以多打少，用的也是同一个「集中兵力」原理。</p>
+      </div>
+      <div class="insight-card">
+        <div class="ic-icon"><i class="ti ti-swords"></i></div>
+        <h3>古代肉搏才是线性</h3>
+        <p>如果是一对一单挑、前排顶满，没法集火，战力就只按人数线性叠加，少一个人就真的只少一点。差别全在于能不能集中火力。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="lanchester.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

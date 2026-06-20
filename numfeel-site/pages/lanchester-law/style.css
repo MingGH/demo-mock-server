@@ -147,6 +147,22 @@ body {
 .mc-row { display: flex; align-items: center; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
 .mc-hint { font-size: 0.82rem; color: #888; display: flex; align-items: center; gap: 6px; flex: 1; min-width: 240px; }
 
+/* ── Calculator ── */
+.calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+.calc-field { display: flex; flex-direction: column; gap: 6px; }
+.calc-field label { font-size: 0.78rem; color: #b0b0b0; display: flex; align-items: center; gap: 5px; }
+.calc-field input {
+  width: 100%; padding: 10px 12px; border-radius: 10px; font-size: 16px; font-weight: 700;
+  background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.14); color: #e8e8e8;
+  text-align: center; box-sizing: border-box; -moz-appearance: textfield; appearance: textfield;
+}
+.calc-field input::-webkit-outer-spin-button,
+.calc-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.calc-field input:focus { outline: none; border-color: #ffd700; background: rgba(255,215,0,0.06); }
+.calc-field.calc-a input:focus { border-color: #90caf9; background: rgba(144,202,249,0.08); }
+.calc-field.calc-b input:focus { border-color: #ff6b6b; background: rgba(255,107,107,0.08); }
+@media (max-width: 600px) { .calc-grid { grid-template-columns: repeat(2, 1fr); } }
+
 /* ── Result grid ── */
 .result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
 .result-card {
@@ -167,7 +183,7 @@ body {
   border-radius: 12px; padding: 18px; text-align: center;
 }
 .fb-title { font-size: 0.82rem; color: #b0b0b0; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 8px; }
-.fb-eq { font-size: 1.5rem; font-weight: 800; color: #ffd700; font-family: 'SF Mono', Menlo, monospace; margin-bottom: 6px; }
+.fb-eq { font-size: 1.5rem; font-weight: 800; color: #ffd700; font-family: 'SF Mono', Menlo, monospace; margin-bottom: 6px; word-break: break-word; }
 .fb-explain { font-size: 0.85rem; color: #ccc; }
 
 /* ── Charts ── */
@@ -190,14 +206,49 @@ body {
 .insight-card p { font-size: 0.85rem; color: #a0a0a0; line-height: 1.6; }
 
 /* ── Responsive ── */
+@media (max-width: 768px) {
+  .container { padding: 14px; }
+  .header { padding: 28px 12px 18px; margin-bottom: 18px; }
+  .header h1 { font-size: 1.9rem; }
+  .header p { font-size: 0.92rem; }
+  .section { padding: 18px 16px; margin-bottom: 18px; }
+  .section h2 { font-size: 1.15rem; }
+  .insight-grid { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 600px) {
   .header h1 { font-size: 1.6rem; }
   .result-grid { grid-template-columns: 1fr; }
-  .battle-scoreboard { flex-wrap: wrap; }
-  .team-score { min-width: 90px; padding: 8px 14px; }
+  .battle-scoreboard { flex-wrap: wrap; gap: 10px; }
+  .team-score { flex: 1; min-width: 90px; padding: 8px 14px; }
   .ts-count { font-size: 1.8rem; }
   .battle-status { order: 3; flex-basis: 100%; margin-top: 8px; }
   .hero-actions { flex-direction: column; }
   .hero-actions .btn { width: 100%; justify-content: center; }
+  .btn-big { padding: 14px 20px; font-size: 1rem; }
   .chart-wrap { height: 260px; }
+  .canvas-wrap { min-height: 200px; }
+  .battle-controls { gap: 14px; }
+  .preset-grid { grid-template-columns: 1fr 1fr; }
+  .preset-title { font-size: 0.95rem; }
+  .preset-desc { font-size: 0.76rem; }
+  .mode-pill { padding: 14px 10px; }
+  .mp-desc { font-size: 0.72rem; }
+  .rc-big { font-size: 2.2rem; }
+  .fb-eq { font-size: 1.2rem; }
+  /* 加大触控目标 */
+  .step-btn { width: 44px; height: 44px; }
+  .step-val { width: 50px; }
+}
+
+@media (max-width: 380px) {
+  .preset-grid { grid-template-columns: 1fr; }
+  .header h1 { font-size: 1.4rem; }
+}
+
+/* 触屏设备禁用 hover 位移，避免点完卡片悬浮态残留 */
+@media (hover: none) {
+  .btn-primary:hover:not(:disabled),
+  .btn-danger:hover:not(:disabled),
+  .preset-card:hover { transform: none; box-shadow: none; }
 }

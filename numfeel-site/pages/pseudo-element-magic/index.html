@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="只用 ::before 和 ::after 两个伪元素，不加任何多余 DOM 节点，做出渐变描边、纯CSS图形、tooltip、引号、计数器、撕纸、霓虹光晕、丝带等一堆不得了的效果。每张卡片都能点开看源码。">
+<title>伪元素能玩到什么极致：CSS ::before / ::after 炫技场 | 数字直觉</title>
+<script src="../../components/header.js" defer></script>
+<link rel="stylesheet" href="../../components/header.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-wand"></i> 伪元素能玩到什么极致</h1>
+    <p>下面每一张卡片里的视觉效果，全部只用 <code>::before</code> 和 <code>::after</code> 实现——HTML 里没有一个多余的装饰节点。点「看源码」对照着读。</p>
+  </div>
+
+  <div class="section">
+    <p class="section-lead">规则：装饰用 0 个额外标签，全靠两个伪元素。把鼠标放到 Tooltip、下划线那几张卡片上，还能看到 hover 动效。</p>
+    <div class="grid" id="grid">
+      <!-- 卡片由 app.js 注入 -->
+    </div>
+  </div>
+
+  <div class="section closing">
+    <p>伪元素的本质是<b>「不污染 DOM 的虚拟图层」</b>——你想画什么，浏览器就凭空给你两层画布。这才是它最不得了的地方。</p>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

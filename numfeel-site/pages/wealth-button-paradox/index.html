@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="50%概率翻9倍，50%概率变0.1，期望值为正但你敢按吗？由 ANU 量子真空涨落真随机数驱动，揭示期望值陷阱：为什么正期望不一定赚钱。">
+  <title>50%财富按钮悖论 -- 期望值陷阱 | 数字直觉</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="particleCanvas"></canvas>
+<div class="flash-overlay" id="flashOverlay"></div>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <img class="hero-img" src="../../images/wealth-button/hero-bg.jpg" alt="">
+    <div class="hero-overlay">
+      <div class="hero-title">50% 财富按钮</div>
+      <div class="hero-desc">期望值为正，但你大概率会破产。按还是不按？</div>
+    </div>
+  </div>
+
+  <!-- 规则 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-file-text"></i> 规则</div>
+    <div class="rules-box">
+      每按一次，你的全部资产参与一次赌局：<br>
+      <span class="val">50%</span> 概率 -- 资产乘以 9（翻了快10倍）<br>
+      <span class="val">50%</span> 概率 -- 资产乘以 0.1（缩水到十分之一）<br>
+      每次扣 <span class="val">5 元</span> 手续费（不论输赢）<br><br>
+      算术期望 = 0.5 x 9 + 0.5 x 0.1 = <span class="val">4.55</span>，看起来稳赚。<br>
+      真的吗？
+    </div>
+  </div>
+
+  <!-- 随机源切换 -->
+  <div class="rng-switch-bar">
+    <div class="rng-label">
+      <i class="ti ti-atom-2"></i>
+      <span>随机数来源</span>
+    </div>
+    <div class="toggle-wrap">
+      <span class="toggle-mode-label" id="pseudoLabel">伪随机</span>
+      <div class="toggle-track" id="rngToggle" onclick="toggleRngSource()">
+        <div class="toggle-thumb"></div>
+      </div>
+      <span class="toggle-mode-label" id="quantumLabel">量子真随机</span>
+    </div>
+    <div class="rng-status">
+      <div class="rng-dot" id="rngDot"></div>
+      <span id="rngStatusText">伪随机 (Math.random)</span>
+    </div>
+  </div>
+
+  <!-- 游戏区 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-target"></i> 开始</div>
+    <div class="game-area">
+
+      <!-- HUD 第一行: 资产 + 收益率 -->
+      <div class="hud">
+        <div class="hud-cell">
+          <div class="hud-label">当前资产</div>
+          <div class="hud-value" id="currentWealth">&#165;10.00万</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">累计收益率</div>
+          <div class="hud-value neutral" id="totalReturn">0.00%</div>
+        </div>
+      </div>
+
+      <!-- HUD 第二行: 详细统计 -->
+      <div class="hud">
+        <div class="hud-cell">
+          <div class="hud-label">按下次数</div>
+          <div class="hud-value neutral" id="pressCount">0</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">x9 次数</div>
+          <div class="hud-value" style="color:#4ade80;" id="winCount">0</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">x0.1 次数</div>
+          <div class="hud-value" style="color:#ff4444;" id="loseCount">0</div>
+        </div>
+        <div class="hud-cell">
+          <div class="hud-label">实际胜率</div>
+          <div class="hud-value neutral" id="winRate">-</div>
+        </div>
+      </div>
+
+      <!-- 控制 -->
+      <div class="controls-bar">
+        <label>初始资金:</label>
+        <select id="initialWealth">
+          <option value="1000">1,000</option>
+          <option value="10000">10,000</option>
+          <option value="100000" selected>100,000</option>
+          <option value="1000000">1,000,000</option>
+        </select>
+        <button class="sim-btn sm" onclick="batchPress(10)">连按 10 次</button>
+        <button class="sim-btn sm" onclick="batchPress(50)">连按 50 次</button>
+        <button class="sim-btn sm" onclick="resetGame()">重置</button>
+      </div>
+
+      <!-- 按钮 -->
+      <div class="btn-container">
+        <div class="btn-ring"></div>
+        <div class="btn-ring"></div>
+        <button class="press-btn" id="pressBtn" onclick="pressButton()">按下</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 资产曲线 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-chart-line"></i> 资产走势</div>
+    <div class="chart-box">
+      <canvas id="wealthChart"></canvas>
+    </div>
+  </div>
+
+  <!-- 历史记录 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-list"></i> 操作记录</div>
+    <div class="history-list" id="historyList">
+      <div style="color: rgba(255,255,255,0.3); font-size: 0.85rem; text-align: center; padding: 20px;">
+        还没按过，按一下试试
+      </div>
+    </div>
+  </div>
+
+  <!-- 全球统计 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-world"></i> 全球玩家数据</div>
+    <div class="global-stats">
+      <div class="g-stat">
+        <div class="g-stat-icon players"><i class="ti ti-users"></i></div>
+        <div class="g-stat-val" id="globalPlayers">-</div>
+        <div class="g-stat-label">参与人数</div>
+      </div>
+      <div class="g-stat">
+        <div class="g-stat-icon bankrupt"><i class="ti ti-skull"></i></div>
+        <div class="g-stat-val" id="globalBankrupt">-</div>
+        <div class="g-stat-label">破产人数</div>
+        <div class="g-stat-rate" id="globalBankruptRate">-</div>
+      </div>
+      <div class="g-stat">
+        <div class="g-stat-icon rich"><i class="ti ti-diamond"></i></div>
+        <div class="g-stat-val" id="globalBillionaire">-</div>
+        <div class="g-stat-label">资产过亿</div>
+        <div class="g-stat-rate" id="billionaireRate">-</div>
+      </div>
+    </div>
+    <p style="text-align: center; color: rgba(255,255,255,0.3); font-size: 0.75rem; margin-top: 12px;">
+      实时统计，每 3 秒刷新
+    </p>
+  </div>
+
+  <!-- 蒙特卡洛 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-chart-histogram"></i> 蒙特卡洛模拟</div>
+    <p style="color: rgba(255,255,255,0.5); font-size: 0.82rem; margin-bottom: 16px;">
+      1000 个人各按 100 次，看看最终财富分布。大多数人的结局可能跟你想的不一样。
+    </p>
+    <button class="sim-btn" id="batchBtn" onclick="runBatchSimulation()">
+      <i class="ti ti-player-play"></i> 跑一轮模拟
+    </button>
+    <div class="sim-results" id="simResults">
+      <div class="sim-grid">
+        <div class="sim-card">
+          <div class="sim-card-label">破产率 (资产 &lt; 1 元)</div>
+          <div class="sim-card-value red" id="simBankruptRate">-</div>
+        </div>
+        <div class="sim-card">
+          <div class="sim-card-label">盈利率 (资产 &gt; 初始)</div>
+          <div class="sim-card-value green" id="simProfitRate">-</div>
+        </div>
+        <div class="sim-card">
+          <div class="sim-card-label">中位数资产</div>
+          <div class="sim-card-value gold" id="simMedian">-</div>
+        </div>
+        <div class="sim-card">
+          <div class="sim-card-label">平均资产</div>
+          <div class="sim-card-value gold" id="simAvg">-</div>
+        </div>
+      </div>
+      <div class="chart-box" style="height: 200px;">
+        <canvas id="distributionChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数学分析 -->
+  <div class="panel analysis">
+    <div class="panel-title"><i class="ti ti-math-function"></i> 为什么会亏</div>
+    <p><strong>算术期望 vs 几何期望</strong></p>
+    <p>算术期望：E = 0.5 x 9 + 0.5 x 0.1 = <span class="safe">4.55</span><br>看着不错，每按一次「平均」赚 3.55 倍。但这个平均值骗了你。</p>
+    <p><strong>财富是乘法累积的</strong></p>
+    <p>按两次的所有情况：</p>
+    <div class="formula-block">9 x 9 = 81 (概率 25%)<br>9 x 0.1 = 0.9 (概率 25%)<br>0.1 x 9 = 0.9 (概率 25%)<br>0.1 x 0.1 = 0.01 (概率 25%)</div>
+    <p>几何期望 = (9 x 0.1)^0.5 = 0.9^0.5 = <span class="hl">0.949</span><br>小于 1。每按一次，你的财富<span class="danger-text">中位数在缩水</span>。</p>
+    <p><strong>凯利公式怎么看</strong></p>
+    <div class="formula-block">f* = (p x b - q) / b<br>p=0.5, b=8(净赔率), q=0.5<br>f* = (0.5 x 8 - 0.5) / 8 = <span class="safe">0.4375</span></div>
+    <p>凯利公式说：最优下注是总资产的 43.75%。<br>但这个按钮强制你压上 100%，远超最优比例。</p>
+    <p><strong>按 n 次之后</strong></p>
+    <div class="formula-block">按 n 次，期望赢 n/2 次输 n/2 次<br>最终 = 初始 x 9^(n/2) x 0.1^(n/2) = 初始 x <span class="hl">0.9^n</span><br><br>按 10 次：0.9^10 = 0.35（剩 35%）<br>按 50 次：0.9^50 = 0.005（剩 0.5%）<br>按 100 次：0.9^100 = 0.00003（几乎归零）</div>
+  </div>
+
+  <!-- 结论 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-flag"></i> 结论</div>
+    <div class="conclusion-box">
+      这是一个经典的<span class="key">期望值陷阱</span>。<br><br>
+      算术期望为正，但几何期望为负。<br>
+      少数人连续 x9 会暴富，但<span class="key">绝大多数人会破产</span>。<br><br>
+      平均值被极少数幸运儿拉高，而你大概率不是那个人。<br><br>
+      <span class="hl">「期望值为正」不等于「应该参与」</span><br>
+      <span style="color: rgba(255,255,255,0.5);">当赌注是你的全部时，中位数比平均数重要得多。</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Game Over Modal -->
+<div class="modal-backdrop" id="gameOverModal">
+  <div class="modal-box">
+    <div class="modal-skull"><i class="ti ti-skull"></i></div>
+    <div class="modal-title">GAME OVER</div>
+    <div class="modal-stats">
+      <div class="modal-stat">
+        <div class="modal-stat-val" id="finalWealth">-</div>
+        <div class="modal-stat-label">最终资产</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-val negative" id="finalReturn">-</div>
+        <div class="modal-stat-label">收益率</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-val" id="finalPresses">-</div>
+        <div class="modal-stat-label">按下次数</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-val" id="finalFees">-</div>
+        <div class="modal-stat-label">累计手续费</div>
+      </div>
+    </div>
+    <div class="modal-msg">
+      资产不足 1 元，无法继续。<br>
+      <span class="hl">绝大多数人都会走到这一步</span>，你不是例外。
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn ghost" onclick="closeModal()">看看页面</button>
+      <button class="modal-btn ghost" onclick="shareResult()">分享</button>
+      <button class="modal-btn primary" onclick="closeModalAndReset()">再来一局</button>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

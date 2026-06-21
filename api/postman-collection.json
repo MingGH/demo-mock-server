@@ -907,6 +907,23 @@
           }
         }
       ]
+    },
+    {
+      "name": "Leaderboard",
+      "item": [
+        {
+          "name": "GET /leaderboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/leaderboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["leaderboard"]
+            },
+            "description": "全站 Demo 热门榜。基于 Umami 访问量，返回近 7 天 / 近 30 天 / 历史总榜三个口径，每小时刷新一次内存快照。响应：{\"status\":200,\"data\":{\"last7Days\":[{\"path\":\"pages/xxx\",\"views\":123}],\"last30Days\":[...],\"allTime\":[...],\"updatedAt\":1234567890000}}"
+          }
+        }
+      ]
     }
   ]
 }

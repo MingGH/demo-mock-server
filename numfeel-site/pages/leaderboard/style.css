@@ -1,7 +1,25 @@
 .container {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 20px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 16px 0 24px;
+  box-sizing: border-box;
+}
+
+body.numfeel-shell.detail-page .site-content > .container,
+body.numfeel-shell.detail-page .site-content > .page-shell {
+  width: 100%;
+  max-width: none;
+}
+
+body.numfeel-shell.detail-page .header {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+body.numfeel-shell.detail-page .header p,
+body.numfeel-shell.detail-page .header-sidekick {
+  max-width: 42rem;
 }
 
 .header {
@@ -29,8 +47,9 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  padding: 24px;
+  padding: 22px 20px;
   margin-bottom: 20px;
+  box-sizing: border-box;
 }
 
 .lead-note {
@@ -241,6 +260,8 @@
 }
 
 @media (max-width: 480px) {
+  .container { padding: 10px 0 18px; }
+  .card { padding: 18px 14px; }
   .board-views { font-size: 0.9rem; }
   .board-icon { flex-basis: 36px; height: 36px; font-size: 1.1rem; }
   .range-tab { min-width: 100px; font-size: 0.82rem; }

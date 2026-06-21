@@ -743,7 +743,7 @@ body.numfeel-shell.detail-page .story-note {
 }
 @media (max-width: 1280px) {
   body.numfeel-shell {
-    padding-top: 150px;
+    padding-top: 24px;
   }
   body.numfeel-shell .site-stage,
   body.numfeel-shell.home-page .site-stage {
@@ -791,7 +791,7 @@ body.numfeel-shell.detail-page .story-note {
 }
 @media (max-width: 720px) {
   body.numfeel-shell {
-    padding: 160px 14px 36px;
+    padding: 24px 14px 36px;
   }
   body.numfeel-shell .share-options {
     grid-template-columns: 1fr;
@@ -889,8 +889,8 @@ body.numfeel-shell.detail-page .story-note {
 
 /* ── 相关推荐 footer ─────────────────────────────────────── */
 body.numfeel-shell.detail-page .related-footer {
-  margin-top: 3rem;
-  padding-top: 2rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
   border-top: 1px dashed rgba(242, 228, 207, 0.12);
 }
 body.numfeel-shell.detail-page .related-footer-inner {
@@ -912,20 +912,30 @@ body.numfeel-shell.detail-page .related-cards {
   gap: 12px;
 }
 @media (max-width: 640px) {
-  body.numfeel-shell.detail-page .related-footer-inner,
-  body.numfeel-shell.detail-page .related-cards {
+  body.numfeel-shell.detail-page .related-footer-inner {
     width: 100%;
-    max-width: 380px;
-    margin: 0 auto;
   }
   body.numfeel-shell.detail-page .related-cards {
-    grid-template-columns: 1fr;
-    justify-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 10px;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 4px 2px 8px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+  }
+  body.numfeel-shell.detail-page .related-cards::-webkit-scrollbar {
+    display: none;
   }
   body.numfeel-shell.detail-page .related-card {
-    width: 100%;
-    max-width: 380px;
-    justify-self: center;
+    flex: 0 0 78%;
+    width: 78%;
+    max-width: 320px;
+    scroll-snap-align: start;
   }
 }
 body.numfeel-shell.detail-page .related-card {

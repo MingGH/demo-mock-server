@@ -45,6 +45,7 @@
   };
   var navLinks = [
     { href: prefix + 'index.html', icon: 'ph:house-line', text: '首页', active: isHome },
+    { href: prefix + 'pages/leaderboard/', icon: 'ph:trophy', text: '排行榜', active: pathname.indexOf('/pages/leaderboard') !== -1 },
     { href: 'https://www.runnable.run/about', icon: 'ph:pen-nib', text: '博客', external: true },
     { href: 'https://github.com/MingGH/demo-mock-server', icon: 'ph:github-logo', text: '源码', external: true },
     { href: 'https://996.ninja/', icon: 'ph:sword', text: '996 忍者', external: true }

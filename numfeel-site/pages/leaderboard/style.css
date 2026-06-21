@@ -1,0 +1,247 @@
+.container {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  font-size: 2rem;
+  color: #ffd700;
+  margin-bottom: 10px;
+}
+
+.header h1 i {
+  margin-right: 8px;
+}
+
+.header p {
+  color: #b0bec5;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.lead-note {
+  color: #888;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+
+/* ── 口径切换 ───────────────────────────── */
+.range-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.range-tab {
+  flex: 1 1 auto;
+  min-width: 120px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #b0bec5;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.range-tab i {
+  margin-right: 4px;
+}
+
+.range-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.range-tab.active {
+  background: rgba(255, 215, 0, 0.14);
+  border-color: #ffd700;
+  color: #ffd700;
+  font-weight: 600;
+}
+
+.range-hint {
+  color: #90caf9;
+  font-size: 0.85rem;
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+/* ── 榜单 ───────────────────────────────── */
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.board-loading,
+.board-empty {
+  text-align: center;
+  color: #888;
+  padding: 40px 12px;
+  font-size: 0.95rem;
+}
+
+.board-loading i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.board-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.board-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(4px);
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.board-rank {
+  flex: 0 0 32px;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #888;
+}
+
+.board-rank.rank-top {
+  color: #fff;
+}
+
+.board-rank.rank-1 { color: #ffd700; }
+.board-rank.rank-2 { color: #cfd8dc; }
+.board-rank.rank-3 { color: #d7a86e; }
+
+.board-icon {
+  flex: 0 0 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(144, 202, 249, 0.12);
+  color: #90caf9;
+  font-size: 1.3rem;
+}
+
+.board-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.board-title {
+  color: #eceff1;
+  font-size: 0.98rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.board-cat {
+  color: #888;
+  font-size: 0.78rem;
+}
+
+.board-views {
+  flex: 0 0 auto;
+  text-align: right;
+  color: #ffd700;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.board-views small {
+  display: block;
+  color: #888;
+  font-weight: 400;
+  font-size: 0.7rem;
+}
+
+.board-arrow {
+  flex: 0 0 auto;
+  color: #555;
+  font-size: 1.1rem;
+}
+
+.board-updated {
+  text-align: center;
+  color: #888;
+  font-size: 0.8rem;
+  margin-top: 16px;
+}
+
+/* ── 说明区 ─────────────────────────────── */
+.section-title {
+  font-size: 1.1rem;
+  color: #ffd700;
+  margin-bottom: 14px;
+}
+
+.section-title i {
+  margin-right: 6px;
+}
+
+.explain-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.explain-list li {
+  color: #b0bec5;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  padding-left: 18px;
+  position: relative;
+}
+
+.explain-list li::before {
+  content: '·';
+  position: absolute;
+  left: 4px;
+  color: #90caf9;
+  font-weight: 700;
+}
+
+.explain-list strong {
+  color: #81c784;
+}
+
+@media (max-width: 480px) {
+  .board-views { font-size: 0.9rem; }
+  .board-icon { flex-basis: 36px; height: 36px; font-size: 1.1rem; }
+  .range-tab { min-width: 100px; font-size: 0.82rem; }
+}

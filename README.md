@@ -61,6 +61,7 @@
 | | `GET /doc-track/events` | 追踪事件 |
 | 游戏统计 | `POST /xxx/submit` `GET /xxx/stats` | 21 个游戏/实验的统计接口 |
 | 排行榜 | `GET /xxx/leaderboard` | 记忆力挑战、推理、时间感知、级联故障 |
+| 热门榜 | `GET /leaderboard` | 全站 Demo 热门榜（基于 Umami 访问量，近 7 天 / 近 30 天 / 历史总榜，每小时刷新） |
 
 ## 本地开发
 
@@ -108,6 +109,11 @@ kubectl create secret generic mysql-secret \
 kubectl create secret generic ninja-api-secret \
   --namespace runnable-run \
   --from-literal=token=<api-token>
+
+kubectl create secret generic umami-secret \
+  --namespace runnable-run \
+  --from-literal=username=<umami-username> \
+  --from-literal=password=<umami-password>
 ```
 
 ## 作者

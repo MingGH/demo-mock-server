@@ -50,6 +50,16 @@ spec:
                 secretKeyRef:
                   name: ninja-api-secret
                   key: token
+            - name: UMAMI_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: umami-secret
+                  key: username
+            - name: UMAMI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: umami-secret
+                  key: password
             - name: MYSQL_HOST
               valueFrom:
                 secretKeyRef:

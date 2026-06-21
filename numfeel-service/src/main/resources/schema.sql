@@ -366,3 +366,31 @@ CREATE TABLE IF NOT EXISTS qr_hijack_sessions (
     INDEX idx_created (created_at),
     INDEX idx_hijacked (hijacked)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 50%财富按钮 — 聚合统计（替代外部 counter API）
+CREATE TABLE IF NOT EXISTS wealth_button_stats (
+    id          INT PRIMARY KEY DEFAULT 1,
+    players     BIGINT NOT NULL DEFAULT 0,
+    bankrupt    BIGINT NOT NULL DEFAULT 0,
+    billionaire BIGINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 50%财富按钮 — 排行榜
+CREATE TABLE IF NOT EXISTS wealth_button_leaderboard (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username        VARCHAR(50)  NOT NULL,
+    final_wealth    DOUBLE       NOT NULL,
+    return_rate     DOUBLE       NOT NULL,
+    press_count     INT          NOT NULL,
+    win_count       INT          NOT NULL,
+    initial_wealth  INT          NOT NULL,
+    round_history   TEXT         NOT NULL COMMENT '紧凑格式：W=赢 L=输，如 WWLWLLW',
+    pow_hash        VARCHAR(64)  NOT NULL COMMENT 'SHA-256 PoW 哈希',
+    pow_nonce       VARCHAR(32)  NOT NULL COMMENT 'PoW nonce',
+    created_at      BIGINT       NOT NULL,
+    INDEX idx_wealth   (final_wealth DESC),
+    INDEX idx_return   (return_rate DESC),
+    INDEX idx_username (username),
+    INDEX idx_pow_hash (pow_hash),
+    INDEX idx_created  (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

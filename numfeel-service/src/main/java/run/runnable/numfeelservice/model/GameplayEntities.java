@@ -267,4 +267,31 @@ public final class GameplayEntities {
             @Column("created_at") long createdAt
     ) {
     }
+
+    /** 50%财富按钮 — 聚合统计表映射。 */
+    @Table("wealth_button_stats")
+    public record WealthButtonStats(
+            @Id Integer id,
+            long players,
+            long bankrupt,
+            long billionaire
+    ) {
+    }
+
+    /** 50%财富按钮 — 排行榜表映射。 */
+    @Table("wealth_button_leaderboard")
+    public record WealthButtonLeaderboardEntry(
+            @Id Long id,
+            String username,
+            @Column("final_wealth") double finalWealth,
+            @Column("return_rate") double returnRate,
+            @Column("press_count") int pressCount,
+            @Column("win_count") int winCount,
+            @Column("initial_wealth") int initialWealth,
+            @Column("round_history") String roundHistory,
+            @Column("pow_hash") String powHash,
+            @Column("pow_nonce") String powNonce,
+            @Column("created_at") long createdAt
+    ) {
+    }
 }

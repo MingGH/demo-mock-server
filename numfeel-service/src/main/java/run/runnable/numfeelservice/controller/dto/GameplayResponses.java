@@ -445,4 +445,88 @@ public final class GameplayResponses {
             List<GooseDuckQuestionRate> perQuestion
     ) {
     }
+
+    // ── 50%财富按钮排行榜 ──────────────────────────────────────────
+
+    /**
+     * 财富按钮聚合统计响应。
+     *
+     * @param players 参与人数
+     * @param bankrupt 破产人数
+     * @param billionaire 资产过亿人数
+     */
+    public record WealthButtonStatsResponse(
+            long players,
+            long bankrupt,
+            long billionaire
+    ) {
+    }
+
+    /**
+     * 排行榜条目（返回给前端展示）。
+     *
+     * @param rank 排名
+     * @param username 用户名
+     * @param finalWealth 最终资产
+     * @param returnRate 收益率
+     * @param pressCount 按下次数
+     * @param winCount 赢次数
+     * @param initialWealth 初始资金
+     * @param roundHistory 紧凑历史
+     * @param createdAt 提交时间
+     */
+    public record WealthButtonLeaderboardItem(
+            int rank,
+            String username,
+            double finalWealth,
+            double returnRate,
+            int pressCount,
+            int winCount,
+            int initialWealth,
+            String roundHistory,
+            long createdAt
+    ) {
+    }
+
+    /**
+     * 排行榜响应（含两个榜单）。
+     *
+     * @param byWealth 资产排行 top10
+     * @param byReturn 收益率排行 top10
+     * @param total 排行榜总条目数
+     */
+    public record WealthButtonLeaderboardResponse(
+            List<WealthButtonLeaderboardItem> byWealth,
+            List<WealthButtonLeaderboardItem> byReturn,
+            long total
+    ) {
+    }
+
+    /**
+     * 提交前 challenge 响应。
+     *
+     * @param challengeId 挑战标识
+     * @param expiresAt 过期时间戳（毫秒）
+     * @param difficulty PoW 难度
+     */
+    public record WealthButtonLeaderboardChallengeResponse(
+            String challengeId,
+            long expiresAt,
+            int difficulty
+    ) {
+    }
+
+    /**
+     * 排行榜提交成功响应。
+     *
+     * @param wealthRank 当前资产排名（-1 表示未进榜）
+     * @param returnRank 当前收益率排名（-1 表示未进榜）
+     * @param total 排行榜总条目数
+     */
+    public record WealthButtonLeaderboardSubmitResponse(
+            int wealthRank,
+            int returnRank,
+            long total
+    ) {
+    }
 }

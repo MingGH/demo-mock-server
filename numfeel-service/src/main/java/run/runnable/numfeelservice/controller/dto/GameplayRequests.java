@@ -367,4 +367,52 @@ public final class GameplayRequests {
             String answers
     ) {
     }
+
+    /**
+     * 50%财富按钮排行榜提交参数。
+     *
+     * @param username 知乎用户名（最多50字符）
+     * @param finalWealth 最终资产
+     * @param returnRate 收益率百分比
+     * @param pressCount 按下次数
+     * @param winCount 赢的次数
+     * @param initialWealth 初始资金
+     * @param roundHistory 紧凑格式历史：W=赢 L=输
+     * @param powHash SHA-256 PoW 哈希
+     * @param powNonce PoW nonce
+     * @param timestamp 客户端提交时间戳（毫秒）
+     */
+    public record WealthButtonLeaderboardSubmitRequest(
+            String username,
+            Double finalWealth,
+            Double returnRate,
+            Integer pressCount,
+            Integer winCount,
+            Integer initialWealth,
+            String roundHistory,
+            String powHash,
+            String powNonce,
+            Long timestamp
+    ) {
+    }
+
+    /**
+     * 50%财富按钮排行榜 v2 提交参数。
+     *
+     * @param username 知乎用户名（最多50字符）
+     * @param initialWealth 初始资金
+     * @param roundHistory 紧凑格式历史：W=赢 L=输
+     * @param challengeId 后端签发的 challenge 标识
+     * @param powHash SHA-256 PoW 哈希
+     * @param powNonce PoW nonce
+     */
+    public record WealthButtonLeaderboardSubmitV2Request(
+            String username,
+            Integer initialWealth,
+            String roundHistory,
+            String challengeId,
+            String powHash,
+            String powNonce
+    ) {
+    }
 }

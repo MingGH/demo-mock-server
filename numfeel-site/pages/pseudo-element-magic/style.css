@@ -1,0 +1,208 @@
+/* ============================================================
+   伪元素炫技场 —— 页面样式
+   规则：所有视觉花活只用 ::before / ::after 实现，
+        HTML 里不允许出现任何纯装饰用的额外节点。
+   外壳（背景、头部、侧栏、分享）由 components/header.* 接管，
+   本文件只负责正文容器与各 demo 的伪元素样式。
+   ============================================================ */
+:root{
+  --gold:#ffd700; --blue:#90caf9; --green:#81c784;
+  --red:#ff6b6b; --purple:#ce93d8; --muted:#8a93a6;
+  --pe-card:rgba(20,26,42,.55); --pe-line:rgba(255,255,255,.08);
+  --pe-ease:cubic-bezier(.22,1,.36,1);
+}
+
+.container{ max-width:1180px; }
+
+.header code{
+  color:var(--gold);
+  background:rgba(255,215,0,.1);
+  padding:1px 6px; border-radius:6px;
+  font-family:"SF Mono",Consolas,Monaco,monospace; font-size:.92em;
+}
+
+.section{
+  margin:0 0 22px;
+  padding:22px;
+  border-radius:24px;
+  border:1px solid var(--pe-line);
+  background:linear-gradient(160deg,rgba(22,33,62,.5),rgba(15,20,34,.45));
+  backdrop-filter:blur(8px);
+}
+.section-lead{ margin:0 0 18px; color:var(--muted); font-size:14px; line-height:1.7; }
+.section.closing{ text-align:center; }
+.section.closing p{ margin:0; color:var(--muted); font-size:14px; line-height:1.9; }
+.section.closing b{ color:var(--gold); }
+
+/* 自定义选中色 —— ::selection 伪元素（也是一种「不得了用法」）*/
+.container ::selection{ background:rgba(255,215,0,.28); color:#fff; }
+
+/* ── 卡片网格 ── */
+.grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:18px; }
+.card{
+  position:relative; border-radius:18px; border:1px solid var(--pe-line);
+  background:var(--pe-card); padding:20px; min-height:258px;
+  display:flex; flex-direction:column;
+}
+.card h3{ margin:0 0 4px; font-size:1.02rem; color:#fff; }
+.card .tag{ font-size:11px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase; }
+.stage{ flex:1; display:flex; align-items:center; justify-content:center; padding:20px 0; }
+.hint{ font-size:12px; color:var(--muted); line-height:1.6; text-align:center; }
+.code-toggle{
+  margin-top:14px; align-self:flex-start; cursor:pointer;
+  font-size:12px; color:var(--purple); background:none; border:1px solid rgba(206,147,216,.3);
+  padding:6px 12px; border-radius:8px; transition:background .2s;
+}
+.code-toggle:hover{ background:rgba(206,147,216,.12); }
+.code{
+  display:none; margin-top:12px; font-family:"SF Mono",Consolas,Monaco,monospace;
+  font-size:11.5px; line-height:1.7; color:#bcd; white-space:pre; overflow-x:auto;
+  background:rgba(0,0,0,.4); padding:14px; border-radius:12px; border:1px solid var(--pe-line);
+}
+.code.show{ display:block; }
+
+/* ════════════ 1. 渐变描边（border 不支持渐变，用伪元素垫一层）════════════ */
+.demo-border{
+  position:relative; padding:18px 26px; border-radius:14px; color:#fff; font-weight:600;
+  background:#16213e; isolation:isolate;
+}
+.demo-border::before{
+  content:""; position:absolute; inset:0; border-radius:14px; padding:2px; z-index:-1;
+  background:linear-gradient(135deg,#ffd700,#ff6b6b,#ce93d8,#90caf9);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude;
+}
+
+/* ════════════ 2. 旋转霓虹光晕（conic-gradient + @property 动画角度）════════════ */
+@property --ang{ syntax:"<angle>"; initial-value:0deg; inherits:false; }
+.demo-glow{
+  position:relative; padding:20px 30px; border-radius:14px; color:#fff; font-weight:600;
+  background:#10131f; isolation:isolate;
+}
+.demo-glow::before,.demo-glow::after{
+  content:""; position:absolute; inset:-2px; border-radius:16px; z-index:-1;
+  background:conic-gradient(from var(--ang),#ff6b6b,#ffd700,#90caf9,#ce93d8,#ff6b6b);
+  animation:pe-spin 4s linear infinite;
+}
+.demo-glow::after{ filter:blur(16px); opacity:.7; }   /* 第二层做光晕外溢 */
+@keyframes pe-spin{ to{ --ang:360deg; } }
+
+/* ════════════ 3. 纯 CSS 图形：一个 span 用伪元素拼成对话气泡 ════════════ */
+.demo-bubble{
+  position:relative; background:var(--blue); color:#0f2438; font-weight:600;
+  padding:14px 18px; border-radius:14px; max-width:200px; text-align:center;
+}
+.demo-bubble::after{           /* 气泡的小尾巴：纯三角形 */
+  content:""; position:absolute; left:28px; bottom:-12px;
+  border:12px solid transparent; border-top-color:var(--blue); border-bottom:0;
+}
+
+/* ════════════ 4. data-* + attr()：零 JS tooltip ════════════ */
+.demo-tip{
+  position:relative; color:var(--gold); font-weight:600; cursor:help;
+  border-bottom:2px dotted rgba(255,215,0,.5); padding-bottom:2px;
+}
+.demo-tip::after{
+  content:attr(data-tip);                 /* 文案完全来自 HTML 属性 */
+  position:absolute; left:50%; bottom:140%; transform:translateX(-50%) translateY(6px);
+  /* 限宽换行，避免窄屏 tooltip 横向溢出视口 */
+  width:max-content; max-width:min(220px,72vw); white-space:normal; text-align:center;
+  background:#0b0e18; color:#fff; font-weight:400; font-size:12px; line-height:1.5;
+  padding:8px 12px; border-radius:8px; border:1px solid var(--pe-line);
+  opacity:0; pointer-events:none; transition:.25s var(--pe-ease);
+}
+.demo-tip::before{                          /* tooltip 小箭头 */
+  content:""; position:absolute; left:50%; bottom:140%;
+  transform:translateX(-50%) translateY(6px);
+  border:6px solid transparent; border-top-color:#0b0e18; opacity:0; transition:.25s var(--pe-ease);
+}
+/* hover（桌面）与 focus（移动端可聚焦后点触）都触发 */
+.demo-tip:hover::after,.demo-tip:focus::after,
+.demo-tip:hover::before,.demo-tip:focus::before{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ════════════ 5. 排版：超大装饰引号 ════════════ */
+.demo-quote{
+  position:relative; padding:8px 26px; font-style:italic; color:#dfe6f0;
+  max-width:220px; line-height:1.7;
+}
+.demo-quote::before{
+  content:"\201C"; position:absolute; left:-6px; top:-24px;
+  font-size:64px; color:var(--gold); opacity:.5; font-family:Georgia,serif;
+}
+
+/* ════════════ 6. counters()：纯 CSS 多级嵌套编号 ════════════ */
+.demo-counter,
+.demo-counter ol{ counter-reset:step; list-style:none; padding:0; margin:0; text-align:left; }
+.demo-counter ol{ margin:4px 0 0; padding-left:16px; }   /* 子层缩进 */
+.demo-counter li{
+  counter-increment:step;                                 /* 每个 li 在所属层 +1 */
+  position:relative; padding:5px 0 5px 4px; color:#dfe6f0; font-size:13.5px; line-height:1.5;
+}
+.demo-counter li::before{
+  /* counters 带 s：把祖先各层的计数用 "." 串起来 → 1、1.1、1.2.1 */
+  content:counters(step,".") "  ";
+  font-weight:700; color:var(--green); font-variant-numeric:tabular-nums;
+}
+
+/* ════════════ 7. 撕纸/邮票锯齿边（radial-gradient 平铺）════════════ */
+.demo-ticket{
+  position:relative; background:#f2e4cf; color:#1a1a2e; font-weight:700;
+  padding:18px 24px; border-radius:6px;
+}
+.demo-ticket::before,.demo-ticket::after{
+  content:""; position:absolute; left:0; right:0; height:10px;
+  background:radial-gradient(circle,transparent 0 5px,#f2e4cf 5px) center/14px 14px repeat-x;
+}
+.demo-ticket::before{ top:-9px; }
+.demo-ticket::after{ bottom:-9px; transform:rotate(180deg); }
+
+/* ════════════ 8. 角标丝带 ════════════ */
+.demo-ribbon{
+  position:relative; width:150px; height:120px; border-radius:12px;
+  background:#16213e; overflow:hidden; border:1px solid var(--pe-line);
+}
+.demo-ribbon::before{
+  content:"NEW"; position:absolute; top:14px; right:-34px;
+  transform:rotate(45deg); width:130px; text-align:center; padding:6px 0;
+  font-size:12px; font-weight:800; letter-spacing:.1em; color:#10131f;
+  background:linear-gradient(90deg,var(--gold),#ffb347);
+  box-shadow:0 4px 12px rgba(0,0,0,.3);
+}
+
+/* ════════════ 9. hover 时下划线从中间向两端展开 ════════════ */
+.demo-underline{ position:relative; color:#fff; font-weight:600; cursor:pointer; padding:4px 0; }
+.demo-underline::after{
+  content:""; position:absolute; left:50%; right:50%; bottom:-2px; height:2px;
+  background:linear-gradient(90deg,var(--gold),var(--red));
+  transition:left .3s var(--pe-ease),right .3s var(--pe-ease);
+}
+.demo-underline:hover::after,.demo-underline:focus::after{ left:0; right:0; }
+
+/* ════════════ 10. 加载中三个点（一个元素 + 两伪元素 = 三个点跳动）════════════ */
+.demo-dots{ position:relative; width:12px; height:12px; border-radius:50%;
+  background:var(--gold); animation:pe-blink 1s infinite .2s; }
+.demo-dots::before,.demo-dots::after{
+  content:""; position:absolute; top:0; width:12px; height:12px; border-radius:50%;
+  background:var(--gold); animation:pe-blink 1s infinite;
+}
+.demo-dots::before{ left:-22px; animation-delay:0s; }
+.demo-dots::after{ left:22px; animation-delay:.4s; }
+@keyframes pe-blink{ 0%,100%{ opacity:.25; transform:scale(.7);} 50%{ opacity:1; transform:scale(1);} }
+
+/* ════════════ 移动端适配 ════════════ */
+@media (max-width:720px){
+  .section{ padding:16px; border-radius:18px; margin:0 0 16px; }
+  .section-lead{ font-size:13px; margin-bottom:14px; }
+  /* 单列；min 用 0 防止 280px 下溢出，配合 1fr 自适应窄屏 */
+  .grid{ grid-template-columns:1fr; gap:14px; }
+  .card{ min-height:0; padding:18px; }
+  .card .stage{ padding:24px 0; }   /* 单列后给 demo 更宽松的展示高度 */
+  .code{ font-size:11px; -webkit-overflow-scrolling:touch; }
+}
+@media (max-width:480px){
+  .section{ padding:14px; }
+  .card{ padding:16px; border-radius:16px; }
+  .card h3{ font-size:.98rem; }
+  .demo-quote{ max-width:100%; }
+  .demo-counter li{ font-size:13px; }
+}

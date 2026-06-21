@@ -9,14 +9,12 @@ let wealthHistory = [100000];
 let chart = null;
 let distChart = null;
 const FEE = 5;
-
 // ========== 量子随机数 ==========
 const API_BASE = 'https://numfeel-api.996.ninja';
 let useQuantum = false;
 let quantumPool = [];
 let quantumFetching = false;
 let quantumSource = 'pseudo';
-
 function toggleRngSource() {
   useQuantum = !useQuantum;
   const track = document.getElementById('rngToggle');
@@ -37,7 +35,6 @@ function toggleRngSource() {
     updateRngStatus('pseudo', '伪随机 (Math.random)');
   }
 }
-
 function updateRngStatus(state, text) {
   const dot = document.getElementById('rngDot');
   const label = document.getElementById('rngStatusText');
@@ -48,7 +45,6 @@ function updateRngStatus(state, text) {
   else { quantumSource = 'pseudo'; }
   label.textContent = text;
 }
-
 function fetchQuantumNumbers() {
   if (quantumFetching) return;
   quantumFetching = true;
@@ -73,7 +69,6 @@ function fetchQuantumNumbers() {
       updateRngStatus('fallback', '网络错误，已切换伪随机');
     });
 }
-
 function fetchQuantumAvailable() {
   fetch(`${API_BASE}/quantum/available`)
     .then(r => r.json())
@@ -90,7 +85,6 @@ function fetchQuantumAvailable() {
     })
     .catch(() => {});
 }
-
 function getRandomValue() {
   if (useQuantum && quantumPool.length > 0) {
     const val = quantumPool.shift();
@@ -105,36 +99,25 @@ function getRandomValue() {
   }
   return Math.random();
 }
-
 // ========== 游戏逻辑 ==========
 function pressButton() {
   const btn = document.getElementById('pressBtn');
   if (btn.disabled) return;
-
   if (pressCount === 0) recordPlayer();
-
   const before = wealth;
   const rand = getRandomValue();
   const win = rand < 0.5;
-
   wealth = win ? wealth * 9 : wealth * 0.1;
   wealth -= FEE;
   if (wealth < 0) wealth = 0;
-
   pressCount++;
   if (win) winCount++; else loseCount++;
-
   roundHistory.unshift({ round: pressCount, win, before, after: wealth });
   wealthHistory.push(wealth);
-
   flashScreen(win);
-  if (!win) shakeScreen();
-
   updateDisplay();
   renderHistory();
-
   if (wealth >= 1e8) recordBillionaire();
-
   if (wealth < 1) {
     btn.disabled = true;
     btn.textContent = '破产';
@@ -142,25 +125,17 @@ function pressButton() {
     setTimeout(showGameOver, 600);
   }
 }
-
 function batchPress(n) {
   for (let i = 0; i < n; i++) {
     if (wealth < 1) break;
     pressButton();
   }
 }
-
 function flashScreen(win) {
   const el = document.getElementById('flashOverlay');
   el.className = 'flash-overlay ' + (win ? 'win' : 'lose') + ' show';
   setTimeout(() => el.classList.remove('show'), 200);
 }
-
-function shakeScreen() {
-  document.body.classList.add('shake');
-  setTimeout(() => document.body.classList.remove('shake'), 400);
-}
-
 function resetGame() {
   initialWealth = parseInt(document.getElementById('initialWealth').value) || 100000;
   wealth = initialWealth;
@@ -169,15 +144,12 @@ function resetGame() {
   loseCount = 0;
   roundHistory = [];
   wealthHistory = [initialWealth];
-
   const btn = document.getElementById('pressBtn');
   btn.disabled = false;
   btn.textContent = '按下';
-
   updateDisplay();
   renderHistory();
 }
-
 // ========== 显示 ==========
 function formatMoney(num) {
   if (num >= 1e12) return '\u00a5' + (num/1e12).toFixed(2) + '万亿';
@@ -187,28 +159,23 @@ function formatMoney(num) {
   if (num >= 0.01) return '\u00a5' + num.toFixed(4);
   return '\u00a5' + num.toExponential(2);
 }
-
 function updateDisplay() {
   const wealthEl = document.getElementById('currentWealth');
   wealthEl.textContent = formatMoney(wealth);
   wealthEl.className = 'hud-value';
   if (wealth < initialWealth * 0.1) wealthEl.classList.add('danger');
   else if (wealth < initialWealth) wealthEl.classList.add('warning');
-
   const returnRate = ((wealth / initialWealth - 1) * 100);
   const returnEl = document.getElementById('totalReturn');
   returnEl.textContent = (returnRate >= 0 ? '+' : '') + returnRate.toFixed(2) + '%';
   returnEl.className = 'hud-value ' + (returnRate >= 0 ? 'safe' : 'danger');
-
   document.getElementById('pressCount').textContent = pressCount;
   document.getElementById('winCount').textContent = winCount;
   document.getElementById('loseCount').textContent = loseCount;
   document.getElementById('winRate').textContent = pressCount > 0
     ? (winCount / pressCount * 100).toFixed(1) + '%' : '-';
-
   updateChart();
 }
-
 function renderHistory() {
   const container = document.getElementById('historyList');
   if (roundHistory.length === 0) {
@@ -222,7 +189,6 @@ function renderHistory() {
     </div>`
   ).join('');
 }
-
 function updateChart() {
   const ctx = document.getElementById('wealthChart').getContext('2d');
   if (chart) chart.destroy();
@@ -261,13 +227,11 @@ function updateChart() {
     }
   });
 }
-
 // ========== 蒙特卡洛 ==========
 function runBatchSimulation() {
   const btn = document.getElementById('batchBtn');
   btn.disabled = true;
   btn.innerHTML = '<i class="ti ti-loader-2"></i> 模拟中...';
-
   setTimeout(() => {
     const people = 1000, presses = 100, initial = 100000;
     const results = [];
@@ -279,24 +243,20 @@ function runBatchSimulation() {
       results.push(w);
     }
     results.sort((a, b) => a - b);
-
     const bankruptCount = results.filter(w => w < 1).length;
     const profitCount = results.filter(w => w > initial).length;
     const median = results[Math.floor(people / 2)];
     const avg = results.reduce((a, b) => a + b, 0) / people;
-
     document.getElementById('simBankruptRate').textContent = (bankruptCount / people * 100).toFixed(1) + '%';
     document.getElementById('simProfitRate').textContent = (profitCount / people * 100).toFixed(1) + '%';
     document.getElementById('simMedian').textContent = formatMoney(median);
     document.getElementById('simAvg').textContent = formatMoney(avg);
     document.getElementById('simResults').classList.add('show');
     drawDistribution(results);
-
     btn.disabled = false;
     btn.innerHTML = '<i class="ti ti-player-play"></i> 再跑一轮';
   }, 80);
 }
-
 function drawDistribution(results) {
   const ctx = document.getElementById('distributionChart').getContext('2d');
   if (distChart) distChart.destroy();
@@ -326,22 +286,19 @@ function drawDistribution(results) {
     }
   });
 }
-
 // ========== 全球统计 ==========
-const STATS_KEYS = { players: 'wealth-btn-players', bankrupt: 'wealth-btn-bankrupt', billionaire: 'wealth-btn-billionaire' };
 let hasRecordedPlayer = false;
 let hasRecordedBankrupt = false;
 let hasRecordedBillionaire = false;
 let currentDisplayValues = { players: 0, bankrupt: 0, billionaire: 0 };
 
-function incrStat(key) {
+function incrStat(field) {
   if (navigator.sendBeacon) {
-    navigator.sendBeacon(`${API_BASE}/stats?action=incr&key=${key}`);
+    navigator.sendBeacon(`${API_BASE}/wealth-button/incr?field=${field}`);
   } else {
-    fetch(`${API_BASE}/stats?action=incr&key=${key}`, { method: 'POST', keepalive: true }).catch(() => {});
+    fetch(`${API_BASE}/wealth-button/incr?field=${field}`, { method: 'POST', keepalive: true }).catch(() => {});
   }
 }
-
 function animateNumber(el, from, to, dur) {
   dur = dur || 600;
   if (from === to) return;
@@ -355,14 +312,12 @@ function animateNumber(el, from, to, dur) {
   }
   requestAnimationFrame(tick);
 }
-
 function formatNumber(n) {
   if (n >= 10000) return (n / 10000).toFixed(1) + '万';
   return n.toLocaleString();
 }
-
 function loadGlobalStats() {
-  fetch(`${API_BASE}/stats?action=getAll`)
+  fetch(`${API_BASE}/wealth-button/stats`)
     .then(r => r.json())
     .then(json => {
       if (json.status === 200 && json.data) {
@@ -379,10 +334,266 @@ function loadGlobalStats() {
     })
     .catch(() => {});
 }
+function recordPlayer() { if (!hasRecordedPlayer) { hasRecordedPlayer = true; incrStat('players'); } }
+function recordBankrupt() { if (!hasRecordedBankrupt) { hasRecordedBankrupt = true; incrStat('bankrupt'); loadGlobalStats(); } }
+function recordBillionaire() { if (!hasRecordedBillionaire && wealth >= 1e8) { hasRecordedBillionaire = true; incrStat('billionaire'); loadGlobalStats(); } }
 
-function recordPlayer() { if (!hasRecordedPlayer) { hasRecordedPlayer = true; incrStat(STATS_KEYS.players); } }
-function recordBankrupt() { if (!hasRecordedBankrupt) { hasRecordedBankrupt = true; incrStat(STATS_KEYS.bankrupt); loadGlobalStats(); } }
-function recordBillionaire() { if (!hasRecordedBillionaire && wealth >= 1e8) { hasRecordedBillionaire = true; incrStat(STATS_KEYS.billionaire); loadGlobalStats(); } }
+// ========== 排行榜 ==========
+let leaderboardData = null;
+
+function getRoundHistoryString() {
+  return roundHistory.slice().reverse().map(h => h.win ? 'W' : 'L').join('');
+}
+
+function formatReturnRate(value, digits) {
+  const fixedDigits = digits === undefined ? 2 : digits;
+  return (value >= 0 ? '+' : '') + value.toFixed(fixedDigits) + '%';
+}
+
+async function sha256(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function buildChallengePayload(challengeId, username, startWealth, historyString) {
+  return `${challengeId}|${username}|${startWealth}|${historyString}`;
+}
+
+async function computePoW(payload, difficulty) {
+  difficulty = difficulty || 4;
+  let nonce = 0;
+  while (true) {
+    const nonceStr = nonce.toString();
+    const hash = await sha256(payload + nonceStr);
+    if (hash.substring(0, difficulty) === '0'.repeat(difficulty)) {
+      return { hash, nonce: nonceStr };
+    }
+    nonce++;
+    if (nonce % 1000 === 0) {
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+}
+
+function showLeaderboardSubmitModal() {
+  document.getElementById('lbSubmitModal').classList.add('show');
+  const previewWealth = document.getElementById('lbPreviewWealth');
+  const previewReturn = document.getElementById('lbPreviewReturn');
+  const previewPresses = document.getElementById('lbPreviewPresses');
+  if (previewWealth) previewWealth.textContent = formatMoney(wealth);
+  if (previewReturn) previewReturn.textContent = formatReturnRate((wealth / initialWealth - 1) * 100);
+  if (previewPresses) previewPresses.textContent = pressCount;
+  const statusEl = document.getElementById('lbSubmitStatus');
+  if (statusEl) { statusEl.textContent = ''; statusEl.className = 'lb-status'; }
+  const input = document.getElementById('lbUsername');
+  if (input) input.focus();
+}
+
+function closeLeaderboardModal() {
+  document.getElementById('lbSubmitModal').classList.remove('show');
+}
+
+async function submitToLeaderboard() {
+  const usernameInput = document.getElementById('lbUsername');
+  const statusEl = document.getElementById('lbSubmitStatus');
+  const submitBtn = document.getElementById('lbSubmitBtn');
+  const username = usernameInput.value.trim();
+  const historyString = getRoundHistoryString();
+
+  if (!username) {
+    statusEl.textContent = '请输入用户名';
+    statusEl.className = 'lb-status error';
+    return;
+  }
+  if (username.length > 50) {
+    statusEl.textContent = '用户名最多50个字符';
+    statusEl.className = 'lb-status error';
+    return;
+  }
+  if (pressCount === 0) {
+    statusEl.textContent = '还没开始玩，至少按一次再提交';
+    statusEl.className = 'lb-status error';
+    return;
+  }
+
+  submitBtn.disabled = true;
+  statusEl.textContent = '正在申请挑战...';
+  statusEl.className = 'lb-status loading';
+
+  try {
+    const challengeRes = await fetch(`${API_BASE}/wealth-button/leaderboard/challenge`);
+    const challengeJson = await challengeRes.json();
+    if (challengeJson.status !== 200 || !challengeJson.data) {
+      statusEl.textContent = challengeJson.message || '获取挑战失败';
+      statusEl.className = 'lb-status error';
+      return;
+    }
+
+    const challenge = challengeJson.data;
+    const payload = buildChallengePayload(challenge.challengeId, username, initialWealth, historyString);
+    statusEl.textContent = '正在计算工作量证明...';
+    const { hash, nonce } = await computePoW(payload, challenge.difficulty || 4);
+    statusEl.textContent = '正在提交...';
+
+    const body = {
+      username,
+      initialWealth,
+      roundHistory: historyString,
+      challengeId: challenge.challengeId,
+      powHash: hash,
+      powNonce: nonce
+    };
+
+    const res = await fetch(`${API_BASE}/wealth-button/leaderboard/submit-v2`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const json = await res.json();
+
+    if (json.status === 200 && json.data) {
+      const { wealthRank, returnRank, total } = json.data;
+      let msg = '提交成功!';
+      if (wealthRank <= 10) msg += ` 资产榜第${wealthRank}名`;
+      if (returnRank <= 10) msg += ` 收益率榜第${returnRank}名`;
+      if (wealthRank > 10 && returnRank > 10) msg += ` 共${total}人参与`;
+      statusEl.textContent = msg;
+      statusEl.className = 'lb-status success';
+      loadLeaderboard();
+      setTimeout(closeLeaderboardModal, 2500);
+    } else {
+      if (res.status === 429 || json.status === 429) {
+        statusEl.textContent = '提交太频繁了，请稍后再试';
+      } else {
+        statusEl.textContent = json.message || '提交失败';
+      }
+      statusEl.className = 'lb-status error';
+    }
+  } catch (e) {
+    statusEl.textContent = '网络错误，请重试';
+    statusEl.className = 'lb-status error';
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+function loadLeaderboard() {
+  fetch(`${API_BASE}/wealth-button/leaderboard?limit=10`)
+    .then(r => r.json())
+    .then(json => {
+      if (json.status === 200 && json.data) {
+        leaderboardData = json.data;
+        renderLeaderboard();
+      }
+    })
+    .catch(() => {});
+}
+
+function renderLeaderboard() {
+  if (!leaderboardData) return;
+  renderLeaderboardTable('lbWealthBody', leaderboardData.byWealth, 'wealth');
+  renderLeaderboardTable('lbReturnBody', leaderboardData.byReturn, 'return');
+  const totalEl = document.getElementById('lbTotal');
+  if (totalEl) totalEl.textContent = leaderboardData.total;
+}
+
+function renderLeaderboardTable(tbodyId, items, type) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  if (!items || items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);padding:20px;">暂无数据</td></tr>';
+    return;
+  }
+  tbody.innerHTML = items.map((item, index) => {
+    const rankIcons = ['<i class="ti ti-trophy" style="color:#ffd700"></i>','<i class="ti ti-trophy" style="color:#c0c0c0"></i>','<i class="ti ti-trophy" style="color:#cd7f32"></i>'];
+    const rankIcon = item.rank <= 3 ? rankIcons[item.rank - 1] : `#${item.rank}`;
+    const mainVal = type === 'wealth' ? formatMoney(item.finalWealth) : formatReturnRate(item.returnRate);
+    const subVal = type === 'wealth' ? formatReturnRate(item.returnRate, 1) : formatMoney(item.finalWealth);
+    const loseCountValue = item.pressCount - item.winCount;
+    return `<tr>
+      <td class="lb-rank">${rankIcon}</td>
+      <td class="lb-name">${escapeHtml(item.username)}</td>
+      <td class="lb-main">${mainVal}</td>
+      <td class="lb-sub">${subVal}</td>
+      <td class="lb-detail">
+        <div>${item.pressCount}次 / 胜${item.winCount} 负${loseCountValue}</div>
+        <button class="lb-detail-btn" onclick="showLeaderboardReplay('${type}', ${index})">查看过程</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function replayStoredGame(startWealth, historyString) {
+  let wealthValue = startWealth;
+  let winCounter = 0;
+  const rounds = [];
+  for (let i = 0; i < historyString.length; i++) {
+    const roundChar = historyString.charAt(i);
+    const before = wealthValue;
+    const win = roundChar === 'W';
+    if (win) winCounter++;
+    wealthValue = win ? wealthValue * 9 : wealthValue * 0.1;
+    wealthValue -= FEE;
+    if (wealthValue < 0) wealthValue = 0;
+    rounds.push({ round: i + 1, win, before, after: wealthValue });
+  }
+  return {
+    rounds,
+    finalWealth: wealthValue,
+    pressCount: historyString.length,
+    winCount: winCounter,
+    loseCount: historyString.length - winCounter,
+    returnRate: (wealthValue / startWealth - 1) * 100
+  };
+}
+
+function showLeaderboardReplay(type, index) {
+  if (!leaderboardData) return;
+  const items = type === 'return' ? leaderboardData.byReturn : leaderboardData.byWealth;
+  const item = items && items[index];
+  if (!item) return;
+
+  const replay = replayStoredGame(item.initialWealth, item.roundHistory || '');
+  document.getElementById('lbReplayUser').textContent = item.username;
+  document.getElementById('lbReplayFinalWealth').textContent = formatMoney(item.finalWealth);
+  document.getElementById('lbReplayReturn').textContent = formatReturnRate(item.returnRate);
+  document.getElementById('lbReplayMeta').textContent = `${item.pressCount}次 / ${item.winCount}胜${item.pressCount - item.winCount}负`;
+
+  const seqEl = document.getElementById('lbReplaySequence');
+  seqEl.innerHTML = replay.rounds.map(function(entry) {
+    return `<span class="lb-replay-chip ${entry.win ? 'win' : 'lose'}">${entry.win ? 'x9' : 'x0.1'}</span>`;
+  }).join('');
+
+  const historyEl = document.getElementById('lbReplayHistory');
+  historyEl.innerHTML = replay.rounds.map(function(entry) {
+    return `<div class="lb-replay-row ${entry.win ? 'win' : 'lose'}">
+      <span>#${entry.round} ${entry.win ? 'x9' : 'x0.1'}</span>
+      <span>${formatMoney(entry.before)} → ${formatMoney(entry.after)}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('lbReplayModal').classList.add('show');
+}
+
+function closeReplayModal() {
+  document.getElementById('lbReplayModal').classList.remove('show');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function switchLeaderboardTab(tab) {
+  document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+  const target = document.querySelector(`.lb-tab[data-tab="${tab}"]`);
+  if (target) target.classList.add('active');
+  document.getElementById('lbWealthTable').style.display = tab === 'wealth' ? '' : 'none';
+  document.getElementById('lbReturnTable').style.display = tab === 'return' ? '' : 'none';
+}
 
 // ========== Game Over ==========
 function showGameOver() {
@@ -400,18 +611,15 @@ function shareResult() {
     navigator.clipboard.writeText(text).then(() => alert('已复制到剪贴板'));
   }
 }
-
 // ========== 背景粒子 ==========
 function initParticles() {
   const canvas = document.getElementById('particleCanvas');
   const ctx = canvas.getContext('2d');
   let particles = [];
   const COUNT = 50;
-
   function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
   resize();
   window.addEventListener('resize', resize);
-
   for (let i = 0; i < COUNT; i++) {
     particles.push({
       x: Math.random() * canvas.width,
@@ -422,7 +630,6 @@ function initParticles() {
       alpha: Math.random() * 0.25 + 0.08
     });
   }
-
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particles.forEach(p => {
@@ -454,9 +661,9 @@ function initParticles() {
   }
   draw();
 }
-
 // ========== Init ==========
 updateDisplay();
 loadGlobalStats();
+loadLeaderboard();
 initParticles();
 setInterval(loadGlobalStats, 3000);

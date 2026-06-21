@@ -1,0 +1,128 @@
+/* ── 密码泄露自查 ── */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);min-height:100vh;color:#e8e8e8;line-height:1.6}
+.container{max-width:880px;margin:0 auto;padding:20px}
+.header{text-align:center;padding:40px 20px 20px}
+.header h1{font-size:2rem;background:linear-gradient(135deg,#f5af19,#f12711,#f5af19);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 3s ease-in-out infinite}
+@keyframes shimmer{0%,100%{background-position:0% center}50%{background-position:200% center}}
+.header p{color:#94a3b8;margin-top:8px;font-size:0.95rem;max-width:640px;margin-left:auto;margin-right:auto}
+
+.section{background:rgba(255,255,255,0.05);border-radius:16px;padding:28px;margin-bottom:24px;border:1px solid rgba(255,255,255,0.08)}
+.section h2{font-size:1.25rem;margin-bottom:8px;color:#fbbf24;display:flex;align-items:center;gap:10px}
+.section-subtitle{color:#94a3b8;font-size:0.9rem;margin-bottom:18px}
+.hero{border-color:rgba(245,175,25,0.25);background:rgba(245,175,25,0.04)}
+
+/* ── 输入区 ── */
+.input-wrap{position:relative;display:flex;align-items:center}
+.input-wrap input{flex:1;background:rgba(0,0,0,0.3);border:2px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 52px 16px 20px;font-size:1.1rem;color:#fff;outline:none;transition:border-color 0.3s;font-family:inherit}
+.input-wrap input:focus{border-color:rgba(245,175,25,0.5)}
+.input-wrap input::placeholder{color:#64748b}
+.toggle-pwd{position:absolute;right:12px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1.2rem;padding:8px;transition:color 0.2s}
+.toggle-pwd:hover{color:#fbbf24}
+
+.safety-note{display:flex;align-items:flex-start;gap:10px;margin-top:14px;font-size:0.85rem;color:#90caf9;background:rgba(144,202,249,0.08);border:1px solid rgba(144,202,249,0.2);border-radius:10px;padding:12px 14px}
+.safety-note i{flex-shrink:0;margin-top:2px;font-size:1.1rem}
+.safety-note strong{color:#bbdefb}
+.safety-note.warn{color:#ffb4a8;background:rgba(255,107,107,0.08);border-color:rgba(255,107,107,0.25)}
+.safety-note.warn strong{color:#ff8a7a}
+
+/* ── 查询结果 ── */
+.result-box{margin-top:18px;border-radius:12px;padding:20px;text-align:center;border:1px solid transparent;animation:fadeIn 0.4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.result-box.pwned{background:rgba(255,107,107,0.1);border-color:rgba(255,107,107,0.35)}
+.result-box.safe{background:rgba(129,199,132,0.1);border-color:rgba(129,199,132,0.35)}
+.result-box.loading{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.12)}
+.result-verdict{font-size:1.35rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px}
+.result-box.pwned .result-verdict{color:#ff6b6b}
+.result-box.safe .result-verdict{color:#81c784}
+.result-detail{margin-top:8px;font-size:0.92rem;color:#cbd5e1}
+.result-detail .big-num{color:#fbbf24;font-weight:700;font-variant-numeric:tabular-nums;font-size:1.1rem}
+
+/* ── 预设密码 ── */
+.preset-hint{margin-top:22px;font-size:0.85rem;color:#888}
+.preset-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.preset-card{background:rgba(0,0,0,0.25);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color 0.2s,transform 0.1s}
+.preset-card:hover{border-color:rgba(245,175,25,0.5);transform:translateY(-2px)}
+.preset-card .pv{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.95rem;color:#e8e8e8;word-break:break-all}
+.preset-card .pl{font-size:0.75rem;color:#ce93d8;margin-top:4px}
+.preset-card .pn{font-size:0.72rem;color:#64748b;margin-top:2px}
+
+/* ── k-匿名流程 ── */
+.flow{display:flex;flex-direction:column;gap:4px}
+.flow-step{display:flex;align-items:center;gap:14px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;opacity:0.55;transition:opacity 0.4s,border-color 0.4s}
+.flow-step.active{opacity:1;border-color:rgba(255,255,255,0.18)}
+.flow-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.flow-icon.local{background:rgba(144,202,249,0.15);color:#90caf9}
+.flow-icon.send,.flow-icon.recv{background:rgba(245,175,25,0.15);color:#fbbf24}
+.flow-icon.match{background:rgba(129,199,132,0.15);color:#81c784}
+.flow-text{display:flex;flex-direction:column;min-width:0}
+.flow-text b{font-size:0.95rem;color:#e8e8e8}
+.flow-text em{font-size:0.8rem;color:#888;font-style:normal;margin-top:2px}
+.flow-text .mono{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:0.85rem;color:#90caf9;word-break:break-all;margin-top:3px}
+.flow-text .mono.gold{color:#fbbf24;font-weight:700}
+.flow-arrow{text-align:center;color:#475569;font-size:1rem;line-height:0.6}
+
+/* ── 体量图表与里程碑 ── */
+.chart-wrap{position:relative;height:260px;margin-bottom:18px}
+.milestone-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.milestone-item{background:rgba(0,0,0,0.2);border-radius:10px;padding:14px;border:1px solid rgba(255,255,255,0.06)}
+.milestone-item .my{font-size:0.8rem;color:#fbbf24;font-weight:700}
+.milestone-item .mc{font-size:1.3rem;font-weight:700;color:#e8e8e8;margin:2px 0}
+.milestone-item .mn{font-size:0.78rem;color:#888}
+
+.insight{display:flex;align-items:flex-start;gap:12px;margin-top:18px;background:rgba(206,147,216,0.08);border:1px solid rgba(206,147,216,0.22);border-radius:12px;padding:16px}
+.insight i{flex-shrink:0;color:#ce93d8;font-size:1.3rem;margin-top:2px}
+.insight b{color:#ce93d8}
+.gold{color:#fbbf24;font-weight:700}
+
+/* ── 下载入口 ── */
+.download-btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#f5af19,#f12711);color:#fff;text-decoration:none;font-weight:700;font-size:1rem;padding:14px 24px;border-radius:12px;transition:transform 0.15s,box-shadow 0.2s;margin-bottom:14px}
+.download-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(245,175,25,0.3)}
+
+/* ── 结尾 ── */
+.closing{text-align:center;background:rgba(245,175,25,0.05);border-color:rgba(245,175,25,0.2)}
+.closing p{font-size:1.05rem;color:#cbd5e1;line-height:1.8}
+.closing strong{color:#fbbf24}
+
+@media (max-width:600px){
+  .container{padding:14px}
+  .header{padding:28px 12px 12px}
+  .header h1{font-size:1.45rem}
+  .header p{font-size:0.88rem}
+  .section{padding:18px 14px;border-radius:14px;margin-bottom:18px}
+  .section h2{font-size:1.1rem}
+
+  /* 输入框：放大点按区域，关闭 iOS 自动缩放（字号≥16px） */
+  .input-wrap input{font-size:16px;padding:14px 48px 14px 16px}
+
+  /* 结果区 */
+  .result-verdict{font-size:1.15rem}
+  .result-detail{font-size:0.88rem}
+
+  /* 预设卡片：窄屏两列，撑满更好点 */
+  .preset-row{grid-template-columns:repeat(2,1fr);gap:8px}
+  .preset-card{padding:10px 12px}
+  .preset-card .pv{font-size:0.85rem}
+
+  /* k-匿名流程：图标缩小、长哈希强制换行不溢出 */
+  .flow-step{gap:10px;padding:12px}
+  .flow-icon{width:36px;height:36px;font-size:1.1rem}
+  .flow-text b{font-size:0.9rem}
+  .flow-text em{font-size:0.76rem}
+  .flow-text .mono{font-size:0.78rem}
+
+  /* 图表降高，避免占满整屏 */
+  .chart-wrap{height:220px}
+  .milestone-list{grid-template-columns:repeat(2,1fr);gap:8px}
+  .milestone-item .mc{font-size:1.1rem}
+
+  /* 下载按钮全宽，便于点按 */
+  .download-btn{display:flex;justify-content:center;width:100%;padding:14px 16px}
+
+  .closing p{font-size:0.98rem}
+}
+
+/* 触摸设备：去掉 hover 位移，避免点击后元素“卡”在抬起态 */
+@media (hover:none){
+  .preset-card:hover,.download-btn:hover{transform:none;box-shadow:none}
+}

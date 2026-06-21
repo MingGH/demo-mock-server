@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="输入密码，查它是否已出现在 RockYou2024 等真实泄露库中、被收录了多少次。采用 k-匿名机制：只发送哈希前 5 位，完整密码永不离开你的浏览器。">
+  <title>你的密码在册吗：黑客字典自查 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="engine.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-key"></i> 你的密码在册吗</h1>
+    <p>黑客几乎不靠"暴力穷举"，他靠的是一本记录了近百亿条真实密码的字典。输入密码，看它是否早已在册——以及被收录了多少次。</p>
+  </div>
+
+  <!-- ══════ 模块① 测一下你的密码（首屏 Hero） ══════ -->
+  <div class="section hero">
+    <h2><i class="ti ti-search"></i> 测一下你的密码</h2>
+    <p class="section-subtitle">输入任意密码，实时比对全球泄露库。完整密码不会离开你的浏览器——原理见下方第②块。</p>
+    <div class="input-wrap">
+      <input type="password" id="pwdInput" placeholder="输入密码开始自查..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <button class="toggle-pwd" id="togglePwd" type="button" title="显示/隐藏密码"><i class="ti ti-eye"></i></button>
+    </div>
+    <div class="safety-note">
+      <i class="ti ti-shield-lock"></i>
+      <span>采用 k-匿名（k-anonymity）机制：只把密码 SHA-1 哈希的<strong>前 5 位</strong>发往服务器，完整密码与完整哈希永远留在本地。</span>
+    </div>
+
+    <div id="resultBox" class="result-box" style="display:none">
+      <div class="result-verdict" id="resultVerdict"></div>
+      <div class="result-detail" id="resultDetail"></div>
+    </div>
+
+    <!-- 预设密码对比卡片 -->
+    <div class="preset-hint">或点一个示例，对比"伪复杂"密码与真随机长口令的命中差异：</div>
+    <div class="preset-row" id="presetRow"></div>
+  </div>
+
+  <!-- ══════ 模块② k-匿名过程可视化 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-eye-off"></i> 刚才发生了什么：为什么查泄露不用上传密码</h2>
+    <p class="section-subtitle">很多"密码检查站"会偷偷上传你的密码——而正确做法根本不需要。跟着下面 5 步看清楚。</p>
+    <div class="flow" id="flowSteps">
+      <div class="flow-step" data-step="1">
+        <div class="flow-icon local"><i class="ti ti-cpu"></i></div>
+        <div class="flow-text"><b>① 本地算哈希</b><span class="mono" id="flowHash">——</span><em>密码在你的浏览器里算成 SHA-1，不出本机</em></div>
+      </div>
+      <div class="flow-arrow"><i class="ti ti-chevron-down"></i></div>
+      <div class="flow-step" data-step="2">
+        <div class="flow-icon local"><i class="ti ti-scissors"></i></div>
+        <div class="flow-text"><b>② 只截前 5 位</b><span class="mono gold" id="flowPrefix">—————</span><em>剩下 35 位作为"后缀"留在本地</em></div>
+      </div>
+      <div class="flow-arrow"><i class="ti ti-chevron-down"></i></div>
+      <div class="flow-step" data-step="3">
+        <div class="flow-icon send"><i class="ti ti-send"></i></div>
+        <div class="flow-text"><b>③ 只发这 5 位出去</b><span class="mono gold" id="flowSent">—————</span><em>服务器无法从 5 位反推出你的密码</em></div>
+      </div>
+      <div class="flow-arrow"><i class="ti ti-chevron-down"></i></div>
+      <div class="flow-step" data-step="4">
+        <div class="flow-icon recv"><i class="ti ti-download"></i></div>
+        <div class="flow-text"><b>④ 拿回一批后缀</b><span class="mono" id="flowReturned">——</span><em>同前缀的几百条候选哈希一起返回，掩护你</em></div>
+      </div>
+      <div class="flow-arrow"><i class="ti ti-chevron-down"></i></div>
+      <div class="flow-step" data-step="5">
+        <div class="flow-icon match"><i class="ti ti-checkbox"></i></div>
+        <div class="flow-text"><b>⑤ 本地比对后缀</b><span class="mono" id="flowMatch">——</span><em>在你的浏览器里完成命中判断</em></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 模块③ 这本字典有多大 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-database"></i> 这本"字典"有多大</h2>
+    <p class="section-subtitle">黑客字典不是凭空生成的随机串，而是一代代真实泄露库的滚雪球。</p>
+    <div class="chart-wrap"><canvas id="milestoneChart"></canvas></div>
+    <div class="milestone-list" id="milestoneList"></div>
+    <div class="insight">
+      <i class="ti ti-bulb"></i>
+      <div>
+        <b>但"越大"不等于"越强"。</b>
+        安全研究机构 Specops 分析发现，RockYou2024 里约 <span class="gold">73%</span> 是纯数字串、哈希值之类的垃圾数据。
+        真正"合格"的黑客字典，不是越大越好，而是<strong>按真实使用频率排序</strong>——前 1000 条就能撞开惊人比例的账号。
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 模块④ 想要数据集？走官方渠道 ══════ -->
+  <div class="section">
+    <h2><i class="ti ti-license"></i> 想自己拿这份泄露哈希集？走官方渠道</h2>
+    <p class="section-subtitle">本页查询用的就是 Have I Been Pwned 的 Pwned Passwords。它官方开源、可离线下载，全部是 SHA-1 哈希（不含明文）。</p>
+    <a class="download-btn" href="https://haveibeenpwned.com/Passwords" target="_blank" rel="noopener noreferrer">
+      <i class="ti ti-external-link"></i> 前往 HIBP 官方 Pwned Passwords 下载页
+    </a>
+    <div class="safety-note warn">
+      <i class="ti ti-alert-triangle"></i>
+      <span><strong>切勿</strong>下载来路不明的"泄露密码包"，也不要把真实密码输入随机检查站——那些站点本身可能就在偷密码。认准官方、开源、只含哈希的来源。</span>
+    </div>
+  </div>
+
+  <!-- ══════ 结尾金句 ══════ -->
+  <div class="section closing">
+    <p>你以为密码是被算力"猜中"的，其实它是被一本字典"查到"的。<br>真正安全的密码，不是更复杂，而是<strong>从没在任何地方出现过</strong>。</p>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

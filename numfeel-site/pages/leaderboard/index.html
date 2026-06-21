@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="哪个 demo 最好玩？基于真实访问数据生成的热门排行榜，看看大家都在玩哪些交互实验。支持近 7 天、近 30 天、历史总榜三个口径。">
+  <title>热门排行榜：大家都在玩什么 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-trophy"></i> 热门排行榜</h1>
+    <p>哪个实验最好玩？这里不是编辑推荐，而是用真实访问数据说话——大家用脚投票的结果。</p>
+  </div>
+
+  <div class="card">
+    <p class="lead-note">下面的排名来自匿名访问统计，每小时更新一次。切换时间口径，看看长期常青榜和近期黑马有什么不同。</p>
+
+    <div class="range-tabs" id="rangeTabs">
+      <button class="range-tab active" type="button" data-range="last7Days">
+        <i class="ti ti-flame"></i> 近 7 天黑马
+      </button>
+      <button class="range-tab" type="button" data-range="last30Days">
+        <i class="ti ti-calendar-stats"></i> 近 30 天热门
+      </button>
+      <button class="range-tab" type="button" data-range="allTime">
+        <i class="ti ti-crown"></i> 历史总榜
+      </button>
+    </div>
+
+    <p class="range-hint" id="rangeHint">最近一周涨势最猛的实验，新上线的 demo 最容易在这里冒头。</p>
+
+    <div class="board" id="board">
+      <div class="board-loading">
+        <i class="ti ti-loader-2"></i> 正在加载排行榜…
+      </div>
+    </div>
+
+    <p class="board-updated" id="boardUpdated"></p>
+  </div>
+
+  <div class="card">
+    <h2 class="section-title"><i class="ti ti-info-circle"></i> 这个榜怎么排的</h2>
+    <ul class="explain-list">
+      <li><strong>数据来源</strong>：站点匿名访问量（页面浏览数 PV），不含任何个人信息。</li>
+      <li><strong>更新频率</strong>：后端每小时拉取一次并缓存，刷新页面即可看到最新快照。</li>
+      <li><strong>三个口径</strong>：近 7 天偏向「最近黑马」，历史总榜偏向「长期常青」，两者经常很不一样。</li>
+    </ul>
+  </div>
+</div>
+
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

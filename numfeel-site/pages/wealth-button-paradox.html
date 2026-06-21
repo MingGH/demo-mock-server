@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="50%概率翻9倍，50%概率变0.1，期望值为正但你敢按吗？用模拟揭示期望值陷阱，理解为什么正期望不一定赚钱。">
+  <meta name="description" content="50%概率翻9倍，50%概率变0.1，期望值为正但你敢按吗？由 ANU 量子真空涨落真随机数驱动，揭示期望值陷阱：为什么正期望不一定赚钱。">
   <title>50%财富按钮悖论 — 期望值陷阱 | 数字直觉</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
@@ -565,8 +565,342 @@
       20% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 0); }
       40% { clip-path: inset(80% 0 10% 0); transform: translate(3px, 0); }
       60% { clip-path: inset(40% 0 40% 0); transform: translate(-3px, 0); }
-      80% { clip-path: inset(30% 0 50% 0); transform: translate(3px, 0); }
+      80% { clip-path: inset(30% 0 50% 0); transform: translate(-3px, 0); }
       100% { clip-path: inset(10% 0 80% 0); transform: translate(-3px, 0); }
+    }
+
+    /* ===== 量子真空涨落：Hero Banner ===== */
+    .hero-banner {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      border-radius: 18px;
+      overflow: hidden;
+      margin-bottom: 22px;
+      border: 1px solid rgba(0, 212, 255, 0.25);
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45),
+                  inset 0 0 60px rgba(0, 212, 255, 0.08);
+      isolation: isolate;
+    }
+    .hero-banner::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url('https://p16-cc-image-search-sign-sg.ibyteimg.com/tos-alisg-i-h9hire4aei-sg/b34f56b63abb4ba7ba4c8e578fdd5e42~tplv-h9hire4aei-image.jpeg?rk3s=add9cc80&x-expires=1787190519&x-signature=l94CrGi3pvLkBBrVFWK4miBKtO8%3D');
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.85) contrast(1.15) saturate(1.2);
+      transform: scale(1.05);
+      animation: heroDrift 30s ease-in-out infinite alternate;
+      z-index: 0;
+    }
+    .hero-banner::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 30% 40%, rgba(0, 212, 255, 0.25), transparent 55%),
+        radial-gradient(ellipse at 75% 65%, rgba(168, 85, 247, 0.25), transparent 60%),
+        linear-gradient(180deg, rgba(10, 10, 26, 0.15) 0%, rgba(10, 10, 26, 0.85) 100%);
+      z-index: 1;
+      pointer-events: none;
+    }
+    @keyframes heroDrift {
+      from { transform: scale(1.05) translate3d(-2%, -1%, 0); }
+      to   { transform: scale(1.10) translate3d(2%, 1%, 0); }
+    }
+    .hero-content {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 18px;
+      gap: 8px;
+    }
+    .hero-title {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #00d4ff 0%, #ffffff 40%, #a855f7 100%);
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: heroTitleShift 6s ease-in-out infinite;
+      text-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+    }
+    @keyframes heroTitleShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    .hero-sub {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 0.9rem;
+      letter-spacing: 0.6px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+    .hero-tagline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(0, 212, 255, 0.45);
+      font-size: 0.72rem;
+      color: #00d4ff;
+      backdrop-filter: blur(6px);
+    }
+    .hero-tagline .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00d4ff;
+      box-shadow: 0 0 12px #00d4ff;
+      animation: pulseDot 1.6s ease-in-out infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.7); }
+    }
+
+    /* 量子真空涨落：粒子背景 */
+    .quantum-vacuum {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .quantum-vacuum canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .quantum-vacuum::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(0, 212, 255, 0.06), transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.06), transparent 40%);
+    }
+
+    .container { position: relative; z-index: 1; }
+
+    /* 量子熵源徽章 */
+    .quantum-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(168, 85, 247, 0.15));
+      border: 1px solid rgba(0, 212, 255, 0.35);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 0.78rem;
+      color: #d4f1ff;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 18px rgba(0, 212, 255, 0.18);
+    }
+    .quantum-badge .source-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00d4ff;
+      box-shadow: 0 0 10px #00d4ff;
+    }
+    .quantum-badge.fallback .source-dot {
+      background: #ff8c8c;
+      box-shadow: 0 0 10px #ff8c8c;
+    }
+    .quantum-badge.loading .source-dot {
+      background: #ffd700;
+      box-shadow: 0 0 10px #ffd700;
+      animation: pulseDot 1s linear infinite;
+    }
+
+    /* 量子熵流（滚动二进制） */
+    .entropy-stream {
+      position: relative;
+      overflow: hidden;
+      height: 22px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(0, 212, 255, 0.2);
+      margin-top: 12px;
+      mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+    }
+    .entropy-stream .track {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      white-space: nowrap;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #00d4ff;
+      text-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+      letter-spacing: 1px;
+      animation: entropyScroll 22s linear infinite;
+    }
+    @keyframes entropyScroll {
+      from { transform: translate(0, -50%); }
+      to   { transform: translate(-50%, -50%); }
+    }
+
+    /* 按钮 3D 倾斜 + 量子核心 */
+    .button-area {
+      perspective: 800px;
+    }
+    .big-button {
+      cursor: pointer;
+      transition: box-shadow 0.25s ease, filter 0.25s ease;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .big-button::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 60%;
+      height: 60%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.85) 0%, rgba(255, 215, 0, 0.4) 35%, transparent 70%);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      mix-blend-mode: screen;
+      animation: corePulse 2.4s ease-in-out infinite;
+    }
+    @keyframes corePulse {
+      0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(0.85); }
+      50%      { opacity: 1.00; transform: translate(-50%, -50%) scale(1.15); }
+    }
+    .quantum-rings {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 100%;
+      height: 100%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .quantum-rings span {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      animation: ringExpand 3s ease-out infinite;
+      opacity: 0;
+    }
+    .quantum-rings span:nth-child(2) { animation-delay: 1s; }
+    .quantum-rings span:nth-child(3) { animation-delay: 2s; }
+    @keyframes ringExpand {
+      0%   { transform: scale(0.55); opacity: 0.65; }
+      80%  { transform: scale(1.30); opacity: 0; }
+      100% { transform: scale(1.30); opacity: 0; }
+    }
+    .quantum-rings.quantum-paused span { animation-play-state: paused; }
+
+    /* 粒子层 */
+    .fx-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      overflow: hidden;
+    }
+    .fx-layer .particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      will-change: transform, opacity;
+    }
+    .fx-layer .particle.gold {
+      background: radial-gradient(circle, #fff7c2 0%, #ffd700 50%, transparent 70%);
+      box-shadow: 0 0 14px rgba(255, 215, 0, 0.8);
+    }
+    .fx-layer .particle.red {
+      background: radial-gradient(circle, #ffd0d0 0%, #ff6b6b 50%, transparent 70%);
+      box-shadow: 0 0 14px rgba(255, 107, 107, 0.8);
+    }
+    .fx-layer .particle.cyan {
+      background: radial-gradient(circle, #d8f7ff 0%, #00d4ff 50%, transparent 70%);
+      box-shadow: 0 0 14px rgba(0, 212, 255, 0.8);
+    }
+
+    /* 屏幕震动 */
+    body.shake-hard { animation: shakeHard 0.45s cubic-bezier(.36,.07,.19,.97) both; }
+    body.shake-soft { animation: shakeSoft 0.30s cubic-bezier(.36,.07,.19,.97) both; }
+    @keyframes shakeHard {
+      10%, 90% { transform: translate3d(-2px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-7px, 0, 0); }
+      40%, 60% { transform: translate3d(7px, 0, 0); }
+    }
+    @keyframes shakeSoft {
+      20%, 60% { transform: translate3d(-1px, 0, 0); }
+      40%, 80% { transform: translate3d(1px, 0, 0); }
+    }
+
+    /* 闪光脉冲 */
+    .flash-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      opacity: 0;
+    }
+    .flash-overlay.gold {
+      background: radial-gradient(circle at center, rgba(255, 215, 0, 0.45), transparent 60%);
+      animation: flashGold 0.6s ease-out forwards;
+    }
+    .flash-overlay.red {
+      background: radial-gradient(circle at center, rgba(255, 80, 80, 0.55), transparent 60%);
+      animation: flashRed 0.6s ease-out forwards;
+    }
+    @keyframes flashGold { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes flashRed  { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; } }
+
+    /* 亿万富翁彩带 */
+    .confetti-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 6;
+      overflow: hidden;
+    }
+    .confetti-layer .confetti {
+      position: absolute;
+      top: -20px;
+      width: 10px;
+      height: 16px;
+      will-change: transform, opacity;
+    }
+
+    /* 量子按钮启用/降级样式 */
+    .big-button.quantum-mode {
+      box-shadow:
+        0 10px 40px rgba(0, 212, 255, 0.4),
+        0 0 60px rgba(168, 85, 247, 0.25),
+        inset 0 -5px 20px rgba(0,0,0,0.2),
+        inset 0 5px 20px rgba(255,255,255,0.2);
+    }
+    .big-button.fallback-mode {
+      box-shadow:
+        0 10px 40px rgba(255, 107, 107, 0.4),
+        inset 0 -5px 20px rgba(0,0,0,0.2),
+        inset 0 5px 20px rgba(255,255,255,0.2);
+    }
+
+    @media (max-width: 600px) {
+      .hero-banner { height: 180px; }
+      .hero-title { font-size: 1.5rem; letter-spacing: 1px; }
     }
   </style>
 </head>

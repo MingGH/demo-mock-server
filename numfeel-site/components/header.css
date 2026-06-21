@@ -817,6 +817,74 @@ body.numfeel-shell.detail-page .story-note {
     grid-column: auto;
     margin-top: 0;
   }
+
+  /* ── 头部导航：5 项挤不进窄屏，缩小 padding、字号、间距；
+     nav 本身已有 overflow-x auto，超出部分横向滚动作为兜底 */
+  body.numfeel-shell .site-header-inner {
+    padding: 10px 12px;
+    gap: 8px;
+    border-radius: 22px;
+  }
+  body.numfeel-shell .logo-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+  }
+  body.numfeel-shell .logo-mark iconify-icon {
+    font-size: 18px;
+  }
+  body.numfeel-shell .logo-title {
+    font-size: 0.92rem;
+  }
+  body.numfeel-shell .logo-subtitle {
+    font-size: 10px;
+  }
+  body.numfeel-shell .site-header nav {
+    gap: 4px;
+    padding: 3px;
+    max-width: 100%;
+  }
+  body.numfeel-shell .site-header nav a {
+    padding: 7px 10px;
+    font-size: 12px;
+    gap: 5px;
+  }
+  body.numfeel-shell .site-header nav a iconify-icon {
+    font-size: 15px;
+  }
+  body.numfeel-shell .site-header nav a.active::after {
+    left: 10px;
+    right: 10px;
+    bottom: 3px;
+  }
+  body.numfeel-shell .share-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  /* 极窄屏：把"发给朋友"按钮的文字隐掉，只留图标，给 nav 让出宽度 */
+  body.numfeel-shell .share-btn span {
+    display: none;
+  }
+}
+
+/* ── 更窄屏：进一步压缩，让 5 项尽量一屏展示；溢出仍由 overflow-x auto 横向滚动 */
+@media (max-width: 480px) {
+  body.numfeel-shell .site-header-inner {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  /* 极窄屏隐藏副标题，把空间留给 nav 和按钮 */
+  body.numfeel-shell .logo-subtitle {
+    display: none;
+  }
+  body.numfeel-shell .site-header nav a {
+    padding: 6px 9px;
+    font-size: 11.5px;
+    gap: 4px;
+  }
+  body.numfeel-shell .share-btn {
+    padding: 7px 10px;
+  }
 }
 
 /* ── 相关推荐 footer ─────────────────────────────────────── */

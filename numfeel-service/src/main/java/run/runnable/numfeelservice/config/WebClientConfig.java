@@ -23,10 +23,19 @@ public class WebClientConfig {
     @Value("${ninja.api.base-url:https://api.996.ninja}")
     private String ninjaApiBaseUrl;
 
+    @Value("${umami.base-url:https://umami.runnable.run}")
+    private String umamiBaseUrl;
+
     /** 访问 api.996.ninja 的客户端（信任全部证书，带超时）。 */
     @Bean
     public WebClient ninjaApiWebClient() {
         return buildTrustAllClient().baseUrl(ninjaApiBaseUrl).build();
+    }
+
+    /** 访问 Umami 统计后台的客户端（信任全部证书，带超时）。 */
+    @Bean
+    public WebClient umamiWebClient() {
+        return buildTrustAllClient().baseUrl(umamiBaseUrl).build();
     }
 
     private WebClient.Builder buildTrustAllClient() {

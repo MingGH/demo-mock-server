@@ -62,6 +62,33 @@ function normalizeQuantumNumbers(rawNumbers, maxVal) {
   return rawNumbers.map(n => n / maxVal);
 }
 
+function buildChallengePayload(challengeId, username, initial, roundHistory) {
+  return challengeId + '|' + username + '|' + initial + '|' + roundHistory;
+}
+
+function replayStoredGame(initial, roundHistory, fee) {
+  fee = fee === undefined ? 5 : fee;
+  let wealth = initial;
+  let winCount = 0;
+  const rounds = [];
+  for (let i = 0; i < roundHistory.length; i++) {
+    const before = wealth;
+    const win = roundHistory.charAt(i) === 'W';
+    if (win) winCount++;
+    wealth = win ? wealth * 9 : wealth * 0.1;
+    wealth -= fee;
+    if (wealth < 0) wealth = 0;
+    rounds.push({ round: i + 1, win, before, after: wealth });
+  }
+  return {
+    rounds,
+    finalWealth: wealth,
+    winCount: winCount,
+    loseCount: roundHistory.length - winCount,
+    returnRate: (wealth / initial - 1) * 100
+  };
+}
+
 function runBatchSimulation(people, presses, initial) {
   const results = [];
   for (let i = 0; i < people; i++) {
@@ -118,6 +145,18 @@ assert(normalized[0] === 0, '0归一化为0');
 assert(approx(normalized[1], 0.5), '500000归一化为0.5');
 assert(approx(normalized[2], 0.999999), '999999归一化接近1');
 assert(normalized.every(v => v >= 0 && v < 1), '所有值在[0,1)范围内');
+
+console.log('\n=== 提交挑战载荷 ===');
+assert(buildChallengePayload('cid', 'alice', 100000, 'WWLL') === 'cid|alice|100000|WWLL', 'challenge payload 格式正确');
+
+console.log('\n=== 排行榜过程回放 ===');
+const replay = replayStoredGame(100000, 'WL');
+assert(replay.rounds.length === 2, '记录完整回放轮次');
+assert(replay.winCount === 1 && replay.loseCount === 1, '胜负统计正确');
+assert(approx(replay.finalWealth, 89994.5, 0.0001), '最终资产按服务器规则重放');
+assert(approx(replay.returnRate, -10.0055, 0.0001), '收益率按服务器规则重放');
+assert(replay.rounds[0].before === 100000, '首轮起点正确');
+assert(approx(replay.rounds[1].after, 89994.5, 0.0001), '末轮资产正确');
 
 console.log('\n=== 蒙特卡洛模拟 ===');
 const sim = runBatchSimulation(1000, 100, 100000);

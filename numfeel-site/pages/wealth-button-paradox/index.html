@@ -163,6 +163,62 @@
     </p>
   </div>
 
+  <!-- 排行榜 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-trophy"></i> 排行榜</div>
+    <p style="color: rgba(255,255,255,0.4); font-size: 0.8rem; margin-bottom: 12px;">
+      提交你的成绩上榜，同用户名只保留最佳记录。可点击详情查看该次路径；如果包含敏感内容会被删除。
+    </p>
+    <div class="lb-header">
+      <div class="lb-tabs">
+        <button class="lb-tab active" data-tab="wealth" onclick="switchLeaderboardTab('wealth')">
+          <i class="ti ti-diamond"></i> 资产排行
+        </button>
+        <button class="lb-tab" data-tab="return" onclick="switchLeaderboardTab('return')">
+          <i class="ti ti-trending-up"></i> 收益率排行
+        </button>
+      </div>
+      <button class="lb-submit-trigger" onclick="showLeaderboardSubmitModal()">
+        <i class="ti ti-upload"></i> 提交成绩
+      </button>
+    </div>
+    <div id="lbWealthTable">
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>用户名</th>
+            <th>资产</th>
+            <th>收益率</th>
+            <th>详情</th>
+          </tr>
+        </thead>
+        <tbody id="lbWealthBody">
+          <tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);padding:20px;">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="lbReturnTable" style="display:none;">
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>用户名</th>
+            <th>收益率</th>
+            <th>资产</th>
+            <th>详情</th>
+          </tr>
+        </thead>
+        <tbody id="lbReturnBody">
+          <tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);padding:20px;">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="text-align:center;color:rgba(255,255,255,0.25);font-size:0.72rem;margin-top:10px;">
+      共 <span id="lbTotal">0</span> 位玩家上榜
+    </p>
+  </div>
+
   <!-- 蒙特卡洛 -->
   <div class="panel">
     <div class="panel-title"><i class="ti ti-chart-histogram"></i> 蒙特卡洛模拟</div>
@@ -258,11 +314,74 @@
     <div class="modal-actions">
       <button class="modal-btn ghost" onclick="closeModal()">看看页面</button>
       <button class="modal-btn ghost" onclick="shareResult()">分享</button>
+      <button class="modal-btn gold" onclick="closeModal();showLeaderboardSubmitModal()">上排行榜</button>
       <button class="modal-btn primary" onclick="closeModalAndReset()">再来一局</button>
     </div>
   </div>
 </div>
 
+<!-- Leaderboard Submit Modal -->
+<div class="modal-backdrop" id="lbSubmitModal">
+  <div class="modal-box lb-modal">
+    <div class="modal-title" style="font-size:1.1rem;"><i class="ti ti-trophy" style="color:#ffd700"></i> 提交成绩</div>
+    <div class="lb-form">
+      <div class="lb-form-row">
+        <label>用户名（知乎ID或昵称，最多50字符）</label>
+        <input type="text" id="lbUsername" maxlength="50" placeholder="输入你的用户名" autocomplete="off">
+      </div>
+      <div class="lb-form-preview">
+        <div class="lb-preview-item">
+          <span class="lb-preview-label">当前资产</span>
+          <span class="lb-preview-val" id="lbPreviewWealth">-</span>
+        </div>
+        <div class="lb-preview-item">
+          <span class="lb-preview-label">收益率</span>
+          <span class="lb-preview-val" id="lbPreviewReturn">-</span>
+        </div>
+        <div class="lb-preview-item">
+          <span class="lb-preview-label">按下次数</span>
+          <span class="lb-preview-val" id="lbPreviewPresses">-</span>
+        </div>
+      </div>
+      <div id="lbSubmitStatus" class="lb-status"></div>
+      <div class="lb-form-actions">
+        <button class="modal-btn ghost" onclick="closeLeaderboardModal()">取消</button>
+        <button class="modal-btn primary" id="lbSubmitBtn" onclick="submitToLeaderboard()">提交</button>
+      </div>
+      <p class="lb-disclaimer">提交需完成工作量证明（约1-3秒），防止刷榜。含敏感字符的记录会被删除。</p>
+    </div>
+  </div>
+</div>
+
+<!-- Leaderboard Replay Modal -->
+<div class="modal-backdrop" id="lbReplayModal">
+  <div class="modal-box lb-replay-modal">
+    <div class="modal-title lb-replay-title"><i class="ti ti-route-alt-left" style="color:#ffd700"></i> 榜单过程</div>
+    <div class="lb-replay-summary">
+      <div class="modal-stat">
+        <div class="modal-stat-val" id="lbReplayUser">-</div>
+        <div class="modal-stat-label">用户名</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-val" id="lbReplayFinalWealth">-</div>
+        <div class="modal-stat-label">最终资产</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-val" id="lbReplayReturn">-</div>
+        <div class="modal-stat-label">收益率</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-val" id="lbReplayMeta">-</div>
+        <div class="modal-stat-label">按次 / 胜负</div>
+      </div>
+    </div>
+    <div class="lb-replay-sequence" id="lbReplaySequence"></div>
+    <div class="lb-replay-history" id="lbReplayHistory"></div>
+    <div class="modal-actions">
+      <button class="modal-btn ghost" onclick="closeReplayModal()">关闭</button>
+    </div>
+  </div>
+</div>
 <script src="game.js"></script>
 </body>
 </html>

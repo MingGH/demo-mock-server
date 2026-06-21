@@ -91,58 +91,6 @@ class WealthButtonControllerTest {
                 .jsonPath("$.data.billionaire").isEqualTo(3);
     }
 
-    // ── POST /wealth-button/leaderboard ───────────────────────────────
-
-    @Test
-    void leaderboard_submit_validBody_returnsOk() {
-        when(mockService.submitLeaderboard(anyString(), anyDouble(), anyDouble(),
-                anyInt(), anyInt(), anyInt(), anyString(), anyString(), anyString(), anyLong()))
-                .thenReturn(Mono.just(new WealthButtonLeaderboardSubmitResponse(1, 2, 10)));
-
-        client.post().uri("/wealth-button/leaderboard")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(validSubmitBody().toString())
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.status").isEqualTo(200)
-                .jsonPath("$.data.wealthRank").isEqualTo(1)
-                .jsonPath("$.data.returnRank").isEqualTo(2)
-                .jsonPath("$.data.total").isEqualTo(10);
-    }
-
-    @Test
-    void leaderboard_submit_nullBody_returns400() {
-        client.post().uri("/wealth-button/leaderboard")
-                .contentType(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isEqualTo(400);
-    }
-
-    @Test
-    void leaderboard_submit_missingUsername_returns400() {
-        ObjectNode body = validSubmitBody();
-        body.remove("username");
-
-        client.post().uri("/wealth-button/leaderboard")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body.toString())
-                .exchange()
-                .expectStatus().isEqualTo(400);
-    }
-
-    @Test
-    void leaderboard_submit_emptyUsername_returns400() {
-        ObjectNode body = validSubmitBody();
-        body.put("username", "  ");
-
-        client.post().uri("/wealth-button/leaderboard")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body.toString())
-                .exchange()
-                .expectStatus().isEqualTo(400);
-    }
-
     @Test
     void leaderboard_challenge_returnsData() {
         when(mockService.createLeaderboardChallenge())
@@ -250,18 +198,12 @@ class WealthButtonControllerTest {
     }
 
     @Test
-    void leaderboard_submit_serviceRejectsPoW_returns400() {
-        when(mockService.submitLeaderboard(anyString(), anyDouble(), anyDouble(),
-                anyInt(), anyInt(), anyInt(), anyString(), anyString(), anyString(), anyLong()))
-                .thenReturn(Mono.error(new IllegalArgumentException("PoW hash mismatch")));
-
+    void leaderboard_legacyPostEndpoint_isNotAvailable() {
         client.post().uri("/wealth-button/leaderboard")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(validSubmitBody().toString())
+                .bodyValue(validSubmitV2Body().toString())
                 .exchange()
-                .expectStatus().isEqualTo(400)
-                .expectBody()
-                .jsonPath("$.message").isEqualTo("PoW hash mismatch");
+                .expectStatus().isEqualTo(405);
     }
 
     // ── GET /wealth-button/leaderboard ────────────────────────────────
@@ -301,21 +243,6 @@ class WealthButtonControllerTest {
     }
 
     // ── 辅助方法 ──────────────────────────────────────────────────────
-
-    private ObjectNode validSubmitBody() {
-        ObjectNode body = MAPPER.createObjectNode();
-        body.put("username", "TestUser");
-        body.put("finalWealth", 500000.0);
-        body.put("returnRate", 400.0);
-        body.put("pressCount", 10);
-        body.put("winCount", 6);
-        body.put("initialWealth", 100000);
-        body.put("roundHistory", "WWWWWWLLLL");
-        body.put("powHash", "0000abcdef1234567890");
-        body.put("powNonce", "42");
-        body.put("timestamp", System.currentTimeMillis());
-        return body;
-    }
 
     private ObjectNode validSubmitV2Body() {
         ObjectNode body = MAPPER.createObjectNode();

@@ -60,12 +60,6 @@ class WealthButtonServiceTest {
     }
 
     @Test
-    void buildPowPayloadShouldMatchExpectedFormat() {
-        String payload = WealthButtonService.buildPowPayload("alice", 99999.5, 42, 1700000000000L);
-        assertEquals("alice|99999.5|42|1700000000000", payload);
-    }
-
-    @Test
     void createLeaderboardChallengeShouldReturnChallengeMetadata() {
         WealthButtonLeaderboardChallengeResponse challenge = service.createLeaderboardChallenge().block();
         assertNotNull(challenge);
@@ -120,21 +114,6 @@ class WealthButtonServiceTest {
 
         assertEquals("PoW already used", service.consumeAndValidateChallenge(
                 challenge.challengeId(), "testuser", 100000, "WWLL", proof[0], proof[1]));
-    }
-
-    @Test
-    void validatePowShouldAcceptValidLegacyProof() {
-        long now = System.currentTimeMillis();
-        String payload = WealthButtonService.buildPowPayload("testuser", 50000.0, 10, now);
-        String[] proof = bruteForcePow(payload);
-
-        String result = service.validatePow("testuser", 50000.0, 10, now, proof[0], proof[1]);
-        assertNull(result);
-    }
-
-    @Test
-    void validateGameDataShouldAcceptLegacyData() {
-        assertNull(service.validateGameData(5, 2, "WWLLL", 100000));
     }
 
     @Test
@@ -201,28 +180,6 @@ class WealthButtonServiceTest {
                 .expectErrorMatches(err -> err instanceof IllegalArgumentException
                         && "roundHistory continues after bankruptcy".equals(err.getMessage()))
                 .verify();
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void submitLeaderboardShouldKeepLegacyPathWorking() {
-        mockInsertSuccess();
-        WealthButtonLeaderboardEntry persisted = mkEntry(
-                "Alice", 500000D, 400D, 10, 6, 100000, "WWWWWWLLLL", 1000L);
-        mockSelectAllLeaderboard(List.of(persisted));
-
-        long now = System.currentTimeMillis();
-        String payload = WealthButtonService.buildPowPayload("Alice", 500000D, 10, now);
-        String[] proof = bruteForcePow(payload);
-
-        StepVerifier.create(service.submitLeaderboard("Alice", 500000D, 400D, 10, 6,
-                        100000, "WWWWWWLLLL", proof[0], proof[1], now))
-                .assertNext(resp -> {
-                    assertEquals(1, resp.wealthRank());
-                    assertEquals(1, resp.returnRank());
-                    assertEquals(1, resp.total());
-                })
-                .verifyComplete();
     }
 
     @Test

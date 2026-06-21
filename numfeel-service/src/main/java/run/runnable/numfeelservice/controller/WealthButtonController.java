@@ -1,7 +1,6 @@
 package run.runnable.numfeelservice.controller;
 
 import tools.jackson.databind.JsonNode;
-import run.runnable.numfeelservice.controller.dto.GameplayRequests.WealthButtonLeaderboardSubmitRequest;
 import run.runnable.numfeelservice.controller.dto.GameplayRequests.WealthButtonLeaderboardSubmitV2Request;
 import run.runnable.numfeelservice.service.WealthButtonService;
 import run.runnable.numfeelservice.web.ApiException;
@@ -25,7 +24,6 @@ import java.util.Set;
  * POST /wealth-button/incr?field=players|bankrupt|billionaire  — 递增统计
  * GET  /wealth-button/stats                                     — 查询聚合统计
  * GET  /wealth-button/leaderboard/challenge                     — 获取 PoW challenge
- * POST /wealth-button/leaderboard                               — 旧提交接口（已停用）
  * POST /wealth-button/leaderboard/submit-v2                     — 提交排行榜成绩
  * GET  /wealth-button/leaderboard                               — 查询排行榜 top10
  */
@@ -69,62 +67,6 @@ public class WealthButtonController {
                 .map(ApiResponse::ok)
                 .onErrorResume(err -> {
                     log.error("wealth-button stats error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
-    }
-
-    /**
-     * 旧排行榜提交接口，保留兼容已发布前端。
-     */
-    @PostMapping("/leaderboard")
-    public Mono<ResponseEntity<JsonNode>> submitLeaderboard(
-            @RequestBody(required = false) WealthButtonLeaderboardSubmitRequest request) {
-        if (request == null) {
-            throw ApiException.badRequest("Invalid JSON");
-        }
-
-        String username = normalizeUsername(request.username());
-        if (username == null || username.isBlank()) {
-            throw ApiException.badRequest("username is required");
-        }
-        if (username.length() > MAX_USERNAME_LENGTH) {
-            throw ApiException.badRequest("username too long (max " + MAX_USERNAME_LENGTH + ")");
-        }
-        if (request.finalWealth() == null || request.returnRate() == null) {
-            throw ApiException.badRequest("finalWealth and returnRate are required");
-        }
-        if (request.pressCount() == null || request.pressCount() <= 0) {
-            throw ApiException.badRequest("pressCount must be > 0");
-        }
-        if (request.winCount() == null || request.winCount() < 0) {
-            throw ApiException.badRequest("invalid winCount");
-        }
-        if (request.initialWealth() == null || request.initialWealth() <= 0) {
-            throw ApiException.badRequest("invalid initialWealth");
-        }
-        if (request.roundHistory() == null || request.roundHistory().isEmpty()) {
-            throw ApiException.badRequest("roundHistory is required");
-        }
-        if (request.powHash() == null || request.powHash().isBlank()) {
-            throw ApiException.badRequest("powHash is required");
-        }
-        if (request.powNonce() == null || request.powNonce().isBlank()) {
-            throw ApiException.badRequest("powNonce is required");
-        }
-        if (request.timestamp() == null) {
-            throw ApiException.badRequest("timestamp is required");
-        }
-
-        return service.submitLeaderboard(
-                        username, request.finalWealth(), request.returnRate(),
-                        request.pressCount(), request.winCount(), request.initialWealth(),
-                        request.roundHistory(), request.powHash(), request.powNonce(),
-                        request.timestamp())
-                .map(ApiResponse::ok)
-                .onErrorResume(IllegalArgumentException.class, err ->
-                        Mono.just(ApiResponse.error(400, err.getMessage())))
-                .onErrorResume(err -> {
-                    log.error("wealth-button leaderboard submit error", err);
                     return Mono.just(ApiResponse.error(500, "Internal error"));
                 });
     }

@@ -29,7 +29,7 @@ import java.util.UUID;
  * <p>
  * 功能：
  * 1. 聚合统计（参与人数/破产人数/资产过亿）— 替代外部 counter API
- * 2. 排行榜提交（含 PoW 验证 + 去重）
+ * 2. 排行榜提交（challenge + PoW 验证 + 去重）
  * 3. 排行榜查询（资产 top10 + 收益率 top10，按用户名去重）
  */
 @Service
@@ -99,39 +99,6 @@ public class WealthButtonService {
     // ── 排行榜相关 ────────────────────────────────────────────────────
 
     /**
-     * 提交排行榜成绩（旧接口，保留兼容）。
-     * <p>
-     * 旧接口仍信任客户端上传的结果值，仅用于兼容已发布前端；
-     * 新前端应使用 {@link #submitLeaderboardV2(String, int, String, String, String, String)}。
-     */
-    public Mono<WealthButtonLeaderboardSubmitResponse> submitLeaderboard(
-            String username, double finalWealth, double returnRate,
-            int pressCount, int winCount, int initialWealth,
-            String roundHistory, String powHash, String powNonce, long timestamp) {
-
-        String validationError = validatePow(username, finalWealth, pressCount, timestamp, powHash, powNonce);
-        if (validationError != null) {
-            return Mono.error(new IllegalArgumentException(validationError));
-        }
-
-        String dataError = validateGameData(pressCount, winCount, roundHistory, initialWealth);
-        if (dataError != null) {
-            return Mono.error(new IllegalArgumentException(dataError));
-        }
-
-        markPowUsed(powHash);
-
-        WealthButtonLeaderboardEntry entity = new WealthButtonLeaderboardEntry(
-                null, username, finalWealth, returnRate, pressCount, winCount,
-                initialWealth, roundHistory, powHash, powNonce, System.currentTimeMillis());
-
-        return template.insert(WealthButtonLeaderboardEntry.class)
-                .using(entity)
-                .then(ServiceSupport.selectAll(template, WealthButtonLeaderboardEntry.class))
-                .map(rows -> computeRanks(rows, username, finalWealth, returnRate));
-    }
-
-    /**
      * 生成一次性 challenge，供前端计算排行榜提交 PoW。
      *
      * @return challenge 信息
@@ -188,31 +155,6 @@ public class WealthButtonService {
     // ── PoW 验证 ──────────────────────────────────────────────────────
 
     /**
-     * 旧接口 PoW 校验。
-     *
-     * @return null 表示通过，否则返回错误信息
-     */
-    String validatePow(String username, double finalWealth, int pressCount,
-                       long timestamp, String powHash, String powNonce) {
-        long now = System.currentTimeMillis();
-        if (Math.abs(now - timestamp) > CHALLENGE_WINDOW_MS) {
-            return "PoW timestamp expired";
-        }
-        if (usedPowHashes.getIfPresent(powHash) != null) {
-            return "PoW already used";
-        }
-        String payload = buildPowPayload(username, finalWealth, pressCount, timestamp);
-        String expectedHash = sha256(payload + powNonce);
-        if (!expectedHash.equals(powHash)) {
-            return "PoW hash mismatch";
-        }
-        if (!meetsPoWDifficulty(powHash)) {
-            return "PoW difficulty not met";
-        }
-        return null;
-    }
-
-    /**
      * 消费并验证 challenge + PoW。
      *
      * @return null 表示通过，否则返回错误信息
@@ -252,11 +194,6 @@ public class WealthButtonService {
         return challengeId + "|" + username + "|" + initialWealth + "|" + roundHistory;
     }
 
-    /** 构建旧接口 PoW payload 字符串（与旧前端一致）。 */
-    static String buildPowPayload(String username, double finalWealth, int pressCount, long timestamp) {
-        return username + "|" + finalWealth + "|" + pressCount + "|" + timestamp;
-    }
-
     /** 检查哈希是否满足难度要求。 */
     static boolean meetsPoWDifficulty(String hash) {
         if (hash == null || hash.length() < POW_DIFFICULTY) return false;
@@ -284,26 +221,6 @@ public class WealthButtonService {
     }
 
     // ── 数据校验 ──────────────────────────────────────────────────────
-
-    /**
-     * 旧接口基本数据校验。
-     *
-     * @return null 表示通过，否则返回错误信息
-     */
-    String validateGameData(int pressCount, int winCount, String roundHistory, int initialWealth) {
-        if (pressCount <= 0) return "pressCount must be > 0";
-        if (winCount < 0 || winCount > pressCount) return "invalid winCount";
-        if (initialWealth <= 0) return "invalid initialWealth";
-        if (roundHistory == null || roundHistory.isEmpty()) return "roundHistory required";
-        if (roundHistory.length() != pressCount) return "roundHistory length mismatch";
-        for (int i = 0; i < roundHistory.length(); i++) {
-            char c = roundHistory.charAt(i);
-            if (c != 'W' && c != 'L') return "roundHistory contains invalid char";
-        }
-        long wCount = roundHistory.chars().filter(c -> c == 'W').count();
-        if (wCount != winCount) return "winCount mismatch with roundHistory";
-        return null;
-    }
 
     /**
      * 按服务器规则回放整局，重算结果。

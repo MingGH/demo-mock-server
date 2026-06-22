@@ -1,7 +1,7 @@
 // 测试文件：防复制实验室核心逻辑
 // 运行：node copy-protection.test.js
 
-const { TECHNIQUES, assessProtectionLevel, bypassDifficulty, simulateBattle, REAL_WORLD_CASES } = require('./engine.js');
+const { TECHNIQUES, assessProtectionLevel, bypassDifficulty, simulateBattle, REAL_WORLD_CASES, buildObfuscationMap, obfuscateText } = require('./engine.js');
 
 let passed = 0, failed = 0;
 function assert(condition, msg) {
@@ -88,6 +88,53 @@ REAL_WORLD_CASES.forEach(c => {
     assert(TECHNIQUES.some(t => t.id === tid), `${c.site} 引用的技术 ${tid} 存在`);
   });
 });
+
+console.log('--- buildObfuscationMap ---');
+
+// 基本映射：每个字符都应被映射为同组中的另一个字符
+var sampleText = '测试文字abc';
+var map = buildObfuscationMap(sampleText);
+assert(typeof map === 'object', '返回映射对象');
+var allMapped = true;
+for (var key in map) {
+  if (map[key] === key) { allMapped = false; break; }
+}
+assert(allMapped, '没有字符映射到自身');
+
+// CJK 字符映射到 CJK，ASCII 映射到 ASCII
+var cjkKey = '测';
+var asciiKey = 'a';
+assert(map[cjkKey] && map[cjkKey].charCodeAt(0) >= 0x4E00, 'CJK 字符映射到 CJK 范围');
+assert(map[asciiKey] && map[asciiKey].charCodeAt(0) >= 0x20 && map[asciiKey].charCodeAt(0) <= 0x7E, 'ASCII 字符映射到 ASCII 范围');
+
+// 空文本
+var emptyMap = buildObfuscationMap('');
+assert(typeof emptyMap === 'object' && Object.keys(emptyMap).length === 0, '空文本返回空映射');
+
+// 重复字符不重复入列
+var dupMap = buildObfuscationMap('aaabbb');
+assert(Object.keys(dupMap).length === 2, '重复字符去重: ' + Object.keys(dupMap).length + ' 个');
+
+console.log('--- obfuscateText ---');
+
+// 替换后长度不变
+var obfuscated = obfuscateText(sampleText, map);
+assert(obfuscated.length === sampleText.length, '替换后长度不变: ' + obfuscated.length);
+
+// 替换后内容确实不同
+assert(obfuscated !== sampleText, '替换后内容不同');
+
+// 未在映射表中的字符保持原样
+var partialMap = { 'a': 'b' };
+var partialResult = obfuscateText('a中', partialMap);
+assert(partialResult === 'b中', '未映射字符保持原样');
+
+// 同一映射两次替换应还原（旋转替换的逆是再旋转 n-1 次，两次还原需 n=2）
+var twoCharMap = buildObfuscationMap('ab');
+var twoCharOriginal = 'ab';
+var twoCharOnce = obfuscateText(twoCharOriginal, twoCharMap);
+var twoCharTwice = obfuscateText(twoCharOnce, twoCharMap);
+assert(twoCharTwice === twoCharOriginal, '两字符旋转两次还原原文');
 
 console.log(`\n📊 结果: ${passed} 通过, ${failed} 失败\n`);
 process.exit(failed > 0 ? 1 : 0);

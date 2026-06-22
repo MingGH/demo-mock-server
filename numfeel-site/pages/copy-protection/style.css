@@ -91,6 +91,24 @@ body {
   z-index: 10; cursor: not-allowed;
 }
 
+/* ── Font obfuscation ── */
+.demo-text.font-obfuscated {
+  color: transparent;
+  position: relative;
+  background: rgba(224, 64, 251, 0.05);
+  border-radius: 4px;
+}
+.demo-text.font-obfuscated::after {
+  content: attr(data-display);
+  position: absolute;
+  left: 0; top: 0; width: 100%;
+  color: #e8e8e8;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  pointer-events: none;
+}
+
 /* ── Protection meter ── */
 .meter-container {
   display: flex; align-items: center; gap: 16px; margin-bottom: 20px;

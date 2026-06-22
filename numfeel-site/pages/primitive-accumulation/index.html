@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="同样的工资，有启动资本的人 20 年后净资产是底层的几十倍。模拟房租抽水、消费贷利滚利、突发冲击，把'原始积累'失败的数学原因摆在你面前。">
+  <title>原始资本积累模拟器 — 为什么底层穷人攒不下钱 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="./engine.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Hero 区域 -->
+    <div class="hero">
+      <div class="hero-content">
+        <h1><i class="ti ti-tower"></i> 原始资本积累模拟器</h1>
+        <p>同样的月薪，有启动资本的人 vs 没有启动资本的人<br>20 年后净资产差距到底有多大？</p>
+        <div class="hero-tag">拖滑块，看两条人生曲线如何分叉</div>
+      </div>
+    </div>
+
+    <!-- 预设场景 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-bolt"></i> 一键体验</div>
+      <div class="card-desc">从下面选一个典型剧本，立刻看到两人的净资产分叉。</div>
+      <div class="preset-row" id="presets"></div>
+    </div>
+
+    <!-- 参数调节 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-adjustments"></i> 自定义参数</div>
+      <div class="card-desc">两人月薪、工资增长、冲击概率完全一致，区别只在<strong style="color:#ffd700">是否有启动资本</strong>。</div>
+      <div class="slider-grid">
+        <div class="slider-group">
+          <label>月薪 <span id="v-salary">8000 元</span></label>
+          <input type="range" id="salary" min="3000" max="30000" step="500" value="8000">
+        </div>
+        <div class="slider-group">
+          <label>模拟年数 <span id="v-years">20 年</span></label>
+          <input type="range" id="years" min="5" max="40" step="1" value="20">
+        </div>
+        <div class="slider-group">
+          <label>启动资本 <span id="v-startCapital">100 万</span></label>
+          <input type="range" id="startCapital" min="0" max="3000000" step="100000" value="1000000">
+        </div>
+        <div class="slider-group">
+          <label>房租占工资比例 <span id="v-rentRatio">40%</span></label>
+          <input type="range" id="rentRatio" min="0.1" max="0.6" step="0.05" value="0.4">
+        </div>
+        <div class="slider-group">
+          <label>必要生活支出比例 <span id="v-livingRatio">45%</span></label>
+          <input type="range" id="livingRatio" min="0.2" max="0.7" step="0.05" value="0.45">
+        </div>
+        <div class="slider-group">
+          <label>每年冲击概率 <span id="v-shockProb">30%</span></label>
+          <input type="range" id="shockProb" min="0" max="0.8" step="0.05" value="0.3">
+        </div>
+        <div class="slider-group">
+          <label>冲击规模（月薪倍数） <span id="v-shockSize">6 倍</span></label>
+          <input type="range" id="shockSize" min="1" max="20" step="1" value="6">
+        </div>
+        <div class="slider-group">
+          <label>消费贷年化 <span id="v-loanRate">36%</span></label>
+          <input type="range" id="loanRate" min="0.05" max="0.5" step="0.01" value="0.36">
+        </div>
+        <div class="slider-group">
+          <label>资产年化收益 <span id="v-assetRate">6%</span></label>
+          <input type="range" id="assetRate" min="0" max="0.12" step="0.01" value="0.06">
+        </div>
+        <div class="slider-group">
+          <label>工资年增长 <span id="v-salaryGrowth">3%</span></label>
+          <input type="range" id="salaryGrowth" min="0" max="0.1" step="0.005" value="0.03">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="run-btn"><i class="ti ti-player-play"></i> 运行模拟</button>
+        <button class="btn btn-secondary" id="reshuffle-btn"><i class="ti ti-dice"></i> 换一种运气</button>
+      </div>
+    </div>
+
+    <!-- 结果 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-chart-line"></i> 净资产对比</div>
+      <div class="gap-banner">
+        <div>最终差距</div>
+        <div class="big" id="gap-value">—</div>
+        <div class="small" id="gap-ratio">—</div>
+      </div>
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:#ff6b6b"></span>底层（无启动资本）</span>
+        <span><span class="legend-dot" style="background:#ffd700"></span>有启动资本者</span>
+      </div>
+      <div class="chart-box"><canvas id="chart-networth"></canvas></div>
+    </div>
+
+    <!-- 详细统计 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-receipt"></i> 钱都被谁拿走了</div>
+      <div class="card-desc">两条人生剧本的资金流向拆解。</div>
+      <div class="result-grid">
+        <div class="result-item red">
+          <div class="label">底层累计交租</div>
+          <div class="value" id="r-poor-rent">—</div>
+          <div class="sub">这些钱给了房东 / 资产持有者</div>
+        </div>
+        <div class="result-item red">
+          <div class="label">底层累计利息</div>
+          <div class="value" id="r-poor-interest">—</div>
+          <div class="sub">网贷 / 消费贷 / 高息周转</div>
+        </div>
+        <div class="result-item blue">
+          <div class="label">底层最终净资产</div>
+          <div class="value" id="r-poor-final">—</div>
+          <div class="sub">忙了 N 年剩下这点</div>
+        </div>
+        <div class="result-item green">
+          <div class="label">富人最终净资产</div>
+          <div class="value" id="r-rich-final">—</div>
+          <div class="sub">主要来自资产升值</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 资产构成 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-pie-chart"></i> 底层这些年的资金流向</div>
+      <div class="card-desc">绿色 = 自己留下的，红色 = 被抽走的。比例越悬殊，越能说明「为什么攒不下钱」。</div>
+      <div class="flow-split">
+        <div class="flow-img">
+          <img src="images/bleeding-wallet.jpg" alt="钱袋被多根管道抽走的概念图">
+        </div>
+        <div class="flow-chart"><canvas id="chart-flow"></canvas></div>
+      </div>
+    </div>
+
+    <!-- 解读 -->
+    <div class="card">
+      <div class="card-title"><i class="ti ti-bulb"></i> 模型告诉了我们什么</div>
+      <div class="insight">
+        <p><span class="tag warn">现象</span>有启动资本的人净资产是底层的 <strong id="t-ratio">—</strong>。两人月薪一模一样，运气一模一样，差距完全来自<strong>是否拥有可升值的资产</strong>。</p>
+        <p><span class="tag info">机制 1</span>底层每月把 <strong id="t-rent-pct">—</strong> 的收入交给房东。这笔钱不仅不能积累，还在反向给资产持有者加杠杆——租金就是资产收益的现金流。</p>
+        <p><span class="tag info">机制 2</span>遇到一次医疗/失业/家庭冲击，底层只能借年化 <strong id="t-loan">—</strong> 的高息贷。利息越滚越大，下次再有冲击就更没有抵御能力。</p>
+        <p><span class="tag info">机制 3</span>富人的资产以年化 <strong id="t-asset">—</strong> 复利增长，工资只是零花钱。底层的"努力"完全跑不赢这条复利曲线。</p>
+        <p class="conclusion">
+          <span class="tag">结论</span>所谓"原始资本积累"，本质是<strong>从 0 跨到 C₀</strong> 的那一步。一旦跨过去，C₀ 自己会增长；没跨过去，工资再高也只是被结构性抽水的输入端。
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

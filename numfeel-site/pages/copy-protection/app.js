@@ -4,7 +4,7 @@
  */
 
 (function () {
-  const { TECHNIQUES, assessProtectionLevel, bypassDifficulty, simulateBattle, REAL_WORLD_CASES } = window.CopyProtectionEngine;
+  const { TECHNIQUES, assessProtectionLevel, bypassDifficulty, simulateBattle, REAL_WORLD_CASES, buildObfuscationMap, obfuscateText } = window.CopyProtectionEngine;
 
   /* ── Tab 切换 ── */
   window.switchTab = function (tabId) {
@@ -98,6 +98,19 @@
       const s = demoArea.querySelector('svg');
       if (s) s.remove();
     }
+
+    // Reset font obfuscation
+    var ftEl = demoArea.querySelector('.demo-text');
+    if (ftEl && ftEl.classList.contains('font-obfuscated')) {
+      ftEl.textContent = ftEl.getAttribute('data-display') || demoText;
+      ftEl.removeAttribute('data-display');
+      ftEl.classList.remove('font-obfuscated');
+    }
+
+    // Apply font obfuscation (skip if canvas-render is active — text is hidden anyway)
+    if (activeDefenses.includes('font-obfuscation') && !activeDefenses.includes('canvas-render')) {
+      renderFontObfuscated();
+    }
   }
 
   function renderCanvas() {
@@ -151,6 +164,17 @@
     demoArea.appendChild(svg);
   }
 
+  function renderFontObfuscated() {
+    var textEl = demoArea.querySelector('.demo-text');
+    if (!textEl) return;
+    var map = buildObfuscationMap(demoText);
+    var garbled = obfuscateText(demoText, map);
+    textEl.setAttribute('data-display', demoText);
+    textEl.textContent = garbled;
+    textEl.classList.add('font-obfuscated');
+    logAction('字体混淆已启用：显示正常，复制得到乱码');
+  }
+
   function updateProtectionMeter() {
     const enabled = TECHNIQUES.filter(t => activeDefenses.includes(t.id));
     const assessment = assessProtectionLevel(enabled);
@@ -170,6 +194,8 @@
         e.clipboardData.setData('text/plain', text + '\n\n——来源：防复制演示页 禁止转载');
       }
       logAction('copy 事件被拦截');
+    } else if (activeDefenses.includes('font-obfuscation')) {
+      logAction('字体混淆：复制内容为编码后的字符，粘贴后将显示乱码');
     }
   }
   function contextmenuHandler(e) {

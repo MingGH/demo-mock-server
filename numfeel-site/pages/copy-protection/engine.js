@@ -128,6 +128,56 @@ function simulateBattle(defenses, attackerLevel) {
   return { results, allBypassed, totalTime };
 }
 
+/* ── 字体混淆：字符旋转映射 ── */
+
+/**
+ * 构建字符替换映射表。
+ * 将文本中出现的不重复字符按 Unicode 范围分组（CJK / ASCII），
+ * 在同一组内做旋转替换：char[i] → char[(i+1) % n]。
+ * 同组字符宽度相近，保证替换后布局不错位。
+ * @param {string} text - 原始文本
+ * @returns {Object.<string,string>} 字符 → 替换字符的映射
+ */
+function buildObfuscationMap(text) {
+  var cjkChars = [];
+  var asciiChars = [];
+  var seen = {};
+  for (var i = 0; i < text.length; i++) {
+    var ch = text[i];
+    if (seen[ch]) continue;
+    seen[ch] = true;
+    var code = text.charCodeAt(i);
+    if (code >= 0x4E00 && code <= 0x9FFF) {
+      cjkChars.push(ch);
+    } else if (code >= 0x20 && code <= 0x7E) {
+      asciiChars.push(ch);
+    }
+  }
+  var map = {};
+  for (var j = 0; j < cjkChars.length; j++) {
+    map[cjkChars[j]] = cjkChars[(j + 1) % cjkChars.length];
+  }
+  for (var k = 0; k < asciiChars.length; k++) {
+    map[asciiChars[k]] = asciiChars[(k + 1) % asciiChars.length];
+  }
+  return map;
+}
+
+/**
+ * 根据映射表对文本进行字符替换。
+ * @param {string} text - 原始文本
+ * @param {Object.<string,string>} map - buildObfuscationMap 返回的映射
+ * @returns {string} 替换后的文本
+ */
+function obfuscateText(text, map) {
+  var result = '';
+  for (var i = 0; i < text.length; i++) {
+    var ch = text[i];
+    result += map[ch] || ch;
+  }
+  return result;
+}
+
 /* ── 真实网站防复制方案统计（基于公开信息） ── */
 const REAL_WORLD_CASES = [
   { site: '知乎', techniques: ['css-user-select', 'js-clipboard-replace'], note: '复制内容自动追加来源链接和作者信息' },
@@ -148,6 +198,8 @@ if (typeof window !== 'undefined') {
     bypassDifficulty,
     simulateBattle,
     REAL_WORLD_CASES,
+    buildObfuscationMap,
+    obfuscateText,
   };
 }
 if (typeof module !== 'undefined' && module.exports) {
@@ -157,5 +209,7 @@ if (typeof module !== 'undefined' && module.exports) {
     bypassDifficulty,
     simulateBattle,
     REAL_WORLD_CASES,
+    buildObfuscationMap,
+    obfuscateText,
   };
 }

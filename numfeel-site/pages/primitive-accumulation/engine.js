@@ -44,14 +44,14 @@ function simulatePerson(opts) {
   var salary        = opts.salary;
   var years         = opts.years;
   var startCapital  = opts.startCapital || 0;
-  var rentRatio     = opts.rentRatio != null ? opts.rentRatio : 0.4;
+  var rentRatio     = opts.rentRatio != null ? opts.rentRatio : 0.2;
   var livingRatio   = opts.livingRatio != null ? opts.livingRatio : 0.45;
   var savingsRate   = opts.savingsRate != null ? opts.savingsRate : 0.02;
   var assetRate     = opts.assetRate != null ? opts.assetRate : 0.06;
   var inflation     = opts.inflation != null ? opts.inflation : 0.03;
   var shockProb     = opts.shockProb != null ? opts.shockProb : 0.3;
   var shockSize     = opts.shockSize != null ? opts.shockSize : 6;
-  var loanRate      = opts.loanRate != null ? opts.loanRate : 0.36;
+  var loanRate      = opts.loanRate != null ? opts.loanRate : 0.16;
   var salaryGrowth  = opts.salaryGrowth != null ? opts.salaryGrowth : 0.03;
   var rand          = opts.rand || Math.random;
 
@@ -164,7 +164,7 @@ function compareTwoLives(opts) {
 
   var poorOpts = mergeOpts(opts, {
     startCapital: 0,
-    rentRatio: opts.rentRatio != null ? opts.rentRatio : 0.4,
+    rentRatio: opts.rentRatio != null ? opts.rentRatio : 0.2,
     rand: randA
   });
   var richOpts = mergeOpts(opts, {

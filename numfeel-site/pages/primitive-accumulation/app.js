@@ -9,14 +9,14 @@ var STATE = {
     salary: 8000,
     years: 20,
     startCapital: 1000000,
-    rentRatio: 0.4,
+    rentRatio: 0.2,
     livingRatio: 0.45,
     savingsRate: 0.02,
     assetRate: 0.06,
     inflation: 0.03,
     shockProb: 0.3,
     shockSize: 6,
-    loanRate: 0.36,
+    loanRate: 0.16,
     salaryGrowth: 0.03
   }
 };
@@ -27,28 +27,28 @@ var PRESETS = [
     title: '小城打工人',
     desc: '月薪 5000，租房，遇病靠借',
     icon: 'ti-home',
-    params: { salary: 5000, years: 20, startCapital: 800000, rentRatio: 0.35, livingRatio: 0.5, shockProb: 0.35, shockSize: 8, loanRate: 0.36, salaryGrowth: 0.025, assetRate: 0.05 }
+    params: { salary: 5000, years: 20, startCapital: 800000, rentRatio: 0.2, livingRatio: 0.5, shockProb: 0.35, shockSize: 8, loanRate: 0.16, salaryGrowth: 0.025, assetRate: 0.05 }
   },
   {
     id: 'big-city',
     title: '一线城市青年',
-    desc: '月薪 15000，但一半交房租',
+    desc: '月薪 15000，租房压力大',
     icon: 'ti-building-skyscraper',
-    params: { salary: 15000, years: 20, startCapital: 2500000, rentRatio: 0.5, livingRatio: 0.35, shockProb: 0.25, shockSize: 6, loanRate: 0.24, salaryGrowth: 0.04, assetRate: 0.06 }
+    params: { salary: 15000, years: 20, startCapital: 2500000, rentRatio: 0.25, livingRatio: 0.35, shockProb: 0.25, shockSize: 6, loanRate: 0.16, salaryGrowth: 0.04, assetRate: 0.06 }
   },
   {
     id: 'hard-mode',
     title: '地狱难度',
     desc: '冲击频发，全靠网贷',
     icon: 'ti-alert-octagon',
-    params: { salary: 6000, years: 20, startCapital: 1000000, rentRatio: 0.4, livingRatio: 0.5, shockProb: 0.6, shockSize: 10, loanRate: 0.36, salaryGrowth: 0.02, assetRate: 0.07 }
+    params: { salary: 6000, years: 20, startCapital: 1000000, rentRatio: 0.25, livingRatio: 0.5, shockProb: 0.6, shockSize: 10, loanRate: 0.16, salaryGrowth: 0.02, assetRate: 0.07 }
   },
   {
     id: 'easy-mode',
     title: '运气满分',
     desc: '基本无冲击的理想剧本',
     icon: 'ti-mood-happy',
-    params: { salary: 10000, years: 20, startCapital: 1500000, rentRatio: 0.35, livingRatio: 0.4, shockProb: 0.05, shockSize: 4, loanRate: 0.18, salaryGrowth: 0.05, assetRate: 0.06 }
+    params: { salary: 10000, years: 20, startCapital: 1500000, rentRatio: 0.2, livingRatio: 0.4, shockProb: 0.05, shockSize: 4, loanRate: 0.12, salaryGrowth: 0.05, assetRate: 0.06 }
   }
 ];
 

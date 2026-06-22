@@ -146,7 +146,8 @@ public class LeaderboardService {
      * <ul>
      *   <li>仅保留 {@code /pages/} 下的真实 demo（排除首页 {@code /}、其他根路径）；</li>
      *   <li>去除 {@code #} 之后的片段（如 {@code #google_vignette} 广告变体）；</li>
-     *   <li>归一化为前端 demos.json 的 href 形式（去掉前导 {@code /}）；</li>
+     *   <li>归一化为前端 demos.json 的匹配 key（去前导 {@code /}、去尾部 {@code /}、
+     *       去 {@code .html} 后缀并转小写）；</li>
      *   <li>合并归一化后相同的路径浏览量；</li>
      *   <li>按浏览量降序，取前 {@link #TOP_LIMIT} 条。</li>
      * </ul>
@@ -177,12 +178,13 @@ public class LeaderboardService {
      * 归一化单个路径。非 {@code /pages/} 下的路径返回 null（被剔除）。
      *
      * @param path 原始路径
-     * @return 归一化后的 href（如 {@code pages/xxx} 或 {@code pages/xxx/}），不合格返回 null
+     * @return 归一化后的 path key（如 {@code pages/xxx}），不合格返回 null
      */
     static String normalizePath(String path) {
         if (path == null || path.isBlank()) {
             return null;
         }
+        path = path.trim();
         // 去掉 query / hash 片段
         int hashIdx = path.indexOf('#');
         if (hashIdx != -1) {
@@ -196,7 +198,15 @@ public class LeaderboardService {
         if (!path.startsWith("/pages/") || path.length() <= "/pages/".length()) {
             return null;
         }
-        // 去前导斜杠，与 demos.json 的 href 对齐（pages/xxx.html 或 pages/xxx/）
-        return path.substring(1);
+        // 去前导斜杠，与 demos.json / 前端 normalizeKey 的匹配规则对齐
+        path = path.substring(1);
+        if (path.endsWith(".html")) {
+            path = path.substring(0, path.length() - 5);
+        }
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        path = path.toLowerCase();
+        return path.isBlank() || "pages".equals(path) ? null : path;
     }
 }

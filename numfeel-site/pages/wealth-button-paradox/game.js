@@ -9,6 +9,7 @@ let wealthHistory = [100000];
 let chart = null;
 let distChart = null;
 const FEE = 5;
+const CHINESE_LARGE_UNITS = ['', '万', '亿', '万亿', '京', '垓', '秭', '穰', '沟', '涧', '正', '载', '极', '恒河沙', '阿僧祇', '那由他', '不可思议', '无量', '大数'];
 // ========== 量子随机数 ==========
 const API_BASE = 'https://numfeel-api.996.ninja';
 let useQuantum = false;
@@ -151,13 +152,46 @@ function resetGame() {
   renderHistory();
 }
 // ========== 显示 ==========
+function getChineseLargeUnit(groupIndex) {
+  if (groupIndex <= 0) return '';
+  const maxIndex = CHINESE_LARGE_UNITS.length - 1;
+  if (groupIndex <= maxIndex) return CHINESE_LARGE_UNITS[groupIndex];
+  const whole = Math.floor(groupIndex / maxIndex);
+  const rest = groupIndex % maxIndex;
+  return (rest > 0 ? CHINESE_LARGE_UNITS[rest] : '') + CHINESE_LARGE_UNITS[maxIndex].repeat(whole);
+}
+
+function formatLargeChineseNumber(abs, digits) {
+  const groupIndex = Math.floor(Math.log10(abs) / 4);
+  const scaled = abs / Math.pow(10, groupIndex * 4);
+  let fractionDigits = digits === undefined ? 2 : digits;
+  if (scaled >= 1000) fractionDigits = 0;
+  else if (scaled >= 100) fractionDigits = Math.min(fractionDigits, 1);
+  return {
+    text: scaled.toFixed(fractionDigits) + getChineseLargeUnit(groupIndex),
+    exponent: groupIndex * 4
+  };
+}
+
+function formatPowerHint(num) {
+  const abs = Math.abs(num);
+  if (!Number.isFinite(abs) || abs < 1e4) return '';
+  return `约 10 的 ${Math.floor(Math.log10(abs))} 次方量级`;
+}
+
 function formatMoney(num) {
-  if (num >= 1e12) return '\u00a5' + (num/1e12).toFixed(2) + '万亿';
-  if (num >= 1e8) return '\u00a5' + (num/1e8).toFixed(2) + '亿';
-  if (num >= 1e4) return '\u00a5' + (num/1e4).toFixed(2) + '万';
-  if (num >= 1) return '\u00a5' + num.toFixed(2);
-  if (num >= 0.01) return '\u00a5' + num.toFixed(4);
-  return '\u00a5' + num.toExponential(2);
+  if (!Number.isFinite(num)) return num < 0 ? '-\u00a5∞' : '\u00a5∞';
+  const sign = num < 0 ? '-' : '';
+  const abs = Math.abs(num);
+  if (abs >= 1e4) return sign + '\u00a5' + formatLargeChineseNumber(abs, 2).text;
+  if (abs >= 1) return sign + '\u00a5' + abs.toFixed(2);
+  if (abs >= 0.01) return sign + '\u00a5' + abs.toFixed(4);
+  return sign + '\u00a5' + abs.toExponential(2);
+}
+
+function formatMoneyHint(num) {
+  const powerHint = formatPowerHint(num);
+  return powerHint ? `${formatMoney(num)} · ${powerHint}` : formatMoney(num);
 }
 function updateDisplay() {
   const wealthEl = document.getElementById('currentWealth');
@@ -167,7 +201,7 @@ function updateDisplay() {
   else if (wealth < initialWealth) wealthEl.classList.add('warning');
   const returnRate = ((wealth / initialWealth - 1) * 100);
   const returnEl = document.getElementById('totalReturn');
-  returnEl.textContent = (returnRate >= 0 ? '+' : '') + returnRate.toFixed(2) + '%';
+  returnEl.textContent = formatReturnRate(returnRate);
   returnEl.className = 'hud-value ' + (returnRate >= 0 ? 'safe' : 'danger');
   document.getElementById('pressCount').textContent = pressCount;
   document.getElementById('winCount').textContent = winCount;
@@ -347,7 +381,16 @@ function getRoundHistoryString() {
 
 function formatReturnRate(value, digits) {
   const fixedDigits = digits === undefined ? 2 : digits;
-  return (value >= 0 ? '+' : '') + value.toFixed(fixedDigits) + '%';
+  if (!Number.isFinite(value)) return value < 0 ? '-∞%' : '+∞%';
+  const sign = value >= 0 ? '+' : '-';
+  const abs = Math.abs(value);
+  if (abs >= 1e4) return sign + formatLargeChineseNumber(abs, fixedDigits).text + '%';
+  return sign + abs.toFixed(fixedDigits) + '%';
+}
+
+function formatReturnRateHint(value, digits) {
+  const powerHint = formatPowerHint(value);
+  return powerHint ? `${formatReturnRate(value, digits)} · ${powerHint}` : formatReturnRate(value, digits);
 }
 
 async function sha256(message) {
@@ -511,12 +554,14 @@ function renderLeaderboardTable(tbodyId, items, type) {
     const rankIcon = item.rank <= 3 ? rankIcons[item.rank - 1] : `#${item.rank}`;
     const mainVal = type === 'wealth' ? formatMoney(item.finalWealth) : formatReturnRate(item.returnRate);
     const subVal = type === 'wealth' ? formatReturnRate(item.returnRate, 1) : formatMoney(item.finalWealth);
+    const mainHint = type === 'wealth' ? formatMoneyHint(item.finalWealth) : formatReturnRateHint(item.returnRate);
+    const subHint = type === 'wealth' ? formatReturnRateHint(item.returnRate, 1) : formatMoneyHint(item.finalWealth);
     const loseCountValue = item.pressCount - item.winCount;
     return `<tr>
       <td class="lb-rank">${rankIcon}</td>
       <td class="lb-name">${escapeHtml(item.username)}</td>
-      <td class="lb-main">${mainVal}</td>
-      <td class="lb-sub">${subVal}</td>
+      <td class="lb-main" title="${escapeAttr(mainHint)}">${mainVal}</td>
+      <td class="lb-sub" title="${escapeAttr(subHint)}">${subVal}</td>
       <td class="lb-detail">
         <div>${item.pressCount}次 / 胜${item.winCount} 负${loseCountValue}</div>
         <button class="lb-detail-btn" onclick="showLeaderboardReplay('${type}', ${index})">查看过程</button>
@@ -557,9 +602,20 @@ function showLeaderboardReplay(type, index) {
 
   const replay = replayStoredGame(item.initialWealth, item.roundHistory || '');
   document.getElementById('lbReplayUser').textContent = item.username;
-  document.getElementById('lbReplayFinalWealth').textContent = formatMoney(item.finalWealth);
-  document.getElementById('lbReplayReturn').textContent = formatReturnRate(item.returnRate);
+  const finalWealthEl = document.getElementById('lbReplayFinalWealth');
+  finalWealthEl.textContent = formatMoney(item.finalWealth);
+  finalWealthEl.title = formatMoneyHint(item.finalWealth);
+  const replayReturnEl = document.getElementById('lbReplayReturn');
+  replayReturnEl.textContent = formatReturnRate(item.returnRate);
+  replayReturnEl.title = formatReturnRateHint(item.returnRate);
   document.getElementById('lbReplayMeta').textContent = `${item.pressCount}次 / ${item.winCount}胜${item.pressCount - item.winCount}负`;
+  const magnitudeEl = document.getElementById('lbReplayMagnitude');
+  const magnitudeHints = [];
+  const wealthPowerHint = formatPowerHint(item.finalWealth);
+  const returnPowerHint = formatPowerHint(item.returnRate);
+  if (wealthPowerHint) magnitudeHints.push(`资产${wealthPowerHint}`);
+  if (returnPowerHint) magnitudeHints.push(`收益率${returnPowerHint}`);
+  magnitudeEl.textContent = magnitudeHints.length > 0 ? magnitudeHints.join('，') : '当前结果还没到需要额外标注量级的程度';
 
   const seqEl = document.getElementById('lbReplaySequence');
   seqEl.innerHTML = replay.rounds.map(function(entry) {
@@ -587,6 +643,15 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function escapeAttr(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function switchLeaderboardTab(tab) {
   document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
   const target = document.querySelector(`.lb-tab[data-tab="${tab}"]`);
@@ -598,7 +663,7 @@ function switchLeaderboardTab(tab) {
 // ========== Game Over ==========
 function showGameOver() {
   document.getElementById('finalWealth').textContent = formatMoney(wealth);
-  document.getElementById('finalReturn').textContent = ((wealth / initialWealth - 1) * 100).toFixed(2) + '%';
+  document.getElementById('finalReturn').textContent = formatReturnRate((wealth / initialWealth - 1) * 100);
   document.getElementById('finalPresses').textContent = pressCount;
   document.getElementById('finalFees').textContent = formatMoney(pressCount * FEE);
   document.getElementById('gameOverModal').classList.add('show');
@@ -606,7 +671,7 @@ function showGameOver() {
 function closeModal() { document.getElementById('gameOverModal').classList.remove('show'); }
 function closeModalAndReset() { closeModal(); resetGame(); }
 function shareResult() {
-  const text = `50%财富按钮 | 按了${pressCount}次，最终资产${formatMoney(wealth)}，收益率${((wealth/initialWealth-1)*100).toFixed(1)}%。\nhttps://numfeel.996.ninja/pages/wealth-button-paradox/`;
+  const text = `50%财富按钮 | 按了${pressCount}次，最终资产${formatMoney(wealth)}，收益率${formatReturnRate((wealth / initialWealth - 1) * 100, 1)}。\nhttps://numfeel.996.ninja/pages/wealth-button-paradox/`;
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(() => alert('已复制到剪贴板'));
   }

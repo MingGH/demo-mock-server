@@ -9,8 +9,11 @@ import run.runnable.numfeelservice.controller.dto.GameplayResponses.WealthButton
 import run.runnable.numfeelservice.controller.dto.GameplayResponses.WealthButtonStatsResponse;
 import run.runnable.numfeelservice.model.GameplayEntities.WealthButtonLeaderboardEntry;
 import run.runnable.numfeelservice.model.GameplayEntities.WealthButtonStats;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -35,6 +38,8 @@ import java.util.UUID;
 @Service
 public class WealthButtonService {
 
+    private static final Logger log = LoggerFactory.getLogger(WealthButtonService.class);
+
     /** 单局固定手续费。 */
     static final double ROUND_FEE = 5D;
 
@@ -47,6 +52,15 @@ public class WealthButtonService {
     /** 紧凑历史最大长度，避免超长 payload。 */
     private static final int MAX_ROUND_HISTORY_LENGTH = 2000;
 
+    /** 允许的最长连胜数；达到该阈值视为作弊。 */
+    static final int MAX_WIN_STREAK = 30;
+
+    /** 同一用户名提交冷却时间：10 秒。 */
+    static final long SUBMIT_COOLDOWN_MS = 10_000L;
+
+    /** 定时清理周期：每 5 分钟。 */
+    private static final long CLEAN_FIXED_DELAY_MS = 5 * 60 * 1000L;
+
     /** 已使用 PoW 哈希缓存（防重放）。 */
     private final Cache<String, Boolean> usedPowHashes = Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofMillis(CHALLENGE_WINDOW_MS))
@@ -56,6 +70,12 @@ public class WealthButtonService {
     /** challenge 缓存。 */
     private final Cache<String, ChallengeState> challengeCache = Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofMillis(CHALLENGE_WINDOW_MS))
+            .maximumSize(10000)
+            .build();
+
+    /** 用户名最近一次提交时间（毫秒），用于实现 10 秒冷却。 */
+    private final Cache<String, Long> lastSubmitAt = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMillis(SUBMIT_COOLDOWN_MS * 2))
             .maximumSize(10000)
             .build();
 
@@ -120,6 +140,15 @@ public class WealthButtonService {
             String username, int initialWealth, String roundHistory,
             String challengeId, String powHash, String powNonce) {
 
+        // 同一用户名 10 秒冷却，防止短时间内重复刷榜
+        long now = System.currentTimeMillis();
+        Long lastAt = lastSubmitAt.getIfPresent(username);
+        if (lastAt != null && now - lastAt < SUBMIT_COOLDOWN_MS) {
+            long waitMs = SUBMIT_COOLDOWN_MS - (now - lastAt);
+            return Mono.error(new IllegalArgumentException(
+                    "submit too frequent, please retry after " + Math.max(1, waitMs / 1000) + "s"));
+        }
+
         GameReplayResult replayResult;
         try {
             replayResult = replayGame(initialWealth, roundHistory);
@@ -133,11 +162,12 @@ public class WealthButtonService {
             return Mono.error(new IllegalArgumentException(validationError));
         }
         markPowUsed(powHash);
+        lastSubmitAt.put(username, now);
 
         WealthButtonLeaderboardEntry entity = new WealthButtonLeaderboardEntry(
                 null, username, replayResult.finalWealth(), replayResult.returnRate(),
                 replayResult.pressCount(), replayResult.winCount(), initialWealth,
-                roundHistory, powHash, powNonce, System.currentTimeMillis());
+                roundHistory, powHash, powNonce, now);
 
         return template.insert(WealthButtonLeaderboardEntry.class)
                 .using(entity)
@@ -242,6 +272,7 @@ public class WealthButtonService {
 
         double wealth = initialWealth;
         int winCount = 0;
+        int curStreak = 0;
         for (int i = 0; i < roundHistory.length(); i++) {
             if (wealth < 1D) {
                 throw new IllegalArgumentException("roundHistory continues after bankruptcy");
@@ -250,8 +281,14 @@ public class WealthButtonService {
             if (round == 'W') {
                 wealth *= 9D;
                 winCount++;
+                curStreak++;
+                if (curStreak >= MAX_WIN_STREAK) {
+                    throw new IllegalArgumentException(
+                            "win streak exceeds limit (" + MAX_WIN_STREAK + ")");
+                }
             } else if (round == 'L') {
                 wealth *= 0.1D;
+                curStreak = 0;
             } else {
                 throw new IllegalArgumentException("roundHistory contains invalid char");
             }
@@ -264,6 +301,30 @@ public class WealthButtonService {
         int pressCount = roundHistory.length();
         double returnRate = (wealth / initialWealth - 1D) * 100D;
         return new GameReplayResult(pressCount, winCount, wealth, returnRate);
+    }
+
+    /**
+     * 判断历史中是否存在长度 ≥ {@link #MAX_WIN_STREAK} 的连续 W 子串。
+     *
+     * @param roundHistory 紧凑历史
+     * @return 含有超长连胜返回 true
+     */
+    static boolean hasMaxWinStreak(String roundHistory) {
+        if (roundHistory == null || roundHistory.length() < MAX_WIN_STREAK) {
+            return false;
+        }
+        int curStreak = 0;
+        for (int i = 0; i < roundHistory.length(); i++) {
+            if (roundHistory.charAt(i) == 'W') {
+                curStreak++;
+                if (curStreak >= MAX_WIN_STREAK) {
+                    return true;
+                }
+            } else {
+                curStreak = 0;
+            }
+        }
+        return false;
     }
 
     // ── 私有辅助方法 ──────────────────────────────────────────────────
@@ -345,6 +406,43 @@ public class WealthButtonService {
                 rank, e.username(), e.finalWealth(), e.returnRate(),
                 e.pressCount(), e.winCount(), e.initialWealth(),
                 e.roundHistory(), e.createdAt());
+    }
+
+    // ── 定时清理 ──────────────────────────────────────────────────────
+
+    /**
+     * 定时清理排行榜中含 {@value #MAX_WIN_STREAK} 连胜的作弊记录。
+     * <p>
+     * 启动 1 分钟后首次执行，之后每 5 分钟扫描一次。
+     */
+    @Scheduled(initialDelay = 60_000L, fixedDelay = CLEAN_FIXED_DELAY_MS)
+    public void cleanSuspiciousLeaderboardEntries() {
+        ServiceSupport.selectAll(template, WealthButtonLeaderboardEntry.class)
+                .flatMap(rows -> {
+                    List<Long> idsToDelete = new ArrayList<>();
+                    for (WealthButtonLeaderboardEntry r : rows) {
+                        if (r.id() != null && hasMaxWinStreak(r.roundHistory())) {
+                            idsToDelete.add(r.id());
+                        }
+                    }
+                    if (idsToDelete.isEmpty()) {
+                        return Mono.just(0L);
+                    }
+                    String placeholders = String.join(",",
+                            java.util.Collections.nCopies(idsToDelete.size(), "?"));
+                    String sql = "DELETE FROM wealth_button_leaderboard WHERE id IN (" + placeholders + ")";
+                    DatabaseClient.GenericExecuteSpec spec = databaseClient.sql(sql);
+                    for (int i = 0; i < idsToDelete.size(); i++) {
+                        spec = spec.bind(i, idsToDelete.get(i));
+                    }
+                    return spec.fetch().rowsUpdated()
+                            .doOnNext(n -> log.info("wealth-button cleanup deleted {} suspicious entries: ids={}",
+                                    n, idsToDelete));
+                })
+                .subscribe(
+                        n -> {},
+                        err -> log.warn("wealth-button cleanup failed: {}", err.getMessage())
+                );
     }
 
     record ChallengeState(long expiresAt) {

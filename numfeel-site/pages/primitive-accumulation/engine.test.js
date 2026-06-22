@@ -42,10 +42,10 @@ console.log('\n[simulatePerson]');
   var noShockRng = function () { return 1.0; };
   var res = simulatePerson({
     salary: 8000, years: 10, startCapital: 0,
-    rentRatio: 0.4, livingRatio: 0.45,
+    rentRatio: 0.2, livingRatio: 0.45,
     savingsRate: 0.02, inflation: 0.03,
     shockProb: 0.3, shockSize: 6,
-    loanRate: 0.36, salaryGrowth: 0.03,
+    loanRate: 0.16, salaryGrowth: 0.03,
     rand: noShockRng
   });
   assert('netWorth 长度 = 月数', res.netWorth.length === 120);
@@ -61,7 +61,7 @@ console.log('\n[启动资本优势]');
   var noShockRng = function () { return 1.0; };
   var poor = simulatePerson({
     salary: 8000, years: 10, startCapital: 0,
-    rentRatio: 0.4, livingRatio: 0.45, rand: noShockRng
+    rentRatio: 0.2, livingRatio: 0.45, rand: noShockRng
   });
   var rich = simulatePerson({
     salary: 8000, years: 10, startCapital: 1000000,
@@ -78,8 +78,8 @@ console.log('\n[高息债务效应]');
   var alwaysShockRng = function () { return 0.0; };
   var res = simulatePerson({
     salary: 5000, years: 10, startCapital: 0,
-    rentRatio: 0.4, livingRatio: 0.45,
-    shockProb: 0.3, shockSize: 6, loanRate: 0.36,
+    rentRatio: 0.2, livingRatio: 0.45,
+    shockProb: 0.3, shockSize: 6, loanRate: 0.16,
     rand: alwaysShockRng
   });
   assert('持续冲击下背上了高息债务', res.debt[res.debt.length - 1] > 0 || res.totalInterest > 0);
@@ -93,10 +93,10 @@ console.log('\n[compareTwoLives]');
   var opts = {
     salary: 8000, years: 20,
     startCapital: 1000000,
-    rentRatio: 0.4, livingRatio: 0.45,
+    rentRatio: 0.2, livingRatio: 0.45,
     assetRate: 0.06, savingsRate: 0.02,
     shockProb: 0.3, shockSize: 6,
-    loanRate: 0.36, salaryGrowth: 0.03,
+    loanRate: 0.16, salaryGrowth: 0.03,
     seed: 42
   };
   var a = compareTwoLives(opts);
@@ -114,8 +114,8 @@ console.log('\n[多次试验趋势]');
   for (var s = 1; s <= trials; s++) {
     var r = compareTwoLives({
       salary: 8000, years: 20, startCapital: 1000000,
-      rentRatio: 0.4, livingRatio: 0.45,
-      shockProb: 0.3, shockSize: 6, loanRate: 0.36, seed: s
+      rentRatio: 0.2, livingRatio: 0.45,
+      shockProb: 0.3, shockSize: 6, loanRate: 0.16, seed: s
     });
     if (r.rich.finalNetWorth > r.poor.finalNetWorth) richWins++;
   }

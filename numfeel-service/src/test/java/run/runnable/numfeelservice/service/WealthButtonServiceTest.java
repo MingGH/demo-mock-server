@@ -142,6 +142,64 @@ class WealthButtonServiceTest {
     }
 
     @Test
+    void replayGameShouldRejectExcessiveWinStreak() {
+        String history = "W".repeat(WealthButtonService.MAX_WIN_STREAK);
+        IllegalArgumentException error = assertThrows(
+                IllegalArgumentException.class,
+                () -> service.replayGame(1, history));
+        assertTrue(error.getMessage().startsWith("win streak exceeds limit"));
+    }
+
+    @Test
+    void hasMaxWinStreakShouldDetectLongStreak() {
+        String streak = "W".repeat(WealthButtonService.MAX_WIN_STREAK);
+        assertTrue(WealthButtonService.hasMaxWinStreak(streak));
+        assertTrue(WealthButtonService.hasMaxWinStreak("LL" + streak + "LL"));
+    }
+
+    @Test
+    void hasMaxWinStreakShouldReturnFalseForShortOrInterruptedStreak() {
+        assertFalse(WealthButtonService.hasMaxWinStreak(null));
+        assertFalse(WealthButtonService.hasMaxWinStreak(""));
+        assertFalse(WealthButtonService.hasMaxWinStreak("W".repeat(WealthButtonService.MAX_WIN_STREAK - 1)));
+        // 中间出现 L 打断，未达到阈值
+        String interrupted = ("W".repeat(WealthButtonService.MAX_WIN_STREAK - 1))
+                + "L"
+                + ("W".repeat(WealthButtonService.MAX_WIN_STREAK - 1));
+        assertFalse(WealthButtonService.hasMaxWinStreak(interrupted));
+    }
+
+    @Test
+    void submitLeaderboardV2ShouldRejectWhenWithinCooldown() {
+        WealthButtonLeaderboardChallengeResponse challenge1 = service.createLeaderboardChallenge().block();
+        assertNotNull(challenge1);
+        String payload1 = WealthButtonService.buildChallengePowPayload(
+                challenge1.challengeId(), "Carol", 100000, "WL");
+        String[] proof1 = bruteForcePow(payload1);
+
+        mockInsertSuccess();
+        mockSelectAllLeaderboard(List.of());
+
+        StepVerifier.create(service.submitLeaderboardV2("Carol", 100000, "WL",
+                        challenge1.challengeId(), proof1[0], proof1[1]))
+                .expectNextCount(1)
+                .verifyComplete();
+
+        // 立即第二次提交应被冷却拦截
+        WealthButtonLeaderboardChallengeResponse challenge2 = service.createLeaderboardChallenge().block();
+        assertNotNull(challenge2);
+        String payload2 = WealthButtonService.buildChallengePowPayload(
+                challenge2.challengeId(), "Carol", 100000, "WL");
+        String[] proof2 = bruteForcePow(payload2);
+
+        StepVerifier.create(service.submitLeaderboardV2("Carol", 100000, "WL",
+                        challenge2.challengeId(), proof2[0], proof2[1]))
+                .expectErrorMatches(err -> err instanceof IllegalArgumentException
+                        && err.getMessage().startsWith("submit too frequent"))
+                .verify();
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void submitLeaderboardV2ShouldPersistServerRecomputedValues() {
         mockInsertSuccess();

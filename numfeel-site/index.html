@@ -65,6 +65,17 @@
     .search-icon { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); font-size: 1.3rem; color: #667eea; }
     .search-stats { text-align: center; color: rgba(255,255,255,0.8); margin-top: 12px; font-size: 0.9rem; }
     .search-stats span { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; margin-left: 8px; }
+    .random-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 16px; padding: 8px 18px;
+      border: 2px solid rgba(255,255,255,0.3); border-radius: 50px;
+      background: rgba(255,255,255,0.1); color: white;
+      font-size: 0.9rem; cursor: pointer; user-select: none;
+      transition: all 0.3s;
+    }
+    .random-btn:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.5); }
+    .random-btn:active { background: rgba(255,255,255,0.95); color: #667eea; border-color: white; }
+    .random-btn i { font-size: 1rem; }
     .no-results { display: none; text-align: center; color: white; padding: 60px 20px; width: 100%; }
     .no-results.show { display: block; }
     .no-results .icon { font-size: 4rem; margin-bottom: 20px; }
@@ -86,6 +97,9 @@
       共 <span id="totalCount">0</span> 个演示
       <span id="matchCount" style="display: none;">找到 0 个</span>
     </div>
+    <button class="random-btn" id="randomBtn" onclick="handleRandomJump()">
+      <i class="ti ti-dice"></i> 随机跳转
+    </button>
   </div>
 
   <div class="filter-tags" id="filterTags"></div>
@@ -121,6 +135,17 @@
       renderCategories();
       document.getElementById('totalCount').textContent =
         demosData.categories.reduce((s, c) => s + c.demos.length, 0);
+    }
+
+    function handleRandomJump() {
+      if (!demosData) return;
+      const allDemos = [];
+      demosData.categories.forEach(cat => {
+        cat.demos.forEach(d => allDemos.push(d.href));
+      });
+      if (allDemos.length === 0) return;
+      const randomHref = allDemos[Math.floor(Math.random() * allDemos.length)];
+      window.location.href = randomHref;
     }
 
     function renderFilterTags() {

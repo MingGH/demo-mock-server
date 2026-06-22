@@ -18,13 +18,52 @@ function approx(a, b, eps) {
 
 // ===== 被测逻辑 =====
 
+const CHINESE_LARGE_UNITS = ['', '万', '亿', '万亿', '京', '垓', '秭', '穰', '沟', '涧', '正', '载', '极', '恒河沙', '阿僧祇', '那由他', '不可思议', '无量', '大数'];
+
+function getChineseLargeUnit(groupIndex) {
+  if (groupIndex <= 0) return '';
+  const maxIndex = CHINESE_LARGE_UNITS.length - 1;
+  if (groupIndex <= maxIndex) return CHINESE_LARGE_UNITS[groupIndex];
+  const whole = Math.floor(groupIndex / maxIndex);
+  const rest = groupIndex % maxIndex;
+  return (rest > 0 ? CHINESE_LARGE_UNITS[rest] : '') + CHINESE_LARGE_UNITS[maxIndex].repeat(whole);
+}
+
+function formatLargeChineseNumber(abs, digits) {
+  const groupIndex = Math.floor(Math.log10(abs) / 4);
+  const scaled = abs / Math.pow(10, groupIndex * 4);
+  let fractionDigits = digits === undefined ? 2 : digits;
+  if (scaled >= 1000) fractionDigits = 0;
+  else if (scaled >= 100) fractionDigits = Math.min(fractionDigits, 1);
+  return {
+    text: scaled.toFixed(fractionDigits) + getChineseLargeUnit(groupIndex),
+    exponent: groupIndex * 4
+  };
+}
+
+function formatPowerHint(num) {
+  const abs = Math.abs(num);
+  if (!Number.isFinite(abs) || abs < 1e4) return '';
+  return `约 10 的 ${Math.floor(Math.log10(abs))} 次方量级`;
+}
+
 function formatMoney(num) {
-  if (num >= 1e12) return '\u00a5' + (num/1e12).toFixed(2) + '万亿';
-  if (num >= 1e8) return '\u00a5' + (num/1e8).toFixed(2) + '亿';
-  if (num >= 1e4) return '\u00a5' + (num/1e4).toFixed(2) + '万';
-  if (num >= 1) return '\u00a5' + num.toFixed(2);
-  if (num >= 0.01) return '\u00a5' + num.toFixed(4);
-  return '\u00a5' + num.toExponential(2);
+  if (!Number.isFinite(num)) return num < 0 ? '-\u00a5∞' : '\u00a5∞';
+  const sign = num < 0 ? '-' : '';
+  const abs = Math.abs(num);
+  if (abs >= 1e4) return sign + '\u00a5' + formatLargeChineseNumber(abs, 2).text;
+  if (abs >= 1) return sign + '\u00a5' + abs.toFixed(2);
+  if (abs >= 0.01) return sign + '\u00a5' + abs.toFixed(4);
+  return sign + '\u00a5' + abs.toExponential(2);
+}
+
+function formatReturnRate(value, digits) {
+  const fixedDigits = digits === undefined ? 2 : digits;
+  if (!Number.isFinite(value)) return value < 0 ? '-∞%' : '+∞%';
+  const sign = value >= 0 ? '+' : '-';
+  const abs = Math.abs(value);
+  if (abs >= 1e4) return sign + formatLargeChineseNumber(abs, fixedDigits).text + '%';
+  return sign + abs.toFixed(fixedDigits) + '%';
 }
 
 function formatNumber(n) {
@@ -112,11 +151,19 @@ console.log('\n=== formatMoney 测试 ===');
 assert(formatMoney(100000) === '\u00a510.00万', '10万显示为 ¥10.00万');
 assert(formatMoney(1e8) === '\u00a51.00亿', '1亿');
 assert(formatMoney(5.5e12) === '\u00a55.50万亿', '5.5万亿');
+assert(formatMoney(1e16) === '\u00a51.00京', '1京');
+assert(formatMoney(1e96) === '\u00a51.00秭大数', '超大值使用复合中文单位');
 assert(formatMoney(25000) === '\u00a52.50万', '2.5万');
 assert(formatMoney(0.5) === '\u00a50.5000', '0.5元 (4位小数)');
 assert(formatMoney(0.005).includes('e'), '0.005元使用科学计数法');
 assert(formatMoney(0.001).includes('e'), '极小值使用科学计数法');
 assert(formatMoney(0) === '\u00a50.00e+0', '0元');
+assert(formatPowerHint(1e96) === '约 10 的 96 次方量级', '超大值量级提示');
+
+console.log('\n=== formatReturnRate 测试 ===');
+assert(formatReturnRate(12.345) === '+12.35%', '普通收益率');
+assert(formatReturnRate(1e20) === '+1.00垓%', '超大收益率使用中文单位');
+assert(formatReturnRate(-1e24, 1) === '-1.0秭%', '负收益率保持符号');
 
 console.log('\n=== formatNumber 测试 ===');
 assert(formatNumber(500) === '500', '500 不变');

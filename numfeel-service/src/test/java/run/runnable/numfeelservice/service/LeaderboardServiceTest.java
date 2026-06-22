@@ -18,16 +18,18 @@ class LeaderboardServiceTest {
     }
 
     @Test
-    void normalizePathKeepsPagesAndStripsLeadingSlash() {
+    void normalizePathNormalizesLeadingSlashTrailingSlashAndHtml() {
         assertEquals("pages/wealth-button-paradox",
                 LeaderboardService.normalizePath("/pages/wealth-button-paradox"));
-        assertEquals("pages/dithering/",
+        assertEquals("pages/dithering",
                 LeaderboardService.normalizePath("/pages/dithering/"));
+        assertEquals("pages/coin-flip-probability",
+                LeaderboardService.normalizePath("/pages/coin-flip-probability.html"));
     }
 
     @Test
     void normalizePathStripsHashAndQuery() {
-        assertEquals("pages/dithering/",
+        assertEquals("pages/dithering",
                 LeaderboardService.normalizePath("/pages/dithering/#google_vignette"));
         assertEquals("pages/browser-fingerprint",
                 LeaderboardService.normalizePath("/pages/browser-fingerprint?utm=x"));
@@ -64,15 +66,17 @@ class LeaderboardServiceTest {
     void cleanseMergesDuplicatePathsAfterNormalization() {
         JsonNode raw = json("""
                 [
+                  {"x":"/pages/dithering","y":101},
                   {"x":"/pages/dithering/","y":204},
                   {"x":"/pages/dithering/#google_vignette","y":235},
+                  {"x":"/pages/dithering.html","y":99},
                   {"x":"/pages/other","y":50}
                 ]
                 """);
         List<LeaderboardEntry> result = LeaderboardService.cleanse(raw);
         assertEquals(2, result.size());
-        assertEquals("pages/dithering/", result.get(0).path());
-        assertEquals(439, result.get(0).views());
+        assertEquals("pages/dithering", result.get(0).path());
+        assertEquals(639, result.get(0).views());
     }
 
     @Test

@@ -37,6 +37,14 @@
       <!-- 设置 -->
       <div class="sim-controls" id="gameSetup">
         <div class="sim-field">
+          <label>看哪种</label>
+          <select id="gameScenario">
+            <option value="female" selected>看女生</option>
+            <option value="male">看男生</option>
+            <option value="helicopter">武装直升机 🚁</option>
+          </select>
+        </div>
+        <div class="sim-field">
           <label>候选人数量</label>
           <select id="gameN">
             <option value="8">8 人</option>
@@ -64,8 +72,12 @@
         <div class="candidate-area">
           <div class="candidate-card" id="candidateCard">
             <div class="candidate-number" id="candidateNum">候选人 #1</div>
+            <div class="candidate-portrait" id="candidatePortrait" style="display:none;">
+              <img id="candidatePortraitImg" alt="候选人头像" />
+              <div class="candidate-tagline" id="candidateTagline"></div>
+            </div>
             <div class="candidate-score" id="candidateDisplay">?</div>
-            <div class="candidate-label">契合度评分</div>
+            <div class="candidate-label" id="candidateLabel">心动指数</div>
             <div class="candidate-rank" id="candidateRank"></div>
           </div>
 
@@ -264,6 +276,7 @@
 </div>
 
 <script src="engine.js"></script>
+<script src="avatars.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

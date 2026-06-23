@@ -8,7 +8,9 @@ var game = {
   bestSoFar: -Infinity,
   chosen: null,
   chosenIdx: -1,
-  history: [] // { score, status: 'skipped'|'chosen'|'unseen' }
+  history: [], // { score, status: 'skipped'|'chosen'|'unseen' }
+  scenario: 'female', // female | male | helicopter
+  avatars: null
 };
 
 var simChart = null;
@@ -28,7 +30,10 @@ function switchTab(name) {
 // ========== 游戏模式 ==========
 function startGame() {
   game.n = parseInt(document.getElementById('gameN').value);
+  var scenarioEl = document.getElementById('gameScenario');
+  game.scenario = scenarioEl ? scenarioEl.value : 'female';
   game.candidates = generateCandidates(game.n);
+  game.avatars = (typeof getAvatarPool === 'function') ? getAvatarPool(game.scenario, game.n) : null;
   game.currentIdx = 0;
   game.optimalR = theoreticalOptimalR(game.n);
   game.phase = 'observe';
@@ -41,6 +46,12 @@ function startGame() {
   document.getElementById('gamePlay').style.display = '';
   document.getElementById('gameResult').style.display = 'none';
   document.getElementById('totalN').textContent = game.n;
+
+  // 文案：全部走"心动指数"
+  var labelEl = document.getElementById('candidateLabel');
+  if (labelEl) {
+    labelEl.textContent = '心动指数';
+  }
 
   showCandidate();
 }
@@ -61,6 +72,21 @@ function showCandidate() {
   document.getElementById('candidateDisplay').textContent = score;
   document.getElementById('candidateRank').innerHTML =
     '在已见过的 <strong>' + seen.length + '</strong> 人中排第 <strong>' + rankAmongSeen + '</strong>';
+
+  // 头像（择偶情境）
+  var portraitWrap = document.getElementById('candidatePortrait');
+  if (portraitWrap) {
+    if (game.avatars && game.avatars[idx]) {
+      portraitWrap.style.display = '';
+      var imgEl = document.getElementById('candidatePortraitImg');
+      var tagEl = document.getElementById('candidateTagline');
+      imgEl.src = game.avatars[idx].url;
+      imgEl.alt = '候选人 ' + (idx + 1) + '：' + game.avatars[idx].tag;
+      tagEl.textContent = game.avatars[idx].tag;
+    } else {
+      portraitWrap.style.display = 'none';
+    }
+  }
 
   // 进度条
   var pct = ((idx + 1) / n * 100).toFixed(1);

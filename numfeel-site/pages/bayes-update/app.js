@@ -26,6 +26,14 @@
   var copyBtn = $('copyBtn');
   var shareBtn = $('shareBtn');
   var resultCard = $('resultCard');
+  var progressRail = $('progressRail');
+
+  // 步骤 ID（按填写顺序）
+  var STEPS = ['subject', 'prior', 'evidence', 'likelihood', 'falseRate', 'guess'];
+  var stepEls = {};
+  STEPS.forEach(function (id) {
+    stepEls[id] = $('step-' + id);
+  });
 
   // ── 渲染预设场景卡片 ──
   function renderPresets() {
@@ -54,8 +62,12 @@
     setSlider(falseRateSlider, p.falseRate * 100);
     setSlider(guessSlider, 50);
     syncAllValues();
-    // 滚动到填表区底部以便用户看到"算一下"按钮
-    computeBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    syncPresetButtons();
+    updateProgress();
+    // 滚动到填表区底部
+    setTimeout(function () {
+      computeBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 200);
   }
 
   function setSlider(slider, v) {
@@ -72,14 +84,96 @@
 
   function formatSliderPct(v) {
     var n = parseFloat(v);
-    // < 1 时多显示一位小数，方便用 0.1% 这种罕见病先验
     if (n < 1 && n > 0) return n.toFixed(2) + '%';
     return n.toFixed(1).replace(/\.0$/, '') + '%';
   }
 
-  [priorSlider, likelihoodSlider, falseRateSlider, guessSlider].forEach(function (s) {
-    s.addEventListener('input', syncAllValues);
-  });
+  // ── 滑块预设按钮 ──
+  function initPresetButtons() {
+    var btns = document.querySelectorAll('.slider-preset');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener('click', onPresetButtonClick);
+    }
+  }
+
+  function onPresetButtonClick(e) {
+    var btn = e.currentTarget;
+    var targetId = btn.getAttribute('data-target');
+    var value = parseFloat(btn.getAttribute('data-value'));
+    var slider = $(targetId);
+    if (!slider) return;
+    setSlider(slider, value);
+    syncAllValues();
+    syncPresetButtons();
+    updateProgress();
+  }
+
+  // 高亮当前滑块值最接近的预设按钮
+  function syncPresetButtons() {
+    var sliders = [
+      { slider: priorSlider, prefix: 'priorSlider' },
+      { slider: likelihoodSlider, prefix: 'likelihoodSlider' },
+      { slider: falseRateSlider, prefix: 'falseRateSlider' }
+    ];
+    sliders.forEach(function (s) {
+      var current = parseFloat(s.slider.value);
+      var btns = document.querySelectorAll('.slider-preset[data-target="' + s.prefix + '"]');
+      var best = null;
+      var bestDist = Infinity;
+      for (var i = 0; i < btns.length; i++) {
+        var v = parseFloat(btns[i].getAttribute('data-value'));
+        var d = Math.abs(current - v);
+        btns[i].classList.remove('active');
+        if (d < bestDist) { bestDist = d; best = btns[i]; }
+      }
+      // 阈值内才激活
+      if (best && bestDist <= 0.5) best.classList.add('active');
+    });
+  }
+
+  // ── 进度联动 ──
+  function updateProgress() {
+    var doneSet = {};
+    STEPS.forEach(function (id) {
+      if (isStepFilled(id)) doneSet[id] = true;
+    });
+
+    // 节点状态：done / current
+    var nodes = progressRail.querySelectorAll('.progress-node');
+    nodes.forEach(function (node) {
+      var step = node.getAttribute('data-step');
+      node.classList.remove('done', 'current');
+      if (doneSet[step]) node.classList.add('done');
+      else {
+        // 第一个未填的为 current
+        var firstUnfilled = STEPS.find(function (id) { return !doneSet[id]; });
+        if (firstUnfilled === step) node.classList.add('current');
+      }
+    });
+
+    // 连接线 done
+    var links = progressRail.querySelectorAll('.progress-link');
+    for (var i = 0; i < links.length; i++) {
+      var prevStep = STEPS[i];
+      var nextStep = STEPS[i + 1];
+      var bothDone = prevStep && nextStep && doneSet[prevStep] && doneSet[nextStep];
+      var oneDone = prevStep && doneSet[prevStep];
+      links[i].classList.toggle('done', !!bothDone);
+    }
+  }
+
+  // 判断某步是否已填
+  function isStepFilled(stepId) {
+    switch (stepId) {
+      case 'subject': return subjectInput.value.trim().length > 0;
+      case 'evidence': return evidenceInput.value.trim().length > 0;
+      case 'prior': return parseFloat(priorSlider.value) > 0;
+      case 'likelihood': return parseFloat(likelihoodSlider.value) > 0;
+      case 'falseRate': return parseFloat(falseRateSlider.value) > 0;
+      case 'guess': return parseFloat(guessSlider.value) > 0;
+      default: return false;
+    }
+  }
 
   // ── 计算并渲染结果 ──
   function compute() {
@@ -111,12 +205,10 @@
       '你想搞清楚：<b class="hl-post">' + escapeHtml(d.subject) + '</b><br>' +
       '观察到的线索：<b class="hl-evidence">' + escapeHtml(d.evidence) + '</b>';
 
-    // 三段进度条
     setBar('barPrior', d.priorPct, 'barPriorValue');
     setBar('barGuess', d.guess, 'barGuessValue');
     setBar('barPost', d.postPct, 'barPostValue');
 
-    // 直觉评级
     var verdict = $('verdict');
     verdict.className = 'verdict ' + d.rating.level;
     var arrow;
@@ -127,10 +219,8 @@
       '<i class="ti ti-bulb"></i> ' + d.rating.label + ' · ' +
       '<b>' + arrow + '</b>，差 ' + d.rating.gap.toFixed(1) + ' 个百分点。';
 
-    // 100 万人沙盘
     renderSandbox(d.sandbox, d.evidence);
 
-    // 一句话结论
     var direction = d.postPct > d.priorPct ? '升到' : '降到';
     var diff = Math.abs(d.postPct - d.priorPct).toFixed(1);
     $('punchline').innerHTML =
@@ -148,7 +238,6 @@
 
   function setBar(barId, pct, valueId) {
     var bar = $(barId);
-    // 极小值给个视觉最小宽度，方便看到
     var visible = pct < 0.5 && pct > 0 ? 0.5 : pct;
     bar.style.width = visible + '%';
     var v = $(valueId);
@@ -183,6 +272,8 @@
     setSlider(falseRateSlider, 20);
     setSlider(guessSlider, 50);
     syncAllValues();
+    syncPresetButtons();
+    updateProgress();
     resultCard.classList.remove('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -221,13 +312,37 @@
     }
   }
 
+  // ── 进度条滚动反馈 ──
+  function onScroll() {
+    if (window.scrollY > 80) progressRail.classList.add('scrolled');
+    else progressRail.classList.remove('scrolled');
+  }
+
   // ── 绑定 ──
   computeBtn.addEventListener('click', compute);
   resetBtn.addEventListener('click', reset);
   copyBtn.addEventListener('click', copyConclusion);
   shareBtn.addEventListener('click', share);
 
+  [priorSlider, likelihoodSlider, falseRateSlider, guessSlider].forEach(function (s) {
+    s.addEventListener('input', function () {
+      syncAllValues();
+      syncPresetButtons();
+      updateProgress();
+    });
+  });
+
+  [subjectInput, evidenceInput].forEach(function (el) {
+    el.addEventListener('input', updateProgress);
+    el.addEventListener('blur', updateProgress);
+  });
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+
   // ── 初始化 ──
   renderPresets();
+  initPresetButtons();
   syncAllValues();
+  syncPresetButtons();
+  updateProgress();
 })();

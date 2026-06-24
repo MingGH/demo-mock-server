@@ -298,9 +298,76 @@ body {
 .defense-flow span.safe { background: rgba(129,199,132,0.18); color: #81c784; border: 1px solid rgba(129,199,132,0.35); }
 .defense-flow i { color: #666; }
 
-@media (max-width: 640px) {
-  .header h1 { font-size: 1.8rem; }
-  .avatar-stage { flex-direction: column; }
-  .avatar-frame { margin: 0 auto; }
-  .info-actions { justify-content: center; }
+@media (max-width: 768px) {
+  .container { padding: 12px; }
+  .header { padding: 24px 12px 20px; margin-bottom: 20px; }
+  .header h1 { font-size: 1.6rem; }
+  .header p { font-size: 0.9rem; }
+
+  .section { padding: 18px 16px; margin-bottom: 18px; border-radius: 12px; }
+  .section h2 { font-size: 1.15rem; }
+  .section-desc { font-size: 0.85rem; }
+
+  /* 头像区：垂直堆叠，头像居中缩小 */
+  .avatar-stage { flex-direction: column; gap: 18px; }
+  .avatar-frame {
+    width: 160px; height: 160px;
+    margin: 0 auto;
+    border-width: 2px;
+  }
+  .avatar-status { font-size: 0.72rem; padding: 4px 6px; }
+  .avatar-info { min-width: 0; width: 100%; }
+  .info-row { font-size: 0.85rem; }
+  .info-row code { font-size: 0.78rem; padding: 2px 6px; }
+  .info-actions { justify-content: center; gap: 6px; }
+  .info-actions .btn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+    justify-content: center;
+    padding: 9px 10px;
+    font-size: 0.85rem;
+  }
+  .hint { font-size: 0.78rem; text-align: center; }
+
+  /* 场景卡：单列，紧凑 */
+  .scenario-grid { grid-template-columns: 1fr; gap: 12px; }
+  .scenario-card { padding: 14px; }
+  .scenario-title { font-size: 0.95rem; }
+  .scenario-desc { font-size: 0.82rem; }
+  .scenario-note { font-size: 0.74rem; padding: 6px 8px; }
+  .scenario-tag, .scenario-era, .era-tag { font-size: 0.66rem; padding: 1px 6px; }
+
+  /* SVG 对比：单列 */
+  .svg-compare { grid-template-columns: 1fr; gap: 14px; }
+  .svg-cell { padding: 14px; }
+  .svg-cell img, .svg-cell object, .svg-object-mount {
+    width: 100%; max-width: 240px; height: auto; aspect-ratio: 1 / 1;
+  }
+  .svg-cell-foot { font-size: 0.76rem; max-width: 100%; }
+  .svg-note { font-size: 0.82rem; padding: 12px; }
+
+  /* 日志表：缩小字号 + 横向滚动 */
+  .log-table { font-size: 0.78rem; }
+  .log-table th, .log-table td { padding: 8px; }
+  .log-table td:nth-child(3), .log-table td:nth-child(4) { max-width: 140px; }
+
+  /* 风险列表：单列 */
+  .risk-list { grid-template-columns: 1fr; gap: 12px; }
+  .risk-content h3 { font-size: 0.95rem; }
+  .risk-content p { font-size: 0.82rem; }
+
+  /* 防御流程图：换行排列 */
+  .defense-flow { gap: 4px; padding: 12px; }
+  .defense-flow span { font-size: 0.74rem; padding: 5px 9px; }
+  .defense-flow i { font-size: 0.85rem; }
+  .defense-list li { font-size: 0.85rem; }
+
+  /* 顶部横幅在小屏上字号缩小 */
+  #svgXssBanner { font-size: 0.82rem !important; padding: 10px 14px !important; }
+}
+
+@media (max-width: 380px) {
+  .header h1 { font-size: 1.4rem; }
+  .avatar-frame { width: 140px; height: 140px; }
+  .info-actions .btn { flex-basis: 100%; }
 }

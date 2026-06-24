@@ -17,26 +17,47 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
+       顶部进度条（移动端 sticky）
+  ══════════════════════════════════════════════════════════ -->
+  <div class="progress-rail" id="progressRail">
+    <div class="progress-rail-inner">
+      <div class="progress-node done" data-step="subject"><span>1</span><label>描述</label></div>
+      <span class="progress-link"></span>
+      <div class="progress-node" data-step="prior"><span>2</span><label>先验</label></div>
+      <span class="progress-link"></span>
+      <div class="progress-node" data-step="evidence"><span>3</span><label>线索</label></div>
+      <span class="progress-link"></span>
+      <div class="progress-node" data-step="likelihood"><span>4</span><label>命中</label></div>
+      <span class="progress-link"></span>
+      <div class="progress-node critical" data-step="falseRate"><span>5</span><label>误报</label></div>
+      <span class="progress-link"></span>
+      <div class="progress-node" data-step="guess"><span>?</span><label>猜</label></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
        场景速填卡片
   ══════════════════════════════════════════════════════════ -->
   <div class="card">
     <div class="card-head">
       <span class="card-title"><i class="ti ti-bolt"></i> 没头绪？挑一个场景一键填入</span>
-      <span class="card-hint">点卡片自动填表，再翻到最下面点「按贝叶斯算一下」</span>
+      <span class="card-hint">点卡片自动填表，再翻到下面点「按贝叶斯算一下」</span>
     </div>
     <div class="presets" id="presets"></div>
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
-       5 步引导填空
+       5 步引导填空 — 节点流式
   ══════════════════════════════════════════════════════════ -->
-  <div class="card">
-    <div class="card-head">
-      <span class="card-title"><i class="ti ti-pencil"></i> 填 5 个空，算给你看</span>
-    </div>
+  <div class="section-divider">
+    <span class="section-divider-title"><i class="ti ti-pencil"></i> 你的输入</span>
+    <span class="section-divider-sub">从模糊判断，到精确计算</span>
+  </div>
+
+  <div class="card form-card">
 
     <!-- Step 1 -->
-    <div class="step">
+    <div class="step" id="step-subject">
       <div class="step-head">
         <span class="step-num">1</span>
         <span class="step-title">你想搞清楚什么事？</span>
@@ -44,23 +65,32 @@
       <div class="step-hint">用一句话描述。例：「老公是不是出轨」「这封邮件是不是诈骗」</div>
       <input type="text" class="text-input" id="subjectInput" maxlength="60"
              placeholder="比如：钥匙是不是落在客厅">
+      <div class="step-arrow"><i class="ti ti-arrow-down"></i></div>
     </div>
 
     <!-- Step 2 -->
-    <div class="step">
+    <div class="step step-key step-prior" id="step-prior">
       <div class="step-head">
         <span class="step-num">2</span>
-        <span class="step-title">没看到任何证据前，你觉得这件事是真的，概率多大？</span>
+        <span class="step-title">没看到任何证据前，你觉得这件事是真的概率多大？</span>
+        <span class="step-key-tag tag-prior">先验</span>
       </div>
-      <div class="step-hint">这就是 <b class="hl-prior">先验</b> —— 你的初始偏见。完全没头绪就填 50%。</div>
+      <div class="step-hint">这就是 <b class="hl-prior">先验</b> —— 你的初始偏见。<b>完全没头绪就滑到 50%</b>。</div>
       <div class="slider-row">
         <input type="range" id="priorSlider" min="0" max="100" step="0.1" value="5">
         <span class="slider-value hl-prior" id="priorValue">5%</span>
       </div>
+      <div class="slider-presets">
+        <button type="button" class="slider-preset" data-target="priorSlider" data-value="0.1">罕见 0.1%</button>
+        <button type="button" class="slider-preset" data-target="priorSlider" data-value="5">可能 5%</button>
+        <button type="button" class="slider-preset" data-target="priorSlider" data-value="50">没头绪 50%</button>
+        <button type="button" class="slider-preset" data-target="priorSlider" data-value="90">几乎肯定 90%</button>
+      </div>
+      <div class="step-arrow"><i class="ti ti-arrow-down"></i><span class="step-arrow-tip">定完基调，看看证据</span></div>
     </div>
 
     <!-- Step 3 -->
-    <div class="step">
+    <div class="step" id="step-evidence">
       <div class="step-head">
         <span class="step-num">3</span>
         <span class="step-title">你观察到了什么线索？</span>
@@ -68,39 +98,55 @@
       <div class="step-hint">用一句话描述这条新证据。例：「手机突然加密码」「检测结果是阳性」</div>
       <input type="text" class="text-input" id="evidenceInput" maxlength="80"
              placeholder="比如：我已经翻了三遍客厅都没找到">
+      <div class="step-arrow"><i class="ti ti-arrow-down"></i><span class="step-arrow-tip">拿到证据 → 评估它的强度</span></div>
     </div>
 
     <!-- Step 4 -->
-    <div class="step">
+    <div class="step" id="step-likelihood">
       <div class="step-head">
         <span class="step-num">4</span>
         <span class="step-title">如果这事是真的，出现这条线索的概率多大？</span>
+        <span class="step-key-tag tag-evidence">命中率</span>
       </div>
       <div class="step-hint">"真有问题"的人会暴露这条线索的可能性。</div>
       <div class="slider-row">
         <input type="range" id="likelihoodSlider" min="0" max="100" step="0.1" value="80">
         <span class="slider-value hl-evidence" id="likelihoodValue">80%</span>
       </div>
+      <div class="slider-presets">
+        <button type="button" class="slider-preset" data-target="likelihoodSlider" data-value="50">一半 50%</button>
+        <button type="button" class="slider-preset" data-target="likelihoodSlider" data-value="80">常见 80%</button>
+        <button type="button" class="slider-preset" data-target="likelihoodSlider" data-value="99">几乎必然 99%</button>
+      </div>
+      <div class="step-arrow step-arrow-warn"><i class="ti ti-arrow-down"></i><span class="step-arrow-tip">关键一步：反向想想"没事的人也会出现吗？"</span></div>
     </div>
 
     <!-- Step 5 -->
-    <div class="step">
+    <div class="step step-key step-warn" id="step-falseRate">
       <div class="step-head">
         <span class="step-num">5</span>
         <span class="step-title">如果这事是假的，出现这条线索的概率多大？</span>
+        <span class="step-key-tag tag-warn">误报率 · 最常被忽略</span>
       </div>
       <div class="step-hint">"其实没事"，但凑巧也出现这条线索的可能性。
-        <b class="hl-warn">大多数人会忽略这一步，所以总是猜偏。</b></div>
+        <b class="hl-warn">大多数人下意识只算了第 4 步，所以总是猜偏。</b></div>
       <div class="slider-row">
         <input type="range" id="falseRateSlider" min="0" max="100" step="0.1" value="20">
         <span class="slider-value hl-warn" id="falseRateValue">20%</span>
       </div>
+      <div class="slider-presets">
+        <button type="button" class="slider-preset" data-target="falseRateSlider" data-value="1">几乎不可能 1%</button>
+        <button type="button" class="slider-preset" data-target="falseRateSlider" data-value="20">偶尔 20%</button>
+        <button type="button" class="slider-preset" data-target="falseRateSlider" data-value="50">一半 50%</button>
+        <button type="button" class="slider-preset" data-target="falseRateSlider" data-value="95">经常 95%</button>
+      </div>
+      <div class="step-arrow step-arrow-final"><i class="ti ti-arrow-down"></i><span class="step-arrow-tip">好，现在凭直觉猜一下你的答案</span></div>
     </div>
 
     <!-- 直觉猜测 -->
-    <div class="step step-guess">
+    <div class="step step-guess" id="step-guess">
       <div class="step-head">
-        <span class="step-num"><i class="ti ti-bulb"></i></span>
+        <span class="step-num step-num-guess"><i class="ti ti-bulb"></i></span>
         <span class="step-title">在算之前，凭直觉猜一下：现在这事是真的概率变成多少？</span>
       </div>
       <div class="step-hint">先猜后算才有意思 —— 等下对照看看你猜偏多少。</div>
@@ -111,7 +157,7 @@
     </div>
 
     <div class="btn-row">
-      <button class="btn btn-primary" id="computeBtn">
+      <button class="btn btn-primary btn-compute" id="computeBtn">
         <i class="ti ti-calculator"></i> 按贝叶斯算一下
       </button>
       <button class="btn btn-secondary" id="resetBtn">
@@ -125,7 +171,7 @@
   ══════════════════════════════════════════════════════════ -->
   <div class="card result-card" id="resultCard">
     <div class="card-head">
-      <span class="card-title"><i class="ti ti-chart-bar" id="resultIcon"></i> 算完了，看下面</span>
+      <span class="card-title"><i class="ti ti-chart-bar"></i> 算完了，看下面</span>
     </div>
 
     <div class="subject-recap" id="subjectRecap">—</div>

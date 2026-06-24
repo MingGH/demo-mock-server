@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="允许用户输入URL作为头像有什么风险？一个可交互的安全实验室：恐怖图片替换、重定向攻击、伪鉴权钓鱼、流量炸弹、外链失效——亲手开启每个场景，看着浏览器中招。">
+  <title>外链头像安全实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-user-shield"></i> 外链头像安全实验室</h1>
+    <p>允许用户输入图片 URL 作为头像，看起来人畜无害——直到它指向的服务器开始作恶。打开下面任意场景开关，看你自己的浏览器是怎么被这个"头像"耍的。</p>
+  </div>
+
+  <!-- ── 我的头像区 ── -->
+  <div class="section" id="avatarSection">
+    <h2><i class="ti ti-photo"></i> 你的专属测试头像</h2>
+    <p class="section-desc">服务端为你生成了一个唯一的 UUID，下面这个 &lt;img&gt; 标签直接外链到该地址。开启右侧任意开关后，刷新头像即可看到它"变脸"。</p>
+
+    <div class="avatar-stage">
+      <div class="avatar-frame">
+        <img id="avatarImg" alt="my avatar" />
+        <div id="avatarStatus" class="avatar-status">加载中…</div>
+      </div>
+
+      <div class="avatar-info">
+        <div class="info-row">
+          <span class="info-label">我的 token：</span>
+          <code id="tokenDisplay">—</code>
+        </div>
+        <div class="info-row">
+          <span class="info-label">头像 URL：</span>
+          <code id="urlDisplay" class="long">—</code>
+        </div>
+        <div class="info-actions">
+          <button class="btn btn-primary" id="reloadBtn"><i class="ti ti-refresh"></i> 重新加载头像</button>
+          <button class="btn btn-secondary" id="openInTabBtn"><i class="ti ti-external-link"></i> 新标签打开 URL</button>
+          <button class="btn btn-secondary" id="copyUrlBtn"><i class="ti ti-copy"></i> 复制 URL</button>
+          <button class="btn btn-secondary" id="newTokenBtn"><i class="ti ti-user-plus"></i> 换个 token</button>
+        </div>
+        <p class="hint">提示：<strong>新标签打开</strong>是 top-level navigation，不受跨域子资源限制，能看到 401 Basic Auth 弹窗 / 302 真实跳转——而 &lt;img&gt; 加载会被浏览器静默拦下。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 攻击场景开关 ── -->
+  <div class="section">
+    <h2><i class="ti ti-flask"></i> 攻击场景开关（单选）</h2>
+    <p class="section-desc">同一时刻只能开一个场景，因为同一张图无法既是"恐怖图"又"重定向"又"401"。每张卡上的徽章告诉你：<span class="era-tag era-alive">至今有效</span> = 浏览器没防， <span class="era-tag era-half-dead">2018 后被压制</span> = 现代浏览器拦下子资源加载、但 top-level 仍中招。</p>
+
+    <div class="scenario-grid" id="scenarioGrid">
+      <!-- JS 动态注入 -->
+    </div>
+  </div>
+
+  <!-- ── SVG XSS 对比演示 ── -->
+  <div class="section" id="svgXssSection" style="display:none;">
+    <h2><i class="ti ti-code-asterisk"></i> SVG XSS 实战对比</h2>
+    <p class="section-desc">同一份带 &lt;script&gt; 的 SVG 文件，<strong>用不同标签加载结果天差地别</strong>。这就是为什么 SVG 必须经过服务端解码重绘——只要平台有任何一个角落（导出 PDF / 后台审核页 / 邮件预览）用了非 &lt;img&gt; 加载，就立刻 XSS。</p>
+
+    <div class="svg-compare">
+      <div class="svg-cell safe">
+        <div class="svg-cell-head"><i class="ti ti-shield-check"></i> &lt;img src&gt;（安全）</div>
+        <img id="svgImgTest" alt="svg via img" />
+        <div class="svg-cell-foot">浏览器 sandbox 拦下脚本，SVG 里的 &lt;text&gt; 保持 "SCRIPT_NOT_RUN"。</div>
+      </div>
+      <div class="svg-cell danger">
+        <div class="svg-cell-head"><i class="ti ti-bug"></i> &lt;object data&gt;（XSS）</div>
+        <div id="svgObjectMount" class="svg-object-mount"></div>
+        <button class="btn btn-danger" id="loadSvgObjectBtn"><i class="ti ti-play"></i> 用 &lt;object&gt; 加载</button>
+        <div class="svg-cell-foot">点击后看两处变化：① SVG 内文字变成绿色 "✅ 脚本已执行"；② 页面顶部弹出红色横幅（脚本通过 postMessage 通知宿主）。</div>
+      </div>
+    </div>
+
+    <div class="svg-note">
+      <strong>为什么不是直接弹 alert / 偷宿主 cookie？</strong>Chrome 92+ 禁止跨域 iframe/object 弹 alert，跨域读 <code>window.top</code> 也会抛 SecurityError。但<strong>同源</strong>场景下（比如平台把用户上传的 SVG 内联到自己页面，或者放在同域 CDN 用 &lt;object&gt; 加载），XSS 仍然能完整执行——读 cookie、改 DOM、键盘记录、CSRF 全套。
+    </div>
+  </div>
+
+  <!-- ── 访问日志区：演示泄露 ── -->
+  <div class="section">
+    <h2><i class="ti ti-eye"></i> 这张头像悄悄收集了什么</h2>
+    <p class="section-desc">即使头像内容是正常的，仅仅是被浏览器加载这件事，就让攻击者拿到了你的 IP、User-Agent、Referer。下面是服务端真实记录到的访问日志：</p>
+
+    <div class="log-toolbar">
+      <button class="btn btn-secondary" id="refreshLogBtn"><i class="ti ti-refresh"></i> 刷新日志</button>
+      <span class="log-stat" id="logStat">0 条记录</span>
+    </div>
+
+    <div class="log-table-wrap">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>IP</th>
+            <th>User-Agent</th>
+            <th>Referer</th>
+          </tr>
+        </thead>
+        <tbody id="logTbody">
+          <tr><td colspan="4" class="log-empty">暂无访问记录，刷新头像看看？</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 风险总览 ── -->
+  <div class="section">
+    <h2><i class="ti ti-alert-triangle"></i> 风险全景</h2>
+    <p class="section-desc">把"用户 URL 当头像"这件事拆开看，至少有这些坑：</p>
+
+    <div class="risk-list">
+      <div class="risk-item red">
+        <div class="risk-icon"><i class="ti ti-key"></i></div>
+        <div class="risk-content">
+          <h3>钓鱼 401 弹窗</h3>
+          <p>服务端返回 401 + <code>WWW-Authenticate: Basic</code>，浏览器立刻弹原生账号密码框——伪装成「请登录以查看头像」，骗用户输入主站凭据。</p>
+        </div>
+      </div>
+
+      <div class="risk-item red">
+        <div class="risk-icon"><i class="ti ti-arrow-fork"></i></div>
+        <div class="risk-content">
+          <h3>重定向到攻击载荷</h3>
+          <p>URL 看着是 .jpg，实际服务端 302 跳到 <code>http://localhost:8080/admin?...</code>，命中内网管理后台、Redis、云元数据等——SSRF 的入门姿势。</p>
+        </div>
+      </div>
+
+      <div class="risk-item red">
+        <div class="risk-icon"><i class="ti ti-mood-sad"></i></div>
+        <div class="risk-content">
+          <h3>内容随时被替换</h3>
+          <p>图片在别人服务器上，今天是正常头像，明天可能换成血腥/色情/政治敏感图片——平台口碑被一张 &lt;img&gt; 拖下水。</p>
+        </div>
+      </div>
+
+      <div class="risk-item orange">
+        <div class="risk-icon"><i class="ti ti-radar"></i></div>
+        <div class="risk-content">
+          <h3>访客信息泄露</h3>
+          <p>每个浏览过该头像的用户都把自己的 IP、UA、Referer 上交给攻击者，方便针对性钓鱼或者画像建模。</p>
+        </div>
+      </div>
+
+      <div class="risk-item orange">
+        <div class="risk-icon"><i class="ti ti-bomb"></i></div>
+        <div class="risk-content">
+          <h3>流量炸弹 / 慢响应</h3>
+          <p>10MB 一张的"头像"或永远不返回的连接，把你的页面、CDN、流量包一起拖下水。</p>
+        </div>
+      </div>
+
+      <div class="risk-item gray">
+        <div class="risk-icon"><i class="ti ti-photo-off"></i></div>
+        <div class="risk-content">
+          <h3>外链失效破图</h3>
+          <p>第三方服务挂了，你的用户列表瞬间一堆碎图，体验崩盘。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 防御方案 ── -->
+  <div class="section">
+    <h2><i class="ti ti-shield-check"></i> 正确做法</h2>
+    <p class="section-desc">核心原则只有一条：<strong>永远不要直接信任用户提供的 URL</strong>。把它当作"原始素材"，做一道完整的清洗工序：</p>
+
+    <ol class="defense-list">
+      <li><strong>协议白名单</strong>：只允许 <code>https://</code>，拒绝 <code>http</code> / <code>file</code> / <code>data</code> / <code>javascript</code> / <code>gopher</code>。</li>
+      <li><strong>SSRF 防护</strong>：DNS 解析后校验 IP 不在 <code>127.0.0.0/8</code>、<code>10/8</code>、<code>172.16/12</code>、<code>192.168/16</code>、<code>169.254/16</code>（云元数据）等保留段。</li>
+      <li><strong>禁用重定向</strong>：服务端拉取时关闭 follow redirects，或对每一跳都重新做 IP 校验。</li>
+      <li><strong>Content-Type + Magic Number 双校验</strong>：响应头说 image/jpeg 不够，还要校验文件头 <code>FF D8 FF</code>。</li>
+      <li><strong>大小 / 尺寸限制</strong>：超过 5MB 或 4096×4096 直接拒绝。</li>
+      <li><strong>解码重绘</strong>：用 ImageIO / sharp 解码后重新编码输出，剥离 EXIF、隐写 payload、SVG 里的脚本。</li>
+      <li><strong>内容审核</strong>：接黄反/暴恐/版权检测，留好申诉与回退路径。</li>
+      <li><strong>转存自家 CDN</strong>：以自有域名对外服务，从此与第三方 URL 一刀两断。</li>
+    </ol>
+
+    <div class="defense-flow">
+      <span>用户 URL</span>
+      <i class="ti ti-arrow-right"></i>
+      <span>协议白名单</span>
+      <i class="ti ti-arrow-right"></i>
+      <span>DNS + IP 校验</span>
+      <i class="ti ti-arrow-right"></i>
+      <span>拉取(无重定向)</span>
+      <i class="ti ti-arrow-right"></i>
+      <span>Magic Number</span>
+      <i class="ti ti-arrow-right"></i>
+      <span>大小校验</span>
+      <i class="ti ti-arrow-right"></i>
+      <span>解码重绘</span>
+      <i class="ti ti-arrow-right"></i>
+      <span>内容审核</span>
+      <i class="ti ti-arrow-right"></i>
+      <span class="safe">自家 CDN</span>
+    </div>
+  </div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

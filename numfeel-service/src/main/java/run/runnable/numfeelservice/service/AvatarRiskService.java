@@ -162,6 +162,8 @@ public class AvatarRiskService {
      *   <li>slow: 故意延迟 8 秒响应（演示"外链拖垮页面"）</li>
      *   <li>oversized: 返回一个巨大图片（演示"流量炸弹"）</li>
      *   <li>broken: 直接 404（演示"外链失效"）</li>
+     *   <li>svgXss: 返回带 &lt;script&gt; 的 SVG（演示"披着图片外衣的脚本"——
+     *       &lt;img&gt; 加载时浏览器进入 sandbox 不执行脚本，但 &lt;object&gt;/&lt;iframe&gt; 加载就会拿到宿主权限）</li>
      * </ul>
      */
     public record ScenarioState(
@@ -170,21 +172,23 @@ public class AvatarRiskService {
             boolean authPrompt,
             boolean slow,
             boolean oversized,
-            boolean broken
+            boolean broken,
+            boolean svgXss
     ) {
 
         public static ScenarioState defaults() {
-            return new ScenarioState(false, false, false, false, false, false);
+            return new ScenarioState(false, false, false, false, false, false, false);
         }
 
         public ScenarioState with(String key, boolean value) {
             return switch (key) {
-                case "horror"     -> new ScenarioState(value, redirect, authPrompt, slow, oversized, broken);
-                case "redirect"   -> new ScenarioState(horror, value, authPrompt, slow, oversized, broken);
-                case "authPrompt" -> new ScenarioState(horror, redirect, value, slow, oversized, broken);
-                case "slow"       -> new ScenarioState(horror, redirect, authPrompt, value, oversized, broken);
-                case "oversized"  -> new ScenarioState(horror, redirect, authPrompt, slow, value, broken);
-                case "broken"     -> new ScenarioState(horror, redirect, authPrompt, slow, oversized, value);
+                case "horror"     -> new ScenarioState(value, redirect, authPrompt, slow, oversized, broken, svgXss);
+                case "redirect"   -> new ScenarioState(horror, value, authPrompt, slow, oversized, broken, svgXss);
+                case "authPrompt" -> new ScenarioState(horror, redirect, value, slow, oversized, broken, svgXss);
+                case "slow"       -> new ScenarioState(horror, redirect, authPrompt, value, oversized, broken, svgXss);
+                case "oversized"  -> new ScenarioState(horror, redirect, authPrompt, slow, value, broken, svgXss);
+                case "broken"     -> new ScenarioState(horror, redirect, authPrompt, slow, oversized, value, svgXss);
+                case "svgXss"     -> new ScenarioState(horror, redirect, authPrompt, slow, oversized, broken, value);
                 default -> this;
             };
         }
@@ -197,6 +201,7 @@ public class AvatarRiskService {
             m.put("slow", slow);
             m.put("oversized", oversized);
             m.put("broken", broken);
+            m.put("svgXss", svgXss);
             return m;
         }
     }

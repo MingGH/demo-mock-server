@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="贝叶斯改主意计算器：填上你想搞清楚的事、先验、证据、命中率，5 步算出你应该改主意改多少。把贝叶斯定理变成日常工具。">
+  <title>贝叶斯改主意计算器 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-arrows-exchange"></i> 贝叶斯改主意计算器</h1>
+    <p>填 5 个空，看到一条新证据后你应该把信念调到多少。把"理性改主意"变成一个工具。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       场景速填卡片
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-bolt"></i> 没头绪？挑一个场景一键填入</span>
+      <span class="card-hint">点卡片自动填表，再翻到最下面点「按贝叶斯算一下」</span>
+    </div>
+    <div class="presets" id="presets"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       5 步引导填空
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-pencil"></i> 填 5 个空，算给你看</span>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step">
+      <div class="step-head">
+        <span class="step-num">1</span>
+        <span class="step-title">你想搞清楚什么事？</span>
+      </div>
+      <div class="step-hint">用一句话描述。例：「老公是不是出轨」「这封邮件是不是诈骗」</div>
+      <input type="text" class="text-input" id="subjectInput" maxlength="60"
+             placeholder="比如：钥匙是不是落在客厅">
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step">
+      <div class="step-head">
+        <span class="step-num">2</span>
+        <span class="step-title">没看到任何证据前，你觉得这件事是真的，概率多大？</span>
+      </div>
+      <div class="step-hint">这就是 <b class="hl-prior">先验</b> —— 你的初始偏见。完全没头绪就填 50%。</div>
+      <div class="slider-row">
+        <input type="range" id="priorSlider" min="0" max="100" step="0.1" value="5">
+        <span class="slider-value hl-prior" id="priorValue">5%</span>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step">
+      <div class="step-head">
+        <span class="step-num">3</span>
+        <span class="step-title">你观察到了什么线索？</span>
+      </div>
+      <div class="step-hint">用一句话描述这条新证据。例：「手机突然加密码」「检测结果是阳性」</div>
+      <input type="text" class="text-input" id="evidenceInput" maxlength="80"
+             placeholder="比如：我已经翻了三遍客厅都没找到">
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step">
+      <div class="step-head">
+        <span class="step-num">4</span>
+        <span class="step-title">如果这事是真的，出现这条线索的概率多大？</span>
+      </div>
+      <div class="step-hint">"真有问题"的人会暴露这条线索的可能性。</div>
+      <div class="slider-row">
+        <input type="range" id="likelihoodSlider" min="0" max="100" step="0.1" value="80">
+        <span class="slider-value hl-evidence" id="likelihoodValue">80%</span>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step">
+      <div class="step-head">
+        <span class="step-num">5</span>
+        <span class="step-title">如果这事是假的，出现这条线索的概率多大？</span>
+      </div>
+      <div class="step-hint">"其实没事"，但凑巧也出现这条线索的可能性。
+        <b class="hl-warn">大多数人会忽略这一步，所以总是猜偏。</b></div>
+      <div class="slider-row">
+        <input type="range" id="falseRateSlider" min="0" max="100" step="0.1" value="20">
+        <span class="slider-value hl-warn" id="falseRateValue">20%</span>
+      </div>
+    </div>
+
+    <!-- 直觉猜测 -->
+    <div class="step step-guess">
+      <div class="step-head">
+        <span class="step-num"><i class="ti ti-bulb"></i></span>
+        <span class="step-title">在算之前，凭直觉猜一下：现在这事是真的概率变成多少？</span>
+      </div>
+      <div class="step-hint">先猜后算才有意思 —— 等下对照看看你猜偏多少。</div>
+      <div class="slider-row">
+        <input type="range" id="guessSlider" min="0" max="100" step="0.1" value="50">
+        <span class="slider-value hl-guess" id="guessValue">50%</span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="computeBtn">
+        <i class="ti ti-calculator"></i> 按贝叶斯算一下
+      </button>
+      <button class="btn btn-secondary" id="resetBtn">
+        <i class="ti ti-refresh"></i> 清空重填
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       结果区
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card result-card" id="resultCard">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-chart-bar" id="resultIcon"></i> 算完了，看下面</span>
+    </div>
+
+    <div class="subject-recap" id="subjectRecap">—</div>
+
+    <!-- 三段进度条对比 -->
+    <div class="bars">
+      <div class="bar-row">
+        <span class="bar-label">先验（本来怎么想）</span>
+        <div class="bar-track"><div class="bar-fill bar-prior" id="barPrior"></div></div>
+        <span class="bar-value hl-prior" id="barPriorValue">—</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">你的直觉猜测</span>
+        <div class="bar-track"><div class="bar-fill bar-guess" id="barGuess"></div></div>
+        <span class="bar-value hl-guess" id="barGuessValue">—</span>
+      </div>
+      <div class="bar-row bar-row-final">
+        <span class="bar-label">贝叶斯真实答案</span>
+        <div class="bar-track"><div class="bar-fill bar-post" id="barPost"></div></div>
+        <span class="bar-value hl-post" id="barPostValue">—</span>
+      </div>
+    </div>
+
+    <!-- 直觉评级 -->
+    <div class="verdict" id="verdict">—</div>
+
+    <!-- 100 万人沙盘 -->
+    <div class="sandbox">
+      <div class="sandbox-title"><i class="ti ti-users"></i> 100 万人沙盘 · 用具体人数把它讲清楚</div>
+      <div class="sandbox-body" id="sandboxBody">—</div>
+    </div>
+
+    <!-- 一句话结论 -->
+    <div class="punchline" id="punchline">—</div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="copyBtn">
+        <i class="ti ti-copy"></i> 复制结论
+      </button>
+      <button class="btn btn-secondary" id="shareBtn">
+        <i class="ti ti-share-2"></i> 分享
+      </button>
+    </div>
+  </div>
+
+  <!-- 提示卡片 -->
+  <div class="card tip-card">
+    <div class="card-title"><i class="ti ti-info-circle"></i> 一句话总结</div>
+    <p class="tip-text">
+      贝叶斯定理不是个公式，是个习惯：<b class="hl-post">先承认你有先验偏见</b>，<b class="hl-evidence">再老实评估证据的命中率和误报率</b>，<b class="hl-warn">最后让两者一起决定你该改多少主意</b>。
+    </p>
+  </div>
+
+</div>
+
+<script src="./logic.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

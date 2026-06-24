@@ -61,6 +61,37 @@ body {
 .preset-title i { color: #ffd700; font-size: 1rem; }
 .preset-twist { color: rgba(255,255,255,0.5); font-size: 0.75rem; line-height: 1.5; }
 
+/* 移动端预设卡片：2 列网格、放大触控区、加细微呼吸感 */
+@media (max-width: 600px) {
+  .presets {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .preset {
+    padding: 12px 10px;
+    min-height: 76px;
+    border-radius: 10px;
+  }
+  .preset:active {
+    transform: scale(0.97);
+    background: rgba(255,215,0,0.08);
+    border-color: rgba(255,215,0,0.4);
+  }
+  .preset-title { font-size: 0.82rem; line-height: 1.3; }
+  .preset-title i { font-size: 0.95rem; }
+  .preset-twist {
+    font-size: 0.7rem; line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+/* 极窄屏：单列、保留足够行高避免拥挤 */
+@media (max-width: 360px) {
+  .presets { grid-template-columns: 1fr; }
+}
+
 /* ── 步骤 ── */
 .step {
   padding: 16px 0;

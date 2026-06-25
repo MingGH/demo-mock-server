@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="游戏里「暴击率+5%」和「暴击伤害+10%」到底哪个更值得？四关互动测试，从直觉到期望到方差，把这道经典词条题彻底算清楚。">
+  <title>暴击率+5% vs 暴击伤害+10%：到底选哪个 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Hero：进入互动主入口 ── -->
+  <div class="hero" style="background-image:linear-gradient(135deg, rgba(26,26,46,0.55), rgba(15,52,96,0.7)), url('images/hero.jpeg');">
+    <div class="hero-inner">
+      <span class="hero-tag"><i class="ti ti-swords"></i> 词条选择题</span>
+      <h1>暴击率 +5% &nbsp;<span class="vs">VS</span>&nbsp; 暴击伤害 +10%</h1>
+      <p>四个互动测试带你看清楚——先答题，再拖滑块，再上 Boss 战，最后看伤害分布。一关关点下去，比单纯刷知乎记得牢 10 倍。</p>
+      <div class="hero-actions">
+        <a href="#quiz" class="btn btn-primary"><i class="ti ti-play"></i> 开始挑战</a>
+        <a href="#simulator" class="btn btn-ghost"><i class="ti ti-adjustments"></i> 直接玩模拟器</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 进度条：4 关 ── -->
+  <div class="progress-wrap">
+    <div class="step done" data-step="1">
+      <span class="dot">1</span>
+      <span class="label">直觉测试</span>
+    </div>
+    <div class="step" data-step="2">
+      <span class="dot">2</span>
+      <span class="label">面板计算器</span>
+    </div>
+    <div class="step" data-step="3">
+      <span class="dot">3</span>
+      <span class="label">Boss 战</span>
+    </div>
+    <div class="step" data-step="4">
+      <span class="dot">4</span>
+      <span class="label">分布揭秘</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 关卡 1：直觉测试 ═══════════════ -->
+  <div class="section" id="quiz">
+    <h2><i class="ti ti-brain"></i> 第 1 关｜先测你的直觉</h2>
+    <p class="section-desc">3 道题凭感觉选，看看你对词条的理解偏了多少。不用算，就是猜。</p>
+
+    <div class="quiz-card" id="quizCard">
+      <div class="quiz-progress"><span id="quizStep">第 1 / 3 题</span><span class="score-badge"><i class="ti ti-trophy"></i> 当前得分 <strong id="quizScore">0</strong></span></div>
+
+      <div class="quiz-layout">
+        <div class="quiz-warrior">
+          <img src="images/warrior.jpeg" alt="战士角色">
+          <div class="warrior-badge">
+            <i class="ti ti-shield"></i>
+            <span>新兵·战士</span>
+          </div>
+        </div>
+        <div class="quiz-body">
+          <div class="quiz-scenario" id="quizScenario"></div>
+          <div class="quiz-choices">
+            <button class="quiz-btn" id="btnRate" onclick="quizChoose('rate')">
+              <i class="ti ti-flame"></i>
+              <span class="big">暴击率 +5%</span>
+              <span class="small" id="btnRateTag">更稳，暴击更频繁</span>
+            </button>
+            <button class="quiz-btn" id="btnDmg" onclick="quizChoose('damage')">
+              <i class="ti ti-bolt"></i>
+              <span class="big">暴击伤害 +10%</span>
+              <span class="small" id="btnDmgTag">更狠，暴击一下打更痛</span>
+            </button>
+          </div>
+          <div class="quiz-feedback" id="quizFeedback" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 测试结果 -->
+    <div id="quizResult" style="display:none;">
+      <div class="result-banner">
+        <div class="result-score" id="resultScore">—</div>
+        <div class="result-text" id="resultText">—</div>
+      </div>
+      <div class="answer-review" id="answerReview"></div>
+      <div style="text-align:center;margin-top:18px;">
+        <button class="btn btn-primary" onclick="goNext('simulator')"><i class="ti ti-arrow-right"></i> 第 2 关：用计算器验证</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 关卡 2：面板计算器 ═══════════════ -->
+  <div class="section" id="simulator">
+    <h2><i class="ti ti-calculator"></i> 第 2 关｜拖滑块自己算</h2>
+    <p class="section-desc">下面两个升级按钮就是你的选择——点哪个就涨哪条属性，看数字变色就知道哪种划算。</p>
+
+    <figure class="figure-img wide equip-art">
+      <img src="images/equipment.jpeg" alt="游戏角色装备面板">
+    </figure>
+
+    <div class="panel-board">
+      <div class="slider-group">
+        <div class="slider-label"><span><i class="ti ti-flame"></i> 当前暴击率</span><strong id="crVal">30%</strong></div>
+        <input type="range" id="crInput" min="0" max="100" value="30" step="1">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label"><span><i class="ti ti-bolt"></i> 当前暴击伤害（额外加成）</span><strong id="cdVal">100%</strong></div>
+        <input type="range" id="cdInput" min="0" max="300" value="100" step="5">
+      </div>
+
+      <div class="upgrade-counter">
+        <span><i class="ti ti-sparkles"></i> 已升级 <strong id="upgradeCount">0</strong> 次</span>
+        <button class="btn btn-ghost btn-sm" onclick="resetUpgrades()"><i class="ti ti-refresh"></i> 重置</button>
+      </div>
+
+      <div class="hint" id="ratioHint"></div>
+    </div>
+
+    <!-- 双选升级按钮 -->
+    <div class="upgrade-arena">
+      <button class="upgrade-btn rate" id="upRate" onclick="doUpgrade('rate')">
+        <span class="up-icon"><i class="ti ti-flame"></i></span>
+        <span class="up-title">点我加 5% 暴击率</span>
+        <span class="up-gain" id="upRateGain">+0</span>
+        <span class="up-foot">当前期望 + 0 伤害</span>
+      </button>
+      <div class="vs-divider">VS</div>
+      <button class="upgrade-btn dmg" id="upDmg" onclick="doUpgrade('damage')">
+        <span class="up-icon"><i class="ti ti-bolt"></i></span>
+        <span class="up-title">点我加 10% 暴击伤害</span>
+        <span class="up-gain" id="upDmgGain">+0</span>
+        <span class="up-foot">当前期望 + 0 伤害</span>
+      </button>
+    </div>
+
+    <!-- 期望与方差概览 -->
+    <div class="stats-row">
+      <div class="stat-cell">
+        <div class="stat-label">当前期望伤害</div>
+        <div class="stat-val" id="curExp">—</div>
+        <div class="stat-sub">基础伤害 = 100</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">单次伤害标准差</div>
+        <div class="stat-val" id="curStd">—</div>
+        <div class="stat-sub">越大越"赌"</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">数学最优下一步</div>
+        <div class="stat-val gold" id="suggest">—</div>
+        <div class="stat-sub" id="suggestSub">—</div>
+      </div>
+    </div>
+
+    <div class="preset-row">
+      <span class="preset-tip">不想自己调？点预设：</span>
+      <button class="chip" data-cr="10" data-cd="50"><i class="ti ti-flag"></i> 新号期</button>
+      <button class="chip" data-cr="30" data-cd="60"><i class="ti ti-target"></i> 临界点</button>
+      <button class="chip" data-cr="60" data-cd="80"><i class="ti ti-arrow-up"></i> 暴伤滞后</button>
+      <button class="chip" data-cr="95" data-cd="280"><i class="ti ti-crown"></i> 满暴流</button>
+    </div>
+
+    <div style="text-align:center;margin-top:18px;">
+      <button class="btn btn-primary" onclick="goNext('boss')"><i class="ti ti-arrow-right"></i> 第 3 关：去 Boss 战验证</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 关卡 3：Boss 战 ═══════════════ -->
+  <div class="section" id="boss">
+    <h2><i class="ti ti-sword"></i> 第 3 关｜真打一场</h2>
+    <p class="section-desc">点「攻击」掷一次暴击，看哪边能更快砍死 Boss。两个方案同样 150 期望，但节奏完全不同。</p>
+
+    <figure class="figure-img wide battle-art">
+      <img src="images/battle.jpeg" alt="RPG 战斗场景">
+    </figure>
+
+    <div class="boss-board">
+      <!-- 左：方案 A -->
+      <div class="boss-side" id="bossA">
+        <div class="boss-tag rate">方案 A · 高暴击率</div>
+        <div class="boss-stats">暴击率 <span id="bossACr">50%</span> / 暴击伤害 <span id="bossACd">100%</span></div>
+        <div class="boss-art">
+          <div class="boss-hp-wrap">
+            <div class="boss-hp-bar" id="bossAHpBar"></div>
+            <div class="boss-hp-text" id="bossAHpText">1500 / 1500</div>
+          </div>
+          <div class="boss-monster"><i class="ti ti-dragon"></i></div>
+          <button class="btn btn-primary" onclick="attackA()"><i class="ti ti-sword"></i> 攻击</button>
+          <div class="boss-hits" id="bossAHits">已砍 0 刀</div>
+          <div class="boss-dmg-log" id="bossALog"></div>
+          <button class="btn btn-ghost btn-sm" onclick="resetBossA()"><i class="ti ti-refresh"></i> 重置</button>
+          <button class="btn btn-primary btn-sm" onclick="autoBossA()"><i class="ti ti-player-play"></i> 自动打完这局</button>
+          <div class="boss-summary" id="bossASummary" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- 右：方案 B -->
+      <div class="boss-side" id="bossB">
+        <div class="boss-tag dmg">方案 B · 高暴伤</div>
+        <div class="boss-stats">暴击率 <span id="bossBCr">25%</span> / 暴击伤害 <span id="bossBCd">200%</span></div>
+        <div class="boss-art">
+          <div class="boss-hp-wrap">
+            <div class="boss-hp-bar" id="bossBHpBar"></div>
+            <div class="boss-hp-text" id="bossBHpText">1500 / 1500</div>
+          </div>
+          <div class="boss-monster"><i class="ti ti-dragon"></i></div>
+          <button class="btn btn-primary" onclick="attackB()"><i class="ti ti-sword"></i> 攻击</button>
+          <div class="boss-hits" id="bossBHits">已砍 0 刀</div>
+          <div class="boss-dmg-log" id="bossBLog"></div>
+          <button class="btn btn-ghost btn-sm" onclick="resetBossB()"><i class="ti ti-refresh"></i> 重置</button>
+          <button class="btn btn-primary btn-sm" onclick="autoBossB()"><i class="ti ti-player-play"></i> 自动打完这局</button>
+          <div class="boss-summary" id="bossBSummary" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <h3><i class="ti ti-bulb"></i> 同样的期望，不同的节奏</h3>
+      <p>期望都是 150。但 A 砍出来稳（100 或 200），B 砍出来跳（多数 100，偶尔 300）。一旦翻车，B 比 A 慢一截。</p>
+    </div>
+
+    <div style="text-align:center;margin-top:18px;">
+      <button class="btn btn-primary" onclick="goNext('distribution')"><i class="ti ti-arrow-right"></i> 第 4 关：看 10000 刀分布</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 关卡 4：分布揭秘 ═══════════════ -->
+  <div class="section" id="distribution">
+    <h2><i class="ti ti-chart-histogram"></i> 第 4 关｜10000 刀长这样</h2>
+    <p class="section-desc">跑 1 万次模拟，落到直方图里。点按钮换一组随机数，看看你今天手气怎么样。</p>
+
+    <div class="dist-controls">
+      <label>每局模拟次数
+        <select id="simCount">
+          <option value="1000">1,000</option>
+          <option value="5000">5,000</option>
+          <option value="10000" selected>10,000</option>
+          <option value="50000">50,000</option>
+        </select>
+      </label>
+      <button class="btn btn-primary" onclick="refreshDistributions()"><i class="ti ti-refresh"></i> 换一组随机数重跑</button>
+    </div>
+
+    <div class="dist-board">
+      <div class="dist-col">
+        <div class="dist-title"><i class="ti ti-shield"></i> 方案 A：高暴击率</div>
+        <div class="dist-meta">暴击率 50% / 暴击伤害 100% &nbsp;·&nbsp; 期望 <strong id="distExpA">—</strong> &nbsp;·&nbsp; 标准差 <strong id="distStdA">—</strong></div>
+        <div class="chart-wrap" style="height:220px;"><canvas id="distChartA"></canvas></div>
+      </div>
+      <div class="dist-col">
+        <div class="dist-title"><i class="ti ti-sword"></i> 方案 B：高暴伤</div>
+        <div class="dist-meta">暴击率 25% / 暴击伤害 200% &nbsp;·&nbsp; 期望 <strong id="distExpB">—</strong> &nbsp;·&nbsp; 标准差 <strong id="distStdB">—</strong></div>
+        <div class="chart-wrap" style="height:220px;"><canvas id="distChartB"></canvas></div>
+      </div>
+    </div>
+
+    <div class="dist-compare" id="distCompare"></div>
+
+    <div class="insight-box green">
+      <h3><i class="ti ti-target"></i> 第 4 关结论</h3>
+      <p>红色集中在 100，紫色在 100 和 300 各一根。期望相同、形状不同——这就是稳健流 vs 爆发流的数学根源。</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 选区全景图（纯 SVG 自己画） ═══════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-map-2"></i> 全景图｜你在哪边？</h2>
+    <p class="section-desc">拖滑块时，下面的黄点会跟着你在「选择地图」上移动，看清楚离 1:2 分割线有多远。</p>
+
+    <div class="region-board">
+      <svg class="region-svg" viewBox="0 0 600 360" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="rateRegion" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff6b6b" stop-opacity="0.42"/>
+            <stop offset="100%" stop-color="#ff6b6b" stop-opacity="0.12"/>
+          </linearGradient>
+          <linearGradient id="dmgRegion" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ce93d8" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="#ce93d8" stop-opacity="0.42"/>
+          </linearGradient>
+          <filter id="glow"><feGaussianBlur stdDeviation="3"/></filter>
+        </defs>
+
+        <!-- 坐标轴边框 -->
+        <rect x="60" y="20" width="480" height="300" fill="rgba(0,0,0,0.25)" stroke="rgba(255,215,0,0.3)" stroke-width="1.5" rx="8"/>
+
+        <!-- 选择区域 -->
+        <polygon points="60,20 540,20 540,320 60,320 60,200" fill="url(#rateRegion)"/>
+        <polygon points="60,320 540,320 540,20 60,200" fill="url(#dmgRegion)"/>
+
+        <!-- 等价分割线 暴击伤害 = 2 × 暴击率 -->
+        <line x1="60" y1="320" x2="540" y2="20" stroke="#90caf9" stroke-width="2.5" stroke-dasharray="6 4"/>
+
+        <!-- 等价线标签 -->
+        <g transform="translate(290, 165) rotate(-33)">
+          <rect x="-72" y="-12" width="144" height="24" fill="rgba(15,52,96,0.85)" rx="4"/>
+          <text x="0" y="4" text-anchor="middle" fill="#90caf9" font-size="12" font-weight="700">暴击伤害 = 2 × 暴击率</text>
+        </g>
+
+        <!-- 轴标签 -->
+        <text x="300" y="350" text-anchor="middle" fill="#a0a0a0" font-size="13" font-weight="600">暴击率（%）</text>
+        <text x="30" y="170" text-anchor="middle" fill="#a0a0a0" font-size="13" font-weight="600" transform="rotate(-90, 30, 170)">暴击伤害（%）</text>
+
+        <!-- 刻度 -->
+        <g fill="#888" font-size="10">
+          <text x="60" y="335" text-anchor="middle">0</text>
+          <text x="180" y="335" text-anchor="middle">25</text>
+          <text x="300" y="335" text-anchor="middle">50</text>
+          <text x="420" y="335" text-anchor="middle">75</text>
+          <text x="540" y="335" text-anchor="middle">100</text>
+
+          <text x="50" y="324" text-anchor="end">0</text>
+          <text x="50" y="239" text-anchor="end">100</text>
+          <text x="50" y="154" text-anchor="end">200</text>
+          <text x="50" y="69" text-anchor="end">300</text>
+        </g>
+
+        <!-- 区域文字 -->
+        <text x="200" y="90" text-anchor="middle" fill="#ff8a8a" font-size="20" font-weight="700">补暴击率</text>
+        <text x="400" y="280" text-anchor="middle" fill="#ce93d8" font-size="20" font-weight="700">补暴击伤害</text>
+
+        <!-- 当前位置 -->
+        <g id="regionYouDot" transform="translate(204, 220)">
+          <circle r="14" fill="#ffd700" filter="url(#glow)" opacity="0.6"/>
+          <circle r="8" fill="#ffd700" stroke="#fff" stroke-width="2"/>
+        </g>
+      </svg>
+    </div>
+    <div class="chart-legend">
+      <span class="lg lg-rate"><i></i> 该补暴击率的区域</span>
+      <span class="lg lg-dmg"><i></i> 该补暴击伤害的区域</span>
+      <span class="lg lg-line"><i></i> 等价分割线</span>
+      <span class="lg lg-dot"><i></i> 你的角色当前位置</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 宝石对比贴图 ═══════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-diamond"></i> 为什么游戏要做两个词条</h2>
+    <p class="section-desc">设计师故意留两个词条，做「稳健流」和「爆发流」两条养成路线。</p>
+    <figure class="figure-img wide">
+      <img src="images/gems.jpeg" alt="暴击率与暴击伤害两种词条的视觉对比">
+    </figure>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>暴击率有天花板</h4>
+        <p>最多 100%，溢出归零。后期玩家清一色"先把暴击率压到 100% 附近"。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>暴击伤害几乎无上限</h4>
+        <p>接近满暴后，所有提升都得靠暴伤来兑现。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>方差是被故意做出来的</h4>
+        <p>+10% 期望伤害，"稳定打高"和"偶尔爆炸高"的体验完全不同。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 公式总结 ═══════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-math-function"></i> 一行公式带走</h2>
+    <p class="section-desc">背这一行就够用：CD/CR &lt; 2 补暴伤，&gt; 2 补暴击率。</p>
+    <div class="formula-card">
+      <div class="formula-big">期望伤害 = 基础伤害 × (1 + 暴击率 × 暴击伤害)</div>
+      <ul class="formula-list">
+        <li><strong>+5% 暴击率</strong> 贡献 ＝ 基础伤害 × 0.05 × <span class="hl">当前暴伤</span></li>
+        <li><strong>+10% 暴击伤害</strong> 贡献 ＝ 基础伤害 × <span class="hl">当前暴击率</span> × 0.10</li>
+      </ul>
+    </div>
+    <div class="insight-box green">
+      <h3><i class="ti ti-target"></i> 一句话规则</h3>
+      <p>暴伤 / 暴击率 &lt; 2 → 优先补暴伤；&gt; 2 → 优先补暴击率；接近 2 → 哪个便宜堆哪个。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

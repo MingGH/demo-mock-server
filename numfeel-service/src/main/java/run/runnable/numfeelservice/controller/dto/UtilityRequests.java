@@ -63,6 +63,26 @@ public final class UtilityRequests {
     }
 
     /**
+     * WebSocket/HTTP 传输实验查询参数。
+     *
+     * @param eventsPerMinute 每分钟业务事件数
+     * @param payloadSize 单条消息载荷字节数
+     * @param activeSeconds 客户端在线时长，单位秒
+     * @param clients 同时在线客户端数量
+     * @param pollInterval HTTP 轮询间隔，单位秒
+     * @param reconnects WebSocket 断线重连次数
+     */
+    public record TransportLabQuery(
+            String eventsPerMinute,
+            String payloadSize,
+            String activeSeconds,
+            String clients,
+            String pollInterval,
+            String reconnects
+    ) {
+    }
+
+    /**
      * 词云查询参数。
      *
      * @param search 需要搜索的关键词

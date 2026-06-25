@@ -107,6 +107,62 @@ public final class UtilityResponses {
     }
 
     /**
+     * 传输实验指标响应。
+     *
+     * @param bytes 总传输字节数
+     * @param latencyMs 平均新鲜度延迟，单位毫秒
+     * @param serverMs 服务端工作量，单位毫秒
+     * @param memoryMb 连接相关内存占用，单位 MB
+     * @param operations 请求或消息数量
+     */
+    public record TransportMetricResponse(
+            long bytes,
+            int latencyMs,
+            double serverMs,
+            double memoryMb,
+            long operations
+    ) {
+    }
+
+    /**
+     * 传输实验概要。
+     *
+     * @param wsBytesSavedPercent WebSocket 相对 HTTP 节省的流量百分比
+     * @param wsServerSavedPercent WebSocket 相对 HTTP 节省的服务端工作量百分比
+     * @param wsLatencySavedPercent WebSocket 相对 HTTP 节省的延迟百分比
+     * @param wsMemoryPenaltyPercent WebSocket 相对 HTTP 增加的内存百分比
+     */
+    public record TransportSummaryResponse(
+            double wsBytesSavedPercent,
+            double wsServerSavedPercent,
+            double wsLatencySavedPercent,
+            double wsMemoryPenaltyPercent
+    ) {
+    }
+
+    /**
+     * WebSocket/HTTP 传输实验快照。
+     *
+     * @param recommendation 推荐方案
+     * @param reason 推荐理由
+     * @param eventCount 会话内业务事件数
+     * @param pollCount HTTP 轮询次数
+     * @param http HTTP 指标
+     * @param websocket WebSocket 指标
+     * @param summary 对比概要
+     */
+    public record TransportSnapshotResponse(
+            String recommendation,
+            String reason,
+            int eventCount,
+            int pollCount,
+            TransportMetricResponse http,
+            TransportMetricResponse websocket,
+            TransportSummaryResponse summary
+    ) {
+    }
+
+    /**
      * 不带统一包裹的简单错误响应。
      *
      * @param error 错误文案

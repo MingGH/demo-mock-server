@@ -4,7 +4,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.HandlerMapping;
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
-import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter;
 import run.runnable.numfeelservice.web.TransportLabWebSocketHandler;
 
 import java.util.Map;
@@ -27,15 +26,5 @@ public class WebSocketConfig {
         mapping.setUrlMap(Map.of("/transport-lab/ws", handler));
         mapping.setOrder(-1);
         return mapping;
-    }
-
-    /**
-     * 提供 WebFlux WebSocket 适配器。
-     *
-     * @return WebSocketHandlerAdapter 实例
-     */
-    @Bean
-    public WebSocketHandlerAdapter webSocketHandlerAdapter() {
-        return new WebSocketHandlerAdapter();
     }
 }

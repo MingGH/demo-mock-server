@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.runnable.numfeelservice.controller.dto.UtilityRequests.TransportLabQuery;
@@ -30,34 +31,37 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
     }
 
     /**
-     * 处理 WebSocket 会话，收到参数后持续推送模拟业务事件。
+     * 处理 WebSocket 会话，握手时通过 query string 接收参数并推送模拟业务事件。
      *
      * @param session WebSocket 会话
      * @return 完成信号
      */
     @Override
     public Mono<Void> handle(WebSocketSession session) {
-        var inbound = session.receive()
-                .map(WebSocketMessage::getPayloadAsText)
-                .next()
-                .defaultIfEmpty("{}");
-        return inbound.flatMap(payload -> session.send(buildMessages(session, payload)));
+        return session.send(buildMessages(session, resolveQuery(session)));
     }
 
-    private Flux<WebSocketMessage> buildMessages(WebSocketSession session, String payload) {
-        TransportLabQuery query;
-        try {
-            query = MAPPER.readValue(payload, TransportLabQuery.class);
-        } catch (Exception e) {
-            log.warn("Transport lab websocket params parse failed: {}", e.getMessage());
-            query = new TransportLabQuery(null, null, null, null, null, null);
-        }
+    private Flux<WebSocketMessage> buildMessages(WebSocketSession session, TransportLabQuery query) {
         var snapshot = transportLabService.snapshot(query);
         var snapshotMessage = Mono.fromSupplier(() -> session.textMessage(toJson(snapshot)));
         var eventMessages = Flux.interval(Duration.ofMillis(260))
                 .take(Math.min(snapshot.eventCount(), 10))
-                .map(index -> session.textMessage("{\"type\":\"event\",\"seq\":" + (index + 1) + ",\"text\":\"server pushed event\"}"));
+                .map(index -> session.textMessage(
+                        "{\"type\":\"event\",\"seq\":" + (index + 1) + ",\"text\":\"server pushed event\"}"));
         return Flux.concat(snapshotMessage, eventMessages);
+    }
+
+    private TransportLabQuery resolveQuery(WebSocketSession session) {
+        var queryParams = UriComponentsBuilder.fromUri(session.getHandshakeInfo().getUri())
+                .build()
+                .getQueryParams();
+        return new TransportLabQuery(
+                queryParams.getFirst("eventsPerMinute"),
+                queryParams.getFirst("payloadSize"),
+                queryParams.getFirst("activeSeconds"),
+                queryParams.getFirst("clients"),
+                queryParams.getFirst("pollInterval"),
+                queryParams.getFirst("reconnects"));
     }
 
     private String toJson(Object value) {

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="每局50%赢×1.5、50%输×0.5——算术期望是1，为什么大多数人亏了？看1000个赌徒的模拟分布。">
+  <title>赌徒错觉：为什么"公平"游戏越赌越穷 | 数字直觉</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>赌徒错觉</h1>
+      <p>每个赌局都公平，为什么你一定亏？</p>
+    </div>
+
+    <div class="gf-wrap">
+
+      <!-- 首屏 Hero：只放1个按钮 -->
+      <div class="gf-hero" id="gf-hero">
+        <div class="gf-hero-badge">
+          <i class="ti ti-dice-5"></i> 反直觉实验
+        </div>
+        <div class="gf-hero-title">5000个赌徒，每人20局</div>
+        <div class="gf-hero-sub">
+          每局50%概率赢（资金×1.5）、50%输（资金×0.5）。<br>
+          算术期望明明是1——为什么几乎所有人都在亏？
+        </div>
+        <button class="gf-cta-btn" id="gf-cta-btn" type="button">
+          <i class="ti ti-player-play-filled"></i>
+          看结果
+        </button>
+      </div>
+
+      <!-- 结果区（初始隐藏，CTA点击后显示） -->
+      <div class="gf-results" id="gf-results">
+
+        <!-- Tab 切换 -->
+        <div class="gf-tabs">
+          <button class="gf-tab active" id="gf-tab-pop" type="button">
+            <i class="ti ti-users"></i> 千人模拟
+          </button>
+          <button class="gf-tab" id="gf-tab-solo" type="button">
+            <i class="ti ti-user"></i> 自己试试
+          </button>
+        </div>
+
+        <!-- 千人模拟面板 -->
+        <div class="gf-tab-panel active" id="gf-panel-pop">
+          <div class="gf-card">
+            <div class="gf-card-header">
+              <span class="gf-card-title">
+                <i class="ti ti-chart-histogram"></i> 1000人资金分布
+              </span>
+              <div class="gf-mode-toggle">
+                <button class="gf-mode-btn active" id="gf-mode-orig" type="button">原始 ×1.5/×0.5</button>
+                <button class="gf-mode-btn" id="gf-mode-mod" type="button">改版 ×2/×0.5</button>
+              </div>
+            </div>
+
+            <!-- 四格统计 -->
+            <div class="gf-stats-grid">
+              <div class="gf-stat">
+                <div class="gf-stat-value accent" id="gf-stat-mean">-</div>
+                <div class="gf-stat-label">算术均值（期望）</div>
+              </div>
+              <div class="gf-stat">
+                <div class="gf-stat-value blue" id="gf-stat-median">-</div>
+                <div class="gf-stat-label">中位数</div>
+              </div>
+              <div class="gf-stat">
+                <div class="gf-stat-value green" id="gf-stat-geo">-</div>
+                <div class="gf-stat-label">几何均值（典型值）</div>
+              </div>
+              <div class="gf-stat">
+                <div class="gf-stat-value red" id="gf-stat-lost">-</div>
+                <div class="gf-stat-label">亏钱比例</div>
+              </div>
+            </div>
+
+            <!-- 洞察条 -->
+            <div class="gf-insight-bar" id="gf-insight-bar">
+              点击"跑一次"开始模拟。
+            </div>
+
+            <!-- 控制区 -->
+            <div class="gf-controls">
+              <div class="gf-slider-group">
+                <label>局数</label>
+                <input type="range" id="gf-rounds-slider" min="5" max="100" value="20" step="5">
+                <span class="gf-slider-val" id="gf-rounds-val">20</span>
+              </div>
+              <button class="gf-run-btn" id="gf-run-btn" type="button">
+                <i class="ti ti-refresh"></i> 再跑一次
+              </button>
+            </div>
+
+            <!-- 直方图 -->
+            <div class="gf-chart-wrap">
+              <canvas id="gf-pop-chart"></canvas>
+            </div>
+
+            <!-- 了解更多的折叠区 -->
+            <button class="gf-more-toggle" id="gf-more-toggle" type="button">
+              <i class="ti ti-chevron-right"></i> <span>了解更多</span>
+            </button>
+            <div class="gf-more-content" id="gf-more-content">
+              这个游戏每局独立、输赢概率各半。单局来看很公平——算术期望 = 0.5×1.5 + 0.5×0.5 = 1。<br><br>
+              但连玩多局后，资金是一个<strong>乘法随机过程</strong>。大部分人的资金路径被输局拖垮，极少数人运气好冲到很高。<br><br>
+              算术均值被那些极少数暴富者拉高了，而<strong>中位数和几何均值</strong>才反映"一般人"的命运。<br><br>
+              切换到改版游戏看看——赢翻倍输减半，算术期望>1，但几何均值刚好=1。赢的人赢很大，输的人输很少，分布完全不一样。
+            </div>
+          </div>
+        </div>
+
+        <!-- 单人模式面板 -->
+        <div class="gf-tab-panel" id="gf-panel-solo">
+          <div class="gf-card">
+            <div class="gf-solo-header">
+              <div class="gf-solo-status">
+                <div>
+                  <div class="gf-solo-capital" id="gf-solo-capital">100</div>
+                  <div class="gf-solo-round" id="gf-solo-round">准备开始</div>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="gf-solo-streak" id="gf-solo-streak"></span>
+                <span class="gf-solo-result" id="gf-solo-result"></span>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;">
+              <button class="gf-bet-btn" id="gf-bet-btn" type="button">
+                <i class="ti ti-cash"></i> 下注
+              </button>
+              <button class="gf-run-btn" id="gf-reset-solo" type="button" style="background: rgba(242,228,207,0.06); border-color: rgba(242,228,207,0.12); color: rgba(242,228,207,0.6);">
+                <i class="ti ti-refresh"></i> 重来
+              </button>
+              <div class="gf-solo-mul">
+                <label for="gf-solo-winmul">赢时×</label>
+                <input type="number" id="gf-solo-winmul" value="1.5" min="0.6" max="10" step="0.1">
+              </div>
+            </div>
+
+            <div class="gf-solo-comment" id="gf-solo-comment"></div>
+
+            <div class="gf-chart-wrap" style="margin-top: 12px;">
+              <canvas id="gf-solo-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /gf-results -->
+    </div><!-- /gf-wrap -->
+  </div><!-- /container -->
+
+  <script src="../../components/header.js" defer></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,353 @@
+/* style.css — PWA 能力检测实验室 */
+
+.pwa-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* ── 首屏 Hero ── */
+.pwa-hero {
+  text-align: center;
+  padding: 60px 20px 40px;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.pwa-hero.faded {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+  padding: 0;
+  margin: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+.pwa-hero-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(110, 168, 201, 0.14);
+  color: rgba(242, 228, 207, 0.7);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  margin-bottom: 20px;
+}
+.pwa-hero-title {
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  color: #f2e4cf;
+  margin: 0 0 12px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.pwa-hero-sub {
+  color: rgba(242, 228, 207, 0.5);
+  font-size: 0.95rem;
+  margin-bottom: 32px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.7;
+}
+
+/* ── 呼吸按钮 ── */
+.pwa-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(110, 168, 201, 0.4);
+  background: linear-gradient(140deg, rgba(110, 168, 201, 0.9), rgba(60, 130, 170, 0.96));
+  color: #0d1a20;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: pwa-breath 2.4s ease-in-out infinite;
+  box-shadow: 0 12px 32px rgba(110, 168, 201, 0.28);
+}
+.pwa-cta-btn:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 18px 40px rgba(110, 168, 201, 0.36);
+}
+.pwa-cta-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+@keyframes pwa-breath {
+  0%, 100% { box-shadow: 0 12px 32px rgba(110, 168, 201, 0.28); }
+  50% { box-shadow: 0 12px 48px rgba(110, 168, 201, 0.48); }
+}
+
+/* ── 结果区 ── */
+.pwa-results {
+  display: none;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.pwa-results.visible {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── 卡片 ── */
+.pwa-card {
+  border-radius: 24px;
+  border: 1px solid rgba(242, 228, 207, 0.1);
+  background: radial-gradient(circle at top right, rgba(110, 168, 201, 0.06), transparent 40%),
+    linear-gradient(160deg, rgba(21, 28, 39, 0.92), rgba(13, 17, 23, 0.82));
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(14px);
+}
+.pwa-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.pwa-card-title {
+  color: #f2e4cf;
+  font-size: 1.15rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pwa-card-title i {
+  color: rgba(110, 168, 201, 0.8);
+}
+
+/* ── 分数徽章 ── */
+.pwa-score-badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(110, 168, 201, 0.15);
+  color: #6ea8c9;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* ── 进度条 ── */
+.pwa-meter-wrap {
+  margin-bottom: 16px;
+}
+.pwa-meter {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(242, 228, 207, 0.08);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.pwa-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.8s ease, background 0.6s ease;
+}
+.pwa-meter-label {
+  font-size: 0.82rem;
+  color: rgba(242, 228, 207, 0.5);
+}
+
+/* ── 洞察条 ── */
+.pwa-insight-bar {
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: rgba(110, 168, 201, 0.08);
+  border-left: 3px solid #6ea8c9;
+  color: rgba(242, 228, 207, 0.72);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  transition: all 0.3s ease;
+}
+
+/* ── 检查清单 ── */
+.pwa-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.pwa-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 8px;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(242, 228, 207, 0.6);
+  border-bottom: 1px solid rgba(242, 228, 207, 0.06);
+}
+.pwa-group-header:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+.pwa-group-count {
+  margin-left: auto;
+  font-size: 0.8rem;
+}
+
+.pwa-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin: 2px 0;
+  transition: background 0.25s ease;
+  animation: pwa-fade-up 0.35s ease both;
+}
+.pwa-check-item:hover {
+  background: rgba(242, 228, 207, 0.03);
+}
+@keyframes pwa-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pwa-check-icon {
+  margin-top: 2px;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.pwa-check-item.supported .pwa-check-icon {
+  color: #88954a;
+}
+.pwa-check-item.unsupported .pwa-check-icon {
+  color: #e05555;
+}
+.pwa-check-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pwa-check-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #f2e4cf;
+}
+.pwa-check-detail {
+  font-size: 0.78rem;
+  color: rgba(242, 228, 207, 0.45);
+  line-height: 1.5;
+}
+
+/* ── 对比表 ── */
+.pwa-compare-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.pwa-compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  min-width: 560px;
+}
+.pwa-compare-table th {
+  padding: 10px 12px;
+  text-align: left;
+  color: rgba(242, 228, 207, 0.55);
+  font-weight: 600;
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgba(242, 228, 207, 0.08);
+}
+.pwa-compare-table th i {
+  font-size: 1rem;
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+.pwa-compare-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(242, 228, 207, 0.04);
+  vertical-align: top;
+}
+.compare-dim {
+  color: rgba(242, 228, 207, 0.7);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.compare-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+.web-badge {
+  background: rgba(242, 228, 207, 0.06);
+  color: rgba(242, 228, 207, 0.5);
+}
+.pwa-badge {
+  background: rgba(110, 168, 201, 0.1);
+  color: #6ea8c9;
+}
+.native-badge {
+  background: rgba(136, 149, 74, 0.1);
+  color: #88954a;
+}
+
+/* ── 了解更多折叠 ── */
+.pwa-more-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 0;
+  color: rgba(242, 228, 207, 0.4);
+  font-size: 0.82rem;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: color 0.2s;
+}
+.pwa-more-toggle:hover {
+  color: rgba(242, 228, 207, 0.65);
+}
+.pwa-more-content {
+  display: none;
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(242, 228, 207, 0.03);
+  border: 1px solid rgba(242, 228, 207, 0.06);
+  color: rgba(242, 228, 207, 0.6);
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+.pwa-more-content.open {
+  display: block;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 640px) {
+  .pwa-hero {
+    padding: 20px 12px 16px;
+  }
+  .pwa-hero-sub {
+    margin-bottom: 20px;
+  }
+  .pwa-card {
+    padding: 16px;
+  }
+  .pwa-compare-table {
+    font-size: 0.74rem;
+    min-width: 480px;
+  }
+  .compare-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
+}

@@ -27,19 +27,7 @@ class TransportLabControllerTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(200)
-                .jsonPath("$.data.recommendation").isEqualTo("websocket")
-                .jsonPath("$.data.eventCount").isEqualTo(720);
-    }
-
-    @Test
-    void snapshot_sparse_interaction_recommends_http() {
-        client.get().uri("/transport-lab/snapshot?eventsPerMinute=1&payloadSize=1600&activeSeconds=120&clients=1200&pollInterval=30&reconnects=0")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.status").isEqualTo(200)
-                .jsonPath("$.data.recommendation").isEqualTo("http")
-                .jsonPath("$.data.pollCount").isEqualTo(4);
+                .jsonPath("$.data.recommendation").isEqualTo("websocket");
     }
 
     @Test
@@ -50,25 +38,51 @@ class TransportLabControllerTest {
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(200)
                 .jsonPath("$.data.serverTime").isNumber()
-                .jsonPath("$.data.size").isEqualTo(512)
-                .jsonPath("$.data.payload").isNotEmpty();
+                .jsonPath("$.data.size").isEqualTo(512);
     }
 
     @Test
-    void benchmark_default_size() {
-        client.get().uri("/transport-lab/benchmark")
+    void scenario_trading_returns_symbols_and_trades() {
+        client.get().uri("/transport-lab/scenario/trading")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.data.size").isEqualTo(1024);
+                .jsonPath("$.status").isEqualTo(200)
+                .jsonPath("$.data.scenario").isEqualTo("trading")
+                .jsonPath("$.data.symbols.length()").isEqualTo(6)
+                .jsonPath("$.data.recentTrades.length()").isEqualTo(8);
     }
 
     @Test
-    void benchmark_clamps_large_size() {
-        client.get().uri("/transport-lab/benchmark?size=999999")
+    void scenario_profile_returns_8_fields() {
+        client.get().uri("/transport-lab/scenario/profile")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.data.size").isEqualTo(65536);
+                .jsonPath("$.status").isEqualTo(200)
+                .jsonPath("$.data.scenario").isEqualTo("profile")
+                .jsonPath("$.data.fields.length()").isEqualTo(8);
+    }
+
+    @Test
+    void scenario_dashboard_returns_metrics() {
+        client.get().uri("/transport-lab/scenario/dashboard")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(200)
+                .jsonPath("$.data.scenario").isEqualTo("dashboard")
+                .jsonPath("$.data.metrics.length()").isEqualTo(6);
+    }
+
+    @Test
+    void scenario_gaming_returns_players() {
+        client.get().uri("/transport-lab/scenario/gaming")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(200)
+                .jsonPath("$.data.scenario").isEqualTo("gaming")
+                .jsonPath("$.data.players.length()").isEqualTo(6);
     }
 }

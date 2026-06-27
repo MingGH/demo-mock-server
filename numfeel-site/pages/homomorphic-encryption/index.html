@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Paillier 同态加密：在加密状态下的数字上做加法，解密后结果完全一致。亲手操作、亲眼验证密码学的魔法。">
+  <title>同态加密：在密文上做加法 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-lock"></i> 同态加密：在密文上做加法</h1>
+    <p class="header-tagline">加密两个数字，然后对密文做乘法——解密后得到的是两份明文之和。全程不知道原始数字，却算出了正确结果。</p>
+  </div>
+
+  <!-- ── 主交互区 ── -->
+  <div class="section" id="mainSection">
+    <!-- 状态1: 未生成密钥 -->
+    <div class="stage" id="stageInit">
+      <div class="hero-cta">
+        <button id="genKeyBtn" class="btn-hero breathing">
+          <i class="ti ti-key"></i> 生成密钥
+        </button>
+        <p class="hero-hint">点击按钮，在浏览器里生成一对 Paillier 密钥。密钥只存在当前页面中。</p>
+      </div>
+    </div>
+
+    <!-- 状态2: 密钥已生成，待输入 -->
+    <div class="stage" id="stageReady" style="display:none;">
+      <div class="key-info">
+        <span class="key-badge">密钥已就绪</span>
+        <span class="key-bits" id="keyBitsDisplay"></span>
+      </div>
+      <div class="input-duo">
+        <div class="input-card">
+          <label>数字 A</label>
+          <input type="text" inputmode="numeric" id="inputA" placeholder="例如 42" autocomplete="off">
+        </div>
+        <div class="input-op">+</div>
+        <div class="input-card">
+          <label>数字 B</label>
+          <input type="text" inputmode="numeric" id="inputB" placeholder="例如 58" autocomplete="off">
+        </div>
+      </div>
+      <div class="action-row">
+        <button id="encryptBtn" class="btn-hero" disabled>加密并相加</button>
+      </div>
+      <div class="preset-row">
+        <button class="preset-btn" data-a="42" data-b="58">42 + 58</button>
+        <button class="preset-btn" data-a="100" data-b="200">100 + 200</button>
+        <button class="preset-btn" data-a="123" data-b="456">123 + 456</button>
+        <button class="preset-btn" data-a="1" data-b="999">1 + 999</button>
+        <button class="preset-btn" data-a="0" data-b="777">0 + 777</button>
+      </div>
+    </div>
+
+    <!-- 状态3: 计算结果 -->
+    <div class="stage" id="stageResult" style="display:none;">
+      <div class="result-grid">
+        <div class="cipher-block">
+          <div class="cipher-label">密文 A = Enc(<span id="plainA"></span>)</div>
+          <div class="cipher-value" id="cipherA"></div>
+          <div class="cipher-size" id="cipherASize"></div>
+        </div>
+        <div class="cipher-op-mid">
+          <span class="op-symbol">&times;</span>
+          <span class="op-label">（同态加法 = 密文相乘）</span>
+        </div>
+        <div class="cipher-block">
+          <div class="cipher-label">密文 B = Enc(<span id="plainB"></span>)</div>
+          <div class="cipher-value" id="cipherB"></div>
+          <div class="cipher-size" id="cipherBSize"></div>
+        </div>
+      </div>
+      <div class="arrow-down" id="arrowDown">⬇</div>
+      <div class="cipher-block result-block">
+        <div class="cipher-label">密文 C = 密文A &times; 密文B mod n²</div>
+        <div class="cipher-value" id="cipherSum"></div>
+        <div class="cipher-size" id="cipherSumSize"></div>
+      </div>
+      <div class="reveal-section">
+        <button id="decryptBtn" class="btn-hero">解密验证</button>
+      </div>
+      <div class="result-reveal" id="resultReveal" style="display:none;">
+        <div class="result-eq">
+          <span class="result-plain">Dec(密文C)</span>
+          <span class="result-eq-sign">=</span>
+          <span class="result-value" id="decryptedResult"></span>
+        </div>
+        <div class="result-check" id="resultCheck"></div>
+        <div class="result-tip" id="resultTip"></div>
+      </div>
+      <div class="action-row">
+        <button id="resetBtn" class="btn-secondary">再来一次</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 了解更多 ── -->
+  <div class="section collapsible" id="moreSection">
+    <button class="collapse-toggle" id="moreToggle">
+      <i class="ti ti-bulb"></i> 了解更多：Paillier 是怎么做到的
+      <span class="toggle-icon">▾</span>
+    </button>
+    <div class="collapse-body" id="moreBody" style="display:none;">
+      <div class="principle-grid">
+        <div class="principle-card">
+          <div class="num">01</div>
+          <h4>加密：藏在模平方里</h4>
+          <p>Paillier 加密不是在整数环 Z<sub>n</sub> 上做，而是在 Z<sub>n²</sub> 上。c = g<sup>m</sup> · r<sup>n</sup> mod n²。那个随机的 r 让同一份明文每次加密后的密文都不一样——这叫做「概率加密」，防止对手通过比对密文推断明文。</p>
+        </div>
+        <div class="principle-card">
+          <div class="num">02</div>
+          <h4>加法同态：密文相乘 = 明文相加</h4>
+          <p>Enc(m₁) · Enc(m₂) = g^(m₁+m₂) · (r₁r₂)^n mod n² = Enc(m₁+m₂)。两个密文相乘，解密后恰好是明文之和。这是 Paillier 方案的代数精髓。</p>
+        </div>
+        <div class="principle-card">
+          <div class="num">03</div>
+          <h4>安全性：判定合数剩余</h4>
+          <p>给定密文 c，判断它是否对应某个明文 m 是计算困难的。这个难题叫做「判定合数剩余问题」(DCRA)，至今没有被攻破——RSA 用的是「大整数分解」，Paillier 比它多一层防护。</p>
+        </div>
+        <div class="principle-card">
+          <div class="num">04</div>
+          <h4>从加法到全同态</h4>
+          <p>Paillier 只有加法同态。要实现乘法同态（FHE），需要引入「自举」(bootstrapping) 技术——在加密状态下刷新噪声，让连续乘法的噪声不会爆炸。2009 年 Gentry 首次构造出来，后续 BFV/BGV/CKKS/TFHE 方案持续优化至今。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 对比表 ── -->
+  <div class="section collapsible" id="compareSection">
+    <button class="collapse-toggle" id="compareToggle">
+      <i class="ti ti-scale"></i> 同态加密能力对比
+      <span class="toggle-icon">▾</span>
+    </button>
+    <div class="collapse-body" id="compareBody" style="display:none;">
+      <table class="compare-table">
+        <thead>
+          <tr><th>方案</th><th>加法同态</th><th>乘法同态</th><th>运算深度</th><th>当前可用性</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Paillier (1999)</td><td class="yes">✓</td><td class="no">✗</td><td>无限</td><td>成熟，工业可用</td></tr>
+          <tr class="highlight-row"><td>BFV / BGV</td><td class="yes">✓</td><td class="yes">✓</td><td>有限</td><td>较成熟，OpenFHE / SEAL</td></tr>
+          <tr><td>CKKS</td><td class="yes">✓</td><td class="yes">✓</td><td>有限</td><td>适合浮点/ML推理</td></tr>
+          <tr><td>TFHE</td><td class="yes">✓</td><td class="yes">✓</td><td>无限(含自举)</td><td>Zama / tfhe-rs</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── API 模式提示 ── -->
+  <div class="section" id="apiSection" style="display:none;">
+    <h2><i class="ti ti-server"></i> 后端 API 模式（可选）</h2>
+    <p class="section-desc">本页面默认在前端浏览器中完成全部计算。如果你想体验「客户端加密 → 服务端计算 → 客户端解密」的真实 FHE 架构，可以在 URL 后加 <code>?backend=1</code> 参数启用后端模式。后端将调用 Paillier 计算接口，返回加密结果。</p>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

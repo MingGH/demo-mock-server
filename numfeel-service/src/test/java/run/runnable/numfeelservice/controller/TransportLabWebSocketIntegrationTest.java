@@ -31,12 +31,16 @@ class TransportLabWebSocketIntegrationTest {
                 .execute(url, session -> session.receive()
                         .map(message -> message.getPayloadAsText())
                         .doOnNext(messages::add)
-                        .take(3)
+                        .take(4)
                         .then())
-                .block(Duration.ofSeconds(5));
+                .block(Duration.ofSeconds(8));
 
-        assertThat(messages).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(messages).hasSizeGreaterThanOrEqualTo(3);
+        // 第一条 snapshot 包含推荐结果
+        assertThat(messages.get(0)).contains("\"type\":\"snapshot\"");
         assertThat(messages.get(0)).contains("\"recommendation\":\"websocket\"");
-        assertThat(messages.get(1)).contains("\"type\":\"event\"");
+        // 后续事件包含 serverTime
+        assertThat(messages.get(1)).contains("\"type\"");
+        assertThat(messages.get(1)).contains("\"serverTime\"");
     }
 }

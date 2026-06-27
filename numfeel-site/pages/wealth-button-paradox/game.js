@@ -396,7 +396,7 @@ function formatReturnRate(value, digits) {
   if (!Number.isFinite(value)) return value < 0 ? '-∞%' : '+∞%';
   const sign = value >= 0 ? '+' : '-';
   const abs = Math.abs(value);
-  if (abs >= 1e4) return sign + formatLargeChineseNumber(abs, fixedDigits).text + '%';
+  if (abs >= 1e4) return sign + formatScientific(abs, fixedDigits) + '%';
   return sign + abs.toFixed(fixedDigits) + '%';
 }
 

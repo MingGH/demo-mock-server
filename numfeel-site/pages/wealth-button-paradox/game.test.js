@@ -74,7 +74,7 @@ function formatReturnRate(value, digits) {
   if (!Number.isFinite(value)) return value < 0 ? '-∞%' : '+∞%';
   const sign = value >= 0 ? '+' : '-';
   const abs = Math.abs(value);
-  if (abs >= 1e4) return sign + formatLargeChineseNumber(abs, fixedDigits).text + '%';
+  if (abs >= 1e4) return sign + formatScientific(abs, fixedDigits) + '%';
   return sign + abs.toFixed(fixedDigits) + '%';
 }
 
@@ -174,8 +174,8 @@ assert(formatPowerHint(1e96) === '约 10 的 96 次方量级', '超大值量级�
 
 console.log('\n=== formatReturnRate 测试 ===');
 assert(formatReturnRate(12.345) === '+12.35%', '普通收益率');
-assert(formatReturnRate(1e20) === '+1.00垓%', '超大收益率使用中文单位');
-assert(formatReturnRate(-1e24, 1) === '-1.0秭%', '负收益率保持符号');
+assert(formatReturnRate(1e20) === '+1.00 × 10²⁰%', '超大收益率使用科学计数法');
+assert(formatReturnRate(-1e24, 1) === '-1.0 × 10²⁴%', '负收益率使用科学计数法');
 
 console.log('\n=== formatNumber 测试 ===');
 assert(formatNumber(500) === '500', '500 不变');

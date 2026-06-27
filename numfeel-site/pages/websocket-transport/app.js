@@ -24,6 +24,10 @@
   var moreContent = document.getElementById('moreContent');
   var delaySlider = document.getElementById('delaySlider');
   var delayValue = document.getElementById('delayValue');
+  var pollBar = document.getElementById('pollBar');
+  var pollCheckbox = document.getElementById('pollCheckbox');
+  var pollIntervalSlider = document.getElementById('pollIntervalSlider');
+  var pollIntervalValue = document.getElementById('pollIntervalValue');
 
   // ── 状态 ──
   var currentScenario = 'trading';
@@ -34,6 +38,8 @@
   var wsEventsReceived = 0;
   var httpStartTime = 0;
   var wsStartTime = 0;
+  var httpPollTimer = null;
+  var httpPollCount = 0;
 
   // ── 场景配置 ──
   var SCENARIOS = {
@@ -99,6 +105,10 @@
 
     // 断开旧连接
     disconnectWs();
+    stopHttpPoll();
+    // 显示/隐藏轮询开关
+    pollBar.style.display = (currentScenario === 'trading' || currentScenario === 'dashboard') ? '' : 'none';
+    pollCheckbox.checked = false;
     // 重置状态
     httpLoading = false;
     httpBtn.classList.remove('loading');
@@ -113,11 +123,19 @@
   });
 
   // ══════════════════════════════════════════
-  //  HTTP 加载
+  //  HTTP 加载（行情盘场景支持轮询模式）
   // ══════════════════════════════════════════
 
   httpBtn.addEventListener('click', function() {
     if (httpLoading) return;
+
+    // 行情盘/数据看板 + 轮询开启 → 开始轮询
+    if ((currentScenario === 'trading' || currentScenario === 'dashboard') && pollCheckbox.checked) {
+      startHttpPoll();
+      return;
+    }
+
+    // 单次请求
     httpLoading = true;
     httpBtn.classList.add('loading');
     httpBtn.innerHTML = '<i class="ti ti-loader"></i> 请求中...';
@@ -139,12 +157,6 @@
 
         var payload = data && data.data ? data.data : data;
         renderStageHTTP(currentScenario, payload);
-
-        // 显示洞察
-        var insight = currentScenario === 'profile' || currentScenario === 'dashboard'
-          ? SCENARIOS[currentScenario].insightHTTP
-          : null;
-        if (insight && !wsConnected) showInsight(insight);
       })
       .catch(function(err) {
         httpTimingValue.textContent = '失败';
@@ -153,6 +165,95 @@
         httpLoading = false;
       });
   });
+
+  function startHttpPoll() {
+    stopHttpPoll();
+    httpPollCount = 0;
+    httpLoading = true;
+    httpBtn.classList.add('loading');
+    httpBtn.innerHTML = '<i class="ti ti-refresh"></i> 轮询中...';
+    httpTimingValue.textContent = '...';
+    doHttpPoll();
+  }
+
+  function stopHttpPoll() {
+    httpLoading = false;
+    if (httpPollTimer) clearTimeout(httpPollTimer);
+    httpPollTimer = null;
+    httpBtn.classList.remove('loading');
+    httpBtn.innerHTML = '<i class="ti ti-cloud-download"></i> HTTP 加载';
+  }
+
+  function doHttpPoll() {
+    var scenario = currentScenario;
+    if (!pollCheckbox.checked || (scenario !== 'trading' && scenario !== 'dashboard')) {
+      stopHttpPoll();
+      return;
+    }
+    httpPollCount++;
+    var startTime = performance.now();
+
+    fetch(API_BASE + SCENARIOS[scenario].endpoint)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        var rtt = Math.round(performance.now() - startTime);
+        httpTimingValue.textContent = rtt + 'ms / 第' + httpPollCount + '次';
+
+        var payload = data && data.data ? data.data : data;
+        if (httpPollCount === 1) {
+          renderStageHTTP(scenario, payload);
+        } else if (scenario === 'trading') {
+          updateTradingFromPoll(payload);
+        } else if (scenario === 'dashboard') {
+          updateDashboardFromPoll(payload);
+        }
+        showStage();
+
+        if (pollCheckbox.checked && (scenario === 'trading' || scenario === 'dashboard')) {
+          httpPollTimer = setTimeout(doHttpPoll, parseInt(pollIntervalSlider.value));
+        }
+      })
+      .catch(function() {
+        if (pollCheckbox.checked && (scenario === 'trading' || scenario === 'dashboard')) {
+          httpPollTimer = setTimeout(doHttpPoll, parseInt(pollIntervalSlider.value));
+        }
+      });
+  }
+
+  /** 用 HTTP 轮询结果更新行情盘数据 */
+  function updateTradingFromPoll(data) {
+    var symbols = data.symbols || [];
+    var tickerRow = document.getElementById('tickerRow');
+    if (!tickerRow) return;
+    symbols.forEach(function(s) {
+      var card = tickerRow.querySelector('[data-symbol="' + s.symbol + '"]');
+      var changeClass = s.change >= 0 ? 'up' : 'down';
+      var html = '<div class="ticker-card ' + changeClass + '" data-symbol="' + s.symbol + '">' +
+        '<div class="ticker-symbol">' + s.symbol + '</div>' +
+        '<div class="ticker-price">$' + s.price.toFixed(2) + '</div>' +
+        '<div class="ticker-change ' + changeClass + '">' + (s.change >= 0 ? '+' : '') + s.change + '%</div>' +
+        '<div class="ticker-vol">vol ' + s.volume + '</div></div>';
+      if (card) card.outerHTML = html;
+    });
+  }
+
+  /** 用 HTTP 轮询结果更新看板数据 */
+  function updateDashboardFromPoll(data) {
+    var grid = document.getElementById('dashGrid');
+    if (!grid) return;
+    var metrics = data.metrics || [];
+    metrics.forEach(function(m) {
+      var card = grid.querySelector('[data-key="' + m.key + '"]');
+      var pct = m.unit === '%' ? m.value : Math.min(m.value / 100, 100);
+      var color = pct > 80 ? '#ff6b6b' : pct > 60 ? '#ffd700' : '#81c784';
+      if (card) {
+        card.querySelector('.dash-value').innerHTML = m.value + (m.unit ? ' <small>' + m.unit + '</small>' : '');
+        card.querySelector('.dash-value').style.color = color;
+        card.querySelector('.dash-bar-fill').style.width = pct + '%';
+        card.querySelector('.dash-bar-fill').style.background = color;
+      }
+    });
+  }
 
   function renderStageHTTP(scenario, data) {
     showStage();
@@ -353,8 +454,8 @@
   }
 
   function updateTradingTick(data) {
-    // 更新或添加价格卡片
     var tickerRow = document.getElementById('tickerRow');
+    if (!tickerRow) return;
     var existingCard = tickerRow.querySelector('[data-symbol="' + data.symbol + '"]');
     var changeClass = data.change >= 0 ? 'up' : 'down';
     var cardHTML = '<div class="ticker-card ' + changeClass + '" data-symbol="' + data.symbol + '">' +
@@ -371,6 +472,7 @@
 
     // 成交记录
     var tradeList = document.getElementById('tradeList');
+    if (!tradeList) return;
     var tradeHTML = '<div class="trade-item new">' +
       '<span class="trade-time">' + nowTime() + '</span>' +
       '<span class="trade-symbol">' + data.symbol + '</span>' +
@@ -579,7 +681,16 @@
     delayValue.textContent = this.value + ' ms';
   });
 
+  // ── HTTP 轮询 ──
+  pollCheckbox.addEventListener('change', function() {
+    if (!this.checked) stopHttpPoll();
+  });
+  pollIntervalSlider.addEventListener('input', function() {
+    pollIntervalValue.textContent = (parseInt(this.value) / 1000).toFixed(1) + ' s';
+  });
+
   // ── 初始默认场景提示 ──
+  pollBar.style.display = '';
   showInsight(SCENARIOS.trading.insightNeutral);
 
 })();

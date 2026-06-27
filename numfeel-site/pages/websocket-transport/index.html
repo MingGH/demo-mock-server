@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="选一个场景，分别用 HTTP 和 WebSocket 加载数据。亲身体验两者的差异——不是看数字，是感受。">
+  <title>传输协议实验：WebSocket 还是 HTTP？ | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Hero ── -->
+  <div class="hero-section">
+    <h1 class="hero-title">你的应用该用 WebSocket 吗？</h1>
+    <p class="hero-subtitle">选一个场景，分别点击 HTTP 和 WebSocket 加载数据——亲眼看到区别</p>
+  </div>
+
+  <!-- ── 场景切换卡 ── -->
+  <div class="scenario-tabs" id="scenarioTabs">
+    <button class="scenario-tab active" data-scenario="trading">
+      <i class="ti ti-trending-up"></i> 行情盘
+    </button>
+    <button class="scenario-tab" data-scenario="profile">
+      <i class="ti ti-user"></i> 资料页
+    </button>
+    <button class="scenario-tab" data-scenario="dashboard">
+      <i class="ti ti-dashboard"></i> 数据看板
+    </button>
+    <button class="scenario-tab" data-scenario="gaming">
+      <i class="ti ti-sword"></i> 多人游戏
+    </button>
+  </div>
+
+  <!-- ── 双按钮 + 计时 ── -->
+  <div class="action-bar">
+    <button class="action-btn http-action" id="httpBtn">
+      <i class="ti ti-cloud-download"></i> HTTP 加载
+    </button>
+    <div class="action-timing" id="httpTiming">
+      <span class="timing-label">耗时</span>
+      <span class="timing-value" id="httpTimingValue">—</span>
+    </div>
+
+    <div class="action-divider"></div>
+
+    <button class="action-btn ws-action" id="wsBtn">
+      <i class="ti ti-plug-connected"></i> WebSocket 连接
+    </button>
+    <div class="action-timing" id="wsTiming">
+      <span class="timing-label" id="wsTimingLabel">状态</span>
+      <span class="timing-value" id="wsTimingValue">待连接</span>
+    </div>
+  </div>
+
+  <!-- ── 场景舞台 ── -->
+  <div class="stage" id="stage">
+    <div class="stage-empty" id="stageEmpty">
+      <i class="ti ti-hand-click"></i>
+      <p>点击上面两个按钮，看看同一个场景用两种协议加载有什么不同</p>
+    </div>
+    <div class="stage-content" id="stageContent" style="display:none;"></div>
+  </div>
+
+  <!-- ── 洞察条 ── -->
+  <div class="insight-bar" id="insightBar" style="display:none;">
+    <i class="ti ti-bulb"></i>
+    <span id="insightText"></span>
+  </div>
+
+  <!-- ── 了解更多（折叠） ── -->
+  <div class="more-section">
+    <div class="more-toggle" id="moreToggle">
+      <i class="ti ti-info-circle"></i> 了解更多：协议成本与适用边界
+      <i class="ti ti-chevron-down more-arrow" id="moreArrow"></i>
+    </div>
+    <div class="more-content" id="moreContent" style="display:none;">
+      <div class="more-grid">
+        <div class="more-card">
+          <h4><i class="ti ti-file-text"></i> HTTP 头部开销</h4>
+          <p>每次请求携带头部约 900 B。低频场景占比小，高频轮询时累积可观。</p>
+        </div>
+        <div class="more-card">
+          <h4><i class="ti ti-arrow-bar-to-up"></i> WebSocket 握手</h4>
+          <p>初始 HTTP Upgrade 握手约 1100 B，之后每条消息帧头仅 ~8 B。</p>
+        </div>
+        <div class="more-card">
+          <h4><i class="ti ti-database"></i> 连接内存</h4>
+          <p>WebSocket 长连接每条约 48 KB 内核缓冲区；HTTP 短连接约 4 KB。</p>
+        </div>
+        <div class="more-card">
+          <h4><i class="ti ti-arrow-forward-up"></i> SSE：中间选项</h4>
+          <p>Server-Sent Events 只能服务端推客户端，但跑在 HTTP 语义里，更轻量。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

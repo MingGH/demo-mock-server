@@ -1,0 +1,614 @@
+/* ── WebSocket 传输实验 — 场景模拟器样式 ── */
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ===== Hero ===== */
+.hero-section {
+  text-align: center;
+  padding: 24px 0 8px;
+}
+
+.hero-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 6px;
+}
+
+.hero-subtitle {
+  font-size: 0.9rem;
+  color: #888;
+  margin: 0;
+}
+
+/* ===== 场景切换卡 ===== */
+.scenario-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 20px 0 16px;
+  flex-wrap: wrap;
+}
+
+.scenario-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #999;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.scenario-tab:hover {
+  color: #ccc;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.scenario-tab:active {
+  transform: scale(0.96);
+}
+
+.scenario-tab.active {
+  color: #ffd700;
+  border-color: rgba(255, 215, 0, 0.4);
+  background: rgba(255, 215, 0, 0.08);
+}
+
+/* ===== 操作栏：双按钮 + 计时 ===== */
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 22px;
+  border-radius: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #ccc;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: scale(0.96);
+}
+
+.http-action:hover {
+  border-color: #81c784;
+  color: #81c784;
+}
+
+.http-action.loading {
+  border-color: #81c784;
+  color: #81c784;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.ws-action:hover {
+  border-color: #ce93d8;
+  color: #ce93d8;
+}
+
+.ws-action.loading {
+  border-color: #ce93d8;
+  color: #ce93d8;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.ws-action.connected {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.action-timing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px;
+}
+
+.timing-label {
+  font-size: 0.68rem;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.timing-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #ffd700;
+  font-variant-numeric: tabular-nums;
+}
+
+.action-divider {
+  width: 1px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ===== 场景舞台 ===== */
+.stage {
+  min-height: 260px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: min-height 0.3s ease;
+}
+
+.stage-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #555;
+  text-align: center;
+}
+
+.stage-empty i {
+  font-size: 2rem;
+  margin-bottom: 12px;
+  opacity: 0.3;
+}
+
+.stage-empty p {
+  font-size: 0.82rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── 行情终端 ── */
+.trading-terminal {
+  padding: 16px;
+}
+
+.terminal-header {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #ccc;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ticker-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.ticker-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.ticker-card.up { border-color: rgba(129, 199, 132, 0.25); }
+.ticker-card.down { border-color: rgba(255, 107, 107, 0.25); }
+
+.ticker-symbol { font-size: 0.72rem; color: #999; margin-bottom: 4px; }
+.ticker-price { font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
+.ticker-change.up { color: #81c784; font-size: 0.72rem; }
+.ticker-change.down { color: #ff6b6b; font-size: 0.72rem; }
+.ticker-vol { font-size: 0.65rem; color: #555; margin-top: 2px; }
+
+.trade-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.trade-list-header {
+  font-size: 0.76rem;
+  color: #888;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.trade-item {
+  display: flex;
+  gap: 10px;
+  font-size: 0.72rem;
+  padding: 4px 0;
+  color: #aaa;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  transition: background 0.4s ease;
+}
+
+.trade-item.new {
+  animation: tradeIn 0.4s ease-out;
+  background: rgba(255, 215, 0, 0.04);
+}
+
+@keyframes tradeIn {
+  from { background: rgba(255, 215, 0, 0.12); }
+  to { background: rgba(255, 215, 0, 0); }
+}
+
+.trade-time { color: #555; min-width: 70px; }
+.trade-symbol { color: #ffd700; font-weight: 600; min-width: 50px; }
+.trade-price { color: #ccc; min-width: 60px; }
+.trade-amount { color: #888; }
+
+/* ── 资料页 ── */
+.profile-card {
+  padding: 20px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.profile-header {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ccc;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.profile-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.profile-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  animation: fieldIn 0.3s ease-out;
+}
+
+@keyframes fieldIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pf-label {
+  font-size: 0.78rem;
+  color: #888;
+}
+
+.pf-value {
+  font-size: 0.82rem;
+  color: #ddd;
+  text-align: right;
+}
+
+.pf-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.profile-progress {
+  text-align: center;
+  font-size: 0.74rem;
+  color: #666;
+  margin-top: 14px;
+}
+
+/* ── 数据看板 ── */
+.dashboard-panel {
+  padding: 16px;
+}
+
+.dash-header {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #ccc;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.dash-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 12px;
+  transition: all 0.3s ease;
+}
+
+.dash-label {
+  font-size: 0.7rem;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.dash-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.dash-value small {
+  font-size: 0.65rem;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.dash-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.dash-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease, background 0.5s ease;
+}
+
+/* ── 游戏战场 ── */
+.game-battlefield {
+  padding: 16px;
+}
+
+.game-header {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #ccc;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.game-arena {
+  position: relative;
+  width: 100%;
+  padding-bottom: 60%;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.arena-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 10% 10%;
+}
+
+.game-player {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transition: left 0.22s linear, top 0.22s linear;
+  text-align: center;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.gp-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin: 0 auto 3px;
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
+}
+
+.gp-name {
+  font-size: 0.58rem;
+  color: #aaa;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+
+.gp-hp-bar {
+  width: 40px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.gp-hp-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+/* ===== 洞察条 ===== */
+.insight-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(255, 215, 0, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.12);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: #ffd700;
+  line-height: 1.5;
+}
+
+.insight-bar i {
+  flex-shrink: 0;
+  font-size: 1rem;
+  margin-top: 1px;
+}
+
+/* ===== 了解更多 ===== */
+.more-section {
+  margin-top: 32px;
+}
+
+.more-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #999;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: color 0.2s, background 0.2s;
+  user-select: none;
+}
+
+.more-toggle:hover {
+  color: #ccc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.more-arrow {
+  margin-left: auto;
+  transition: transform 0.3s;
+}
+
+.more-toggle.open .more-arrow {
+  transform: rotate(180deg);
+}
+
+.more-content {
+  overflow: hidden;
+  transition: max-height 0.4s, opacity 0.4s, margin 0.4s;
+  max-height: 0;
+  opacity: 0;
+}
+
+.more-content.open {
+  max-height: 400px;
+  opacity: 1;
+  margin-top: 12px;
+}
+
+.more-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.more-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.more-card h4 {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #ccc;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.more-card p {
+  font-size: 0.76rem;
+  color: #888;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 600px) {
+  .hero-title { font-size: 1.3rem; }
+
+  .ticker-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .dash-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .more-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-bar {
+    gap: 6px;
+  }
+
+  .action-btn {
+    padding: 10px 14px;
+    font-size: 0.78rem;
+  }
+
+  .action-timing {
+    min-width: 60px;
+  }
+
+  .action-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .ticker-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dash-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .action-bar {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .action-divider {
+    display: none;
+  }
+}

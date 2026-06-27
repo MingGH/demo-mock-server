@@ -127,11 +127,10 @@ class HttpBinaryDemoServiceTest {
     @Test
     void toJsonText_containsUnicodeAndEmoji() throws Exception {
         String json = service.toJsonText();
-        // 应包含 emoji 和全角字母
-        assertTrue(json.contains("🚀"), "应包含 emoji");
-        assertTrue(json.contains("👨"), "应包含 emoji");
-        // 全角字母 Ａ (U+FF21)，即动态中提到的 "全角字母ＡＢＣ"
-        assertTrue(json.contains("全角字母"), "应包含全角字母说明");
+        // 应包含 emoji 和中文字符
+        assertTrue(json.contains("🚀"), "应包含 emoji 🚀");
+        assertTrue(json.contains("🏔"), "应包含 emoji 🏔");
+        assertTrue(json.contains("🥲"), "应包含 emoji 🥲");
     }
 
     // ── 二进制相关 ──

@@ -41,4 +41,34 @@ class TransportLabControllerTest {
                 .jsonPath("$.data.recommendation").isEqualTo("http")
                 .jsonPath("$.data.pollCount").isEqualTo(4);
     }
+
+    @Test
+    void benchmark_returns_payload_with_server_time() {
+        client.get().uri("/transport-lab/benchmark?size=512")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(200)
+                .jsonPath("$.data.serverTime").isNumber()
+                .jsonPath("$.data.size").isEqualTo(512)
+                .jsonPath("$.data.payload").isNotEmpty();
+    }
+
+    @Test
+    void benchmark_default_size() {
+        client.get().uri("/transport-lab/benchmark")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.size").isEqualTo(1024);
+    }
+
+    @Test
+    void benchmark_clamps_large_size() {
+        client.get().uri("/transport-lab/benchmark?size=999999")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.size").isEqualTo(65536);
+    }
 }

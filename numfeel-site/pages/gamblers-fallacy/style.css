@@ -1,0 +1,481 @@
+/* style.css — 赌徒错觉模拟器 */
+
+.gf-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* ── 首屏 Hero ── */
+.gf-hero {
+  text-align: center;
+  padding: 60px 20px 40px;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.gf-hero.faded {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+}
+.gf-hero-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(136, 149, 74, 0.14);
+  color: rgba(242, 228, 207, 0.7);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  margin-bottom: 20px;
+}
+.gf-hero-title {
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  color: #f2e4cf;
+  margin: 0 0 12px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+.gf-hero-sub {
+  color: rgba(242, 228, 207, 0.5);
+  font-size: 0.95rem;
+  margin-bottom: 32px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.7;
+}
+
+/* ── 呼吸按钮 ── */
+.gf-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 107, 51, 0.4);
+  background: linear-gradient(140deg, rgba(201, 107, 51, 0.9), rgba(158, 88, 43, 0.96));
+  color: #1a120d;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: gf-breath 2.4s ease-in-out infinite;
+  box-shadow: 0 12px 32px rgba(201, 107, 51, 0.28);
+}
+.gf-cta-btn:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 18px 40px rgba(201, 107, 51, 0.36);
+}
+.gf-cta-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+@keyframes gf-breath {
+  0%, 100% { box-shadow: 0 12px 32px rgba(201, 107, 51, 0.28); }
+  50% { box-shadow: 0 12px 48px rgba(201, 107, 51, 0.48); }
+}
+
+/* ── 结果区（初始隐藏） ── */
+.gf-results {
+  display: none;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.gf-results.visible {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── 卡片 ── */
+.gf-card {
+  border-radius: 24px;
+  border: 1px solid rgba(242, 228, 207, 0.1);
+  background: radial-gradient(circle at top right, rgba(201, 107, 51, 0.08), transparent 40%),
+    linear-gradient(160deg, rgba(39, 28, 21, 0.92), rgba(23, 17, 13, 0.82));
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(14px);
+}
+.gf-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.gf-card-title {
+  color: #f2e4cf;
+  font-size: 1.15rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gf-card-title i {
+  color: rgba(201, 107, 51, 0.8);
+}
+
+/* ── 统计数字卡 ── */
+.gf-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+@media (max-width: 600px) {
+  .gf-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.gf-stat {
+  text-align: center;
+  padding: 14px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(242, 228, 207, 0.08);
+  background: rgba(242, 228, 207, 0.03);
+}
+.gf-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.gf-stat-value.accent  { color: #c96b33; }
+.gf-stat-value.green   { color: #88954a; }
+.gf-stat-value.red     { color: #e05555; }
+.gf-stat-value.blue    { color: #6ea8c9; }
+.gf-stat-label {
+  font-size: 0.75rem;
+  color: rgba(242, 228, 207, 0.45);
+  margin-top: 4px;
+}
+
+/* ── 关键词提示条 ── */
+.gf-insight-bar {
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: rgba(136, 149, 74, 0.08);
+  border-left: 3px solid #88954a;
+  color: rgba(242, 228, 207, 0.72);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 18px;
+  transition: all 0.3s ease;
+}
+
+/* ── 游戏模式切换 ── */
+.gf-mode-toggle {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid rgba(242, 228, 207, 0.12);
+  background: rgba(242, 228, 207, 0.04);
+  overflow: hidden;
+}
+.gf-mode-btn {
+  padding: 9px 18px;
+  border: none;
+  background: transparent;
+  color: rgba(242, 228, 207, 0.55);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+.gf-mode-btn.active {
+  background: rgba(201, 107, 51, 0.2);
+  color: #f2e4cf;
+  font-weight: 600;
+}
+.gf-mode-btn:hover:not(.active) {
+  color: rgba(242, 228, 207, 0.8);
+  background: rgba(242, 228, 207, 0.04);
+}
+
+/* ── 控制区 ── */
+.gf-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.gf-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 180px;
+}
+.gf-slider-group label {
+  color: rgba(242, 228, 207, 0.5);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.gf-slider-group input[type="range"] {
+  flex: 1;
+  min-width: 80px;
+  accent-color: #c96b33;
+  height: 4px;
+}
+.gf-slider-val {
+  color: #c96b33;
+  font-weight: 700;
+  font-size: 0.9rem;
+  min-width: 24px;
+  text-align: center;
+}
+
+.gf-run-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 107, 51, 0.35);
+  background: linear-gradient(140deg, rgba(201, 107, 51, 0.85), rgba(158, 88, 43, 0.9));
+  color: #1a120d;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.gf-run-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(201, 107, 51, 0.3);
+}
+.gf-run-btn:active {
+  transform: translateY(0);
+}
+
+/* ── Chart 容器 ── */
+.gf-chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  margin-bottom: 8px;
+}
+.gf-chart-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── 单人模式 ── */
+.gf-solo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.gf-solo-status {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.gf-solo-capital {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #f2e4cf;
+  line-height: 1;
+}
+.gf-solo-round {
+  font-size: 0.8rem;
+  color: rgba(242, 228, 207, 0.45);
+}
+.gf-solo-streak {
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(242, 228, 207, 0.06);
+  color: rgba(242, 228, 207, 0.5);
+  transition: all 0.3s ease;
+}
+.gf-bet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 107, 51, 0.35);
+  background: linear-gradient(140deg, rgba(201, 107, 51, 0.85), rgba(158, 88, 43, 0.9));
+  color: #1a120d;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.gf-bet-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(201, 107, 51, 0.34);
+}
+.gf-bet-btn:active {
+  transform: translateY(0);
+}
+.gf-bet-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── 单人结果动画 ── */
+.gf-solo-result {
+  display: inline-block;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: scale(0.9);
+}
+.gf-solo-result.show {
+  opacity: 1;
+  transform: scale(1);
+}
+.gf-solo-result.win {
+  background: rgba(136, 149, 74, 0.15);
+  color: #88954a;
+}
+.gf-solo-result.lose {
+  background: rgba(224, 85, 85, 0.12);
+  color: #e05555;
+}
+
+.gf-solo-comment {
+  margin-top: 10px;
+  color: rgba(242, 228, 207, 0.45);
+  font-size: 0.82rem;
+  min-height: 1.4em;
+  transition: opacity 0.3s;
+}
+
+/* ── 单人倍数输入 ── */
+.gf-solo-mul {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.gf-solo-mul label {
+  color: rgba(242, 228, 207, 0.45);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.gf-solo-mul input {
+  width: 58px;
+  height: 36px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(242, 228, 207, 0.12);
+  background: rgba(242, 228, 207, 0.06);
+  color: #f2e4cf;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.gf-solo-mul input:focus {
+  border-color: rgba(201, 107, 51, 0.45);
+}
+
+/* ── tab 切换 ── */
+.gf-tabs {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid rgba(242, 228, 207, 0.1);
+  background: rgba(242, 228, 207, 0.03);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.gf-tab {
+  padding: 10px 22px;
+  border: none;
+  background: transparent;
+  color: rgba(242, 228, 207, 0.5);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+.gf-tab.active {
+  background: rgba(201, 107, 51, 0.18);
+  color: #f2e4cf;
+  font-weight: 600;
+}
+.gf-tab:hover:not(.active) {
+  color: rgba(242, 228, 207, 0.75);
+  background: rgba(242, 228, 207, 0.04);
+}
+
+.gf-tab-panel {
+  display: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.gf-tab-panel.active {
+  display: block;
+  opacity: 1;
+}
+
+/* ── 了解更多的折叠区域 ── */
+.gf-more-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 0;
+  color: rgba(242, 228, 207, 0.4);
+  font-size: 0.82rem;
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: color 0.2s;
+}
+.gf-more-toggle:hover {
+  color: rgba(242, 228, 207, 0.65);
+}
+.gf-more-content {
+  display: none;
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(242, 228, 207, 0.03);
+  border: 1px solid rgba(242, 228, 207, 0.06);
+  color: rgba(242, 228, 207, 0.6);
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+.gf-more-content.open {
+  display: block;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 640px) {
+  .gf-hero {
+    padding: 30px 12px 24px;
+  }
+  .gf-card {
+    padding: 16px;
+  }
+  .gf-chart-wrap {
+    height: 240px;
+  }
+  .gf-tab {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
+  .gf-mode-btn {
+    padding: 7px 12px;
+    font-size: 0.78rem;
+  }
+  .gf-solo-capital {
+    font-size: 1.4rem;
+  }
+  .gf-bet-btn {
+    padding: 12px 24px;
+    font-size: 0.95rem;
+  }
+}

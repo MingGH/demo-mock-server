@@ -203,6 +203,66 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* HTTP 轮询开关（行情盘专属） */
+.poll-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.poll-toggle {
+  font-size: 0.76rem;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.poll-toggle input[type="checkbox"] {
+  accent-color: #81c784;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.poll-label {
+  font-size: 0.72rem;
+  color: #666;
+}
+
+.poll-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(129, 199, 132, 0.2);
+  outline: none;
+  cursor: pointer;
+}
+
+.poll-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #81c784;
+  cursor: pointer;
+  border: none;
+}
+
+.poll-value {
+  font-size: 0.72rem;
+  color: #81c784;
+  font-weight: 600;
+  min-width: 40px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ===== 场景舞台 ===== */
 .stage {
   min-height: 260px;

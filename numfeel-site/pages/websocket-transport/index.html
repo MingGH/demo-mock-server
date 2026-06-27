@@ -63,6 +63,16 @@
     <span class="delay-value" id="delayValue">350 ms</span>
   </div>
 
+  <!-- HTTP 轮询开关（行情盘场景显示） -->
+  <div class="poll-bar" id="pollBar" style="display:none;">
+    <label class="poll-toggle">
+      <input type="checkbox" id="pollCheckbox"> HTTP 自动轮询
+    </label>
+    <span class="poll-label">间隔</span>
+    <input type="range" class="poll-slider" id="pollIntervalSlider" min="500" max="5000" value="1000" step="100">
+    <span class="poll-value" id="pollIntervalValue">1.0 s</span>
+  </div>
+
   <!-- ── 场景舞台 ── -->
   <div class="stage" id="stage">
     <div class="stage-empty" id="stageEmpty">

@@ -29,12 +29,24 @@
       </div>
     </div>
 
-    <!-- 状态2: 密钥已生成，待输入 -->
-    <div class="stage" id="stageReady" style="display:none;">
+    <!-- 状态: 模式选择与密钥信息 -->
+    <div class="stage" id="stageMode" style="display:none;">
       <div class="key-info">
         <span class="key-badge">密钥已就绪</span>
         <span class="key-bits" id="keyBitsDisplay"></span>
       </div>
+      <div class="mode-tabs" id="modeTabs">
+        <button class="mode-tab active" data-mode="basic">
+          <i class="ti ti-math"></i> 基础演示
+        </button>
+        <button class="mode-tab" data-mode="vote">
+          <i class="ti ti-vote"></i> 多人投票
+        </button>
+      </div>
+    </div>
+
+    <!-- 状态2: 基础模式 — 密钥已生成，待输入 -->
+    <div class="stage" id="stageReady" style="display:none;">
       <div class="input-duo">
         <div class="input-card">
           <label>数字 A</label>
@@ -96,6 +108,124 @@
       </div>
       <div class="action-row">
         <button id="resetBtn" class="btn-secondary">再来一次</button>
+      </div>
+    </div>
+
+    <!-- 状态4: 投票模式（复制粘贴流） -->
+    <div class="stage" id="stageVote" style="display:none;">
+      <p class="section-hint">真实的多人投票：发起人生成密钥并分享公钥，投票人各自加密后回传密文，发起人汇总解密。全程不经过后端，数据不会离开浏览器。</p>
+
+      <!-- 角色切换 -->
+      <div class="role-tabs" id="roleTabs">
+        <button class="role-tab active" data-role="creator">
+          <i class="ti ti-user-star"></i> 我是发起人
+        </button>
+        <button class="role-tab" data-role="voter">
+          <i class="ti ti-users"></i> 我是投票人
+        </button>
+      </div>
+
+      <!-- 发起人视角 -->
+      <div class="role-view" id="creatorView">
+        <div class="multi-vote-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">生成投票密钥</div>
+            <div class="step-desc">生成一对 Paillier 密钥。公钥公开分发给投票人，私钥自己保管用于最终解密。</div>
+            <button id="mvGenKeyBtn" class="btn-hero"><i class="ti ti-key"></i> 生成投票密钥</button>
+          </div>
+        </div>
+        <div class="multi-vote-step" id="mvStep2" style="display:none;">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">分享公钥给投票人</div>
+            <div class="step-desc">复制下面的公钥 n，发给投票人（微信/邮件/任何方式）。<strong>只需分享 n 的值，私钥不要发。</strong></div>
+            <div class="copy-field">
+              <span class="copy-label">公钥 n</span>
+              <div class="copy-row">
+                <code class="copy-value" id="mvPublicKeyN"></code>
+                <button id="mvCopyPubBtn" class="btn-copy" title="复制公钥">
+                  <i class="ti ti-copy"></i> 复制
+                </button>
+              </div>
+            </div>
+            <div class="copy-feedback" id="mvPubCopyFeedback"></div>
+          </div>
+        </div>
+        <div class="multi-vote-step" id="mvStep3" style="display:none;">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">收集密文并计票</div>
+            <div class="step-desc">把投票人发回来的密文粘贴到下面（每行一个），点击计票解密。</div>
+            <textarea id="mvCipherInput" class="mv-textarea" placeholder="粘贴投票人的密文，每行一个&#10;例如：&#10;3874659210384756...&#10;9283746501928374...&#10;5501928374659201..." rows="4"></textarea>
+            <button id="mvDecryptBtn" class="btn-hero"><i class="ti ti-trophy"></i> 计票并解密</button>
+          </div>
+        </div>
+        <div class="mv-result" id="mvCreatorResult" style="display:none;">
+          <div class="mv-result-card">
+            <div class="result-eq">
+              <span class="result-plain">解密结果（总支持票数）</span>
+              <span class="result-eq-sign">=</span>
+              <span class="result-value" id="mvCreatorResultVal"></span>
+            </div>
+            <div class="result-check" id="mvCreatorResultInfo"></div>
+          </div>
+          <div class="action-row">
+            <button id="mvCreatorResetBtn" class="btn-secondary">新一轮投票</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 投票人视角 -->
+      <div class="role-view" id="voterView" style="display:none;">
+        <div class="multi-vote-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">粘贴发起人的公钥</div>
+            <div class="step-desc">发起人会发给你一个公钥 n（一串数字），粘贴到下面。</div>
+            <textarea id="mvVoterPastePub" class="mv-textarea" placeholder="粘贴发起人给的公钥 n..." rows="2"></textarea>
+            <div class="mv-voter-error" id="mvVoterPubError"></div>
+          </div>
+        </div>
+        <div class="multi-vote-step" id="mvVoterStep2" style="display:none;">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">投出你的一票</div>
+            <div class="step-desc">选择你的立场，点击加密。同样的选择每次加密结果不同，无法通过比对密文猜测你的投票。</div>
+            <div class="vote-toggle" id="mvVoterToggle">
+              <button class="vote-opt active" data-val="1">
+                <i class="ti ti-thumb-up"></i> 支持
+              </button>
+              <button class="vote-opt" data-val="0">
+                <i class="ti ti-thumb-down"></i> 反对
+              </button>
+            </div>
+            <button id="mvVoterEncryptBtn" class="btn-hero"><i class="ti ti-lock"></i> 加密我的投票</button>
+          </div>
+        </div>
+        <div class="multi-vote-step" id="mvVoterStep3" style="display:none;">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">复制密文发给发起人</div>
+            <div class="step-desc">你的投票已加密。复制下面的密文，发给发起人进行计票。</div>
+            <div class="copy-field">
+              <span class="copy-label">你的密文</span>
+              <div class="copy-row">
+                <code class="copy-value" id="mvVoterCipher"></code>
+                <button id="mvCopyCipherBtn" class="btn-copy" title="复制密文">
+                  <i class="ti ti-copy"></i> 复制
+                </button>
+              </div>
+            </div>
+            <div class="copy-feedback" id="mvVoterCopyFeedback"></div>
+            <div class="mv-voter-hint">
+              <i class="ti ti-info-circle"></i> 发起人解密后会告诉你投票结果。你的选择全程加密，发起人也看不到。
+            </div>
+          </div>
+        </div>
+        <div class="action-row">
+          <button id="mvVoterResetBtn" class="btn-secondary">重新投票</button>
+        </div>
       </div>
     </div>
   </div>

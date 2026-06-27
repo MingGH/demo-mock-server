@@ -514,6 +514,276 @@ code {
   color: #ffd700;
 }
 
+/* ── 模式切换标签 ── */
+.mode-tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.mode-tab {
+  padding: 10px 24px;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-tab:hover {
+  background: rgba(255, 215, 0, 0.08);
+  border-color: rgba(255, 215, 0, 0.3);
+  color: #e0e0e0;
+}
+
+.mode-tab.active {
+  background: rgba(255, 215, 0, 0.12);
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+/* ── 区段提示 ── */
+.section-hint {
+  color: #888;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+/* ── 角色切换标签 ── */
+.role-tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.role-tab {
+  padding: 10px 24px;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.role-tab:hover {
+  background: rgba(255, 215, 0, 0.08);
+  border-color: rgba(255, 215, 0, 0.3);
+  color: #e0e0e0;
+}
+
+.role-tab.active {
+  background: rgba(255, 215, 0, 0.12);
+  border-color: #ffd700;
+  color: #ffd700;
+}
+
+/* ── 多人投票步骤 ── */
+.multi-vote-step {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 20px;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.step-num {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 50%;
+  color: #ffd700;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.step-body {
+  flex: 1;
+}
+
+.step-title {
+  color: #e0e0e0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.step-desc {
+  color: #888;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.step-desc strong {
+  color: #ff6b6b;
+}
+
+/* ── 投票切换 ── */
+.vote-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.vote-opt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.vote-opt:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.vote-opt.active {
+  border-color: #ffd700;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+}
+
+/* ── 复制字段 ── */
+.copy-field {
+  margin-bottom: 8px;
+}
+
+.copy-label {
+  display: block;
+  color: #888;
+  font-size: 0.75rem;
+  margin-bottom: 6px;
+}
+
+.copy-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.copy-value {
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 0.78rem;
+  font-family: 'Courier New', monospace;
+  word-break: break-all;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.btn-copy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 8px;
+  color: #ffd700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.btn-copy:hover {
+  background: rgba(255, 215, 0, 0.2);
+}
+
+.copy-feedback {
+  color: #81c784;
+  font-size: 0.75rem;
+  min-height: 18px;
+  transition: color 0.3s;
+}
+
+/* ── 多人投票文本区 ── */
+.mv-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #e0e0e0;
+  font-size: 0.8rem;
+  font-family: 'Courier New', monospace;
+  resize: vertical;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.mv-textarea:focus {
+  border-color: #ffd700;
+  outline: none;
+}
+
+.mv-textarea::placeholder {
+  color: #555;
+}
+
+/* ── 投票人错误提示 ── */
+.mv-voter-error {
+  color: #ff6b6b;
+  font-size: 0.78rem;
+  margin-top: 4px;
+}
+
+/* ── 投票人提示 ── */
+.mv-voter-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #90caf9;
+  font-size: 0.8rem;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(144, 202, 249, 0.06);
+  border: 1px solid rgba(144, 202, 249, 0.12);
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+.mv-voter-hint i {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── 发起人结果 ── */
+.mv-result {
+  margin-top: 20px;
+}
+
+.mv-result-card {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
 /* ── 响应式 ── */
 @media (max-width: 640px) {
   .container {
@@ -582,5 +852,38 @@ code {
   .preset-btn {
     padding: 8px 12px;
     font-size: 0.8rem;
+  }
+
+  .mode-tabs {
+    flex-direction: column;
+  }
+
+  .mode-tab {
+    width: 100%;
+  }
+
+  .role-tabs {
+    flex-direction: column;
+  }
+
+  .role-tab {
+    width: 100%;
+  }
+
+  .multi-vote-step {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .step-num {
+    align-self: flex-start;
+  }
+
+  .copy-row {
+    flex-direction: column;
+  }
+
+  .btn-copy {
+    justify-content: center;
   }
 }

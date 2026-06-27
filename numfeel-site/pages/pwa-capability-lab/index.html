@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="你的浏览器有多「PWA-ready」？18项能力逐一实测，看各浏览器对PWA的支持差距有多大。离线、推送、后台同步、安装体验——一款诊断工具。">
+  <title>PWA 能力检测实验室：你的浏览器离「应用」还差几步 | 数字直觉</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>PWA 能力检测实验室</h1>
+      <p>18项能力逐一实测，看你的浏览器离"类原生 App"还差几步</p>
+    </div>
+
+    <div class="pwa-wrap">
+
+      <!-- Hero -->
+      <div class="pwa-hero" id="pwa-hero">
+        <div class="pwa-hero-badge">
+          <i class="ti ti-brand-chrome"></i> 浏览器能力诊断
+        </div>
+        <div class="pwa-hero-title">你的浏览器能当 App 用吗？</div>
+        <div class="pwa-hero-sub">
+          点一下检测按钮，18项 PWA 能力逐项测试。<br>
+          支持什么、缺什么、各家浏览器差在哪里，一目了然。
+        </div>
+        <button class="pwa-cta-btn" id="pwa-cta-btn" type="button">
+          <i class="ti ti-player-play-filled"></i>
+          开始检测
+        </button>
+      </div>
+
+      <!-- 结果区（初始隐藏） -->
+      <div class="pwa-results" id="pwa-results">
+
+        <!-- 总览卡片 -->
+        <div class="pwa-card" id="pwa-cap-card">
+          <div class="pwa-card-header">
+            <span class="pwa-card-title">
+              <i class="ti ti-device-mobile-check"></i> 能力总览
+            </span>
+            <span class="pwa-score-badge" id="pwa-score-badge">- / 18</span>
+          </div>
+          <div class="pwa-meter-wrap">
+            <div class="pwa-meter">
+              <div class="pwa-meter-fill" id="pwa-meter-fill" style="width: 0%;"></div>
+            </div>
+            <div class="pwa-meter-label" id="pwa-meter-label">等待检测</div>
+          </div>
+          <div class="pwa-insight-bar" id="pwa-insight-bar">
+            点击"开始检测"来诊断你的浏览器。
+          </div>
+        </div>
+
+        <!-- 能力检测列表 -->
+        <div class="pwa-card" id="pwa-checklist-card">
+          <div class="pwa-card-header">
+            <span class="pwa-card-title">
+              <i class="ti ti-list-check"></i> 逐项检测
+            </span>
+          </div>
+          <div class="pwa-checklist" id="pwa-checklist">
+            <!-- 由 JS 动态生成 -->
+          </div>
+        </div>
+
+        <!-- 对比面板 -->
+        <div class="pwa-card" id="pwa-compare-card">
+          <div class="pwa-card-header">
+            <span class="pwa-card-title">
+              <i class="ti ti-versus"></i> PWA vs 原生 App vs 传统网页
+            </span>
+          </div>
+          <div class="pwa-compare-table-wrap">
+            <table class="pwa-compare-table">
+              <thead>
+                <tr>
+                  <th>能力维度</th>
+                  <th><i class="ti ti-world-www"></i> 传统网页</th>
+                  <th><i class="ti ti-brand-pwa"></i> PWA</th>
+                  <th><i class="ti ti-apps"></i> 原生 App</th>
+                </tr>
+              </thead>
+              <tbody id="pwa-compare-body">
+                <!-- 由 JS 动态生成 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 了解更多折叠区 -->
+        <button class="pwa-more-toggle" id="pwa-more-toggle" type="button">
+          <i class="ti ti-chevron-right"></i> <span>了解更多</span>
+        </button>
+        <div class="pwa-more-content" id="pwa-more-content">
+          上面检测的每一项，都对应 PWA 规范中定义的一个 Web API。<br><br>
+          <strong>为什么各家支持不一样？</strong>PWA 不是"一个东西"，是一组技术的统称。Service Worker、Web App Manifest、Push API、Background Sync 都是各自独立的规范，各浏览器按自己的节奏实现。<br><br>
+          <strong>iOS Safari 为什么拖后腿？</strong>苹果对 PWA 的态度一直很暧昧。Safari 支持 Service Worker 和 Manifest，但限制缓存上限、定期清理、不支持推送通知、不支持后台同步。因为 PWA 绕过了 App Store 的分发和抽成。<br><br>
+          <strong>国内浏览器呢？</strong>微信内置浏览器、各类国产浏览器对 Service Worker 支持参差不齐。微信小程序本质上是 PWA 的"中国特供版"——同样的技术理念，但走了一套受控的分发体系。<br><br>
+          <strong>PWA 缺的不是技术，是利益格局。</strong>
+        </div>
+
+      </div><!-- /pwa-results -->
+    </div><!-- /pwa-wrap -->
+  </div><!-- /container -->
+
+  <script src="../../components/header.js" defer></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

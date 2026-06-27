@@ -22,6 +22,8 @@
   var insightText = document.getElementById('insightText');
   var moreToggle = document.getElementById('moreToggle');
   var moreContent = document.getElementById('moreContent');
+  var delaySlider = document.getElementById('delaySlider');
+  var delayValue = document.getElementById('delayValue');
 
   // ── 状态 ──
   var currentScenario = 'trading';
@@ -182,7 +184,7 @@
     wsTimingValue.textContent = '...';
     wsTimingLabel.textContent = '状态';
 
-    var wsUrl = WS_BASE + '/transport-lab/ws?scenario=' + currentScenario;
+    var wsUrl = WS_BASE + '/transport-lab/ws?scenario=' + currentScenario + '&delay=' + delaySlider.value;
     wsStartTime = performance.now();
 
     try {
@@ -570,6 +572,11 @@
       moreContent.classList.add('open');
       moreToggle.classList.add('open');
     }
+  });
+
+  // ── WS 延迟滑块 ──
+  delaySlider.addEventListener('input', function() {
+    delayValue.textContent = this.value + ' ms';
   });
 
   // ── 初始默认场景提示 ──

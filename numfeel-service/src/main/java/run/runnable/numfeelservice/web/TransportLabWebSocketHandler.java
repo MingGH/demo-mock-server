@@ -58,9 +58,10 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
     @Override
     public Mono<Void> handle(WebSocketSession session) {
         var scenario = resolveScenario(session);
+        var delayMs = resolveDelay(session);
         var outgoing = scenario.isEmpty()
                 ? buildGenericMessages(session)
-                : buildScenarioMessages(session, scenario);
+                : buildScenarioMessages(session, scenario, delayMs);
 
         var incoming = session.receive()
                 .map(WebSocketMessage::getPayloadAsText)
@@ -125,20 +126,21 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
 
     // ── 场景模式 ──
 
-    private Flux<WebSocketMessage> buildScenarioMessages(WebSocketSession session, String scenario) {
+    private Flux<WebSocketMessage> buildScenarioMessages(WebSocketSession session, String scenario, long delayMs) {
         var ready = Mono.fromSupplier(() -> {
             var node = MAPPER.createObjectNode();
             node.put("type", "ready");
             node.put("scenario", scenario);
+            node.put("delayMs", delayMs);
             node.put("serverTime", Instant.now().toEpochMilli());
             return session.textMessage(node.toString());
         });
 
         Flux<ObjectNode> dataEvents = switch (scenario) {
-            case "trading" -> buildTradingEvents();
-            case "profile" -> buildProfileEvents();
-            case "dashboard" -> buildDashboardEvents();
-            case "gaming" -> buildGamingEvents();
+            case "trading" -> buildTradingEvents(delayMs);
+            case "profile" -> buildProfileEvents(delayMs);
+            case "dashboard" -> buildDashboardEvents(delayMs);
+            case "gaming" -> buildGamingEvents(delayMs);
             default -> Flux.empty();
         };
 
@@ -151,9 +153,9 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
         return Flux.concat(ready, messages);
     }
 
-    /** 行情盘：每 260ms 推一条 tick */
-    private Flux<ObjectNode> buildTradingEvents() {
-        return Flux.interval(Duration.ofMillis(260))
+    /** 行情盘：按延迟推 tick */
+    private Flux<ObjectNode> buildTradingEvents(long delayMs) {
+        return Flux.interval(Duration.ofMillis(delayMs))
                 .map(seq -> {
                     var node = MAPPER.createObjectNode();
                     node.put("type", "tick");
@@ -166,9 +168,9 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
                 });
     }
 
-    /** 资料页：每条字段间隔 350ms 逐个推送 */
-    private Flux<ObjectNode> buildProfileEvents() {
-        return Flux.interval(Duration.ofMillis(350))
+    /** 资料页：按延迟逐字段推送 */
+    private Flux<ObjectNode> buildProfileEvents(long delayMs) {
+        return Flux.interval(Duration.ofMillis(delayMs))
                 .take(PROFILE_FIELDS.length)
                 .map(idx -> {
                     var node = MAPPER.createObjectNode();
@@ -188,9 +190,9 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
                 }));
     }
 
-    /** 数据看板：每 500ms 推一套指标 */
-    private Flux<ObjectNode> buildDashboardEvents() {
-        return Flux.interval(Duration.ofMillis(500))
+    /** 数据看板：按延迟推指标 */
+    private Flux<ObjectNode> buildDashboardEvents(long delayMs) {
+        return Flux.interval(Duration.ofMillis(delayMs))
                 .map(seq -> {
                     var node = MAPPER.createObjectNode();
                     node.put("type", "dashboard_snapshot");
@@ -209,10 +211,10 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
                 });
     }
 
-    /** 游戏：每 220ms 推送玩家状态 */
-    private Flux<ObjectNode> buildGamingEvents() {
+    /** 游戏：按延迟推送玩家状态 */
+    private Flux<ObjectNode> buildGamingEvents(long delayMs) {
         var maxHps = new int[]{4500, 2500, 1800, 3000, 2000, 5000};
-        return Flux.interval(Duration.ofMillis(220))
+        return Flux.interval(Duration.ofMillis(delayMs))
                 .map(seq -> {
                     var node = MAPPER.createObjectNode();
                     node.put("type", "game_state");
@@ -259,6 +261,19 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
                 .build().getQueryParams();
         var scenario = params.getFirst("scenario");
         return scenario == null || scenario.isBlank() ? "" : scenario.trim().toLowerCase();
+    }
+
+    private long resolveDelay(WebSocketSession session) {
+        var params = UriComponentsBuilder.fromUri(session.getHandshakeInfo().getUri())
+                .build().getQueryParams();
+        try {
+            var val = params.getFirst("delay");
+            if (val != null && !val.isBlank()) {
+                return Math.max(50, Math.min(Long.parseLong(val), 3000));
+            }
+        } catch (NumberFormatException ignored) {
+        }
+        return 350; // 默认 350ms
     }
 
     private TransportLabQuery resolveQuery(WebSocketSession session) {

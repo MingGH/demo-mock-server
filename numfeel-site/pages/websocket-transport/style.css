@@ -158,6 +158,51 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* WS 延迟调节 */
+.delay-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.delay-label {
+  font-size: 0.72rem;
+  color: #666;
+}
+
+.delay-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 140px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(206, 147, 216, 0.2);
+  outline: none;
+  cursor: pointer;
+}
+
+.delay-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ce93d8;
+  cursor: pointer;
+  border: none;
+}
+
+.delay-value {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #ce93d8;
+  min-width: 55px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ===== 场景舞台 ===== */
 .stage {
   min-height: 260px;

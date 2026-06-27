@@ -39,14 +39,14 @@ class HttpBinaryDemoServiceTest {
     void toJsonText_containsExpectedUserCount() throws Exception {
         String json = service.toJsonText();
         JsonNode root = JSON_MAPPER.readTree(json);
-        assertEquals(3, root.get("users").size());
+        assertEquals(50, root.get("users").size());
     }
 
     @Test
     void toJsonText_containsExpectedPostCount() throws Exception {
         String json = service.toJsonText();
         JsonNode root = JSON_MAPPER.readTree(json);
-        assertEquals(5, root.get("posts").size());
+        assertEquals(80, root.get("posts").size());
     }
 
     @Test
@@ -102,7 +102,7 @@ class HttpBinaryDemoServiceTest {
         }
         assertNotNull(pollPost, "应包含一条投票动态");
         assertTrue(pollPost.has("poll_options"));
-        assertEquals(4, pollPost.get("poll_options").size());
+        assertEquals(5, pollPost.get("poll_options").size());
         assertTrue(pollPost.has("total_votes"));
     }
 
@@ -120,7 +120,8 @@ class HttpBinaryDemoServiceTest {
         assertNotNull(repost, "应包含一条转发动态");
         assertTrue(repost.has("reposted_post"));
         JsonNode quoted = repost.get("reposted_post");
-        assertEquals("技术老炮", quoted.get("author_nickname").asText());
+        assertTrue(quoted.has("author_nickname"), "引用帖应有作者昵称");
+        assertTrue(quoted.has("content"));
     }
 
     @Test

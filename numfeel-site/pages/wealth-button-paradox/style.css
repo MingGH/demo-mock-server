@@ -246,6 +246,65 @@ body {
   position: relative;
   margin: 10px 0 30px;
 }
+
+/* 皮肤选择器 */
+.skin-picker {
+  width: 100%;
+  margin: 4px 0 16px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+.skin-picker-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.82rem;
+  margin-bottom: 10px;
+}
+.skin-picker-label i { color: #ffd700; }
+.skin-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.skin-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.03);
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+}
+.skin-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.06);
+}
+.skin-item.active {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.25);
+}
+.skin-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.skin-name {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+.skin-item.active .skin-name { color: #ffd700; }
 .press-btn {
   width: 180px; height: 180px;
   border-radius: 50%;

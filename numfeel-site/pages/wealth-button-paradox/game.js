@@ -179,14 +179,26 @@ function formatPowerHint(num) {
   return `约 10 的 ${Math.floor(Math.log10(abs))} 次方量级`;
 }
 
+function toSuperscript(n) {
+  const map = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻','+':'⁺' };
+  return String(n).split('').map(c => map[c] || c).join('');
+}
+
+function formatScientific(abs, digits) {
+  if (abs === 0) return '0';
+  const exp = Math.floor(Math.log10(abs));
+  const mantissa = abs / Math.pow(10, exp);
+  return mantissa.toFixed(digits) + ' × 10' + toSuperscript(exp);
+}
+
 function formatMoney(num) {
   if (!Number.isFinite(num)) return num < 0 ? '-\u00a5∞' : '\u00a5∞';
   const sign = num < 0 ? '-' : '';
   const abs = Math.abs(num);
-  if (abs >= 1e4) return sign + '\u00a5' + formatLargeChineseNumber(abs, 2).text;
+  if (abs === 0) return sign + '\u00a50.00';
+  if (abs >= 1e4 || abs < 0.01) return sign + '\u00a5' + formatScientific(abs, 2);
   if (abs >= 1) return sign + '\u00a5' + abs.toFixed(2);
-  if (abs >= 0.01) return sign + '\u00a5' + abs.toFixed(4);
-  return sign + '\u00a5' + abs.toExponential(2);
+  return sign + '\u00a5' + abs.toFixed(4);
 }
 
 function formatMoneyHint(num) {
@@ -726,7 +738,63 @@ function initParticles() {
   }
   draw();
 }
+// ========== 按钮皮肤 ==========
+const SKINS = [
+  { id: 'default',   name: '原始红',     url: '../../images/wealth-button/btn-texture.jpg',     glow: 'rgba(255,50,50,0.4)',   ring: 'rgba(255,60,60,0.3)' },
+  { id: 'cyberpunk', name: '赛博朋克',   url: '../../images/wealth-button/skins/cyberpunk.jpg', glow: 'rgba(255,0,200,0.45)',  ring: 'rgba(0,200,255,0.4)' },
+  { id: 'genshin',   name: '原神·火元素', url: '../../images/wealth-button/skins/genshin.jpg',   glow: 'rgba(255,140,40,0.5)',  ring: 'rgba(255,200,80,0.4)' },
+  { id: 'diablo',    name: '暗黑破坏神', url: '../../images/wealth-button/skins/diablo.jpg',    glow: 'rgba(200,30,30,0.55)',  ring: 'rgba(255,80,40,0.45)' },
+  { id: 'minecraft', name: 'MC·TNT',     url: '../../images/wealth-button/skins/minecraft.jpg', glow: 'rgba(255,80,80,0.45)',  ring: 'rgba(200,200,200,0.35)' },
+  { id: 'overwatch', name: '守望先锋',   url: '../../images/wealth-button/skins/overwatch.jpg', glow: 'rgba(255,150,40,0.5)',  ring: 'rgba(255,180,80,0.4)' },
+  { id: 'mario',     name: '马里奥蘑菇', url: '../../images/wealth-button/skins/mario.jpg',     glow: 'rgba(255,80,80,0.45)',  ring: 'rgba(255,255,255,0.45)' }
+];
+let currentSkinId = 'default';
+
+function initSkinPicker() {
+  const list = document.getElementById('skinList');
+  if (!list) return;
+  const saved = (function() {
+    try { return localStorage.getItem('wealthBtnSkin'); } catch (e) { return null; }
+  })();
+  if (saved && SKINS.some(s => s.id === saved)) currentSkinId = saved;
+  list.innerHTML = SKINS.map(s =>
+    `<div class="skin-item ${s.id === currentSkinId ? 'active' : ''}" data-skin="${s.id}" onclick="selectSkin('${s.id}')" title="${s.name}">
+      <div class="skin-thumb" style="background-image:url('${s.url}')"></div>
+      <div class="skin-name">${s.name}</div>
+    </div>`
+  ).join('');
+  applySkin(currentSkinId);
+}
+
+function selectSkin(id) {
+  if (!SKINS.some(s => s.id === id)) return;
+  currentSkinId = id;
+  try { localStorage.setItem('wealthBtnSkin', id); } catch (e) {}
+  document.querySelectorAll('.skin-item').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-skin') === id);
+  });
+  applySkin(id);
+}
+
+function applySkin(id) {
+  const skin = SKINS.find(s => s.id === id) || SKINS[0];
+  const btn = document.getElementById('pressBtn');
+  if (!btn) return;
+  btn.style.backgroundImage = `url('${skin.url}')`;
+  btn.style.backgroundSize = 'cover';
+  btn.style.backgroundPosition = 'center';
+  btn.style.boxShadow =
+    `0 0 50px ${skin.glow},` +
+    ' 0 8px 30px rgba(0,0,0,0.6),' +
+    ' inset 0 -6px 20px rgba(0,0,0,0.3),' +
+    ' inset 0 6px 15px rgba(255,255,255,0.12)';
+  document.querySelectorAll('.btn-ring').forEach(r => {
+    r.style.borderColor = skin.ring;
+  });
+}
+
 // ========== Init ==========
+initSkinPicker();
 updateDisplay();
 loadGlobalStats();
 loadLeaderboard();

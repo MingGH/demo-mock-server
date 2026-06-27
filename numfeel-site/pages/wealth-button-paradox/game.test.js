@@ -47,14 +47,26 @@ function formatPowerHint(num) {
   return `约 10 的 ${Math.floor(Math.log10(abs))} 次方量级`;
 }
 
+function toSuperscript(n) {
+  const map = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻','+':'⁺' };
+  return String(n).split('').map(c => map[c] || c).join('');
+}
+
+function formatScientific(abs, digits) {
+  if (abs === 0) return '0';
+  const exp = Math.floor(Math.log10(abs));
+  const mantissa = abs / Math.pow(10, exp);
+  return mantissa.toFixed(digits) + ' × 10' + toSuperscript(exp);
+}
+
 function formatMoney(num) {
   if (!Number.isFinite(num)) return num < 0 ? '-\u00a5∞' : '\u00a5∞';
   const sign = num < 0 ? '-' : '';
   const abs = Math.abs(num);
-  if (abs >= 1e4) return sign + '\u00a5' + formatLargeChineseNumber(abs, 2).text;
+  if (abs === 0) return sign + '\u00a50.00';
+  if (abs >= 1e4 || abs < 0.01) return sign + '\u00a5' + formatScientific(abs, 2);
   if (abs >= 1) return sign + '\u00a5' + abs.toFixed(2);
-  if (abs >= 0.01) return sign + '\u00a5' + abs.toFixed(4);
-  return sign + '\u00a5' + abs.toExponential(2);
+  return sign + '\u00a5' + abs.toFixed(4);
 }
 
 function formatReturnRate(value, digits) {
@@ -148,16 +160,16 @@ function runBatchSimulation(people, presses, initial) {
 // ===== 测试用例 =====
 
 console.log('\n=== formatMoney 测试 ===');
-assert(formatMoney(100000) === '\u00a510.00万', '10万显示为 ¥10.00万');
-assert(formatMoney(1e8) === '\u00a51.00亿', '1亿');
-assert(formatMoney(5.5e12) === '\u00a55.50万亿', '5.5万亿');
-assert(formatMoney(1e16) === '\u00a51.00京', '1京');
-assert(formatMoney(1e96) === '\u00a51.00秭大数', '超大值使用复合中文单位');
-assert(formatMoney(25000) === '\u00a52.50万', '2.5万');
+assert(formatMoney(100000) === '\u00a51.00 × 10⁵', '10万显示为 ¥1.00 × 10⁵');
+assert(formatMoney(1e8) === '\u00a51.00 × 10⁸', '1亿显示为科学计数法');
+assert(formatMoney(5.5e12) === '\u00a55.50 × 10¹²', '5.5万亿显示为科学计数法');
+assert(formatMoney(1e16) === '\u00a51.00 × 10¹⁶', '1京显示为科学计数法');
+assert(formatMoney(1e96) === '\u00a51.00 × 10⁹⁶', '超大值显示为科学计数法');
+assert(formatMoney(25000) === '\u00a52.50 × 10⁴', '2.5万显示为科学计数法');
 assert(formatMoney(0.5) === '\u00a50.5000', '0.5元 (4位小数)');
-assert(formatMoney(0.005).includes('e'), '0.005元使用科学计数法');
-assert(formatMoney(0.001).includes('e'), '极小值使用科学计数法');
-assert(formatMoney(0) === '\u00a50.00e+0', '0元');
+assert(formatMoney(0.005).includes('× 10'), '0.005元使用科学计数法');
+assert(formatMoney(0.001).includes('× 10'), '极小值使用科学计数法');
+assert(formatMoney(0) === '\u00a50.00', '0元');
 assert(formatPowerHint(1e96) === '约 10 的 96 次方量级', '超大值量级提示');
 
 console.log('\n=== formatReturnRate 测试 ===');

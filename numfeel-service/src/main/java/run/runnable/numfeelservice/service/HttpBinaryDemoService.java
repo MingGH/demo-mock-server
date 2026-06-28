@@ -29,8 +29,8 @@ public class HttpBinaryDemoService {
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
     /**
-     * MessagePack 序列化使用 com.fasterxml.jackson（因 tools.jackson 与 msgpack-jackson 不兼容）。
-     * 桥接方式：tools.jackson → JSON bytes → com.fasterxml.jackson 解析 → MessagePack 输出。
+     * com.fasterxml.jackson 映射器：CF_JSON_MAPPER 用于一次性桥接初始化，CF_MSGPACK_MAPPER 用于 MessagePack 序列化。
+     * 因 tools.jackson（Spring 内部重打包）与 msgpack-jackson 不兼容，必须使用 com.fasterxml.jackson。
      */
     private static final com.fasterxml.jackson.databind.ObjectMapper CF_JSON_MAPPER =
             new com.fasterxml.jackson.databind.ObjectMapper();
@@ -38,9 +38,16 @@ public class HttpBinaryDemoService {
             new com.fasterxml.jackson.databind.ObjectMapper(new org.msgpack.jackson.dataformat.MessagePackFactory());
 
     /**
-     * 缓存的演示数据。使用双重检查锁延迟初始化，避免 Spring 启动阶段同步构造大量数据。
+     * 缓存的演示数据（tools.jackson 树，供 JSON 文本输出和 Controller 使用）。
+     * 使用双重检查锁延迟初始化，避免 Spring 启动阶段同步构造大量数据。
      */
     private volatile ObjectNode cachedData;
+
+    /**
+     * 缓存的 com.fasterxml.jackson 节点树，供 MessagePack 二进制序列化直接使用。
+     * 与 cachedData 保持同步初始化，避免每次 toBinary() 调用都经过 JSON 中间桥接。
+     */
+    private volatile com.fasterxml.jackson.databind.node.ObjectNode cachedCfData;
 
     /**
      * 获取（首次调用时构造）演示数据。
@@ -57,6 +64,32 @@ public class HttpBinaryDemoService {
     }
 
     /**
+     * 获取 com.fasterxml.jackson 版本的演示数据（首次调用时与 tools.jackson 树同步构造）。
+     * <p>
+     * 桥接仅在此初始化阶段执行一次（tools.jackson → JSON 字节 → com.fasterxml.jackson 解析），
+     * 后续 {@link #toBinary()} 直接使用此树做 MessagePack 序列化，不再经过 JSON 中间对象。
+     */
+    private com.fasterxml.jackson.databind.node.ObjectNode getCfData() {
+        if (cachedCfData == null) {
+            synchronized (this) {
+                if (cachedCfData == null) {
+                    try {
+                        // 确保 tools.jackson 树已初始化
+                        ObjectNode toolsNode = getData();
+                        // 一次性桥接：tools.jackson → JSON 字节 → com.fasterxml.jackson 节点树
+                        byte[] jsonBytes = JSON_MAPPER.writeValueAsBytes(toolsNode);
+                        cachedCfData = (com.fasterxml.jackson.databind.node.ObjectNode)
+                                CF_JSON_MAPPER.readTree(jsonBytes);
+                    } catch (Exception e) {
+                        throw new RuntimeException("MessagePack数据初始化失败", e);
+                    }
+                }
+            }
+        }
+        return cachedCfData;
+    }
+
+    /**
      * 返回 JSON 文本字符串（缩进格式化，便于人类阅读）。
      */
     public String toJsonText() {
@@ -70,17 +103,13 @@ public class HttpBinaryDemoService {
     /**
      * 返回 MessagePack 二进制字节数组。
      * <p>
-     * 桥接流程：tools.jackson ObjectNode → JSON 字节 → com.fasterxml.jackson 解析 → MessagePack 输出。
-     * 原因：项目使用 tools.jackson（Spring 内部重打包），而 msgpack-jackson 仅兼容 com.fasterxml.jackson。
+     * 直接使用预缓存的 com.fasterxml.jackson 节点树进行 MessagePack 序列化，
+     * 不再经过 JSON 中间对象。tools.jackson → com.fasterxml.jackson 的桥接仅在
+     * 首次调用时执行一次（见 {@link #getCfData()}）。
      */
     public byte[] toBinary() {
         try {
-            // Step 1: tools.jackson → JSON bytes
-            byte[] jsonBytes = JSON_MAPPER.writeValueAsBytes(getData());
-            // Step 2: com.fasterxml.jackson 解析
-            com.fasterxml.jackson.databind.JsonNode cfNode = CF_JSON_MAPPER.readTree(jsonBytes);
-            // Step 3: com.fasterxml.jackson → MessagePack
-            return CF_MSGPACK_MAPPER.writeValueAsBytes(cfNode);
+            return CF_MSGPACK_MAPPER.writeValueAsBytes(getCfData());
         } catch (Exception e) {
             throw new RuntimeException("MessagePack序列化失败", e);
         }

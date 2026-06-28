@@ -23,15 +23,16 @@ public class TurnstileVerifier {
 
     private static final Logger log = LoggerFactory.getLogger(TurnstileVerifier.class);
 
-    private static final String SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-
+    private final String siteVerifyUrl;
     private final String secretKey;
     private final WebClient webClient;
 
     public TurnstileVerifier(
             @Value("${turnstile.secret-key}") String secretKey,
+            @Value("${turnstile.siteverify-url:https://challenges.cloudflare.com/turnstile/v0/siteverify}") String siteVerifyUrl,
             WebClient.Builder webClientBuilder) {
         this.secretKey = secretKey;
+        this.siteVerifyUrl = siteVerifyUrl;
         this.webClient = webClientBuilder.build();
     }
 
@@ -47,7 +48,7 @@ public class TurnstileVerifier {
             return Mono.error(new IllegalArgumentException("turnstile token is required"));
         }
         return webClient.post()
-                .uri(SITEVERIFY_URL)
+                .uri(siteVerifyUrl)
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(BodyInserters.fromFormData("secret", secretKey)
                         .with("response", token)

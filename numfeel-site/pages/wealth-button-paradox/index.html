@@ -82,11 +82,11 @@
           <div class="hud-value neutral" id="pressCount">0</div>
         </div>
         <div class="hud-cell">
-          <div class="hud-label">x9 次数</div>
+          <div class="hud-label" id="winLabel">x9 次数</div>
           <div class="hud-value" style="color:#4ade80;" id="winCount">0</div>
         </div>
         <div class="hud-cell">
-          <div class="hud-label">x0.1 次数</div>
+          <div class="hud-label" id="loseLabel">x0.1 次数</div>
           <div class="hud-value" style="color:#ff4444;" id="loseCount">0</div>
         </div>
         <div class="hud-cell">
@@ -107,6 +107,24 @@
         <button class="sim-btn sm" onclick="batchPress(10)">连按 10 次</button>
         <button class="sim-btn sm" onclick="batchPress(50)">连按 50 次</button>
         <button class="sim-btn sm" onclick="resetGame()">重置</button>
+      </div>
+
+      <!-- 自定义倍率 -->
+      <div class="rng-switch-bar" style="margin-top: 12px;">
+        <div class="rng-label">
+          <i class="ti ti-adjustments"></i>
+          <span>倍率模式</span>
+        </div>
+        <div class="toggle-wrap">
+          <span class="toggle-mode-label active" id="standardLabel">标准 (x9 / x0.1)</span>
+          <div class="toggle-track" id="multiplierToggle" onclick="toggleMultiplier()">
+            <div class="toggle-thumb"></div>
+          </div>
+          <span class="toggle-mode-label" id="customLabel">自定义 (x1.1 / x0.9)</span>
+        </div>
+        <div style="color: rgba(255,255,255,0.25); font-size: 0.7rem; margin-left: auto;">
+          <span id="multiplierHint">参与全球统计与排行榜</span>
+        </div>
       </div>
 
       <!-- 按钮皮肤 -->

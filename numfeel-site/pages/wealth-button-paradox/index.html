@@ -6,6 +6,7 @@
   <meta name="description" content="50%概率翻9倍，50%概率变0.1，期望值为正但你敢按吗？由 ANU 量子真空涨落真随机数驱动，揭示期望值陷阱：为什么正期望不一定赚钱。">
   <title>50%财富按钮悖论 -- 期望值陷阱 | 数字直觉</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -350,6 +351,7 @@
         </div>
       </div>
       <div id="lbSubmitStatus" class="lb-status"></div>
+      <div id="turnstileWidget" style="display:flex;justify-content:center;margin-bottom:12px;"></div>
       <div class="lb-form-actions">
         <button class="modal-btn ghost" onclick="closeLeaderboardModal()">取消</button>
         <button class="modal-btn primary" id="lbSubmitBtn" onclick="submitToLeaderboard()">提交</button>

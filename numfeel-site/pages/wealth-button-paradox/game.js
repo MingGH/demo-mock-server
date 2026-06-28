@@ -8,7 +8,9 @@ let roundHistory = [];
 let wealthHistory = [100000];
 let chart = null;
 let distChart = null;
+let turnstileId = null;  // Turnstile 组件实例 ID
 const FEE = 5;
+const TURNSTILE_SITE_KEY = '0x4AAAAAADsMioJW-WyC3Fwm';
 const CHINESE_LARGE_UNITS = ['', '万', '亿', '万亿', '京', '垓', '秭', '穰', '沟', '涧', '正', '载', '极', '恒河沙', '阿僧祇', '那由他', '不可思议', '无量', '大数'];
 // ========== 量子随机数 ==========
 const API_BASE = 'https://numfeel-api.996.ninja';
@@ -444,10 +446,39 @@ function showLeaderboardSubmitModal() {
   if (statusEl) { statusEl.textContent = ''; statusEl.className = 'lb-status'; }
   const input = document.getElementById('lbUsername');
   if (input) input.focus();
+  // 渲染 Turnstile 组件
+  renderTurnstile();
 }
 
 function closeLeaderboardModal() {
   document.getElementById('lbSubmitModal').classList.remove('show');
+  resetTurnstile();
+}
+
+// ========== Turnstile 人机验证 ==========
+
+function renderTurnstile() {
+  const container = document.getElementById('turnstileWidget');
+  if (!container || typeof turnstile === 'undefined') return;
+  resetTurnstile();
+  turnstileId = turnstile.render(container, {
+    sitekey: TURNSTILE_SITE_KEY,
+    action: 'wealth-button-submit',
+    theme: 'auto'
+  });
+}
+
+function resetTurnstile() {
+  if (turnstileId !== null && typeof turnstile !== 'undefined') {
+    turnstile.reset(turnstileId);
+    turnstileId = null;
+  }
+}
+
+function getTurnstileToken() {
+  if (typeof turnstile === 'undefined') return null;
+  const response = turnstile.getResponse(turnstileId);
+  return response || null;
 }
 
 async function submitToLeaderboard() {
@@ -498,7 +529,8 @@ async function submitToLeaderboard() {
       roundHistory: historyString,
       challengeId: challenge.challengeId,
       powHash: hash,
-      powNonce: nonce
+      powNonce: nonce,
+      cfTurnstileToken: getTurnstileToken() || ''
     };
 
     const res = await fetch(`${API_BASE}/wealth-button/leaderboard/submit-v2`, {

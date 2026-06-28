@@ -21,11 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 50%财富按钮 — 排行榜与统计业务逻辑。
@@ -53,7 +49,7 @@ public class WealthButtonService {
     private static final int MAX_ROUND_HISTORY_LENGTH = 2000;
 
     /** 允许的最长连胜数；达到该阈值视为作弊。 */
-    static final int MAX_WIN_STREAK = 30;
+    static final int MAX_WIN_STREAK = 20;
 
     /** 同一用户名提交冷却时间：10 秒。 */
     static final long SUBMIT_COOLDOWN_MS = 10_000L;
@@ -429,7 +425,7 @@ public class WealthButtonService {
                         return Mono.just(0L);
                     }
                     String placeholders = String.join(",",
-                            java.util.Collections.nCopies(idsToDelete.size(), "?"));
+                            Collections.nCopies(idsToDelete.size(), "?"));
                     String sql = "DELETE FROM wealth_button_leaderboard WHERE id IN (" + placeholders + ")";
                     DatabaseClient.GenericExecuteSpec spec = databaseClient.sql(sql);
                     for (int i = 0; i < idsToDelete.size(); i++) {

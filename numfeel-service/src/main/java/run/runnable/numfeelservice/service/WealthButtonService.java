@@ -77,10 +77,13 @@ public class WealthButtonService {
 
     private final R2dbcEntityTemplate template;
     private final DatabaseClient databaseClient;
+    private final TurnstileVerifier turnstileVerifier;
 
-    public WealthButtonService(R2dbcEntityTemplate template, DatabaseClient databaseClient) {
+    public WealthButtonService(R2dbcEntityTemplate template, DatabaseClient databaseClient,
+                               TurnstileVerifier turnstileVerifier) {
         this.template = template;
         this.databaseClient = databaseClient;
+        this.turnstileVerifier = turnstileVerifier;
     }
 
     // ── 统计相关 ──────────────────────────────────────────────────────
@@ -134,7 +137,8 @@ public class WealthButtonService {
      */
     public Mono<WealthButtonLeaderboardSubmitResponse> submitLeaderboardV2(
             String username, int initialWealth, String roundHistory,
-            String challengeId, String powHash, String powNonce) {
+            String challengeId, String powHash, String powNonce,
+            String turnstileToken, String remoteIp) {
 
         // 同一用户名 10 秒冷却，防止短时间内重复刷榜
         long now = System.currentTimeMillis();
@@ -152,23 +156,27 @@ public class WealthButtonService {
             return Mono.error(e);
         }
 
-        String validationError = consumeAndValidateChallenge(
-                challengeId, username, initialWealth, roundHistory, powHash, powNonce);
-        if (validationError != null) {
-            return Mono.error(new IllegalArgumentException(validationError));
-        }
-        markPowUsed(powHash);
-        lastSubmitAt.put(username, now);
-
         WealthButtonLeaderboardEntry entity = new WealthButtonLeaderboardEntry(
                 null, username, replayResult.finalWealth(), replayResult.returnRate(),
                 replayResult.pressCount(), replayResult.winCount(), initialWealth,
                 roundHistory, powHash, powNonce, now);
 
-        return template.insert(WealthButtonLeaderboardEntry.class)
-                .using(entity)
-                .then(ServiceSupport.selectAll(template, WealthButtonLeaderboardEntry.class))
-                .map(rows -> computeRanks(rows, username, replayResult.finalWealth(), replayResult.returnRate()));
+        // Turnstile 人机验证必须在消费 challenge/PoW 之前，
+        // 否则验证失败会白白消耗 challenge 和 PoW，并让用户白等冷却
+        return turnstileVerifier.verify(turnstileToken, remoteIp)
+                .then(Mono.fromRunnable(() -> {
+                    String validationError = consumeAndValidateChallenge(
+                            challengeId, username, initialWealth, roundHistory, powHash, powNonce);
+                    if (validationError != null) {
+                        throw new IllegalArgumentException(validationError);
+                    }
+                    markPowUsed(powHash);
+                    lastSubmitAt.put(username, now);
+                }))
+                .then(template.insert(WealthButtonLeaderboardEntry.class)
+                        .using(entity)
+                        .then(ServiceSupport.selectAll(template, WealthButtonLeaderboardEntry.class))
+                        .map(rows -> computeRanks(rows, username, replayResult.finalWealth(), replayResult.returnRate())));
     }
 
     /** 查询排行榜 top N（按用户名去重）。 */

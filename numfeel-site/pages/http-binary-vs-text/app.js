@@ -117,11 +117,14 @@
       .then(function (resp) {
         var t1 = performance.now();
         textTiming = t1 - t0;
-        return resp.text();
+        if (!resp.ok) {
+          throw new Error('HTTP ' + resp.status);
+        }
+        return resp.json();
       })
-      .then(function (text) {
-        textData = text;
-        displayTextResult(text);
+      .then(function (data) {
+        textData = JSON.stringify(data);
+        displayTextResult(data);
       })
       .catch(function (err) {
         setStatus(els.textStatus, 'error', '请求失败');
@@ -133,7 +136,6 @@
     fetch(BINARY_URL)
       .then(function (resp) {
         var b1 = performance.now();
-        console.log('[binary] fetch 响应, status=' + resp.status + ', content-type=' + resp.headers.get('content-type') + ', content-length=' + resp.headers.get('content-length'));
         if (!resp.ok) {
           throw new Error('HTTP ' + resp.status);
         }
@@ -141,13 +143,11 @@
         return resp.arrayBuffer();
       })
       .then(function (buf) {
-        console.log('[binary] arrayBuffer 完成, byteLength=' + buf.byteLength);
         var bytes = new Uint8Array(buf);
         binaryData = bytes;
         displayBinaryResult(bytes);
       })
       .catch(function (err) {
-        console.error('[binary] fetch 异常: ' + err.message);
         setStatus(els.binaryStatus, 'error', '请求失败');
         els.binaryRaw.textContent = '请求失败: ' + err.message;
         els.binaryRender.innerHTML = '<div class="render-error">加载失败: ' + err.message + '<br>点击「重新加载」再试一次</div>';
@@ -200,7 +200,7 @@
         .then(function (text) {
           var t1 = performance.now();
           textTimes.push(t1 - t0);
-          textSizes.push(text.length);
+          textSizes.push(eng.getByteLength(text));
           finishOne();
         })
         .catch(function () {
@@ -226,12 +226,14 @@
         });
     }
 
-    // 每100ms发起一组（text+binary），错开避免突发拥塞
+    // 每100ms发起一组，组内 text 与 binary 再错开 50ms，避免突发拥塞
     for (var i = 0; i < RUNS; i++) {
-      setTimeout(function () {
-        doTextRun();
-        doBinRun();
-      }, i * 100);
+      (function (idx) {
+        setTimeout(function () {
+          doTextRun();
+          setTimeout(doBinRun, 50);
+        }, idx * 100);
+      })(i);
     }
   }
 
@@ -273,31 +275,24 @@
   }
 
   // ── 文本结果展示 ──
-  function displayTextResult(text) {
-    textByteLen = eng.getByteLength(text);
+  function displayTextResult(data) {
+    textByteLen = eng.getByteLength(textData);
     setStatus(els.textStatus, 'done', '完成');
     els.textSize.textContent = eng.formatBytes(textByteLen);
     els.textTime.textContent = textTiming.toFixed(1) + ' ms';
     els.textContentType.textContent = 'application/json';
 
     // 截取前3000字符显示
+    var text = JSON.stringify(data, null, 2);
     var preview = text.length > 3000 ? text.substring(0, 3000) + '\n\n... (省略 ' + (text.length - 3000) + ' 字符)' : text;
     els.textRaw.textContent = preview;
 
-    // 解析JSON并渲染
-    try {
-      var data = JSON.parse(text);
-      renderFeed(data, els.textRender);
-    } catch (e) {
-      els.textRender.innerHTML = '<div class="render-error">JSON 解析失败: ' + e.message + '</div>';
-    }
-
+    renderFeed(data, els.textRender);
     updateChart();
   }
 
   // ── 二进制结果展示 ──
   function displayBinaryResult(bytes) {
-    console.log('[binary] displayBinaryResult called, bytes.length=' + bytes.length);
     setStatus(els.binaryStatus, 'done', '完成');
     els.binarySize.textContent = eng.formatBytes(bytes.length);
     els.binaryTime.textContent = binaryTiming.toFixed(1) + ' ms';
@@ -313,16 +308,14 @@
 
     // 检查解码库是否可用
     if (typeof MessagePack === 'undefined') {
-      console.warn('[binary] MessagePack 未定义');
       els.binaryRender.innerHTML = '<div class="render-error">解码库未加载（CDN 可能暂时不可用）。<br>点击「重新加载」再试一次。</div>';
       setStatus(els.binaryStatus, 'error', '解码库缺失');
       return;
     }
 
-    // 数据完整性检查：MessagePack 数据至少要有合理的头部标记
-    if (bytes.length < 2) {
-      console.warn('[binary] 数据异常, bytes.length=' + bytes.length);
-      els.binaryRender.innerHTML = '<div class="render-error">收到的二进制数据异常（仅 ' + bytes.length + ' 字节），可能传输不完整。</div>';
+    // 数据完整性检查：空数据视为异常
+    if (bytes.length === 0) {
+      els.binaryRender.innerHTML = '<div class="render-error">收到的二进制数据异常（0 字节），可能传输不完整。</div>';
       setStatus(els.binaryStatus, 'error', '数据异常');
       return;
     }
@@ -331,26 +324,20 @@
     try {
       var decodeStart = performance.now();
       var data = MessagePack.decode(bytes);
-      console.log('[binary] MessagePack 解码成功, users=' + (data.users ? data.users.length : '?') + ', posts=' + (data.posts ? data.posts.length : '?'));
       var decodeTime = performance.now() - decodeStart;
       els.binaryTime.textContent = binaryTiming.toFixed(1) + ' ms (解码: ' + decodeTime.toFixed(1) + ' ms)';
       renderFeed(data, els.binaryRender);
     } catch (e) {
-      console.error('[binary] MessagePack 解码异常: ' + e.message);
       els.binaryRender.innerHTML = '<div class="render-error">MessagePack 解码失败: ' + e.message
         + '<br>收到 ' + bytes.length + ' 字节，前4字节: ['
-        + bytes[0].toString(16) + ' ' + bytes[1].toString(16) + ' '
+        + bytes[0].toString(16) + ' ' + (bytes.length > 1 ? bytes[1].toString(16) : '--') + ' '
         + (bytes.length > 2 ? bytes[2].toString(16) : '--') + ' '
         + (bytes.length > 3 ? bytes[3].toString(16) : '--') + ']'
         + '<br><br>二进制格式必须有对应的解码器才能还原——两端协议不匹配，数据就是废字节。</div>';
       setStatus(els.binaryStatus, 'error', '解码失败');
     }
 
-    try {
-      updateChart();
-    } catch (e) {
-      console.error('[binary] updateChart 异常: ' + e.message);
-    }
+    updateChart();
   }
 
   // ── 渲染动态流 ──

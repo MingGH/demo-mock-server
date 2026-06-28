@@ -85,6 +85,11 @@ spec:
                 secretKeyRef:
                   name: mysql-secret
                   key: password
+            - name: TURNSTILE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: turnstile-secret
+                  key: secret-key
 ---
 apiVersion: v1
 kind: Service

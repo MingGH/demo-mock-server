@@ -31,12 +31,14 @@ class WealthButtonServiceTest {
     private R2dbcEntityTemplate template;
     @Mock
     private DatabaseClient databaseClient;
+    @Mock
+    private TurnstileVerifier turnstileVerifier;
 
     private WealthButtonService service;
 
     @BeforeEach
     void setUp() {
-        service = new WealthButtonService(template, databaseClient);
+        service = new WealthButtonService(template, databaseClient, turnstileVerifier);
     }
 
     @Test
@@ -179,9 +181,10 @@ class WealthButtonServiceTest {
 
         mockInsertSuccess();
         mockSelectAllLeaderboard(List.of());
+        mockTurnstileSuccess();
 
         StepVerifier.create(service.submitLeaderboardV2("Carol", 100000, "WL",
-                        challenge1.challengeId(), proof1[0], proof1[1]))
+                        challenge1.challengeId(), proof1[0], proof1[1], "token", "127.0.0.1"))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -193,7 +196,7 @@ class WealthButtonServiceTest {
         String[] proof2 = bruteForcePow(payload2);
 
         StepVerifier.create(service.submitLeaderboardV2("Carol", 100000, "WL",
-                        challenge2.challengeId(), proof2[0], proof2[1]))
+                        challenge2.challengeId(), proof2[0], proof2[1], "token", "127.0.0.1"))
                 .expectErrorMatches(err -> err instanceof IllegalArgumentException
                         && err.getMessage().startsWith("submit too frequent"))
                 .verify();
@@ -203,6 +206,7 @@ class WealthButtonServiceTest {
     @SuppressWarnings("unchecked")
     void submitLeaderboardV2ShouldPersistServerRecomputedValues() {
         mockInsertSuccess();
+        mockTurnstileSuccess();
         WealthButtonLeaderboardEntry persisted = mkEntry(
                 "Alice", 89994.5D, -10.0055D, 2, 1, 100000, "WL", 1000L);
         mockSelectAllLeaderboard(List.of(persisted));
@@ -214,7 +218,7 @@ class WealthButtonServiceTest {
         String[] proof = bruteForcePow(payload);
 
         StepVerifier.create(service.submitLeaderboardV2("Alice", 100000, "WL",
-                        challenge.challengeId(), proof[0], proof[1]))
+                        challenge.challengeId(), proof[0], proof[1], "token", "127.0.0.1"))
                 .assertNext(resp -> {
                     assertEquals(1, resp.wealthRank());
                     assertEquals(1, resp.returnRank());
@@ -234,7 +238,7 @@ class WealthButtonServiceTest {
         String[] proof = bruteForcePow(payload);
 
         StepVerifier.create(service.submitLeaderboardV2("Alice", 3, "LW",
-                        challenge.challengeId(), proof[0], proof[1]))
+                        challenge.challengeId(), proof[0], proof[1], "token", "127.0.0.1"))
                 .expectErrorMatches(err -> err instanceof IllegalArgumentException
                         && "roundHistory continues after bankruptcy".equals(err.getMessage()))
                 .verify();
@@ -333,6 +337,10 @@ class WealthButtonServiceTest {
         when(template.insert(WealthButtonLeaderboardEntry.class)).thenReturn(insertMock);
         when(insertMock.using(any(WealthButtonLeaderboardEntry.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+    }
+
+    private void mockTurnstileSuccess() {
+        when(turnstileVerifier.verify(any(), any())).thenReturn(Mono.empty());
     }
 
     @SuppressWarnings("unchecked")

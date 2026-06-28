@@ -36,7 +36,7 @@ public class HttpBinaryVsTextController {
      * 使用 {@link ApiResponse#raw(Object)} 直接返回 JSON 对象体，便于前端展示原始文本。
      */
     @GetMapping("/text")
-    public Mono<ResponseEntity<tools.jackson.databind.JsonNode>> text() {
+    public Mono<ResponseEntity<tools.jackson.databind.JsonNode>> btext() {
         return Mono.just(ApiResponse.raw(service.getData()));
     }
 

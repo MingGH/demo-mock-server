@@ -108,7 +108,7 @@ class WealthButtonControllerTest {
 
     @Test
     void leaderboard_submitV2_validBody_returnsOk() {
-        when(mockService.submitLeaderboardV2(anyString(), anyInt(), anyString(), anyString(), anyString(), anyString()))
+        when(mockService.submitLeaderboardV2(anyString(), anyInt(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(Mono.just(new WealthButtonLeaderboardSubmitResponse(1, 2, 10)));
 
         client.post().uri("/wealth-button/leaderboard/submit-v2")
@@ -185,7 +185,7 @@ class WealthButtonControllerTest {
 
     @Test
     void leaderboard_submitV2_serviceRejectsPoW_returns400() {
-        when(mockService.submitLeaderboardV2(anyString(), anyInt(), anyString(), anyString(), anyString(), anyString()))
+        when(mockService.submitLeaderboardV2(anyString(), anyInt(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(Mono.error(new IllegalArgumentException("PoW hash mismatch")));
 
         client.post().uri("/wealth-button/leaderboard/submit-v2")
@@ -252,6 +252,7 @@ class WealthButtonControllerTest {
         body.put("challengeId", "cid-1");
         body.put("powHash", "0000abcdef1234567890");
         body.put("powNonce", "42");
+        body.put("cfTurnstileToken", "test-turnstile-token");
         return body;
     }
 }

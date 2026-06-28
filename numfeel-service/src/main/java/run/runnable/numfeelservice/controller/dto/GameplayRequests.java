@@ -377,6 +377,7 @@ public final class GameplayRequests {
      * @param challengeId 后端签发的 challenge 标识
      * @param powHash SHA-256 PoW 哈希
      * @param powNonce PoW nonce
+     * @param cfTurnstileToken Cloudflare Turnstile 人机验证 token
      */
     public record WealthButtonLeaderboardSubmitV2Request(
             String username,
@@ -384,7 +385,8 @@ public final class GameplayRequests {
             String roundHistory,
             String challengeId,
             String powHash,
-            String powNonce
+            String powNonce,
+            String cfTurnstileToken
     ) {
     }
 }

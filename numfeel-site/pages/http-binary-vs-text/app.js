@@ -55,6 +55,9 @@
     // 基准测试
     els.benchSection = document.getElementById('bench-section');
     els.benchStatus = document.getElementById('bench-status');
+    els.benchVerdict = document.getElementById('bench-verdict');
+    els.benchVerdictIcon = document.getElementById('bench-verdict-icon');
+    els.benchVerdictText = document.getElementById('bench-verdict-text');
     els.bAvgText = document.getElementById('b-avg-text');
     els.bAvgBin = document.getElementById('b-avg-bin');
     els.bMinText = document.getElementById('b-min-text');
@@ -65,6 +68,14 @@
     els.bSizeBin = document.getElementById('b-size-bin');
     els.bOkText = document.getElementById('b-ok-text');
     els.bOkBin = document.getElementById('b-ok-bin');
+    els.barTextTime = document.getElementById('b-bar-text-time');
+    els.barBinTime = document.getElementById('b-bar-bin-time');
+    els.barTextSize = document.getElementById('b-bar-text-size');
+    els.barBinSize = document.getElementById('b-bar-bin-size');
+    els.textSideTime = document.getElementById('bench-text-side-time');
+    els.binSideTime = document.getElementById('bench-bin-side-time');
+    els.textSideSize = document.getElementById('bench-text-side-size');
+    els.binSideSize = document.getElementById('bench-bin-side-size');
   }
 
   // ── 初始化 ──
@@ -248,31 +259,53 @@
     function max(arr) { return arr.length > 0 ? Math.max.apply(null, arr) : 0; }
     function pct(arr, total) { return Math.round(arr.length / total * 100) + '%'; }
 
-    els.bAvgText.textContent = avg(textTimes).toFixed(0) + ' ms';
-    els.bAvgBin.textContent = avg(binTimes).toFixed(0) + ' ms';
+    var textAvgTime = avg(textTimes);
+    var binAvgTime = avg(binTimes);
+    var textAvgSize = avg(textSizes);
+    var binAvgSize = avg(binSizes);
+    var textFaster = textAvgTime < binAvgTime;
+
+    // 裁决条
+    els.benchVerdict.style.display = 'flex';
+    els.benchVerdictIcon.textContent = textFaster ? '🏆' : '📊';
+    els.benchVerdictText.textContent = textFaster
+      ? '文本 JSON 平均耗时更短：' + textAvgTime.toFixed(0) + ' ms vs ' + binAvgTime.toFixed(0) + ' ms（快 ' + ((binAvgTime / textAvgTime - 1) * 100).toFixed(0) + '%）'
+      : '二进制平均耗时更短：' + binAvgTime.toFixed(0) + ' ms vs ' + textAvgTime.toFixed(0) + ' ms（快 ' + ((textAvgTime / binAvgTime - 1) * 100).toFixed(0) + '%）';
+
+    // 赢家高亮
+    var winnerTime = textFaster ? 'text' : 'bin';
+    els.textSideTime.className = 'bench-card-side' + (winnerTime === 'text' ? ' winner' : '');
+    els.binSideTime.className = 'bench-card-side' + (winnerTime === 'bin' ? ' winner' : '');
+    var winnerSize = textAvgSize < binAvgSize ? 'text' : 'bin';
+    els.textSideSize.className = 'bench-card-side' + (winnerSize === 'text' ? ' winner' : '');
+    els.binSideSize.className = 'bench-card-side' + (winnerSize === 'bin' ? ' winner' : '');
+
+    // 耗时数据
+    els.bAvgText.textContent = textAvgTime.toFixed(0) + ' ms';
+    els.bAvgBin.textContent = binAvgTime.toFixed(0) + ' ms';
     els.bMinText.textContent = min(textTimes).toFixed(0) + ' ms';
     els.bMinBin.textContent = min(binTimes).toFixed(0) + ' ms';
     els.bMaxText.textContent = max(textTimes).toFixed(0) + ' ms';
     els.bMaxBin.textContent = max(binTimes).toFixed(0) + ' ms';
-    els.bSizeText.textContent = eng.formatBytes(Math.round(avg(textSizes)));
-    els.bSizeBin.textContent = eng.formatBytes(Math.round(avg(binSizes)));
+
+    // 耗时对比条
+    var maxTime = Math.max(textAvgTime, binAvgTime);
+    els.barTextTime.style.width = (textAvgTime / maxTime * 100) + '%';
+    els.barBinTime.style.width = (binAvgTime / maxTime * 100) + '%';
+
+    // 体积数据
+    els.bSizeText.textContent = eng.formatBytes(Math.round(textAvgSize));
+    els.bSizeBin.textContent = eng.formatBytes(Math.round(binAvgSize));
     els.bOkText.textContent = pct(textTimes, 20);
     els.bOkBin.textContent = pct(binTimes, 20);
+
+    // 体积对比条
+    var maxSize = Math.max(textAvgSize, binAvgSize);
+    els.barTextSize.style.width = (textAvgSize / maxSize * 100) + '%';
+    els.barBinSize.style.width = (binAvgSize / maxSize * 100) + '%';
+
     els.benchStatus.textContent = '完成（共40次请求）';
     els.benchSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    // 高亮更快的一方
-    var textAvg = avg(textTimes);
-    var binAvg = avg(binTimes);
-    if (textAvg > 0 && binAvg > 0) {
-      if (textAvg < binAvg) {
-        els.bAvgText.style.color = '#81c784';
-        els.bAvgBin.style.color = '#ff6b6b';
-      } else {
-        els.bAvgText.style.color = '#ff6b6b';
-        els.bAvgBin.style.color = '#81c784';
-      }
-    }
   }
 
   // ── 文本结果展示 ──

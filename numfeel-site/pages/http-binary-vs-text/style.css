@@ -398,60 +398,164 @@ body {
 .bench-section {
   margin-bottom: 24px;
   background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(206,147,216,0.15);
+  border: 1px solid rgba(206,147,216,0.2);
   border-radius: 12px;
-  padding: 20px;
+  padding: 20px 24px;
 }
 
-.bench-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #ce93d8;
-  margin-bottom: 14px;
+.bench-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ce93d8;
+  margin-bottom: 16px;
 }
 
 .bench-status {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #888;
+  margin-left: auto;
 }
 
-.bench-table-wrap {
-  overflow-x: auto;
-}
-
-.bench-table {
-  width: 100%;
-  border-collapse: collapse;
+/* 裁决条 */
+.bench-verdict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255,215,0,0.08);
+  border: 1px solid rgba(255,215,0,0.2);
+  border-radius: 8px;
+  margin-bottom: 16px;
   font-size: 0.85rem;
+  color: #ffd700;
 }
 
-.bench-table th,
-.bench-table td {
-  padding: 8px 14px;
-  text-align: left;
-  border-bottom: 1px solid rgba(242,228,207,0.05);
+.bench-verdict-icon {
+  font-size: 1.2rem;
 }
 
-.bench-table th {
-  color: #888;
-  font-weight: 500;
-  font-size: 0.75rem;
+/* 卡片容器 */
+.bench-cards {
+  display: flex;
+  gap: 16px;
+}
+
+.bench-card {
+  flex: 1;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(242,228,207,0.06);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.bench-card-label {
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.bench-table td {
-  color: #ccc;
-  font-variant-numeric: tabular-nums;
-}
-
-.bench-table td:first-child {
+  letter-spacing: 1px;
   color: #888;
-  font-size: 0.8rem;
+  margin-bottom: 12px;
+}
+
+.bench-card-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.bench-card-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.02);
+  transition: background 0.3s;
+}
+
+.bench-card-side.winner {
+  background: rgba(129,199,132,0.08);
+  border: 1px solid rgba(129,199,132,0.2);
+}
+
+.bench-card-name {
+  font-size: 0.7rem;
+  color: #888;
+}
+
+.bench-card-side.winner .bench-card-name {
+  color: #81c784;
+}
+
+.bench-card-val {
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
+.bench-card-side.winner .bench-card-val {
+  color: #81c784;
+}
+
+.bench-card-vs {
+  display: flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(242,228,207,0.2);
+  padding: 0 2px;
+}
+
+/* 对比条 */
+.bench-card-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bench-card-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.2);
+  transition: width 0.6s ease;
+}
+
+.bench-card-side.winner .bench-card-fill {
+  background: rgba(129,199,132,0.6);
+}
+
+/* 副行 */
+.bench-card-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: #666;
+  padding-top: 8px;
+  border-top: 1px solid rgba(242,228,207,0.04);
+  flex-wrap: wrap;
+}
+
+.bench-card-sub b {
+  color: #999;
+  font-weight: 600;
+}
+
+.bench-card-sub-sep {
+  color: rgba(242,228,207,0.08);
+  margin: 0 2px;
+}
+
+@media (max-width: 768px) {
+  .bench-cards {
+    flex-direction: column;
+  }
 }
 
 /* ── 洞察条 ── */

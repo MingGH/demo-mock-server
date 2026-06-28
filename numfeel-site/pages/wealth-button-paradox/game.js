@@ -232,7 +232,7 @@ function formatMoney(num) {
   const sign = num < 0 ? '-' : '';
   const abs = Math.abs(num);
   if (abs === 0) return sign + '\u00a50.00';
-  if (abs >= 1e4 || abs < 0.01) return sign + '\u00a5' + formatScientific(abs, 2);
+  if (abs >= 1e8 || abs < 0.01) return sign + '\u00a5' + formatScientific(abs, 2);
   if (abs >= 1) return sign + '\u00a5' + abs.toFixed(2);
   return sign + '\u00a5' + abs.toFixed(4);
 }
@@ -834,6 +834,23 @@ const SKINS = [
   { id: 'mario',     name: '马里奥蘑菇', url: '../../images/wealth-button/skins/mario.jpg',     glow: 'rgba(255,80,80,0.45)',  ring: 'rgba(255,255,255,0.45)' }
 ];
 let currentSkinId = 'default';
+let skinPickerExpanded = false;
+
+function toggleSkinPicker() {
+  skinPickerExpanded = !skinPickerExpanded;
+  const list = document.getElementById('skinList');
+  const arrow = document.getElementById('skinPickerArrow');
+  if (!list || !arrow) return;
+  if (skinPickerExpanded) {
+    list.classList.add('expanded');
+    list.style.display = 'flex';
+    arrow.style.transform = 'rotate(180deg)';
+  } else {
+    list.classList.remove('expanded');
+    arrow.style.transform = 'rotate(0deg)';
+    setTimeout(() => { if (!skinPickerExpanded) list.style.display = 'none'; }, 300);
+  }
+}
 
 function initSkinPicker() {
   const list = document.getElementById('skinList');

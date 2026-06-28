@@ -265,10 +265,21 @@ body {
   margin-bottom: 10px;
 }
 .skin-picker-label i { color: #ffd700; }
+.skin-picker-label:hover { color: rgba(255,255,255,0.8); }
 .skin-list {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.25s ease, margin-top 0.3s ease;
+  margin-top: 0;
+}
+.skin-list.expanded {
+  max-height: 300px;
+  opacity: 1;
+  margin-top: 10px;
 }
 .skin-item {
   display: flex;

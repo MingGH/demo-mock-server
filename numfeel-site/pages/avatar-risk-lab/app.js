@@ -25,7 +25,7 @@ var SCENARIOS = [
     era: 'half-dead',
     eraText: '2018 后被压制',
     desc: '返回 401 + WWW-Authenticate，让浏览器原生弹账号密码框，伪装成主站要求登录。',
-    note: 'Chrome/FF/Safari 已禁用「跨域子资源(img/iframe)」触发 Basic Auth 弹窗。要看效果请用下方「新标签打开」按钮——top-level navigation 仍然会弹。'
+    note: 'Chrome/FF/Safari 已禁用「跨域子资源(img/iframe)」触发 Basic Auth 弹窗。要看效果请用上方「新标签打开」按钮——top-level navigation 仍然会弹。'
   },
   {
     key: 'redirect',

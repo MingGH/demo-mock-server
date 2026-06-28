@@ -179,5 +179,21 @@ public class TransportLabController {
         });
     }
 
+    @GetMapping(value = "/scenario/idle", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<JsonNode>> scenarioIdle() {
+        return Mono.fromSupplier(() -> {
+            var node = MAPPER.createObjectNode();
+            node.put("scenario", "idle");
+            node.put("serverTime", Instant.now().toEpochMilli());
+            node.put("message", "WebSocket 空闲长连接：仅心跳保活，不传输业务数据。HTTP 对比：每次轮询请求约 900 字节头部开销。");
+            // HTTP keepalive 参考：每个请求头约 900B，WebSocket 心跳帧仅 2B
+            node.put("httpHeadersPerPoll", 900);
+            node.put("wsFrameHeaderBytes", 2);
+            node.put("tcpIpOverheadPerPacket", 40);
+            node.put("ethernetMinFrame", 64);
+            return ApiResponse.ok(node);
+        });
+    }
+
     private double round1(double v) { return Math.round(v * 10) / 10.0; }
 }

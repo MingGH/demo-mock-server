@@ -141,6 +141,7 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
             case "profile" -> buildProfileEvents(delayMs);
             case "dashboard" -> buildDashboardEvents(delayMs);
             case "gaming" -> buildGamingEvents(delayMs);
+            case "idle" -> buildIdleEvents(delayMs);
             default -> Flux.empty();
         };
 
@@ -236,6 +237,17 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
                 });
     }
 
+    /** 空闲心跳：按延迟推送最小心跳包，持续不断 */
+    private Flux<ObjectNode> buildIdleEvents(long delayMs) {
+        return Flux.interval(Duration.ofMillis(delayMs))
+                .map(seq -> {
+                    var node = MAPPER.createObjectNode();
+                    node.put("type", "heartbeat");
+                    node.put("seq", seq + 1);
+                    return node;
+                });
+    }
+
     // ── 客户端消息 ──
 
     private Mono<Void> handleClientMessage(WebSocketSession session, String payload) {
@@ -266,14 +278,18 @@ public class TransportLabWebSocketHandler implements WebSocketHandler {
     private long resolveDelay(WebSocketSession session) {
         var params = UriComponentsBuilder.fromUri(session.getHandshakeInfo().getUri())
                 .build().getQueryParams();
+        var scenario = resolveScenario(session);
+        var isIdle = "idle".equals(scenario);
+        var maxDelay = isIdle ? 300_000L : 3000L;
+        var defaultDelay = isIdle ? 30_000L : 350L;
         try {
             var val = params.getFirst("delay");
             if (val != null && !val.isBlank()) {
-                return Math.max(50, Math.min(Long.parseLong(val), 3000));
+                return Math.max(isIdle ? 1000 : 50, Math.min(Long.parseLong(val), maxDelay));
             }
         } catch (NumberFormatException ignored) {
         }
-        return 350; // 默认 350ms
+        return defaultDelay;
     }
 
     private TransportLabQuery resolveQuery(WebSocketSession session) {

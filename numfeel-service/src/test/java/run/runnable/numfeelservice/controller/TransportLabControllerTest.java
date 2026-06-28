@@ -85,4 +85,19 @@ class TransportLabControllerTest {
                 .jsonPath("$.data.scenario").isEqualTo("gaming")
                 .jsonPath("$.data.players.length()").isEqualTo(6);
     }
+
+    @Test
+    void scenario_idle_returns_idle_data() {
+        client.get().uri("/transport-lab/scenario/idle")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(200)
+                .jsonPath("$.data.scenario").isEqualTo("idle")
+                .jsonPath("$.data.message").isNotEmpty()
+                .jsonPath("$.data.httpHeadersPerPoll").isEqualTo(900)
+                .jsonPath("$.data.wsFrameHeaderBytes").isEqualTo(2)
+                .jsonPath("$.data.tcpIpOverheadPerPacket").isEqualTo(40)
+                .jsonPath("$.data.ethernetMinFrame").isEqualTo(64);
+    }
 }

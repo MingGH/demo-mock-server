@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="WebSocket 连着不发送数据，一天会耗多少流量？实测空闲长连接的心跳开销，实时展示 10 秒到 24 小时的累计流量。">
+  <title>WebSocket 空闲连接流量实测 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Hero ── -->
+  <div class="hero-section">
+    <h1 class="hero-title">WebSocket 连着不动，一天耗多少流量？</h1>
+    <p class="hero-subtitle">页面打开即自动连接，只发心跳不传业务数据。观察真实流量随时间累积。</p>
+  </div>
+
+  <!-- ── 连接状态栏 ── -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">正在连接...</span>
+    <span class="status-sep">|</span>
+    <span>心跳间隔：</span>
+    <span class="status-val" id="statusInterval">5s</span>
+    <span class="status-sep">|</span>
+    <span>已运行：</span>
+    <span class="status-val" id="statusElapsed">00:00</span>
+  </div>
+
+  <!-- ── 核心数据卡片 ── -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">心跳次数</div>
+      <div class="stat-value" id="heartbeatCount">0</div>
+      <div class="stat-unit">次</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">应用层流量</div>
+      <div class="stat-value" id="appTraffic">0</div>
+      <div class="stat-unit">B</div>
+    </div>
+    <div class="stat-card accent">
+      <div class="stat-label">预估网络层总流量</div>
+      <div class="stat-value" id="wireTraffic">1.1</div>
+      <div class="stat-unit">KB</div>
+    </div>
+  </div>
+
+  <!-- ── 时间轴流量表 ── -->
+  <div class="timeline-section">
+    <h3 class="section-title"><i class="ti ti-clock"></i> 流量累积时间轴</h3>
+    <div class="timeline-grid" id="timelineGrid">
+      <!-- JS 动态填充 -->
+    </div>
+  </div>
+
+  <!-- ── 协议层拆解 ── -->
+  <div class="breakdown-section">
+    <h3 class="section-title"><i class="ti ti-stack-2"></i> 协议层开销拆解（每条心跳）</h3>
+    <div class="breakdown-viz" id="breakdownViz">
+      <div class="layer-bar">
+        <div class="layer-seg layer-app" style="flex:30">
+          <span>应用数据</span>
+          <small id="layerAppSize">~30 B</small>
+        </div>
+        <div class="layer-seg layer-ws" style="flex:4">
+          <span>WS 帧头</span>
+          <small>~4 B</small>
+        </div>
+        <div class="layer-seg layer-tcp" style="flex:20">
+          <span>TCP 头</span>
+          <small>20 B</small>
+        </div>
+        <div class="layer-seg layer-ip" style="flex:20">
+          <span>IP 头</span>
+          <small>20 B</small>
+        </div>
+        <div class="layer-seg layer-eth" style="flex:14">
+          <span>Eth 帧</span>
+          <small>14 B</small>
+        </div>
+      </div>
+      <div class="layer-total">≈ 88 B / 条心跳（线上实际字节）</div>
+    </div>
+  </div>
+
+  <!-- ── HTTP 轮询对比 ── -->
+  <div class="compare-section">
+    <h3 class="section-title"><i class="ti ti-versus"></i> 如果改用 HTTP 轮询保活呢？</h3>
+    <p class="section-desc">同样间隔发 HTTP GET 请求（仅响应头，无 body），每次请求头约 900 字节。</p>
+    <div class="compare-grid" id="compareGrid">
+      <!-- JS 动态填充 -->
+    </div>
+  </div>
+
+  <!-- ── 控制区 ── -->
+  <div class="control-section">
+    <h3 class="section-title"><i class="ti ti-settings"></i> 调节心跳间隔</h3>
+    <div class="control-row">
+      <span class="control-label">间隔</span>
+      <input type="range" class="control-slider" id="intervalSlider" min="1" max="300" value="5" step="1">
+      <span class="control-value" id="intervalValue">5s</span>
+      <button class="control-btn" id="reconnectBtn">重新连接</button>
+    </div>
+    <p class="control-hint">调节后需点「重新连接」生效。间隔越短流量越大，但更接近真实场景（NAT 网关通常在 30-120s 清理空闲映射）。</p>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

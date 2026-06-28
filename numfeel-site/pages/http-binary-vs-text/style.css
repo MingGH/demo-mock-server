@@ -394,6 +394,66 @@ body {
   height: 100% !important;
 }
 
+/* ── 20次请求统计 ── */
+.bench-section {
+  margin-top: 24px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(206,147,216,0.15);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.bench-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #ce93d8;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bench-status {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.bench-table-wrap {
+  overflow-x: auto;
+}
+
+.bench-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.bench-table th,
+.bench-table td {
+  padding: 8px 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(242,228,207,0.05);
+}
+
+.bench-table th {
+  color: #888;
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bench-table td {
+  color: #ccc;
+  font-variant-numeric: tabular-nums;
+}
+
+.bench-table td:first-child {
+  color: #888;
+  font-size: 0.8rem;
+}
+
 /* ── 洞察条 ── */
 .insight-bar {
   margin-top: 24px;

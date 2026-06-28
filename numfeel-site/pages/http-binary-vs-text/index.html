@@ -34,6 +34,9 @@
       <button class="mode-btn" id="btn-refresh" type="button" style="border-color: rgba(255,215,0,0.3); color: #ffd700;">
         <i class="ti ti-refresh"></i> 重新加载
       </button>
+      <button class="mode-btn" id="btn-bench" type="button" style="border-color: rgba(206,147,216,0.3); color: #ce93d8;">
+        <i class="ti ti-chart-candle"></i> 跑20次统计
+      </button>
     </div>
 
     <!-- 并排面板 -->
@@ -122,6 +125,32 @@
       </div>
       <div class="chart-wrap">
         <canvas id="size-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- 20次请求统计 -->
+    <div class="bench-section" id="bench-section" style="display:none;">
+      <div class="bench-title">
+        <i class="ti ti-chart-candle"></i> 连续 20 次请求统计
+        <span class="bench-status" id="bench-status"></span>
+      </div>
+      <div class="bench-table-wrap">
+        <table class="bench-table">
+          <thead>
+            <tr>
+              <th>指标</th>
+              <th style="color:#81c784;">文本 JSON</th>
+              <th style="color:#ce93d8;">二进制 MessagePack</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>平均耗时</td><td id="b-avg-text">-</td><td id="b-avg-bin">-</td></tr>
+            <tr><td>最快</td><td id="b-min-text">-</td><td id="b-min-bin">-</td></tr>
+            <tr><td>最慢</td><td id="b-max-text">-</td><td id="b-max-bin">-</td></tr>
+            <tr><td>平均体积</td><td id="b-size-text">-</td><td id="b-size-bin">-</td></tr>
+            <tr><td>成功率</td><td id="b-ok-text">-</td><td id="b-ok-bin">-</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 

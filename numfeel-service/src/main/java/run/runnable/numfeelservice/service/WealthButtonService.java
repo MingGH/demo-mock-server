@@ -49,7 +49,7 @@ public class WealthButtonService {
     private static final int MAX_ROUND_HISTORY_LENGTH = 2000;
 
     /** 允许的最长连胜数；达到该阈值视为作弊。 */
-    static final int MAX_WIN_STREAK = 20;
+    static final int MAX_WIN_STREAK = 17;
 
     /** 同一用户名提交冷却时间：10 秒。 */
     static final long SUBMIT_COOLDOWN_MS = 10_000L;

@@ -129,8 +129,11 @@
 
       <!-- 按钮皮肤 -->
       <div class="skin-picker">
-        <div class="skin-picker-label"><i class="ti ti-palette"></i> 按钮皮肤</div>
-        <div class="skin-list" id="skinList"></div>
+        <div class="skin-picker-label" onclick="toggleSkinPicker()" style="cursor:pointer; user-select:none;">
+          <i class="ti ti-palette"></i> 按钮皮肤
+          <i class="ti ti-chevron-down" id="skinPickerArrow" style="margin-left:auto;transition:transform 0.25s;"></i>
+        </div>
+        <div class="skin-list" id="skinList" style="display:none;"></div>
       </div>
 
       <!-- 按钮 -->

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="同一个社交动态流数据，分别用JSON文本和MessagePack二进制传输——看看体积、速度、可读性到底差多少。">
+  <title>HTTP 文本 vs 二进制传输对比实验 | 数字直觉</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- MessagePack 解码库（ES5 UMD 兼容版本，v3.x 移除了 UMD 构建） -->
+  <script src="https://cdn.jsdelivr.net/npm/@msgpack/msgpack@2.8.0/dist.es5+umd/msgpack.min.js"></script>
+  <!-- pako — gzip 压缩（用于真实体积对比） -->
+  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <h1>HTTP 文本 vs 二进制传输对比</h1>
+      <p>同一份数据，两种传输方式——看看差在哪</p>
+    </div>
+
+    <!-- 模式切换 -->
+    <div class="mode-bar">
+      <button class="mode-btn active" id="mode-both" type="button">
+        <i class="ti ti-layout-columns"></i> 并排对比
+      </button>
+      <button class="mode-btn" id="mode-text" type="button">
+        <i class="ti ti-file-text"></i> 只看文本
+      </button>
+      <button class="mode-btn" id="mode-binary" type="button">
+        <i class="ti ti-binary"></i> 只看二进制
+      </button>
+      <button class="mode-btn" id="btn-refresh" type="button" style="border-color: rgba(255,215,0,0.3); color: #ffd700;">
+        <i class="ti ti-refresh"></i> 重新加载
+      </button>
+    </div>
+
+    <!-- 并排面板 -->
+    <div class="panels" id="panels">
+
+      <!-- 文本模式面板 -->
+      <div class="panel" id="text-panel">
+        <div class="panel-header">
+          <span class="panel-label text-mode">
+            <i class="ti ti-file-text"></i> 文本模式 (JSON)
+          </span>
+          <span class="panel-status loading" id="text-status">请求中...</span>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="stat-val green" id="text-size">-</span>
+            <span class="stat-lbl">体积</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val gold" id="text-time">-</span>
+            <span class="stat-lbl">耗时</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val" style="color:#90caf9;font-size:0.8rem" id="text-content-type">-</span>
+            <span class="stat-lbl">Content-Type</span>
+          </div>
+        </div>
+
+        <div class="raw-view">
+          <div class="raw-view-label">原始字节 / 文本预览</div>
+          <div class="raw-content json-view" id="text-raw">加载中...</div>
+        </div>
+
+        <div class="render-view">
+          <div class="render-view-label">解析后渲染</div>
+          <div id="text-render">
+            <div class="render-placeholder">等待数据...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 二进制模式面板 -->
+      <div class="panel" id="binary-panel">
+        <div class="panel-header">
+          <span class="panel-label binary-mode">
+            <i class="ti ti-binary"></i> 二进制模式 (MessagePack)
+          </span>
+          <span class="panel-status loading" id="binary-status">请求中...</span>
+        </div>
+
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="stat-val purple" id="binary-size">-</span>
+            <span class="stat-lbl">体积</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val gold" id="binary-time">-</span>
+            <span class="stat-lbl">耗时</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-val" style="color:#90caf9;font-size:0.8rem" id="binary-content-type">-</span>
+            <span class="stat-lbl">Content-Type</span>
+          </div>
+        </div>
+
+        <div class="raw-view">
+          <div class="raw-view-label">原始字节 / HEX 视图</div>
+          <div class="raw-content hex-view" id="binary-raw">加载中...</div>
+        </div>
+
+        <div class="render-view">
+          <div class="render-view-label">解析后渲染</div>
+          <div id="binary-render">
+            <div class="render-placeholder">等待数据...</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /panels -->
+
+    <!-- 体积对比图表 -->
+    <div class="chart-section">
+      <div class="chart-title">
+        <i class="ti ti-chart-bar"></i> 传输体积对比
+      </div>
+      <div class="chart-wrap">
+        <canvas id="size-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- 洞察条 -->
+    <div class="insight-bar" id="insight-bar">
+      等待数据加载...
+    </div>
+
+  </div><!-- /container -->
+
+  <script src="../../components/header.js" defer></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

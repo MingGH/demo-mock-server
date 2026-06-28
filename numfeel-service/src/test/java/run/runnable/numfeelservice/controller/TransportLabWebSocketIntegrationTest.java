@@ -43,4 +43,28 @@ class TransportLabWebSocketIntegrationTest {
         assertThat(messages.get(1)).contains("\"type\"");
         assertThat(messages.get(1)).contains("\"serverTime\"");
     }
+
+    @Test
+    void websocket_idle_scenario_returns_heartbeats() {
+        var messages = new CopyOnWriteArrayList<String>();
+        var url = URI.create("ws://localhost:" + port
+                + "/transport-lab/ws?scenario=idle&delay=50");
+
+        new ReactorNettyWebSocketClient()
+                .execute(url, session -> session.receive()
+                        .map(message -> message.getPayloadAsText())
+                        .doOnNext(messages::add)
+                        .take(4)
+                        .then())
+                .block(Duration.ofSeconds(8));
+
+        assertThat(messages).hasSizeGreaterThanOrEqualTo(3);
+        // 第一条是 ready
+        assertThat(messages.get(0)).contains("\"type\":\"ready\"");
+        assertThat(messages.get(0)).contains("\"scenario\":\"idle\"");
+        // 后续是 heartbeat
+        assertThat(messages.get(1)).contains("\"type\":\"heartbeat\"");
+        assertThat(messages.get(1)).contains("\"seq\"");
+        assertThat(messages.get(1)).contains("\"serverTime\"");
+    }
 }

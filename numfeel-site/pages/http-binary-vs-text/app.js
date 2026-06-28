@@ -27,6 +27,7 @@
     els.modeText = document.getElementById('mode-text');
     els.modeBinary = document.getElementById('mode-binary');
     els.btnRefresh = document.getElementById('btn-refresh');
+    els.btnBench = document.getElementById('btn-bench');
     els.panels = document.getElementById('panels');
 
     // 文本面板
@@ -50,6 +51,20 @@
     // 图表 & 洞察
     els.chartCanvas = document.getElementById('size-chart');
     els.insightBar = document.getElementById('insight-bar');
+
+    // 基准测试
+    els.benchSection = document.getElementById('bench-section');
+    els.benchStatus = document.getElementById('bench-status');
+    els.bAvgText = document.getElementById('b-avg-text');
+    els.bAvgBin = document.getElementById('b-avg-bin');
+    els.bMinText = document.getElementById('b-min-text');
+    els.bMinBin = document.getElementById('b-min-bin');
+    els.bMaxText = document.getElementById('b-max-text');
+    els.bMaxBin = document.getElementById('b-max-bin');
+    els.bSizeText = document.getElementById('b-size-text');
+    els.bSizeBin = document.getElementById('b-size-bin');
+    els.bOkText = document.getElementById('b-ok-text');
+    els.bOkBin = document.getElementById('b-ok-bin');
   }
 
   // ── 初始化 ──
@@ -64,6 +79,7 @@
     els.modeText.addEventListener('click', function () { switchMode('text'); });
     els.modeBinary.addEventListener('click', function () { switchMode('binary'); });
     els.btnRefresh.addEventListener('click', function () { reload(); });
+    els.btnBench.addEventListener('click', function () { runBenchmark(); });
   }
 
   function switchMode(mode) {
@@ -144,7 +160,116 @@
       chartInstance = null;
     }
     els.insightBar.innerHTML = '重新加载中...';
+    els.benchSection.style.display = 'none';
     loadBoth();
+  }
+
+  function runBenchmark() {
+    var RUNS = 20;
+    var TOTAL = RUNS * 2; // text + binary 各20次 = 40次请求
+    els.benchSection.style.display = 'block';
+    els.benchStatus.textContent = '请求中 0/' + TOTAL + '...';
+    // 清空旧数据
+    els.bAvgText.textContent = els.bAvgBin.textContent = '...';
+    els.bMinText.textContent = els.bMinBin.textContent = '...';
+    els.bMaxText.textContent = els.bMaxBin.textContent = '...';
+    els.bSizeText.textContent = els.bSizeBin.textContent = '...';
+    els.bOkText.textContent = els.bOkBin.textContent = '...';
+
+    var textTimes = [];
+    var textSizes = [];
+    var binTimes = [];
+    var binSizes = [];
+    var done = 0;
+
+    function finishOne() {
+      done++;
+      els.benchStatus.textContent = '请求中 ' + done + '/' + TOTAL + '...';
+      if (done >= TOTAL) {
+        showBenchResults(textTimes, textSizes, binTimes, binSizes);
+      }
+    }
+
+    function doTextRun() {
+      var t0 = performance.now();
+      fetch(TEXT_URL)
+        .then(function (resp) {
+          if (!resp.ok) throw new Error('status ' + resp.status);
+          return resp.text();
+        })
+        .then(function (text) {
+          var t1 = performance.now();
+          textTimes.push(t1 - t0);
+          textSizes.push(text.length);
+          finishOne();
+        })
+        .catch(function () {
+          finishOne();
+        });
+    }
+
+    function doBinRun() {
+      var t0 = performance.now();
+      fetch(BINARY_URL)
+        .then(function (resp) {
+          if (!resp.ok) throw new Error('status ' + resp.status);
+          return resp.arrayBuffer();
+        })
+        .then(function (buf) {
+          var t1 = performance.now();
+          binTimes.push(t1 - t0);
+          binSizes.push(buf.byteLength);
+          finishOne();
+        })
+        .catch(function () {
+          finishOne();
+        });
+    }
+
+    // 每100ms发起一组（text+binary），错开避免突发拥塞
+    for (var i = 0; i < RUNS; i++) {
+      setTimeout(function () {
+        doTextRun();
+        doBinRun();
+      }, i * 100);
+    }
+  }
+
+  function showBenchResults(textTimes, textSizes, binTimes, binSizes) {
+    function avg(arr) {
+      if (arr.length === 0) return 0;
+      var s = 0;
+      for (var i = 0; i < arr.length; i++) s += arr[i];
+      return s / arr.length;
+    }
+    function min(arr) { return arr.length > 0 ? Math.min.apply(null, arr) : 0; }
+    function max(arr) { return arr.length > 0 ? Math.max.apply(null, arr) : 0; }
+    function pct(arr, total) { return Math.round(arr.length / total * 100) + '%'; }
+
+    els.bAvgText.textContent = avg(textTimes).toFixed(0) + ' ms';
+    els.bAvgBin.textContent = avg(binTimes).toFixed(0) + ' ms';
+    els.bMinText.textContent = min(textTimes).toFixed(0) + ' ms';
+    els.bMinBin.textContent = min(binTimes).toFixed(0) + ' ms';
+    els.bMaxText.textContent = max(textTimes).toFixed(0) + ' ms';
+    els.bMaxBin.textContent = max(binTimes).toFixed(0) + ' ms';
+    els.bSizeText.textContent = eng.formatBytes(Math.round(avg(textSizes)));
+    els.bSizeBin.textContent = eng.formatBytes(Math.round(avg(binSizes)));
+    els.bOkText.textContent = pct(textTimes, 20);
+    els.bOkBin.textContent = pct(binTimes, 20);
+    els.benchStatus.textContent = '完成（共40次请求）';
+
+    // 高亮更快的一方
+    var textAvg = avg(textTimes);
+    var binAvg = avg(binTimes);
+    if (textAvg > 0 && binAvg > 0) {
+      if (textAvg < binAvg) {
+        els.bAvgText.style.color = '#81c784';
+        els.bAvgBin.style.color = '#ff6b6b';
+      } else {
+        els.bAvgText.style.color = '#ff6b6b';
+        els.bAvgBin.style.color = '#81c784';
+      }
+    }
   }
 
   // ── 文本结果展示 ──

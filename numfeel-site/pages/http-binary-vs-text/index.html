@@ -41,27 +41,65 @@
 
     <!-- 20次请求统计 -->
     <div class="bench-section" id="bench-section" style="display:none;">
-      <div class="bench-title">
-        <i class="ti ti-chart-candle"></i> 连续 20 次请求统计
+      <div class="bench-header">
+        <i class="ti ti-chart-candle"></i>
+        <span>连续 20 次请求基准测试</span>
         <span class="bench-status" id="bench-status"></span>
       </div>
-      <div class="bench-table-wrap">
-        <table class="bench-table">
-          <thead>
-            <tr>
-              <th>指标</th>
-              <th style="color:#81c784;">文本 JSON</th>
-              <th style="color:#ce93d8;">二进制 MessagePack</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>平均耗时</td><td id="b-avg-text">-</td><td id="b-avg-bin">-</td></tr>
-            <tr><td>最快</td><td id="b-min-text">-</td><td id="b-min-bin">-</td></tr>
-            <tr><td>最慢</td><td id="b-max-text">-</td><td id="b-max-bin">-</td></tr>
-            <tr><td>平均体积</td><td id="b-size-text">-</td><td id="b-size-bin">-</td></tr>
-            <tr><td>成功率</td><td id="b-ok-text">-</td><td id="b-ok-bin">-</td></tr>
-          </tbody>
-        </table>
+
+      <div class="bench-verdict" id="bench-verdict" style="display:none;">
+        <span class="bench-verdict-icon" id="bench-verdict-icon"></span>
+        <span id="bench-verdict-text"></span>
+      </div>
+
+      <div class="bench-cards">
+        <!-- 耗时对比 -->
+        <div class="bench-card">
+          <div class="bench-card-label">耗时</div>
+          <div class="bench-card-row">
+            <div class="bench-card-side" id="bench-text-side-time">
+              <span class="bench-card-name">JSON 文本</span>
+              <span class="bench-card-val" id="b-avg-text">-</span>
+              <div class="bench-card-bar"><div class="bench-card-fill" id="b-bar-text-time"></div></div>
+            </div>
+            <div class="bench-card-vs">VS</div>
+            <div class="bench-card-side" id="bench-bin-side-time">
+              <span class="bench-card-name">MessagePack</span>
+              <span class="bench-card-val" id="b-avg-bin">-</span>
+              <div class="bench-card-bar"><div class="bench-card-fill" id="b-bar-bin-time"></div></div>
+            </div>
+          </div>
+          <div class="bench-card-sub">
+            <span>最快 <b id="b-min-text">-</b></span>
+            <span>最慢 <b id="b-max-text">-</b></span>
+            <span class="bench-card-sub-sep">|</span>
+            <span>最快 <b id="b-min-bin">-</b></span>
+            <span>最慢 <b id="b-max-bin">-</b></span>
+          </div>
+        </div>
+
+        <!-- 体积对比 -->
+        <div class="bench-card">
+          <div class="bench-card-label">体积</div>
+          <div class="bench-card-row">
+            <div class="bench-card-side" id="bench-text-side-size">
+              <span class="bench-card-name">JSON 文本</span>
+              <span class="bench-card-val" id="b-size-text">-</span>
+              <div class="bench-card-bar"><div class="bench-card-fill" id="b-bar-text-size"></div></div>
+            </div>
+            <div class="bench-card-vs">VS</div>
+            <div class="bench-card-side" id="bench-bin-side-size">
+              <span class="bench-card-name">MessagePack</span>
+              <span class="bench-card-val" id="b-size-bin">-</span>
+              <div class="bench-card-bar"><div class="bench-card-fill" id="b-bar-bin-size"></div></div>
+            </div>
+          </div>
+          <div class="bench-card-sub">
+            <span>成功率 <b id="b-ok-text">-</b></span>
+            <span class="bench-card-sub-sep">|</span>
+            <span>成功率 <b id="b-ok-bin">-</b></span>
+          </div>
+        </div>
       </div>
     </div>
 

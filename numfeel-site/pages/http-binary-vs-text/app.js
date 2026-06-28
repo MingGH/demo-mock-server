@@ -259,6 +259,7 @@
     els.bOkText.textContent = pct(textTimes, 20);
     els.bOkBin.textContent = pct(binTimes, 20);
     els.benchStatus.textContent = '完成（共40次请求）';
+    els.benchSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     // 高亮更快的一方
     var textAvg = avg(textTimes);

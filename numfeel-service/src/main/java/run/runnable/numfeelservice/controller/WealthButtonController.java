@@ -7,15 +7,18 @@ import run.runnable.numfeelservice.web.ApiException;
 import run.runnable.numfeelservice.web.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
+import java.net.URI;
 import java.util.Set;
 
 /**
@@ -35,6 +38,7 @@ public class WealthButtonController {
 
     private static final Set<String> VALID_FIELDS = Set.of("players", "bankrupt", "billionaire");
     private static final int MAX_USERNAME_LENGTH = 50;
+    private static final String ALLOWED_REFERER_DOMAIN = "996.ninja";
 
     private final WealthButtonService service;
 
@@ -89,7 +93,11 @@ public class WealthButtonController {
      */
     @PostMapping("/leaderboard/submit-v2")
     public Mono<ResponseEntity<JsonNode>> submitLeaderboardV2(
+            @RequestHeader(value = HttpHeaders.REFERER, required = false) String referer,
             @RequestBody(required = false) WealthButtonLeaderboardSubmitV2Request request) {
+        if (!isAllowedReferer(referer)) {
+            throw ApiException.badRequest("invalid referer");
+        }
         if (request == null) {
             throw ApiException.badRequest("Invalid JSON");
         }
@@ -141,6 +149,25 @@ public class WealthButtonController {
                     log.error("wealth-button leaderboard query error", err);
                     return Mono.just(ApiResponse.error(500, "Internal error"));
                 });
+    }
+
+    /**
+     * 校验 Referer 是否来自允许的域名（996.ninja 及其子域名）。
+     */
+    private boolean isAllowedReferer(String referer) {
+        if (referer == null || referer.isBlank()) {
+            return false;
+        }
+        try {
+            String host = URI.create(referer).getHost();
+            if (host == null) {
+                return false;
+            }
+            return host.equalsIgnoreCase(ALLOWED_REFERER_DOMAIN)
+                    || host.toLowerCase().endsWith("." + ALLOWED_REFERER_DOMAIN);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private String normalizeUsername(String username) {

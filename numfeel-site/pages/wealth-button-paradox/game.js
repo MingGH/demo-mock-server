@@ -9,6 +9,7 @@ let wealthHistory = [100000];
 let chart = null;
 let distChart = null;
 let turnstileId = null;  // Turnstile 组件实例 ID
+let customMultiplier = false; // 自定义倍率模式（x1.1/x0.9），此模式下不参与排行榜
 const FEE = 5;
 const TURNSTILE_SITE_KEY = '0x4AAAAAADsMioJW-WyC3Fwm';
 const CHINESE_LARGE_UNITS = ['', '万', '亿', '万亿', '京', '垓', '秭', '穰', '沟', '涧', '正', '载', '极', '恒河沙', '阿僧祇', '那由他', '不可思议', '无量', '大数'];
@@ -102,15 +103,48 @@ function getRandomValue() {
   }
   return Math.random();
 }
+// ========== 自定义倍率 ==========
+function toggleMultiplier() {
+  customMultiplier = !customMultiplier;
+  const track = document.getElementById('multiplierToggle');
+  const standardLabel = document.getElementById('standardLabel');
+  const customLabel = document.getElementById('customLabel');
+  const hint = document.getElementById('multiplierHint');
+  if (customMultiplier) {
+    track.classList.add('on');
+    standardLabel.classList.remove('active');
+    customLabel.classList.add('active');
+    hint.textContent = '仅限本地体验，不上榜不统计';
+    hint.style.color = '#ce93d8';
+    document.getElementById('winLabel').textContent = 'x1.1 次数';
+    document.getElementById('loseLabel').textContent = 'x0.9 次数';
+    var submitTrigger = document.querySelector('.lb-submit-trigger');
+    if (submitTrigger) submitTrigger.innerHTML = '<i class="ti ti-lock"></i> 不可提交';
+  } else {
+    track.classList.remove('on');
+    standardLabel.classList.add('active');
+    customLabel.classList.remove('active');
+    hint.textContent = '参与全球统计与排行榜';
+    hint.style.color = 'rgba(255,255,255,0.25)';
+    document.getElementById('winLabel').textContent = 'x9 次数';
+    document.getElementById('loseLabel').textContent = 'x0.1 次数';
+    var submitTrigger = document.querySelector('.lb-submit-trigger');
+    if (submitTrigger) submitTrigger.innerHTML = '<i class="ti ti-upload"></i> 提交成绩';
+  }
+}
 // ========== 游戏逻辑 ==========
 function pressButton() {
   const btn = document.getElementById('pressBtn');
   if (btn.disabled) return;
-  if (pressCount === 0) recordPlayer();
+  if (pressCount === 0 && !customMultiplier) recordPlayer();
   const before = wealth;
   const rand = getRandomValue();
   const win = rand < 0.5;
-  wealth = win ? wealth * 9 : wealth * 0.1;
+  if (customMultiplier) {
+    wealth = win ? wealth * 1.1 : wealth * 0.9;
+  } else {
+    wealth = win ? wealth * 9 : wealth * 0.1;
+  }
   wealth -= FEE;
   if (wealth < 0) wealth = 0;
   pressCount++;
@@ -120,11 +154,11 @@ function pressButton() {
   flashScreen(win);
   updateDisplay();
   renderHistory();
-  if (wealth >= 1e8) recordBillionaire();
+  if (wealth >= 1e8 && !customMultiplier) recordBillionaire();
   if (wealth < 1) {
     btn.disabled = true;
     btn.textContent = '破产';
-    recordBankrupt();
+    if (!customMultiplier) recordBankrupt();
     setTimeout(showGameOver, 600);
   }
 }
@@ -230,9 +264,11 @@ function renderHistory() {
     container.innerHTML = '<div style="color: rgba(255,255,255,0.3); font-size: 0.85rem; text-align: center; padding: 20px;">还没按过，按一下试试</div>';
     return;
   }
+  const winTag = customMultiplier ? 'x1.1' : 'x9';
+  const loseTag = customMultiplier ? 'x0.9' : 'x0.1';
   container.innerHTML = roundHistory.slice(0, 25).map(h =>
     `<div class="history-item ${h.win ? 'win' : 'lose'}">
-      <span>#${h.round} <span class="history-tag ${h.win ? 'win' : 'lose'}">${h.win ? 'x9' : 'x0.1'}</span> <span style="color:#666;font-size:0.75rem;">(-5手续费)</span></span>
+      <span>#${h.round} <span class="history-tag ${h.win ? 'win' : 'lose'}">${h.win ? winTag : loseTag}</span> <span style="color:#666;font-size:0.75rem;">(-5手续费)</span></span>
       <span style="color: rgba(255,255,255,0.5); font-size: 0.8rem;">${formatMoney(h.before)} → ${formatMoney(h.after)}</span>
     </div>`
   ).join('');
@@ -435,6 +471,10 @@ async function computePoW(payload, difficulty) {
 }
 
 function showLeaderboardSubmitModal() {
+  if (customMultiplier) {
+    alert('自定义倍率模式（x1.1 / x0.9）仅限本地体验，不参与排行榜。\n\n如需上榜，请先切换回标准模式（x9 / x0.1）。');
+    return;
+  }
   document.getElementById('lbSubmitModal').classList.add('show');
   const previewWealth = document.getElementById('lbPreviewWealth');
   const previewReturn = document.getElementById('lbPreviewReturn');
@@ -482,6 +522,10 @@ function getTurnstileToken() {
 }
 
 async function submitToLeaderboard() {
+  if (customMultiplier) {
+    alert('自定义倍率模式不可提交排行榜。');
+    return;
+  }
   const usernameInput = document.getElementById('lbUsername');
   const statusEl = document.getElementById('lbSubmitStatus');
   const submitBtn = document.getElementById('lbSubmitBtn');
@@ -711,6 +755,15 @@ function showGameOver() {
   document.getElementById('finalPresses').textContent = pressCount;
   document.getElementById('finalFees').textContent = formatMoney(pressCount * FEE);
   document.getElementById('gameOverModal').classList.add('show');
+  // 自定义倍率模式隐藏排行榜按钮
+  var lbBtn = document.querySelector('#gameOverModal .modal-btn.gold');
+  if (lbBtn) lbBtn.style.display = customMultiplier ? 'none' : '';
+  var msgEl = document.querySelector('#gameOverModal .modal-msg');
+  if (msgEl) {
+    msgEl.innerHTML = customMultiplier
+      ? '资产不足 1 元，无法继续。<br><span class="hl" style="color:#ce93d8;">自定义倍率模式（x1.1/x0.9），风险大幅降低</span>'
+      : '资产不足 1 元，无法继续。<br><span class="hl">绝大多数人都会走到这一步</span>，你不是例外。';
+  }
 }
 function closeModal() { document.getElementById('gameOverModal').classList.remove('show'); }
 function closeModalAndReset() { closeModal(); resetGame(); }

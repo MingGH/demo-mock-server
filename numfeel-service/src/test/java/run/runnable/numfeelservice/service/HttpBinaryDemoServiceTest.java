@@ -90,6 +90,37 @@ class HttpBinaryDemoServiceTest {
     }
 
     @Test
+    void toJsonText_emailHashIsRealSha256() throws Exception {
+        String json = service.toJsonText();
+        JsonNode root = JSON_MAPPER.readTree(json);
+        JsonNode firstUser = root.get("users").get(0);
+        String hash = firstUser.get("email_hash").asText();
+        assertEquals(64, hash.length(), "SHA-256 十六进制应为 64 字符");
+        assertTrue(hash.matches("^[0-9a-f]+$"), "应为纯小写十六进制字符串");
+    }
+
+    @Test
+    void getData_returnsCachedFeedStructure() {
+        JsonNode data = service.getData();
+        assertNotNull(data);
+        assertTrue(data.has("users"));
+        assertTrue(data.has("posts"));
+        assertEquals(50, data.get("users").size());
+        assertEquals(80, data.get("posts").size());
+    }
+
+    @Test
+    void getData_isLazyAndDeterministic() throws Exception {
+        HttpBinaryDemoService fresh = new HttpBinaryDemoService();
+        var field = HttpBinaryDemoService.class.getDeclaredField("cachedData");
+        field.setAccessible(true);
+        assertNull(field.get(fresh), "构造时不应初始化数据");
+        JsonNode first = fresh.getData();
+        JsonNode second = fresh.getData();
+        assertSame(first, second, "多次调用应返回同一缓存实例");
+    }
+
+    @Test
     void toJsonText_pollPostHasOptions() throws Exception {
         String json = service.toJsonText();
         JsonNode root = JSON_MAPPER.readTree(json);
@@ -127,10 +158,10 @@ class HttpBinaryDemoServiceTest {
     @Test
     void toJsonText_containsUnicodeAndEmoji() throws Exception {
         String json = service.toJsonText();
-        // 应包含 emoji 和中文字符
-        assertTrue(json.contains("🚀"), "应包含 emoji 🚀");
-        assertTrue(json.contains("🏔"), "应包含 emoji 🏔");
+        // 应包含 emoji 和中文字符（与数据模板中实际会出现的 emoji 保持一致）
+        assertTrue(json.contains("😂"), "应包含 emoji 😂");
         assertTrue(json.contains("🥲"), "应包含 emoji 🥲");
+        assertTrue(json.contains("👍"), "应包含 emoji 👍");
     }
 
     // ── 二进制相关 ──

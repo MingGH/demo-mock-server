@@ -86,9 +86,9 @@
     runs = runs || 10;
     var times = [];
     for (var i = 0; i < runs; i++) {
-      var start = performance ? performance.now() : Date.now();
+      var start = typeof performance !== 'undefined' ? performance.now() : Date.now();
       fn();
-      var end = performance ? performance.now() : Date.now();
+      var end = typeof performance !== 'undefined' ? performance.now() : Date.now();
       times.push(end - start);
     }
     var sum = 0;

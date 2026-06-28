@@ -126,6 +126,19 @@ console.log('\n=== benchmark ===');
   assertEqual(callCount, 7, 'benchmark 执行了指定次数');
 })();
 
+(function testBenchmarkWorksWithoutPerformanceGlobal() {
+  var originalPerformance = global.performance;
+  try {
+    global.performance = undefined;
+    var result = engine.benchmark(function () { var x = 1; }, 3);
+    assert(typeof result.avg === 'number', '无 performance 全局时 benchmark 仍返回 avg');
+    assert(typeof result.min === 'number', '无 performance 全局时 benchmark 仍返回 min');
+    assert(typeof result.max === 'number', '无 performance 全局时 benchmark 仍返回 max');
+  } finally {
+    global.performance = originalPerformance;
+  }
+})();
+
 // ── gzipSize ──
 console.log('\n=== gzipSize ===');
 

@@ -6,8 +6,10 @@ import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.List;
 
 /**
@@ -35,11 +37,23 @@ public class HttpBinaryDemoService {
     private static final com.fasterxml.jackson.databind.ObjectMapper CF_MSGPACK_MAPPER =
             new com.fasterxml.jackson.databind.ObjectMapper(new org.msgpack.jackson.dataformat.MessagePackFactory());
 
-    /** 预生成一份数据，缓存起来避免每次请求重新构造（数据量固定）。 */
-    private final ObjectNode cachedData;
+    /**
+     * 缓存的演示数据。使用双重检查锁延迟初始化，避免 Spring 启动阶段同步构造大量数据。
+     */
+    private volatile ObjectNode cachedData;
 
-    public HttpBinaryDemoService() {
-        this.cachedData = buildFeed();
+    /**
+     * 获取（首次调用时构造）演示数据。
+     */
+    public ObjectNode getData() {
+        if (cachedData == null) {
+            synchronized (this) {
+                if (cachedData == null) {
+                    cachedData = buildFeed();
+                }
+            }
+        }
+        return cachedData;
     }
 
     /**
@@ -47,7 +61,7 @@ public class HttpBinaryDemoService {
      */
     public String toJsonText() {
         try {
-            return JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(cachedData);
+            return JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(getData());
         } catch (Exception e) {
             throw new RuntimeException("JSON序列化失败", e);
         }
@@ -62,7 +76,7 @@ public class HttpBinaryDemoService {
     public byte[] toBinary() {
         try {
             // Step 1: tools.jackson → JSON bytes
-            byte[] jsonBytes = JSON_MAPPER.writeValueAsBytes(cachedData);
+            byte[] jsonBytes = JSON_MAPPER.writeValueAsBytes(getData());
             // Step 2: com.fasterxml.jackson 解析
             com.fasterxml.jackson.databind.JsonNode cfNode = CF_JSON_MAPPER.readTree(jsonBytes);
             // Step 3: com.fasterxml.jackson → MessagePack
@@ -451,7 +465,7 @@ public class HttpBinaryDemoService {
                 + "+P+/HgAEhQJ/w7SYeAAAAABJRU5ErkJggg==");
         u.put("bio", NICKNAMES[idx] + "的简介——热爱技术、乐于分享的互联网从业者。");
         u.put("join_date", "202" + (idx % 6) + "-0" + (1 + idx % 9) + "-" + String.format("%02d", 1 + idx % 28));
-        u.put("email_hash", "sha256:" + Integer.toHexString(("user" + id + "@example.com").hashCode()));
+        u.put("email_hash", sha256("user" + id + "@example.com"));
 
         var stats = NF.objectNode();
         stats.put("followers", 2000 + idx * 1234);
@@ -536,5 +550,22 @@ public class HttpBinaryDemoService {
         opt.put("text", text);
         opt.put("votes", votes);
         return opt;
+    }
+
+    /**
+     * 计算字符串的 SHA-256 十六进制摘要。
+     */
+    private static String sha256(String input) {
+        try {
+            var digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            var sb = new StringBuilder(64);
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 算法不可用", e);
+        }
     }
 }

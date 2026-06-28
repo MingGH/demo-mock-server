@@ -32,23 +32,19 @@ public class HttpBinaryVsTextController {
 
     /**
      * 返回 JSON 文本格式的社交动态流数据。
-     * Content-Type: application/json; charset=utf-8
+     * <p>
+     * 使用 {@link ApiResponse#raw(Object)} 直接返回 JSON 对象体，便于前端展示原始文本。
      */
     @GetMapping("/text")
-    public Mono<ResponseEntity<String>> text() {
-        String json = service.toJsonText();
-        return Mono.just(
-                ResponseEntity.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("Access-Control-Allow-Origin", "*")
-                        .header("Cache-Control", "no-cache, no-store")
-                        .body(json)
-        );
+    public Mono<ResponseEntity<tools.jackson.databind.JsonNode>> text() {
+        return Mono.just(ApiResponse.raw(service.getData()));
     }
 
     /**
      * 返回 MessagePack 二进制格式的同一份社交动态流数据。
-     * Content-Type: application/octet-stream
+     * <p>
+     * 该端点需要返回原始字节流以演示二进制传输，因此直接构造 ResponseEntity，
+     * 不经过 {@link ApiResponse} 的 status/data 包装。
      */
     @GetMapping("/binary")
     public Mono<ResponseEntity<byte[]>> binary() {
@@ -56,7 +52,6 @@ public class HttpBinaryVsTextController {
         return Mono.just(
                 ResponseEntity.ok()
                         .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                        .header("Access-Control-Allow-Origin", "*")
                         .header("Cache-Control", "no-cache, no-store")
                         .contentLength(data.length)
                         .body(data)

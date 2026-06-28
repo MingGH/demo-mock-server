@@ -425,55 +425,102 @@ body {
 
 .bench-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.85rem;
+  border: 1px solid rgba(242,228,207,0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.bench-table th,
+.bench-table td {
+  padding: 12px 16px;
 }
 
 .bench-table th {
-  padding: 8px 14px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgba(242,228,207,0.12);
+}
+
+.bench-table th.bench-th-metric {
   text-align: left;
   color: #888;
-  font-weight: 500;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid rgba(242,228,207,0.08);
+  width: 18%;
+  background: rgba(255,255,255,0.03);
+}
+
+.bench-table th.bench-th-json {
+  color: #81c784;
+  background: rgba(129,199,132,0.1);
+}
+
+.bench-table th.bench-th-bin {
+  color: #ce93d8;
+  background: rgba(206,147,216,0.1);
+}
+
+.bench-table th.bench-th-diff {
+  color: #ffd700;
+  background: rgba(255,215,0,0.08);
+  width: 22%;
 }
 
 .bench-table th .ti {
-  font-size: 0.82rem;
-  margin-right: 2px;
-  vertical-align: -1px;
+  font-size: 0.85rem;
+  margin-right: 4px;
+  vertical-align: -2px;
 }
 
-.bench-table th:nth-child(2) .ti { color: #81c784; }
-.bench-table th:nth-child(3) .ti { color: #ce93d8; }
+.bench-table tbody tr:nth-child(even) {
+  background: rgba(255,255,255,0.015);
+}
+
+.bench-table tbody tr:hover {
+  background: rgba(255,255,255,0.04);
+}
 
 .bench-table td {
-  padding: 10px 14px;
+  text-align: center;
   color: #ccc;
   border-bottom: 1px solid rgba(242,228,207,0.04);
 }
 
-.bench-table td:first-child {
-  color: #777;
-  font-size: 0.78rem;
-  white-space: nowrap;
+.bench-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.bench-table td.bench-metric {
+  text-align: left;
+  color: #aaa;
+  font-size: 0.8rem;
+  background: rgba(255,255,255,0.02);
 }
 
 .bench-num {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  transition: color 0.3s;
+  color: #ccc;
+  transition: all 0.3s;
 }
 
 .bench-num.winner {
   color: #81c784;
+  background: rgba(129,199,132,0.12);
+  border-radius: 6px;
 }
 
 .bench-num.winner::before {
-  content: '\2713 ';
-  font-size: 0.7rem;
+  content: '✓ ';
+  font-size: 0.75rem;
+}
+
+.bench-diff {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  color: #aaa;
 }
 
 /* ── 洞察条 ── */
@@ -513,5 +560,20 @@ body {
 
   .render-scroll {
     max-height: 280px;
+  }
+
+  .bench-section {
+    padding: 16px;
+  }
+
+  .bench-table th,
+  .bench-table td {
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+
+  .bench-table th.bench-th-diff,
+  .bench-table td.bench-diff {
+    display: none;
   }
 }

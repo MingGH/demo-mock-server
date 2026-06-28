@@ -51,36 +51,42 @@
         <table class="bench-table">
           <thead>
             <tr>
-              <th></th>
-              <th><i class="ti ti-file-text"></i> 文本 JSON</th>
-              <th><i class="ti ti-binary"></i> 二进制 MessagePack</th>
+              <th class="bench-th-metric">指标</th>
+              <th class="bench-th-json"><i class="ti ti-file-text"></i> 文本 JSON</th>
+              <th class="bench-th-bin"><i class="ti ti-binary"></i> 二进制 MessagePack</th>
+              <th class="bench-th-diff">差异</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>平均耗时</td>
+              <td class="bench-metric">平均耗时</td>
               <td id="b-avg-text" class="bench-num">-</td>
               <td id="b-avg-bin" class="bench-num">-</td>
+              <td id="b-avg-diff" class="bench-diff">-</td>
             </tr>
             <tr>
-              <td>最快</td>
+              <td class="bench-metric">最快</td>
               <td id="b-min-text" class="bench-num">-</td>
               <td id="b-min-bin" class="bench-num">-</td>
+              <td id="b-min-diff" class="bench-diff">-</td>
             </tr>
             <tr>
-              <td>最慢</td>
+              <td class="bench-metric">最慢</td>
               <td id="b-max-text" class="bench-num">-</td>
               <td id="b-max-bin" class="bench-num">-</td>
+              <td id="b-max-diff" class="bench-diff">-</td>
             </tr>
             <tr>
-              <td>平均体积</td>
+              <td class="bench-metric">平均体积</td>
               <td id="b-size-text" class="bench-num">-</td>
               <td id="b-size-bin" class="bench-num">-</td>
+              <td id="b-size-diff" class="bench-diff">-</td>
             </tr>
             <tr>
-              <td>成功率</td>
+              <td class="bench-metric">成功率</td>
               <td id="b-ok-text" class="bench-num">-</td>
               <td id="b-ok-bin" class="bench-num">-</td>
+              <td id="b-ok-diff" class="bench-diff">-</td>
             </tr>
           </tbody>
         </table>

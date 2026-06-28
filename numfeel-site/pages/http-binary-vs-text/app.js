@@ -65,6 +65,13 @@
     els.bSizeBin = document.getElementById('b-size-bin');
     els.bOkText = document.getElementById('b-ok-text');
     els.bOkBin = document.getElementById('b-ok-bin');
+
+    // 差异列
+    els.bAvgDiff = document.getElementById('b-avg-diff');
+    els.bMinDiff = document.getElementById('b-min-diff');
+    els.bMaxDiff = document.getElementById('b-max-diff');
+    els.bSizeDiff = document.getElementById('b-size-diff');
+    els.bOkDiff = document.getElementById('b-ok-diff');
   }
 
   // ── 初始化 ──
@@ -251,42 +258,71 @@
       el.className = 'bench-num' + (isWinner ? ' winner' : '');
     }
 
+    // 计算差异：返回 "文本 X%" / "二进制 X%" / "—"
+    // time/size 以较慢/较大者为基线计算优化幅度；rate 使用绝对百分点
+    function diffLabel(textVal, binVal, type) {
+      if (textVal === binVal) return '—';
+      var textWin = type === 'rate' ? textVal > binVal : textVal < binVal;
+      var winner = textWin ? '文本' : '二进制';
+      var ratio;
+      var suffix;
+      if (type === 'rate') {
+        ratio = Math.abs(textVal - binVal) / 20 * 100; // 20 次为满
+        suffix = '高';
+      } else {
+        var larger = Math.max(textVal, binVal);
+        var smaller = Math.min(textVal, binVal);
+        ratio = (larger - smaller) / larger * 100;
+        suffix = type === 'size' ? '小' : '快';
+      }
+      return winner + ' ' + ratio.toFixed(0) + '%' + suffix;
+    }
+
     var textAvgTime = avg(textTimes);
     var binAvgTime = avg(binTimes);
+    var textMinTime = min(textTimes);
+    var binMinTime = min(binTimes);
+    var textMaxTime = max(textTimes);
+    var binMaxTime = max(binTimes);
     var textAvgSize = avg(textSizes);
     var binAvgSize = avg(binSizes);
-    var textTimeWin = textAvgTime < binAvgTime;
-    var textSizeWin = textAvgSize < binAvgSize;
+    var textOk = textTimes.length;
+    var binOk = binTimes.length;
 
     // 平均耗时
     els.bAvgText.textContent = textAvgTime.toFixed(0) + ' ms';
     els.bAvgBin.textContent = binAvgTime.toFixed(0) + ' ms';
-    markWinner(els.bAvgText, textTimeWin);
-    markWinner(els.bAvgBin, !textTimeWin);
+    markWinner(els.bAvgText, textAvgTime < binAvgTime);
+    markWinner(els.bAvgBin, binAvgTime < textAvgTime);
+    els.bAvgDiff.textContent = diffLabel(textAvgTime, binAvgTime, 'time');
 
     // 最快
-    els.bMinText.textContent = min(textTimes).toFixed(0) + ' ms';
-    els.bMinBin.textContent = min(binTimes).toFixed(0) + ' ms';
-    markWinner(els.bMinText, min(textTimes) < min(binTimes));
-    markWinner(els.bMinBin, min(binTimes) < min(textTimes));
+    els.bMinText.textContent = textMinTime.toFixed(0) + ' ms';
+    els.bMinBin.textContent = binMinTime.toFixed(0) + ' ms';
+    markWinner(els.bMinText, textMinTime < binMinTime);
+    markWinner(els.bMinBin, binMinTime < textMinTime);
+    els.bMinDiff.textContent = diffLabel(textMinTime, binMinTime, 'time');
 
     // 最慢
-    els.bMaxText.textContent = max(textTimes).toFixed(0) + ' ms';
-    els.bMaxBin.textContent = max(binTimes).toFixed(0) + ' ms';
-    markWinner(els.bMaxText, max(textTimes) < max(binTimes));
-    markWinner(els.bMaxBin, max(binTimes) < max(textTimes));
+    els.bMaxText.textContent = textMaxTime.toFixed(0) + ' ms';
+    els.bMaxBin.textContent = binMaxTime.toFixed(0) + ' ms';
+    markWinner(els.bMaxText, textMaxTime < binMaxTime);
+    markWinner(els.bMaxBin, binMaxTime < textMaxTime);
+    els.bMaxDiff.textContent = diffLabel(textMaxTime, binMaxTime, 'time');
 
     // 平均体积
     els.bSizeText.textContent = eng.formatBytes(Math.round(textAvgSize));
     els.bSizeBin.textContent = eng.formatBytes(Math.round(binAvgSize));
-    markWinner(els.bSizeText, textSizeWin);
-    markWinner(els.bSizeBin, !textSizeWin);
+    markWinner(els.bSizeText, textAvgSize < binAvgSize);
+    markWinner(els.bSizeBin, binAvgSize < textAvgSize);
+    els.bSizeDiff.textContent = diffLabel(textAvgSize, binAvgSize, 'size');
 
     // 成功率
     els.bOkText.textContent = pct(textTimes, 20);
     els.bOkBin.textContent = pct(binTimes, 20);
-    markWinner(els.bOkText, textTimes.length >= binTimes.length);
-    markWinner(els.bOkBin, binTimes.length > textTimes.length);
+    markWinner(els.bOkText, textOk >= binOk);
+    markWinner(els.bOkBin, binOk > textOk);
+    els.bOkDiff.textContent = diffLabel(textOk, binOk, 'rate');
 
     els.benchStatus.textContent = '完成（共40次请求）';
     els.benchSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

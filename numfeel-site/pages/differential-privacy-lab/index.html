@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="差分隐私预算实验室：公布平均值也可能泄露一个人。调节 epsilon、查询次数和异常用户，亲眼看见隐私强度、统计误差和攻击成功率的跷跷板。">
+  <title>差分隐私预算实验室：公布平均值也会泄露你吗 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-shield-half-filled"></i> 差分隐私预算实验室</h1>
+    <p>公布平均值也可能泄露一个人。拖动 ε，看统计结果如何在「准确」和「隐私」之间摇摆。</p>
+  </div>
+
+  <div class="section hero-lab">
+    <div class="hero-copy">
+      <div class="eyebrow"><i class="ti ti-user-question"></i> 张三攻击</div>
+      <h2>如果张三收入 99 万，只看平均值能猜出他在不在数据里吗？</h2>
+      <p class="section-desc">先观察精确统计，再打开差分隐私。噪声不是为了把数据搞乱，而是让「某个人是否参与」变得难以判断。</p>
+      <div class="hero-actions">
+        <button id="runAttackBtn" class="btn-primary"><i class="ti ti-player-play"></i> 重新攻击一次</button>
+        <button id="resetBtn" class="btn-secondary"><i class="ti ti-refresh"></i> 重置实验</button>
+      </div>
+    </div>
+    <div class="hero-meter">
+      <div class="meter-label">攻击者判断张三在场</div>
+      <div class="meter-value" id="attackConfidence">—</div>
+      <div class="meter-bar"><span id="attackBar"></span></div>
+      <div class="meter-note" id="attackNote">先运行一次攻击</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><i class="ti ti-database"></i> 1. 模拟数据集</h2>
+    <p class="section-desc">选择一个场景。系统会生成一批普通用户，再加入一个极端的「张三」。</p>
+
+    <div class="scenario-grid" id="scenarioGrid">
+      <button class="scenario-card active" data-scenario="income">
+        <i class="ti ti-wallet"></i>
+        <span>收入统计</span>
+        <small>张三年收入 99 万</small>
+      </button>
+      <button class="scenario-card" data-scenario="health">
+        <i class="ti ti-heart-rate-monitor"></i>
+        <span>医疗指标</span>
+        <small>张三血糖异常高</small>
+      </button>
+      <button class="scenario-card" data-scenario="app">
+        <i class="ti ti-device-mobile"></i>
+        <span>App 使用时长</span>
+        <small>张三重度使用</small>
+      </button>
+    </div>
+
+    <div class="data-summary">
+      <div class="summary-card">
+        <div class="summary-label">普通样本</div>
+        <div class="summary-value" id="sampleSize">—</div>
+      </div>
+      <div class="summary-card highlight">
+        <div class="summary-label">特殊用户</div>
+        <div class="summary-value" id="targetValue">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">敏感度</div>
+        <div class="summary-value" id="sensitivityValue">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">查询类型</div>
+        <div class="summary-value" id="queryTypeLabel">均值</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><i class="ti ti-scale"></i> 2. 精确统计：泄露从差异开始</h2>
+    <p class="section-desc">攻击者不需要看到原始数据，只要能比较「包含张三」和「不包含张三」的统计结果，极端个体就可能暴露。</p>
+
+    <div class="compare-grid">
+      <div class="compare-card without">
+        <div class="compare-title">不包含张三</div>
+        <div class="compare-number" id="withoutExact">—</div>
+        <div class="compare-sub">普通人群统计</div>
+      </div>
+      <div class="compare-card with">
+        <div class="compare-title">包含张三</div>
+        <div class="compare-number" id="withExact">—</div>
+        <div class="compare-sub">发布方真实数据</div>
+      </div>
+      <div class="compare-card danger">
+        <div class="compare-title">精确差异</div>
+        <div class="compare-number" id="exactDelta">—</div>
+        <div class="compare-sub">差异越大，越容易推断</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><i class="ti ti-adjustments-horizontal"></i> 3. 打开差分隐私</h2>
+    <p class="section-desc">ε 是隐私预算。ε 越小，噪声越大，隐私越强；ε 越大，结果越准，但更容易暴露单个人。</p>
+
+    <div class="control-panel">
+      <div class="control-group wide">
+        <label>ε 隐私预算</label>
+        <input type="range" id="epsilonSlider" min="0.1" max="10" step="0.1" value="1">
+        <div class="scale-row"><span>隐私强</span><strong id="epsilonValue">1.0</strong><span>结果准</span></div>
+      </div>
+      <div class="control-group">
+        <label>查询类型</label>
+        <select id="querySelect">
+          <option value="mean">平均值</option>
+          <option value="countAbove">超过阈值人数</option>
+          <option value="p90">90 分位数</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>重复模拟次数</label>
+        <input type="range" id="trialsSlider" min="200" max="2000" step="100" value="800">
+        <span class="control-value" id="trialsValue">800 次</span>
+      </div>
+    </div>
+
+    <div class="dp-grid">
+      <div class="dp-card">
+        <div class="dp-label">差分隐私发布值</div>
+        <div class="dp-value" id="privateRelease">—</div>
+        <div class="dp-sub" id="releaseError">误差 —</div>
+      </div>
+      <div class="dp-card">
+        <div class="dp-label">噪声规模</div>
+        <div class="dp-value" id="noiseScale">—</div>
+        <div class="dp-sub">scale = 敏感度 / ε</div>
+      </div>
+      <div class="dp-card highlight">
+        <div class="dp-label">隐私解释</div>
+        <div class="dp-value small" id="privacyLabel">—</div>
+        <div class="dp-sub" id="privacyExplain">—</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="releaseChart"></canvas>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><i class="ti ti-battery-automotive"></i> 4. 查询次数会消耗预算</h2>
+    <p class="section-desc">同一批数据不能无限查询。每查一次都会消耗一份 ε，多次查询会把隐私保护慢慢磨薄。</p>
+
+    <div class="budget-layout">
+      <div class="budget-box">
+        <div class="budget-top">
+          <span>总预算 3.0</span>
+          <strong id="budgetLeft">剩余 3.0</strong>
+        </div>
+        <div class="budget-bar"><span id="budgetBar"></span></div>
+        <div class="budget-note" id="budgetNote">还没有查询。</div>
+      </div>
+      <div class="query-buttons">
+        <button class="btn-secondary query-btn" data-cost="0.3" data-query="平均值">查平均值 (-0.3)</button>
+        <button class="btn-secondary query-btn" data-cost="0.5" data-query="超过阈值人数">查人数 (-0.5)</button>
+        <button class="btn-secondary query-btn" data-cost="0.7" data-query="分布图">查分布 (-0.7)</button>
+        <button class="btn-secondary query-btn" data-cost="1.0" data-query="90 分位数">查分位数 (-1.0)</button>
+      </div>
+    </div>
+    <div class="query-log" id="queryLog"></div>
+  </div>
+
+  <div class="section principle-section">
+    <h2><i class="ti ti-bulb"></i> 你应该带走的直觉</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h3>匿名化不等于安全</h3>
+        <p>去掉姓名只能隐藏显式身份。只要统计结果对某个人足够敏感，仍可能通过差异反推。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h3>噪声是保护层</h3>
+        <p>差分隐私故意让发布值抖动，让「有你」和「没你」看起来差不多。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h3>预算不是无限的</h3>
+        <p>查询越多，攻击者越能平均掉噪声。隐私预算就是限制反复试探的刹车。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

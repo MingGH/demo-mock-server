@@ -89,4 +89,12 @@ public final class UtilityRequests {
      */
     public record WordCloudQuery(String search) {
     }
+
+    /**
+     * JS 二进制编译请求。
+     *
+     * @param scenario 预设场景名（fib / sort / strings）
+     */
+    public record JsBinaryCompileRequest(String scenario) {
+    }
 }

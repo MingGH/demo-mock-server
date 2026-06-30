@@ -1,5 +1,16 @@
 FROM ibm-semeru-runtimes:open-17-jre
 
+# 安装 gcc + QuickJS qjsc（用于 JS 二进制在线编译功能）
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl xz-utils ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL https://bellard.org/quickjs/quickjs-2024-01-13.tar.xz | tar xJ \
+    && cd quickjs-2024-01-13 \
+    && make -j$(nproc) \
+    && make install \
+    && cp qjsc /usr/local/bin/ \
+    && cd .. && rm -rf quickjs-2024-01-13
+
 ARG JAR_FILE=target/numfeel-service-0.0.1-SNAPSHOT.jar
 ENV PROJECT_HOME=/usr/local/numfeel-service
 

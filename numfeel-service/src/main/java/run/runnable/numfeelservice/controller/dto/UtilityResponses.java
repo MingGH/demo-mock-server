@@ -266,4 +266,29 @@ public final class UtilityResponses {
             long updatedAt
     ) {
     }
+
+    /**
+     * JS 二进制编译进度 / 结果响应（WebSocket 推送用）。
+     * <p>
+     * type = "progress" 时使用 stage / percent / message 字段；
+     * type = "download" 时使用 downloadUrl / size 字段；
+     * type = "error" 时使用 message 字段。
+     *
+     * @param type 消息类型：progress / download / error
+     * @param stage 编译阶段名（仅 progress）
+     * @param percent 完成百分比（仅 progress）
+     * @param message 进度文本或错误信息
+     * @param downloadUrl 编译产物下载 URL（仅 download）
+     * @param size 编译产物大小，字节（仅 download）
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record JsBinaryProgressResponse(
+            String type,
+            String stage,
+            int percent,
+            String message,
+            String downloadUrl,
+            Long size
+    ) {
+    }
 }

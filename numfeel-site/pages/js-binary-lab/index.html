@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="JavaScript 能编译成二进制吗？QuickJS / Bun / pkg 真实编译对比，亲手编译一段 JS 代码看看发生了 |
+|什么。">
+  <title>JS → 二进制 实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── 顶部标题 ── -->
+  <div class="header">
+    <h1><i class="ti ti-binary-tree-2"></i> JS → 二进制 实验室</h1>
+    <p>把 JavaScript 编译成独立二进制？三种工具真实对比，亲手试试。</p>
+  </div>
+
+  <!-- ── 标签栏 ── -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tab1">
+      <i class="ti ti-chart-bar"></i> 编译对比
+    </button>
+    <button class="tab-btn" data-tab="tab2">
+      <i class="ti ti-zoom-scan"></i> 二进制内窥
+    </button>
+    <button class="tab-btn" data-tab="tab3">
+      <i class="ti ti-bolt"></i> 在线编译
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- 板块1: 编译对比 -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section active" id="tab1">
+    <p class="header-tagline" style="color:#888;font-size:0.85rem;margin-bottom:16px;">
+      ↓ 同一段 JS 代码（fib(35) + JSON 处理），四种编译/运行方式的生产物对比。
+    </p>
+
+    <div class="metric-toggles">
+      <button class="metric-btn active" data-metric="size">📦 体积</button>
+      <button class="metric-btn" data-metric="coldStartMs">⏱ 冷启动</button>
+      <button class="metric-btn" data-metric="peakMemKb">💾 峰值内存</button>
+    </div>
+
+    <div class="chart-wrap"><canvas id="comparisonChart"></canvas></div>
+
+    <div class="card">
+      <h3>详细数据</h3>
+      <table class="data-table" id="comparisonTable">
+        <thead><tr>
+          <th>工具</th><th>产物体积</th><th>冷启动</th><th>峰值内存</th><th>原理</th>
+        </tr></thead>
+        <tbody id="comparisonTbody"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>原理说明</h3>
+      <div id="toolCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- 板块2: 二进制内窥 -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section" id="tab2">
+    <p class="header-tagline" style="color:#888;font-size:0.85rem;margin-bottom:16px;">
+      ↓ 把编译好的二进制拆开看：里面到底是咱们的代码，还是塞进去的整个运行时？
+    </p>
+
+    <div style="margin-bottom:16px;">
+      <label style="color:#888;font-size:0.85rem;">选择二进制产物：</label>
+      <select id="toolSelect" style="padding:8px 12px;background:#111;color:#e0e0e0;border:1px solid rgba(255,255,255,0.15);border-radius:8px;margin-left:8px;font-size:0.9rem;"></select>
+      <span id="anatomySize" style="margin-left:12px;color:#ffd700;font-size:0.9rem;"></span>
+    </div>
+
+    <div class="card">
+      <h3>二进制结构热力图</h3>
+      <p class="header-tagline" style="color:#888;font-size:0.8rem;">
+        每个色块代表文件中一段区域。鼠标悬停看详情。
+      </p>
+      <div class="heatmap-wrap">
+        <canvas id="heatmap"></canvas>
+        <div class="heatmap-tooltip" id="heatmapTooltip"></div>
+      </div>
+      <div class="segment-legend" id="segmentLegend"></div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="card detail-panel">
+        <h4>ELF Section 结构</h4>
+        <table class="data-table" id="sectionsTable">
+          <thead><tr><th>名称</th><th>偏移</th><th>大小</th></tr></thead>
+          <tbody id="sectionsTbody"></tbody>
+        </table>
+      </div>
+      <div class="card detail-panel">
+        <h4>提取的字符串（前50条）</h4>
+        <div class="strings-list" id="stringsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- 板块3: 在线编译 -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="section" id="tab3">
+    <p class="header-tagline" style="color:#888;font-size:0.85rem;margin-bottom:16px;">
+      ↓ 选择一段代码，用 QuickJS 的 qjsc 编译成真正独立的二进制文件并下载。
+    </p>
+
+    <div class="card">
+      <h3>选择场景</h3>
+      <div class="scenario-cards" id="scenarioCards"></div>
+    </div>
+
+    <div class="card" id="compilePanel" style="display:none;">
+      <h3 id="selectedScenarioName">编译：--</h3>
+      <div class="source-view-wrap">
+        <label>场景源码（只读）</label>
+        <textarea id="sourceView" readonly></textarea>
+      </div>
+      <div class="compile-actions">
+        <button class="btn-compile" id="btnCompile">
+          <span class="spinner"></span>
+          <i class="ti ti-bolt"></i> 编译成二进制
+        </button>
+        <a class="btn-download" id="btnDownload" download>
+          <i class="ti ti-download"></i> 下载产物
+        </a>
+      </div>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text">
+          <span id="progressLabel">就绪</span> · <span class="pct" id="progressPct">0%</span>
+        </div>
+      </div>
+      <div class="compile-log" id="compileLog"></div>
+      <div class="platform-note">
+        <i class="ti ti-info-circle"></i> 产物为 Linux x86_64 ELF 格式 — 可在 Linux 服务器 / WSL 中直接运行，macOS / Windows 原生环境不支持。
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

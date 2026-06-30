@@ -1,0 +1,179 @@
+/* style.css — JS 二进制实验室 */
+
+/* ── 页面容器 ── */
+body {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    margin: 0;
+    min-height: 100vh;
+}
+
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+/* ── 顶部标题 ── */
+.header { text-align: center; padding: 40px 20px 30px; }
+.header h1 {
+    font-size: 2rem; color: #ffd700;
+    animation: shimmer 3s ease-in-out infinite;
+}
+@keyframes shimmer {
+    0%, 100% { text-shadow: 0 0 10px rgba(255,215,0,0.3); }
+    50% { text-shadow: 0 0 30px rgba(255,215,0,0.6); }
+}
+.header p { color: #888; font-size: 0.95rem; margin-top: 8px; }
+
+/* ── 标签栏 ── */
+.tabs {
+    display: flex; gap: 4px; margin-bottom: 28px;
+    background: rgba(255,255,255,0.04); border-radius: 12px;
+    padding: 4px;
+}
+.tab-btn {
+    flex: 1; padding: 12px 16px; border: none; background: transparent;
+    color: #888; font-size: 0.95rem; cursor: pointer; border-radius: 10px;
+    transition: all 0.2s; display: flex; align-items: center; gap: 6px; justify-content: center;
+}
+.tab-btn:hover { color: #ccc; background: rgba(255,255,255,0.05); }
+.tab-btn.active { background: rgba(255,215,0,0.15); color: #ffd700; font-weight: 600; }
+
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── 卡片 ── */
+.card {
+    background: rgba(255,255,255,0.05); border-radius: 12px;
+    padding: 24px; margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.card h3 { margin: 0 0 12px; color: #ffd700; font-size: 1.1rem; }
+
+/* ── 指标切换按钮 ── */
+.metric-toggles { display: flex; gap: 8px; margin-bottom: 16px; }
+.metric-btn {
+    padding: 6px 16px; border: 1px solid rgba(255,255,255,0.15);
+    background: transparent; color: #aaa; border-radius: 8px;
+    cursor: pointer; font-size: 0.85rem; transition: all 0.2s;
+}
+.metric-btn:hover { border-color: #ffd700; color: #ffd700; }
+.metric-btn.active { background: rgba(255,215,0,0.15); border-color: #ffd700; color: #ffd700; }
+
+/* ── 图表容器 ── */
+.chart-wrap { position: relative; height: 320px; margin: 12px 0; }
+.chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+/* ── 数据表格 ── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.data-table th { text-align: left; padding: 10px 12px; color: #888; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 500; }
+.data-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.data-table tr:hover td { background: rgba(255,255,255,0.03); }
+.data-table .highlight { color: #ffd700; font-weight: 600; }
+
+/* ── 热力图 ── */
+.heatmap-wrap { position: relative; margin: 16px 0; }
+#heatmap { width: 100%; height: 80px; border-radius: 8px; cursor: crosshair; }
+.heatmap-tooltip {
+    position: absolute; background: rgba(0,0,0,0.85); color: #fff;
+    padding: 6px 10px; border-radius: 6px; font-size: 0.8rem;
+    pointer-events: none; display: none; z-index: 10;
+    font-family: monospace;
+}
+.segment-legend { display: flex; gap: 16px; margin-top: 8px; font-size: 0.8rem; }
+.segment-legend span { display: flex; align-items: center; gap: 4px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+/* ── 二进制详情 ── */
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.detail-panel { max-height: 250px; overflow-y: auto; }
+.detail-panel h4 { margin: 0 0 8px; color: #ffd700; font-size: 0.9rem; }
+.strings-list { font-family: monospace; font-size: 0.78rem; color: #90caf9; line-height: 1.3; }
+.strings-list div { padding: 1px 0; }
+
+/* ── 板块3: 在线编译 ── */
+.scenario-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.scenario-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.2s; text-align: center;
+}
+.scenario-card:hover { border-color: #ffd700; background: rgba(255,215,0,0.05); }
+.scenario-card.selected { border-color: #ffd700; background: rgba(255,215,0,0.12); box-shadow: 0 0 12px rgba(255,215,0,0.15); }
+.scenario-card i { font-size: 1.5rem; color: #ffd700; margin-bottom: 8px; display: block; }
+.scenario-card .sc-name { font-weight: 600; color: #e0e0e0; margin-bottom: 4px; }
+.scenario-card .sc-desc { font-size: 0.8rem; color: #888; }
+
+.source-view-wrap { margin-bottom: 16px; }
+.source-view-wrap label { display: block; color: #888; font-size: 0.85rem; margin-bottom: 6px; }
+#sourceView {
+    width: 100%; height: 120px; background: #111; color: #90caf9;
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    padding: 12px; font-family: monospace; font-size: 0.82rem;
+    resize: none; box-sizing: border-box;
+}
+
+.compile-actions { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
+.btn-compile {
+    padding: 12px 32px; background: linear-gradient(135deg, #ffd700, #ffaa00);
+    color: #1a1a2e; border: none; border-radius: 10px; font-size: 1rem;
+    font-weight: 700; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; gap: 8px;
+}
+.btn-compile:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(255,215,0,0.3); }
+.btn-compile:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-compile .spinner {
+    display: none; width: 16px; height: 16px; border: 2px solid #1a1a2e;
+    border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite;
+}
+.btn-compile.loading .spinner { display: inline-block; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-download {
+    padding: 10px 24px; background: rgba(129,199,132,0.15);
+    border: 1px solid #81c784; color: #81c784; border-radius: 10px;
+    font-size: 0.9rem; cursor: pointer; text-decoration: none; display: none;
+    align-items: center; gap: 6px;
+}
+.btn-download.visible { display: flex; }
+.btn-download:hover { background: rgba(129,199,132,0.25); }
+
+/* ── 进度条 ── */
+.progress-wrap { margin-bottom: 12px; display: none; }
+.progress-wrap.visible { display: block; }
+.progress-bar {
+    height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;
+}
+.progress-fill {
+    height: 100%; background: linear-gradient(90deg, #81c784, #ffd700);
+    border-radius: 4px; transition: width 0.3s; width: 0;
+}
+.progress-text { font-size: 0.82rem; color: #aaa; margin-top: 4px; }
+.progress-text .pct { color: #ffd700; font-weight: 600; }
+
+/* ── 日志区 ── */
+.compile-log {
+    background: #0a0a15; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 12px; max-height: 180px; overflow-y: auto;
+    font-family: monospace; font-size: 0.78rem; display: none;
+}
+.compile-log.visible { display: block; }
+.compile-log .log-line { padding: 2px 0; color: #90caf9; }
+.compile-log .log-line.stage { color: #ffd700; }
+.compile-log .log-line.error { color: #ff6b6b; }
+.compile-log .log-line.done { color: #81c784; }
+
+/* ── 板块3 平台提示 ── */
+.platform-note {
+    font-size: 0.8rem; color: #888; background: rgba(255,255,255,0.03);
+    border-left: 3px solid #ffd700; padding: 8px 12px; border-radius: 0 8px 8px 0;
+    margin-top: 16px;
+}
+.platform-note i { vertical-align: -2px; }
+
+/* ── 响应式 ── */
+@media (max-width: 768px) {
+    .container { padding: 12px; }
+    .header h1 { font-size: 1.4rem; }
+    .scenario-cards { grid-template-columns: 1fr; }
+    .detail-grid { grid-template-columns: 1fr; }
+    .tabs { flex-direction: column; }
+}

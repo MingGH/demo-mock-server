@@ -1,0 +1,30 @@
+[
+  {
+    "tool": "QuickJS qjsc",
+    "size": 985520,
+    "coldStartMs": 1818,
+    "peakMemKb": 0,
+    "desc": "真正AOT编译，产物几百KB，不依赖外部运行时"
+  },
+  {
+    "tool": "Bun compile",
+    "size": 94582912,
+    "coldStartMs": 132,
+    "peakMemKb": 0,
+    "desc": "打包Bun运行时+JS代码，体积约70-90MB"
+  },
+  {
+    "tool": "pkg (Vercel)",
+    "size": 46281560,
+    "coldStartMs": 234,
+    "peakMemKb": 0,
+    "desc": "嵌入完整Node运行时(v18)，解压到临时目录执行"
+  },
+  {
+    "tool": "Node.js (源码运行)",
+    "size": 485,
+    "coldStartMs": 210,
+    "peakMemKb": 0,
+    "desc": "不编译，node 直接运行（对比基线）"
+  }
+]

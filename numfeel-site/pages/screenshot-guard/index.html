@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="前端能防用户截图吗？8 种防截图技术亲手开关测试，攻防模拟看不同攻击方式的胜负，附 Netflix、支付宝等真实案例。结论：拦不住，只能溯源。">
+  <title>前端能防截图吗？8 种技术亲手测 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-camera-off"></i> 前端能防截图吗？</h1>
+    <p>把 8 种防截图技术做成开关，你亲手启用、亲手挨打。看完这一页，你会明白为什么 Netflix 敢花 20 亿建 DRM，而普通网站只能靠水印。</p>
+  </div>
+
+  <!-- ── Tab 切换 ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('lab')"><i class="ti ti-flask"></i> 防截图实验台</button>
+    <button class="tab-btn" onclick="switchTab('battle')"><i class="ti ti-swords"></i> 攻防模拟</button>
+    <button class="tab-btn" onclick="switchTab('cases')"><i class="ti ti-building-store"></i> 真实案例</button>
+  </div>
+
+  <!-- ══════════ Tab 1 ══════════ -->
+  <div class="tab-content active" id="tab-lab">
+
+    <div class="hero-image-wrap">
+      <img id="heroImg" alt="防截图主题插画">
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-lock"></i> 机密区域（银行转账凭证）</h2>
+      <p class="section-hint">下面这张凭证是保护对象。启用右侧的防护后，尝试按 PrintScreen、切换 Tab、按 F12，看它有什么反应。</p>
+
+      <div class="secret-card" id="secretCard">
+        <div class="watermark-layer" id="watermarkLayer"><div class="watermark-inner" id="watermarkInner"></div></div>
+        <div class="secret-title"><i class="ti ti-receipt"></i> 转账凭证 · 请勿外传</div>
+        <dl class="receipt-grid" id="receiptGrid">
+          <dt>付款方</dt><dd>张 * 敏（尾号 8823）</dd>
+          <dt>收款方</dt><dd>李某工程有限公司</dd>
+          <dt>金额</dt><dd class="receipt-amount">¥ 128,600.00</dd>
+          <dt>日期</dt><dd id="receiptDate">—</dd>
+          <dt>流水号</dt><dd id="receiptSerial">—</dd>
+          <dt>备注</dt><dd>项目尾款结算</dd>
+        </dl>
+      </div>
+
+      <div class="meter-container">
+        <span style="font-size:0.9rem;color:#a0a0a0;">防护强度</span>
+        <div class="meter-bar"><div class="meter-fill" id="meterFill"></div></div>
+        <span class="meter-score" id="meterScore">0</span>
+        <span class="meter-label" id="meterLabel">无防护</span>
+      </div>
+
+      <h3 style="color:#ffd700;margin-bottom:10px;font-size:1rem;"><i class="ti ti-list"></i> 事件日志</h3>
+      <div class="log-area" id="actionLog"></div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-shield-cog"></i> 防护技术开关</h2>
+      <p class="section-hint">每种技术都有难度徽章和有效性百分比。点「启用」把它加到机密区域，卡片会实时应用视觉/行为变化。</p>
+      <div class="tech-grid" id="techGrid"></div>
+
+      <div class="insight-box red">
+        <h3><i class="ti ti-alert-circle"></i> 核心事实</h3>
+        <p>
+          浏览器无法阻止你面前的显示器被相机拍下来。所有纯前端"防截图"技术真正做的事只有两件：
+          一是<b>提高截图的技术门槛</b>（拖慢自动化爬虫），
+          二是<b>让截图带上溯源痕迹</b>（水印）。
+          真正硬拦只能靠 OS 级 API（Netflix 的 HDCP、腾讯会议桌面版的 SetWindowDisplayAffinity），浏览器做不到。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Tab 2 ══════════ -->
+  <div class="tab-content" id="tab-battle">
+    <div class="section">
+      <h2><i class="ti ti-swords"></i> 攻防模拟</h2>
+      <p class="section-hint">选一种截图方式，让它来打你在实验台启用的那套防护。看每道防线是拦住、可溯源还是彻底无效。</p>
+
+      <div class="battle-controls">
+        <label style="color:#a0a0a0;font-size:0.9rem;">攻击方式：</label>
+        <select id="attackMethod">
+          <option value="os-screenshot">系统截图键（Windows PrtScn / macOS ⌘⇧4）</option>
+          <option value="phone-camera">手机对着屏幕拍照（外部相机）</option>
+          <option value="os-recording">OS 级录屏（QuickTime / OBS）</option>
+          <option value="devtools-save">DevTools 保存 HTML / Canvas</option>
+          <option value="headless-crawler">自动化爬虫（Puppeteer + page.screenshot）</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="runBattle()"><i class="ti ti-player-play"></i> 开始对抗</button>
+      </div>
+
+      <div id="battleResult" style="display:none;"></div>
+
+      <div class="insight-box">
+        <h3><i class="ti ti-bulb"></i> 一句话结论</h3>
+        <p>
+          手机对屏拍照是所有前端防护的物理上限。你能对付的只有：在浏览器里操作的截图/录屏/爬虫。
+          所以真正的策略是<b>假设它一定会被截图</b>，把重点放在水印溯源和后端权限上。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Tab 3 ══════════ -->
+  <div class="tab-content" id="tab-cases">
+    <div class="section">
+      <h2><i class="ti ti-building-store"></i> 真实产品怎么做</h2>
+      <p class="section-hint">下面是主流产品的防截图策略（基于公开可观察行为整理）。注意几乎所有 web 端都靠水印溯源，硬拦的都是原生客户端。</p>
+      <div class="case-grid" id="caseGrid"></div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-scale"></i> 方案对比</h2>
+      <table class="conclusion-table">
+        <thead>
+          <tr><th>方案</th><th>拦得住什么</th><th>副作用</th><th>建议场景</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>动态水印</td><td>什么都拦不住，全部可溯源</td><td>轻微影响可读性</td><td>所有涉及个人信息的页面</td></tr>
+          <tr><td>失焦即模糊</td><td>切窗时的旁观者视线</td><td>使用体验略碎</td><td>支付页、审阅页</td></tr>
+          <tr><td>DevTools 检测</td><td>菜鸟开发者</td><td>误伤正常调试用户</td><td>付费内容预览</td></tr>
+          <tr><td>Canvas 渲染</td><td>DOM 爬虫</td><td>不可搜索/无障碍差</td><td>付费文档预览</td></tr>
+          <tr><td>HDCP DRM</td><td>浏览器内截屏/录屏（仅视频）</td><td>需硬件全链路支持</td><td>付费视频</td></tr>
+          <tr><td>后端权限控制</td><td>所有未授权访问</td><td>需要登录体系</td><td>真正的机密内容</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

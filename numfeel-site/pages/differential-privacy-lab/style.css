@@ -346,6 +346,41 @@
   gap: 10px;
 }
 
+.query-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.qb-name {
+  font-weight: 700;
+}
+
+.qb-cost {
+  font-size: 0.78rem;
+  color: rgba(255, 215, 0, 0.75);
+  font-weight: 500;
+}
+
+.budget-intro {
+  margin-bottom: 12px;
+}
+
+.budget-intro:last-of-type {
+  margin-bottom: 20px;
+}
+
+.hl {
+  color: #ffd700;
+}
+
+.dim {
+  color: #888;
+}
+
 .query-log {
   margin-top: 16px;
   max-height: 170px;
@@ -406,8 +441,8 @@
   .container { padding: 14px; }
 
   .header { margin-bottom: 24px; }
-  .header h1 { font-size: 1.5rem; }
-  .header p { font-size: 0.9rem; }
+  .header h1 { font-size: 1.5rem; line-height: 1.3; }
+  .header p { font-size: 0.9rem; line-height: 1.65; padding: 0 4px; }
 
   .hero-lab,
   .budget-layout,
@@ -416,7 +451,8 @@
     gap: 16px;
   }
 
-  .hero-copy h2 { font-size: 1.2rem; }
+  .hero-copy h2 { font-size: 1.2rem; line-height: 1.4; }
+  .hero-copy .section-desc { font-size: 0.88rem; }
 
   .hero-actions { width: 100%; }
   .hero-actions .btn-primary,
@@ -452,7 +488,7 @@
     margin-bottom: 20px;
     border-radius: 14px;
   }
-  .section h2 { font-size: 1.12rem; }
+  .section h2 { font-size: 1.12rem; line-height: 1.4; }
   .section-desc { font-size: 0.86rem; }
 
   .summary-value,
@@ -471,28 +507,44 @@
 
   .query-buttons { grid-template-columns: 1fr 1fr; }
   .btn-secondary.query-btn {
-    padding: 12px 10px;
-    font-size: 0.85rem;
+    padding: 12px 12px;
+    font-size: 0.9rem;
+  }
+  .qb-cost { font-size: 0.75rem; }
+
+  .budget-top {
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 0.86rem;
   }
 
   .budget-box { padding: 14px; }
   .query-log { max-height: 140px; }
-  .log-line { font-size: 0.82rem; padding: 8px; }
+  .log-line { font-size: 0.82rem; padding: 8px; line-height: 1.5; }
 
   .principle-card { padding: 16px; }
 }
 
 @media (max-width: 480px) {
-  .query-buttons { grid-template-columns: 1fr; }
+  .container { padding: 12px; }
+
+  .header h1 { font-size: 1.32rem; }
+  .header p { font-size: 0.86rem; }
+
+  .query-buttons { grid-template-columns: 1fr 1fr; }
 
   .hero-actions { flex-direction: column; }
   .hero-actions .btn-primary,
   .hero-actions .btn-secondary { width: 100%; }
 
+  .hero-copy h2 { font-size: 1.1rem; }
+
   .compare-number,
   .summary-value,
-  .dp-value { font-size: 1.1rem; }
+  .dp-value { font-size: 1.08rem; }
   .meter-value { font-size: 1.9rem; }
 
   .chart-wrap { height: 200px; }
+
+  .budget-top { font-size: 0.82rem; }
 }

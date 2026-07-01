@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="亲手砍一刀，看剩余金额如何在 99% 之后无限逼近 0，拆穿"仅差 0.9%"背后真正的 0.99964272%。">
+  <title>拼多多砍一刀模拟器：为什么你永远差 0.9% | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>拼多多砍一刀</h1>
+      <p>亲手砍到 99% 之后，你就懂"仅差 0.9%"是什么意思了</p>
+    </div>
+
+    <div class="pdd-wrap">
+
+      <!-- ═══ Hero 首屏 ═══ -->
+      <section class="pdd-hero">
+        <div class="pdd-hero-img">
+          <img
+            src="https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=%E6%89%8B%E6%9C%BA%E5%B1%8F%E5%B9%95%E7%89%B9%E5%86%99%EF%BC%8C%E6%A9%99%E7%BA%A2%E8%89%B2%E7%A0%8D%E4%BB%B7%E8%BF%9B%E5%BA%A6%E6%9D%A1%E5%87%A0%E4%B9%8E%E6%BB%A1%E6%A0%BC%EF%BC%8C%E5%B1%8F%E5%B9%95%E4%B8%8A%E6%98%BE%E7%A4%BA%E4%B8%AD%E6%96%87%E6%96%87%E5%AD%97%E4%BB%85%E5%B7%AE0.9%25%EF%BC%8C%E6%9F%94%E5%92%8C%E7%9A%84%E6%95%A3%E6%99%AF%E8%83%8C%E6%99%AF%EF%BC%8C%E5%86%99%E5%AE%9E%E6%91%84%E5%BD%B1%E9%A3%8E%E6%A0%BC%EF%BC%8C%E5%9B%BE%E7%89%87%E4%B8%AD%E5%A6%82%E6%9C%89%E6%96%87%E5%AD%97%E4%BD%BF%E7%94%A8%E4%B8%AD%E6%96%87%2C8k&image_size=landscape_16_9"
+            alt="砍价进度条特写"
+            loading="lazy">
+        </div>
+        <div class="pdd-hero-panel">
+          <div class="pdd-progress-shell">
+            <div class="pdd-progress-bar" id="pdd-progress"></div>
+            <div class="pdd-progress-label" id="pdd-progress-label">仅差 100%</div>
+          </div>
+          <div class="pdd-hero-meta">
+            <span id="pdd-meta-cuts">已砍 0 刀</span>
+            <span id="pdd-meta-remain">剩余 ¥100.00</span>
+          </div>
+          <button class="pdd-cta" id="pdd-cta" type="button">
+            <span class="pdd-cta-icon">✂</span>
+            砍一刀
+          </button>
+          <div class="pdd-cta-hint" id="pdd-cta-hint">点一下，让下一个"好友"帮你砍</div>
+        </div>
+      </section>
+
+      <!-- ═══ 好友池 ═══ -->
+      <section class="pdd-block">
+        <h2 class="pdd-block-title">你的好友池</h2>
+        <p class="pdd-block-sub">拖动滑块调整三类好友数量。系统会按顺序抽用他们帮你砍。</p>
+        <div class="pdd-friend-controls">
+          <div class="pdd-friend-row">
+            <span class="pdd-friend-label"><span class="pdd-badge new">🆕 新用户</span></span>
+            <input type="range" id="pdd-new-count" min="0" max="30" value="3">
+            <span class="pdd-friend-val" id="pdd-new-val">3</span>
+          </div>
+          <div class="pdd-friend-row">
+            <span class="pdd-friend-label"><span class="pdd-badge old">👴 老用户</span></span>
+            <input type="range" id="pdd-old-count" min="0" max="100" value="20">
+            <span class="pdd-friend-val" id="pdd-old-val">20</span>
+          </div>
+          <div class="pdd-friend-row">
+            <span class="pdd-friend-label"><span class="pdd-badge bot">🤖 黑产号</span></span>
+            <input type="range" id="pdd-bot-count" min="0" max="100" value="0">
+            <span class="pdd-friend-val" id="pdd-bot-val">0</span>
+          </div>
+        </div>
+        <div class="pdd-friend-pool" id="pdd-friend-pool" aria-label="好友队列">
+          <!-- JS 生成 -->
+        </div>
+        <button class="pdd-reset" id="pdd-reset" type="button">重置这一局</button>
+      </section>
+
+      <!-- ═══ 预设场景 ═══ -->
+      <section class="pdd-block">
+        <h2 class="pdd-block-title">一键跑：四种典型朋友圈</h2>
+        <p class="pdd-block-sub">跑 500 刀模拟，看每种组合最终会卡在多少百分比。</p>
+        <div class="pdd-preset-grid">
+          <button class="pdd-preset" data-preset="lucky" type="button">
+            <div class="pdd-preset-emoji">🎁</div>
+            <div class="pdd-preset-name">运气爆棚</div>
+            <div class="pdd-preset-desc">全 500 个新用户</div>
+          </button>
+          <button class="pdd-preset" data-preset="dumb" type="button">
+            <div class="pdd-preset-emoji">👴</div>
+            <div class="pdd-preset-name">铁憨憨</div>
+            <div class="pdd-preset-desc">全 500 个老用户</div>
+          </button>
+          <button class="pdd-preset" data-preset="bot" type="button">
+            <div class="pdd-preset-emoji">🤖</div>
+            <div class="pdd-preset-name">黑产刷单</div>
+            <div class="pdd-preset-desc">全 500 个黑产号</div>
+          </button>
+          <button class="pdd-preset pdd-preset-recommended" data-preset="real" type="button">
+            <div class="pdd-preset-emoji">📱</div>
+            <div class="pdd-preset-name">朋友圈日常</div>
+            <div class="pdd-preset-desc">10% 新 · 80% 老 · 10% 黑产</div>
+          </button>
+        </div>
+        <div class="pdd-chart-wrap">
+          <canvas id="pdd-decay-chart"></canvas>
+        </div>
+        <div class="pdd-chart-hint">Y 轴对数刻度。曲线在 90% 之后几乎贴地飞行——这就是芝诺段。</div>
+      </section>
+
+      <!-- ═══ 百分比放大镜 ═══ -->
+      <section class="pdd-block pdd-magnifier">
+        <h2 class="pdd-block-title">🔍 "仅差 0.9%" 的真实位数</h2>
+        <p class="pdd-block-sub">
+          2021 年一位上海律师起诉拼多多砍价虚假宣传，法庭上拼多多解释：
+          "因显示百分比位数有限，故只显示为仅差 0.9%。"
+        </p>
+        <div class="pdd-mag-panel">
+          <div class="pdd-mag-shown">
+            <div class="pdd-mag-shown-num" id="pdd-mag-shown">仅差 0.9%</div>
+            <div class="pdd-mag-shown-label">你在 App 上看到的</div>
+          </div>
+          <div class="pdd-mag-arrow">→</div>
+          <div class="pdd-mag-real">
+            <div class="pdd-mag-real-num" id="pdd-mag-real">0.99964272%</div>
+            <div class="pdd-mag-real-label">背后的真实数字</div>
+          </div>
+        </div>
+        <div class="pdd-mag-slider">
+          <label>放大位数：<span id="pdd-mag-digits">8</span> 位</label>
+          <input type="range" id="pdd-mag-range" min="2" max="12" value="8">
+        </div>
+      </section>
+
+      <!-- ═══ 破产测试 ═══ -->
+      <section class="pdd-block">
+        <h2 class="pdd-block-title">黑产薅羊毛测试</h2>
+        <p class="pdd-block-sub">
+          想过没有？"砍一刀"的随机看起来对平台很危险——如果我拿一万个黑产号呢？
+        </p>
+        <div class="pdd-attack-controls">
+          <label>手机成本 ¥<input type="number" id="pdd-attack-cost" value="2000" min="100" max="10000"></label>
+          <label>可接受获客成本 ¥<input type="number" id="pdd-attack-cac" value="200" min="10" max="5000"></label>
+          <label>黑产号数量 <input type="number" id="pdd-attack-count" value="1000" min="10" max="100000"></label>
+        </div>
+        <button class="pdd-secondary" id="pdd-attack-btn" type="button">跑一次刷单</button>
+        <div class="pdd-attack-result" id="pdd-attack-result"></div>
+      </section>
+
+      <!-- ═══ 结论 ═══ -->
+      <section class="pdd-block pdd-conclusion">
+        <h2 class="pdd-block-title">这算法合理吗？</h2>
+        <p>
+          严格说来，砍一刀不是"随机"，而是基于用户价值的动态定价。
+          你以为在抽奖，其实平台在给每个帮砍人打分：新用户权重 5.0，老用户 0.3，黑产号 0.0001。
+        </p>
+        <p>
+          从民事角度：只显示"仅差 0.9%"却隐藏后面 6 位小数，构成信息披露不充分。
+          从算法角度：完全合规的收敛函数，没有欺诈，只有设计。
+          这就是为什么诉讼很难赢——每一步都能用一句"数学"解释过去。
+        </p>
+        <div class="pdd-conclusion-actions">
+          <button class="pdd-secondary" id="pdd-copy-btn" type="button">复制结论</button>
+          <a class="pdd-secondary" href="https://www.zhihu.com/question/511318542" target="_blank" rel="noopener">
+            去看知乎问题 ↗
+          </a>
+        </div>
+      </section>
+
+      <div class="pdd-toast" id="pdd-toast"></div>
+
+    </div>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

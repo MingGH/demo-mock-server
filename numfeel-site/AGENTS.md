@@ -5,9 +5,24 @@
 ## 技术栈与约束
 
 - **不引入构建工具、框架或打包器**（无 React/Vue/Webpack/Vite/TS）。页面用浏览器直接打开即可运行。
-- 第三方库通过 CDN `<script>` 引入（如 Chart.js、Tabler Icons `ti`）。
+- 第三方库通过 CDN `<script>` / `<link>` 引入（如 Chart.js、Tabler Icons `ti`）。**允许并鼓励使用成熟的第三方库**，只要满足两个条件：
+  1. 提供官方 CDN 分发（jsDelivr / unpkg / cdnjs 皆可），能通过 `<script src="https://...">` 直接引入，不需要 npm/构建；
+  2. 是 UMD/IIFE/全局变量形态，不依赖 ES Module 打包器解析。
+- **推荐库清单**（按需使用，不必为了用而用）：
+  - 图表：Chart.js / ECharts / D3
+  - 动画过渡：GSAP、anime.js、Motion One（UMD 版本）、Web Animations API
+  - 交互手势：Hammer.js、interact.js
+  - UI 微交互：Popper.js（tooltip）、Sortable.js（拖拽排序）
+  - 工具：Lodash（按需模块）、dayjs、mathjs
+  - 3D/物理：three.js、matter.js
+- **禁止**：任何需要 `import` / JSX / TS 语法、需要预编译的库（如 framer-motion、React 相关生态）。如果只有 ESM 版本，需从 esm.sh 之类的转换 CDN 取，且必须放在 `<script type="module">` 中并做 fallback 说明。
+- **优先第三方库而非手写**：以下场景不要自己撸底层实现，直接用现成库：
+  - 复杂缓动 / 时间轴动画 → GSAP 或 anime.js（比 `@keyframes` 灵活得多）
+  - 图表 → Chart.js / ECharts
+  - 手势识别 → Hammer.js
+  - 拖拽 → Sortable.js / interact.js
 - 图标统一使用 **Tabler Icons**（`<i class="ti ti-xxx"></i>`），通过 `components/header.js` 全局引入 CDN。**不要用 emoji 作为图标**。
-- JS 语法保持 **ES5 兼容风格**：使用 `var`、`function` 声明，避免依赖需要转译的新语法，确保旧浏览器可直接运行。
+- JS 语法保持 **ES5 兼容风格**：使用 `var`、`function` 声明，避免依赖需要转译的新语法，确保旧浏览器可直接运行。第三方库自身内部使用 ES6+ 语法不受此约束（它们自己已处理好兼容性）。
 
 ## 目录组织
 

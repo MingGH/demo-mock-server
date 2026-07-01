@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="姚期智百万富翁问题：两个人比工资，谁都不肯说数字，密码学却能算出谁更高。基于 Paillier 同态加密的简化 MPC 协议实验室，逐步可视化每一步密文交换。">
+  <title>百万富翁问题实验室：不说工资也能比大小 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-users-group"></i> 百万富翁问题实验室</h1>
+    <p class="header-tagline">Alice 和 Bob 都不肯说出自己的工资，密码学却能告诉他们谁更高。跑一遍协议，亲眼看每一步只交换密文，原值从头到尾没离开各自的浏览器。</p>
+    <div class="hero-illustration">
+      <img src="https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=two%20cartoon%20businessmen%20standing%20back%20to%20back%2C%20each%20holding%20a%20golden%20padlock%20with%20a%20dollar%20sign%20engraved%2C%20a%20glowing%20cipher%20stream%20flying%20between%20them%2C%20cyberpunk%20cryptography%20aesthetic%2C%20dark%20navy%20background%20with%20gold%20accents%2C%20flat%20vector%20illustration&image_size=landscape_16_9" alt="Alice 与 Bob 各自持有加密工资，密文在两人间流动" loading="lazy">
+    </div>
+  </div>
+
+  <!-- ── 主实验区 ── -->
+  <div class="section" id="mainSection">
+    <div class="setup-row">
+      <div class="party-card party-alice">
+        <div class="party-avatar"><i class="ti ti-user"></i></div>
+        <div class="party-name">Alice</div>
+        <label class="party-label">她的月薪（元）</label>
+        <input type="text" inputmode="numeric" id="salaryA" placeholder="例如 25000" autocomplete="off" value="25000">
+        <div class="party-note">只有 Alice 自己看得到</div>
+      </div>
+
+      <div class="vs-block">
+        <span class="vs-glyph">?</span>
+        <div class="vs-label">谁更高</div>
+      </div>
+
+      <div class="party-card party-bob">
+        <div class="party-avatar"><i class="ti ti-user-square"></i></div>
+        <div class="party-name">Bob</div>
+        <label class="party-label">他的月薪（元）</label>
+        <input type="text" inputmode="numeric" id="salaryB" placeholder="例如 32000" autocomplete="off" value="32000">
+        <div class="party-note">只有 Bob 自己看得到</div>
+      </div>
+    </div>
+
+    <div class="preset-row">
+      <span class="preset-hint">试试这些经典场景：</span>
+      <button class="preset-btn" data-a="25000" data-b="32000">应届 vs 老油条</button>
+      <button class="preset-btn" data-a="88888" data-b="88888">两个人一模一样</button>
+      <button class="preset-btn" data-a="500000" data-b="12000">高管 vs 实习生</button>
+      <button class="preset-btn" data-a="15001" data-b="15000">相差 1 块</button>
+    </div>
+
+    <div class="action-row">
+      <button id="runBtn" class="btn-hero breathing">
+        <i class="ti ti-play"></i> 跑一遍协议
+      </button>
+      <p class="action-hint" id="actionHint">点这里，两方开始只交换密文，任何一方都拿不到对方工资</p>
+    </div>
+
+    <!-- ── 步骤区 ── -->
+    <div class="steps" id="stepsArea" style="display:none;">
+      <!-- Step 1 -->
+      <div class="step-card" data-step="1">
+        <div class="step-head">
+          <span class="step-num">1</span>
+          <div class="step-title-row">
+            <div class="step-title">Alice 生成密钥对</div>
+            <div class="step-subtitle">Paillier 128 位密钥。公钥（n）发给 Bob，私钥（λ, μ）自己收好。</div>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="channel">
+            <span class="channel-tag alice-tag">Alice 手里</span>
+            <div class="channel-value" id="valPubKey">—</div>
+            <div class="channel-sub">公钥 n（会分享给 Bob）</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card" data-step="2">
+        <div class="step-head">
+          <span class="step-num">2</span>
+          <div class="step-title-row">
+            <div class="step-title">Alice 加密自己的工资并发给 Bob</div>
+            <div class="step-subtitle">cA = Enc(a, pk)。Bob 拿到一坨密文，看不出任何东西。</div>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="channel">
+            <span class="channel-tag alice-tag"><i class="ti ti-arrow-right"></i> Alice 发送</span>
+            <div class="channel-value cipher" id="valCipherA">—</div>
+            <div class="channel-sub">密文 cA</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card" data-step="3">
+        <div class="step-head">
+          <span class="step-num">3</span>
+          <div class="step-title-row">
+            <div class="step-title">Bob 在密文上做减法</div>
+            <div class="step-subtitle">Bob 用同一把公钥加密 -b，再和 cA 相乘：cA · Enc(-b) 等价于 Enc(a - b)。他仍然不知道 a。</div>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="channel">
+            <span class="channel-tag bob-tag">Bob 本地算出</span>
+            <div class="channel-value cipher" id="valCipherDiff">—</div>
+            <div class="channel-sub">密文 cDiff = Enc(a - b)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step-card" data-step="4">
+        <div class="step-head">
+          <span class="step-num">4</span>
+          <div class="step-title-row">
+            <div class="step-title">Bob 掷一个只有他知道的随机正整数 r，做「盲化」</div>
+            <div class="step-subtitle">cBlinded = cDiff<sup>r</sup> = Enc(r × (a - b))。这一步是关键——它保证 Alice 解密后只能看到符号，看不到差值。</div>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="channel">
+            <span class="channel-tag bob-tag">Bob 掷出</span>
+            <div class="channel-value plain" id="valBlindR">—</div>
+            <div class="channel-sub">盲化因子 r（Bob 私有）</div>
+          </div>
+          <div class="channel">
+            <span class="channel-tag bob-tag"><i class="ti ti-arrow-left"></i> Bob 回发</span>
+            <div class="channel-value cipher" id="valCipherBlinded">—</div>
+            <div class="channel-sub">盲化密文 cBlinded</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="step-card" data-step="5">
+        <div class="step-head">
+          <span class="step-num">5</span>
+          <div class="step-title-row">
+            <div class="step-title">Alice 解密，只读符号</div>
+            <div class="step-subtitle">她拿到的是 r × (a - b)。r 未知，具体数值她读不懂，但 <b>正负号</b> 恰好等于 a 和 b 的大小关系。</div>
+          </div>
+        </div>
+        <div class="step-body">
+          <div class="channel">
+            <span class="channel-tag alice-tag">Alice 解密得到</span>
+            <div class="channel-value plain" id="valDecrypted">—</div>
+            <div class="channel-sub" id="decryptedHint">这个数字 Alice 看得懂符号，但读不出 (a - b)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 结果 -->
+      <div class="result-card" id="resultCard">
+        <div class="result-glyph" id="resultGlyph">?</div>
+        <div class="result-text" id="resultText">—</div>
+        <div class="result-flavor" id="resultFlavor"></div>
+        <div class="result-checklist">
+          <div class="check-item"><i class="ti ti-check"></i> Alice 只看到：符号，无法反推 Bob 的工资</div>
+          <div class="check-item"><i class="ti ti-check"></i> Bob 只看到：一坨密文，无法解密</div>
+          <div class="check-item"><i class="ti ti-check"></i> 通信中传输的全是密文</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 复盘：换 r 会怎样 ── -->
+  <div class="section collapsible" id="whyRSection">
+    <button class="collapse-toggle" id="whyRToggle">
+      <i class="ti ti-bulb"></i> 为什么必须有那个 r？—— 拆掉它试试
+      <span class="toggle-icon">▾</span>
+    </button>
+    <div class="collapse-body" id="whyRBody" style="display:none;">
+      <p class="section-desc">如果 Bob 偷懒不做盲化，直接把 Enc(a-b) 发回去，Alice 解密后就能<b>直接看到真实差值</b>——她只要知道自己的工资，减一下就能推出 Bob 的工资。滑动下面的开关，对比两种情况下 Alice 看到的数字。</p>
+      <div class="switch-row">
+        <label class="switch">
+          <input type="checkbox" id="skipBlindingToggle">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+          <span class="switch-label">跳过盲化（Bob 不掷 r）</span>
+        </label>
+      </div>
+      <div class="compare-row">
+        <div class="compare-card">
+          <div class="compare-tag">有盲化</div>
+          <div class="compare-num" id="compareWith">—</div>
+          <div class="compare-desc">Alice 看到一个巨大的随机数，只能看符号</div>
+        </div>
+        <div class="compare-card danger">
+          <div class="compare-tag">无盲化</div>
+          <div class="compare-num" id="compareWithout">—</div>
+          <div class="compare-desc">Alice 直接读出 a - b，用她自己的 a 一减，Bob 的 b 立刻暴露</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 姊妹页对比 ── -->
+  <div class="section">
+    <h2><i class="ti ti-scale"></i> 三驾马车：MPC / DP / HE 的分工</h2>
+    <p class="section-desc">隐私计算不是一个技术，是三套互补的思路。本页跑的协议是安全多方计算（MPC）里最古老的例子——它站在同态加密（HE）的肩膀上，专门解决「两个都不愿开口的人如何达成一致判断」。</p>
+    <div class="compare-table-wrap">
+      <table class="tri-table">
+        <thead>
+          <tr>
+            <th>方案</th>
+            <th>核心思路</th>
+            <th>百万富翁问题</th>
+            <th>本站姊妹页</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="highlight">
+            <td><b>安全多方计算 MPC</b></td>
+            <td>多方各持一份秘密，通过交换密文/分片协同算出结果</td>
+            <td class="yes">✓ 原生就是它</td>
+            <td>本页</td>
+          </tr>
+          <tr>
+            <td>同态加密 HE</td>
+            <td>加密后仍可算，一方持数据、另一方持密文运算</td>
+            <td class="warn">△ 需要密钥托管</td>
+            <td><a href="../homomorphic-encryption/">同态加密：在密文上做加法</a></td>
+          </tr>
+          <tr>
+            <td>差分隐私 DP</td>
+            <td>发布聚合统计时加噪声，牺牲精度换隐私</td>
+            <td class="no">✗ 会暴露具体值</td>
+            <td><a href="../differential-privacy-lab/">差分隐私预算实验室</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 原理卡片 ── -->
+  <div class="section collapsible" id="moreSection">
+    <button class="collapse-toggle" id="moreToggle">
+      <i class="ti ti-atom"></i> 展开阅读：这个协议背后的数学
+      <span class="toggle-icon">▾</span>
+    </button>
+    <div class="collapse-body" id="moreBody" style="display:none;">
+      <div class="principle-grid">
+        <div class="principle-card">
+          <div class="num">01</div>
+          <h4>为什么能加密之后还算？</h4>
+          <p>Paillier 加密满足 Enc(m₁) · Enc(m₂) mod n² = Enc(m₁ + m₂)。密文相乘等于明文相加，减法用加密 -b 实现。这是 1999 年 Paillier 提出的性质。</p>
+        </div>
+        <div class="principle-card">
+          <div class="num">02</div>
+          <h4>为什么 r 能藏住差值？</h4>
+          <p>r 是 Bob 私有的随机正整数。Alice 解密看到 r × (a-b)，但她不知道 r。r=1 还是 r=99999？她分不清「差 1 块乘 99999」和「差 99999 块乘 1」。</p>
+        </div>
+        <div class="principle-card">
+          <div class="num">03</div>
+          <h4>为什么符号能透出来？</h4>
+          <p>因为 r 是正数，乘法不改变符号。sign(r × (a-b)) = sign(a-b)。所以 Alice 读到的正负号，正是 a 和 b 的大小关系。</p>
+        </div>
+        <div class="principle-card">
+          <div class="num">04</div>
+          <h4>什么时候还是会泄露？</h4>
+          <p>a = b 时会泄露：Alice 解密得到 0，她就知道两人工资一模一样。这是这类协议的固有代价，不可避免。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

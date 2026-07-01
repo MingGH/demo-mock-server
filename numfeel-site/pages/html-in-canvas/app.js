@@ -267,8 +267,13 @@
         document.body.removeChild(probe);
 
         var dpr = window.devicePixelRatio || 1;
+        // 关键：只声明 width，不写死 height。移动端容器窄于 cssW 时，
+        // .result-canvas 的 max-width:100% + canvas 内在 aspect-ratio 会自动
+        // 等比缩小，避免 overflow:hidden 把内容裁掉右半边。
+        // 位图尺寸仍按 CSS × DPR 生成，缩显示不损位图分辨率。
         canvas.style.width = cssW + 'px';
-        canvas.style.height = cssH + 'px';
+        canvas.style.maxWidth = '100%';
+        canvas.style.height = 'auto';
         canvas.width = Math.round(cssW * dpr);
         canvas.height = Math.round(cssH * dpr);
 
@@ -293,11 +298,16 @@
             doFallback(e);
             return;
           }
-          // drawElementImage 未抛错即视为成功（API 已确认可用）。
-          // 仅当连续多次 paint 仍全透明，才判为异常并兜底，避免 mix-blend 等
-          // 稀疏内容被误判。
-          if (isBlank(canvas) && paintTries < 4) {
-            return; // 再等一两帧合成
+          // drawElementImage 未抛错即视为成功。仅在首次 paint 且明显空白时，
+          // 主动再触发一次 requestPaint 补一帧（避免等 ResizeObserver 永不触发导致
+          // 反复报 "onpaint 未在预期时间内提供有效 paint record"）。
+          // 第二次仍空也不再纠缠，直接判成功——空白很可能是内容本身透明。
+          if (paintTries < 2 && isBlank(canvas)) {
+            requestAnimationFrame(function () {
+              if (settled) return;
+              if (typeof canvas.requestPaint === 'function') canvas.requestPaint();
+            });
+            return;
           }
           painted = true;
           settled = true;
@@ -318,20 +328,25 @@
         if (typeof canvas.requestPaint === 'function') {
           canvas.requestPaint();
         }
-        // 半秒后再补一次，覆盖布局延后到位的情况（grid/scale 子项常见）
-        var retryT = setTimeout(function () {
+        // 500ms / 1200ms 两次补偿 requestPaint，覆盖布局延后到位、字体加载完成等场景
+        var retryT1 = setTimeout(function () {
           if (settled) return;
           if (typeof canvas.requestPaint === 'function') canvas.requestPaint();
         }, 500);
+        var retryT2 = setTimeout(function () {
+          if (settled) return;
+          if (typeof canvas.requestPaint === 'function') canvas.requestPaint();
+        }, 1200);
 
-        // 兜底：~3 秒仍未成功则回退 html2canvas（只触发一次）
+        // 兜底：~5 秒仍未成功则回退 html2canvas（只触发一次）
         setTimeout(function () {
-          clearTimeout(retryT);
+          clearTimeout(retryT1);
+          clearTimeout(retryT2);
           if (painted || settled) return;
           settled = true;
           try { ro.disconnect(); } catch (e) {}
           doFallback('onpaint 未在预期时间内提供有效 paint record');
-        }, 3000);
+        }, 5000);
       } catch (err) {
         doFallback(err);
       }
@@ -478,30 +493,129 @@
 
   /**
    * 把卡片元素采样成一张位图 canvas。
-   * 优先用 drawElementImage（切题、快、原生），不可用再降级 html2canvas。
+   * - 支持 drawElementImage：走原生采样，画质最好。
+   * - 不支持（Safari / 大部分移动端）：不再调用 html2canvas（在手机上会
+   *   触发 DOM 全量克隆 + 4MB 位图重绘，直接导致 Tab 崩溃）。改用一张
+   *   手绘的"卡片替身位图"，颜色/文字排布跟真卡片一致，供粒子采样。
    * @returns {Promise<HTMLCanvasElement>}
    */
   function captureCardCanvas() {
     var card = document.getElementById('shatterCard');
     if (support.supported) {
-      // 用 drawElementImage 采样（切题、原生）；失败内部自动回退 html2canvas
+      // 用 drawElementImage 采样（切题、原生）；失败内部自动回退合成位图
       return captureViaDrawElement(card);
     }
-    return renderWithHtml2Canvas(card.outerHTML);
+    return Promise.resolve(paintCardStandIn(card));
+  }
+
+  /**
+   * 用 Canvas 2D 直接手绘一张跟真卡片视觉一致的替身位图。
+   * 不动 DOM、不 clone、不算样式，内存 <100KB，是移动端唯一稳的路径。
+   * @param {HTMLElement} card
+   * @returns {HTMLCanvasElement}
+   */
+  function paintCardStandIn(card) {
+    var rect = card.getBoundingClientRect();
+    // 采样画布最长边硬卡 300px；DPR=1，避免手机上生成大位图
+    var maxSide = 300;
+    var cssW = Math.max(1, Math.round(rect.width));
+    var cssH = Math.max(1, Math.round(rect.height));
+    var ratio = Math.min(1, maxSide / Math.max(cssW, cssH));
+    var w = Math.max(1, Math.round(cssW * ratio));
+    var h = Math.max(1, Math.round(cssH * ratio));
+
+    var cv = document.createElement('canvas');
+    cv.width = w;
+    cv.height = h;
+    var ctx = cv.getContext('2d');
+
+    // ── 卡片底：径向 + 线性渐变（跟 CSS 一致的 #1f2a4a → #0f3460 + 金色光斑）
+    var bg = ctx.createLinearGradient(0, 0, w, h);
+    bg.addColorStop(0, '#1f2a4a');
+    bg.addColorStop(1, '#0f3460');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    var glow = ctx.createRadialGradient(w * 0.8, h * 0.2, 0, w * 0.8, h * 0.2, w * 0.7);
+    glow.addColorStop(0, 'rgba(255, 215, 0, 0.32)');
+    glow.addColorStop(1, 'rgba(255, 215, 0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+
+    // ── 顶部 SPECIAL 徽章（黄色椭圆胶囊）
+    var padX = w * 0.06;
+    var padY = h * 0.08;
+    var tagH = h * 0.09;
+    var tagW = w * 0.22;
+    ctx.fillStyle = '#ffd700';
+    roundRect(ctx, padX, padY, tagW, tagH, tagH / 2);
+    ctx.fill();
+
+    // ── 右上价格块（金色矩形示意）
+    ctx.fillStyle = '#ffd700';
+    var priceW = w * 0.28;
+    var priceH = h * 0.12;
+    ctx.fillRect(w - padX - priceW, padY - h * 0.01, priceW, priceH);
+
+    // ── 标题条（白色）
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    var titleY = padY + tagH + h * 0.08;
+    ctx.fillRect(padX, titleY, w * 0.75, h * 0.09);
+
+    // ── 描述条 × 2（浅白色）
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    var descY = titleY + h * 0.14;
+    ctx.fillRect(padX, descY, w * 0.85, h * 0.05);
+    ctx.fillRect(padX, descY + h * 0.08, w * 0.7, h * 0.05);
+
+    // ── 底部按钮（金色圆角矩形）
+    var btnW = w * 0.32;
+    var btnH = h * 0.14;
+    var btnX = w - padX - btnW;
+    var btnY = h - padY - btnH;
+    ctx.fillStyle = '#ffd700';
+    roundRect(ctx, btnX, btnY, btnW, btnH, h * 0.04);
+    ctx.fill();
+
+    // ── 底部左侧说明条
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.fillRect(padX, btnY + btnH * 0.35, w * 0.35, btnH * 0.3);
+
+    // ── 卡片边框（金色描边）
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.24)';
+    ctx.lineWidth = 2;
+    roundRect(ctx, 1, 1, w - 2, h - 2, Math.min(w, h) * 0.08);
+    ctx.stroke();
+
+    return cv;
+  }
+
+  /** 简易圆角矩形路径（不闭合，调用方自行 fill/stroke） */
+  function roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
   }
 
   /**
    * 用 drawElementImage 把一个 DOM 元素快照成位图 canvas（就地、可见）。
-   * 失败回退 html2canvas。
+   * 失败降级为手绘替身位图（不再调 html2canvas，避免移动端 OOM）。
    * @param {HTMLElement} el
    * @returns {Promise<HTMLCanvasElement>}
    */
   function captureViaDrawElement(el) {
     return new Promise(function (resolve) {
       function fallback() {
-        renderWithHtml2Canvas(el.outerHTML).then(resolve).catch(function () {
-          resolve(null);
-        });
+        resolve(paintCardStandIn(el));
       }
       if (!support.supported) { fallback(); return; }
 
@@ -533,10 +647,13 @@
         var ctx = canvas.getContext('2d');
         var done = false;
         var ro = null;
-        function finish(out) {
-          if (done) return; done = true;
+        function cleanup() {
           if (ro) { try { ro.disconnect(); } catch (e) {} ro = null; }
           if (holder.parentNode) holder.parentNode.removeChild(holder);
+        }
+        function finish(out) {
+          if (done) return; done = true;
+          cleanup();
           resolve(out);
         }
 
@@ -546,7 +663,13 @@
             ctx.reset();
             ctx.drawElementImage(clone, 0, 0);
           } catch (e) {
-            finish(null); fallback(); return;
+            // 关键：这里不能调 finish(null)，否则 Promise 会先 resolve(null)，
+            // 让后续的 fallback() 静默失效 →  外层看到 src=null →  "采样失败"
+            if (done) return;
+            done = true;
+            cleanup();
+            resolve(paintCardStandIn(el));
+            return;
           }
           // 复制成独立 canvas 返回
           var out = document.createElement('canvas');
@@ -565,9 +688,9 @@
 
         setTimeout(function () {
           if (done) return;
-          try { ro.disconnect(); } catch (e) {}
-          if (holder.parentNode) holder.parentNode.removeChild(holder);
-          fallback();
+          done = true;
+          cleanup();
+          resolve(paintCardStandIn(el));
         }, 1000);
       } catch (err) {
         fallback();
@@ -590,10 +713,25 @@
     status.textContent = '采样像素中…';
     captureCardCanvas().then(function (src) {
       if (!src) { status.textContent = '采样失败，请重试'; return; }
-      var w = src.width;
-      var h = src.height;
       var rect = card.getBoundingClientRect();
       var stageRect = stage.getBoundingClientRect();
+
+      // 移动端：更小的工作画布 + 更少粒子 + 单像素点 + 去掉 twinkle。
+      // 桌面：保留原有画质。判定用 pointer + 视口宽度双条件，避免误伤 iPad 大屏。
+      var isMobile = (window.matchMedia &&
+        (window.matchMedia('(pointer: coarse)').matches ||
+         window.matchMedia('(max-width: 720px)').matches)) || false;
+
+      // 关键：把工作画布尺寸卡在一个安全上限。移动端每帧 putImageData 的
+      // ImageData 太大 → 手机浏览器 OOM 崩溃。桌面 480px、移动 300px。
+      var sizeCap = isMobile ? 300 : 480;
+      var maxSide = Math.min(sizeCap, Math.max(rect.width, rect.height, 200));
+      var srcW = src.width || 1;
+      var srcH = src.height || 1;
+      var ratio = Math.min(1, maxSide / Math.max(srcW, srcH));
+      var w = Math.max(1, Math.round(srcW * ratio));
+      var h = Math.max(1, Math.round(srcH * ratio));
+
       canvas.width = w;
       canvas.height = h;
       canvas.style.width = rect.width + 'px';
@@ -604,14 +742,15 @@
 
       var ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.clearRect(0, 0, w, h);
-      ctx.drawImage(src, 0, 0);
+      // drawImage 会自动完成从 src 到 w×h 的缩放，采样密度可控
+      ctx.drawImage(src, 0, 0, w, h);
       var data = ctx.getImageData(0, 0, w, h).data;
 
-      // 粒子步长按图宽 + 总量上限保护：粒子数硬卡在 6000 以内，
-      // 极端情况下也不会触发 OOM/卡死。
-      var step = Math.max(4, Math.round(w / 90));
+      // 粒子步长按图宽 + 总量上限保护：移动端粒子上限收紧到 1500，桌面维持 6000。
+      var particleBudget = isMobile ? 1500 : 6000;
+      var step = Math.max(isMobile ? 6 : 4, Math.round(w / (isMobile ? 60 : 90)));
       var estimated = Math.ceil(w / step) * Math.ceil(h / step);
-      while (estimated > 6000 && step < 32) {
+      while (estimated > particleBudget && step < 48) {
         step++;
         estimated = Math.ceil(w / step) * Math.ceil(h / step);
       }
@@ -622,8 +761,8 @@
       var power = Math.max(4, w / 70);
       igniteParticles(particles, cx, cy, power, Math.random, {
         swirl: power * 0.18,
-        turbulence: 2.2,
-        lift: 2.5,
+        turbulence: isMobile ? 1.2 : 2.2,
+        lift: isMobile ? 1.5 : 2.5,
         radius: Math.max(w, h) * 0.32
       });
 
@@ -635,6 +774,8 @@
       var imageData = ctx.createImageData(w, h);
       var buf = imageData.data;
       var frame = 0;
+      // 移动端画单像素点，桌面画 2×2 小方块（更亮）
+      var bigDot = !isMobile;
 
       function loop() {
         frame++;
@@ -650,25 +791,29 @@
           var py = particles.y[i] | 0;
           if (px < 0 || px >= w || py < 0 || py >= h) continue;
 
-          var twinkle = 0.85 + 0.15 * (((i + frame) & 7) * 0.143);
-          var aRaw = particles.a[i] * Math.min(1, life) * twinkle;
+          // 移动端省掉 twinkle 抖动（每粒子省一次乘法 + 位运算）
+          var aRaw = bigDot
+            ? particles.a[i] * Math.min(1, life) * (0.85 + 0.15 * (((i + frame) & 7) * 0.143))
+            : particles.a[i] * Math.min(1, life);
           if (aRaw < 8) continue;
           var aOut = aRaw | 0;
           var rOut = particles.r[i];
           var gOut = particles.g[i];
           var bOut = particles.b[i];
 
-          // 写 2×2 小方块（让粒子可见，等同 dotSize=2）
           var idx = (py * w + px) * 4;
           buf[idx] = rOut; buf[idx + 1] = gOut; buf[idx + 2] = bOut; buf[idx + 3] = aOut;
-          if (px + 1 < w) {
-            buf[idx + 4] = rOut; buf[idx + 5] = gOut; buf[idx + 6] = bOut; buf[idx + 7] = aOut;
-          }
-          if (py + 1 < h) {
-            var idx2 = ((py + 1) * w + px) * 4;
-            buf[idx2] = rOut; buf[idx2 + 1] = gOut; buf[idx2 + 2] = bOut; buf[idx2 + 3] = aOut;
+          if (bigDot) {
+            // 写 2×2 小方块（让粒子在桌面上更醒目）
             if (px + 1 < w) {
-              buf[idx2 + 4] = rOut; buf[idx2 + 5] = gOut; buf[idx2 + 6] = bOut; buf[idx2 + 7] = aOut;
+              buf[idx + 4] = rOut; buf[idx + 5] = gOut; buf[idx + 6] = bOut; buf[idx + 7] = aOut;
+            }
+            if (py + 1 < h) {
+              var idx2 = ((py + 1) * w + px) * 4;
+              buf[idx2] = rOut; buf[idx2 + 1] = gOut; buf[idx2 + 2] = bOut; buf[idx2 + 3] = aOut;
+              if (px + 1 < w) {
+                buf[idx2 + 4] = rOut; buf[idx2 + 5] = gOut; buf[idx2 + 6] = bOut; buf[idx2 + 7] = aOut;
+              }
             }
           }
         }

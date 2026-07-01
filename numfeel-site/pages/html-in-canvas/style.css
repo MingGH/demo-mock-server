@@ -580,14 +580,16 @@ body {
 
 /* ── 响应式 ── */
 @media (max-width: 900px) {
-  /* 窄屏：标题 + 三栏画面（横向对比）+ 说明，分三排，画面排横向并列 */
+  /* 窄屏：整行改为逐块纵向堆叠，避免三栏挤在一起看不清 */
   .matrix-head { display: none; }
   .matrix-row {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr;
     grid-template-areas:
-      "title title title"
-      "source legacy native"
-      "explain explain explain";
+      "title"
+      "source"
+      "legacy"
+      "native"
+      "explain";
     gap: 10px;
     padding: 14px 14px;
   }
@@ -600,10 +602,10 @@ body {
   .matrix-source,
   .matrix-legacy,
   .matrix-native {
-    min-height: 90px;
-    padding: 8px 6px 6px;
+    min-height: auto;
+    padding: 10px 10px 12px;
   }
-  /* 三个画面格上方加身份标签 */
+  /* 每块上方加身份标签，让上下堆叠时看得清谁是谁 */
   .matrix-source::before { content: "原生 DOM"; color: #90caf9; }
   .matrix-legacy::before { content: "html2canvas"; color: #ff8a8a; }
   .matrix-native::before { content: "drawElement"; color: #a5d6a7; }
@@ -612,11 +614,11 @@ body {
   .matrix-native::before {
     display: block;
     width: 100%;
-    font-size: 0.66rem;
+    font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.04em;
-    margin-bottom: 6px;
-    text-align: center;
+    margin-bottom: 8px;
+    text-align: left;
   }
   .matrix-name { font-size: 1rem; }
   .matrix-tags { flex-direction: row; flex-wrap: wrap; }

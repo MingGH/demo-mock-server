@@ -19,11 +19,11 @@
 
   <div class="section hero-lab">
     <div class="hero-copy">
-      <div class="eyebrow"><i class="ti ti-user-question"></i> 张三攻击</div>
+      <div class="eyebrow"><i class="ti ti-user-question"></i> 隐私攻击演示</div>
       <h2>如果张三收入 99 万，只看平均值能猜出他在不在数据里吗？</h2>
-      <p class="section-desc">先观察精确统计，再打开差分隐私。噪声不是为了把数据搞乱，而是让「某个人是否参与」变得难以判断。</p>
+      <p class="section-desc">右侧仪表已默认跑了一次攻击：显示攻击者仅凭统计结果推断「张三是否在数据里」的把握。点击下方按钮换一批噪声再模拟一次，观察结果如何波动。</p>
       <div class="hero-actions">
-        <button id="runAttackBtn" class="btn-primary"><i class="ti ti-player-play"></i> 重新攻击一次</button>
+        <button id="runAttackBtn" class="btn-primary"><i class="ti ti-swords"></i> 模拟一次攻击</button>
         <button id="resetBtn" class="btn-secondary"><i class="ti ti-refresh"></i> 重置实验</button>
       </div>
     </div>
@@ -31,7 +31,7 @@
       <div class="meter-label">攻击者判断张三在场</div>
       <div class="meter-value" id="attackConfidence">—</div>
       <div class="meter-bar"><span id="attackBar"></span></div>
-      <div class="meter-note" id="attackNote">先运行一次攻击</div>
+      <div class="meter-note" id="attackNote">默认已模拟一次，可点击按钮再来一次</div>
     </div>
   </div>
 
@@ -150,22 +150,27 @@
 
   <div class="section">
     <h2><i class="ti ti-battery-automotive"></i> 4. 查询次数会消耗预算</h2>
-    <p class="section-desc">同一批数据不能无限查询。每查一次都会消耗一份 ε，多次查询会把隐私保护慢慢磨薄。</p>
+    <p class="section-desc">
+      <strong style="color:#ffd700;">「预算」= 你愿意为整批数据总共泄露多少隐私</strong>。
+      第 3 节的 ε 是<strong>单次</strong>查询的成本；这一节把它累加起来：给数据集设一个总额 <strong>3.0</strong>，每发布一次结果就扣掉相应的 ε，扣完为止。<br>
+      为什么要有上限？如果允许无限次查询，攻击者可以把多次噪声结果平均掉，噪声就等于白加了。
+      <span style="color:#888;">（这是一个独立的沙盘演示，点击下方按钮不会影响上面第 3 节的统计结果。）</span>
+    </p>
 
     <div class="budget-layout">
       <div class="budget-box">
         <div class="budget-top">
-          <span>总预算 3.0</span>
+          <span>总预算 3.0（可发布的隐私额度）</span>
           <strong id="budgetLeft">剩余 3.0</strong>
         </div>
         <div class="budget-bar"><span id="budgetBar"></span></div>
-        <div class="budget-note" id="budgetNote">还没有查询。</div>
+        <div class="budget-note" id="budgetNote">试着依次点击右侧按钮，看预算怎么被消耗。</div>
       </div>
       <div class="query-buttons">
-        <button class="btn-secondary query-btn" data-cost="0.3" data-query="平均值">查平均值 (-0.3)</button>
-        <button class="btn-secondary query-btn" data-cost="0.5" data-query="超过阈值人数">查人数 (-0.5)</button>
-        <button class="btn-secondary query-btn" data-cost="0.7" data-query="分布图">查分布 (-0.7)</button>
-        <button class="btn-secondary query-btn" data-cost="1.0" data-query="90 分位数">查分位数 (-1.0)</button>
+        <button class="btn-secondary query-btn" data-cost="0.3" data-query="平均值">发布平均值 <small>(耗 ε=0.3)</small></button>
+        <button class="btn-secondary query-btn" data-cost="0.5" data-query="超过阈值人数">发布人数 <small>(耗 ε=0.5)</small></button>
+        <button class="btn-secondary query-btn" data-cost="0.7" data-query="分布图">发布分布 <small>(耗 ε=0.7)</small></button>
+        <button class="btn-secondary query-btn" data-cost="1.0" data-query="90 分位数">发布分位数 <small>(耗 ε=1.0)</small></button>
       </div>
     </div>
     <div class="query-log" id="queryLog"></div>

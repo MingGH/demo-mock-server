@@ -155,28 +155,28 @@
     els.budgetLeft.textContent = '剩余 ' + roundTo(left, 1).toFixed(1);
     els.budgetBar.style.width = (100 - usedPct) + '%';
     if (budgetUsed === 0) {
-      els.budgetNote.textContent = '还没有查询。';
+      els.budgetNote.textContent = '试着依次点击右侧按钮，看预算怎么被消耗。';
     } else if (left > 1.5) {
-      els.budgetNote.textContent = '预算还充足，但每次查询都在消耗隐私。';
+      els.budgetNote.textContent = '预算还充足，但每次发布都在累加泄露风险。';
     } else if (left > 0) {
-      els.budgetNote.textContent = '预算紧张：继续查询会明显削弱保护。';
+      els.budgetNote.textContent = '预算紧张：继续发布会让攻击者更容易平均掉噪声。';
     } else {
-      els.budgetNote.textContent = '预算用完：应该拒绝继续发布统计。';
+      els.budgetNote.textContent = '预算用完：系统应该拒绝再发布任何结果，否则等于取消保护。';
     }
   }
 
   function addQueryLog(name, cost) {
     var leftBefore = Math.max(0, budgetTotal - budgetUsed);
     if (leftBefore <= 0) {
-      els.queryLog.innerHTML = '<div class="log-line danger">预算已用完，拒绝继续查询。</div>' + els.queryLog.innerHTML;
+      els.queryLog.innerHTML = '<div class="log-line danger">预算已用完，拒绝继续发布。</div>' + els.queryLog.innerHTML;
       return;
     }
     if (leftBefore < cost) {
-      els.queryLog.innerHTML = '<div class="log-line danger">剩余预算只有 ' + roundTo(leftBefore, 1).toFixed(1) + '，不足以发布「' + name + '」。</div>' + els.queryLog.innerHTML;
+      els.queryLog.innerHTML = '<div class="log-line danger">剩余预算只有 ' + roundTo(leftBefore, 1).toFixed(1) + '，不足以再发布一次「' + name + '」（需 ' + cost + '）。</div>' + els.queryLog.innerHTML;
       return;
     }
     budgetUsed = budgetUsed + cost;
-    var line = '<div class="log-line">发布「' + name + '」，消耗 ε=' + cost + '，剩余 ' + roundTo(budgetTotal - budgetUsed, 1).toFixed(1) + '</div>';
+    var line = '<div class="log-line">✅ 发布「' + name + '」，扣除 ε=' + cost + '，累计已用 ' + roundTo(budgetUsed, 1).toFixed(1) + ' / 3.0</div>';
     els.queryLog.innerHTML = line + els.queryLog.innerHTML;
     updateBudget();
   }
@@ -218,6 +218,7 @@
     els.runAttackBtn.addEventListener('click', function() {
       experimentSeed = (experimentSeed + 1) >>> 0;
       updateExperiment();
+      els.runAttackBtn.innerHTML = '<i class="ti ti-refresh"></i> 再攻击一次';
       els.runAttackBtn.classList.add('pulse');
       setTimeout(function() { els.runAttackBtn.classList.remove('pulse'); }, 350);
     });
@@ -233,6 +234,7 @@
       els.querySelect.value = 'mean';
       els.trialsSlider.value = '800';
       els.trialsValue.textContent = '800 次';
+      els.runAttackBtn.innerHTML = '<i class="ti ti-swords"></i> 模拟一次攻击';
       var cards = els.scenarioGrid.querySelectorAll('.scenario-card');
       for (var i = 0; i < cards.length; i++) {
         cards[i].classList.toggle('active', cards[i].getAttribute('data-scenario') === 'income');

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HTML-in-Canvas 上手实验：用浏览器原生的 drawElementImage 直接把 DOM 画进 Canvas，和 html2canvas 同源同帧做像素对比，再做一次粒子破碎演示。">
+  <title>HTML-in-Canvas：把 html2canvas 送进退休所 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Hero ── -->
+  <div class="header">
+    <h1><i class="ti ti-stack-2"></i> HTML-in-Canvas</h1>
+    <p>不是新库爆火，是 W3C 在 Canvas 上开了个真正的洞。把 DOM 当像素源喂给 <code>drawElementImage</code>，从此 html2canvas、emoji 翻车、毛玻璃漏底——一次全清账。</p>
+  </div>
+
+  <!-- ── 浏览器能力检测 ── -->
+  <div class="api-banner" id="apiBanner"></div>
+
+  <!-- ── Tab 导航 ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="poster">
+      <i class="ti ti-photo"></i><span>海报对比</span>
+    </button>
+    <button class="tab-btn" data-tab="matrix">
+      <i class="ti ti-table"></i><span>差异矩阵</span>
+    </button>
+    <button class="tab-btn" data-tab="shatter">
+      <i class="ti ti-confetti"></i><span>粒子破碎</span>
+    </button>
+  </div>
+
+  <!-- ── Tab 1：海报对比 ── -->
+  <section class="tab-panel active" data-panel="poster">
+    <div class="section">
+      <h2><i class="ti ti-photo"></i> 同一份 HTML，三行对照</h2>
+      <p class="section-hint">三行从上到下：第一行是页面里活的 DOM，第二行是 html2canvas 的产物，第三行是 <code>ctx.drawElementImage()</code> 的产物。同源同帧、上下对齐，差距就是被这一行 API 砍掉的距离。</p>
+
+      <div class="poster-picker" id="posterPicker"></div>
+      <div class="poster-note" id="posterNote"></div>
+
+      <div class="poster-grid">
+        <div class="poster-col">
+          <div class="poster-col-label"><i class="ti ti-cursor-text"></i>原生 DOM<small>页面里活的</small></div>
+          <div class="poster-frame" id="posterLive"></div>
+        </div>
+        <div class="poster-col">
+          <div class="poster-col-label"><i class="ti ti-screenshot"></i>html2canvas<small>JS 重绘渲染树</small></div>
+          <div class="poster-frame" id="posterLegacy"></div>
+        </div>
+        <div class="poster-col">
+          <div class="poster-col-label"><i class="ti ti-sparkles"></i>drawElementImage<small>浏览器亲自下场</small></div>
+          <div class="poster-frame" id="posterNative"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-bulb"></i> 这个 API 到底解决了什么</h2>
+      <div class="reason-grid">
+        <div class="reason-card">
+          <div class="num">01</div>
+          <h4>渲染引擎一致性</h4>
+          <p>html2canvas 在 JS 里"猜"浏览器怎么渲染，复杂 CSS 一定会翻车。drawElementImage 直接喂给 Blink，输出就是浏览器自己画的。</p>
+        </div>
+        <div class="reason-card">
+          <div class="num">02</div>
+          <h4>Emoji / RTL / 复杂排版</h4>
+          <p>fillText 不会处理双向文本和复杂脚本。新 API 直接复用浏览器的排版引擎，阿拉伯语、印地语、彩色 emoji 一次到位。</p>
+        </div>
+        <div class="reason-card">
+          <div class="num">03</div>
+          <h4>backdrop-filter / mix-blend</h4>
+          <p>这些靠 GPU 合成的效果在 html2canvas 里直接被忽略。新 API 走的就是合成层，所见即所得。</p>
+        </div>
+        <div class="reason-card">
+          <div class="num">04</div>
+          <h4>3D / WebGL 纹理</h4>
+          <p>配套的 <code>texElementImage2D</code> 让 WebGL 把 DOM 当纹理用——3D 场景里贴一张可交互网页，不再需要 hack。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tab 2：差异矩阵 ── -->
+  <section class="tab-panel" data-panel="matrix">
+    <div class="section">
+      <h2><i class="ti ti-table"></i> 八宗"老 API 翻车"案件</h2>
+      <p class="section-hint">每行是一个 html2canvas 在社区里被反复抱怨的场景。左列是原生 DOM，中列是 html2canvas 截图，右列是新 API。Open Chrome DevTools，自己挑刺。</p>
+      <div class="matrix-table">
+        <div class="matrix-head">
+          <div>测试项</div>
+          <div>原生 DOM</div>
+          <div>html2canvas</div>
+          <div>drawElementImage</div>
+          <div>差异说明</div>
+        </div>
+        <div class="matrix-list" id="matrixList"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2><i class="ti ti-code"></i> 三行 API 看懂它怎么工作</h2>
+      <div class="code-block">
+<pre><code>// 1. 给 canvas 加 layoutsubtree，让子 DOM 走真正的布局流程
+&lt;canvas layoutsubtree width="340" height="200"&gt;
+  &lt;div class="poster"&gt;...真正的 HTML/CSS...&lt;/div&gt;
+&lt;/canvas&gt;
+
+// 2. paint 事件：DOM 变化时浏览器主动喊你重绘
+canvas.onpaint = () =&gt; redraw();
+
+// 3. 把 DOM 节点直接画进 Canvas 2D 上下文
+const ctx = canvas.getContext('2d');
+ctx.drawElementImage(poster, 0, 0);
+
+// WebGL 同款：DOM 作为 3D 纹理
+gl.texElementImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, poster);</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tab 3：粒子破碎 ── -->
+  <section class="tab-panel" data-panel="shatter">
+    <div class="section">
+      <h2><i class="ti ti-confetti"></i> 把一张活的 DOM 卡片，炸成像素</h2>
+      <p class="section-hint">DOM 卡片可编辑（试着改一下标题或按钮）。点"炸"之后整张卡片被采样成几千个粒子做物理模拟。这就是 HTML-in-Canvas 想给开发者的新自由度：DOM 不再是 DOM，是一份可任意操作的像素源。</p>
+
+      <div class="shatter-controls">
+        <button class="btn btn-primary" id="shatterFire"><i class="ti ti-bolt"></i> 炸</button>
+        <button class="btn btn-secondary" id="shatterReset"><i class="ti ti-refresh"></i> 重置</button>
+        <span class="shatter-status" id="shatterStatus">点上方按钮，把整张卡炸成像素流。</span>
+      </div>
+
+      <div class="shatter-stage" id="shatterStage">
+        <article class="product-card" id="shatterCard" contenteditable="false">
+          <div class="product-card-head">
+            <span class="product-tag">SPECIAL</span>
+            <span class="product-price">¥ 299</span>
+          </div>
+          <h3 class="product-card-title" contenteditable="true">把网页当游戏渲染</h3>
+          <p class="product-card-desc" contenteditable="true">HTML-in-Canvas 不是新库，是浏览器开的真正的洞。改我，然后按上面那颗按钮。</p>
+          <div class="product-card-foot">
+            <span class="product-meta">已售 1,288 份</span>
+            <button class="product-btn">立即开通</button>
+          </div>
+        </article>
+        <canvas id="shatterCanvas"></canvas>
+      </div>
+
+      <div class="shatter-tip">
+        <i class="ti ti-info-circle"></i>
+        卡片内容用了 <code>contenteditable</code>，可以直接改文字再炸——这正是 html2canvas 时代很难做到的：先编辑、再像素化、再做特效。
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 资料引用 ── -->
+  <div class="section">
+    <h2><i class="ti ti-link"></i> 想深入</h2>
+    <ul class="ref-list">
+      <li><a href="https://github.com/WICG/canvas-place-element" target="_blank" rel="noopener">WICG · canvas-place-element 提案仓库</a></li>
+      <li><a href="https://chromestatus.com/feature/5145348641144832" target="_blank" rel="noopener">Chrome Status · Canvas: Draw Element</a></li>
+      <li><code>chrome://flags/#canvas-draw-element</code> — 在你的浏览器里启用</li>
+    </ul>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

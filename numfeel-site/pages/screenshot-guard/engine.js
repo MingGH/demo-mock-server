@@ -95,6 +95,15 @@ var TECHNIQUES = [
     desc: 'CSS user-select:none + 拦截 copy/selectstart，鼠标无法框选文字，Ctrl+C 也复制不到。',
     bypassNotes: '拦不住任何截图，只能防手动复制文本；DevTools 里内容照样可读。',
   },
+  {
+    id: 'copy-append-tail',
+    name: '复制追加版权尾巴',
+    category: 'input',
+    difficulty: 1,
+    effectiveness: 5,
+    desc: 'CSDN 同款：允许选中，但 copy 事件里往剪贴板里塞一段版权/推广尾巴。用户以为复制成功，粘出来多了 3 行。',
+    bypassNotes: '真拦不住任何东西，纯 SEO/引流。用户手动删就没了。',
+  },
 ];
 
 /**
@@ -160,6 +169,7 @@ function evaluatePair(defense, attack) {
   // 手动选中复制文本（Ctrl+C / 长按选择 / 右键复制）
   if (attack === 'text-copy') {
     if (defense.id === 'disable-select') return { outcome: 'blocked', detail: 'user-select:none 让鼠标框选和 Ctrl+C 全部失效' };
+    if (defense.id === 'copy-append-tail') return { outcome: 'traceable', detail: '复制成功，但剪贴板里被塞了版权/推广尾巴，来源一目了然' };
     if (defense.id === 'block-f12-menu') return { outcome: 'blocked', detail: '右键被拦，无法点"复制"' };
     if (defense.category === 'render') return { outcome: 'blocked', detail: 'Canvas 里的内容不是 DOM 文本，选不中' };
     if (defense.category === 'watermark') return { outcome: 'traceable', detail: '文本能被复制走，但泄露物含水印上下文' };

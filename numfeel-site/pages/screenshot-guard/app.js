@@ -274,19 +274,39 @@
     }
   }
   function onCopy(e) {
-    if (activeDefenses.indexOf('disable-select') === -1) return;
+    var selectOn = activeDefenses.indexOf('disable-select') > -1;
+    var appendOn = activeDefenses.indexOf('copy-append-tail') > -1;
+    if (!selectOn && !appendOn) return;
     // 只在机密卡片范围内拦
     var sel = window.getSelection && window.getSelection();
     var anchor = sel && sel.anchorNode;
     if (!anchor || !secretCard.contains(anchor.nodeType === 1 ? anchor : anchor.parentNode)) return;
-    e.preventDefault();
-    try {
-      if (e.clipboardData && e.clipboardData.setData) {
-        e.clipboardData.setData('text/plain', '');
-      }
-    } catch (err) { /* 静默 */ }
-    logAction('检测到复制操作，已清空剪贴板');
-    showToast('该区域禁止复制');
+
+    if (selectOn) {
+      e.preventDefault();
+      try {
+        if (e.clipboardData && e.clipboardData.setData) {
+          e.clipboardData.setData('text/plain', '');
+        }
+      } catch (err) { /* 静默 */ }
+      logAction('检测到复制操作，已清空剪贴板');
+      showToast('该区域禁止复制');
+      return;
+    }
+
+    // copy-append-tail：允许复制，但追加版权尾巴
+    if (appendOn) {
+      var text = sel ? sel.toString() : '';
+      var tail = '\n\n————————————————\n版权声明：本文为「数字直觉」原创，转载请注明来源。\n原文链接：' + location.href;
+      try {
+        if (e.clipboardData && e.clipboardData.setData) {
+          e.preventDefault();
+          e.clipboardData.setData('text/plain', text + tail);
+        }
+      } catch (err) { /* 静默 */ }
+      logAction('复制内容已被追加版权尾巴');
+      showToast('复制成功（附带了版权链接）');
+    }
   }
   function onSelectStart(e) {
     if (activeDefenses.indexOf('disable-select') === -1) return;

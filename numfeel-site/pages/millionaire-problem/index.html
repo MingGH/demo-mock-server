@@ -171,6 +171,94 @@
     </div>
   </div>
 
+  <!-- ── 真·协作模式（URL 分享） ── -->
+  <div class="section" id="coopSection">
+    <h2><i class="ti ti-share"></i> 真的和同事玩一玩：URL 分享工具</h2>
+    <p class="section-desc">上面演示是"两方"都在你自己的浏览器里跑，看得清但不刺激。这里给你一个可以真跟同事玩的版本——纯前端、无后端、无服务器保存任何数据。全程只交换两个 URL：你发一条给对方，对方发一条回你。协议里所有密文都塞在链接的 query string 里，工资原值从头到尾不出各自浏览器。</p>
+
+    <!-- 三种角色的展示会根据 URL 参数切换 -->
+    <div class="coop-mode" data-role="alice-start" id="coopAliceStart">
+      <div class="coop-badge alice-tag">你是 Alice（发起方）</div>
+      <div class="coop-step">
+        <label class="party-label">输入你的月薪（不会发出去，只留在你的浏览器里）</label>
+        <input type="text" inputmode="numeric" id="coopSalaryA" placeholder="例如 25000" autocomplete="off">
+      </div>
+      <button class="btn-hero" id="coopStartBtn">
+        <i class="ti ti-key"></i> 生成邀请链接
+      </button>
+      <p class="action-hint">点一下会生成一把 Paillier 密钥对，公钥 + 你工资的密文塞进链接。<b style="color:#ffd700;">私钥只留在你浏览器的 localStorage 里</b>，链接里没有。</p>
+
+      <div class="coop-output" id="coopInviteOutput" style="display:none;">
+        <div class="coop-link-row">
+          <label class="party-label">分享给对方（发微信、邮件、飞书都行）</label>
+          <textarea id="coopInviteLink" readonly rows="3"></textarea>
+          <div class="coop-btn-row">
+            <button class="coop-copy-btn" data-target="coopInviteLink"><i class="ti ti-copy"></i> 复制链接</button>
+            <span class="coop-hint">对方打开链接后填工资，会得到一条回给你的链接</span>
+          </div>
+        </div>
+        <div class="coop-status">
+          <i class="ti ti-clock"></i> 等待对方打开链接、填工资、把回执发给你……
+        </div>
+      </div>
+    </div>
+
+    <div class="coop-mode" data-role="bob" id="coopBob" style="display:none;">
+      <div class="coop-badge bob-tag">你是 Bob（接到邀请）</div>
+      <p class="section-desc" style="margin-bottom:12px;">对方（Alice）给你发了一个邀请链接，你现在填自己的工资就好。你的工资只在本地做加密运算，不会发送。运算的结果（一坨密文）会打包成一条链接给你，发回给对方即可。</p>
+      <div class="coop-step">
+        <label class="party-label">输入你的月薪（只留在你的浏览器里）</label>
+        <input type="text" inputmode="numeric" id="coopSalaryB" placeholder="例如 32000" autocomplete="off">
+      </div>
+      <button class="btn-hero" id="coopBobBtn">
+        <i class="ti ti-arrow-back-up"></i> 生成回执链接
+      </button>
+      <p class="action-hint">这一步会在你本地：加密 -b、和对方的密文相加得到 Enc(a-b)、再乘一个只有你自己知道的随机正整数 r。</p>
+
+      <div class="coop-output" id="coopReplyOutput" style="display:none;">
+        <div class="coop-link-row">
+          <label class="party-label">回给 Alice 的链接</label>
+          <textarea id="coopReplyLink" readonly rows="3"></textarea>
+          <div class="coop-btn-row">
+            <button class="coop-copy-btn" data-target="coopReplyLink"><i class="ti ti-copy"></i> 复制链接</button>
+            <span class="coop-hint">发回给对方，对方一打开就能看到最终结果</span>
+          </div>
+        </div>
+        <div class="coop-recap">
+          <div class="coop-recap-item">✓ 你的工资 <b id="coopSalaryBRecap"></b>——只留在这台设备</div>
+          <div class="coop-recap-item">✓ 盲化因子 r = <b id="coopBlindRRecap" class="mono"></b>——只留在这台设备</div>
+          <div class="coop-recap-item">✓ 链接里只有 sign(r × (a - b)) 加密后的一坨密文</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="coop-mode" data-role="alice-finish" id="coopAliceFinish" style="display:none;">
+      <div class="coop-badge alice-tag">你是 Alice（收到回执）</div>
+      <p class="section-desc" style="margin-bottom:12px;">对方回了一条链接给你，浏览器已经用刚才留在 localStorage 里的私钥解开了盲化密文，只读出符号。</p>
+      <div class="coop-result-card" id="coopResultCard">
+        <div class="result-glyph" id="coopResultGlyph">?</div>
+        <div class="result-text" id="coopResultText">—</div>
+        <div class="result-flavor" id="coopResultFlavor"></div>
+        <div class="coop-recap">
+          <div class="coop-recap-item">✓ 你输入的工资 <b id="coopSalaryARecap"></b>——从没离开这台设备</div>
+          <div class="coop-recap-item">✓ 你解密看到的数字：<b id="coopDecryptedRecap" class="mono"></b>（一个巨大的 r × (a-b)）</div>
+          <div class="coop-recap-item">✓ 对方的工资？<b style="color:#ffd700;">你永远不知道</b>——r 是他私有的</div>
+        </div>
+      </div>
+      <button class="btn-hero" id="coopRestartBtn" style="margin-top:16px;">
+        <i class="ti ti-refresh"></i> 再和别人玩一次
+      </button>
+    </div>
+
+    <div class="coop-mode" data-role="error" id="coopError" style="display:none;">
+      <div class="coop-badge" style="background:rgba(255,107,107,0.1);color:#ff6b6b;border:1px solid rgba(255,107,107,0.3);">链接出问题了</div>
+      <p class="section-desc" id="coopErrorMsg">这条链接里的参数不完整，可能已损坏，或者你不是这条会话的发起人（私钥只留在发起人自己的浏览器里）。</p>
+      <button class="btn-hero" id="coopErrorRestartBtn">
+        <i class="ti ti-refresh"></i> 从头开始
+      </button>
+    </div>
+  </div>
+
   <!-- ── 复盘：换 r 会怎样 ── -->
   <div class="section collapsible" id="whyRSection">
     <button class="collapse-toggle" id="whyRToggle">

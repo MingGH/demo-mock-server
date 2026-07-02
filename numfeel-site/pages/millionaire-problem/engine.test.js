@@ -225,6 +225,91 @@ console.log('\n=== 提示语 ===');
 })();
 
 // ══════════════════════════════════════════
+// 真·协作模式：URL 分享编解码
+// ══════════════════════════════════════════
+
+console.log('\n=== 分享编解码 ===');
+
+(function testHexRoundTrip() {
+  var vals = [0n, 1n, 255n, 65536n, 12345678901234567890n];
+  var ok = true;
+  for (var i = 0; i < vals.length; i++) {
+    var hex = engine.mpBigIntToHex(vals[i]);
+    var back = engine.mpHexToBigInt(hex);
+    if (back !== vals[i]) ok = false;
+  }
+  assert(ok, 'BigInt <-> hex 往返一致');
+})();
+
+(function testSessionId() {
+  var s1 = engine.mpGenerateSessionId();
+  var s2 = engine.mpGenerateSessionId();
+  assert(s1.length === 8, 'sid 长度为 8');
+  assert(s1 !== s2, '两次生成的 sid 不同');
+})();
+
+console.log('\n=== 三段式协作流程（端到端） ===');
+
+(function testCollaborativeFlow() {
+  // 1. Alice 发起
+  var salaryA = 25000n;
+  var salaryB = 32000n;
+  var freshKeys = engine.mpGenerateKeys(128);
+  var cA = engine.mpEncrypt(salaryA, freshKeys.publicKey);
+  var sid = engine.mpGenerateSessionId();
+  var inviteQs = engine.mpEncodeAliceInvite({
+    sid: sid,
+    n: freshKeys.publicKey.n,
+    cA: cA
+  });
+  assert(inviteQs.indexOf('stage=await-bob') === 0, '邀请 URL 以 stage=await-bob 开头');
+  assert(inviteQs.indexOf('sid=' + sid) > -1, '邀请 URL 含 sid');
+
+  // 2. Bob 解析并回执
+  var params = new (require('url').URLSearchParams)(inviteQs);
+  var invite = engine.mpDecodeAliceInvite(params);
+  assert(invite.publicKey.n === freshKeys.publicKey.n, 'Bob 恢复的公钥 n 一致');
+  assert(invite.cA === cA, 'Bob 恢复的 cA 一致');
+  assert(invite.sid === sid, 'sid 一致');
+
+  var bobRes = engine.mpBobCompute(salaryB, invite.publicKey, invite.cA);
+  assert(bobRes.blindR >= 2n, 'Bob 盲化因子有效');
+
+  var replyQs = engine.mpEncodeBobReply({
+    sid: invite.sid,
+    cBlinded: bobRes.cipherBlinded
+  });
+  assert(replyQs.indexOf('stage=await-alice') === 0, '回执 URL 以 stage=await-alice 开头');
+
+  // 3. Alice 解析并解密
+  var replyParams = new (require('url').URLSearchParams)(replyQs);
+  var reply = engine.mpDecodeBobReply(replyParams);
+  assert(reply.sid === sid, 'Alice 收到的 sid 一致');
+  assert(reply.cBlinded === bobRes.cipherBlinded, 'Alice 收到的 cBlinded 一致');
+
+  var final = engine.mpAliceFinalize(reply.cBlinded, freshKeys.privateKey, freshKeys.publicKey.n);
+  assert(final.result === '<', '25000 < 32000 → "<"');
+  assert(final.sign === -1, 'sign = -1');
+})();
+
+(function testCollaborativeFlowGreater() {
+  // Alice 更高
+  var freshKeys = engine.mpGenerateKeys(128);
+  var cA = engine.mpEncrypt(88888n, freshKeys.publicKey);
+  var bobRes = engine.mpBobCompute(50000n, freshKeys.publicKey, cA);
+  var final = engine.mpAliceFinalize(bobRes.cipherBlinded, freshKeys.privateKey, freshKeys.publicKey.n);
+  assert(final.result === '>', '88888 > 50000 (协作模式)');
+})();
+
+(function testCollaborativeFlowEqual() {
+  var freshKeys = engine.mpGenerateKeys(128);
+  var cA = engine.mpEncrypt(60000n, freshKeys.publicKey);
+  var bobRes = engine.mpBobCompute(60000n, freshKeys.publicKey, cA);
+  var final = engine.mpAliceFinalize(bobRes.cipherBlinded, freshKeys.privateKey, freshKeys.publicKey.n);
+  assert(final.result === '=', '60000 = 60000 (协作模式)');
+})();
+
+// ══════════════════════════════════════════
 // 总结
 // ══════════════════════════════════════════
 

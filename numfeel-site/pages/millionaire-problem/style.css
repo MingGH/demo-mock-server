@@ -722,6 +722,161 @@
   to { transform: rotate(360deg); }
 }
 
+/* ── 协作模式（真·URL 分享） ── */
+.coop-mode {
+  animation: coopFadeIn 0.35s ease;
+}
+
+@keyframes coopFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.coop-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  margin-bottom: 14px;
+}
+
+.coop-step {
+  margin-bottom: 14px;
+}
+
+.coop-step input {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1.05rem;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.coop-step input:focus {
+  border-color: #ffd700;
+}
+
+.coop-output {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 215, 0, 0.18);
+  border-radius: 10px;
+}
+
+.coop-link-row {
+  margin-bottom: 14px;
+}
+
+.coop-link-row textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #cfe4f7;
+  font-family: 'Courier New', monospace;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  word-break: break-all;
+}
+
+.coop-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.coop-copy-btn {
+  padding: 8px 16px;
+  background: rgba(255, 215, 0, 0.12);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 6px;
+  color: #ffd700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.coop-copy-btn:hover {
+  background: rgba(255, 215, 0, 0.2);
+}
+
+.coop-copy-btn:active {
+  transform: scale(0.96);
+}
+
+.coop-copy-btn.copied {
+  background: rgba(129, 199, 132, 0.15);
+  border-color: rgba(129, 199, 132, 0.4);
+  color: #81c784;
+}
+
+.coop-hint {
+  color: #888;
+  font-size: 0.78rem;
+}
+
+.coop-status {
+  color: #90caf9;
+  font-size: 0.82rem;
+  padding: 10px 12px;
+  background: rgba(144, 202, 249, 0.06);
+  border-left: 3px solid rgba(144, 202, 249, 0.4);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.coop-recap {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.coop-recap-item {
+  color: #ccc;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+}
+
+.coop-recap-item .mono {
+  font-family: 'Courier New', monospace;
+  font-size: 0.78rem;
+  color: #ffd700;
+  word-break: break-all;
+}
+
+.coop-result-card {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.06), rgba(255, 170, 0, 0.03));
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 14px;
+  padding: 24px;
+  text-align: center;
+}
+
+.coop-result-card .result-glyph {
+  animation: popIn 0.5s ease;
+}
+
 /* ── 响应式 ── */
 @media (max-width: 640px) {
   .container {

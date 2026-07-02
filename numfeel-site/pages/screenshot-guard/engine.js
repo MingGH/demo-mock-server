@@ -76,6 +76,8 @@ var TECHNIQUES = [
     effectiveness: 90,
     desc: '仅视频有效：Netflix 靠这个把截屏和录屏变成黑屏。需要浏览器+GPU+显示器全链路支持。',
     bypassNotes: '真正专业级方案，但仅限视频；手机对屏拍照仍然可绕过',
+    demoOnly: true,
+    demoNote: 'DRM 只作用于 <video>+EME 视频链路，且需要浏览器、GPU、显示器全链路支持 HDCP，前端 JS 无法给普通 DOM/Canvas 加 DRM。本页保护的是文本凭证，所以启用后没有可见变化——它只在"攻防模拟"里参与判定。',
   },
   {
     id: 'block-f12-menu',

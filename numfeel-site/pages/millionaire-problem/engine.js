@@ -323,6 +323,134 @@ function mpRunProtocol(salaryA, salaryB, existingKeys, keyBits, blindBits) {
 }
 
 // ══════════════════════════════════════════
+// 真·协作模式：URL 分享数据编解码
+// ══════════════════════════════════════════
+
+/**
+ * BigInt → hex 字符串（无前缀，偶数位补齐）
+ * @param {BigInt} n
+ * @returns {string}
+ */
+function mpBigIntToHex(n) {
+  var s = n.toString(16);
+  if (s.length % 2) s = '0' + s;
+  return s;
+}
+
+/**
+ * hex → BigInt
+ * @param {string} hex
+ * @returns {BigInt}
+ */
+function mpHexToBigInt(hex) {
+  if (!hex) return 0n;
+  return BigInt('0x' + hex);
+}
+
+/**
+ * Alice 发起：把公钥 n 和密文 cA 打包成 URL 参数字符串
+ * 注意：nSquared = n * n，g = n + 1，都可由 n 推出，不入包
+ * @param {object} payload - { n, cA, sid }
+ * @returns {string} 形如 "stage=await-bob&sid=xxx&n=...&cA=..."
+ */
+function mpEncodeAliceInvite(payload) {
+  return 'stage=await-bob' +
+    '&sid=' + encodeURIComponent(payload.sid) +
+    '&n=' + mpBigIntToHex(payload.n) +
+    '&cA=' + mpBigIntToHex(payload.cA);
+}
+
+/**
+ * Bob 端解析 Alice 的邀请参数
+ * @param {URLSearchParams} params
+ * @returns {object} { sid, publicKey, cA }
+ */
+function mpDecodeAliceInvite(params) {
+  var n = mpHexToBigInt(params.get('n'));
+  return {
+    sid: params.get('sid') || '',
+    publicKey: { n: n, g: n + 1n, nSquared: n * n },
+    cA: mpHexToBigInt(params.get('cA'))
+  };
+}
+
+/**
+ * Bob 回执：打包盲化密文
+ * @param {object} payload - { sid, cBlinded }
+ * @returns {string}
+ */
+function mpEncodeBobReply(payload) {
+  return 'stage=await-alice' +
+    '&sid=' + encodeURIComponent(payload.sid) +
+    '&cBlinded=' + mpBigIntToHex(payload.cBlinded);
+}
+
+/**
+ * Alice 端解析 Bob 的回执参数
+ * @param {URLSearchParams} params
+ * @returns {object} { sid, cBlinded }
+ */
+function mpDecodeBobReply(params) {
+  return {
+    sid: params.get('sid') || '',
+    cBlinded: mpHexToBigInt(params.get('cBlinded'))
+  };
+}
+
+/**
+ * Bob 端：拿到 Alice 的公钥和 cA 后，本地算出 cBlinded
+ * @param {BigInt|number} salaryB - Bob 的工资
+ * @param {object} publicKey - Alice 分享过来的公钥
+ * @param {BigInt} cipherA - Alice 加密的 a
+ * @param {number} [blindBits=24] - r 的位数
+ * @returns {object} { cipherNegB, cipherDiff, blindR, cipherBlinded }
+ */
+function mpBobCompute(salaryB, publicKey, cipherA, blindBits) {
+  if (!blindBits) blindBits = 24;
+  var b = typeof salaryB === 'bigint' ? salaryB : BigInt(salaryB);
+  var cipherNegB = mpEncrypt(-b, publicKey);
+  var cipherDiff = mpHomAdd(cipherA, cipherNegB, publicKey.nSquared);
+  var r = mpRandomPositive(blindBits);
+  var cipherBlinded = mpHomScalarMul(cipherDiff, r, publicKey.nSquared);
+  return {
+    cipherNegB: cipherNegB,
+    cipherDiff: cipherDiff,
+    blindR: r,
+    cipherBlinded: cipherBlinded
+  };
+}
+
+/**
+ * Alice 端：拿到 Bob 回来的盲化密文后，本地解密只读符号
+ * @param {BigInt} cipherBlinded
+ * @param {object} privateKey
+ * @param {BigInt} n - 公钥模数
+ * @returns {object} { decryptedBlinded, sign, result }
+ */
+function mpAliceFinalize(cipherBlinded, privateKey, n) {
+  var raw = mpDecrypt(cipherBlinded, privateKey);
+  var signed = mpToSigned(raw, n);
+  var sign = mpSign(signed);
+  return {
+    decryptedBlinded: signed,
+    sign: sign,
+    result: sign > 0 ? '>' : (sign < 0 ? '<' : '=')
+  };
+}
+
+/**
+ * 生成一个短会话 ID（8 位 base36），用于 URL 参数和 localStorage 关联
+ * @returns {string}
+ */
+function mpGenerateSessionId() {
+  var s = '';
+  for (var i = 0; i < 8; i++) {
+    s += Math.floor(Math.random() * 36).toString(36);
+  }
+  return s;
+}
+
+// ══════════════════════════════════════════
 // 彩蛋提示语
 // ══════════════════════════════════════════
 
@@ -389,6 +517,15 @@ if (typeof module !== 'undefined' && module.exports) {
     mpLcm: mpLcm,
     mpModInverse: mpModInverse,
     mpFlavorText: mpFlavorText,
-    mpTrivia: mpTrivia
+    mpTrivia: mpTrivia,
+    mpBigIntToHex: mpBigIntToHex,
+    mpHexToBigInt: mpHexToBigInt,
+    mpEncodeAliceInvite: mpEncodeAliceInvite,
+    mpDecodeAliceInvite: mpDecodeAliceInvite,
+    mpEncodeBobReply: mpEncodeBobReply,
+    mpDecodeBobReply: mpDecodeBobReply,
+    mpBobCompute: mpBobCompute,
+    mpAliceFinalize: mpAliceFinalize,
+    mpGenerateSessionId: mpGenerateSessionId
   };
 }

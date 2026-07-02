@@ -86,6 +86,15 @@ var TECHNIQUES = [
     desc: '拦截 contextmenu、F12、Ctrl+Shift+I 组合键。纯心理安慰。',
     bypassNotes: '菜单栏点开 DevTools 即可绕过',
   },
+  {
+    id: 'disable-select',
+    name: '禁止选择 / 复制',
+    category: 'input',
+    difficulty: 1,
+    effectiveness: 8,
+    desc: 'CSS user-select:none + 拦截 copy/selectstart，鼠标无法框选文字，Ctrl+C 也复制不到。',
+    bypassNotes: '拦不住任何截图，只能防手动复制文本；DevTools 里内容照样可读。',
+  },
 ];
 
 /**
@@ -148,6 +157,15 @@ function simulateBattle(defenses, attackMethod) {
  * @returns {{outcome:string,detail:string}}
  */
 function evaluatePair(defense, attack) {
+  // 手动选中复制文本（Ctrl+C / 长按选择 / 右键复制）
+  if (attack === 'text-copy') {
+    if (defense.id === 'disable-select') return { outcome: 'blocked', detail: 'user-select:none 让鼠标框选和 Ctrl+C 全部失效' };
+    if (defense.id === 'block-f12-menu') return { outcome: 'blocked', detail: '右键被拦，无法点"复制"' };
+    if (defense.category === 'render') return { outcome: 'blocked', detail: 'Canvas 里的内容不是 DOM 文本，选不中' };
+    if (defense.category === 'watermark') return { outcome: 'traceable', detail: '文本能被复制走，但泄露物含水印上下文' };
+    return { outcome: 'useless', detail: '这类防护不阻止文本选择' };
+  }
+
   // 手机对屏拍照：绕过一切纯前端技术，只有水印能溯源
   if (attack === 'phone-camera') {
     if (defense.category === 'watermark') return { outcome: 'traceable', detail: '水印被一起拍进照片，事后可溯源' };

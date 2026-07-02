@@ -159,6 +159,13 @@
       receiptGrid.style.display = '';
       if (existCanvas) existCanvas.remove();
     }
+
+    // 禁止选择 / 复制
+    if (activeDefenses.indexOf('disable-select') > -1) {
+      secretCard.classList.add('no-select');
+    } else {
+      secretCard.classList.remove('no-select');
+    }
   }
 
   function drawReceiptCanvas() {
@@ -266,11 +273,35 @@
       logAction('右键菜单已拦截');
     }
   }
+  function onCopy(e) {
+    if (activeDefenses.indexOf('disable-select') === -1) return;
+    // 只在机密卡片范围内拦
+    var sel = window.getSelection && window.getSelection();
+    var anchor = sel && sel.anchorNode;
+    if (!anchor || !secretCard.contains(anchor.nodeType === 1 ? anchor : anchor.parentNode)) return;
+    e.preventDefault();
+    try {
+      if (e.clipboardData && e.clipboardData.setData) {
+        e.clipboardData.setData('text/plain', '');
+      }
+    } catch (err) { /* 静默 */ }
+    logAction('检测到复制操作，已清空剪贴板');
+    showToast('该区域禁止复制');
+  }
+  function onSelectStart(e) {
+    if (activeDefenses.indexOf('disable-select') === -1) return;
+    var target = e.target;
+    if (target && secretCard.contains(target)) {
+      e.preventDefault();
+    }
+  }
   document.addEventListener('visibilitychange', onVisibilityChange);
   window.addEventListener('blur', onWindowBlur);
   window.addEventListener('focus', onWindowFocus);
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('contextmenu', onContextMenu);
+  document.addEventListener('copy', onCopy);
+  document.addEventListener('selectstart', onSelectStart);
 
   /* ── DevTools 检测（尺寸差） ── */
   var devtoolsTriggered = false;
@@ -354,6 +385,7 @@
     'os-recording': 'OS 级录屏',
     'devtools-save': 'DevTools 保存',
     'headless-crawler': '自动化爬虫',
+    'text-copy': '手动复制文本',
   };
   var outcomeLabel = { blocked: '拦住', traceable: '溯源可追踪', useless: '无效' };
   var outcomeIcon = {

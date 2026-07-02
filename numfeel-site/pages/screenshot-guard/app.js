@@ -12,11 +12,9 @@
   var pickRandomTip = Engine.pickRandomTip;
 
   /* ── Hero 图 ── */
-  var HERO_PROMPT = '黑色背景，一台笔记本电脑屏幕上显示中文"机密文档"四个字，前面有一个大大的红色叉号，赛博朋克风格，图片中如有文字使用中文';
   var heroImg = document.getElementById('heroImg');
   if (heroImg) {
-    heroImg.src = 'https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=' +
-      encodeURIComponent(HERO_PROMPT) + '&image_size=landscape_16_9';
+    heroImg.src = 'images/hero.jpeg';
   }
 
   /* ── Tab 切换 ── */

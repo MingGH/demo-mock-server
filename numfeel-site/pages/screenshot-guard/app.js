@@ -66,14 +66,21 @@
       var arrow = t.id === 'dynamic-watermark'
         ? '<div class="tech-arrow"><i class="ti ti-hand-click"></i> 从这里开始</div>'
         : '';
+      var demoBadge = t.demoOnly
+        ? '<span class="demo-badge" title="' + escapeAttr(t.demoNote || '') + '"><i class="ti ti-info-circle"></i> 仅示意</span>'
+        : '';
+      var demoNote = t.demoOnly
+        ? '<div class="tech-demo-note"><i class="ti ti-alert-triangle"></i> ' + escapeHtml(t.demoNote || '') + '</div>'
+        : '';
       html += ''
         + '<div class="tech-card' + pulseCls + '" id="card-' + t.id + '">'
         +   arrow
         +   '<div class="tech-header">'
-        +     '<span class="tech-name">' + t.name + '</span>'
+        +     '<span class="tech-name">' + t.name + demoBadge + '</span>'
         +     '<span class="diff-badge diff-' + t.difficulty + '">难度 ' + t.difficulty + '</span>'
         +   '</div>'
         +   '<p class="tech-desc">' + t.desc + '</p>'
+        +   demoNote
         +   '<div class="tech-eff">'
         +     '<span>有效性</span>'
         +     '<div class="eff-bar"><div class="eff-fill" style="width:' + t.effectiveness + '%;background:' + effColor + '"></div></div>'
@@ -85,6 +92,16 @@
         + '</div>';
     }
     grid.innerHTML = html;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+  function escapeAttr(s) {
+    return escapeHtml(s).replace(/"/g, '&quot;');
   }
 
   window.toggleDefense = function (id) {
@@ -105,8 +122,13 @@
     applyDefenses();
     updateProtectionMeter();
 
-    // 彩蛋提示
-    showToast(pickRandomTip());
+    // 彩蛋提示：demoOnly 的技术优先显示专属说明，避免用户误以为坏了
+    var tech = findTech(id);
+    if (enabling && tech && tech.demoOnly && tech.demoNote) {
+      showToast(tech.demoNote);
+    } else {
+      showToast(pickRandomTip());
+    }
 
     logAction(
       (enabling ? '启用' : '关闭') +

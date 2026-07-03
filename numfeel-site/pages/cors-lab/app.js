@@ -1,8 +1,6 @@
 // ========== 跨域请求限制实验室：交互层 ==========
 
-var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-  ? 'http://localhost:8080/cors-lab'
-  : 'https://numfeel-api.996.ninja/cors-lab';
+var API = 'https://numfeel-api.996.ninja/cors-lab';
 
 var MODE_LABEL = {
   'deny': 'deny（默认拒绝）',

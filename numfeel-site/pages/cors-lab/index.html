@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="浏览器为什么严格限制跨域请求？亲手发一个被 CORS 拦截的请求，看 Network 里请求 200、响应体就在那，JS 却读不到。切换服务器 CORS 策略，看放行如何发生；用一次「读不到响应却扣了款」的转账，证明 CORS 拦的是读、拦不住发。">
+  <title>跨域请求限制实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-http-connect"></i> 跨域请求限制实验室</h1>
+    <p>都说浏览器「严格限制跨域」。到底限制了什么？这一页让你亲手发一个被 CORS 拦下的请求，去 Network 面板看请求其实是 200、响应体就躺在那——只是浏览器不肯把响应交给你的 JS。再切一下服务器的 CORS 策略，看放行是怎么发生的。</p>
+  </div>
+
+  <div class="devtools-hint">
+    <i class="ti ti-tool"></i>
+    <span><strong>先打开 DevTools</strong>（F12 → Network 标签）。这一页所有的关键证据都在那里：请求状态码、响应头、OPTIONS 预检。不打开等于白来。</span>
+  </div>
+
+  <!-- ── 策略控制台 ── -->
+  <div class="section">
+    <h2><i class="ti ti-adjustments"></i> 服务器 CORS 策略</h2>
+    <p class="section-desc">受害者接口（/cors-lab/me、/cors-lab/transfer）的跨域行为由下面这个开关决定。切到不同策略，下方会显示服务器这次会写出的 CORS 响应头。控制接口（policy / transfers）始终放行，所以你不会被自己设的 deny 反锁。</p>
+
+    <div class="mode-grid" id="modeGrid">
+      <button class="mode-card active" data-mode="deny">
+        <div class="mode-head"><i class="ti ti-shield-off"></i> deny</div>
+        <div class="mode-sub">默认拒绝</div>
+        <div class="mode-desc">不写任何 CORS 头。浏览器读不到响应。</div>
+      </button>
+      <button class="mode-card" data-mode="allow">
+        <div class="mode-head"><i class="ti ti-shield-check"></i> allow</div>
+        <div class="mode-sub">Allow-Origin: *</div>
+        <div class="mode-desc">允许任意源读取，但禁止带凭据。</div>
+      </button>
+      <button class="mode-card" data-mode="allow-credentials">
+        <div class="mode-head"><i class="ti ti-shield-lock"></i> allow-credentials</div>
+        <div class="mode-sub">回显 Origin + 凭据</div>
+        <div class="mode-desc">回显具体 Origin 并允许带 cookie 读取。</div>
+      </button>
+    </div>
+
+    <div class="policy-state">
+      <div class="ps-row"><span class="ps-label">当前策略</span><code id="curMode">deny</code></div>
+      <div class="ps-row"><span class="ps-label">服务器将写出</span><code id="curHeaders">（无 CORS 头）</code></div>
+    </div>
+  </div>
+
+  <!-- ── 受害者账户 ── -->
+  <div class="section">
+    <h2><i class="ti ti-wallet"></i> 受害者账户</h2>
+    <p class="section-desc">一个跑在另一个域名上的接口，返回「你的余额」。余额存在服务端内存里，转账会真的扣款。这是被 CORS 保护的那一侧。</p>
+    <div class="account-card">
+      <div class="balance-box">
+        <span class="balance-label">余额</span>
+        <span class="balance-value" id="balanceValue">¥ —</span>
+      </div>
+      <div class="account-actions">
+        <button class="btn btn-primary" id="refreshMeBtn"><i class="ti ti-refresh"></i> 读取余额 GET /me</button>
+        <button class="btn btn-ghost" id="resetBtn"><i class="ti ti-rotate"></i> 重置账户</button>
+      </div>
+      <div class="account-note" id="meNote">点「读取余额」试试。当前是 deny，大概率读不到——那就对了。</div>
+    </div>
+  </div>
+
+  <!-- ── 核心实验：请求发了，响应被扣 ── -->
+  <div class="section">
+    <h2><i class="ti ti-flask"></i> 实验 1｜请求发了，响应被扣</h2>
+    <p class="section-desc">最常见的误解是把 CORS 当成「请求被拦在门外」。下面这个按钮发的是简单 GET，浏览器会直接发出去、服务器会照常处理。你去看 Network，请求是 200、响应体就在那——可 JS 拿不到。把上面的策略切成 allow 再点一次，对比看。</p>
+
+    <div class="exp-row">
+      <button class="btn btn-primary" id="fetchMeBtn"><i class="ti ti-send"></i> fetch('/cors-lab/me')</button>
+      <label class="cred-toggle"><input type="checkbox" id="credToggle"><span>携带凭据 (credentials: 'include')</span></label>
+    </div>
+    <div class="class-line" id="classLine">—</div>
+    <div class="result-panel" id="meResult">
+      <div class="rp-status">还没发请求</div>
+      <div class="rp-body">点上面的按钮，结果会显示在这里。同时去 Network 看那条 /cors-lab/me 请求。</div>
+    </div>
+  </div>
+
+  <!-- ── 预检实验 ── -->
+  <div class="section">
+    <h2><i class="ti ti-shield-question"></i> 实验 2｜预检：OPTIONS 先问一句</h2>
+    <p class="section-desc">带上一个自定义头 X-Demo，这就不再是「简单请求」了。浏览器会先发一个 OPTIONS 问问服务器「我能不能这么请求」，得到允许才发真正的请求。deny 下这个预检会被 403 顶回来，真正的请求根本不会发出；allow 下预检通过，才会发出后续请求。</p>
+
+    <div class="exp-row">
+      <button class="btn btn-primary" id="fetchPreflightBtn"><i class="ti ti-send"></i> fetch('/cors-lab/me') + 自定义头 X-Demo</button>
+    </div>
+    <div class="class-line" id="preflightClass">—</div>
+    <div class="result-panel" id="preflightResult">
+      <div class="rp-status">还没发请求</div>
+      <div class="rp-body">点按钮后，去 Network 看是不是先出现一条 OPTIONS 请求。</div>
+    </div>
+  </div>
+
+  <!-- ── CSRF 实验 ── -->
+  <div class="section">
+    <h2><i class="ti ti-arrow-back-up"></i> 实验 3｜CORS 拦不住 CSRF</h2>
+    <p class="section-desc">转账接口只收 form-urlencoded——这是个「简单请求」，浏览器不会预检，请求会直接送达服务器并真正扣款。就算策略是 deny、就算 JS 抛了 CORS 错误，这笔转账也已经发生了。按下面四步走一遍，亲眼确认「读不到响应」跟「请求没发出」是两码事。</p>
+
+    <ol class="step-list">
+      <li>把上面策略切成 <code>allow</code>，点「读取余额」记下当前余额。</li>
+      <li>把策略切成 <code>deny</code>，点下面「发起转账」——JS 会报 CORS 错。</li>
+      <li>把策略切回 <code>allow</code>，再点「读取余额」。</li>
+      <li>余额少了 ¥100。第 2 步那个「失败」的转账，其实已经扣款了。</li>
+    </ol>
+
+    <div class="exp-row">
+      <button class="btn btn-danger" id="transferBtn"><i class="ti ti-arrows-left-right"></i> 发起转账 POST /cors-lab/transfer (¥100)</button>
+      <button class="btn btn-ghost" id="refreshTransfersBtn"><i class="ti ti-list"></i> 查转账流水</button>
+    </div>
+    <div class="result-panel" id="transferResult">
+      <div class="rp-status">还没转账</div>
+      <div class="rp-body">转账流水会列在下面。注意：即便 fetch 报错，流水里也可能多一条——那就是被 CORS 拦住读取、却已经执行的请求。</div>
+    </div>
+    <div class="transfer-log" id="transferLog"></div>
+  </div>
+
+  <!-- ── 为什么是浏览器管 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么这件事只能浏览器管</h2>
+    <p class="section-desc">HTTP 无状态。服务器收到一个请求，只能靠 Origin / Referer 两个头去猜这请求是谁指使的。这俩头在浏览器里由浏览器自己写、脚本改不了；可一旦离开浏览器（curl、Python），想填什么就填什么。服务器永远没法可靠判断一个请求是不是某个网页里的脚本偷偷发的。</p>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="why-icon"><i class="ti ti-eye"></i></div>
+        <h3>只有浏览器知道代码的出身</h3>
+        <p>脚本跑在浏览器肚子里，浏览器知道这段代码从哪个源加载来，这个信息脚本自己篡改不了。同源策略只能由浏览器执行，因为它管得了，别人管不了。</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon"><i class="ti ti-mask"></i></div>
+        <h3>恶意脚本用的是你的脸</h3>
+        <p>脚本运行时拥有你的全部浏览器上下文：cookie、内网位置、登录态、IP。打开一个投毒网页，里面的脚本就能以你的身份去戳其它站点。浏览器是这一切的唯一出入口。</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon"><i class="ti ti-router"></i></div>
+        <h3>只拦 cookie 远远不够</h3>
+        <p>路由器、打印机、内网管理台对「本网段的请求」几乎无条件信任，根本不要 cookie。一个恶意网页就能以你的网络位置去改 192.168.x.x 的 DNS。所以限制得落在「读跨域响应」这一层。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 结论 ── -->
+  <div class="section">
+    <h2><i class="ti ti-quote"></i> 一句话结论</h2>
+    <div class="conclusion-box">
+      <p id="conclusionText">浏览器严格限制跨域，因为它是唯一能可靠识别「代码出身」的角色。限制的落点在「不让脚本读跨域响应」，请求该发还是发、服务器该处理还是处理。这套机制由服务器声明、浏览器执行，本质是 default-deny 加显式 opt-in 的安全范式。CORS 管「读」，SameSite cookie 管「带身份的写」，两条线各管各的，别混成一回事。</p>
+      <button class="btn btn-secondary" id="copyConclusionBtn"><i class="ti ti-copy"></i> 复制结论</button>
+    </div>
+  </div>
+
+</div>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

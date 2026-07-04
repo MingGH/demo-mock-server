@@ -1,0 +1,750 @@
+/* ══════════ 拨号上网下载模拟器 ══════════ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 24px; margin-bottom: 24px; }
+.header h1 {
+  font-size: 2.3rem;
+  background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+@keyframes shimmer {
+  to { background-position: 200% center; }
+}
+
+.header p { font-size: 1rem; color: #a0a0a0; max-width: 640px; margin: 0 auto; }
+
+/* ── Hero Scene ── */
+.hero-scene {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 32px;
+  aspect-ratio: 2 / 1;
+}
+
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hero-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.85));
+}
+
+.hero-text {
+  color: #ffd700;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* ── Sections ── */
+.section {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.section h2 {
+  font-size: 1.3rem;
+  color: #ffd700;
+  margin-bottom: 8px;
+}
+
+.section-hint {
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.hidden { display: none !important; }
+
+/* ══════════ 阶段一：拨号对话框 ══════════ */
+.dialup-dialog {
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  border-radius: 0;
+  max-width: 500px;
+  margin: 16px auto;
+  font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, sans-serif;
+  color: #000;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+}
+
+.dialog-titlebar {
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dialog-titlebar .dialog-close {
+  margin-left: auto;
+  background: #c0c0c0;
+  border: 1px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  color: #000;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.dialog-body {
+  padding: 12px;
+}
+
+.dialog-row {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dialog-row label {
+  font-size: 0.8rem;
+  min-width: 70px;
+  color: #000;
+}
+
+.modem-img {
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border: 2px inset #808080;
+  border-radius: 0;
+}
+
+/* ISP Cards */
+.isp-cards {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.isp-card {
+  background: #fff;
+  border: 2px solid #808080;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 90px;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.isp-card.active {
+  border-color: #000080;
+  background: #cce5ff;
+}
+
+.isp-card:hover {
+  background: #e8e8e8;
+}
+
+.isp-name {
+  font-weight: bold;
+  font-size: 1rem;
+  color: #000080;
+}
+
+.isp-desc {
+  font-size: 0.65rem;
+  color: #555;
+}
+
+.isp-num {
+  font-size: 0.7rem;
+  color: #888;
+  font-family: monospace;
+}
+
+/* Win Input */
+.win-input {
+  border: 2px inset #808080;
+  padding: 3px 6px;
+  font-size: 0.8rem;
+  background: #fff;
+  flex: 1;
+  max-width: 200px;
+  font-family: inherit;
+}
+
+/* Dialog Status */
+.dialog-status {
+  background: #fff;
+  border: 2px inset #808080;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  min-height: 32px;
+}
+
+.status-dialing .status-text,
+.status-negotiating .status-text { color: #000080; }
+.status-connected .status-text { color: #008000; }
+.status-failed .status-text { color: #cc0000; }
+
+.status-icon .ti { margin-right: 4px; }
+
+/* Win Buttons */
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.btn-win {
+  border: 2px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  background: #c0c0c0;
+  padding: 4px 16px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 80px;
+}
+
+.btn-win:active {
+  border-color: #808080 #ffffff #ffffff #808080;
+}
+
+.btn-win:disabled {
+  color: #808080;
+  cursor: not-allowed;
+}
+
+.btn-primary-win {
+  font-weight: bold;
+  border: 3px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
+}
+
+/* Audio Visualizer */
+.audio-visualizer {
+  text-align: center;
+  margin-top: 16px;
+}
+
+#audioCanvas {
+  width: 100%;
+  max-width: 400px;
+  height: 60px;
+  border-radius: 8px;
+  background: #0a0a1a;
+}
+
+.audio-label {
+  color: #4fc3f7;
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+/* ══════════ 阶段二：下载站 ══════════ */
+.download-site {
+  background: #fff;
+  border-radius: 4px;
+  overflow: hidden;
+  color: #333;
+}
+
+.dl-site-header {
+  background: linear-gradient(180deg, #1a237e, #283593);
+  color: #fff;
+  padding: 12px 16px;
+}
+
+.site-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.site-badge {
+  font-size: 0.7rem;
+  background: rgba(255,255,255,0.2);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 8px;
+}
+
+.site-nav {
+  font-size: 0.75rem;
+  margin-top: 6px;
+  color: #90caf9;
+}
+
+.site-nav .nav-active {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.site-visitor {
+  font-size: 0.7rem;
+  color: #90caf9;
+  margin-top: 4px;
+}
+
+.visitor-count {
+  color: #ff5252;
+  font-weight: bold;
+}
+
+/* Game Cards */
+.game-list {
+  padding: 12px;
+}
+
+.game-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.game-card:hover {
+  background: #f5f5f5;
+  border-color: #1a237e;
+}
+
+.game-icon {
+  font-size: 1.8rem;
+  color: #1a237e;
+  min-width: 40px;
+  text-align: center;
+}
+
+.game-info {
+  flex: 1;
+}
+
+.game-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a237e;
+}
+
+.game-meta {
+  font-size: 0.75rem;
+  color: #666;
+  display: flex;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.game-size {
+  color: #d32f2f;
+  font-weight: 500;
+}
+
+.game-desc {
+  font-size: 0.8rem;
+  color: #555;
+  margin-top: 4px;
+}
+
+.btn-download {
+  background: #1a237e;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btn-download:hover {
+  background: #283593;
+}
+
+/* ══════════ 阶段三：下载窗口 ══════════ */
+.download-window {
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  max-width: 550px;
+  margin: 0 auto 20px;
+  font-family: 'MS Sans Serif', 'Segoe UI', Tahoma, sans-serif;
+  color: #000;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+}
+
+.dw-titlebar {
+  background: linear-gradient(90deg, #000080, #1084d0);
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dw-titlebar .dialog-close {
+  background: #c0c0c0;
+  border: 1px solid;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  color: #000;
+  padding: 0 4px;
+  font-size: 0.65rem;
+  cursor: pointer;
+}
+
+.dw-body {
+  padding: 12px;
+}
+
+/* Flying paper animation */
+.dw-animation {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.flying-paper {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 1.2rem;
+  color: #000080;
+  animation: flyPaper 1.5s ease-in-out infinite;
+}
+
+@keyframes flyPaper {
+  0%, 100% { transform: translateX(-20px); opacity: 0.3; }
+  50% { transform: translateX(20px); opacity: 1; }
+}
+
+.dw-folders {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 0.75rem;
+}
+
+.dw-folders > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.folder-from .ti, .folder-to .ti { font-size: 1.4rem; }
+.folder-arrow .ti { font-size: 1rem; color: #808080; }
+
+/* Progress Bar */
+.dw-progress-wrap {
+  margin-bottom: 10px;
+}
+
+.dw-progress-bar {
+  height: 18px;
+  background: #fff;
+  border: 2px inset #808080;
+  position: relative;
+}
+
+.dw-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #000080, #4040ff);
+  transition: width 0.1s linear;
+}
+
+.dw-progress-text {
+  text-align: center;
+  font-size: 0.75rem;
+  margin-top: 3px;
+  color: #333;
+  font-weight: bold;
+}
+
+/* Stats */
+.dw-stats {
+  font-size: 0.75rem;
+}
+
+.dw-stat-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 3px;
+  flex-wrap: wrap;
+}
+
+.dw-stat-label {
+  color: #555;
+}
+
+.dw-stat-value {
+  font-weight: bold;
+  color: #000;
+  min-width: 80px;
+}
+
+/* ── Control Panel ── */
+.control-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+}
+
+.control-label {
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.speed-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.speed-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #ccc;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.speed-btn.active {
+  background: #ffd700;
+  color: #000;
+  border-color: #ffd700;
+  font-weight: bold;
+}
+
+.speed-btn:hover:not(.active) {
+  background: rgba(255,255,255,0.15);
+}
+
+.resume-toggle {
+  margin-left: auto;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.toggle-text {
+  color: #e0e0e0;
+}
+
+.toggle-hint {
+  color: #888;
+  font-size: 0.75rem;
+}
+
+/* ── Stats Panel ── */
+.stats-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat-icon {
+  font-size: 1.4rem;
+  color: #ffd700;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: #888;
+}
+
+/* ── Event Log ── */
+.event-log {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.log-title {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: #aaa;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.log-body {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  font-family: 'Menlo', 'Consolas', monospace;
+}
+
+.log-entry {
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.log-time { color: #666; }
+.log-info { color: #90caf9; }
+.log-error { color: #ff6b6b; }
+.log-warning { color: #ffb74d; }
+.log-success { color: #81c784; }
+
+/* ══════════ 阶段四：完成 ══════════ */
+.completion-summary {
+  text-align: center;
+}
+
+.summary-hero {
+  margin-bottom: 24px;
+}
+
+.summary-game {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.summary-tagline {
+  color: #81c784;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.summary-stat {
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.summary-value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffd700;
+}
+
+.summary-label {
+  font-size: 0.7rem;
+  color: #888;
+  margin-top: 4px;
+}
+
+/* Compare Section */
+.summary-compare {
+  background: rgba(144, 202, 249, 0.1);
+  border: 1px solid rgba(144, 202, 249, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.compare-title {
+  color: #90caf9;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.compare-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.85rem;
+}
+
+.compare-label { color: #aaa; }
+.compare-value { color: #ffd700; font-weight: bold; }
+
+.summary-actions {
+  margin-top: 20px;
+}
+
+.summary-actions .btn-win {
+  font-size: 1rem;
+  padding: 8px 24px;
+  background: #ffd700;
+  color: #000;
+  border-color: #ffed4a #b8860b #b8860b #ffed4a;
+}
+
+/* ══════════ 响应式 ══════════ */
+@media (max-width: 600px) {
+  .container { padding: 12px 8px 60px; }
+  .header h1 { font-size: 1.5rem; }
+  .dialup-dialog { max-width: 100%; }
+  .download-window { max-width: 100%; }
+  .isp-cards { flex-direction: column; }
+  .game-card { flex-direction: column; align-items: flex-start; }
+  .btn-download { align-self: flex-end; }
+  .control-panel { flex-direction: column; align-items: flex-start; }
+  .resume-toggle { margin-left: 0; }
+  .dw-stat-row { flex-direction: column; gap: 2px; }
+  .compare-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+}

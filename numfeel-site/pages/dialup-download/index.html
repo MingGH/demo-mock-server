@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="重回1999年，亲手体验56K拨号上网下载游戏的全过程：拨号音、占线重拨、3KB/s的龟速、随机掉线。用交互模拟感受那个年代下载一个650MB红警要多久。">
+  <title>拨号上网下载模拟器 — 重回56K时代 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1><i class="ti ti-phone-call"></i> 拨号上网下载模拟器</h1>
+    <p>重回1999年，亲手体验56K猫下载一个游戏的全过程。<br>拨号音、占线、3KB/s、随机掉线——你能坚持到下载完成吗？</p>
+  </div>
+
+  <!-- Hero 场景图 -->
+  <div class="hero-scene">
+    <img class="hero-img" src="../../images/dialup-download/desk-scene.jpg" alt="90年代电脑桌">
+    <div class="hero-overlay">
+      <div class="hero-text">准备好了吗？先拿起电话线，插进猫里。</div>
+    </div>
+  </div>
+
+  <!-- ══════════ 阶段一：拨号连接 ══════════ -->
+  <div class="section phase-section" id="phase1">
+    <h2><i class="ti ti-phone"></i> 第一步：拨号连接</h2>
+    <p class="section-hint">选一个ISP拨号，听着调制解调器的握手声，祈祷别占线。</p>
+
+    <div class="dialup-dialog">
+      <div class="dialog-titlebar">
+        <span class="dialog-icon"><i class="ti ti-world"></i></span>
+        <span>连接到 Internet</span>
+        <span class="dialog-close">X</span>
+      </div>
+      <div class="dialog-body">
+        <div class="dialog-row">
+          <img class="modem-img" src="../../images/dialup-download/modem.jpg" alt="56K调制解调器">
+        </div>
+        <div class="dialog-row">
+          <label>选择ISP：</label>
+          <div class="isp-cards" id="ispCards">
+            <button class="isp-card active" data-isp="163">
+              <span class="isp-name">163</span>
+              <span class="isp-desc">中国电信</span>
+              <span class="isp-num">16300</span>
+            </button>
+            <button class="isp-card" data-isp="169">
+              <span class="isp-name">169</span>
+              <span class="isp-desc">中国电信多媒体</span>
+              <span class="isp-num">16900</span>
+            </button>
+            <button class="isp-card" data-isp="263">
+              <span class="isp-name">263</span>
+              <span class="isp-desc">首都在线</span>
+              <span class="isp-num">26300</span>
+            </button>
+          </div>
+        </div>
+        <div class="dialog-row">
+          <label>用户名：</label>
+          <input type="text" class="win-input" value="guest" readonly>
+        </div>
+        <div class="dialog-row">
+          <label>密码：</label>
+          <input type="password" class="win-input" value="guest" readonly>
+        </div>
+        <div class="dialog-row dialog-status" id="dialStatus">
+          <span class="status-icon"><i class="ti ti-plug"></i></span>
+          <span class="status-text">就绪 — 点击「拨号」开始连接</span>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn-win btn-primary-win" id="dialBtn">
+            <i class="ti ti-phone-call"></i> 拨号
+          </button>
+          <button class="btn-win" id="hangupBtn" disabled>
+            <i class="ti ti-phone-off"></i> 挂断
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 拨号音可视化 -->
+    <div class="audio-visualizer hidden" id="audioViz">
+      <canvas id="audioCanvas" width="400" height="80"></canvas>
+      <div class="audio-label" id="audioLabel">DTMF 拨号音...</div>
+    </div>
+  </div>
+
+  <!-- ══════════ 阶段二：选择下载 ══════════ -->
+  <div class="section phase-section hidden" id="phase2">
+    <h2><i class="ti ti-download"></i> 第二步：选个游戏下载</h2>
+    <p class="section-hint">恭喜连上了！现在打开下载站，挑一个游戏。注意看文件大小——用56K猫下载意味着什么。</p>
+
+    <div class="download-site">
+      <div class="dl-site-header">
+        <div class="site-title"><i class="ti ti-star-filled"></i> 天空软件站 <span class="site-badge">SKYcn.com</span></div>
+        <div class="site-nav">
+          <span class="nav-active">游戏下载</span>
+          <span>|</span><span>应用软件</span>
+          <span>|</span><span>驱动程序</span>
+        </div>
+        <div class="site-visitor">今日访问：<span class="visitor-count">23,847</span></div>
+      </div>
+      <div class="game-list" id="gameList">
+        <div class="game-card" data-size="681574400" data-name="红色警戒2">
+          <div class="game-icon"><i class="ti ti-bomb"></i></div>
+          <div class="game-info">
+            <div class="game-name">红色警戒2 完整版</div>
+            <div class="game-meta">
+              <span class="game-size"><i class="ti ti-file"></i> 650 MB</span>
+              <span class="game-date">2000-10-25</span>
+            </div>
+            <div class="game-desc">Westwood经典即时战略，苏军入侵美国本土</div>
+          </div>
+          <button class="btn-download"><i class="ti ti-download"></i> 下载</button>
+        </div>
+        <div class="game-card" data-size="125829120" data-name="仙剑奇侠传">
+          <div class="game-icon"><i class="ti ti-sword"></i></div>
+          <div class="game-info">
+            <div class="game-name">仙剑奇侠传 完整版</div>
+            <div class="game-meta">
+              <span class="game-size"><i class="ti ti-file"></i> 120 MB</span>
+              <span class="game-date">1995-07-10</span>
+            </div>
+            <div class="game-desc">国产RPG经典，李逍遥与赵灵儿的故事</div>
+          </div>
+          <button class="btn-download"><i class="ti ti-download"></i> 下载</button>
+        </div>
+        <div class="game-card" data-size="83886080" data-name="星际争霸">
+          <div class="game-icon"><i class="ti ti-rocket"></i></div>
+          <div class="game-info">
+            <div class="game-name">星际争霸 1.08中文版</div>
+            <div class="game-meta">
+              <span class="game-size"><i class="ti ti-file"></i> 80 MB</span>
+              <span class="game-date">1998-03-31</span>
+            </div>
+            <div class="game-desc">暴雪RTS神作，人族虫族神族三族对战</div>
+          </div>
+          <button class="btn-download"><i class="ti ti-download"></i> 下载</button>
+        </div>
+        <div class="game-card" data-size="2097152" data-name="扫雷豪华版">
+          <div class="game-icon"><i class="ti ti-bomb"></i></div>
+          <div class="game-info">
+            <div class="game-name">扫雷豪华版</div>
+            <div class="game-meta">
+              <span class="game-size"><i class="ti ti-file"></i> 2 MB</span>
+              <span class="game-date">1999-01-15</span>
+            </div>
+            <div class="game-desc">Windows经典小游戏增强版，更多模式</div>
+          </div>
+          <button class="btn-download"><i class="ti ti-download"></i> 下载</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 阶段三：下载进行中 ══════════ -->
+  <div class="section phase-section hidden" id="phase3">
+    <h2><i class="ti ti-loader"></i> 第三步：等待下载完成</h2>
+    <p class="section-hint">下载已经开始。盯着进度条，祈祷别掉线——或者用加速按钮跳过漫长的等待。</p>
+
+    <!-- 下载进度窗口（仿Win98） -->
+    <div class="download-window">
+      <div class="dw-titlebar">
+        <span><i class="ti ti-download"></i> 正在下载 — <span id="dlFileName">RedAlert2.zip</span></span>
+        <span class="dialog-close" id="dlCancelBtn">X</span>
+      </div>
+      <div class="dw-body">
+        <div class="dw-animation">
+          <div class="flying-paper" id="flyingPaper">
+            <i class="ti ti-file"></i>
+            <i class="ti ti-file"></i>
+            <i class="ti ti-file"></i>
+          </div>
+          <div class="dw-folders">
+            <div class="folder-from"><i class="ti ti-world"></i><span>Internet</span></div>
+            <div class="folder-arrow"><i class="ti ti-arrow-right"></i></div>
+            <div class="folder-to"><i class="ti ti-folder"></i><span>我的电脑</span></div>
+          </div>
+        </div>
+        <div class="dw-progress-wrap">
+          <div class="dw-progress-bar">
+            <div class="dw-progress-fill" id="dlProgressBar" style="width: 0%"></div>
+          </div>
+          <div class="dw-progress-text" id="dlProgressText">0%</div>
+        </div>
+        <div class="dw-stats">
+          <div class="dw-stat-row">
+            <span class="dw-stat-label">已下载：</span>
+            <span class="dw-stat-value" id="dlDownloaded">0 KB</span>
+            <span class="dw-stat-label">文件大小：</span>
+            <span class="dw-stat-value" id="dlTotalSize">650 MB</span>
+          </div>
+          <div class="dw-stat-row">
+            <span class="dw-stat-label">当前速度：</span>
+            <span class="dw-stat-value" id="dlSpeed">0 KB/s</span>
+            <span class="dw-stat-label">平均速度：</span>
+            <span class="dw-stat-value" id="dlAvgSpeed">0 KB/s</span>
+          </div>
+          <div class="dw-stat-row">
+            <span class="dw-stat-label">已用时间：</span>
+            <span class="dw-stat-value" id="dlElapsed">00:00:00</span>
+            <span class="dw-stat-label">预计剩余：</span>
+            <span class="dw-stat-value" id="dlRemaining">计算中...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 控制面板 -->
+    <div class="control-panel">
+      <div class="speed-controls">
+        <span class="control-label">模拟速度：</span>
+        <button class="speed-btn active" data-speed="1">1x 真实</button>
+        <button class="speed-btn" data-speed="100">100x</button>
+        <button class="speed-btn" data-speed="1000">1000x</button>
+        <button class="speed-btn" data-speed="10000">10000x</button>
+      </div>
+      <div class="resume-toggle">
+        <label class="toggle-label">
+          <input type="checkbox" id="resumeToggle">
+          <span class="toggle-text">断点续传</span>
+          <span class="toggle-hint">（关闭 = 掉线后从头下载）</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 实时统计 -->
+    <div class="stats-panel">
+      <div class="stat-card">
+        <div class="stat-icon"><i class="ti ti-plug-x"></i></div>
+        <div class="stat-body">
+          <div class="stat-value" id="statDisconnects">0</div>
+          <div class="stat-label">掉线次数</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="ti ti-phone-call"></i></div>
+        <div class="stat-body">
+          <div class="stat-value" id="statRedials">0</div>
+          <div class="stat-label">重拨次数</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="ti ti-clock"></i></div>
+        <div class="stat-body">
+          <div class="stat-value" id="statTotalTime">00:00:00</div>
+          <div class="stat-label">累计耗时</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="ti ti-coin"></i></div>
+        <div class="stat-body">
+          <div class="stat-value" id="statPhoneBill">&#165;0.00</div>
+          <div class="stat-label">电话费</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 事件日志 -->
+    <div class="event-log">
+      <div class="log-title"><i class="ti ti-list"></i> 事件日志</div>
+      <div class="log-body" id="eventLog"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ 下载完成 ══════════ -->
+  <div class="section phase-section hidden" id="phase4">
+    <h2><i class="ti ti-confetti"></i> 下载完成！</h2>
+    <p class="section-hint">恭喜你终于下载完了！来看看这次体验的统计数据。</p>
+
+    <div class="completion-summary">
+      <div class="summary-hero">
+        <div class="summary-game" id="summaryGame">红色警戒2</div>
+        <div class="summary-tagline">下载完成，可以开始游戏了</div>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-stat">
+          <div class="summary-value" id="summarySize">650 MB</div>
+          <div class="summary-label">文件大小</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-value" id="summaryTime">—</div>
+          <div class="summary-label">总耗时</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-value" id="summaryAvgSpeed">—</div>
+          <div class="summary-label">平均速度</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-value" id="summaryDisconnects">0</div>
+          <div class="summary-label">掉线次数</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-value" id="summaryBill">&#165;0.00</div>
+          <div class="summary-label">电话费</div>
+        </div>
+        <div class="summary-stat">
+          <div class="summary-value" id="summaryWasted">0 MB</div>
+          <div class="summary-label">因掉线浪费的流量</div>
+        </div>
+      </div>
+      <div class="summary-compare">
+        <div class="compare-title"><i class="ti ti-arrows-exchange"></i> 对比现在</div>
+        <div class="compare-row">
+          <span class="compare-label">用现在的100Mbps宽带下载同样文件：</span>
+          <span class="compare-value" id="summaryModern">约52秒</span>
+        </div>
+        <div class="compare-row">
+          <span class="compare-label">速度差距：</span>
+          <span class="compare-value" id="summarySpeedRatio">约1785倍</span>
+        </div>
+      </div>
+      <div class="summary-actions">
+        <button class="btn-win btn-primary-win" id="retryBtn"><i class="ti ti-refresh"></i> 再来一次</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════ 核心模拟引擎 ══════════
+(function() {
+  'use strict';
+
+  // ── 常量 ──
+  const MODEM_SPEED_BPS = 56000;        // 56Kbps 理论最大
+  const ACTUAL_MAX_BPS = 48000;          // 实际最大（V.90 上行限制）
+  const ACTUAL_MIN_BPS = 28000;          // 最低连接速度
+  const DISCONNECT_RATE = 1 / 1800;      // 平均每1800秒掉线一次（泊松）
+  const CONNECT_FAIL_RATE = 0.15;        // 15%连接失败率（占线）
+  const PHONE_RATE_PER_MIN = 0.02;       // 每分钟2分钱
+  const TICK_INTERVAL = 100;             // 模拟间隔100ms
+
+  // ── 状态 ──
+  let state = {
+    phase: 1,
+    connected: false,
+    downloading: false,
+    fileName: '',
+    fileSize: 0,
+    downloaded: 0,
+    currentSpeed: 0,
+    avgSpeed: 0,
+    speedSamples: [],
+    elapsedMs: 0,
+    disconnects: 0,
+    redials: 0,
+    phoneBillYuan: 0,
+    wastedBytes: 0,
+    simSpeed: 1,
+    resumeEnabled: false,
+    tickTimer: null,
+    connectTimer: null,
+    dialupAudioCtx: null
+  };
+
+  // ── DOM ──
+  const $ = id => document.getElementById(id);
+  const phases = [null, $('phase1'), $('phase2'), $('phase3'), $('phase4')];
+
+  // ── ISP 选择 ──
+  document.querySelectorAll('.isp-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.isp-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+    });
+  });
+
+  // ── 拨号按钮 ──
+  $('dialBtn').addEventListener('click', startDial);
+  $('hangupBtn').addEventListener('click', hangup);
+
+  function startDial() {
+    $('dialBtn').disabled = true;
+    $('hangupBtn').disabled = false;
+    updateDialStatus('dialing', '正在拨号...');
+    showAudioViz(true);
+    playDialupSound();
+
+    // 模拟拨号过程（3-5秒）
+    const dialTime = 3000 + Math.random() * 2000;
+    state.connectTimer = setTimeout(() => {
+      updateDialStatus('negotiating', '正在协商连接速度...');
+      $('audioLabel').textContent = '载波协商中...';
+
+      setTimeout(() => {
+        // 判断是否连接成功
+        if (Math.random() < CONNECT_FAIL_RATE) {
+          connectFailed();
+        } else {
+          connectSuccess();
+        }
+      }, 2000 + Math.random() * 1500);
+    }, dialTime);
+  }
+
+  function connectFailed() {
+    stopDialupSound();
+    showAudioViz(false);
+    const reasons = ['线路忙，请稍后再拨', '无应答', '远程计算机未响应', '调制解调器无法建立连接'];
+    const reason = reasons[Math.floor(Math.random() * reasons.length)];
+    updateDialStatus('failed', '连接失败：' + reason);
+    $('dialBtn').disabled = false;
+    $('hangupBtn').disabled = true;
+    state.redials++;
+    if ($('statRedials')) $('statRedials').textContent = state.redials;
+  }
+
+  function connectSuccess() {
+    stopDialupSound();
+    showAudioViz(false);
+    state.connected = true;
+    const speed = Math.floor(ACTUAL_MIN_BPS + Math.random() * (ACTUAL_MAX_BPS - ACTUAL_MIN_BPS));
+    updateDialStatus('connected', '已连接！速度：' + (speed / 1000).toFixed(1) + ' Kbps');
+    state.currentSpeed = speed / 8; // 转为 Bytes/s
+
+    // 短暂延迟后进入阶段二
+    setTimeout(() => {
+      if (state.phase === 1) {
+        switchPhase(2);
+      }
+    }, 1500);
+  }
+
+  function hangup() {
+    clearTimeout(state.connectTimer);
+    stopDialupSound();
+    showAudioViz(false);
+    state.connected = false;
+    updateDialStatus('idle', '就绪 — 点击「拨号」开始连接');
+    $('dialBtn').disabled = false;
+    $('hangupBtn').disabled = true;
+  }
+
+  function updateDialStatus(type, text) {
+    const el = $('dialStatus');
+    el.className = 'dialog-row dialog-status status-' + type;
+    const icons = { idle: 'ti-plug', dialing: 'ti-loader', negotiating: 'ti-arrows-exchange',
+                    connected: 'ti-circle-check', failed: 'ti-alert-circle' };
+    el.innerHTML = '<span class="status-icon"><i class="ti ' + (icons[type] || 'ti-plug') + '"></i></span>' +
+                   '<span class="status-text">' + text + '</span>';
+  }
+
+  // ── 拨号音合成 ──
+  function playDialupSound() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      state.dialupAudioCtx = ctx;
+      const now = ctx.currentTime;
+
+      // DTMF tones for "16300"
+      const digits = '16300';
+      const dtmfFreqs = {
+        '1': [697, 1209], '2': [697, 1336], '3': [697, 1477],
+        '4': [770, 1209], '5': [770, 1336], '6': [770, 1477],
+        '7': [852, 1209], '8': [852, 1336], '9': [852, 1477],
+        '0': [941, 1336]
+      };
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0.05;
+      gain.connect(ctx.destination);
+
+      digits.split('').forEach((d, i) => {
+        const [f1, f2] = dtmfFreqs[d];
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        osc1.frequency.value = f1;
+        osc2.frequency.value = f2;
+        osc1.connect(gain);
+        osc2.connect(gain);
+        osc1.start(now + i * 0.2);
+        osc1.stop(now + i * 0.2 + 0.15);
+        osc2.start(now + i * 0.2);
+        osc2.stop(now + i * 0.2 + 0.15);
+      });
+
+      // 握手噪音（白噪声 + 调制）
+      const noiseStart = now + digits.length * 0.2 + 0.3;
+      const bufferSize = ctx.sampleRate * 3;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * 0.3;
+        // 加入周期性调制模拟握手
+        data[i] *= 0.5 + 0.5 * Math.sin(i / ctx.sampleRate * Math.PI * 8);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.value = 0.03;
+      noise.connect(noiseGain);
+      noiseGain.connect(ctx.destination);
+      noise.start(noiseStart);
+      noise.stop(noiseStart + 3);
+
+    } catch (e) {
+      // Web Audio not supported, silently continue
+    }
+  }
+
+  function stopDialupSound() {
+    if (state.dialupAudioCtx) {
+      state.dialupAudioCtx.close().catch(() => {});
+      state.dialupAudioCtx = null;
+    }
+  }
+
+  // ── 音频可视化 ──
+  function showAudioViz(show) {
+    const viz = $('audioViz');
+    if (show) {
+      viz.classList.remove('hidden');
+      animateAudioViz();
+    } else {
+      viz.classList.add('hidden');
+    }
+  }
+
+  let vizAnimId = null;
+  function animateAudioViz() {
+    const canvas = $('audioCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    let frame = 0;
+
+    function draw() {
+      if ($('audioViz').classList.contains('hidden')) {
+        cancelAnimationFrame(vizAnimId);
+        return;
+      }
+      ctx.fillStyle = '#0a0a1a';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#4fc3f7';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let x = 0; x < w; x++) {
+        const y = h / 2 + Math.sin((x + frame) * 0.05) * 20 * Math.sin(frame * 0.02)
+                  + Math.sin((x + frame) * 0.12) * 10
+                  + (Math.random() - 0.5) * 8;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      frame++;
+      vizAnimId = requestAnimationFrame(draw);
+    }
+    draw();
+  }
+
+  // ── 阶段切换 ──
+  function switchPhase(n) {
+    state.phase = n;
+    phases.forEach((p, i) => { if (p) p.classList.toggle('hidden', i !== n); });
+  }
+
+  // ── 阶段二：选择游戏 ──
+  document.querySelectorAll('.btn-download').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const card = this.closest('.game-card');
+      state.fileSize = parseInt(card.dataset.size);
+      state.fileName = card.dataset.name;
+      startDownload();
+    });
+  });
+
+  function startDownload() {
+    // 初始化下载状态
+    state.downloaded = 0;
+    state.elapsedMs = 0;
+    state.disconnects = 0;
+    state.phoneBillYuan = 0;
+    state.wastedBytes = 0;
+    state.speedSamples = [];
+    state.downloading = true;
+
+    $('dlFileName').textContent = state.fileName;
+    $('dlTotalSize').textContent = formatSize(state.fileSize);
+    switchPhase(3);
+    addLog('info', '开始下载「' + state.fileName + '」，文件大小：' + formatSize(state.fileSize));
+    addLog('info', '当前连接速度：' + formatSpeed(state.currentSpeed));
+
+    state.tickTimer = setInterval(downloadTick, TICK_INTERVAL);
+  }
+
+  // ── 下载 Tick ──
+  function downloadTick() {
+    if (!state.downloading) return;
+
+    const realDt = TICK_INTERVAL; // ms
+    const simDt = realDt * state.simSpeed;
+
+    // 更新时间
+    state.elapsedMs += simDt;
+
+    // 电话费
+    state.phoneBillYuan = (state.elapsedMs / 60000) * PHONE_RATE_PER_MIN;
+
+    // 速度波动（正态分布模拟）
+    const baseSpeed = state.currentSpeed;
+    const fluctuation = (gaussianRandom() * 0.2 + 1) * baseSpeed;
+    const speed = Math.max(500, Math.min(ACTUAL_MAX_BPS / 8, fluctuation));
+    state.speedSamples.push(speed);
+    if (state.speedSamples.length > 50) state.speedSamples.shift();
+
+    // 下载量
+    const bytesThisTick = speed * (simDt / 1000);
+    state.downloaded = Math.min(state.fileSize, state.downloaded + bytesThisTick);
+
+    // 掉线检测（泊松过程）
+    const disconnectProb = 1 - Math.exp(-DISCONNECT_RATE * (simDt / 1000));
+    if (Math.random() < disconnectProb) {
+      handleDisconnect();
+      return;
+    }
+
+    // 更新UI
+    updateDownloadUI(speed);
+
+    // 完成检测
+    if (state.downloaded >= state.fileSize) {
+      downloadComplete();
+    }
+  }
+
+  function handleDisconnect() {
+    state.disconnects++;
+    state.downloading = false;
+    clearInterval(state.tickTimer);
+    state.connected = false;
+
+    addLog('error', '连接中断！已掉线（第' + state.disconnects + '次）');
+
+    if (!state.resumeEnabled) {
+      const wasted = state.downloaded;
+      state.wastedBytes += wasted;
+      state.downloaded = 0;
+      addLog('warning', '未启用断点续传，已下载的 ' + formatSize(wasted) + ' 全部作废！');
+    } else {
+      addLog('info', '断点续传已启用，已保存进度：' + formatSize(state.downloaded));
+    }
+
+    // 自动重拨
+    addLog('info', '3秒后自动重新拨号...');
+    setTimeout(() => {
+      state.redials++;
+      addLog('info', '正在重新拨号...');
+      $('statRedials').textContent = state.redials;
+
+      setTimeout(() => {
+        if (Math.random() < CONNECT_FAIL_RATE) {
+          addLog('error', '重拨失败：线路忙');
+          state.redials++;
+          $('statRedials').textContent = state.redials;
+          // 再试一次
+          setTimeout(() => {
+            addLog('info', '再次尝试拨号...');
+            reconnect();
+          }, 2000 / state.simSpeed);
+        } else {
+          reconnect();
+        }
+      }, 3000 / state.simSpeed);
+    }, 3000 / state.simSpeed);
+  }
+
+  function reconnect() {
+    const speed = Math.floor(ACTUAL_MIN_BPS + Math.random() * (ACTUAL_MAX_BPS - ACTUAL_MIN_BPS));
+    state.currentSpeed = speed / 8;
+    state.connected = true;
+    state.downloading = true;
+    addLog('success', '重新连接成功！速度：' + (speed / 1000).toFixed(1) + ' Kbps');
+    state.tickTimer = setInterval(downloadTick, TICK_INTERVAL);
+  }
+
+  function downloadComplete() {
+    state.downloading = false;
+    clearInterval(state.tickTimer);
+    addLog('success', '下载完成！');
+    showCompletionSummary();
+    switchPhase(4);
+  }
+
+  function showCompletionSummary() {
+    $('summaryGame').textContent = state.fileName;
+    $('summarySize').textContent = formatSize(state.fileSize);
+    $('summaryTime').textContent = formatTime(state.elapsedMs);
+    const avg = state.fileSize / (state.elapsedMs / 1000);
+    $('summaryAvgSpeed').textContent = formatSpeed(avg);
+    $('summaryDisconnects').textContent = state.disconnects;
+    $('summaryBill').textContent = '\u00a5' + state.phoneBillYuan.toFixed(2);
+    $('summaryWasted').textContent = formatSize(state.wastedBytes);
+
+    // 对比现代网速
+    const modernTime = state.fileSize / (100 * 1024 * 1024 / 8); // 100Mbps
+    $('summaryModern').textContent = '约' + Math.ceil(modernTime) + '秒';
+    const ratio = Math.round((state.elapsedMs / 1000) / modernTime);
+    $('summarySpeedRatio').textContent = '约' + ratio + '倍';
+  }
+
+  // ── 更新下载UI ──
+  function updateDownloadUI(currentSpeed) {
+    const pct = Math.min(100, (state.downloaded / state.fileSize) * 100);
+    $('dlProgressBar').style.width = pct.toFixed(2) + '%';
+    $('dlProgressText').textContent = pct.toFixed(1) + '%';
+    $('dlDownloaded').textContent = formatSize(state.downloaded);
+    $('dlSpeed').textContent = formatSpeed(currentSpeed);
+
+    const avgSpeed = state.speedSamples.reduce((a, b) => a + b, 0) / state.speedSamples.length;
+    $('dlAvgSpeed').textContent = formatSpeed(avgSpeed);
+
+    $('dlElapsed').textContent = formatTime(state.elapsedMs);
+
+    const remaining = avgSpeed > 0 ? (state.fileSize - state.downloaded) / avgSpeed * 1000 : 0;
+    $('dlRemaining').textContent = remaining > 0 ? formatTime(remaining) : '计算中...';
+
+    $('statDisconnects').textContent = state.disconnects;
+    $('statRedials').textContent = state.redials;
+    $('statTotalTime').textContent = formatTime(state.elapsedMs);
+    $('statPhoneBill').textContent = '\u00a5' + state.phoneBillYuan.toFixed(2);
+  }
+
+  // ── 速度控制 ──
+  document.querySelectorAll('.speed-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      state.simSpeed = parseInt(this.dataset.speed);
+    });
+  });
+
+  // ── 断点续传 ──
+  $('resumeToggle').addEventListener('change', function() {
+    state.resumeEnabled = this.checked;
+    addLog('info', '断点续传：' + (this.checked ? '已开启' : '已关闭'));
+  });
+
+  // ── 取消下载 ──
+  $('dlCancelBtn').addEventListener('click', function() {
+    if (state.downloading) {
+      state.downloading = false;
+      clearInterval(state.tickTimer);
+      addLog('warning', '用户取消了下载');
+      switchPhase(2);
+    }
+  });
+
+  // ── 重来 ──
+  $('retryBtn').addEventListener('click', function() {
+    state.downloaded = 0;
+    state.disconnects = 0;
+    state.redials = 0;
+    state.phoneBillYuan = 0;
+    state.wastedBytes = 0;
+    state.elapsedMs = 0;
+    $('eventLog').innerHTML = '';
+    switchPhase(2);
+  });
+
+  // ── 事件日志 ──
+  function addLog(type, msg) {
+    const log = $('eventLog');
+    const time = formatTime(state.elapsedMs);
+    const icons = { info: 'ti-info-circle', error: 'ti-alert-triangle',
+                    warning: 'ti-alert-circle', success: 'ti-circle-check' };
+    const entry = document.createElement('div');
+    entry.className = 'log-entry log-' + type;
+    entry.innerHTML = '<span class="log-time">[' + time + ']</span> ' +
+                      '<i class="ti ' + (icons[type] || 'ti-info-circle') + '"></i> ' + msg;
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  // ── 工具函数 ──
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+    return (bytes / 1073741824).toFixed(2) + ' GB';
+  }
+
+  function formatSpeed(bytesPerSec) {
+    if (bytesPerSec < 1024) return bytesPerSec.toFixed(1) + ' B/s';
+    return (bytesPerSec / 1024).toFixed(1) + ' KB/s';
+  }
+
+  function formatTime(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  function gaussianRandom() {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+  }
+
+  // ── 导出供测试 ──
+  if (typeof window !== 'undefined') {
+    window.DialupSim = {
+      formatSize, formatSpeed, formatTime, gaussianRandom,
+      DISCONNECT_RATE, CONNECT_FAIL_RATE, PHONE_RATE_PER_MIN,
+      MODEM_SPEED_BPS, ACTUAL_MAX_BPS, ACTUAL_MIN_BPS
+    };
+  }
+
+})();
+</script>
+</body>
+</html>

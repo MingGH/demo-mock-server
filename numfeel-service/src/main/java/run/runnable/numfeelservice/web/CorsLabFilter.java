@@ -59,7 +59,8 @@ public class CorsLabFilter implements WebFilter {
         if (!isVictimPath(path)) {
             return chain.filter(exchange);
         }
-        String mode = service.currentMode();
+        String token = exchange.getRequest().getQueryParams().getFirst("t");
+        String mode = service.currentMode(token);
         String origin = exchange.getRequest().getHeaders().getFirst(HDR_ORIGIN);
 
         if (isPreflight(exchange)) {

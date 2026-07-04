@@ -9,6 +9,12 @@ var MODE_LABEL = {
 };
 
 var currentMode = 'deny';
+var sessionToken = null;
+
+/** 给路径拼上会话 token（走 query，避免给 GET /me 平添预检）。 */
+function u(path) {
+  return API + path + '?t=' + encodeURIComponent(sessionToken || '');
+}
 
 // ========== 初始化 ==========
 function init() {
@@ -22,7 +28,7 @@ function init() {
   document.getElementById('credToggle').addEventListener('change', updateClassLine);
   document.getElementById('copyConclusionBtn').addEventListener('click', copyConclusion);
 
-  syncPolicy();
+  createSession();
 }
 
 function bindModeButtons() {
@@ -34,27 +40,50 @@ function bindModeButtons() {
   }
 }
 
-// ========== 策略 ==========
-function syncPolicy() {
-  fetch(API + '/policy').then(function (r) { return r.json(); }).then(function (res) {
-    if (res.status === 200 && res.data) {
-      applyMode(res.data.mode);
-    }
-  }).catch(function () {
-    showHeaders();
-  });
+// ========== 会话 ==========
+function createSession() {
+  fetch(API + '/session', { method: 'POST' })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      if (res.status === 200 && res.data) {
+        sessionToken = res.data.token;
+        applyMode(res.data.mode);
+        document.getElementById('balanceValue').textContent = formatMoney(res.data.balance);
+        refreshTransfers();
+        flashNote('meNote', '新会话已建立。余额 ¥' + (res.data.balance / 100).toFixed(2) + '，策略 deny。先点「读取余额」试试。', 'ok');
+      } else {
+        flashNote('meNote', '建立会话失败：' + (res.message || '服务暂时不可用'), 'error');
+      }
+    })
+    .catch(function (err) {
+      flashNote('meNote', '网络错误：' + err.message, 'error');
+    });
 }
 
+/** 响应体若标记 expired，重建会话并返回 true。 */
+function handleExpired(data) {
+  if (data && data.expired) {
+    flashNote('meNote', '会话已过期，正在重建…', 'warn');
+    createSession();
+    return true;
+  }
+  return false;
+}
+
+// ========== 策略 ==========
 function setMode(mode) {
-  fetch(API + '/policy', {
+  fetch(u('/policy'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode: mode })
   }).then(function (r) { return r.json(); }).then(function (res) {
-    if (res.status === 200 && res.data && res.data.success) {
-      applyMode(res.data.mode);
-    } else {
-      flashNote('meNote', '切换失败：' + (res.data && res.data.message ? res.data.message : '未知'), 'error');
+    if (res.status === 200 && res.data) {
+      if (handleExpired(res.data)) return;
+      if (res.data.success) {
+        applyMode(res.data.mode);
+      } else {
+        flashNote('meNote', '切换失败：' + (res.data.message || '未知'), 'error');
+      }
     }
   }).catch(function (err) {
     flashNote('meNote', '网络错误：' + err.message, 'error');
@@ -102,11 +131,15 @@ function doFetchMe(opts) {
   renderClass('classLine', cls, pred, withCreds);
   renderPending(opts.target, '请求已发出，等响应…');
 
-  fetch(API + '/me', fetchOpts).then(function (r) {
+  fetch(u('/me'), fetchOpts).then(function (r) {
     return r.json().then(function (body) {
       return { ok: true, status: r.status, body: body, respType: r.type };
     });
   }).then(function (res) {
+    if (res.body && res.body.data && handleExpired(res.body.data)) {
+      renderResult(opts.target, 'warn', '会话已过期，已重建', '请重新点按钮。');
+      return;
+    }
     onMeSuccess(opts.target, res);
   }).catch(function (err) {
     onMeBlocked(opts.target, err, pred);
@@ -138,9 +171,13 @@ function doPreflight() {
   renderClass('preflightClass', cls, pred, false);
   renderPending('preflightResult', '已发出。先看 Network 有没有一条 OPTIONS /cors-lab/me…');
 
-  fetch(API + '/me', fetchOpts).then(function (r) {
+  fetch(u('/me'), fetchOpts).then(function (r) {
     return r.json().then(function (body) { return { ok: true, status: r.status, body: body }; });
   }).then(function (res) {
+    if (res.body && res.body.data && handleExpired(res.body.data)) {
+      renderResult('preflightResult', 'warn', '会话已过期，已重建', '请重新点按钮。');
+      return;
+    }
     var data = res.body && res.body.data;
     var bal = data ? data.balance : null;
     if (bal != null) document.getElementById('balanceValue').textContent = formatMoney(bal);
@@ -155,7 +192,7 @@ function doPreflight() {
 // ========== 转账 / CSRF ==========
 function doTransfer() {
   renderPending('transferResult', '正在发起转账（form-urlencoded，简单请求）…');
-  fetch(API + '/transfer', {
+  fetch(u('/transfer'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: 'amount=10000'
@@ -163,6 +200,10 @@ function doTransfer() {
     return r.json().then(function (body) { return { ok: true, status: r.status, body: body }; });
   }).then(function (res) {
     var d = res.body && res.body.data;
+    if (d && handleExpired(d)) {
+      renderResult('transferResult', 'warn', '会话已过期，已重建', '请重新点按钮。');
+      return;
+    }
     if (d && d.executed) {
       renderResult('transferResult', 'ok', 'HTTP ' + res.status + ' · 转账完成，余额 ' + formatMoney(d.balanceAfter),
         'fetch 成功读到响应。余额扣到 ' + formatMoney(d.balanceAfter) + '。注意：如果刚才策略是 deny，这一步会走下面的「抛错」分支，但服务器其实已经扣款了——去查流水验证。');
@@ -178,8 +219,9 @@ function doTransfer() {
 }
 
 function refreshTransfers() {
-  fetch(API + '/transfers').then(function (r) { return r.json(); }).then(function (res) {
+  fetch(u('/transfers')).then(function (r) { return r.json(); }).then(function (res) {
     if (res.status !== 200 || !res.data) return;
+    if (handleExpired(res.data)) return;
     renderTransferLog(res.data.transfers || []);
   }).catch(function () {});
 }
@@ -205,8 +247,9 @@ function renderTransferLog(list) {
 
 // ========== 重置 ==========
 function resetAccount() {
-  fetch(API + '/reset', { method: 'POST' }).then(function (r) { return r.json(); }).then(function (res) {
+  fetch(u('/reset'), { method: 'POST' }).then(function (r) { return r.json(); }).then(function (res) {
     if (res.status === 200 && res.data) {
+      if (handleExpired(res.data)) return;
       applyMode(res.data.mode);
       document.getElementById('balanceValue').textContent = formatMoney(res.data.balance);
       flashNote('meNote', '账户已重置：余额回到 ' + formatMoney(res.data.balance) + '，策略回到 deny，流水清空。', 'ok');

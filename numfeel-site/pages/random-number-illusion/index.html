@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="随机生成5位数，11111和54176出现的概率完全一样。但你的大脑不信。亲自做10道判断题，然后让1000个随机数打你的脸。">
+  <title>为什么 11111 看起来不随机？| 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>为什么 11111 看起来不随机</h1>
+      <p>概率相等，是数学事实；「看起来不随机」，是认知幻觉。</p>
+    </div>
+
+    <div class="rni-wrap">
+
+      <!-- 首屏 Hero -->
+      <div class="rni-hero" id="rni-hero">
+        <div class="rni-hero-badge">
+          <i class="ti ti-hash"></i> 反直觉实验
+        </div>
+        <div class="rni-hero-title">你能分辨哪个是随机生成的吗？</div>
+        <div class="rni-hero-sub">
+          10 组 5 位数会逐个出现，凭直觉判断它「像不像随机」。<br>
+          做完看看你的判断，和数学事实差多远。
+        </div>
+        <button class="rni-cta-btn" id="rni-start-btn" type="button">
+          <i class="ti ti-player-play-filled"></i>
+          开始测试
+        </button>
+        <div class="rni-hero-note">提示：凭第一直觉，不要想太久。</div>
+      </div>
+
+      <!-- 第一幕：直觉测试 -->
+      <div class="rni-act rni-hidden" id="rni-act1">
+        <div class="rni-act-hint">第一幕 · 暴露你的直觉。看到数字后，点击你认为是「随机」还是「不随机」。</div>
+
+        <div class="rni-progress-wrap">
+          <div class="rni-progress-bar"><div class="rni-progress-fill" id="rni-progress-fill"></div></div>
+          <div class="rni-progress-text" id="rni-progress-text">1 / 10</div>
+        </div>
+
+        <div class="rni-test-stage" id="rni-test-stage">
+          <div class="rni-number-display" id="rni-number-display">-----</div>
+          <div class="rni-feedback" id="rni-feedback"></div>
+          <div class="rni-choice-row">
+            <button class="rni-choice rni-choice-no" id="rni-btn-notrandom" type="button">
+              <i class="ti ti-eye-off"></i>
+              <span>看起来不随机</span>
+            </button>
+            <button class="rni-choice rni-choice-yes" id="rni-btn-random" type="button">
+              <i class="ti ti-eye"></i>
+              <span>看起来随机</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 第一幕结果 -->
+        <div class="rni-act-result" id="rni-act1-result">
+          <div class="rni-card">
+            <div class="rni-card-title"><i class="ti ti-scale"></i> 你的判断 vs 数学事实</div>
+            <div class="rni-result-table" id="rni-result-table"></div>
+            <div class="rni-key-conclusion" id="rni-key-conclusion">
+              <i class="ti ti-bolt"></i>
+              <span>它们出现的概率完全相同：<b>1 / 100,000</b></span>
+            </div>
+            <div class="rni-bias-evidence" id="rni-bias-evidence"></div>
+            <button class="rni-continue-btn" id="rni-act1-continue" type="button">
+              机器来证明 <i class="ti ti-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第二幕：实时生成验证 -->
+      <div class="rni-act rni-hidden" id="rni-act2">
+        <div class="rni-act-hint">第二幕 · 让机器证明。真随机生成器也会产出「看起来有规律」的数。</div>
+
+        <div class="rni-card">
+          <div class="rni-card-title"><i class="ti ti-flame"></i> 生成 1000 个随机 5 位数</div>
+          <button class="rni-gen-btn" id="rni-gen-btn" type="button">
+            <i class="ti ti-bolt"></i> 生成 1000 个随机 5 位数
+          </button>
+          <div class="rni-gen-status" id="rni-gen-status">点击按钮，看数字滚动出现。</div>
+
+          <div class="rni-number-grid" id="rni-number-grid"></div>
+
+          <div class="rni-gen-stats" id="rni-gen-stats">
+            <div class="rni-stat">
+              <div class="rni-stat-value accent" id="rni-stat-total">0</div>
+              <div class="rni-stat-label">已生成</div>
+            </div>
+            <div class="rni-stat">
+              <div class="rni-stat-value gold" id="rni-stat-pattern">0</div>
+              <div class="rni-stat-label">其中有规律</div>
+            </div>
+            <div class="rni-stat">
+              <div class="rni-stat-value blue" id="rni-stat-ratio">0%</div>
+              <div class="rni-stat-label">有规律占比</div>
+            </div>
+          </div>
+
+          <div class="rni-pattern-breakdown" id="rni-pattern-breakdown"></div>
+
+          <div class="rni-gen-feedback" id="rni-gen-feedback"></div>
+
+          <div class="rni-gen-actions">
+            <button class="rni-run-btn" id="rni-gen-again-btn" type="button">
+              <i class="ti ti-refresh"></i> 再来一次
+            </button>
+            <button class="rni-continue-btn" id="rni-act2-continue" type="button" style="display:none">
+              看概率分布 <i class="ti ti-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第三幕：概率计算器 + 分布图 -->
+      <div class="rni-act rni-hidden" id="rni-act3">
+        <div class="rni-act-hint">第三幕 · 把直觉和数学放在一起。无论输入什么，概率永远是同一个数。</div>
+
+        <div class="rni-card">
+          <div class="rni-card-title"><i class="ti ti-calculator"></i> 概率计算器</div>
+          <div class="rni-calc-row">
+            <input type="text" class="rni-calc-input" id="rni-calc-input" inputmode="numeric"
+              maxlength="5" placeholder="输入 5 位数" autocomplete="off">
+            <div class="rni-calc-quick">
+              <button class="rni-quick-tag" type="button" data-num="11111">11111</button>
+              <button class="rni-quick-tag" type="button" data-num="54176">54176</button>
+              <button class="rni-quick-tag" type="button" data-num="12345">12345</button>
+              <button class="rni-quick-tag" type="button" data-num="00000">00000</button>
+            </div>
+          </div>
+          <div class="rni-calc-result" id="rni-calc-result">
+            输入任意一个 5 位数，看它出现的概率
+          </div>
+        </div>
+
+        <div class="rni-card">
+          <div class="rni-card-title"><i class="ti ti-chart-histogram"></i> 分布直方图：规律程度 vs 数量</div>
+          <div class="rni-chart-wrap">
+            <canvas id="rni-dist-chart"></canvas>
+          </div>
+          <div class="rni-insight-box">
+            <i class="ti ti-info-circle"></i>
+            <span>「看起来有规律」的数只占总数的极小比例，所以你遇到它们时觉得惊讶——惊讶的原因是它们稀少，不是概率不同。</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 规律定义说明 -->
+      <div class="rni-definition rni-hidden" id="rni-definition">
+        <div class="rni-def-title"><i class="ti ti-list-details"></i> 本页对「有规律」的定义</div>
+        <ul class="rni-def-list">
+          <li><b>全部相同</b>：5 位数字完全一致，如 11111、22222、00000</li>
+          <li><b>连续递增/递减</b>：逐位 +1 或 -1，如 12345、54321、23456</li>
+          <li><b>回文</b>：正读反读相同，如 12321、45654</li>
+          <li><b>重复模式</b>：ABABA 交替结构，如 10101、12121</li>
+        </ul>
+      </div>
+
+    </div><!-- /rni-wrap -->
+  </div><!-- /container -->
+
+  <script src="random-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

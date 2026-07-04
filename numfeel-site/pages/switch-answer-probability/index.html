@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="选择题随机选了A，检查时排除了B和C，改选D正确率从25%跳到75%。亲手玩10轮+万次模拟验证，看懂为什么改答案是对的。">
+  <title>排除选项后改答案，正确率提高吗？| 数字直觉</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ════════════ Hero ════════════ -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <span class="hero-eyebrow"><i class="ti ti-school"></i> 蒙提霍尔的四选一变体</span>
+      <h1 class="hero-title">排除了两个选项后，<br>你该不该改答案？</h1>
+      <p class="hero-sub">第一遍随机选了 A，检查时排除了 B 和 C。剩下 A 和 D，改不改？<br>直觉说各 50%，数学说改了从 25% 跳到 75%。</p>
+      <button class="btn btn-primary btn-lg" id="heroStartBtn">
+        <i class="ti ti-edit"></i> 开始答题
+      </button>
+      <button class="btn btn-ghost" id="heroSkipBtn">
+        <i class="ti ti-player-track-next"></i> 跳过，直接看模拟
+      </button>
+    </div>
+  </section>
+
+  <!-- ════════════ 模块一：亲自答题 ════════════ -->
+  <section class="module" id="module1">
+    <div class="module-head">
+      <span class="module-tag"><i class="ti ti-hand-click"></i> 模块一 · 亲自答题</span>
+      <h2>先按直觉玩 10 轮，积累你自己的数据</h2>
+      <p class="module-hint">每轮：随机猜一个 → 系统排除两个错误选项 → 你决定改不改 → 揭晓。两种策略分别记分。</p>
+    </div>
+
+    <div class="quiz-card">
+      <div class="quiz-progress">
+        <span>第 <strong id="roundNum">1</strong> / 10 题</span>
+        <span class="quiz-step" id="quizStep">第一遍做题——你完全不会，随机猜一个</span>
+      </div>
+
+      <div class="quiz-prompt" id="quizPrompt">
+        <i class="ti ti-help"></i>
+        <span>下面这道题，你毫无头绪。凭直觉点一个选项。</span>
+      </div>
+
+      <div class="options-row" id="optionsRow">
+        <button class="option-btn" data-idx="0"><span class="opt-letter">A</span></button>
+        <button class="option-btn" data-idx="1"><span class="opt-letter">B</span></button>
+        <button class="option-btn" data-idx="2"><span class="opt-letter">C</span></button>
+        <button class="option-btn" data-idx="3"><span class="opt-letter">D</span></button>
+      </div>
+
+      <div class="decision-row" id="decisionRow" hidden>
+        <p class="decision-text">只剩你选的和另一个了——要改吗？</p>
+        <div class="decision-btns">
+          <button class="btn btn-stay" id="stayBtn">
+            <i class="ti ti-anchor"></i> 坚持原答案
+          </button>
+          <button class="btn btn-switch" id="switchBtn">
+            <i class="ti ti-arrows-exchange-2"></i> 换成另一个
+          </button>
+        </div>
+      </div>
+
+      <div class="reveal-row" id="revealRow" hidden>
+        <div class="reveal-result" id="revealResult"></div>
+        <button class="btn btn-primary" id="nextRoundBtn">
+          <i class="ti ti-arrow-right"></i> 下一题
+        </button>
+      </div>
+    </div>
+
+    <!-- 10 轮总结 -->
+    <div class="quiz-summary" id="quizSummary" hidden>
+      <h3>10 轮打完，看差距</h3>
+      <div class="summary-grid">
+        <div class="summary-cell stay-cell">
+          <span class="summary-label">坚持原答案</span>
+          <span class="summary-num" id="sumStayRate">0%</span>
+          <span class="summary-detail" id="sumStayDetail">0 对 / 0 次</span>
+        </div>
+        <div class="summary-cell switch-cell">
+          <span class="summary-label">换选另一个</span>
+          <span class="summary-num" id="sumSwitchRate">0%</span>
+          <span class="summary-detail" id="sumSwitchDetail">0 对 / 0 次</span>
+        </div>
+      </div>
+      <p class="summary-note" id="summaryNote">样本小可能波动大，下面的万次模拟能消除运气。</p>
+      <div class="summary-btns">
+        <button class="btn btn-primary" id="replayBtn"><i class="ti ti-refresh"></i> 再玩 10 轮</button>
+        <button class="btn btn-secondary" id="goSimBtn"><i class="ti ti-chevron-down"></i> 看万次模拟</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════ 模块二：蒙特卡洛模拟 ════════════ -->
+  <section class="module" id="module2">
+    <div class="module-head">
+      <span class="module-tag tag-purple"><i class="ti ti-dice-5"></i> 模块二 · 万次模拟</span>
+      <h2>10000 次模拟，让结论无可辩驳</h2>
+      <p class="module-hint">三个策略同时跑，数字逐帧跳动，看曲线各自趋近理论值。</p>
+    </div>
+
+    <div class="sim-controls card">
+      <div class="control-row">
+        <div class="control-group">
+          <label>选项数量 N</label>
+          <div class="seg" id="nSeg">
+            <button data-n="3">3</button>
+            <button data-n="4" class="active">4</button>
+            <button data-n="5">5</button>
+            <button data-n="6">6</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>排除数量 K</label>
+          <div class="seg" id="kSeg">
+            <button data-k="1">1</button>
+            <button data-k="2" class="active">2</button>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="runSimBtn"><i class="ti ti-bolt"></i> 开始模拟</button>
+      </div>
+      <div class="theory-line" id="theoryLine"></div>
+    </div>
+
+    <div class="sim-stats" id="simStats">
+      <div class="stat-card stat-stay">
+        <span class="stat-tag">策略 A · 永远坚持</span>
+        <span class="stat-num" id="statStay">—</span>
+        <span class="stat-theory" id="theoryStay">理论 25%</span>
+      </div>
+      <div class="stat-card stat-switch">
+        <span class="stat-tag">策略 B · 永远换选</span>
+        <span class="stat-num" id="statSwitch">—</span>
+        <span class="stat-theory" id="theorySwitch">理论 75%</span>
+      </div>
+      <div class="stat-card stat-random">
+        <span class="stat-tag">策略 C · 随机决定</span>
+        <span class="stat-num" id="statRandom">—</span>
+        <span class="stat-theory" id="theoryRandom">理论 50%</span>
+      </div>
+    </div>
+
+    <div class="chart-card card">
+      <div class="chart-head">
+        <span><i class="ti ti-chart-line"></i> 累计正确率收敛曲线</span>
+        <span class="chart-count">已模拟 <strong id="simCount">0</strong> / 10000</span>
+      </div>
+      <canvas id="convergeChart" height="320"></canvas>
+    </div>
+  </section>
+
+  <!-- ════════════ 模块三：概率流动 ════════════ -->
+  <section class="module" id="module3">
+    <div class="module-head">
+      <span class="module-tag tag-blue"><i class="ti ti-bubbles"></i> 模块三 · 概率流动</span>
+      <h2>概率是怎么从被排除的选项"流"到剩余选项的</h2>
+      <p class="module-hint">切到不同 tab，对比"可靠排除"和"随机排除"的概率分配差异。</p>
+    </div>
+
+    <div class="flow-tabs">
+      <button class="flow-tab active" data-flow="reliable"><i class="ti ti-eye-check"></i> 你可靠地排除</button>
+      <button class="flow-tab" data-flow="random"><i class="ti ti-dice"></i> 随机排除</button>
+      <button class="flow-tab" data-flow="informed"><i class="ti ti-bulb"></i> 你一开始就知道</button>
+    </div>
+
+    <div class="flow-stage card" id="flowStage">
+      <div class="flow-grid" id="flowGrid">
+        <div class="flow-box" data-opt="A"><span class="fb-letter">A</span><span class="fb-pct">25%</span><span class="fb-tag">你选的</span></div>
+        <div class="flow-box" data-opt="B"><span class="fb-letter">B</span><span class="fb-pct">25%</span></div>
+        <div class="flow-box" data-opt="C"><span class="fb-letter">C</span><span class="fb-pct">25%</span></div>
+        <div class="flow-box" data-opt="D"><span class="fb-letter">D</span><span class="fb-pct">25%</span></div>
+      </div>
+      <div class="flow-steps" id="flowSteps">
+        <div class="flow-step" data-step="0"><span class="fs-num">1</span><span class="fs-text">初始：四个选项各 25%</span></div>
+        <div class="flow-step" data-step="1"><span class="fs-num">2</span><span class="fs-text">你随机选了 A —— 选择不改变概率，A 仍 25%</span></div>
+        <div class="flow-step" data-step="2"><span class="fs-num">3</span><span class="fs-text">排除 B、C —— 它们的概率流向剩余选项</span></div>
+        <div class="flow-step" data-step="3"><span class="fs-num">4</span><span class="fs-text">A 仍 25%，D 升到 75%</span></div>
+      </div>
+      <button class="btn btn-primary" id="flowReplayBtn"><i class="ti ti-refresh"></i> 重播动画</button>
+      <p class="flow-caption" id="flowCaption">你的随机选择没有创造任何信息，A 的概率始终是 1/4。</p>
+    </div>
+  </section>
+
+  <!-- ════════════ 模块四：蒙提霍尔对照 ════════════ -->
+  <section class="module" id="module4">
+    <div class="module-head">
+      <span class="module-tag tag-gold"><i class="ti ti-equal"></i> 模块四 · 同构对照</span>
+      <h2>这就是蒙提霍尔问题，只是 3 门变 4 门</h2>
+      <p class="module-hint">已知蒙提霍尔的人秒懂：换选正确率 = (N-1)/N。</p>
+    </div>
+
+    <div class="compare-grid">
+      <div class="compare-card compare-monty">
+        <span class="compare-badge">蒙提霍尔</span>
+        <ul class="compare-list">
+          <li><span class="cl-key">选项数</span><span class="cl-val">3 扇门</span></li>
+          <li><span class="cl-key">初始选择</span><span class="cl-val">随机选 1 扇</span></li>
+          <li><span class="cl-key">信息揭示</span><span class="cl-val">主持人开 1 扇空门</span></li>
+          <li><span class="cl-key">换选正确率</span><span class="cl-val cl-gold">2/3 ≈ 66.7%</span></li>
+        </ul>
+      </div>
+      <div class="compare-card compare-this">
+        <span class="compare-badge">本题</span>
+        <ul class="compare-list">
+          <li><span class="cl-key">选项数</span><span class="cl-val">4 个选项</span></li>
+          <li><span class="cl-key">初始选择</span><span class="cl-val">随机选 A</span></li>
+          <li><span class="cl-key">信息揭示</span><span class="cl-val">排除 2 个错误项</span></li>
+          <li><span class="cl-key">换选正确率</span><span class="cl-val cl-gold">3/4 = 75%</span></li>
+        </ul>
+      </div>
+    </div>
+    <p class="formula-banner">通用公式：换选正确率 = <strong>(N − 1) / N</strong>（当排除到只剩一个可选时）</p>
+
+    <details class="formula-details card">
+      <summary><i class="ti ti-math"></i> 一般情形推导（K &lt; N−2 时也成立）</summary>
+      <div class="formula-body">
+        <p>初始 N 个选项，随机选 1 个，再可靠排除 K 个错误选项（K ≤ N−2）。</p>
+        <ul class="formula-list">
+          <li>不换正确率 = <code>1 / N</code></li>
+          <li>换选时剩余可挑的候选数 = <code>N − 1 − K</code></li>
+          <li>换选正确率 = <code>(N − 1) / (N × (N − 1 − K))</code></li>
+          <li>当 K = N − 2（只剩一个可选），退化成 <code>(N − 1) / N</code></li>
+        </ul>
+      </div>
+    </details>
+
+    <div class="calc-card card">
+      <div class="calc-title"><i class="ti ti-calculator"></i> 通用计算器：输入 N 和 K，立刻看两种正确率</div>
+      <div class="calc-row">
+        <div class="calc-input">
+          <label>选项数 N</label>
+          <input type="number" id="calcN" value="4" min="2" max="100">
+        </div>
+        <div class="calc-input">
+          <label>排除数 K</label>
+          <input type="number" id="calcK" value="2" min="0" max="98">
+        </div>
+        <button class="btn btn-primary" id="calcBtn"><i class="ti ti-equal"></i> 计算</button>
+      </div>
+      <div class="calc-result" id="calcResult">填入 N 和 K，点计算。</div>
+    </div>
+  </section>
+
+  <!-- ════════════ 为什么折叠 ════════════ -->
+  <details class="why-details card">
+    <summary><i class="ti ti-question-mark"></i> 为什么？一句话解释 + 展开推导</summary>
+    <div class="why-body">
+      <p><b class="hl-gold">一句话：</b>你第一遍随机猜的 A 没有携带任何信息，它的正确概率始终是 1/4；排除 B、C 后，它们原本承担的 2/4 概率全部转移到唯一剩下的 D 上，所以 D = 3/4。</p>
+      <p><b class="hl-blue">展开：</b>用贝叶斯看。记"排除 BC"为证据 E。</p>
+      <ul class="formula-list">
+        <li>P(E | 答案=A) = 1/3（从 {BC, BD, CD} 三种排除组合里恰好选到 BC）</li>
+        <li>P(E | 答案=D) = 1（B、C 都是错的，且你已选 A 不会被排除，必排除 BC）</li>
+        <li>P(E | 答案=B) = 0，P(E | 答案=C) = 0（不可能可靠地排除正确答案）</li>
+        <li>P(答案=A | E) = (1/3 × 1/4) / (1/12 + 1/4) = 1/4</li>
+        <li>P(答案=D | E) = (1 × 1/4) / (1/3) = 3/4</li>
+      </ul>
+      <p>关键前提：排除必须是"可靠的"——你确实能判断 B、C 是错的。如果排除本身可能误伤正确答案，优势就消失，A 和 D 退回各 1/2。</p>
+    </div>
+  </details>
+
+</div>
+
+<script src="./simulation-engine.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

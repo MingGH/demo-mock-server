@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="单次手续费0.25%看起来很少？日均交易1次，一年后仅手续费就吃掉45%本金。拉动滑块亲眼看资金曲线如何被绞杀。">
+  <meta name="description" content="单次手续费0.1%看起来很少？日均交易1次，一年后仅手续费就吃掉22%本金。拉动滑块亲眼看资金曲线如何被绞杀。">
   <title>频繁交易为什么必死 | 数字直觉</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="../../components/header.js" defer></script>
@@ -17,14 +17,14 @@
   <div class="hero">
     <div class="hero-inner">
       <span class="hero-tag"><i class="ti ti-chart-line-down"></i> 摩擦成本绞杀模拟器</span>
-      <h1>每次只收 0.25%，<br>一年后你的钱还剩多少？</h1>
-      <p>频繁交易的死因不是判断力差，是手续费以<strong>乘法</strong>复利侵蚀本金。日均交易一次，一年光手续费就吃掉近一半——你的策略盈亏还得另算。拉动滑块，亲眼看钱怎么消失。</p>
+      <h1>每次只收 0.1%，<br>一年后你的钱还剩多少？</h1>
+      <p>频繁交易的死因不是判断力差，是手续费以<strong>乘法</strong>复利侵蚀本金。日均交易一次，一年光手续费就吃掉两成多——你的策略盈亏还得另算。拉动滑块，亲眼看钱怎么消失。</p>
       <div class="hero-actions">
         <a href="#calculator" class="btn btn-primary"><i class="ti ti-adjustments"></i> 自己调参数</a>
         <a href="#presets" class="btn btn-ghost"><i class="ti ti-cards"></i> 看预设角色</a>
       </div>
       <div class="hero-stat">
-        <span class="hs-num" id="heroNum">45.7%</span>
+        <span class="hs-num" id="heroNum">21.7%</span>
         <span class="hs-text">日均 1 次 × 244 个交易日，仅手续费对本金的年化侵蚀</span>
       </div>
     </div>
@@ -37,18 +37,18 @@
     <div class="preset-grid">
       <button class="preset-card" data-preset="buddha">
         <div class="pc-head"><i class="ti ti-leaf"></i> 佛系持有者</div>
-        <div class="pc-num"><span data-fee>5.8%</span> <small>年化手续费</small></div>
-        <p class="pc-desc">每月交易 2 次，成本 0.25%。摩擦可控，策略收益还能留住。</p>
+        <div class="pc-num"><span data-fee>2.4%</span> <small>年化手续费</small></div>
+        <p class="pc-desc">每月交易 2 次，成本 0.1%。摩擦可控，策略收益还能留住。</p>
       </button>
       <button class="preset-card" data-preset="retail">
         <div class="pc-head"><i class="ti ti-user"></i> 普通散户</div>
-        <div class="pc-num"><span data-fee>32.5%</span> <small>年化手续费</small></div>
-        <p class="pc-desc">每周交易 3 次，成本 0.25%。一年被吃掉三分之一本金。</p>
+        <div class="pc-num"><span data-fee>14.5%</span> <small>年化手续费</small></div>
+        <p class="pc-desc">每周交易 3 次，成本 0.1%。一年被吃掉七分之一本金。</p>
       </button>
       <button class="preset-card" data-preset="intraday">
         <div class="pc-head"><i class="ti ti-bolt"></i> 日内交易者</div>
-        <div class="pc-num"><span data-fee>83.5%</span> <small>年化手续费</small></div>
-        <p class="pc-desc">每天交易 3 次，成本 0.3%。手续费几乎是全部本金的死刑判决。</p>
+        <div class="pc-num"><span data-fee>51.9%</span> <small>年化手续费</small></div>
+        <p class="pc-desc">每天交易 3 次，成本 0.12%。超过一半本金被手续费吞噬。</p>
       </button>
       <button class="preset-card" data-preset="futures">
         <div class="pc-head"><i class="ti ti-chart-arrows-vertical"></i> 期货炒单</div>
@@ -71,8 +71,8 @@
           <input type="range" id="principalInput" min="10000" max="1000000" value="100000" step="10000">
         </div>
         <div class="slider-group">
-          <div class="slider-label"><span><i class="ti ti-receipt-tax"></i> 单次交易成本（双边）</span><strong id="costVal">0.25%</strong></div>
-          <input type="range" id="costInput" min="0.01" max="1" value="0.25" step="0.01">
+          <div class="slider-label"><span><i class="ti ti-receipt-tax"></i> 单次交易成本（双边）</span><strong id="costVal">0.10%</strong></div>
+          <input type="range" id="costInput" min="0.01" max="1" value="0.10" step="0.01">
         </div>
         <div class="slider-group">
           <div class="slider-label"><span><i class="ti ti-calendar-week"></i> 每月交易次数</span><strong id="freqVal">22 次</strong></div>
@@ -163,13 +163,14 @@
         </div>
         <div class="fee-switch">
           <span>费率：</span>
-          <button class="fee-btn" data-cost="0.001">0.1%</button>
-          <button class="fee-btn active" data-cost="0.0025">0.25%</button>
+          <button class="fee-btn" data-cost="0.0005">0.05%</button>
+          <button class="fee-btn active" data-cost="0.001">0.1%</button>
+          <button class="fee-btn" data-cost="0.0025">0.25%</button>
           <button class="fee-btn" data-cost="0.005">0.5%</button>
           <button class="fee-btn" data-cost="0.01">1%</button>
         </div>
         <div class="formula-box">
-          <code id="formulaText">剩余本金 = 100% × (1 − 0.25%)^0 = 100.0%</code>
+          <code id="formulaText">剩余本金 = 100% × (1 − 0.10%)^0 = 100.0%</code>
         </div>
         <div class="alert-box" id="alertBox" style="display:none;">
           <i class="ti ti-alert-circle"></i>
@@ -183,13 +184,13 @@
   <!-- ═══════════════ 模块三：策略对决擂台 ═══════════════ -->
   <div class="section" id="arena">
     <h2><i class="ti ti-trophy"></i> 模块三｜同样的策略，频率定生死</h2>
-    <p class="section-desc">三条赛道，同样 52% 胜率、同样盈亏比、同样 0.25% 成本——唯一变量是交易频率。点开始，看谁先死。</p>
+    <p class="section-desc">三条赛道，同样 52% 胜率、同样盈亏比、同样 0.1% 成本——唯一变量是交易频率。点开始，看谁先死。</p>
 
     <div class="arena-conditions">
       <span><i class="ti ti-wallet"></i> 本金 10 万</span>
       <span><i class="ti ti-target-arrow"></i> 胜率 52%</span>
       <span><i class="ti ti-scale"></i> 盈亏比 1:1</span>
-      <span><i class="ti ti-receipt-tax"></i> 单次成本 0.25%</span>
+      <span><i class="ti ti-receipt-tax"></i> 单次成本 0.1%</span>
       <span><i class="ti ti-wave-sine"></i> 单次 ±1.5%</span>
     </div>
 
@@ -232,11 +233,11 @@
   <!-- ═══════════════ 公式与原理 ═══════════════ -->
   <div class="section">
     <h2><i class="ti ti-math-function"></i> 一行公式看懂绞杀</h2>
-    <p class="section-desc">手续费是乘法消耗，不是加法。每次剩 99.75%，N 次后剩 0.9975<sup>N</sup>。</p>
+    <p class="section-desc">手续费是乘法消耗，不是加法。每次剩 99.9%，N 次后剩 0.999<sup>N</sup>。</p>
     <div class="formula-card">
       <div class="formula-big">W<sub>N</sub> = W<sub>0</sub> × (1 − c)<sup>N</sup></div>
       <ul class="formula-list">
-        <li>c = 单次双边成本率（A股约 0.25%：佣金万2.5双边 + 印花税千1卖出 + 滑点千1）</li>
+        <li>c = 单次双边成本率（A股约 0.1%：佣金万1~万1.5双边 + 印花税千0.5卖出 + 过户费忽略）</li>
         <li>N = 总交易次数 = 频率 × 时间</li>
         <li>当 N 足够大，(1−c)<sup>N</sup> → 0，本金指数衰减到零</li>
       </ul>

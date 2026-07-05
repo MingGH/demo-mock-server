@@ -529,4 +529,70 @@ public final class GameplayResponses {
             long total
     ) {
     }
+
+    /**
+     * 排除选项改答案 提交响应（提交成功后返回的最新统计快照）。
+     *
+     * @param totalRounds 总轮次
+     * @param stayRounds 坚持策略轮次
+     * @param stayWins 坚持策略答对次数
+     * @param stayWinRate 坚持策略胜率
+     * @param switchRounds 换选策略轮次
+     * @param switchWins 换选策略答对次数
+     * @param switchWinRate 换选策略胜率
+     * @param lastUpdated 最近一次提交时间戳（毫秒）
+     */
+    public record SwitchAnswerSubmitResponse(
+            long totalRounds,
+            long stayRounds,
+            long stayWins,
+            double stayWinRate,
+            long switchRounds,
+            long switchWins,
+            double switchWinRate,
+            long lastUpdated
+    ) {
+    }
+
+    /**
+     * 排除选项改答案 每日趋势。
+     *
+     * @param date 日期（YYYY-MM-DD）
+     * @param stayRate 当日坚持策略胜率
+     * @param switchRate 当日换选策略胜率
+     * @param rounds 当日总轮次
+     */
+    public record DailyTrend(
+            String date,
+            double stayRate,
+            double switchRate,
+            long rounds
+    ) {
+    }
+
+    /**
+     * 排除选项改答案 全局统计响应。
+     *
+     * @param totalRounds 总轮次
+     * @param stayRounds 坚持策略轮次
+     * @param stayWins 坚持策略答对次数
+     * @param stayWinRate 坚持策略胜率
+     * @param switchRounds 换选策略轮次
+     * @param switchWins 换选策略答对次数
+     * @param switchWinRate 换选策略胜率
+     * @param participantCount 粗略参与人数（按日去重 IP）
+     * @param recentTrend 最近 7 天每日趋势
+     */
+    public record SwitchAnswerStatsResponse(
+            long totalRounds,
+            long stayRounds,
+            long stayWins,
+            double stayWinRate,
+            long switchRounds,
+            long switchWins,
+            double switchWinRate,
+            long participantCount,
+            List<DailyTrend> recentTrend
+    ) {
+    }
 }

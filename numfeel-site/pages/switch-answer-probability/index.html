@@ -248,6 +248,48 @@
     </div>
   </section>
 
+  <!-- ════════════ 模块五：全网数据 ════════════ -->
+  <section class="module" id="module5">
+    <div class="module-head">
+      <span class="module-tag tag-gold"><i class="ti ti-world"></i> 模块五 · 全网验证</span>
+      <h2>所有玩过这个模拟器的人，数据说了什么</h2>
+      <p class="module-hint">下面的数据来自所有用户的真实操作，不是本地模拟。每次你做决定，都在为这组数据贡献一个样本。</p>
+    </div>
+
+    <!-- 核心数字卡片 -->
+    <div class="global-stats" id="globalStats">
+      <div class="gs-card">
+        <span class="gs-label">总参与轮次</span>
+        <span class="gs-num" id="gsTotalRounds">—</span>
+      </div>
+      <div class="gs-card gs-stay">
+        <span class="gs-label">坚持策略胜率</span>
+        <span class="gs-num" id="gsStayRate">—</span>
+        <span class="gs-sub" id="gsStaySub">— 轮</span>
+      </div>
+      <div class="gs-card gs-switch">
+        <span class="gs-label">换选策略胜率</span>
+        <span class="gs-num" id="gsSwitchRate">—</span>
+        <span class="gs-sub" id="gsSwitchSub">— 轮</span>
+      </div>
+    </div>
+
+    <!-- 理论对照 -->
+    <div class="gs-theory">
+      <i class="ti ti-math"></i>
+      <span>理论预测：坚持 25%，换选 75%。真实数据偏差 <strong id="gsDeviation">—</strong></span>
+    </div>
+
+    <!-- 最近 7 天趋势图 -->
+    <div class="chart-card card">
+      <div class="chart-head">
+        <span><i class="ti ti-trending-up"></i> 最近 7 天趋势</span>
+        <span class="chart-count" id="gsParticipants">— 人参与</span>
+      </div>
+      <canvas id="trendChart" height="200"></canvas>
+    </div>
+  </section>
+
   <!-- ════════════ 为什么折叠 ════════════ -->
   <details class="why-details card">
     <summary><i class="ti ti-question-mark"></i> 为什么？一句话解释 + 展开推导</summary>

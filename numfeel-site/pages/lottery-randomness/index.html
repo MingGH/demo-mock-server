@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="3472期双色球真实数据做卡方检验、游程检验，用统计学验证彩票到底有没有规律。">
+  <title>彩票随机性检验 | 数字直觉</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ═══════════ Hero ═══════════ -->
+  <div class="header">
+    <h1><i class="ti ti-dice-5"></i> 双色球到底有没有规律</h1>
+    <p>3472 期真实历史数据，5 项统计检验，亲自动手验证这玩意儿是不是真随机的。</p>
+    <div class="header-stats">
+      <span class="pill"><b>3472</b> 期开奖</span>
+      <span class="pill"><b>23</b> 年跨度</span>
+      <span class="pill"><b>5</b> 项检验</span>
+      <span class="pill">置信度 <b>95%</b></span>
+    </div>
+    <div class="cta-block">
+      <button class="btn btn-primary btn-lg" id="goScrollBtn" type="button"><i class="ti ti-player-play-filled"></i> 开始检验</button>
+      <div class="note">数据来自 500.com，从 2003-02-23 第 03001 期到 2026-07-02 第 26075 期</div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 模块一：频率卡方 ═══════════ -->
+  <div class="section highlight-section" id="mod1">
+    <h2><i class="ti ti-chart-histogram"></i> 模块一 · 号码频率卡方检验 <span class="tag tag-info">卡方</span></h2>
+    <p class="section-desc">如果双色球是真随机的，33 个红球每个号被选中的概率都是 6/33，3472 期下来每个号大约出现 631 次。把每号的实际出现次数量出来与理论值比，卡方检验量化「这点偏差算不算正常」。</p>
+
+    <div class="year-range">
+      <div class="row">
+        <label>起始年份</label>
+        <input type="range" id="yearStart" min="2003" max="2026" value="2003" step="1">
+        <span class="val" id="yearStartVal">2003</span>
+      </div>
+      <div class="row">
+        <label>结束年份</label>
+        <input type="range" id="yearEnd" min="2003" max="2026" value="2026" step="1">
+        <span class="val" id="yearEndVal">2026</span>
+      </div>
+      <div class="summary" id="yearSummary">所有数据 · 3472 期</div>
+    </div>
+
+    <h3 style="color:#90caf9;font-size:0.95rem;margin-bottom:6px;margin-top:8px;"><i class="ti ti-circle-1"></i> 红球出现次数（按高到低）</h3>
+    <div class="chart-wrap"><canvas id="redChart"></canvas></div>
+
+    <h3 style="color:#90caf9;font-size:0.95rem;margin-bottom:6px;margin-top:14px;"><i class="ti ti-circle-2"></i> 蓝球出现次数</h3>
+    <div class="chart-wrap sm"><canvas id="blueChart"></canvas></div>
+
+    <button class="btn btn-primary btn-block" id="runChiBtn" type="button"><i class="ti ti-calculator"></i> 执行卡方检验</button>
+
+    <div class="result-card" id="chiResult">
+      <div class="result-grid">
+        <div class="result-stat"><div class="label">红球 χ²</div><div class="value" id="chiRedVal">—</div><div class="sub">df=32 · 临界值 46.19</div></div>
+        <div class="result-stat"><div class="label">红球 p 值</div><div class="value" id="chiRedP">—</div><div class="sub">越接近 1 越像随机</div></div>
+        <div class="result-stat"><div class="label">蓝球 χ²</div><div class="value" id="chiBlueVal">—</div><div class="sub">df=15 · 临界值 25.00</div></div>
+        <div class="result-stat"><div class="label">极差</div><div class="value" id="chiRangeVal">—</div><div class="sub">最高频 − 最低频</div></div>
+      </div>
+      <div class="verdict" id="chiVerdict"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 模块二：游程检验 ═══════════ -->
+  <div class="section" id="mod2">
+    <h2><i class="ti ti-sequence"></i> 模块二 · 游程检验 <span class="tag tag-info">序列随机性</span></h2>
+    <p class="section-desc">「冷号连出十期不出」「热号连续命中」——这种聚集行为能不能伪装成随机性？对一个号码依次写出每期是否出现（1=出现，0=没出现），数「游程数」（连续 0 或连续 1 段数），看它与随机的期望差几个标准差。|Z| &gt; 1.96 就拒绝随机性。</p>
+
+    <div class="preset-row">
+      <span class="preset-chip" data-preset="top"><i class="ti ti-flame"></i> 出现最多</span>
+      <span class="preset-chip" data-preset="bot"><i class="ti ti-snowflake"></i> 出现最少</span>
+      <span class="preset-chip" data-preset="rand"><i class="ti ti-dice"></i> 随机选一个</span>
+      <span class="preset-chip" data-preset="extreme"><i class="ti ti-bolt"></i> Z 绝对值最大</span>
+    </div>
+
+    <div class="ball-picker" id="ballPicker"></div>
+
+    <div class="timeline">
+      <canvas id="timelineCanvas" class="timeline-canvas" width="600" height="600"></canvas>
+    </div>
+    <div class="timeline-legend">
+      <span><span class="swatch ic-on"></span>该号出现（1）</span>
+      <span><span class="swatch ic-off"></span>该号未出现（0）</span>
+      <span style="margin-left:auto;color:#888">每格 = 一期，从左到右、从上到下时序排列</span>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="runRunsBtn" type="button" style="margin-top:14px;"><i class="ti ti-player-play"></i> 执行游程检验</button>
+
+    <div class="result-card" id="runsResult">
+      <div class="result-grid">
+        <div class="result-stat"><div class="label">所选号码</div><div class="value" id="runsBallVal">—</div><div class="sub" id="runsBallFreq">出现 0 次</div></div>
+        <div class="result-stat"><div class="label">实际游程数</div><div class="value" id="runsVal">—</div><div class="sub">连续 0/1 段数</div></div>
+        <div class="result-stat"><div class="label">期望游程数</div><div class="value" id="runsExpVal">—</div><div class="sub">随机假设下的值</div></div>
+        <div class="result-stat"><div class="label">Z 值</div><div class="value" id="runsZVal">—</div><div class="sub">|Z| &gt; 1.96 拒绝</div></div>
+      </div>
+      <div class="verdict" id="runsVerdict"></div>
+
+      <div style="margin-top:20px;padding:14px 16px;background:rgba(0,0,0,0.18);border-radius:10px;">
+        <div style="color:#90caf9;font-size:0.84rem;margin-bottom:8px;"><i class="ti ti-stack-2"></i> 全 33 个红球号码批量游程检验</div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;height:14px;background:rgba(255,255,255,0.08);border-radius:7px;overflow:hidden;">
+            <div id="runsProgressBar" style="height:100%;width:0;background:linear-gradient(90deg,#81c784,#ffd700);transition:width 1s ease;"></div>
+          </div>
+          <div style="color:#81c784;font-weight:700;font-size:0.95rem;" id="runsBatchText">— / 33 通过</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 模块三：相邻期重叠 ═══════════ -->
+  <div class="section" id="mod3">
+    <h2><i class="ti ti-arrows-shuffle"></i> 模块三 · 相邻期重叠分析 <span class="tag tag-info">独立检验</span></h2>
+    <p class="section-desc">连续两期开相同号码纯属巧合还是某种"惯性"？统计 3471 对相邻期的红球交集大小（0~6 个共同号），与超几何分布的理论预测对比。如果上期真的"拉"着下期，超出预期的高重叠就会暴露。</p>
+
+    <button class="btn btn-primary btn-block" id="runOverlapBtn" type="button"><i class="ti ti-chart-bar"></i> 执行重叠分析</button>
+
+    <div class="chart-wrap" style="margin-top:18px;display:none;" id="overlapChartWrap"><canvas id="overlapChart"></canvas></div>
+
+    <div class="result-card" id="overlapResult">
+      <div class="result-grid">
+        <div class="result-stat"><div class="label">相邻期对数</div><div class="value" id="ovPairsVal">—</div><div class="sub">总期数 − 1</div></div>
+        <div class="result-stat"><div class="label">实际重叠 ≥ 4 次</div><div class="value" id="ovHighVal">—</div><div class="sub">罕见事件次数</div></div>
+        <div class="result-stat"><div class="label">理论重叠 ≥ 4 次</div><div class="value" id="ovExpHighVal">—</div><div class="sub">超几何预测</div></div>
+        <div class="result-stat"><div class="label">χ²（df=6）</div><div class="value" id="ovChiVal">—</div><div class="sub">临界值 12.57</div></div>
+      </div>
+      <div class="verdict" id="overlapVerdict"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 模块四：综合报告 ═══════════ -->
+  <div class="section" id="mod4">
+    <h2><i class="ti ti-clipboard-check"></i> 模块四 · 综合报告 <span class="tag tag-info">5 项检验汇总</span></h2>
+    <p class="section-desc">把以上检验、外加号码尾数分布与"千呼万唤始出来"的间隔分析，汇总成一张整体判断表。下面对每项检验给一句话结论。</p>
+
+    <div class="footnote" style="margin-bottom:16px;">
+      <b>关于尾数分析的小科普</b>：彩民常说"尾数均衡"，按这个迷信，每个尾数（0~9）该出现的次数应该一样多。把这个迷信当零假设，卡方检验会狠狠拒绝它——但这是因为双色球的号码池本身就不均匀：尾数 1/2/3 在 1~33 中各有 4 个候选号，其他尾数只有 3 个。真随机模型期望尾数 1/2/3 偏多。所以正确的零假设是「样本符合真随机尾数分布」，下面同时展示两种检验的结果。
+    </div>
+
+    <button class="btn btn-primary btn-block" id="runAllBtn" type="button"><i class="ti ti-bolt"></i> 生成全部检验报告</button>
+
+    <div class="summary-grid" id="summaryGrid" style="display:none;"></div>
+
+    <div id="finalConclusion" class="final-conclusion" style="display:none;">
+      <div class="icon-row"><i class="ti ti-shield-check"></i></div>
+      <div class="text" id="finalText"></div>
+      <div class="sub" id="finalSub"></div>
+      <div class="actions">
+        <button class="btn btn-secondary" id="copyBtn" type="button"><i class="ti ti-copy"></i> 复制结论</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote" style="margin-top:20px;">
+    <b>方法说明</b>：所有检验在 5% 显著性水平（α=0.05）下进行，临界值取自卡方分布与标准正态分布。卡方临界值用 Wilson-Hilferty 近似，p 值用同一近似反推，对 df≥6 与表值误差 &lt; 0.3。当 p &gt; 0.05 时「未能拒绝随机性假设」是统计的标准说法，绝不等于「证明是随机」，只能说数据找不到非随机的证据。
+  </div>
+
+</div>
+
+<script src="stats-engine.js"></script>
+<script>
+(function(){
+  'use strict';
+  var S = window.LotteryStats;
+  var DATA = null;
+  var RED_CHART = null, BLUE_CHART = null, OVERLAP_CHART = null;
+  var CURRENT_BALL = 17;
+
+  // ── 工具函数 ──────────────────────────────
+  function $(id){ return document.getElementById(id); }
+  function el(tag, opts){
+    var e = document.createElement(tag);
+    if (opts) for (var k in opts) if (opts.hasOwnProperty(k)) e[k] = opts[k];
+    return e;
+  }
+  function fmt(n, d){ d = d == null ? 2 : d; return Number(n).toFixed(d); }
+  function tweenNum(domEl, target, fmtStr, dur){
+    dur = dur || 800;
+    var start = performance.now();
+    function step(now){
+      var t = Math.min((now-start)/dur, 1);
+      var eased = 1 - Math.pow(1-t, 3);
+      domEl.textContent = fmt(target * eased, fmtStr === 'int' ? 0 : 2);
+      if (t < 1) requestAnimationFrame(step);
+      else domEl.textContent = fmtStr === 'int' ? Math.round(target) : fmt(target, 2);
+    }
+    requestAnimationFrame(step);
+  }
+  function filterByYear(data, ys, ye){
+    if (ys <= 2003 && ye >= 2026) return data;
+    var out = [];
+    for (var i = 0; i < data.length; i++){
+      var y = parseInt(data[i].date.slice(0,4), 10);
+      if (y >= ys && y <= ye) out.push(data[i]);
+    }
+    return out;
+  }
+
+  // ── 加载数据 ──
+  fetch('../data/ssq-history.json')
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      DATA = j.data;
+      $('yearSummary').textContent = '所有数据 · ' + DATA.length + ' 期';
+      initBallPicker();
+      drawRedChart(DATA);
+      drawBlueChart(DATA);
+      drawTimelineFor(CURRENT_BALL);
+      $('yearEndVal').textContent = 2026;
+    })
+    .catch(function(e){
+      console.error('数据加载失败', e);
+      document.querySelectorAll('.section').forEach(function(s, i){
+        if (i===0) return;
+        s.classList.add('section-disabled');
+      });
+      $('yearSummary').textContent = '数据加载失败：' + (e.message || e);
+    });
+
+  // ── Hero 滚动 + 触发首屏检验 ──
+  $('goScrollBtn').addEventListener('click', function(){
+    $('mod1').scrollIntoView({ behavior: 'smooth' });
+    if (DATA && !$('chiResult').classList.contains('show')){
+      setTimeout(function(){ $('runChiBtn').click(); }, 500);
+    }
+  });
+
+  // ── 年份滑块 ──
+  function syncYearSummary(){
+    var ys = parseInt($('yearStart').value, 10);
+    var ye = parseInt($('yearEnd').value, 10);
+    if (ys > ye) { ye = ys; $('yearEnd').value = ys; }
+    $('yearStartVal').textContent = ys;
+    $('yearEndVal').textContent = ye;
+    if (!DATA) return;
+    var filtered = filterByYear(DATA, ys, ye);
+    $('yearSummary').textContent = ys + '–' + ye + ' · ' + filtered.length + ' 期';
+    drawRedChart(filtered);
+    drawBlueChart(filtered);
+  }
+  $('yearStart').addEventListener('input', syncYearSummary);
+  $('yearEnd').addEventListener('input', syncYearSummary);
+
+  // ── 红球频率柱状图 ──
+  function drawRedChart(data){
+    var counts = S.countRedFrequencies(data);
+    var arr = [];
+    for (var i = 1; i <= 33; i++) arr.push({ ball: i, count: counts[i] });
+    arr.sort(function(a,b){ return b.count - a.count; });
+    var labels = arr.map(function(x){ return x.ball; });
+    var values = arr.map(function(x){ return x.count; });
+    var expected = data.length * 6 / 33;
+    // 颜色：接近期望→蓝；远离→金
+    var threshold = Math.sqrt(data.length * 6 / 33) * 0.6 + 30;
+    var colors = values.map(function(v){
+      var dev = Math.abs(v - expected);
+      if (dev > expected * 0.1) return 'rgba(255,215,0,0.75)';
+      return 'rgba(144,202,249,0.7)';
+    });
+    var cfg = {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: '出现次数', data: values, backgroundColor: colors, borderColor: 'rgba(255,255,255,0.15)', borderWidth: 1 },
+          { label: '理论期望', data: Array(33).fill(expected), type: 'line', borderColor: '#ffd700', borderDash: [6,4], borderWidth: 2, pointRadius: 0, fill: false, tension: 0 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: '#aaa', font: { size: 11 } } }, tooltip: { callbacks: { label: function(c){ return c.dataset.label + ': ' + c.parsed.y; } } } },
+        scales: {
+          x: { ticks: { color: '#aaa', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: '次数', color: '#aaa' } }
+        },
+        animation: { duration: 600 }
+      }
+    };
+    if (RED_CHART) RED_CHART.destroy();
+    RED_CHART = new Chart($('redChart'), cfg);
+  }
+
+  // ── 蓝球频率柱状图 ──
+  function drawBlueChart(data){
+    var counts = S.countBlueFrequencies(data);
+    var labels = [], values = [];
+    for (var i = 1; i <= 16; i++) { labels.push(i); values.push(counts[i]); }
+    var expected = data.length / 16;
+    var colors = values.map(function(v){
+      var dev = Math.abs(v - expected);
+      if (dev > expected * 0.1) return 'rgba(255,215,0,0.75)';
+      return 'rgba(144,202,249,0.7)';
+    });
+    var cfg = {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: '出现次数', data: values, backgroundColor: colors, borderColor: 'rgba(255,255,255,0.15)', borderWidth: 1 },
+          { label: '理论期望', data: Array(16).fill(expected), type: 'line', borderColor: '#ffd700', borderDash: [6,4], borderWidth: 2, pointRadius: 0, fill: false, tension: 0 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: '#aaa', font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        },
+        animation: { duration: 500 }
+      }
+    };
+    if (BLUE_CHART) BLUE_CHART.destroy();
+    BLUE_CHART = new Chart($('blueChart'), cfg);
+  }
+
+  // ── 球号 picker ──
+  function initBallPicker(){
+    var picker = $('ballPicker');
+    picker.innerHTML = '';
+    for (var i = 1; i <= 33; i++){
+      var b = el('button', {
+        className: 'ball-btn' + (i === CURRENT_BALL ? ' active' : ''),
+        type: 'button',
+        textContent: i
+      });
+      b.dataset.ball = i;
+      b.addEventListener('click', function(){
+        var arr = picker.querySelectorAll('.ball-btn');
+        for (var k = 0; k < arr.length; k++) arr[k].classList.remove('active');
+        this.classList.add('active');
+        CURRENT_BALL = parseInt(this.dataset.ball, 10);
+        if (DATA) drawTimelineFor(CURRENT_BALL);
+      });
+      picker.appendChild(b);
+    }
+  }
+
+  // ── 预设按钮 ──
+  document.querySelectorAll('.preset-chip').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      if (!DATA) return;
+      var kind = this.dataset.preset;
+      var counts = S.countRedFrequencies(DATA);
+      var ball;
+      if (kind === 'top' || kind === 'bot'){
+        var arr = [];
+        for (var i = 1; i <= 33; i++) arr.push({ ball: i, count: counts[i] });
+        arr.sort(function(a,b){ return kind === 'top' ? b.count - a.count : a.count - b.count; });
+        ball = arr[0].ball;
+      } else if (kind === 'rand'){
+        ball = 1 + Math.floor(Math.random() * 33);
+      } else { // extreme Z
+        var batch = S.runsTestBatch(DATA);
+        var max = batch.results[0];
+        for (var j = 0; j < batch.results.length; j++){
+          if (Math.abs(batch.results[j].z) > Math.abs(max.z)) max = batch.results[j];
+        }
+        ball = max.ball;
+      }
+      // 切换 active
+      var buttons = document.querySelectorAll('#ballPicker .ball-btn');
+      for (var k = 0; k < buttons.length; k++){
+        var bNum = parseInt(buttons[k].dataset.ball, 10);
+        buttons[k].classList.toggle('active', bNum === ball);
+      }
+      CURRENT_BALL = ball;
+      drawTimelineFor(CURRENT_BALL);
+    });
+  });
+
+  // ── 时序热力图（0/1 序列） ──
+  function drawTimelineFor(ball){
+    if (!DATA) return;
+    var seq = S.generateBinarySequence(DATA, ball, 'red');
+    var canvas = $('timelineCanvas');
+    var cols = 60;
+    var rows = Math.ceil(seq.length / cols);
+    var cell = 7, gap = 1;
+    canvas.width = cols * (cell + gap) - gap;
+    canvas.height = rows * (cell + gap) - gap;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for (var i = 0; i < seq.length; i++){
+      var r = Math.floor(i / cols), c = i % cols;
+      ctx.fillStyle = seq[i] === 1 ? '#ffd700' : '#1a1a2e';
+      ctx.fillRect(c * (cell + gap), r * (cell + gap), cell, cell);
+    }
+  }
+
+  // ── 卡方检验按钮 ──
+  $('runChiBtn').addEventListener('click', function(){
+    if (!DATA) return;
+    var ys = parseInt($('yearStart').value, 10);
+    var ye = parseInt($('yearEnd').value, 10);
+    var filtered = filterByYear(DATA, ys, ye);
+    var red = S.redChiSquare(filtered);
+    var blue = S.blueChiSquare(filtered);
+    var counts = S.countRedFrequencies(filtered);
+    var max = 0, min = Infinity;
+    for (var i = 1; i <= 33; i++) { if (counts[i] > max) max = counts[i]; if (counts[i] < min) min = counts[i]; }
+
+    $('chiResult').classList.add('show');
+    tweenNum($('chiRedVal'), red.chiSquare, 'dec', 900);
+    tweenNum($('chiRedP'), red.pApprox, 'dec', 900);
+    tweenNum($('chiBlueVal'), blue.chiSquare, 'dec', 900);
+    $('chiRangeVal').textContent = max + ' − ' + min + ' = ' + (max - min);
+
+    setTimeout(function(){
+      var allPass = red.isRandom && blue.isRandom;
+      var v = $('chiVerdict');
+      v.className = 'verdict ' + (allPass ? 'pass' : 'reject');
+      v.innerHTML = '<i class="ti ti-' + (allPass ? 'shield-check' : 'alert-triangle') + ' icon"></i>' +
+        (allPass
+          ? '红蓝两检验均未超过临界值，未能拒绝「号码出现随机」假设。'
+          : (red.isRandom ? '红球随机、蓝球超出临界值' : (blue.isRandom ? '蓝球随机、红球超出临界值' : '红蓝均超出临界值，但要警惕年份过短样本过小')) + '，检出了明显的非随机迹象');
+    }, 950);
+  });
+
+  // ── 游程检验按钮 ──
+  $('runRunsBtn').addEventListener('click', function(){
+    if (!DATA) return;
+    var ball = CURRENT_BALL;
+    var seq = S.generateBinarySequence(DATA, ball, 'red');
+    var r = S.runsTest(seq);
+    $('runsResult').classList.add('show');
+    $('runsBallVal').textContent = ball;
+    var redCounts = S.countRedFrequencies(DATA);
+    $('runsBallFreq').textContent = '出现 ' + redCounts[ball] + ' 次 / ' + DATA.length + ' 期';
+    tweenNum($('runsVal'), r.runs, 'int', 800);
+    tweenNum($('runsExpVal'), r.expectedRuns, 'int', 800);
+    tweenNum($('runsZVal'), r.z, 'dec', 800);
+    setTimeout(function(){
+      var v = $('runsVerdict');
+      v.className = 'verdict ' + (r.isRandom ? 'pass' : 'reject');
+      v.innerHTML = '<i class="ti ti-' + (r.isRandom ? 'shield-check' : 'alert-triangle') + ' icon"></i>' +
+        (r.isRandom
+          ? '|Z| = ' + Math.abs(r.z).toFixed(3) + ' ≤ 1.96，未能拒绝随机性，未观察到该号出/不出现序列有趋势性'
+          : '|Z| = ' + Math.abs(r.z).toFixed(3) + ' > 1.96，序列存在显著的聚集或反复行为');
+    }, 850);
+
+    // 批量检验
+    var batch = S.runsTestBatch(DATA);
+    $('runsBatchText').textContent = batch.pass + ' / 33 通过';
+    $('runsProgressBar').style.width = (batch.pass / 33 * 100) + '%';
+  });
+
+  // ── 相邻期重叠按钮 ──
+  $('runOverlapBtn').addEventListener('click', function(){
+    if (!DATA) return;
+    var r = S.adjacentOverlap(DATA);
+    $('overlapResult').classList.add('show');
+    $('overlapChartWrap').style.display = 'block';
+    var obsArr = [r.overlapCounts[0],r.overlapCounts[1],r.overlapCounts[2],r.overlapCounts[3],r.overlapCounts[4],r.overlapCounts[5],r.overlapCounts[6]];
+    var expArr = [r.expected[0],r.expected[1],r.expected[2],r.expected[3],r.expected[4],r.expected[5],r.expected[6]];
+    tweenNum($('ovPairsVal'), r.total, 'int', 700);
+    $('ovHighVal').textContent = (r.overlapCounts[4] + r.overlapCounts[5] + r.overlapCounts[6]);
+    $('ovExpHighVal').textContent = (r.expected[4] + r.expected[5] + r.expected[6]).toFixed(1);
+    tweenNum($('ovChiVal'), r.chiSquare.chiSquare, 'dec', 900);
+    drawOverlapChart(obsArr, expArr);
+    setTimeout(function(){
+      var v = $('overlapVerdict');
+      v.className = 'verdict ' + (r.chiSquare.isRandom ? 'pass' : 'reject');
+      v.innerHTML = '<i class="ti ti-' + (r.chiSquare.isRandom ? 'shield-check' : 'alert-triangle') + ' icon"></i>' +
+        (r.chiSquare.isRandom
+          ? '重叠大小分布与超几何理论值高度吻合，相邻期看不出"惯性"痕迹。'
+          : '重叠分布偏离超几何预测，相邻期之间可能存在某种关联。');
+    }, 950);
+  });
+
+  function drawOverlapChart(obs, exp){
+    var labels = ['0 个','1 个','2 个','3 个','4 个','5 个','6 个'];
+    var cfg = {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: '实际次数', data: obs, backgroundColor: 'rgba(144,202,249,0.7)', borderColor: 'rgba(255,255,255,0.15)', borderWidth: 1 },
+          { label: '理论期望', data: exp, backgroundColor: 'rgba(255,215,0,0.55)', borderColor: '#ffd700', borderWidth: 1 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#aaa', font: { size: 11 } } } },
+        scales: {
+          x: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.05)' }, title: { display: true, text: '相邻对数', color: '#aaa' } }
+        },
+        animation: { duration: 700 }
+      }
+    };
+    if (OVERLAP_CHART) OVERLAP_CHART.destroy();
+    OVERLAP_CHART = new Chart($('overlapChart'), cfg);
+  }
+
+  // ── 综合报告按钮 ──
+  $('runAllBtn').addEventListener('click', function(){
+    if (!DATA) return;
+    var red = S.redChiSquare(DATA);
+    var blue = S.blueChiSquare(DATA);
+    var runs = S.runsTestBatch(DATA);
+    var ov = S.adjacentOverlap(DATA);
+    var ld = S.lastDigitAnalysis(DATA);
+
+    var cards = [
+      { name: '红球频率卡方', icon: 'ti-chart-histogram',
+        stat: 'χ² = ' + red.chiSquare.toFixed(2) + ' · 临界值 46.19 · p = ' + red.pApprox.toFixed(3),
+        pass: red.isRandom, conclusion: red.isRandom ? '未能拒绝随机' : '拒绝随机' },
+      { name: '蓝球频率卡方', icon: 'ti-droplet',
+        stat: 'χ² = ' + blue.chiSquare.toFixed(2) + ' · 临界值 25.00',
+        pass: blue.isRandom, conclusion: blue.isRandom ? '未能拒绝随机' : '拒绝随机' },
+      { name: '游程检验（33 号码）', icon: 'ti-sequence',
+        stat: '通过 ' + runs.pass + ' / 33 · 最大 |Z| = ' + Math.max.apply(null, runs.results.map(function(r){ return Math.abs(r.z); })).toFixed(3),
+        pass: runs.fail === 0, conclusion: runs.fail === 0 ? '全部通过随机' : '有号不通过' },
+      { name: '相邻期重叠', icon: 'ti-arrows-shuffle',
+        stat: 'χ² = ' + ov.chiSquare.chiSquare.toFixed(2) + ' · 临界值 12.57',
+        pass: ov.chiSquare.isRandom, conclusion: ov.chiSquare.isRandom ? '符合独立假设' : '存在惯性' },
+      { name: '尾数分布（随机模型）', icon: 'ti-hash',
+        stat: 'χ² = ' + ld.chiSquareWeighted.toFixed(2) + ' · 临界值 16.92',
+        pass: ld.isRandomWeighted, conclusion: ld.isRandomWeighted ? '符合真实随机尾数' : '偏离' }
+    ];
+
+    // 渲染卡片
+    var grid = $('summaryGrid');
+    grid.innerHTML = '';
+    grid.style.display = 'grid';
+    cards.forEach(function(c){
+      var card = el('div', { className: 'summary-card' });
+      card.innerHTML =
+        '<div class="name"><i class="ti ' + c.icon + '"></i> ' + c.name + '</div>' +
+        '<div class="stat">' + c.stat + '</div>' +
+        '<div class="conclusion ' + (c.pass ? 'pass' : 'reject') + '"><i class="ti ti-' + (c.pass ? 'check' : 'x') + '"></i> ' + c.conclusion + '</div>';
+      grid.appendChild(card);
+    });
+
+    // 最终结论
+    var allPass = cards.every(function(c){ return c.pass; });
+    var fc = $('finalConclusion');
+    fc.style.display = 'block';
+    $('finalText').textContent = allPass
+      ? '在 5% 显著性水平下，双色球的 3472 期历史数据未能拒绝随机性假设。'
+      : '至少一项检验拒绝了随机性，建议查看上方卡片了解具体哪项偏离。';
+    $('finalSub').textContent = '数据来源：500.com · 检验方法：卡方检验、游程检验、超几何分布对照';
+
+    // 平滑滚动到最终结论
+    setTimeout(function(){ fc.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 200);
+
+    // 也跑一次游程/卡方按钮的UI更新（让上面空白格子被自动填上）
+    if (!$('chiResult').classList.contains('show')) { $('runChiBtn').click(); }
+    if (!$('runsResult').classList.contains('show')) { $('runRunsBtn').click(); }
+    if (!$('overlapResult').classList.contains('show')) { $('runOverlapBtn').click(); }
+  });
+
+  // ── 复制结论 ──
+  $('copyBtn').addEventListener('click', function(){
+    if (!DATA) return;
+    var red = S.redChiSquare(DATA);
+    var blue = S.blueChiSquare(DATA);
+    var runs = S.runsTestBatch(DATA);
+    var ov = S.adjacentOverlap(DATA);
+    var ld = S.lastDigitAnalysis(DATA);
+    var lines = [
+      '双色球随机性检验结论',
+      '─────────────',
+      '数据：' + DATA.length + ' 期（' + DATA[0].issue + ' ~ ' + DATA[DATA.length-1].issue + '）',
+      '检验方法：5 项统计检验 · 显著性水平 α=0.05',
+      '',
+      '1. 红球频率卡方：χ²=' + red.chiSquare.toFixed(2) + '（临界 46.19）' + (red.isRandom ? ' ✓ 未能拒绝随机' : ' ✗ 拒绝随机'),
+      '2. 蓝球频率卡方：χ²=' + blue.chiSquare.toFixed(2) + '（临界 25.00）' + (blue.isRandom ? ' ✓ 未能拒绝随机' : ' ✗ 拒绝随机'),
+      '3. 游程检验：' + runs.pass + '/33 号码通过 · 最大 |Z|=' + Math.max.apply(null, runs.results.map(function(r){return Math.abs(r.z);})).toFixed(3),
+      '4. 相邻期重叠：χ²=' + ov.chiSquare.chiSquare.toFixed(2) + '（临界 12.57）' + (ov.chiSquare.isRandom ? ' ✓ 符合独立假设' : ' ✗ 拒绝独立'),
+      '5. 尾数分布（随机模型）：χ²=' + ld.chiSquareWeighted.toFixed(2) + '（临界 16.92）' + (ld.isRandomWeighted ? ' ✓ 符合' : ' ✗ 偏离'),
+      '',
+      '结论：在 5% 显著性水平下，双色球的历史数据未能拒绝随机性假设。'
+    ];
+    var text = lines.join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){
+        toast('已复制到剪贴板');
+      }).catch(function(){ fallbackCopy(text); });
+    } else {
+      fallbackCopy(text);
+    }
+  });
+  function fallbackCopy(text){
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast('已复制到剪贴板'); }
+    catch (e){ toast('复制失败，请手动选中文本'); }
+    document.body.removeChild(ta);
+  }
+  function toast(msg){
+    var t = el('div', { textContent: msg });
+    t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#ffd700;padding:10px 20px;border-radius:8px;font-size:0.9rem;z-index:9999;';
+    document.body.appendChild(t);
+    setTimeout(function(){ document.body.removeChild(t); }, 1800);
+  }
+
+})();
+</script>
+</body>
+</html>

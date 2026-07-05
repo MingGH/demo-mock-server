@@ -82,9 +82,9 @@ var r1 = eng.simulateTrading({ principal: 100000, costPerTrade: 0.0025, winRate:
 var r2 = eng.simulateTrading({ principal: 100000, costPerTrade: 0.0025, winRate: 0.5, gainRate: 0.02, lossRate: 0.02, trades: 50, rng: seededRng(42) });
 assertClose(r1.finalBalance, r2.finalBalance, 1e-9, '同种子 rng 产生可复现结果');
 
-console.log('\n=== breakEvenWinRate 测试 ===');
-assertClose(eng.breakEvenWinRate(0.0025, 0.015, 0.015), 0.5833, 0.01, '(0.25%, 1.5%, 1.5%) → ≈ 58.3%');
-assertClose(eng.breakEvenWinRate(0, 0.015, 0.015), 0.5, 1e-9, '无手续费时公平游戏 → 50%');
+console.log('\n=== breakEvenWinRate 测试（几何精确公式） ===');
+assertClose(eng.breakEvenWinRate(0.0025, 0.015, 0.015), 0.5872, 0.01, '(0.25%, 1.5%, 1.5%) → ≈ 58.7%');
+assertClose(eng.breakEvenWinRate(0, 0.015, 0.015), 0.5038, 0.005, '无手续费时对称盈亏 → ≈ 50.4%（对数不对称）');
 var bew = eng.breakEvenWinRate(0.0025, 0.015, 0.015);
 assert(bew > 0 && bew < 1, '返回值在 (0, 1) 范围内');
 // 成本越高，打平胜率越高

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="单次手续费0.25%看起来很少？日均交易1次，一年后仅手续费就吃掉45%本金。拉动滑块亲眼看资金曲线如何被绞杀。">
+  <title>频繁交易为什么必死 | 数字直觉</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ═══════════════ Hero ═══════════════ -->
+  <div class="hero">
+    <div class="hero-inner">
+      <span class="hero-tag"><i class="ti ti-chart-line-down"></i> 摩擦成本绞杀模拟器</span>
+      <h1>每次只收 0.25%，<br>一年后你的钱还剩多少？</h1>
+      <p>频繁交易的死因不是判断力差，是手续费以<strong>乘法</strong>复利侵蚀本金。日均交易一次，一年光手续费就吃掉近一半——你的策略盈亏还得另算。拉动滑块，亲眼看钱怎么消失。</p>
+      <div class="hero-actions">
+        <a href="#calculator" class="btn btn-primary"><i class="ti ti-adjustments"></i> 自己调参数</a>
+        <a href="#presets" class="btn btn-ghost"><i class="ti ti-cards"></i> 看预设角色</a>
+      </div>
+      <div class="hero-stat">
+        <span class="hs-num" id="heroNum">45.7%</span>
+        <span class="hs-text">日均 1 次 × 244 个交易日，仅手续费对本金的年化侵蚀</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 预设场景卡片 ═══════════════ -->
+  <div class="section preset-section" id="presets">
+    <h2><i class="ti ti-id-badge-2"></i> 你是哪种交易者？</h2>
+    <p class="section-desc">点击卡片，滑块会自动滑到对应参数，右侧曲线实时变形。</p>
+    <div class="preset-grid">
+      <button class="preset-card" data-preset="buddha">
+        <div class="pc-head"><i class="ti ti-leaf"></i> 佛系持有者</div>
+        <div class="pc-num"><span data-fee>5.8%</span> <small>年化手续费</small></div>
+        <p class="pc-desc">每月交易 2 次，成本 0.25%。摩擦可控，策略收益还能留住。</p>
+      </button>
+      <button class="preset-card" data-preset="retail">
+        <div class="pc-head"><i class="ti ti-user"></i> 普通散户</div>
+        <div class="pc-num"><span data-fee>32.5%</span> <small>年化手续费</small></div>
+        <p class="pc-desc">每周交易 3 次，成本 0.25%。一年被吃掉三分之一本金。</p>
+      </button>
+      <button class="preset-card" data-preset="intraday">
+        <div class="pc-head"><i class="ti ti-bolt"></i> 日内交易者</div>
+        <div class="pc-num"><span data-fee>83.5%</span> <small>年化手续费</small></div>
+        <p class="pc-desc">每天交易 3 次，成本 0.3%。手续费几乎是全部本金的死刑判决。</p>
+      </button>
+      <button class="preset-card" data-preset="futures">
+        <div class="pc-head"><i class="ti ti-chart-arrows-vertical"></i> 期货炒单</div>
+        <div class="pc-num"><span data-fee>70.4%</span> <small>年化手续费</small></div>
+        <p class="pc-desc">每天交易 10 次，期货低费率 0.05%。费率再低也扛不住频率。</p>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 模块一：摩擦绞杀计算器 ═══════════════ -->
+  <div class="section" id="calculator">
+    <h2><i class="ti ti-calculator"></i> 模块一｜摩擦绞杀计算器</h2>
+    <p class="section-desc">左边拉滑块，右边曲线实时刷新。金色是真实资金，绿色是不收手续费的平行宇宙，红色是只扣手续费的死法。</p>
+
+    <div class="calc-layout">
+      <!-- 左：参数面板 -->
+      <div class="control-panel">
+        <div class="slider-group">
+          <div class="slider-label"><span><i class="ti ti-wallet"></i> 初始本金</span><strong id="principalVal">10 万</strong></div>
+          <input type="range" id="principalInput" min="10000" max="1000000" value="100000" step="10000">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span><i class="ti ti-receipt-tax"></i> 单次交易成本（双边）</span><strong id="costVal">0.25%</strong></div>
+          <input type="range" id="costInput" min="0.01" max="1" value="0.25" step="0.01">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span><i class="ti ti-calendar-week"></i> 每月交易次数</span><strong id="freqVal">22 次</strong></div>
+          <input type="range" id="freqInput" min="2" max="300" value="22" step="1">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span><i class="ti ti-wave-sine"></i> 单次收益标准差</span><strong id="stdVal">2.0%</strong></div>
+          <input type="range" id="stdInput" min="0.5" max="5" value="2" step="0.1">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span><i class="ti ti-target-arrow"></i> 胜率</span><strong id="winVal">50%</strong></div>
+          <input type="range" id="winInput" min="30" max="70" value="50" step="1">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span><i class="ti ti-clock-hour-4"></i> 模拟时间</span><strong id="timeVal">1 年</strong></div>
+          <input type="range" id="timeInput" min="3" max="60" value="12" step="1">
+        </div>
+      </div>
+
+      <!-- 右：图表 -->
+      <div class="chart-panel">
+        <div class="fee-banner">
+          <span class="fb-label">手续费累计吃掉了</span>
+          <span class="fb-num" id="feeEatenPct">—</span>
+          <span class="fb-label">的本金</span>
+        </div>
+        <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+        <div class="chart-legend">
+          <span class="lg lg-gold"><i></i> 实际资金（含手续费）</span>
+          <span class="lg lg-green"><i></i> 无手续费平行宇宙</span>
+          <span class="lg lg-red"><i></i> 纯手续费侵蚀</span>
+        </div>
+        <div class="calc-stats">
+          <div class="cs-cell">
+            <div class="cs-label">年化手续费消耗</div>
+            <div class="cs-val gold" id="statAnnualFee">—</div>
+          </div>
+          <div class="cs-cell">
+            <div class="cs-label">打平所需年化收益</div>
+            <div class="cs-val gold" id="statBreakEvenReturn">—</div>
+          </div>
+          <div class="cs-cell">
+            <div class="cs-label">盈亏比 1:1 打平胜率</div>
+            <div class="cs-val gold" id="statBreakEvenWin">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 模块二：N 次交易复利绞杀动画 ═══════════════ -->
+  <div class="section" id="erosion">
+    <h2><i class="ti ti-droplet"></i> 模块二｜看见 (1−c)<sup>N</sup> 的窒息</h2>
+    <p class="section-desc">每点一次「交易一次」，水位降一点。前几十次几乎没感觉，等你回过神，桶已经快空了。这是乘法消耗，不是加法。</p>
+
+    <div class="erosion-layout">
+      <!-- 左：水量指示条 -->
+      <div class="water-stage">
+        <div class="water-track">
+          <div class="water-fill" id="waterFill">
+            <div class="water-surface"></div>
+            <div class="bubble b1"></div>
+            <div class="bubble b2"></div>
+            <div class="bubble b3"></div>
+          </div>
+          <div class="water-ticks">
+            <span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span>
+          </div>
+        </div>
+        <div class="water-readout">
+          <div class="wr-count">已交易 <strong id="tradeCount">0</strong> 次</div>
+          <div class="wr-remain">剩余 <strong id="remainPct">100.0%</strong></div>
+        </div>
+      </div>
+
+      <!-- 右：控制 + 曲线 -->
+      <div class="erosion-side">
+        <div class="erosion-controls">
+          <button class="btn btn-primary" id="tradeOnceBtn"><i class="ti ti-point-filled"></i> 交易一次</button>
+          <button class="btn btn-ghost" id="autoBtn"><i class="ti ti-player-play"></i> 自动连续交易</button>
+          <button class="btn btn-ghost btn-sm" id="resetM2Btn"><i class="ti ti-refresh"></i> 重置</button>
+          <div class="speed-group">
+            <span>速度</span>
+            <button class="speed-btn active" data-speed="1">×1</button>
+            <button class="speed-btn" data-speed="5">×5</button>
+            <button class="speed-btn" data-speed="10">×10</button>
+          </div>
+        </div>
+        <div class="fee-switch">
+          <span>费率：</span>
+          <button class="fee-btn" data-cost="0.001">0.1%</button>
+          <button class="fee-btn active" data-cost="0.0025">0.25%</button>
+          <button class="fee-btn" data-cost="0.005">0.5%</button>
+          <button class="fee-btn" data-cost="0.01">1%</button>
+        </div>
+        <div class="formula-box">
+          <code id="formulaText">剩余本金 = 100% × (1 − 0.25%)^0 = 100.0%</code>
+        </div>
+        <div class="alert-box" id="alertBox" style="display:none;">
+          <i class="ti ti-alert-circle"></i>
+          <span id="alertText"></span>
+        </div>
+        <div class="chart-wrap small"><canvas id="erosionChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 模块三：策略对决擂台 ═══════════════ -->
+  <div class="section" id="arena">
+    <h2><i class="ti ti-trophy"></i> 模块三｜同样的策略，频率定生死</h2>
+    <p class="section-desc">三条赛道，同样 52% 胜率、同样盈亏比、同样 0.25% 成本——唯一变量是交易频率。点开始，看谁先死。</p>
+
+    <div class="arena-conditions">
+      <span><i class="ti ti-wallet"></i> 本金 10 万</span>
+      <span><i class="ti ti-target-arrow"></i> 胜率 52%</span>
+      <span><i class="ti ti-scale"></i> 盈亏比 1:1</span>
+      <span><i class="ti ti-receipt-tax"></i> 单次成本 0.25%</span>
+      <span><i class="ti ti-wave-sine"></i> 单次 ±1.5%</span>
+    </div>
+
+    <div class="arena-controls">
+      <button class="btn btn-primary" id="raceStartBtn"><i class="ti ti-flag-3"></i> 开始比赛</button>
+      <button class="btn btn-ghost" id="raceRerunBtn"><i class="ti ti-refresh"></i> 重跑</button>
+      <button class="btn btn-ghost" id="race100Btn"><i class="ti ti-chart-histogram"></i> 跑 100 次取平均</button>
+    </div>
+
+    <div class="race-tracks">
+      <div class="track-col">
+        <div class="track-head green"><i class="ti ti-leaf"></i> 低频 · 每月 2 次</div>
+        <div class="chart-wrap mini"><canvas id="trackA"></canvas></div>
+        <div class="track-balance" id="balA">—</div>
+      </div>
+      <div class="track-col">
+        <div class="track-head yellow"><i class="ti ti-user"></i> 中频 · 每周 5 次</div>
+        <div class="chart-wrap mini"><canvas id="trackB"></canvas></div>
+        <div class="track-balance" id="balB">—</div>
+      </div>
+      <div class="track-col">
+        <div class="track-head red"><i class="ti ti-bolt"></i> 高频 · 每天 3 次</div>
+        <div class="chart-wrap mini"><canvas id="trackC"></canvas></div>
+        <div class="track-balance" id="balC">—</div>
+      </div>
+    </div>
+
+    <div class="conclusion-box" id="raceConclusion" style="display:none;">
+      <i class="ti ti-flame"></i>
+      <span id="conclusionText"></span>
+    </div>
+
+    <div class="mc-section" id="mcSection" style="display:none;">
+      <h3><i class="ti ti-chart-histogram"></i> 100 次模拟的最终资产分布</h3>
+      <div class="chart-wrap"><canvas id="mcChart"></canvas></div>
+      <p class="mc-note" id="mcNote"></p>
+    </div>
+  </div>
+
+  <!-- ═══════════════ 公式与原理 ═══════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-math-function"></i> 一行公式看懂绞杀</h2>
+    <p class="section-desc">手续费是乘法消耗，不是加法。每次剩 99.75%，N 次后剩 0.9975<sup>N</sup>。</p>
+    <div class="formula-card">
+      <div class="formula-big">W<sub>N</sub> = W<sub>0</sub> × (1 − c)<sup>N</sup></div>
+      <ul class="formula-list">
+        <li>c = 单次双边成本率（A股约 0.25%：佣金万2.5双边 + 印花税千1卖出 + 滑点千1）</li>
+        <li>N = 总交易次数 = 频率 × 时间</li>
+        <li>当 N 足够大，(1−c)<sup>N</sup> → 0，本金指数衰减到零</li>
+      </ul>
+    </div>
+    <div class="insight-box">
+      <h3><i class="ti ti-bulb"></i> 为什么"一点点"会变成"很多"</h3>
+      <p>加法消耗是线性的：每次固定亏 25 元，1000 次亏 2.5 万，慢得能看见。乘法消耗是指数的：每次按比例扣，前几十次几乎无感，后期加速塌方——等你意识到不对，桶已经快空了。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="trading-engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

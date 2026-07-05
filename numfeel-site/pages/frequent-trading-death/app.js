@@ -185,9 +185,9 @@ function initM1Chart() {
 
 // ─── 预设场景 ────────────────────────────────────────
 var PRESETS = {
-  buddha:   { principal: 100000, cost: 0.10, freq: 2,   std: 2, win: 50, time: 12 },
-  retail:   { principal: 100000, cost: 0.10, freq: 13,  std: 2, win: 50, time: 12 },
-  intraday: { principal: 100000, cost: 0.12, freq: 60,  std: 2, win: 50, time: 12 },
+  buddha:   { principal: 100000, cost: 0.25, freq: 2,   std: 2, win: 50, time: 12 },
+  retail:   { principal: 100000, cost: 0.25, freq: 13,  std: 2, win: 50, time: 12 },
+  intraday: { principal: 100000, cost: 0.30, freq: 60,  std: 2, win: 50, time: 12 },
   futures:  { principal: 100000, cost: 0.05, freq: 200, std: 2, win: 50, time: 12 }
 };
 
@@ -229,7 +229,7 @@ function animateToPreset(key) {
 // 模块二：N 次交易复利绞杀动画
 // ════════════════════════════════════════════════════════
 var M2 = {
-  cost: 0.001,
+  cost: 0.0025,
   trades: 0,
   principal: 100,        // 用百分比表示
   speed: 1,
@@ -335,7 +335,7 @@ var M3 = {
     B: { name: '中频', monthly: 22, color: '#ffb74d' },
     C: { name: '高频', monthly: 60, color: '#ff6b6b' }
   },
-  common: { principal: 100000, winRate: 0.52, gainRate: 0.015, lossRate: 0.015, cost: 0.001, months: 12 }
+  common: { principal: 100000, winRate: 0.52, gainRate: 0.015, lossRate: 0.015, cost: 0.0025, months: 12 }
 };
 
 // 把按交易序号的余额序列重采样到 0..52 周时间轴

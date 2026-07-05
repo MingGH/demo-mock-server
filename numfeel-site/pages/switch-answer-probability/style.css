@@ -820,6 +820,55 @@ body.shake { animation: shake .4s ease; }
 .hl-gold { color: #ffd700; }
 .hl-blue { color: #90caf9; }
 
+/* ── 模块五：全网数据 ── */
+.global-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.gs-card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  padding: 20px 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: opacity .3s ease;
+}
+.gs-card.gs-stay { border-top: 3px solid #81c784; }
+.gs-card.gs-switch { border-top: 3px solid #ffd700; }
+.gs-label { font-size: 12.5px; color: rgba(255,255,255,.6); }
+.gs-num {
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #cfd6e4;
+}
+.gs-stay .gs-num { color: #81c784; }
+.gs-switch .gs-num { color: #ffd700; }
+.gs-sub { font-size: 12px; color: #888; }
+
+.gs-theory {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(144,202,249,.08);
+  border-left: 3px solid #90caf9;
+  padding: 12px 16px;
+  border-radius: 0 12px 12px 0;
+  font-size: 14px;
+  color: #cfd6e4;
+  margin-bottom: 18px;
+}
+.gs-theory i { color: #90caf9; font-size: 18px; }
+.gs-theory strong { color: #ffd700; }
+
+.global-stats.is-loading .gs-num { color: #555; }
+.global-stats.is-error .gs-num { font-size: 14px; color: #888; }
+
 /* ── 响应式 ── */
 @media (max-width: 640px) {
   .container { padding: 14px 12px 70px; }
@@ -834,6 +883,8 @@ body.shake { animation: shake .4s ease; }
   .option-btn { min-height: 56px; padding: 18px 0; }
   .option-btn .opt-letter { font-size: 26px; }
   .sim-stats { grid-template-columns: 1fr; }
+  .global-stats { grid-template-columns: 1fr; }
+  .gs-num { font-size: 1.7rem; }
   .compare-grid { grid-template-columns: 1fr; }
   .flow-grid { grid-template-columns: 1fr 1fr; }
   .summary-grid { grid-template-columns: 1fr; }

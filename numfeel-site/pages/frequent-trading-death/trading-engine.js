@@ -132,18 +132,24 @@ function monteCarloSimulation(params, runs) {
 }
 
 /**
- * 计算打平所需胜率（盈亏比 1:1 场景下覆盖手续费的最小胜率）
- * 推导：winRate*(gainRate - cost) = (1-winRate)*(lossRate + cost)
- *   → winRate = (lossRate + cost) / (gainRate + lossRate)
+ * 计算打平所需胜率（几何期望打平，即中位数路径不衰减）
+ * 推导（乘法模型）：
+ *   赢：bal *= (1 + gainRate) * (1 - cost)  → 对数收益 lnW = ln((1+g)(1-c))
+ *   输：bal *= (1 - lossRate) * (1 - cost)  → 对数收益 lnL = ln((1-l)(1-c))
+ *   打平条件 E[ln] = 0：w * lnW + (1-w) * lnL = 0
+ *   → w = -lnL / (lnW - lnL)
  * @param {number} costPerTrade - 单次双边成本率
  * @param {number} gainRate - 单次盈利幅度
  * @param {number} lossRate - 单次亏损幅度
  * @returns {number} 打平所需胜率
  */
 function breakEvenWinRate(costPerTrade, gainRate, lossRate) {
-  var denom = gainRate + lossRate;
-  if (denom <= 0) return 0.5;
-  return (lossRate + costPerTrade) / denom;
+  if (gainRate + lossRate <= 0) return 0.5;
+  var lnW = Math.log((1 + gainRate) * (1 - costPerTrade));
+  var lnL = Math.log((1 - lossRate) * (1 - costPerTrade));
+  var denom = lnW - lnL;
+  if (Math.abs(denom) < 1e-15) return 0.5;
+  return -lnL / denom;
 }
 
 /**

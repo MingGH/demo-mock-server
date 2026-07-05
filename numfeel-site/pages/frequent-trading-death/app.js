@@ -187,7 +187,7 @@ function initM1Chart() {
 var PRESETS = {
   buddha:   { principal: 100000, cost: 0.10, freq: 2,   std: 2, win: 50, time: 12 },
   retail:   { principal: 100000, cost: 0.10, freq: 13,  std: 2, win: 50, time: 12 },
-  intraday: { principal: 100000, cost: 0.12, freq: 60,  std: 2, win: 50, time: 12 },
+  intraday: { principal: 100000, cost: 0.10, freq: 61,  std: 2, win: 50, time: 12 },
   futures:  { principal: 100000, cost: 0.05, freq: 200, std: 2, win: 50, time: 12 }
 };
 

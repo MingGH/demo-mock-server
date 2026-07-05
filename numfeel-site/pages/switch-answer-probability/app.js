@@ -168,6 +168,8 @@
     el.decisionRow.hidden = true;
     el.revealRow.hidden = false;
     el.nextRoundBtn.textContent = quiz.round >= TOTAL_ROUNDS ? '看 10 轮总结' : '下一题';
+    // 上报本轮决策到全网统计
+    reportToServer(switchChoice ? 'switch' : 'stay', won);
   }
 
   function finishQuiz() {
@@ -573,6 +575,186 @@
   }
 
   // ─────────────────────────────────────────────────────────
+  // 模块五：全网数据（上报 + 加载 + 趋势图）
+  // ─────────────────────────────────────────────────────────
+  var STATS_API = 'https://numfeel-api.996.ninja/switch-answer/stats';
+  var SUBMIT_API = 'https://numfeel-api.996.ninja/switch-answer/submit';
+  var trendChartInstance = null;
+
+  /** 上报本轮决策到后端，静默失败不影响页面。 */
+  function reportToServer(strategy, won) {
+    try {
+      fetch(SUBMIT_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategy: strategy, won: won, options: 4, eliminated: 2 })
+      }).catch(function () { /* 静默 */ });
+    } catch (e) { /* 静默 */ }
+  }
+
+  /** 加载全网统计数据并渲染。 */
+  function loadGlobalStats() {
+    var wrap = document.getElementById('globalStats');
+    if (!wrap) return;
+    wrap.classList.add('is-loading');
+
+    fetch(STATS_API)
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        wrap.classList.remove('is-loading');
+        if (!res || res.status !== 200 || !res.data) {
+          showGlobalError();
+          return;
+        }
+        var d = res.data;
+        if (!d.totalRounds || d.totalRounds < 10) {
+          showSparseData(d.totalRounds || 0);
+          return;
+        }
+        renderGlobalStats(d);
+      })
+      .catch(function () {
+        wrap.classList.remove('is-loading');
+        showGlobalError();
+      });
+  }
+
+  function renderGlobalStats(d) {
+    countUp(document.getElementById('gsTotalRounds'), d.totalRounds, function (v) {
+      return Math.round(v).toLocaleString();
+    });
+    countUp(document.getElementById('gsStayRate'), d.stayWinRate * 100, function (v) {
+      return v.toFixed(1) + '%';
+    });
+    countUp(document.getElementById('gsSwitchRate'), d.switchWinRate * 100, function (v) {
+      return v.toFixed(1) + '%';
+    });
+    document.getElementById('gsStaySub').textContent = (d.stayRounds || 0).toLocaleString() + ' 轮';
+    document.getElementById('gsSwitchSub').textContent = (d.switchRounds || 0).toLocaleString() + ' 轮';
+
+    var deviation = Math.abs((d.switchWinRate || 0) - 0.75);
+    document.getElementById('gsDeviation').textContent =
+      deviation < 0.01 ? '< 1%（几乎完美吻合）' : (deviation * 100).toFixed(1) + '%';
+
+    var pEl = document.getElementById('gsParticipants');
+    if (pEl) pEl.textContent = (d.participantCount || 0).toLocaleString() + ' 人参与';
+
+    if (d.recentTrend && d.recentTrend.length > 0) {
+      renderTrendChart(d.recentTrend);
+    }
+  }
+
+  /** 数字从 0 跳到目标值的 countUp 动画。 */
+  function countUp(el, target, formatter) {
+    if (!el) return;
+    var duration = 900;
+    var start = null;
+    function step(ts) {
+      if (start === null) start = ts;
+      var progress = Math.min((ts - start) / duration, 1);
+      // easeOutCubic
+      var eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = formatter(target * eased);
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = formatter(target);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function renderTrendChart(trend) {
+    var canvas = document.getElementById('trendChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+    var ctx = canvas.getContext('2d');
+    if (trendChartInstance) trendChartInstance.destroy();
+
+    var theoryPlugin = {
+      id: 'trendTheoryLines',
+      afterDraw: function (chart) {
+        var yScale = chart.scales.y;
+        var xScale = chart.scales.x;
+        var c = chart.ctx;
+        [{ y: 25, color: '#81c784' }, { y: 75, color: '#ffd700' }].forEach(function (l) {
+          var py = yScale.getPixelForValue(l.y);
+          c.save();
+          c.setLineDash([6, 5]);
+          c.strokeStyle = l.color;
+          c.globalAlpha = 0.4;
+          c.lineWidth = 1.5;
+          c.beginPath();
+          c.moveTo(xScale.left, py);
+          c.lineTo(xScale.right, py);
+          c.stroke();
+          c.restore();
+        });
+      }
+    };
+
+    trendChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: trend.map(function (t) { return t.date.slice(5); }),
+        datasets: [
+          {
+            label: '坚持胜率', data: trend.map(function (t) { return (t.stayRate || 0) * 100; }),
+            borderColor: '#81c784', backgroundColor: 'rgba(129,199,132,.1)',
+            borderWidth: 2, pointRadius: 3, tension: 0.3
+          },
+          {
+            label: '换选胜率', data: trend.map(function (t) { return (t.switchRate || 0) * 100; }),
+            borderColor: '#ffd700', backgroundColor: 'rgba(255,215,0,.1)',
+            borderWidth: 2, pointRadius: 3, tension: 0.3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#cfd6e4', usePointStyle: true, boxWidth: 8, font: { size: 12 } } },
+          tooltip: {
+            callbacks: {
+              label: function (item) { return item.dataset.label + ': ' + item.formattedValue + '%'; }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.05)' } },
+          y: {
+            min: 0, max: 100,
+            ticks: { color: '#888', callback: function (v) { return v + '%'; }, font: { size: 11 } },
+            grid: { color: 'rgba(255,255,255,.05)' }
+          }
+        }
+      },
+      plugins: [theoryPlugin]
+    });
+  }
+
+  function showGlobalError() {
+    var wrap = document.getElementById('globalStats');
+    if (!wrap) return;
+    wrap.classList.add('is-error');
+    var nums = wrap.querySelectorAll('.gs-num');
+    nums.forEach(function (n) { n.textContent = '暂时无法获取'; });
+    var dev = document.getElementById('gsDeviation');
+    if (dev) dev.textContent = '—';
+  }
+
+  function showSparseData(total) {
+    var wrap = document.getElementById('globalStats');
+    if (!wrap) return;
+    var nums = wrap.querySelectorAll('.gs-num');
+    nums[0].textContent = total.toLocaleString();
+    nums[1].textContent = '数据积累中';
+    nums[2].textContent = '数据积累中';
+    var subs = wrap.querySelectorAll('.gs-sub');
+    subs.forEach(function (s) { s.textContent = '再贡献几轮吧'; });
+    var dev = document.getElementById('gsDeviation');
+    if (dev) dev.textContent = '样本不足';
+  }
+
+  // ─────────────────────────────────────────────────────────
   // 事件绑定 & 初始化
   // ─────────────────────────────────────────────────────────
   function bindEvents() {
@@ -650,6 +832,8 @@
     playFlow();
     // 模块四
     runCalc();
+    // 模块五：加载全网数据（静默失败不影响页面）
+    loadGlobalStats();
   }
 
   if (document.readyState === 'loading') {

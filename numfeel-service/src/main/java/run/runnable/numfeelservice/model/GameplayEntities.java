@@ -294,4 +294,17 @@ public final class GameplayEntities {
             @Column("created_at") long createdAt
     ) {
     }
+
+    /** 排除选项改答案 — 用户行为记录表映射。 */
+    @Table("switch_answer_rounds")
+    public record SwitchAnswerRound(
+            @Id Long id,
+            String strategy,
+            boolean won,
+            int options,
+            int eliminated,
+            String ip,
+            @Column("created_at") long createdAt
+    ) {
+    }
 }

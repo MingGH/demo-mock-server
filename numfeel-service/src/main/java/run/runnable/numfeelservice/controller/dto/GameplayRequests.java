@@ -389,4 +389,20 @@ public final class GameplayRequests {
             String cfTurnstileToken
     ) {
     }
+
+    /**
+     * 排除选项改答案 提交参数。
+     *
+     * @param strategy 策略："stay" 或 "switch"
+     * @param won 本轮是否答对
+     * @param options 选项总数 N（默认 4）
+     * @param eliminated 排除数量 K（默认 2）
+     */
+    public record SwitchAnswerSubmitRequest(
+            String strategy,
+            Boolean won,
+            Integer options,
+            Integer eliminated
+    ) {
+    }
 }

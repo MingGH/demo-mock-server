@@ -1,0 +1,198 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+}
+.container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 30px; margin-bottom: 30px; }
+.header h1 {
+  font-size: 2.4rem;
+  background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: shimmer 3s linear infinite; margin-bottom: 12px;
+  display: inline-flex; align-items: center; gap: 12px;
+}
+@keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+.header p { font-size: 1rem; color: #a0a0a0; max-width: 680px; margin: 0 auto; }
+.devtools-hint {
+  margin-top: 18px; display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 18px; border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+  background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); color: #ff6b6b;
+}
+.devtools-hint .blink {
+  width: 8px; height: 8px; border-radius: 50%; background: #ff6b6b; animation: blink 1s infinite;
+}
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ── Section card ── */
+.section {
+  background: rgba(255,255,255,0.05); border-radius: 16px; padding: 28px;
+  margin-bottom: 28px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+}
+.section h2 { font-size: 1.35rem; margin-bottom: 12px; color: #ffd700; display: flex; align-items: center; gap: 10px; }
+.section-tip { color: #888; font-size: 0.88rem; margin-bottom: 20px; }
+
+/* ── 通道卡片网格 ── */
+.channel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.channel-card {
+  background: rgba(0,0,0,0.25); border-radius: 14px; padding: 18px;
+  border: 1px solid rgba(255,255,255,0.08); transition: border-color 0.25s, transform 0.25s;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.channel-card:hover { transform: translateY(-2px); }
+.channel-card.is-hidden { border-color: rgba(255,107,107,0.35); }
+.channel-card.is-none { border-color: rgba(206,147,216,0.35); }
+.ch-head { display: flex; align-items: center; gap: 10px; }
+.ch-head .ti { font-size: 1.3rem; color: #ffd700; }
+.ch-name { font-size: 1.02rem; font-weight: 700; color: #e8e8e8; flex: 1; }
+.vis-badge {
+  font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  border: 1px solid currentColor; white-space: nowrap;
+}
+.ch-desc { font-size: 0.85rem; color: #a0a0a0; min-height: 42px; }
+.ch-send-btn {
+  padding: 9px 16px; border: 1px solid rgba(255,215,0,0.4); background: rgba(255,215,0,0.08);
+  color: #ffd700; border-radius: 8px; font-size: 0.88rem; cursor: pointer; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+}
+.ch-send-btn:hover { background: rgba(255,215,0,0.18); }
+.ch-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ch-log {
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem; min-height: 24px;
+  color: #90caf9; word-break: break-all;
+}
+.ch-log .ok { color: #81c784; }
+.ch-log .token { color: #ffd700; }
+.ch-hint { font-size: 0.78rem; color: #666; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
+
+/* ── WebRTC 配对区 ── */
+.pair-box { display: flex; flex-direction: column; gap: 18px; }
+.pair-controls { display: flex; flex-direction: column; gap: 12px; }
+.pair-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pair-row label { font-size: 0.85rem; color: #a0a0a0; width: 64px; flex-shrink: 0; }
+.pair-row input {
+  flex: 1; min-width: 160px; padding: 9px 12px; border-radius: 8px;
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.12); color: #e8e8e8;
+  font-size: 0.9rem; font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.pair-row input:focus { outline: none; border-color: rgba(255,215,0,0.5); }
+.pair-row.share-row input { font-size: 0.8rem; }
+.pair-status {
+  display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+  padding: 8px 16px; border-radius: 999px; font-size: 0.85rem; font-weight: 600;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #a0a0a0;
+}
+.pair-status.connected { background: rgba(129,199,132,0.1); border-color: rgba(129,199,132,0.4); color: #81c784; }
+.pair-status.connecting { background: rgba(255,183,0,0.1); border-color: rgba(255,183,0,0.4); color: #ffb74d; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #888; }
+.status-dot.waiting { background: #888; }
+.status-dot.connecting { background: #ffb74d; animation: blink 1s infinite; }
+.status-dot.connected { background: #81c784; }
+
+.pair-chat {
+  background: rgba(0,0,0,0.3); border-radius: 12px; padding: 14px; border: 1px solid rgba(255,255,255,0.08);
+}
+.chat-log {
+  min-height: 120px; max-height: 240px; overflow-y: auto; margin-bottom: 10px;
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.82rem;
+}
+.chat-empty { color: #555; text-align: center; padding: 30px 0; font-family: inherit; font-size: 0.85rem; }
+.chat-msg { padding: 6px 10px; border-radius: 8px; margin-bottom: 6px; word-break: break-all; }
+.chat-msg.in { background: rgba(129,199,132,0.08); color: #81c784; }
+.chat-msg.out { background: rgba(255,215,0,0.08); color: #ffd700; text-align: right; }
+.chat-msg .meta { font-size: 0.7rem; color: #666; margin-top: 2px; }
+.chat-input-row { display: flex; gap: 8px; }
+.chat-input-row input {
+  flex: 1; padding: 9px 12px; border-radius: 8px; background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.12); color: #e8e8e8; font-size: 0.88rem;
+}
+.chat-input-row input:focus { outline: none; border-color: rgba(255,215,0,0.5); }
+.chat-input-row input:disabled { opacity: 0.4; }
+.chat-hint { margin-top: 10px; font-size: 0.78rem; color: #ff6b6b; display: flex; align-items: center; gap: 6px; }
+
+/* ── 抓包挑战 ── */
+.btn {
+  padding: 10px 20px; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; font-size: 0.9rem;
+  cursor: pointer; transition: all 0.25s ease; display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.05); color: #c0c0c0;
+}
+.btn:hover { background: rgba(255,255,255,0.1); }
+.btn-primary { background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 700; border: none; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.35); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-lg { padding: 13px 28px; font-size: 1rem; }
+
+.challenge-result { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+.challenge-row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px;
+  background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08);
+}
+.challenge-row .ch-icon { font-size: 1.2rem; color: #ffd700; width: 24px; text-align: center; }
+.challenge-row .ch-title { flex: 1; font-size: 0.9rem; color: #c0c0c0; }
+.challenge-row .token-tag {
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.78rem; color: #ffd700;
+  background: rgba(255,215,0,0.08); padding: 3px 8px; border-radius: 6px;
+}
+.challenge-row .verdict { font-size: 0.82rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.verdict.caught { color: #81c784; background: rgba(129,199,132,0.12); }
+.verdict.missed { color: #ff6b6b; background: rgba(255,107,107,0.12); }
+.challenge-summary {
+  margin-top: 6px; padding: 14px 18px; border-radius: 12px; font-size: 0.92rem; line-height: 1.7;
+}
+.challenge-summary.hit { background: rgba(129,199,132,0.08); border-left: 4px solid #81c784; color: #c0c0c0; }
+.challenge-summary.miss { background: rgba(255,107,107,0.08); border-left: 4px solid #ff6b6b; color: #c0c0c0; }
+
+/* ── 原理卡片 ── */
+.principle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+.principle-card {
+  background: rgba(0,0,0,0.2); border-radius: 12px; padding: 18px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.principle-card .num { font-size: 2rem; font-weight: 700; color: rgba(255,215,0,0.3); line-height: 1; margin-bottom: 8px; }
+.principle-card h4 { color: #ffd700; font-size: 0.95rem; margin-bottom: 6px; }
+.principle-card p { color: #a0a0a0; font-size: 0.85rem; line-height: 1.6; }
+
+/* ── Insight ── */
+.insight-box {
+  background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,183,0,0.04));
+  border-left: 4px solid #ffd700; padding: 18px 20px; border-radius: 0 12px 12px 0; margin-top: 20px;
+}
+.insight-box h3 { color: #ffd700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 1rem; }
+.insight-box p { color: #c0c0c0; line-height: 1.8; font-size: 0.92rem; }
+.insight-box.red { background: linear-gradient(135deg, rgba(255,107,107,0.08), rgba(255,0,0,0.04)); border-left-color: #ff6b6b; }
+.insight-box.red h3 { color: #ff6b6b; }
+
+/* ── Compare ── */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.compare-card {
+  background: rgba(0,0,0,0.2); border-radius: 14px; padding: 20px; border: 2px solid rgba(255,255,255,0.08);
+}
+.compare-card.danger { border-color: rgba(255,107,107,0.4); }
+.compare-card.safe { border-color: rgba(129,199,132,0.4); }
+.compare-card h3 { font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.compare-card.danger h3 { color: #ff6b6b; }
+.compare-card.safe h3 { color: #81c784; }
+.compare-card ul { list-style: none; padding: 0; }
+.compare-card li { padding: 6px 0; font-size: 0.88rem; color: #a0a0a0; display: flex; align-items: flex-start; gap: 8px; }
+.compare-card li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 8px; }
+.compare-card.danger li::before { background: #ff6b6b; }
+.compare-card.safe li::before { background: #81c784; }
+.compare-card code {
+  font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.8rem;
+  background: rgba(255,215,0,0.1); color: #ffd700; padding: 1px 6px; border-radius: 4px;
+}
+
+/* ── Mobile ── */
+@media (max-width: 680px) {
+  .container { padding: 12px; }
+  .header { padding: 24px 12px 20px; }
+  .header h1 { font-size: 1.6rem; }
+  .section { padding: 16px; }
+  .channel-grid { grid-template-columns: 1fr; }
+  .compare-grid { grid-template-columns: 1fr; }
+  .pair-row label { width: auto; }
+}

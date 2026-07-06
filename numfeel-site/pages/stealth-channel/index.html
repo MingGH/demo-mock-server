@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="打开 F12 盯着 Network tab，眼睁睁看着数据消失了。对比 fetch、追踪像素、WebSocket、WebRTC DataChannel 等 6 种浏览器数据外发通道，揭示光看 Network tab 抓不到所有数据外发。">
+  <title>Network tab 抓不到的数据通道 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-ghost"></i> Network tab 抓不到的数据通道</h1>
+    <p>浏览器在往外发数据，你却盯着 F12 一个都抓不到。6 种数据外发通道逐个对比，看哪种能被 Network tab 抓到，哪种彻底隐身。</p>
+    <div class="devtools-hint"><span class="blink"></span> 现在打开 F12 → Network → 保持开启</div>
+  </div>
+
+  <!-- ── 通道对比区 ── -->
+  <div class="section">
+    <h2><i class="ti ti-arrows-exchange-2"></i> 6 条通道，逐个发一条秘密消息</h2>
+    <p class="section-tip">每张卡片会发出一条带唯一 token 的消息。点「发送」后，去 Network tab 找找这条 token——能找到的说明该通道可见，找不到的说明它隐身了。</p>
+    <div class="channel-grid" id="channelGrid"></div>
+  </div>
+
+  <!-- ── WebRTC 配对区 ── -->
+  <div class="section">
+    <h2><i class="ti ti-plug-connected"></i> WebRTC 配对：两个标签页 / 两台设备</h2>
+    <p class="section-tip">WebRTC 要两个端才能建连。新建房间，把链接发给另一个标签页或手机，配对成功后互发消息——然后去 Network tab 翻，你会发现消息根本不在里面。</p>
+    <div class="pair-box">
+      <div class="pair-controls">
+        <div class="pair-row">
+          <label>房间号</label>
+          <input type="text" id="roomInput" maxlength="7" placeholder="6 位房间号" autocomplete="off">
+          <button class="btn btn-primary" id="newRoomBtn"><i class="ti ti-plus"></i> 新建房间</button>
+          <button class="btn" id="joinRoomBtn"><i class="ti ti-login"></i> 加入</button>
+        </div>
+        <div class="pair-row share-row">
+          <label>分享链接</label>
+          <input type="text" id="shareLink" readonly>
+          <button class="btn" id="copyLinkBtn"><i class="ti ti-copy"></i> 复制</button>
+        </div>
+      </div>
+      <div class="pair-status" id="pairStatus"><span class="status-dot waiting"></span> 未连接</div>
+      <div class="pair-chat">
+        <div class="chat-log" id="chatLog">
+          <div class="chat-empty">配对成功后这里会显示收到的消息</div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="chatInput" placeholder="发一条消息，看对方能不能收到…" autocomplete="off" disabled>
+          <button class="btn btn-primary" id="chatSendBtn" disabled><i class="ti ti-send"></i> 发送</button>
+        </div>
+        <div class="chat-hint"><i class="ti ti-alert-circle"></i> 此刻去 Network tab 翻，找不到这条消息——它走的是 P2P DataChannel</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 抓包挑战 ── -->
+  <div class="section">
+    <h2><i class="ti ti-target-arrow"></i> 抓包挑战</h2>
+    <p class="section-tip">点击「开始挑战」，页面会通过 6 个通道各发一条带 token 的秘密消息。去 Network tab 搜 token，看你能抓到几条——有两条注定抓不到。</p>
+    <button class="btn btn-primary btn-lg" id="startChallengeBtn"><i class="ti ti-bolt"></i> 开始挑战</button>
+    <div class="challenge-result" id="challengeResult"></div>
+  </div>
+
+  <!-- ── 原理剖析 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么 WebRTC 抓不到？</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>HTTP 栈被强制记录</h4>
+        <p>DevTools 钩在网络层，所有 fetch / XHR / sendBeacon / 资源加载都逃不掉。这是调试工具的职责，没有 JS API 能关掉它。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>WebSocket 只记连接</h4>
+        <p>建立连接是 HTTP 升级握手，主列表会有一条 ws 记录。但之后的双向消息帧藏在 Messages 子标签里，不点开连接根本看不到内容。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>WebRTC 走另一条路</h4>
+        <p>DataChannel 用 SCTP over DTLS，是浏览器到浏览器的 P2P 直连，完全不经过 HTTP 栈。Network tab 根本不钩这条管道，所以数据传输在这里彻底消失。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">04</div>
+        <h4>信令可见，数据不可见</h4>
+        <p>建立 P2P 连接前要交换 SDP 和 ICE，这一步通常走 WebSocket（可见）。但连上一旦建立，之后的所有数据都走 P2P 通道——Network tab 只能看到「搭桥」，看不到「运货」。</p>
+      </div>
+    </div>
+    <div class="insight-box red">
+      <h3><i class="ti ti-alert-circle"></i> 核心结论</h3>
+      <p>「盯着 Network tab 就能抓到所有数据外发」是个错觉。HTTP 类请求确实逃不掉，但 WebRTC DataChannel 建连后完全在另一条管道上跑。追踪、数据外泄完全可以借这条隐身通道完成——光靠 DevTools 抓不到。</p>
+    </div>
+  </div>
+
+  <!-- ── 防御视角 ── -->
+  <div class="section">
+    <h2><i class="ti ti-shield-lock"></i> 防御者怎么抓隐身通道？</h2>
+    <p class="section-tip">既然 Network tab 抓不到，安全人员还能怎么发现 WebRTC 外发？</p>
+    <div class="compare-grid">
+      <div class="compare-card danger">
+        <h3><i class="ti ti-eye-off"></i> Network tab 看不到的</h3>
+        <ul>
+          <li>DataChannel 的消息内容</li>
+          <li>P2P 传输的实际数据</li>
+          <li>连接建立后的持续通信</li>
+          <li>媒体流（音视频）的真实流量</li>
+        </ul>
+      </div>
+      <div class="compare-card safe">
+        <h3><i class="ti ti-radar-2"></i> 仍能检测的手段</h3>
+        <ul>
+          <li><code>RTCPeerConnection.getStats()</code> 查连接状态</li>
+          <li>劫持 <code>RTCPeerConnection</code> 构造函数，监听页面是否建连</li>
+          <li>浏览器扩展 / 企业代理在传输层看 SCTP/DTLS 流量</li>
+          <li>CSP / feature-policy 禁用 WebRTC 从源头阻断</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

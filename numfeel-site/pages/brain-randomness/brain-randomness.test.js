@@ -1,6 +1,6 @@
 /**
  * 大脑随机性检测 — 单元测试
- * 用 node pages/brain-randomness.test.js 直接运行
+ * 用 node pages/brain-randomness/brain-randomness.test.js 直接运行
  */
 
 const {

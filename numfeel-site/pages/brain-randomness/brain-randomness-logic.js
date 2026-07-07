@@ -574,8 +574,17 @@ function calculateRandomnessScore(seq) {
   else if (score >= 35) grade = 'C';
   else grade = 'D';
 
-  // 等效年龄：平滑映射，峰值约 25 岁
-  var ageEquivalent = Math.round(25 + 60 * Math.pow(1 - score / 100, 1.5));
+  // 等效年龄：score >= 78 视为"真随机水平"映射到 25 岁峰值
+  // 低于 78 时用幂函数平滑递增到 91 岁
+  var AGE_THRESHOLD = 78;
+  var AGE_K = 66;
+  var AGE_EXP = 0.94;
+  var ageEquivalent;
+  if (score >= AGE_THRESHOLD) {
+    ageEquivalent = 25;
+  } else {
+    ageEquivalent = Math.round(25 + AGE_K * Math.pow((AGE_THRESHOLD - score) / AGE_THRESHOLD, AGE_EXP));
+  }
   if (ageEquivalent < 4) ageEquivalent = 4;
   if (ageEquivalent > 91) ageEquivalent = 91;
 

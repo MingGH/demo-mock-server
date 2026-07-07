@@ -6,7 +6,7 @@
   <meta name="description" content="你能骗过算法吗？输入40个「随机」数字，5项统计检验实时揭示你的伪随机指纹。基于Nature论文的大脑随机力评分。">
   <title>你的大脑有多随机？ | 数字直觉</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="../components/header.js" defer></script>
+  <script src="../../components/header.js" defer></script>
   <script src="./brain-randomness-logic.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -619,7 +619,11 @@ function analyzeCoin(seq) {
 
   const score = Math.max(0, Math.round(100 - altPenalty - autoPenalty - streakPenalty));
   const grade = score >= 90 ? 'S' : score >= 75 ? 'A' : score >= 55 ? 'B' : score >= 35 ? 'C' : 'D';
-  const ageEquivalent = Math.max(4, Math.min(91, Math.round(25 + 60 * Math.pow(1 - score / 100, 1.5))));
+  const AGE_THRESHOLD = 78, AGE_K = 66, AGE_EXP = 0.94;
+  let ageEquivalent;
+  if (score >= AGE_THRESHOLD) { ageEquivalent = 25; }
+  else { ageEquivalent = Math.round(25 + AGE_K * Math.pow((AGE_THRESHOLD - score) / AGE_THRESHOLD, AGE_EXP)); }
+  ageEquivalent = Math.max(4, Math.min(91, ageEquivalent));
 
   let issues = [];
   if (Math.abs(zAlt) >= 1.96 && altRate > 0.5) issues.push('你切换得太频繁了，硬币不该这么频繁地翻面');
@@ -748,8 +752,11 @@ function renderSeqCompareChart(seq) {
 function renderAgeCurve(userScore) {
   const ctx = document.getElementById('ageCurveChart').getContext('2d');
   const curve = getAgeCurveData();
-  // 用户点：根据得分反推一个年龄（与 logic 中 ageEquivalent 公式一致的方向）
-  const userAge = Math.max(4, Math.min(91, Math.round(25 + 60 * Math.pow(1 - userScore / 100, 1.5))));
+  // 用户点：用与 logic 中相同的年龄映射公式
+  const AGE_THRESHOLD = 78, AGE_K = 66, AGE_EXP = 0.94;
+  let userAge;
+  if (userScore >= AGE_THRESHOLD) { userAge = 25; }
+  else { userAge = Math.max(4, Math.min(91, Math.round(25 + AGE_K * Math.pow((AGE_THRESHOLD - userScore) / AGE_THRESHOLD, AGE_EXP)))); }
   if (ageCurveChart) ageCurveChart.destroy();
   ageCurveChart = new Chart(ctx, {
     type: 'line',

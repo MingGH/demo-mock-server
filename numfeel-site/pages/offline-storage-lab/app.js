@@ -30,15 +30,36 @@
   }
 
   // ── 真实网络状态监听 ──
+  var _realOnline = navigator.onLine; // 真实连通性缓存
+
   function bindRealNetworkStatus() {
     updateNetIndicator();
-    window.addEventListener('online', updateNetIndicator);
-    window.addEventListener('offline', updateNetIndicator);
+    window.addEventListener('online', function () { _realOnline = true; updateNetIndicator(); });
+    window.addEventListener('offline', function () { _realOnline = false; updateNetIndicator(); });
+    // navigator.onLine 不一定准确（连着 Wi-Fi 但路由器无网时仍 true）
+    // 定时 fetch 探测真实连通性
+    probeRealConnectivity();
+    setInterval(probeRealConnectivity, 5000);
   }
 
-  // 综合判断：真实离线 OR 任何一个模拟开关打开 = 显示离线
+  function probeRealConnectivity() {
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var signal = controller ? controller.signal : undefined;
+    var timer = setTimeout(function () { if (controller) controller.abort(); }, 3000);
+    fetch('./', { method: 'HEAD', cache: 'no-store', signal: signal })
+      .then(function (res) {
+        clearTimeout(timer);
+        if (!_realOnline) { _realOnline = true; updateNetIndicator(); }
+      })
+      .catch(function () {
+        clearTimeout(timer);
+        if (_realOnline) { _realOnline = false; updateNetIndicator(); }
+      });
+  }
+
+  // 综合判断：真实离线 OR 任何模拟开关打开 = 离线
   function isEffectivelyOffline() {
-    return !navigator.onLine || state.act1Offline || state.noteOffline;
+    return !_realOnline || state.act1Offline || state.noteOffline;
   }
 
   function updateNetIndicator() {
@@ -46,8 +67,8 @@
     var ind = $('#netIndicator');
     ind.classList.toggle('offline', offline);
     var label = '';
-    if (!navigator.onLine) {
-      label = '真实离线';
+    if (!_realOnline) {
+      label = '离线';
     } else if (state.act1Offline || state.noteOffline) {
       label = '模拟离线';
     } else {

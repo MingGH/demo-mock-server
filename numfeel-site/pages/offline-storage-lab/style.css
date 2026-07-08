@@ -165,7 +165,6 @@ body {
 .mb-latency { color: #ffd700; font-weight: 700; }
 .mb-source { color: #aaa; font-size: 0.78rem; }
 .mb-summary { color: #888; font-size: 0.78rem; line-height: 1.5; }
-.mb-summary.fail { color: #ff6b6b; }
 
 /* ════════ 第三幕：笔记本 ════════ */
 .note-status-bar {
@@ -235,10 +234,10 @@ body {
 @media (max-width: 760px) {
   .header h1 { font-size: 1.7rem; }
   .section { padding: 20px 16px; }
-  .strategy-grid { display: none; }
-  .strategy-tabs { display: flex; }
+  .strategy-grid { grid-template-columns: 1fr; }
   .strat-card { display: none; }
   .strat-card.active { display: block; }
+  .strategy-tabs { display: flex; }
   .score-wrap { flex-direction: column; }
   .score-chart { width: 180px; height: 180px; }
   .net-indicator { top: 12px; right: 12px; padding: 6px 12px; font-size: 0.76rem; }

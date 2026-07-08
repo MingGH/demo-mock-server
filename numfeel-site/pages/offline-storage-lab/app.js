@@ -30,24 +30,28 @@
   }
 
   // ── 真实网络状态监听 ──
-  var _realOnline = navigator.onLine; // 真实连通性缓存
+  var _realOnline = navigator.onLine;
 
   function bindRealNetworkStatus() {
     updateNetIndicator();
     window.addEventListener('online', function () { _realOnline = true; updateNetIndicator(); });
     window.addEventListener('offline', function () { _realOnline = false; updateNetIndicator(); });
-    // navigator.onLine 不一定准确（连着 Wi-Fi 但路由器无网时仍 true）
-    // 定时 fetch 探测真实连通性
+    // navigator.onLine 不够准确，补充主动探测
     probeRealConnectivity();
-    setInterval(probeRealConnectivity, 5000);
+    setInterval(probeRealConnectivity, 4000);
   }
 
   function probeRealConnectivity() {
+    // 用 HEAD 请求一个外部可靠 URL（不被我们的 SW 拦截，因为跨域）
+    // 超时 3 秒视为离线
     var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var signal = controller ? controller.signal : undefined;
-    var timer = setTimeout(function () { if (controller) controller.abort(); }, 3000);
-    fetch('./', { method: 'HEAD', cache: 'no-store', signal: signal })
-      .then(function (res) {
+    var timer = setTimeout(function () {
+      if (controller) controller.abort();
+      if (_realOnline) { _realOnline = false; updateNetIndicator(); }
+    }, 3000);
+    fetch('https://www.gstatic.com/generate_204', { method: 'HEAD', mode: 'no-cors', signal: signal })
+      .then(function () {
         clearTimeout(timer);
         if (!_realOnline) { _realOnline = true; updateNetIndicator(); }
       })

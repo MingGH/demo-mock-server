@@ -1,105 +1,109 @@
 // ========== 离线生存实验室：交互逻辑 ==========
-// 负责 SW 注册、四幕交互、GSAP 动画、Chart.js 评分图。
-// 核心算法在 offline-engine.js（window 上已挂载）。
+// SW 注册、真实网络检测、四幕交互、笔记本真实持久化。
+// 核心算法在 offline-engine.js（window 上挂载）。
 
 (function () {
   'use strict';
 
+  var $ = function (sel) { return document.querySelector(sel); };
+  var $$ = function (sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); };
+
   // ── 全局状态 ──
   var state = {
-    act1Offline: false,    // 第一幕模拟断网开关
-    noteOffline: false,    // 第三幕笔记本断网开关
+    online: navigator.onLine,
+    act1SimOffline: false,
     noteStore: null,
     syncQueue: null,
     scoreChart: null,
     lastScore: null
   };
 
-  var $ = function (sel) { return document.querySelector(sel); };
-  var $$ = function (sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); };
-
   document.addEventListener('DOMContentLoaded', init);
 
   function init() {
     registerSW();
-    bindRealNetworkStatus();
+    bindNetworkDetection();
     bindAct1();
     bindAct2();
     bindAct3();
     bindAct4();
   }
 
-  // ── 真实网络状态监听 ──
-  var _realOnline = navigator.onLine;
+  // ══════════════════════════════════════════════
+  // 真实网络状态检测
+  // ══════════════════════════════════════════════
 
-  function bindRealNetworkStatus() {
-    updateNetIndicator();
-    window.addEventListener('online', function () { _realOnline = true; updateNetIndicator(); });
-    window.addEventListener('offline', function () { _realOnline = false; updateNetIndicator(); });
-    // navigator.onLine 不够准确，补充主动探测
-    probeRealConnectivity();
-    setInterval(probeRealConnectivity, 4000);
+  function bindNetworkDetection() {
+    updateOnlineState();
+    window.addEventListener('online', function () { state.online = true; onNetworkChange(); });
+    window.addEventListener('offline', function () { state.online = false; onNetworkChange(); });
+    // 定时探测（navigator.onLine 不一定准）
+    setInterval(probeNetwork, 4000);
+    probeNetwork();
   }
 
-  function probeRealConnectivity() {
-    // 用 HEAD 请求一个外部可靠 URL（不被我们的 SW 拦截，因为跨域）
-    // 超时 3 秒视为离线
+  function probeNetwork() {
     var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var signal = controller ? controller.signal : undefined;
-    var timer = setTimeout(function () {
-      if (controller) controller.abort();
-      if (_realOnline) { _realOnline = false; updateNetIndicator(); }
-    }, 3000);
+    var timer = setTimeout(function () { if (controller) controller.abort(); }, 3000);
     fetch('https://www.gstatic.com/generate_204', { method: 'HEAD', mode: 'no-cors', signal: signal })
       .then(function () {
         clearTimeout(timer);
-        if (!_realOnline) { _realOnline = true; updateNetIndicator(); }
+        if (!state.online) { state.online = true; onNetworkChange(); }
       })
       .catch(function () {
         clearTimeout(timer);
-        if (_realOnline) { _realOnline = false; updateNetIndicator(); }
+        if (state.online) { state.online = false; onNetworkChange(); }
       });
   }
 
-  // 综合判断：真实离线 OR 任何模拟开关打开 = 离线
-  function isEffectivelyOffline() {
-    return !_realOnline || state.act1Offline || state.noteOffline;
-  }
-
-  function updateNetIndicator() {
-    var offline = isEffectivelyOffline();
-    var ind = $('#netIndicator');
-    ind.classList.toggle('offline', offline);
-    var label = '';
-    if (!_realOnline) {
-      label = '离线';
-    } else if (state.act1Offline || state.noteOffline) {
-      label = '模拟离线';
-    } else {
-      label = '在线';
+  function onNetworkChange() {
+    updateOnlineState();
+    // 恢复网络时自动同步笔记
+    if (state.online && state.syncQueue) {
+      syncPendingNotes();
     }
-    ind.querySelector('.net-text').textContent = label;
   }
 
-  // ── Service Worker 注册 + toast ──
+  function updateOnlineState() {
+    var on = state.online;
+    var ind = $('#netIndicator');
+    ind.classList.toggle('offline', !on);
+    ind.querySelector('.net-text').textContent = on ? '在线' : '离线';
+    // 第二幕状态
+    var act2Status = $('#act2NetStatus');
+    if (act2Status) {
+      act2Status.textContent = on ? '在线（断网后再试试加载）' : '已离线 — 现在点加载按钮';
+      act2Status.className = 'rs-value ' + (on ? 'online' : 'offline');
+    }
+    // 第三幕状态
+    var nsText = $('#nsText');
+    if (nsText) nsText.textContent = on ? '在线' : '离线';
+    var bar = $('#noteStatusBar');
+    if (bar) bar.classList.toggle('offline', !on);
+  }
+
+  // ══════════════════════════════════════════════
+  // Service Worker 注册
+  // ══════════════════════════════════════════════
+
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
-    // 站点根 /sw.js 由 header.js 注册；这里再注册本目录专属 SW，更具体作用域优先
     navigator.serviceWorker.register('./sw.js').then(function (reg) {
       if (reg.active) {
-        showSwToast('Service Worker 已激活，本页可离线');
+        showToast('Service Worker 已激活，本页可离线访问');
       } else {
-        var state2 = reg.installing || reg.waiting;
-        if (state2) {
-          state2.addEventListener('statechange', function () {
-            if (state2.state === 'activated') showSwToast('Service Worker 已激活，本页可离线');
+        var worker = reg.installing || reg.waiting;
+        if (worker) {
+          worker.addEventListener('statechange', function () {
+            if (worker.state === 'activated') showToast('Service Worker 已激活，本页可离线访问');
           });
         }
       }
-    }).catch(function () { /* 静默 */ });
+    }).catch(function () {});
   }
 
-  function showSwToast(msg) {
+  function showToast(msg) {
     var t = $('#swToast');
     if (!t) return;
     t.textContent = msg;
@@ -107,151 +111,110 @@
     setTimeout(function () { t.classList.remove('show'); }, 3200);
   }
 
-  // ════════ 第一幕：断网恐惧 ════════
+  // ══════════════════════════════════════════════
+  // 第一幕：模拟断网对照组
+  // ══════════════════════════════════════════════
+
   function bindAct1() {
     var toggle = $('#offlineToggle');
     var body = $('#browserBody');
     var overlay = $('#deathOverlay');
-    var verdict = $('#act1Verdict');
-    var next = $('#act1Next');
-    var todoSubmit = $('#todoSubmit');
-    var todoError = $('#todoError');
 
     toggle.addEventListener('click', function () {
-      state.act1Offline = !state.act1Offline;
-      var offline = state.act1Offline;
-      toggle.classList.toggle('offline', offline);
-      toggle.querySelector('span').textContent = offline ? '恢复联网' : '模拟断网';
-      updateNetIndicator();
+      state.act1SimOffline = !state.act1SimOffline;
+      var off = state.act1SimOffline;
+      toggle.classList.toggle('offline', off);
+      toggle.querySelector('span').textContent = off ? '恢复' : '模拟断网';
 
-      if (offline) {
-        // 元素依次消失
-        if (window.gsap) {
-          gsap.to(body.children, { opacity: 0.15, y: 10, stagger: 0.08, duration: 0.35, ease: 'power2.in' });
-        }
+      if (off) {
+        if (window.gsap) gsap.to(body.children, { opacity: 0.15, y: 10, stagger: 0.08, duration: 0.35, ease: 'power2.in' });
         body.classList.add('dead');
         overlay.classList.add('show');
-        verdict.hidden = false;
-        next.hidden = false;
+        $('#act1Verdict').hidden = false;
+        $('#act1Next').hidden = false;
       } else {
-        if (window.gsap) {
-          gsap.to(body.children, { opacity: 1, y: 0, stagger: 0.08, duration: 0.35, ease: 'power2.out' });
-        }
+        if (window.gsap) gsap.to(body.children, { opacity: 1, y: 0, stagger: 0.08, duration: 0.35, ease: 'power2.out' });
         body.classList.remove('dead');
         overlay.classList.remove('show');
-        todoError.classList.remove('show');
-        todoError.textContent = '';
       }
     });
 
-    todoSubmit.addEventListener('click', function () {
+    $('#todoSubmit').addEventListener('click', function () {
       var input = $('#todoInput');
       if (!input.value.trim()) return;
-      if (state.act1Offline) {
-        todoError.textContent = '网络请求失败：ERR_INTERNET_DISCONNECTED';
-        todoError.classList.add('show');
+      var err = $('#todoError');
+      if (state.act1SimOffline) {
+        err.textContent = '网络请求失败：ERR_INTERNET_DISCONNECTED';
+        err.classList.add('show');
       } else {
-        todoError.textContent = '提交成功（在线）';
-        todoError.style.color = '#81c784';
-        input.value = '';
-        setTimeout(function () { todoError.textContent = ''; todoError.style.color = ''; }, 1500);
+        err.textContent = ''; input.value = '';
       }
     });
 
-    $('#goAct2').addEventListener('click', function () {
-      reveal('#act2');
-    });
+    $('#goAct2').addEventListener('click', function () { reveal('#act2'); });
   }
 
-  // ════════ 第二幕：缓存策略对比 ════════
+  // ══════════════════════════════════════════════
+  // 第二幕：真实离线加载验证
+  // ══════════════════════════════════════════════
+
   function bindAct2() {
-    var tabs = $$('.strat-tab');
-    var cards = $$('.strat-card');
-
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        tabs.forEach(function (t) { t.classList.remove('active'); });
-        tab.classList.add('active');
-        var s = tab.dataset.strat;
-        cards.forEach(function (c) { c.classList.toggle('active', c.dataset.strat === s); });
-      });
-    });
-    // 默认激活第一个（移动端）
-    cards[0].classList.add('active');
-
-    $('#loadResBtn').addEventListener('click', function () { runStrategies(false); });
-    $('#loadOfflineBtn').addEventListener('click', function () { runStrategies(true); });
+    $('#loadProofBtn').addEventListener('click', loadCachedResource);
     $('#goAct3').addEventListener('click', function () { reveal('#act3'); initNotes(); });
   }
 
-  function runStrategies(offline) {
-    var cards = $$('.strat-card');
-    $('#loadResBtn').disabled = true;
-    $('#loadOfflineBtn').disabled = true;
+  function loadCachedResource() {
+    var placeholder = $('#proofPlaceholder');
+    var img = $('#proofImage');
+    var text = $('#proofText');
+    var result = $('#proofResult');
 
-    cards.forEach(function (card) {
-      resetCard(card);
-      var strat = card.dataset.strat;
-      var bar = card.querySelector('[data-fill]');
-      var latencyEl = card.querySelector('.mb-latency');
-      var sourceEl = card.querySelector('.mb-source');
+    placeholder.hidden = true;
+    result.hidden = false;
 
-      var opts = {
-        hasCache: offline, online: !offline,
-        networkLatency: 600, cacheLatency: 30, timeout: 3000
-      };
-      var promise;
-      if (strat === 'cacheFirst') promise = window.simulateCacheFirst(opts);
-      else if (strat === 'networkFirst') promise = window.simulateNetworkFirst(opts);
-      else promise = window.simulateSWR(opts);
+    var startTime = performance.now();
 
-      // 进度条动画
-      if (window.gsap) gsap.to(bar, { width: '100%', duration: offline && strat === 'networkFirst' ? 3 : 0.6, ease: 'power1.out' });
-
-      promise.then(function (r) {
-        latencyEl.textContent = r.latency + 'ms';
-        if (r.source === 'cache') { sourceEl.textContent = '✓ 缓存命中'; sourceEl.style.color = '#81c784'; }
-        else if (r.source === 'network') { sourceEl.textContent = '✓ 网络获取'; sourceEl.style.color = '#81c784'; }
-        else if (r.source === 'timeout') { sourceEl.textContent = '✗ 超时'; sourceEl.style.color = '#ff6b6b'; }
-        if (strat === 'swr' && r.bgUpdate) {
-          sourceEl.textContent += r.bgUpdateOk ? ' (后台已更新)' : ' (后台更新失败)';
-          if (!r.bgUpdateOk) sourceEl.style.color = '#ffb700';
-        }
-        // Network First 断网有缓存：等很久才回退，用橙色警告
-        if (strat === 'networkFirst' && offline && r.source === 'cache') {
-          sourceEl.textContent = '⚠ 超时后回退缓存';
-          sourceEl.style.color = '#ffb700';
-        }
-      });
-    });
-
-    setTimeout(function () {
-      $('#loadResBtn').disabled = false;
-      $('#loadOfflineBtn').disabled = false;
-    }, 3400);
-  }
-
-  function resetCard(card) {
-    card.querySelector('[data-fill]').style.width = '0%';
-    var latencyEl = card.querySelector('.mb-latency');
-    var sourceEl = card.querySelector('.mb-source');
-    latencyEl.textContent = '-'; sourceEl.textContent = ''; sourceEl.style.color = '';
-  }
-
-  // ════════ 第三幕：IndexedDB 笔记本 ════════
-  function initNotes() {
-    if (state.noteStore) { renderNotes(); return; }
-    var store = new window.OfflineNoteStore('offline-lab-notes');
-    state.noteStore = store;
-    state.syncQueue = new window.SyncQueue(store, {
-      isOnline: function () { return !state.noteOffline; },
-      syncDelay: 500,
-      onSync: function (note) {
-        // 单条同步成功 -> 更新该卡片状态
-        updateNoteCard(note.id, 'synced');
+    // 尝试加载一个已被 SW 缓存的本地资源
+    fetch('./style.css', { cache: 'no-store' }).then(function (res) {
+      var elapsed = Math.round(performance.now() - startTime);
+      if (res.ok) {
+        return res.text().then(function (body) {
+          text.hidden = false;
+          text.innerHTML = '<i class="ti ti-circle-check"></i> 资源加载成功（' + elapsed + 'ms）' +
+            '<br><span class="proof-detail">来源：' + (state.online ? '网络或缓存' : '<b>Service Worker 缓存</b>（你现在没网）') + '</span>' +
+            '<br><span class="proof-detail">大小：' + body.length + ' 字节</span>';
+          text.className = 'proof-text success';
+          result.innerHTML = state.online
+            ? '在线加载成功。现在试试断网（飞行模式）后再点一次——还是能加载。'
+            : '<span class="gold">断网状态下加载成功。这就是 Service Worker + Cache API 的力量。</span>';
+        });
+      } else {
+        throw new Error('status ' + res.status);
       }
+    }).catch(function (err) {
+      text.hidden = false;
+      text.innerHTML = '<i class="ti ti-circle-x"></i> 加载失败：' + err.message;
+      text.className = 'proof-text fail';
+      result.innerHTML = 'Service Worker 可能还没安装完成。刷新页面后重试。';
+    });
+  }
+
+  // ══════════════════════════════════════════════
+  // 第三幕：真实 IndexedDB 笔记本
+  // ══════════════════════════════════════════════
+
+  function initNotes() {
+    if (state.noteStore) { renderNotes(); updateQueueCount(); return; }
+    state.noteStore = new window.OfflineNoteStore('offline-lab-notes');
+    state.syncQueue = new window.SyncQueue(state.noteStore, {
+      isOnline: function () { return state.online; },
+      syncDelay: 500,
+      onSync: function (note) { updateNoteCard(note.id, 'synced'); }
     });
     renderNotes();
+    updateQueueCount();
+    // 如果当前在线，同步之前断网时写的
+    if (state.online) syncPendingNotes();
   }
 
   function bindAct3() {
@@ -259,43 +222,11 @@
     $('#noteInput').addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitNote();
     });
-
-    $('#noteOfflineToggle').addEventListener('click', function () {
-      state.noteOffline = !state.noteOffline;
-      var off = state.noteOffline;
-      var btn = $('#noteOfflineToggle');
-      btn.classList.toggle('offline', off);
-      btn.querySelector('span').textContent = off ? '恢复联网' : '模拟断网';
-      var bar = $('#noteStatusBar');
-      bar.classList.toggle('offline', off);
-      $('#nsText').textContent = off ? '离线' : '在线';
-      updateNetIndicator();
-
-      if (!off) {
-        // 恢复联网 -> 自动同步
-        $('#noteGuide').textContent = '恢复联网，正在同步待处理笔记……';
-        state.syncQueue.processQueue().then(function (res) {
-          updateQueueCount();
-          renderNotes();
-          if (res.synced > 0) {
-            $('#noteGuide').textContent = '已同步 ' + res.synced + ' 条，用户全程无感知。';
-            $('#act3Verdict').hidden = false;
-            $('#act3Next').hidden = false;
-          } else {
-            $('#noteGuide').textContent = '没有待同步的笔记。';
-          }
-        });
-      } else {
-        $('#noteGuide').textContent = '已断网。现在写笔记仍会保存，只是标记为「待同步」。';
-      }
-    });
-
     $('#noteClear').addEventListener('click', function () {
       if (!state.noteStore) return;
       if (!confirm('清空全部笔记？')) return;
       state.noteStore.clearAll().then(function () { renderNotes(); updateQueueCount(); });
     });
-
     $('#goAct4').addEventListener('click', function () { reveal('#act4'); });
   }
 
@@ -304,19 +235,26 @@
     var text = input.value.trim();
     if (!text) return;
     if (!state.noteStore) initNotes();
-    var synced = !state.noteOffline;
+
+    var synced = state.online; // 真实网络状态决定是否立即同步
     state.noteStore.addNote(text, synced).then(function (note) {
       input.value = '';
-      // 若离线，入队（实际就是 synced=false 留在 store）
-      if (!synced) {
-        state.syncQueue.enqueue(note.id).then(function () {
-          updateQueueCount();
-          $('#noteGuide').textContent = '笔记已离线保存（待同步）。恢复联网后会自动同步。';
-        });
-      } else {
-        $('#noteGuide').textContent = '笔记已保存并同步。';
-      }
       renderNotes(note.id);
+      updateQueueCount();
+      if (!synced) {
+        showToast('笔记已离线保存，联网后自动同步');
+      }
+    });
+  }
+
+  function syncPendingNotes() {
+    if (!state.syncQueue) return;
+    state.syncQueue.processQueue().then(function (res) {
+      if (res.synced > 0) {
+        showToast('已同步 ' + res.synced + ' 条笔记');
+        renderNotes();
+      }
+      updateQueueCount();
     });
   }
 
@@ -338,7 +276,6 @@
           '<div class="note-body"><div class="note-text">' + escapeHtml(n.text) + '</div>' +
           '<div class="note-meta">' + formatTime(n.timestamp) + ' · ' + label + '</div></div></div>';
       }).join('');
-      updateQueueCount();
     });
   }
 
@@ -348,20 +285,23 @@
     var stEl = card.querySelector('.note-status');
     stEl.classList.remove('pending', 'failed');
     stEl.classList.add(status);
-    if (status === 'synced') {
-      stEl.innerHTML = '<i class="ti ti-check"></i>';
-      if (window.gsap) gsap.fromTo(card, { scale: 1 }, { scale: 1.06, duration: 0.18, yoyo: true, repeat: 1 });
-      var meta = card.querySelector('.note-meta');
-      if (meta) meta.textContent = meta.textContent.replace(/待同步|同步失败/, '已同步');
-    }
+    stEl.innerHTML = '<i class="ti ti-check"></i>';
+    if (window.gsap) gsap.fromTo(card, { scale: 1 }, { scale: 1.06, duration: 0.18, yoyo: true, repeat: 1 });
+    var meta = card.querySelector('.note-meta');
+    if (meta) meta.textContent = meta.textContent.replace(/待同步/, '已同步');
   }
 
   function updateQueueCount() {
-    if (!state.syncQueue) { $('#queueCount').textContent = '0'; return; }
-    state.syncQueue.getQueueLength().then(function (n) { $('#queueCount').textContent = n; });
+    if (!state.noteStore) { $('#queueCount').textContent = '0'; return; }
+    state.noteStore.getPendingSync().then(function (list) {
+      $('#queueCount').textContent = list.length;
+    });
   }
 
-  // ════════ 第四幕：评分 ════════
+  // ══════════════════════════════════════════════
+  // 第四幕：评分
+  // ══════════════════════════════════════════════
+
   function bindAct4() {
     $('#runScoreBtn').addEventListener('click', runScore);
     $('#copyReportBtn').addEventListener('click', copyReport);
@@ -373,25 +313,22 @@
     items.forEach(function (it) {
       it.classList.add('spin');
       it.querySelector('.ti').className = 'ti ti-loader';
-      var v = it.querySelector('.sc-val');
-      v.className = 'sc-val wait'; v.textContent = '检测中…';
+      it.querySelector('.sc-val').className = 'sc-val wait';
+      it.querySelector('.sc-val').textContent = '检测中…';
     });
 
     window.getFullScore().then(function (score) {
       state.lastScore = score;
-      var keys = ['sw', 'cache', 'fallback', 'idb', 'sync'];
       items.forEach(function (it, i) {
         var res = score.items[i].result;
         setTimeout(function () {
           it.classList.remove('spin');
-          var v = it.querySelector('.sc-val');
-          v.textContent = res.score + ' / 20';
-          v.className = 'sc-val ' + (res.score > 0 ? 'ok' : 'bad');
+          it.querySelector('.sc-val').textContent = res.score + ' / 20';
+          it.querySelector('.sc-val').className = 'sc-val ' + (res.score > 0 ? 'ok' : 'bad');
           it.querySelector('.ti').className = 'ti ' + (res.score > 0 ? 'ti-circle-check' : 'ti-circle-x');
           it.title = res.detail;
         }, i * 350);
       });
-
       setTimeout(function () { drawChart(score.total); showVerdict(score); }, items.length * 350 + 200);
     });
   }
@@ -410,12 +347,8 @@
             borderWidth: 0
           }]
         },
-        options: {
-          cutout: '72%', responsive: false, animation: { duration: 900 },
-          plugins: { legend: { display: false }, tooltip: { enabled: false } }
-        }
+        options: { cutout: '72%', responsive: false, animation: { duration: 900 }, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
       });
-      // 中心文字
       var ctx = canvas.getContext('2d');
       setTimeout(function () {
         ctx.fillStyle = total >= 80 ? '#ffd700' : '#e8e8e8';
@@ -440,7 +373,7 @@
       v.hidden = true;
       var missing = score.items.filter(function (it) { return it.result.score === 0; })
         .map(function (it) { return it.name + '（' + it.result.detail + '）'; }).join('；');
-      hint.textContent = '缺失项：' + missing + '。补齐这些即可获得满分。';
+      hint.textContent = '缺失项：' + missing;
       hint.hidden = false;
     }
   }
@@ -460,7 +393,7 @@
   }
 
   function copyReport() {
-    if (!state.lastScore) { showSwToast('请先点击「开始检测」'); return; }
+    if (!state.lastScore) { showToast('请先点击「开始检测」'); return; }
     var s = state.lastScore;
     var lines = ['离线能力评估报告', '总分：' + s.total + ' / 100', ''];
     s.items.forEach(function (it) {
@@ -469,22 +402,23 @@
     lines.push('', '来源：离线生存实验室 ' + location.href);
     var text = lines.join('\n');
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { showSwToast('报告已复制'); });
+      navigator.clipboard.writeText(text).then(function () { showToast('报告已复制'); });
     } else {
       var ta = document.createElement('textarea');
       ta.value = text; document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); showSwToast('报告已复制'); } catch (e) { showSwToast('复制失败'); }
+      try { document.execCommand('copy'); showToast('报告已复制'); } catch (e) { showToast('复制失败'); }
       ta.remove();
     }
   }
 
-  // ── 工具 ──
+  // ══════════════════════════════════════════════
+  // 工具函数
+  // ══════════════════════════════════════════════
+
   function reveal(sel) {
     var el = $(sel);
     el.hidden = false;
-    if (window.gsap) {
-      gsap.from(el, { opacity: 0, y: 30, duration: 0.6, ease: 'power2.out' });
-    }
+    if (window.gsap) gsap.from(el, { opacity: 0, y: 30, duration: 0.6, ease: 'power2.out' });
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 

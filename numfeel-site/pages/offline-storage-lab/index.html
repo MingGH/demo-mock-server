@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="亲身体验 Service Worker、Cache API、IndexedDB 如何让你的网页在断网后依然活着。拨动开关模拟断网，看缓存策略对比，写离线笔记。">
+  <meta name="description" content="亲身体验 Service Worker、Cache API、IndexedDB 如何让你的网页在断网后依然活着。真的断网，真的能用。">
   <title>离线生存实验室 | 你的网页断网后还活着吗？</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
@@ -15,22 +15,22 @@
 
   <div class="header">
     <h1><i class="ti ti-wifi-off"></i> 离线生存实验室</h1>
-    <p>断网了，你的网页是「尸体」还是「幸存者」？这一页让你亲手拨开关、看缓存策略对比、写离线笔记，最后给当前页面打一个离线能力分。玩完以后，打开手机飞行模式刷新这个页面——它还活着。</p>
+    <p>这个页面本身就是一个离线应用。打开飞行模式，刷新试试——它还活着。下面四个实验，带你从「断网即死」走到「断网无感」。</p>
   </div>
 
-  <!-- 悬浮网络状态 -->
+  <!-- 悬浮网络状态（真实检测） -->
   <div class="net-indicator" id="netIndicator">
     <span class="net-dot"></span>
-    <span class="net-text">在线</span>
+    <span class="net-text">检测中</span>
   </div>
 
   <!-- SW toast -->
   <div class="sw-toast" id="swToast"></div>
 
-  <!-- ════════ 第一幕：断网恐惧体验 ════════ -->
-  <section class="section act act-1" id="act1">
-    <p class="section-desc">第一幕 / 对照组：先让一个「普通网页」死一次，建立痛感。拨下开关，看它怎么死的。</p>
-    <h2><i class="ti ti-plug-off"></i> 断网恐惧体验</h2>
+  <!-- ════════ 第一幕：断网恐惧体验（模拟对照组） ════════ -->
+  <section class="section act" id="act1">
+    <p class="section-desc">第一幕 / 对照组：一个没做离线处理的普通网页，断网时什么样？点按钮模拟看看。</p>
+    <h2><i class="ti ti-plug-off"></i> 没有离线能力的网页</h2>
 
     <div class="browser-mock" id="deathBrowser">
       <div class="browser-bar">
@@ -65,105 +65,102 @@
       </button>
     </div>
 
-    <div class="verdict gold" id="act1Verdict" hidden>如果你的用户看到这个画面，你已经输了。</div>
+    <div class="verdict gold" id="act1Verdict" hidden>如果你的用户看到这个画面，你已经输了。而你正在看的这个页面——真断网也不会这样。</div>
     <div class="act-next" id="act1Next" hidden>
-      <button class="btn btn-primary" id="goAct2">让我看看有离线能力的版本 <i class="ti ti-arrow-right"></i></button>
+      <button class="btn btn-primary" id="goAct2">看看有离线能力的版本 <i class="ti ti-arrow-right"></i></button>
     </div>
   </section>
 
-  <!-- ════════ 第二幕：缓存策略对比 ════════ -->
-  <section class="section act act-2" id="act2" hidden>
-    <p class="section-desc">第二幕 / Service Worker 三种策略：同样的资源，不同取法，断网时表现天差地别。先点「加载资源」看首次，再点「模拟断网后再加载」看差异。</p>
-    <h2><i class="ti ti-arrows-exchange"></i> 缓存策略对比实验</h2>
+  <!-- ════════ 第二幕：真实离线加载验证 ════════ -->
+  <section class="section act" id="act2" hidden>
+    <p class="section-desc">第二幕 / 真实验证：这个页面的资源已经被 Service Worker 缓存了。现在请你真的断开网络（飞行模式 / 拔网线 / DevTools Offline），然后点下面的按钮加载一张图片。断网状态下，它依然能加载。</p>
+    <h2><i class="ti ti-arrows-exchange"></i> 断网加载：你亲手验证</h2>
 
-    <!-- 移动端 tab -->
-    <div class="strategy-tabs" id="strategyTabs">
-      <button class="strat-tab active" data-strat="cacheFirst">Cache First</button>
-      <button class="strat-tab" data-strat="networkFirst">Network First</button>
-      <button class="strat-tab" data-strat="swr">SWR</button>
+    <div class="realtime-status">
+      <span class="rs-label">当前网络状态：</span>
+      <span class="rs-value" id="act2NetStatus">检测中…</span>
     </div>
 
-    <div class="strategy-grid" id="strategyGrid">
-      <!-- Cache First -->
-      <div class="mini-browser strat-card" data-strat="cacheFirst">
-        <div class="browser-bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
-        <div class="mb-body">
+    <div class="offline-proof-area">
+      <div class="proof-card" id="proofCard">
+        <div class="proof-placeholder" id="proofPlaceholder">
+          <i class="ti ti-photo-off"></i>
+          <span>点下方按钮加载资源</span>
+        </div>
+        <img id="proofImage" class="proof-img" hidden alt="缓存的图片资源">
+        <div class="proof-text" id="proofText" hidden></div>
+      </div>
+
+      <div class="act-controls">
+        <button class="btn btn-primary" id="loadProofBtn"><i class="ti ti-download"></i> 加载缓存资源</button>
+      </div>
+
+      <div class="proof-result" id="proofResult" hidden></div>
+    </div>
+
+    <div class="hint-blue">
+      <b>原理：</b>Service Worker 在你首次打开时就把关键资源存入了 Cache Storage。之后每次请求，SW 先查缓存——有就直接返回，根本不走网络。所以断网了也能加载。
+    </div>
+
+    <div class="strategy-explain">
+      <h3>三种缓存策略速览</h3>
+      <div class="strat-cards-simple">
+        <div class="strat-s-card">
           <span class="tag tag-easy">Cache First</span>
-          <div class="mb-resource"><i class="ti ti-photo"></i><span class="mb-res-label">图片 + 文字</span></div>
-          <div class="mb-bar"><div class="mb-bar-fill" data-fill></div></div>
-          <div class="mb-result"><span class="mb-latency">—</span> <span class="mb-source"></span></div>
-          <div class="mb-summary">先翻冰箱：有剩菜直接吃，不叫外卖。适合不常变的静态资源。</div>
+          <p>先翻冰箱，有就吃，没有才叫外卖。<b>本页用的就是这个。</b></p>
         </div>
-      </div>
-      <!-- Network First -->
-      <div class="mini-browser strat-card" data-strat="networkFirst">
-        <div class="browser-bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
-        <div class="mb-body">
+        <div class="strat-s-card">
           <span class="tag tag-medium">Network First</span>
-          <div class="mb-resource"><i class="ti ti-photo"></i><span class="mb-res-label">图片 + 文字</span></div>
-          <div class="mb-bar"><div class="mb-bar-fill" data-fill></div></div>
-          <div class="mb-result"><span class="mb-latency">—</span> <span class="mb-source"></span></div>
-          <div class="mb-summary">先叫外卖：优先等新鲜的，超时了再看冰箱。适合 API 数据、动态内容。</div>
+          <p>先叫外卖，超时了再看冰箱。适合需要最新数据的 API。</p>
         </div>
-      </div>
-      <!-- SWR -->
-      <div class="mini-browser strat-card" data-strat="swr">
-        <div class="browser-bar"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span></div>
-        <div class="mb-body">
+        <div class="strat-s-card">
           <span class="tag tag-fun">Stale While Revalidate</span>
-          <div class="mb-resource"><i class="ti ti-photo"></i><span class="mb-res-label">图片 + 文字</span></div>
-          <div class="mb-bar"><div class="mb-bar-fill" data-fill></div></div>
-          <div class="mb-result"><span class="mb-latency">—</span> <span class="mb-source"></span></div>
-          <div class="mb-summary">先吃剩菜，同时叫外卖：立刻给旧内容，后台静默更新。适合内容频率中等的页面。</div>
+          <p>先吃剩菜保证速度，同时叫外卖更新。下次就是新的。</p>
         </div>
       </div>
     </div>
 
-    <div class="act-controls">
-      <button class="btn btn-primary" id="loadResBtn"><i class="ti ti-player-play"></i> 加载资源</button>
-      <button class="btn btn-secondary" id="loadOfflineBtn"><i class="ti ti-wifi-off"></i> 模拟断网后再加载</button>
-    </div>
-
-    <div class="hint-blue">没有万能策略——静态资源用 Cache First，API 数据用 Network First，内容页用 SWR。</div>
     <div class="act-next">
       <button class="btn btn-primary" id="goAct3">断网时还能写数据吗？ <i class="ti ti-arrow-right"></i></button>
     </div>
   </section>
 
-  <!-- ════════ 第三幕：IndexedDB 离线写入 ════════ -->
-  <section class="section act act-3" id="act3" hidden>
-    <p class="section-desc">第三幕 / 离线写入：缓存解决「读」，写更容易翻车。试试在断网时提交笔记——写入永远成功，同步交给后台。</p>
-    <h2><i class="ti ti-notes"></i> IndexedDB 离线笔记本</h2>
+  <!-- ════════ 第三幕：IndexedDB 离线笔记本（真实） ════════ -->
+  <section class="section act" id="act3" hidden>
+    <p class="section-desc">第三幕 / 离线写入：下面是一个真实的笔记本，数据存在浏览器 IndexedDB 里。你可以真的断网写笔记，刷新后还在。恢复网络后待同步的笔记会自动标记为已同步。</p>
+    <h2><i class="ti ti-notes"></i> 离线笔记本</h2>
 
     <div class="note-status-bar" id="noteStatusBar">
-      <span class="ns-online"><i class="ti ti-wifi"></i> <span id="nsText">在线</span></span>
-      <span class="ns-queue">待同步队列：<b id="queueCount">0</b></span>
+      <span class="ns-online"><i class="ti ti-wifi"></i> <span id="nsText">检测中</span></span>
+      <span class="ns-queue">待同步：<b id="queueCount">0</b></span>
     </div>
 
-    <div class="note-guide" id="noteGuide">先写一条笔记试试（当前在线，提交即同步）</div>
+    <div class="note-guide" id="noteGuide">写一条笔记试试。断网时写的会标记为「待同步」，联网后自动同步。刷新页面，笔记还在。</div>
 
     <div class="note-input-area">
-      <textarea id="noteInput" placeholder="写点什么……断网也能提交" rows="3"></textarea>
+      <textarea id="noteInput" placeholder="写点什么……断网也能保存" rows="3"></textarea>
       <button class="btn btn-primary" id="noteSubmit"><i class="ti ti-device-floppy"></i> 保存笔记</button>
     </div>
 
     <div class="note-list" id="noteList"></div>
 
     <div class="act-controls">
-      <button class="btn btn-danger" id="noteOfflineToggle"><i class="ti ti-power"></i> <span>模拟断网</span></button>
-      <button class="btn btn-ghost" id="noteClear"><i class="ti ti-trash"></i> 清空</button>
+      <button class="btn btn-ghost" id="noteClear"><i class="ti ti-trash"></i> 清空全部</button>
     </div>
 
-    <div class="verdict gold" id="act3Verdict" hidden>用户全程无感知。这就是离线优先的核心——写入永远成功，同步交给后台。</div>
-    <div class="act-next" id="act3Next" hidden>
+    <div class="hint-blue">
+      <b>试试这个流程：</b>1. 联网写一条 → 2. 断网（飞行模式）再写两条 → 3. 刷新页面，笔记还在 → 4. 恢复网络，看待同步自动变成已同步。
+    </div>
+
+    <div class="act-next" id="act3Next">
       <button class="btn btn-primary" id="goAct4">给这个页面打个分 <i class="ti ti-arrow-right"></i></button>
     </div>
   </section>
 
   <!-- ════════ 第四幕：离线能力评分 ════════ -->
-  <section class="section act act-4" id="act4" hidden>
-    <p class="section-desc">第四幕 / 量化打分：模仿 Lighthouse，真实调用浏览器 API 检测当前页面的离线能力。这个页面自己就是离线应用，所以能拿满分——形成自证闭环。</p>
-    <h2><i class="ti ti-clipboard-check"></i> 你的页面离线能力评分</h2>
+  <section class="section act" id="act4" hidden>
+    <p class="section-desc">第四幕 / 量化打分：真实调用浏览器 API 检测当前页面的离线能力。</p>
+    <h2><i class="ti ti-clipboard-check"></i> 离线能力评分</h2>
 
     <div class="score-wrap">
       <div class="score-chart"><canvas id="scoreChart" width="220" height="220"></canvas></div>
@@ -184,7 +181,7 @@
       <button class="btn btn-ghost" id="copyReportBtn"><i class="ti ti-copy"></i> 复制评估报告</button>
     </div>
 
-    <div class="footer-note">验证方法：手机打开飞行模式 / 电脑拔网线 / Chrome DevTools → Application → Service Workers → 勾选 Offline，然后刷新这个页面。还活着就对了。</div>
+    <div class="footer-note">终极验证：打开飞行模式，刷新整个页面。页面加载正常、笔记数据还在、所有交互可用——这就是离线存储的全部意义。</div>
   </section>
 
 </div>

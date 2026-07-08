@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SQLite真的不能高并发？亲手给一个真实SQLite数据库施加压力，实时看到它什么时候扛得住、什么时候开始报SQLITE_BUSY。">
+  <title>SQLite 并发压力实验室 | 数字直觉</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh; color: #e8e8e8; line-height: 1.6;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; padding: 40px 20px; margin-bottom: 30px; }
+    .header h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      animation: shimmer 3s linear infinite; margin-bottom: 15px;
+    }
+    @keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+    .header p { font-size: 1.1rem; color: #a0a0a0; max-width: 700px; margin: 0 auto; }
+
+    .demo-section {
+      background: rgba(255,255,255,0.05); border-radius: 16px; padding: 30px;
+      margin-bottom: 30px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .demo-section h2 {
+      font-size: 1.5rem; margin-bottom: 8px; color: #ffd700;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .section-desc { color: #888; font-size: 0.9rem; margin-bottom: 20px; }
+
+    .btn {
+      padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem;
+      cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 8px;
+      user-select: none;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary {
+      background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 600;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.3); }
+    .btn-primary:active { transform: scale(0.96) translateY(0); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+    .btn-danger {
+      background: rgba(255,107,107,0.2); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.3);
+    }
+    .btn-danger:hover { background: rgba(255,107,107,0.3); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+    /* 实时状态仪表盘 */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px; margin: 20px 0;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.05); border-radius: 12px; padding: 18px;
+      text-align: center; border: 1px solid rgba(255,255,255,0.1);
+      transition: border-color 0.3s;
+    }
+    .stat-card.pulse { border-color: rgba(255,215,0,0.5); }
+    .stat-card .value {
+      font-size: 1.8rem; font-weight: bold; color: #ffd700; margin-bottom: 4px;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.3s;
+    }
+    .stat-card .label { font-size: 0.85rem; color: #a0a0a0; }
+
+    /* 场景卡片 */
+    .scenario-cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px; margin: 20px 0;
+    }
+    .scenario-card {
+      background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px;
+      border: 2px solid rgba(255,255,255,0.1); cursor: pointer;
+      transition: all 0.3s ease; text-align: center;
+    }
+    .scenario-card:hover { border-color: rgba(255,215,0,0.4); transform: translateY(-3px); }
+    .scenario-card.active { border-color: #ffd700; background: rgba(255,215,0,0.08); }
+    .scenario-card .sc-icon { font-size: 2rem; margin-bottom: 10px; }
+    .scenario-card .sc-title { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+    .scenario-card .sc-detail { font-size: 0.85rem; color: #a0a0a0; }
+    .scenario-card .sc-qps { color: #81c784; font-weight: 600; font-size: 0.95rem; margin-top: 6px; }
+
+    /* 压测控制区 */
+    .burst-controls {
+      display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin: 20px 0;
+    }
+    .control-group { display: flex; flex-direction: column; gap: 6px; }
+    .control-group label { font-size: 0.85rem; color: #a0a0a0; }
+    .control-group input[type="range"] {
+      width: 200px; height: 6px; border-radius: 3px;
+      background: rgba(255,255,255,0.15); outline: none; -webkit-appearance: none;
+    }
+    .control-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+      background: #ffd700; cursor: pointer;
+    }
+    .range-value {
+      font-size: 1.1rem; font-weight: 600; color: #ffd700; min-width: 50px; text-align: center;
+    }
+    .toggle-group { display: flex; align-items: center; gap: 8px; }
+    .toggle {
+      position: relative; width: 44px; height: 24px; background: rgba(255,255,255,0.15);
+      border-radius: 12px; cursor: pointer; transition: background 0.3s;
+    }
+    .toggle.on { background: rgba(129,199,132,0.5); }
+    .toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 18px; height: 18px; border-radius: 50%; background: #fff;
+      transition: transform 0.3s;
+    }
+    .toggle.on::after { transform: translateX(20px); }
+
+    /* 压测结果 */
+    .burst-result {
+      display: none; margin-top: 20px; padding: 24px;
+      background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+    }
+    .burst-result.visible { display: block; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .result-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px; margin-bottom: 16px;
+    }
+    .result-item { text-align: center; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.03); }
+    .result-item .ri-value { font-size: 1.4rem; font-weight: bold; font-variant-numeric: tabular-nums; }
+    .result-item .ri-label { font-size: 0.8rem; color: #a0a0a0; margin-top: 4px; }
+    .result-item.success .ri-value { color: #81c784; }
+    .result-item.fail .ri-value { color: #ff6b6b; }
+    .result-item.latency .ri-value { color: #90caf9; }
+
+    /* 洞察卡片 */
+    .insight-box {
+      background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,183,0,0.05));
+      border-left: 4px solid #ffd700; padding: 18px 22px; border-radius: 0 12px 12px 0;
+      margin: 20px 0; display: none;
+    }
+    .insight-box.visible { display: block; animation: fadeIn 0.5s ease; }
+    .insight-box h3 { color: #ffd700; margin-bottom: 8px; font-size: 1rem; }
+    .insight-box p { color: #c0c0c0; font-size: 0.95rem; line-height: 1.7; }
+    .insight-box.green { border-left-color: #81c784; background: linear-gradient(135deg, rgba(129,199,132,0.08), rgba(0,200,0,0.03)); }
+    .insight-box.green h3 { color: #81c784; }
+    .insight-box.red { border-left-color: #ff6b6b; background: linear-gradient(135deg, rgba(255,107,107,0.08), rgba(255,0,0,0.03)); }
+    .insight-box.red h3 { color: #ff6b6b; }
+
+    /* 图表区 */
+    .chart-container { position: relative; height: 280px; margin: 20px 0; }
+    .chart-container canvas { width: 100% !important; }
+
+    /* 写入按钮连击反馈 */
+    .write-feedback {
+      display: inline-block; margin-left: 12px; font-size: 0.9rem;
+      color: #81c784; opacity: 0; transition: opacity 0.3s;
+    }
+    .write-feedback.show { opacity: 1; }
+
+    /* 历史记录条 */
+    .history-bar {
+      display: flex; gap: 2px; height: 32px; align-items: flex-end;
+      margin: 16px 0; overflow: hidden;
+    }
+    .history-bar .bar {
+      flex: 1; min-width: 3px; border-radius: 2px 2px 0 0;
+      transition: height 0.3s, background 0.3s;
+    }
+
+    /* 对比图表区 */
+    .compare-section { margin-top: 20px; }
+    .compare-section h3 { color: #90caf9; margin-bottom: 12px; font-size: 1.1rem; }
+
+    @media (max-width: 768px) {
+      .header h1 { font-size: 1.8rem; }
+      .demo-section { padding: 20px; }
+      .burst-controls { flex-direction: column; align-items: stretch; }
+      .control-group input[type="range"] { width: 100%; }
+      .scenario-cards { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="ti ti-database"></i> SQLite 并发压力实验室</h1>
+      <p>SQLite 每秒能处理多少请求？10万日PV算高并发吗？亲手给这个数据库施加压力，看它什么时候开始喊 BUSY</p>
+    </div>
+
+    <!-- Section 1: 实时状态仪表盘 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-dashboard"></i> 实时状态</h2>
+      <p class="section-desc">这是一个运行在服务器上的真实 SQLite 文件，所有访客共享同一个数据库。点击下方按钮写入一条数据。</p>
+      <div class="stats-grid">
+        <div class="stat-card" id="card-rows">
+          <div class="value" id="stat-rows">-</div>
+          <div class="label">总行数</div>
+        </div>
+        <div class="stat-card" id="card-size">
+          <div class="value" id="stat-size">-</div>
+          <div class="label">文件大小</div>
+        </div>
+        <div class="stat-card" id="card-qps">
+          <div class="value" id="stat-qps">-</div>
+          <div class="label">当前 QPS</div>
+        </div>
+        <div class="stat-card" id="card-total">
+          <div class="value" id="stat-total">-</div>
+          <div class="label">累计写入</div>
+        </div>
+        <div class="stat-card" id="card-busy">
+          <div class="value" id="stat-busy">-</div>
+          <div class="label">BUSY 错误</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px;">
+        <button class="btn btn-primary" id="btn-write" onclick="doSingleWrite()">
+          <i class="ti ti-pencil-plus"></i> 写入一条
+        </button>
+        <button class="btn btn-secondary" id="btn-refresh" onclick="refreshStats()">
+          <i class="ti ti-refresh"></i> 刷新
+        </button>
+        <button class="btn btn-danger" id="btn-reset" onclick="doReset()">
+          <i class="ti ti-trash"></i> 清空数据库
+        </button>
+        <span class="write-feedback" id="write-feedback"></span>
+      </div>
+      <div class="history-bar" id="latency-bar"></div>
+      <p style="color:#666;font-size:0.8rem;margin-top:4px;">↑ 最近 30 次写入延迟（绿 <10ms · 黄 <50ms · 红 ≥50ms）</p>
+    </div>
+
+    <!-- Section 2: 场景换算 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-calculator"></i> 日访问量 → 实际 QPS</h2>
+      <p class="section-desc">选择一个典型场景，看看日PV换算成每秒请求数到底是多少。点击后自动设置对应的压测参数。</p>
+      <div class="scenario-cards">
+        <div class="scenario-card" onclick="selectScenario(0)" id="sc-0">
+          <div class="sc-icon"><i class="ti ti-notebook"></i></div>
+          <div class="sc-title">个人博客</div>
+          <div class="sc-detail">10万 日PV</div>
+          <div class="sc-qps">≈ 1.2 req/s</div>
+        </div>
+        <div class="scenario-card" onclick="selectScenario(1)" id="sc-1">
+          <div class="sc-icon"><i class="ti ti-building"></i></div>
+          <div class="sc-title">小型 SaaS</div>
+          <div class="sc-detail">50万 日PV</div>
+          <div class="sc-qps">≈ 6 req/s</div>
+        </div>
+        <div class="scenario-card" onclick="selectScenario(2)" id="sc-2">
+          <div class="sc-icon"><i class="ti ti-shopping-cart"></i></div>
+          <div class="sc-title">中型站点</div>
+          <div class="sc-detail">200万 日PV</div>
+          <div class="sc-qps">≈ 23 req/s</div>
+        </div>
+        <div class="scenario-card" onclick="selectScenario(3)" id="sc-3">
+          <div class="sc-icon"><i class="ti ti-flame"></i></div>
+          <div class="sc-title">高流量应用</div>
+          <div class="sc-detail">1000万 日PV</div>
+          <div class="sc-qps">≈ 116 req/s</div>
+        </div>
+      </div>
+      <div class="insight-box green" id="insight-scenario" style="display:none;">
+        <h3><i class="ti ti-bulb"></i> 换算说明</h3>
+        <p id="insight-scenario-text"></p>
+      </div>
+    </div>
+
+    <!-- Section 3: 并发压测 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-bolt"></i> 并发压测</h2>
+      <p class="section-desc">模拟 N 个并发写入同时打到这个 SQLite 文件，观察成功率和延迟变化。可对比 WAL 模式的效果。</p>
+      <div class="burst-controls">
+        <div class="control-group">
+          <label>并发数: <span class="range-value" id="concurrency-label">10</span></label>
+          <input type="range" id="concurrency-slider" min="1" max="200" value="10"
+                 oninput="updateConcurrencyLabel()">
+        </div>
+        <div class="control-group">
+          <label>WAL 模式</label>
+          <div class="toggle-group">
+            <div class="toggle" id="wal-toggle" onclick="toggleWal()"></div>
+            <span id="wal-label" style="font-size:0.85rem;color:#a0a0a0;">关闭</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-burst" onclick="doBurst()">
+          <i class="ti ti-rocket"></i> 开始压测
+        </button>
+      </div>
+
+      <div class="burst-result" id="burst-result">
+        <div class="result-grid" id="result-grid"></div>
+        <div class="chart-container">
+          <canvas id="burst-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="insight-box" id="insight-burst" style="display:none;">
+        <h3 id="insight-burst-title"></h3>
+        <p id="insight-burst-text"></p>
+      </div>
+    </div>
+
+    <!-- Section 4: WAL vs DELETE 对比 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-arrows-exchange"></i> WAL vs 默认模式对比</h2>
+      <p class="section-desc">同样的并发数，WAL 模式和默认 DELETE 模式的表现差异有多大？一键跑对比实验。</p>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+        <div class="control-group">
+          <label>对比并发数: <span class="range-value" id="compare-label">30</span></label>
+          <input type="range" id="compare-slider" min="5" max="200" value="30"
+                 oninput="document.getElementById('compare-label').textContent=this.value">
+        </div>
+        <button class="btn btn-primary" id="btn-compare" onclick="doCompare()">
+          <i class="ti ti-arrows-exchange"></i> 运行对比
+        </button>
+      </div>
+      <div class="burst-result" id="compare-result">
+        <div class="chart-container">
+          <canvas id="compare-chart"></canvas>
+        </div>
+        <div id="compare-summary" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <!-- Section 5: 关键结论 -->
+    <div class="demo-section">
+      <h2><i class="ti ti-key"></i> 结论</h2>
+      <p class="section-desc">通过上面的实验，你应该能直观感受到：</p>
+      <div class="insight-box visible green">
+        <h3><i class="ti ti-check"></i> SQLite 轻松应对 10 万日 PV</h3>
+        <p>10万日PV ≈ 1.2 req/s，SQLite 单线程写入都能达到几百 req/s。日访问量和并发是两个维度的概念。</p>
+      </div>
+      <div class="insight-box visible red">
+        <h3><i class="ti ti-alert-triangle"></i> 真正的瓶颈是并发写锁</h3>
+        <p>当几十个写入同时发生（真正的并发），SQLite 的单写锁就会成为瓶颈。WAL 模式能缓解，但无法彻底解决。</p>
+      </div>
+      <div class="insight-box visible" style="display:block;">
+        <h3><i class="ti ti-bulb"></i> "高并发"这个词被滥用了</h3>
+        <p>大多数人说的"高并发"其实是"高流量"。日10万PV的站点，同一毫秒内有2个以上写入请求同时到达的概率极低。SQLite 对这种场景绰绰有余。</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ============= 配置 =============
+  var API_BASE = 'https://numfeel-api.996.ninja';
+
+  // ============= 状态 =============
+  var walEnabled = false;
+  var latencyHistory = [];
+  var burstChart = null;
+  var compareChart = null;
+  var statsTimer = null;
+
+  // ============= 场景数据 =============
+  var scenarios = [
+    { name: '个人博客', dailyPV: 100000, qps: 1.2, concurrency: 3, desc: '10万日PV ÷ 86400秒 ≈ 1.2 req/s。即使所有请求都写数据库，SQLite 也毫无压力。实际上大部分是读请求，写入比例通常不到10%。' },
+    { name: '小型 SaaS', dailyPV: 500000, qps: 6, concurrency: 10, desc: '50万日PV ÷ 86400秒 ≈ 5.8 req/s。考虑到高峰期是均值的3-5倍，峰值也就 20-30 req/s，SQLite + WAL 完全能扛。' },
+    { name: '中型站点', dailyPV: 2000000, qps: 23, concurrency: 50, desc: '200万日PV ÷ 86400秒 ≈ 23 req/s。峰值可能到 70-100 req/s，如果写入比例超过20%，SQLite 开始出现偶发 BUSY。这是考虑换用 PostgreSQL 的分水岭。' },
+    { name: '高流量应用', dailyPV: 10000000, qps: 116, concurrency: 150, desc: '1000万日PV ÷ 86400秒 ≈ 116 req/s。峰值可达 400+ req/s，并发写入频繁冲突。此时 SQLite 力不从心，应该用专门的数据库服务。' }
+  ];
+
+  // ============= 初始化 =============
+  document.addEventListener('DOMContentLoaded', function() {
+    refreshStats();
+    // 每3秒自动刷新
+    statsTimer = setInterval(refreshStats, 3000);
+    // 初始化延迟历史条
+    for (var i = 0; i < 30; i++) latencyHistory.push(0);
+    renderLatencyBar();
+  });
+
+  // ============= API 调用 =============
+  function apiCall(method, path, body) {
+    var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    return fetch(API_BASE + path, opts).then(function(r) { return r.json(); });
+  }
+
+  // ============= 单次写入 =============
+  function doSingleWrite() {
+    var btn = document.getElementById('btn-write');
+    btn.disabled = true;
+    apiCall('POST', '/sqlite-lab/write').then(function(res) {
+      btn.disabled = false;
+      if (res.status === 200) {
+        var d = res.data;
+        showWriteFeedback(d.success, d.latencyMs);
+        if (d.success) {
+          latencyHistory.push(d.latencyMs);
+          if (latencyHistory.length > 30) latencyHistory.shift();
+          renderLatencyBar();
+        }
+        refreshStats();
+      }
+    }).catch(function(err) {
+      btn.disabled = false;
+      showWriteFeedback(false, 0);
+    });
+  }
+
+  function showWriteFeedback(success, ms) {
+    var el = document.getElementById('write-feedback');
+    if (success) {
+      el.textContent = '✓ ' + ms + 'ms';
+      el.style.color = '#81c784';
+    } else if (ms > 0) {
+      el.textContent = '✗ BUSY';
+      el.style.color = '#ff6b6b';
+    } else {
+      el.textContent = '✗ 网络错误';
+      el.style.color = '#ff6b6b';
+    }
+    el.classList.add('show');
+    setTimeout(function() { el.classList.remove('show'); }, 1500);
+  }
+
+  // ============= 刷新状态 =============
+  function refreshStats() {
+    apiCall('GET', '/sqlite-lab/stats').then(function(res) {
+      if (res.status === 200) {
+        var d = res.data;
+        animateValue('stat-rows', d.rowCount);
+        document.getElementById('stat-size').textContent = formatBytes(d.fileSizeBytes);
+        document.getElementById('stat-qps').textContent = d.currentQps.toFixed(1);
+        animateValue('stat-total', d.totalWrites);
+        document.getElementById('stat-busy').textContent = d.totalBusyErrors;
+        if (d.totalBusyErrors > 0) {
+          document.getElementById('stat-busy').style.color = '#ff6b6b';
+        }
+      }
+    }).catch(function() {});
+  }
+
+  // ============= 重置 =============
+  function doReset() {
+    if (!confirm('确定要清空数据库？所有压测数据将丢失。')) return;
+    apiCall('POST', '/sqlite-lab/reset').then(function() {
+      latencyHistory = [];
+      for (var i = 0; i < 30; i++) latencyHistory.push(0);
+      renderLatencyBar();
+      refreshStats();
+    });
+  }
+
+  // ============= 场景选择 =============
+  function selectScenario(idx) {
+    var cards = document.querySelectorAll('.scenario-card');
+    cards.forEach(function(c) { c.classList.remove('active'); });
+    document.getElementById('sc-' + idx).classList.add('active');
+
+    var sc = scenarios[idx];
+    document.getElementById('concurrency-slider').value = sc.concurrency;
+    updateConcurrencyLabel();
+
+    var insightEl = document.getElementById('insight-scenario');
+    document.getElementById('insight-scenario-text').textContent = sc.desc;
+    insightEl.style.display = 'block';
+    insightEl.classList.add('visible');
+
+    // 滚动到压测区域，引导用户点击
+    setTimeout(function() {
+      var burstBtn = document.getElementById('btn-burst');
+      burstBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      burstBtn.style.boxShadow = '0 0 20px rgba(255,215,0,0.6)';
+      setTimeout(function() { burstBtn.style.boxShadow = ''; }, 1200);
+    }, 400);
+  }
+
+  // ============= 并发压测 =============
+  function doBurst() {
+    var concurrency = parseInt(document.getElementById('concurrency-slider').value);
+    var btn = document.getElementById('btn-burst');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader"></i> 压测中...';
+
+    apiCall('POST', '/sqlite-lab/burst', { concurrency: concurrency, walMode: walEnabled })
+      .then(function(res) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-rocket"></i> 开始压测';
+        if (res.status === 200) {
+          renderBurstResult(res.data);
+          refreshStats();
+        }
+      }).catch(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-rocket"></i> 开始压测';
+      });
+  }
+
+  function renderBurstResult(data) {
+    var el = document.getElementById('burst-result');
+    el.classList.add('visible');
+
+    var successRate = ((data.successCount / data.concurrency) * 100).toFixed(1);
+    var grid = document.getElementById('result-grid');
+    grid.innerHTML =
+      '<div class="result-item success"><div class="ri-value">' + data.successCount + '</div><div class="ri-label">成功</div></div>' +
+      '<div class="result-item fail"><div class="ri-value">' + data.busyCount + '</div><div class="ri-label">BUSY 错误</div></div>' +
+      '<div class="result-item"><div class="ri-value" style="color:#ffd700">' + successRate + '%</div><div class="ri-label">成功率</div></div>' +
+      '<div class="result-item latency"><div class="ri-value">' + data.p50Ms + 'ms</div><div class="ri-label">P50 延迟</div></div>' +
+      '<div class="result-item latency"><div class="ri-value">' + data.p95Ms + 'ms</div><div class="ri-label">P95 延迟</div></div>' +
+      '<div class="result-item latency"><div class="ri-value">' + data.p99Ms + 'ms</div><div class="ri-label">P99 延迟</div></div>' +
+      '<div class="result-item"><div class="ri-value" style="color:#ce93d8">' + data.totalTimeMs + 'ms</div><div class="ri-label">总耗时</div></div>' +
+      '<div class="result-item"><div class="ri-value" style="color:#90caf9">' + (data.walMode ? 'WAL' : 'DELETE') + '</div><div class="ri-label">日志模式</div></div>';
+
+    // 渲染延迟分布图
+    renderBurstChart(data);
+
+    // 显示洞察
+    showBurstInsight(data);
+  }
+
+  function renderBurstChart(data) {
+    var ctx = document.getElementById('burst-chart').getContext('2d');
+    if (burstChart) burstChart.destroy();
+
+    burstChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['P50', 'P95', 'P99', '最大'],
+        datasets: [{
+          label: '延迟 (ms)',
+          data: [data.p50Ms, data.p95Ms, data.p99Ms, data.maxMs],
+          backgroundColor: ['rgba(144,202,249,0.6)', 'rgba(255,215,0,0.6)', 'rgba(255,152,0,0.6)', 'rgba(255,107,107,0.6)'],
+          borderColor: ['#90caf9', '#ffd700', '#ff9800', '#ff6b6b'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: '延迟分位数 (ms)', color: '#a0a0a0' }
+        },
+        scales: {
+          x: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  function showBurstInsight(data) {
+    var el = document.getElementById('insight-burst');
+    var title = document.getElementById('insight-burst-title');
+    var text = document.getElementById('insight-burst-text');
+
+    el.style.display = 'block';
+    el.classList.add('visible');
+
+    if (data.busyCount === 0) {
+      el.className = 'insight-box visible green';
+      title.innerHTML = '<i class="ti ti-check"></i> 全部成功';
+      text.textContent = data.concurrency + ' 个并发写入全部成功，SQLite 在这个并发量下毫无压力。P50延迟仅 ' + data.p50Ms + 'ms。';
+    } else if (data.busyCount < data.concurrency * 0.3) {
+      el.className = 'insight-box visible';
+      title.innerHTML = '<i class="ti ti-alert-circle"></i> 开始出现竞争';
+      text.textContent = data.concurrency + ' 个并发写入中有 ' + data.busyCount + ' 个被拒绝（SQLITE_BUSY）。写锁竞争开始了，但成功率仍有 ' + ((data.successCount / data.concurrency) * 100).toFixed(0) + '%。';
+    } else {
+      el.className = 'insight-box visible red';
+      title.innerHTML = '<i class="ti ti-alert-triangle"></i> 严重锁冲突';
+      text.textContent = data.concurrency + ' 个并发写入中有 ' + data.busyCount + ' 个失败。成功率仅 ' + ((data.successCount / data.concurrency) * 100).toFixed(0) + '%，P99延迟高达 ' + data.p99Ms + 'ms。这就是人们说的「SQLite不支持高并发」。';
+    }
+  }
+
+  // ============= WAL 对比 =============
+  function doCompare() {
+    var concurrency = parseInt(document.getElementById('compare-slider').value);
+    var btn = document.getElementById('btn-compare');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader"></i> 对比中...';
+
+    // 先跑 DELETE 模式，再跑 WAL 模式
+    apiCall('POST', '/sqlite-lab/burst', { concurrency: concurrency, walMode: false })
+      .then(function(res1) {
+        return apiCall('POST', '/sqlite-lab/burst', { concurrency: concurrency, walMode: true })
+          .then(function(res2) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ti ti-arrows-exchange"></i> 运行对比';
+            if (res1.status === 200 && res2.status === 200) {
+              renderCompareResult(res1.data, res2.data);
+              refreshStats();
+            }
+          });
+      }).catch(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-arrows-exchange"></i> 运行对比';
+      });
+  }
+
+  function renderCompareResult(deleteData, walData) {
+    var el = document.getElementById('compare-result');
+    el.classList.add('visible');
+
+    var ctx = document.getElementById('compare-chart').getContext('2d');
+    if (compareChart) compareChart.destroy();
+
+    compareChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['成功数', 'BUSY 数', 'P50 (ms)', 'P95 (ms)', 'P99 (ms)'],
+        datasets: [
+          {
+            label: 'DELETE 模式',
+            data: [deleteData.successCount, deleteData.busyCount, deleteData.p50Ms, deleteData.p95Ms, deleteData.p99Ms],
+            backgroundColor: 'rgba(255,107,107,0.5)',
+            borderColor: '#ff6b6b',
+            borderWidth: 1
+          },
+          {
+            label: 'WAL 模式',
+            data: [walData.successCount, walData.busyCount, walData.p50Ms, walData.p95Ms, walData.p99Ms],
+            backgroundColor: 'rgba(129,199,132,0.5)',
+            borderColor: '#81c784',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#e8e8e8' } },
+          title: { display: true, text: '并发 ' + deleteData.concurrency + ' · DELETE vs WAL', color: '#a0a0a0' }
+        },
+        scales: {
+          x: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#a0a0a0' }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+        }
+      }
+    });
+
+    // 总结
+    var summary = document.getElementById('compare-summary');
+    var diff = walData.successCount - deleteData.successCount;
+    var color = diff > 0 ? '#81c784' : (diff === 0 ? '#a0a0a0' : '#ff6b6b');
+    summary.innerHTML = '<div style="text-align:center;color:' + color + ';font-size:1.1rem;">' +
+      'WAL 模式成功率 ' + ((walData.successCount / walData.concurrency) * 100).toFixed(0) + '% vs DELETE 模式 ' +
+      ((deleteData.successCount / deleteData.concurrency) * 100).toFixed(0) + '%' +
+      (diff > 0 ? '，多成功了 ' + diff + ' 个写入' : '') + '</div>';
+  }
+
+  // ============= UI 辅助 =============
+  function updateConcurrencyLabel() {
+    document.getElementById('concurrency-label').textContent = document.getElementById('concurrency-slider').value;
+  }
+
+  function toggleWal() {
+    walEnabled = !walEnabled;
+    var toggle = document.getElementById('wal-toggle');
+    var label = document.getElementById('wal-label');
+    toggle.classList.toggle('on', walEnabled);
+    label.textContent = walEnabled ? '开启' : '关闭';
+  }
+
+  function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(2) + ' MB';
+  }
+
+  function animateValue(elementId, newVal) {
+    document.getElementById(elementId).textContent = newVal.toLocaleString();
+    var card = document.getElementById(elementId).closest('.stat-card');
+    if (card) {
+      card.classList.add('pulse');
+      setTimeout(function() { card.classList.remove('pulse'); }, 600);
+    }
+  }
+
+  function renderLatencyBar() {
+    var container = document.getElementById('latency-bar');
+    var max = Math.max.apply(null, latencyHistory.concat([1]));
+    var html = '';
+    for (var i = 0; i < latencyHistory.length; i++) {
+      var h = Math.max(2, (latencyHistory[i] / max) * 30);
+      var color = latencyHistory[i] < 10 ? '#81c784' : (latencyHistory[i] < 50 ? '#ffd700' : '#ff6b6b');
+      html += '<div class="bar" style="height:' + h + 'px;background:' + color + '"></div>';
+    }
+    container.innerHTML = html;
+  }
+  </script>
+</body>
+</html>

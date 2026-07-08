@@ -7,7 +7,7 @@
 
   // ── 全局状态 ──
   var state = {
-    offline: false,        // 模拟断网开关（不操作真实网络）
+    act1Offline: false,    // 第一幕模拟断网开关
     noteOffline: false,    // 第三幕笔记本断网开关
     noteStore: null,
     syncQueue: null,
@@ -22,10 +22,38 @@
 
   function init() {
     registerSW();
+    bindRealNetworkStatus();
     bindAct1();
     bindAct2();
     bindAct3();
     bindAct4();
+  }
+
+  // ── 真实网络状态监听 ──
+  function bindRealNetworkStatus() {
+    updateNetIndicator();
+    window.addEventListener('online', updateNetIndicator);
+    window.addEventListener('offline', updateNetIndicator);
+  }
+
+  // 综合判断：真实离线 OR 任何一个模拟开关打开 = 显示离线
+  function isEffectivelyOffline() {
+    return !navigator.onLine || state.act1Offline || state.noteOffline;
+  }
+
+  function updateNetIndicator() {
+    var offline = isEffectivelyOffline();
+    var ind = $('#netIndicator');
+    ind.classList.toggle('offline', offline);
+    var label = '';
+    if (!navigator.onLine) {
+      label = '真实离线';
+    } else if (state.act1Offline || state.noteOffline) {
+      label = '模拟离线';
+    } else {
+      label = '在线';
+    }
+    ind.querySelector('.net-text').textContent = label;
   }
 
   // ── Service Worker 注册 + toast ──
@@ -65,11 +93,11 @@
     var todoError = $('#todoError');
 
     toggle.addEventListener('click', function () {
-      state.offline = !state.offline;
-      var offline = state.offline;
+      state.act1Offline = !state.act1Offline;
+      var offline = state.act1Offline;
       toggle.classList.toggle('offline', offline);
       toggle.querySelector('span').textContent = offline ? '恢复联网' : '模拟断网';
-      setNetIndicator(offline);
+      updateNetIndicator();
 
       if (offline) {
         // 元素依次消失
@@ -94,7 +122,7 @@
     todoSubmit.addEventListener('click', function () {
       var input = $('#todoInput');
       if (!input.value.trim()) return;
-      if (state.offline) {
+      if (state.act1Offline) {
         todoError.textContent = '网络请求失败：ERR_INTERNET_DISCONNECTED';
         todoError.classList.add('show');
       } else {
@@ -108,12 +136,6 @@
     $('#goAct2').addEventListener('click', function () {
       reveal('#act2');
     });
-  }
-
-  function setNetIndicator(offline) {
-    var ind = $('#netIndicator');
-    ind.classList.toggle('offline', offline);
-    ind.querySelector('.net-text').textContent = offline ? '离线' : '在线';
   }
 
   // ════════ 第二幕：缓存策略对比 ════════
@@ -148,10 +170,9 @@
       var bar = card.querySelector('[data-fill]');
       var latencyEl = card.querySelector('.mb-latency');
       var sourceEl = card.querySelector('.mb-source');
-      var summary = card.querySelector('.mb-summary');
 
       var opts = {
-        hasCache: true, online: !offline,
+        hasCache: offline, online: !offline,
         networkLatency: 600, cacheLatency: 30, timeout: 3000
       };
       var promise;
@@ -160,8 +181,7 @@
       else promise = window.simulateSWR(opts);
 
       // 进度条动画
-      var targetWidth = offline ? (strat === 'cacheFirst' ? 100 : strat === 'swr' ? 100 : 100) : 100;
-      if (window.gsap) gsap.to(bar, { width: targetWidth + '%', duration: offline && strat === 'networkFirst' ? 3 : 0.6, ease: 'power1.out' });
+      if (window.gsap) gsap.to(bar, { width: '100%', duration: offline && strat === 'networkFirst' ? 3 : 0.6, ease: 'power1.out' });
 
       promise.then(function (r) {
         latencyEl.textContent = r.latency + 'ms';
@@ -172,8 +192,10 @@
           sourceEl.textContent += r.bgUpdateOk ? ' (后台已更新)' : ' (后台更新失败)';
           if (!r.bgUpdateOk) sourceEl.style.color = '#ffb700';
         }
-        if (strat === 'networkFirst' && offline) {
-          summary.classList.add('fail');
+        // Network First 断网有缓存：等很久才回退，用橙色警告
+        if (strat === 'networkFirst' && offline && r.source === 'cache') {
+          sourceEl.textContent = '⚠ 超时后回退缓存';
+          sourceEl.style.color = '#ffb700';
         }
       });
     });
@@ -188,9 +210,7 @@
     card.querySelector('[data-fill]').style.width = '0%';
     var latencyEl = card.querySelector('.mb-latency');
     var sourceEl = card.querySelector('.mb-source');
-    var summary = card.querySelector('.mb-summary');
     latencyEl.textContent = '-'; sourceEl.textContent = ''; sourceEl.style.color = '';
-    summary.classList.remove('fail');
   }
 
   // ════════ 第三幕：IndexedDB 笔记本 ════════
@@ -224,7 +244,7 @@
       var bar = $('#noteStatusBar');
       bar.classList.toggle('offline', off);
       $('#nsText').textContent = off ? '离线' : '在线';
-      setNetIndicator(off);
+      updateNetIndicator();
 
       if (!off) {
         // 恢复联网 -> 自动同步

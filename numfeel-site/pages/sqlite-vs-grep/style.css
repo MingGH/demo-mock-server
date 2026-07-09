@@ -1,0 +1,252 @@
+/* ── 基础 ── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+.container { max-width: 1060px; margin: 0 auto; padding: 20px; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 40px 20px 20px; }
+.header h1 {
+  font-size: 2.2rem;
+  background: linear-gradient(90deg, #ffd700, #ffec8b, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: shimmer 3s linear infinite;
+  margin-bottom: 12px;
+}
+@keyframes shimmer { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+.header p { color: #94a3b8; margin-top: 8px; font-size: 0.95rem; max-width: 700px; margin: 0 auto; }
+
+/* ── 通用卡片 ── */
+.section {
+  background: rgba(255,255,255,0.05); border-radius: 16px; padding: 28px;
+  margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.08);
+}
+.section h2 {
+  font-size: 1.3rem; margin-bottom: 16px; color: #ffd700;
+  display: flex; align-items: center; gap: 10px;
+}
+.note { color: #94a3b8; font-size: 0.9rem; margin-bottom: 12px; line-height: 1.7; }
+
+/* ── 按钮 ── */
+.btn {
+  padding: 12px 24px; border: none; border-radius: 10px; font-size: 0.95rem;
+  cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+.btn-primary { background: linear-gradient(135deg, #ffd700, #ffb700); color: #1a1a2e; font-weight: 700; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255,215,0,0.35); }
+.btn-secondary { background: rgba(255,255,255,0.08); color: #e0e0e0; border: 1px solid rgba(255,255,255,0.15); }
+.btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.13); }
+.btn-danger { background: rgba(255,107,107,0.15); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.3); }
+.btn-danger:hover:not(:disabled) { background: rgba(255,107,107,0.25); }
+
+/* ── Hero 引入区 ── */
+.hero-section {
+  text-align: center; padding: 40px 20px;
+  background: rgba(255,215,0,0.03); border-radius: 16px;
+  border: 1px solid rgba(255,215,0,0.1); margin-bottom: 24px;
+}
+.hero-section .context-quote {
+  font-size: 1rem; color: #94a3b8; max-width: 600px; margin: 0 auto 20px;
+  line-height: 1.8; font-style: italic;
+  border-left: 3px solid rgba(255,215,0,0.3); padding-left: 16px; text-align: left;
+}
+.hero-section .context-quote strong { color: #ffd700; font-style: normal; }
+
+/* ── 场景选择卡片 ── */
+.scenario-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px; margin: 20px 0;
+}
+.scenario-card {
+  background: rgba(255,255,255,0.05); border-radius: 14px; padding: 20px;
+  border: 2px solid rgba(255,255,255,0.08); cursor: pointer;
+  transition: all 0.25s ease; position: relative; overflow: hidden;
+}
+.scenario-card:hover { border-color: rgba(255,215,0,0.4); transform: translateY(-3px); }
+.scenario-card.active { border-color: #ffd700; background: rgba(255,215,0,0.08); }
+.scenario-card .card-icon { font-size: 1.5rem; margin-bottom: 10px; }
+.scenario-card .card-title { font-size: 1rem; font-weight: 700; color: #ffd700; margin-bottom: 6px; }
+.scenario-card .card-desc { font-size: 0.85rem; color: #94a3b8; line-height: 1.5; }
+.scenario-card .tag {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 0.7rem; font-weight: 600; margin-top: 8px;
+}
+.tag-easy { background: rgba(129,199,132,0.2); color: #81c784; }
+.tag-medium { background: rgba(255,183,0,0.2); color: #ffb700; }
+.tag-hard { background: rgba(255,107,107,0.2); color: #ff6b6b; }
+
+/* ── 擂台对比面板 ── */
+.arena {
+  display: grid; grid-template-columns: 1fr 80px 1fr; gap: 0;
+  margin: 20px 0; align-items: stretch;
+}
+.arena-panel {
+  background: rgba(255,255,255,0.04); border-radius: 14px; padding: 24px;
+  border: 1px solid rgba(255,255,255,0.08); text-align: center;
+  transition: border-color 0.3s;
+}
+.arena-panel.winner { border-color: #ffd700; box-shadow: 0 0 20px rgba(255,215,0,0.1); }
+.arena-panel.loser { opacity: 0.7; }
+.arena-panel .panel-label {
+  font-size: 0.8rem; color: #94a3b8; text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 8px;
+}
+.arena-panel .panel-icon { font-size: 2rem; margin-bottom: 8px; }
+.arena-panel .panel-time {
+  font-size: 2.4rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  margin: 8px 0; min-height: 40px;
+}
+.arena-panel .panel-time.file-color { color: #ff6b6b; }
+.arena-panel .panel-time.sqlite-color { color: #81c784; }
+.arena-panel .panel-detail { font-size: 0.85rem; color: #64748b; }
+
+.arena-vs {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; font-weight: 900; color: #ffd700;
+}
+
+/* ── 进度条竞速动画 ── */
+.race-track {
+  margin: 20px 0; position: relative;
+}
+.race-lane {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+.race-label {
+  width: 80px; font-size: 0.85rem; font-weight: 600; flex-shrink: 0;
+  text-align: right;
+}
+.race-label.file-color { color: #ff6b6b; }
+.race-label.sqlite-color { color: #81c784; }
+.race-bar-bg {
+  flex: 1; height: 32px; background: rgba(255,255,255,0.04);
+  border-radius: 8px; overflow: hidden; position: relative;
+}
+.race-bar-fill {
+  height: 100%; border-radius: 8px; display: flex; align-items: center;
+  padding: 0 12px; font-size: 0.8rem; font-weight: 700; color: #fff;
+  width: 0; transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.race-bar-fill.file-bg { background: linear-gradient(90deg, #ff6b6b, #ff4444); }
+.race-bar-fill.sqlite-bg { background: linear-gradient(90deg, #81c784, #4caf50); }
+
+/* ── 输入区 ── */
+.input-row {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0;
+}
+.input-field {
+  flex: 1; min-width: 200px; padding: 12px 16px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06);
+  color: #e0e0e0; font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+}
+.input-field:focus { border-color: #ffd700; }
+.input-field::placeholder { color: #64748b; }
+select.input-field {
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8'%3E%3Cpath d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+  padding-right: 32px;
+}
+select.input-field option { background: #1a1a2e; color: #e0e0e0; }
+
+/* ── 预设卡片 ── */
+.preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.preset-chip {
+  padding: 6px 14px; border-radius: 20px; font-size: 0.85rem;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  cursor: pointer; transition: all 0.2s; color: #e0e0e0;
+}
+.preset-chip:hover { background: rgba(255,215,0,0.15); border-color: rgba(255,215,0,0.4); color: #ffd700; }
+
+/* ── 数据集状态栏 ── */
+.status-bar {
+  display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+  padding: 12px 20px; background: rgba(255,255,255,0.03);
+  border-radius: 10px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.06);
+}
+.status-item { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.status-item .label { color: #64748b; }
+.status-item .value { color: #ffd700; font-weight: 600; font-variant-numeric: tabular-nums; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #81c784; }
+.status-dot.loading { background: #ffb700; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ── 结果历史 ── */
+.history-chart { margin: 20px 0; position: relative; height: 250px; }
+
+/* ── 倍率徽章 ── */
+.speed-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 700;
+  background: rgba(255,215,0,0.12); color: #ffd700; margin: 8px 0;
+}
+
+/* ── 洞察框 ── */
+.insight-box {
+  background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,183,0,0.05));
+  border-left: 4px solid #ffd700; padding: 16px 20px; border-radius: 0 12px 12px 0;
+  margin: 20px 0;
+}
+.insight-box p { color: #c0c0c0; font-size: 0.9rem; line-height: 1.7; }
+.insight-box strong { color: #ffd700; }
+
+/* ── 结论区 ── */
+.conclusion-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px; margin: 20px 0;
+}
+.conclusion-card {
+  text-align: center; padding: 20px; border-radius: 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+}
+.conclusion-card .icon { font-size: 1.8rem; margin-bottom: 8px; }
+.conclusion-card .title { font-size: 0.95rem; font-weight: 700; color: #ffd700; margin-bottom: 4px; }
+.conclusion-card .desc { font-size: 0.82rem; color: #94a3b8; }
+.conclusion-card.file-wins { border-color: rgba(255,107,107,0.3); }
+.conclusion-card.file-wins .title { color: #ff6b6b; }
+.conclusion-card.sqlite-wins { border-color: rgba(129,199,132,0.3); }
+.conclusion-card.sqlite-wins .title { color: #81c784; }
+
+/* ── Loading overlay ── */
+.loading-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(26,26,46,0.85); border-radius: 14px; z-index: 10; opacity: 0;
+  pointer-events: none; transition: opacity 0.3s;
+}
+.loading-overlay.show { opacity: 1; pointer-events: auto; }
+.spinner {
+  width: 32px; height: 32px; border: 3px solid rgba(255,215,0,0.2);
+  border-top-color: #ffd700; border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── 响应式 ── */
+@media (max-width: 768px) {
+  .header h1 { font-size: 1.6rem; }
+  .arena { grid-template-columns: 1fr; gap: 12px; }
+  .arena-vs { padding: 8px 0; font-size: 1.2rem; }
+  .arena-panel .panel-time { font-size: 1.8rem; }
+  .scenario-grid { grid-template-columns: 1fr; }
+  .input-row { flex-direction: column; }
+  .input-field { width: 100%; min-width: unset; }
+}
+
+
+/* ── Shake animation for empty input ── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+.shake { animation: shake 0.4s ease; }
+
+/* ── Focus ring for chip accessibility ── */
+.preset-chip:focus-visible {
+  outline: 2px solid #ffd700; outline-offset: 2px;
+}

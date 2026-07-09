@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="文件+Grep vs SQLite：IM消息存储方案对决。10万条真实消息，搜索、写入、复杂查询、删除四大场景实测，用数据回答云风之问。">
+  <title>文件 vs SQLite：IM 存储对决 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-database"></i> 文件 vs SQLite：IM 存储对决</h1>
+    <p>云风说「一个对话一个文件，grep 一下就够了」。10 万条真实消息，四个场景，数据说话。</p>
+  </div>
+
+  <!-- ═══════ 数据集状态 ═══════ -->
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="label">数据集：</span>
+      <span class="value" id="statusMsgCount">—</span>
+      <span class="label">条消息</span>
+    </div>
+    <div class="status-item">
+      <span class="label">JSONL文件：</span>
+      <span class="value" id="statusFileSize">—</span>
+    </div>
+    <div class="status-item">
+      <span class="label">SQLite DB：</span>
+      <span class="value" id="statusDbSize">—</span>
+    </div>
+  </div>
+
+  <!-- ═══════ 背景引入 ═══════ -->
+  <div class="hero-section">
+    <div class="context-quote">
+      「微信的开发人员根本就不懂该怎么储存数据。文本根本就不应该保存在什么数据库(sqlite)里，一个对话一个文本文件追加就可以了。需要搜索的时候 <strong>grep 一下</strong>性能完全符合需求。」<br>
+      — 云风，2026.06.29
+    </div>
+    <p class="note" style="text-align:center; margin-bottom: 0;">
+      下面是一个已生成的 IM 消息数据集。选择场景，亲手操作，看两种方案谁更快。
+    </p>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       场景 1：搜索对比
+  ═══════════════════════════════════════ -->
+  <div class="section" id="searchSection" style="position: relative;">
+    <div class="loading-overlay"><div class="spinner"></div></div>
+    <h2><i class="ti ti-search"></i> 场景一：搜索消息</h2>
+    <p class="note">输入关键词，Grep 全文扫描 vs SQLite 查询。服务端计时，排除网络延迟。</p>
+
+    <div class="input-row">
+      <input type="text" class="input-field" id="searchInput" placeholder="输入搜索关键词，如：火锅" maxlength="50">
+      <button class="btn btn-primary" id="searchBtn" onclick="runSearch()">
+        <i class="ti ti-player-play"></i> 开始搜索
+      </button>
+    </div>
+    <p class="note">或点击预设词：</p>
+    <div class="preset-row" id="searchPresets"></div>
+
+    <!-- 搜索结果 -->
+    <div id="searchResult" style="display: none;">
+      <div class="arena">
+        <div class="arena-panel" id="searchFilePanel">
+          <div class="panel-label">文件 Grep</div>
+          <div class="panel-icon"><i class="ti ti-file-text"></i></div>
+          <div class="panel-time file-color">—</div>
+          <div class="panel-detail"></div>
+        </div>
+        <div class="arena-vs">VS</div>
+        <div class="arena-panel" id="searchSqlitePanel">
+          <div class="panel-label">SQLite</div>
+          <div class="panel-icon"><i class="ti ti-database"></i></div>
+          <div class="panel-time sqlite-color">—</div>
+          <div class="panel-detail"></div>
+        </div>
+      </div>
+
+      <div class="race-track" id="searchRace">
+        <div class="race-lane">
+          <span class="race-label file-color">Grep</span>
+          <div class="race-bar-bg"><div class="race-bar-fill file-bg"></div></div>
+        </div>
+        <div class="race-lane">
+          <span class="race-label sqlite-color">SQLite</span>
+          <div class="race-bar-bg"><div class="race-bar-fill sqlite-bg"></div></div>
+        </div>
+      </div>
+
+      <div class="speed-badge" id="searchBadge" style="display: none;"></div>
+      <div id="searchSamples"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       场景 2：写入对比
+  ═══════════════════════════════════════ -->
+  <div class="section" id="insertSection" style="position: relative;">
+    <div class="loading-overlay"><div class="spinner"></div></div>
+    <h2><i class="ti ti-pencil-plus"></i> 场景二：写入消息</h2>
+    <p class="note">发一条新消息，文件 append 一行 vs SQLite INSERT 一条记录。</p>
+
+    <div class="input-row">
+      <input type="text" class="input-field" id="insertContent" placeholder="消息内容" maxlength="500" style="flex: 2;">
+      <input type="text" class="input-field" id="insertSender" placeholder="发送者" maxlength="20" style="flex: 0.5; min-width: 100px;">
+      <button class="btn btn-primary" id="insertBtn" onclick="runInsert()">
+        <i class="ti ti-send"></i> 发送
+      </button>
+    </div>
+    <p class="note">或点击预设消息：</p>
+    <div class="preset-row" id="insertPresets"></div>
+
+    <div id="insertResult" style="display: none;">
+      <div class="arena">
+        <div class="arena-panel" id="insertFilePanel">
+          <div class="panel-label">文件 Append</div>
+          <div class="panel-icon"><i class="ti ti-file-plus"></i></div>
+          <div class="panel-time file-color">—</div>
+          <div class="panel-detail"></div>
+        </div>
+        <div class="arena-vs">VS</div>
+        <div class="arena-panel" id="insertSqlitePanel">
+          <div class="panel-label">SQLite INSERT</div>
+          <div class="panel-icon"><i class="ti ti-database-plus"></i></div>
+          <div class="panel-time sqlite-color">—</div>
+          <div class="panel-detail"></div>
+        </div>
+      </div>
+
+      <div class="race-track" id="insertRace">
+        <div class="race-lane">
+          <span class="race-label file-color">Append</span>
+          <div class="race-bar-bg"><div class="race-bar-fill file-bg"></div></div>
+        </div>
+        <div class="race-lane">
+          <span class="race-label sqlite-color">INSERT</span>
+          <div class="race-bar-bg"><div class="race-bar-fill sqlite-bg"></div></div>
+        </div>
+      </div>
+
+      <div class="speed-badge" id="insertBadge" style="display: none;"></div>
+
+      <div class="insight-box" style="margin-top: 16px;">
+        <p><strong>云风说得对的地方：</strong>单次 append 确实极快，比 INSERT 还快。这是文件方案的最大优势 — 写入几乎零开销。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       场景 3：复杂查询
+  ═══════════════════════════════════════ -->
+  <div class="section" id="complexSection" style="position: relative;">
+    <div class="loading-overlay"><div class="spinner"></div></div>
+    <h2><i class="ti ti-filter"></i> 场景三：复杂查询</h2>
+    <p class="note">「最近 N 天的图片消息」— Grep 需要逐行解析 JSON 并过滤，SQLite 一条 WHERE 解决。</p>
+
+    <p class="note">点击预设查询条件：</p>
+    <div class="preset-row" id="complexPresets"></div>
+
+    <div class="input-row" style="margin-top: 12px;">
+      <select class="input-field" id="complexType" style="flex: 0.8; min-width: 120px;">
+        <option value="text">文字消息</option>
+        <option value="image" selected>图片消息</option>
+        <option value="video">视频消息</option>
+        <option value="file">文件消息</option>
+        <option value="voice">语音消息</option>
+        <option value="link">链接消息</option>
+      </select>
+      <input type="number" class="input-field" id="complexDays" value="7" min="1" max="365" placeholder="最近N天" style="flex: 0.5; min-width: 80px;">
+      <button class="btn btn-primary" id="complexBtn" onclick="runComplexQuery()">
+        <i class="ti ti-player-play"></i> 查询
+      </button>
+    </div>
+
+    <div id="complexResult" style="display: none;">
+      <div class="arena">
+        <div class="arena-panel" id="complexFilePanel">
+          <div class="panel-label">Grep 逐行解析</div>
+          <div class="panel-icon"><i class="ti ti-file-search"></i></div>
+          <div class="panel-time file-color">—</div>
+          <div class="panel-detail"></div>
+        </div>
+        <div class="arena-vs">VS</div>
+        <div class="arena-panel" id="complexSqlitePanel">
+          <div class="panel-label">SQLite WHERE</div>
+          <div class="panel-icon"><i class="ti ti-database-search"></i></div>
+          <div class="panel-time sqlite-color">—</div>
+          <div class="panel-detail"></div>
+        </div>
+      </div>
+
+      <div class="race-track" id="complexRace">
+        <div class="race-lane">
+          <span class="race-label file-color">Grep</span>
+          <div class="race-bar-bg"><div class="race-bar-fill file-bg"></div></div>
+        </div>
+        <div class="race-lane">
+          <span class="race-label sqlite-color">SQLite</span>
+          <div class="race-bar-bg"><div class="race-bar-fill sqlite-bg"></div></div>
+        </div>
+      </div>
+
+      <div class="speed-badge" id="complexBadge" style="display: none;"></div>
+
+      <div class="insight-box" style="margin-top: 16px;">
+        <p><strong>关键差距在这里：</strong>当查询条件超越纯文本搜索（按类型、按时间范围过滤），文件方案必须逐行解析 JSON 并检查字段，复杂度直线上升。而 SQLite 用索引直接定位，几乎不受数据量影响。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       场景 4：删除对比
+  ═══════════════════════════════════════ -->
+  <div class="section" id="deleteSection" style="position: relative;">
+    <div class="loading-overlay"><div class="spinner"></div></div>
+    <h2><i class="ti ti-trash"></i> 场景四：删除消息</h2>
+    <p class="note">撤回/删除消息 — 文件方案需要重写整个文件（去掉被删的行），SQLite 原地 DELETE。</p>
+
+    <div class="input-row">
+      <input type="text" class="input-field" id="deleteInput" placeholder="删除包含此关键词的消息" maxlength="50">
+      <button class="btn btn-danger" id="deleteBtn" onclick="runDelete()">
+        <i class="ti ti-trash"></i> 执行删除
+      </button>
+    </div>
+    <p class="note">或点击预设：</p>
+    <div class="preset-row" id="deletePresets"></div>
+
+    <div id="deleteResult" style="display: none;">
+      <div class="arena">
+        <div class="arena-panel" id="deleteFilePanel">
+          <div class="panel-label">文件重写</div>
+          <div class="panel-icon"><i class="ti ti-file-minus"></i></div>
+          <div class="panel-time file-color">—</div>
+          <div class="panel-detail"></div>
+        </div>
+        <div class="arena-vs">VS</div>
+        <div class="arena-panel" id="deleteSqlitePanel">
+          <div class="panel-label">SQLite DELETE</div>
+          <div class="panel-icon"><i class="ti ti-database-minus"></i></div>
+          <div class="panel-time sqlite-color">—</div>
+          <div class="panel-detail"></div>
+        </div>
+      </div>
+
+      <div class="race-track" id="deleteRace">
+        <div class="race-lane">
+          <span class="race-label file-color">重写</span>
+          <div class="race-bar-bg"><div class="race-bar-fill file-bg"></div></div>
+        </div>
+        <div class="race-lane">
+          <span class="race-label sqlite-color">DELETE</span>
+          <div class="race-bar-bg"><div class="race-bar-fill sqlite-bg"></div></div>
+        </div>
+      </div>
+
+      <div class="speed-badge" id="deleteBadge" style="display: none;"></div>
+
+      <div class="insight-box" style="margin-top: 16px;">
+        <p><strong>这是文件方案的死穴：</strong>删除一条消息 = 读取整个文件 + 过滤 + 重写。文件越大越慢。消息撤回、过期清理在 IM 场景中是高频操作。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       操作历史图表
+  ═══════════════════════════════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-chart-bar"></i> 本次操作耗时对比</h2>
+    <p class="note">你刚才所有操作的耗时记录，红色=文件方案，绿色=SQLite。</p>
+    <div class="history-chart">
+      <canvas id="historyCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       结论区
+  ═══════════════════════════════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-scale"></i> 结论：各有所长</h2>
+    <div class="conclusion-grid">
+      <div class="conclusion-card file-wins">
+        <div class="icon"><i class="ti ti-file-text"></i></div>
+        <div class="title">文件方案赢</div>
+        <div class="desc">单次写入（append）<br>极简场景、纯追加日志</div>
+      </div>
+      <div class="conclusion-card sqlite-wins">
+        <div class="icon"><i class="ti ti-database"></i></div>
+        <div class="title">SQLite 赢</div>
+        <div class="desc">搜索、复杂查询、删除<br>多条件过滤、索引加速</div>
+      </div>
+      <div class="conclusion-card sqlite-wins">
+        <div class="icon"><i class="ti ti-devices"></i></div>
+        <div class="title">多设备同步</div>
+        <div class="desc">文件 append 无法处理冲突<br>SQLite 有事务保证一致性</div>
+      </div>
+      <div class="conclusion-card">
+        <div class="icon"><i class="ti ti-bulb"></i></div>
+        <div class="title">云风的场景</div>
+        <div class="desc">30MB 单文件 grep<br>在简单场景确实够用</div>
+      </div>
+    </div>
+    <div class="insight-box">
+      <p>云风说的没有「错」，但前提条件很苛刻：<strong>只有 append + 全文搜索两个操作</strong>，没有删除、没有按时间/类型过滤、没有多设备同步。一旦需求超出这个极简模型，文件方案的代码复杂度和性能都会急剧恶化。微信作为一个功能齐全的 IM 客户端，选择 SQLite 是工程上合理的决策。</p>
+    </div>
+  </div>
+
+  <!-- ═══════ 数据集管理 ═══════ -->
+  <div class="section">
+    <h2><i class="ti ti-settings"></i> 数据集管理</h2>
+    <p class="note">可以重新生成不同规模的数据集来测试性能曲线。</p>
+    <div class="input-row">
+      <input type="number" class="input-field" id="reinitCount" value="100000" min="1000" max="1000000" step="10000" style="flex: 0.5; min-width: 140px;">
+      <span class="note" style="margin: 0;">条消息（1000 ~ 1,000,000）</span>
+      <button class="btn btn-secondary" id="reinitBtn" onclick="runReinit()">
+        <i class="ti ti-refresh"></i> 重新生成
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+/* ── 基础 ── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #e4e4e4;
+  min-height: 100vh;
+  padding: 20px 16px 60px;
+}
+.container { max-width: 980px; margin: 0 auto; }
+
+/* ── Header ── */
+.header { text-align: center; padding: 30px 10px 20px; }
+.header h1 {
+  font-size: 2rem; font-weight: 700;
+  background: linear-gradient(90deg, #ffd700, #f59e0b, #ffd700);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s ease infinite;
+}
+.header h1 .ti { -webkit-text-fill-color: initial; color: #ffd700; }
+@keyframes shimmer { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.header p {
+  color: rgba(255,255,255,0.55); margin-top: 12px;
+  font-size: 0.95rem; line-height: 1.7; max-width: 640px; margin-left: auto; margin-right: auto;
+}
+
+/* ── 卡片 ── */
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 22px 20px;
+  margin-bottom: 22px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.card-head { margin-bottom: 16px; }
+.card-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 1.15rem; font-weight: 700; color: #ffd700;
+}
+.card-hint {
+  display: block; margin-top: 6px;
+  color: #888; font-size: 0.82rem;
+}
+
+/* ── 颜色语义 ── */
+.hl-gold { color: #ffd700; font-weight: 700; }
+.hl-blue { color: #90caf9; }
+.hl-green { color: #81c784; font-weight: 700; }
+.hl-red { color: #ff6b6b; font-weight: 700; }
+.hl-purple { color: #ce93d8; }
+.micro-note { color: #888; font-size: 0.8rem; margin-top: 10px; line-height: 1.6; }
+
+/* ── 模块1 双视图 ── */
+.dual-view {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+}
+.panel {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 14px;
+  min-height: 320px;
+}
+.panel-label {
+  display: flex; align-items: center; gap: 6px;
+  color: #90caf9; font-size: 0.85rem; font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* 文件树 */
+.tree-box { font-size: 0.86rem; line-height: 1.9; }
+.tree-node { cursor: pointer; padding: 2px 6px; border-radius: 6px; transition: background .15s; }
+.tree-node:hover { background: rgba(255,215,0,0.1); }
+.tree-node.active { background: rgba(255,215,0,0.22); color: #ffd700; }
+.tree-node .ti { margin-right: 4px; }
+.tree-node.dir .ti { color: #90caf9; }
+.tree-node.file .ti { color: #ce93d8; }
+.tree-children { margin-left: 16px; border-left: 1px dashed rgba(255,255,255,0.1); padding-left: 6px; }
+
+/* inode 表 */
+.inode-wrap { max-height: 200px; overflow-y: auto; border-radius: 8px; }
+.inode-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+.inode-table th, .inode-table td {
+  padding: 5px 8px; text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.inode-table th { color: #888; position: sticky; top: 0; background: #16213e; }
+.inode-table tr { transition: background .15s; }
+.inode-table tr.scanning { background: rgba(255,107,107,0.18); }
+.inode-table tr.hit { background: rgba(255,215,0,0.22); color: #ffd700; }
+.inode-table td.type-dir { color: #90caf9; }
+.inode-table td.type-file { color: #ce93d8; }
+
+/* B 树可视化 */
+.btree-label {
+  display: flex; align-items: center; gap: 6px;
+  color: #888; font-size: 0.78rem; margin: 14px 0 8px;
+}
+.btree-box {
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+  min-height: 120px; padding: 10px 0;
+}
+.btree-level { display: flex; gap: 24px; justify-content: center; align-items: flex-start; }
+.btree-node {
+  display: flex; gap: 2px;
+  border: 1.5px solid rgba(255,255,255,0.18);
+  border-radius: 8px; padding: 4px; background: rgba(0,0,0,0.25);
+  transition: all .2s;
+}
+.btree-node.visited { border-color: #90caf9; box-shadow: 0 0 10px rgba(144,202,249,0.4); }
+.btree-node.matched { border-color: #ffd700; box-shadow: 0 0 14px rgba(255,215,0,0.6); }
+.btree-key {
+  padding: 4px 8px; font-size: 0.7rem; border-radius: 5px;
+  background: rgba(255,255,255,0.06); color: #ccc; min-width: 26px; text-align: center;
+  transition: all .2s;
+}
+.btree-key.compared { background: rgba(144,202,249,0.25); color: #90caf9; }
+.btree-key.hit { background: rgba(255,215,0,0.35); color: #ffd700; font-weight: 700; }
+.btree-key.trunc { font-size: 0.62rem; }
+.btree-connector { color: rgba(255,255,255,0.2); font-size: 0.7rem; }
+
+/* 代价对比 */
+.cmp-row {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 14px; margin-top: 18px; padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.switch input { display: none; }
+.switch-track {
+  width: 46px; height: 24px; border-radius: 12px;
+  background: rgba(255,255,255,0.12); position: relative; transition: background .25s;
+}
+.switch-track::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%; background: #ccc; transition: all .25s;
+}
+.switch input:checked + .switch-track { background: linear-gradient(135deg, #ffd700, #f59e0b); }
+.switch input:checked + .switch-track::after { left: 25px; background: #1a1a2e; }
+.switch-text { font-size: 0.88rem; color: #ccc; }
+.cmp-stats { display: flex; gap: 18px; flex-wrap: wrap; }
+.cmp-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cmp-label { font-size: 0.72rem; color: #888; }
+.cmp-val { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+
+/* ── 提示框 ── */
+.notice {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 12px 14px; border-radius: 10px; font-size: 0.82rem; line-height: 1.6;
+  margin-top: 14px;
+}
+.notice .ti { flex-shrink: 0; margin-top: 2px; font-size: 1rem; }
+.notice-blue { background: rgba(144,202,249,0.1); border: 1px solid rgba(144,202,249,0.25); color: #90caf9; }
+.notice-red { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.25); color: #ff6b6b; }
+
+/* ── 模块2 N 选择 ── */
+.n-row { margin-bottom: 16px; }
+.n-label { display: flex; align-items: center; gap: 6px; color: #90caf9; font-size: 0.88rem; font-weight: 600; margin-bottom: 10px; }
+.n-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.n-preset {
+  padding: 7px 16px; border-radius: 20px; cursor: pointer;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  color: #ccc; font-size: 0.84rem; transition: all .2s;
+}
+.n-preset:hover { border-color: rgba(255,215,0,0.4); }
+.n-preset.active { background: rgba(255,215,0,0.18); border-color: #ffd700; color: #ffd700; }
+.n-slider-row { display: flex; align-items: center; gap: 12px; }
+.n-value { font-size: 1.2rem; font-variant-numeric: tabular-nums; min-width: 70px; }
+
+/* ── 按钮 ── */
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-row-sm { justify-content: center; margin-top: 10px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 22px; border: none; border-radius: 10px; cursor: pointer;
+  font-size: 0.95rem; font-weight: 600; transition: all .2s; font-family: inherit;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg, #ffd700, #f59e0b); color: #1a1a2e; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,215,0,0.35); }
+.btn-secondary { background: rgba(255,255,255,0.08); color: #ccc; border: 1px solid rgba(255,255,255,0.12); }
+.btn-secondary:hover { background: rgba(255,255,255,0.14); }
+.btn-run { font-size: 1.05rem; padding: 13px 30px; }
+.btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+
+/* ── 进度 ── */
+.progress-area { margin-top: 16px; }
+.progress-bar-track { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+.progress-bar-fill {
+  height: 100%; width: 0%; border-radius: 4px;
+  background: linear-gradient(90deg, #ffd700, #f59e0b); transition: width .2s;
+}
+.progress-text { color: #ccc; font-size: 0.84rem; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.progress-text .phase-fs { color: #ff6b6b; }
+.progress-text .phase-db { color: #81c784; }
+
+/* ── 结果 ── */
+.result-area { margin-top: 20px; }
+.ratio-line {
+  font-size: 1.15rem; text-align: center; margin-bottom: 8px;
+  padding: 14px; border-radius: 10px;
+  background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.2);
+}
+.ratio-line .big { font-size: 2rem; font-weight: 800; color: #ffd700; }
+.explain-line { color: #ccc; font-size: 0.86rem; text-align: center; line-height: 1.7; margin-bottom: 18px; }
+.chart-block {
+  background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px; padding: 14px; margin-bottom: 14px;
+}
+.chart-title { display: flex; align-items: center; gap: 6px; color: #90caf9; font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; }
+.chart-canvas-wrap { position: relative; height: 260px; }
+
+/* ── 模块3 光谱 ── */
+.spectrum-wrap { padding: 10px 4px 0; }
+.spectrum-ends { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 10px; }
+.end-left { color: #ff6b6b; }
+.end-right { color: #81c784; }
+.spectrum-ends .ti { margin-right: 4px; }
+.spectrum-track {
+  position: relative; height: 10px; border-radius: 5px; margin-bottom: 30px;
+  background: linear-gradient(90deg, #ff6b6b, #ce93d8, #90caf9, #81c784);
+}
+.spec-marker {
+  position: absolute; top: -4px; width: 4px; height: 18px; border-radius: 2px;
+  background: rgba(255,255,255,0.5); transform: translateX(-50%);
+}
+.spec-marker.active { background: #ffd700; height: 22px; top: -6px; box-shadow: 0 0 8px rgba(255,215,0,0.6); }
+.spec-marker-label {
+  position: absolute; top: 22px; transform: translateX(-50%);
+  font-size: 0.68rem; color: #888; white-space: nowrap; max-width: 90px;
+  text-align: center; line-height: 1.2;
+}
+.spec-marker.active .spec-marker-label,
+.spec-marker-label.active { color: #ffd700; font-weight: 600; }
+.spectrum-slider {
+  width: 100%; margin: 30px 0 8px; accent-color: #ffd700;
+}
+.system-detail {
+  background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 16px; margin: 16px 0;
+  min-height: 70px; font-size: 0.86rem; line-height: 1.7;
+}
+.system-detail .sys-name { color: #ffd700; font-weight: 700; font-size: 1rem; }
+.system-detail .sys-pos { color: #888; font-size: 0.76rem; margin-left: 8px; }
+
+/* ── 结论 ── */
+.conclusion {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: rgba(206,147,216,0.08); border: 1px solid rgba(206,147,216,0.25);
+  border-radius: 12px; padding: 16px; margin-top: 8px;
+}
+.conclusion .ti { color: #ce93d8; flex-shrink: 0; margin-top: 2px; }
+.conclusion p { color: #ccc; font-size: 0.86rem; line-height: 1.8; }
+
+/* ── 响应式 ── */
+@media (max-width: 720px) {
+  .header h1 { font-size: 1.5rem; }
+  .header p { font-size: 0.85rem; }
+  .card { padding: 16px 14px; }
+  .dual-view { grid-template-columns: 1fr; }
+  .panel { min-height: auto; }
+  .cmp-row { flex-direction: column; align-items: flex-start; }
+  .cmp-stats { gap: 14px; }
+  .cmp-val { font-size: 1.1rem; }
+  .chart-canvas-wrap { height: 220px; }
+  .ratio-line .big { font-size: 1.6rem; }
+  .spec-marker-label { font-size: 0.6rem; max-width: 70px; }
+  .btree-key { font-size: 0.62rem; padding: 3px 5px; }
+}

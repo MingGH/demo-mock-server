@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="文件系统本来就是数据库：点一个文件看它怎么在 B 树里被查出来，再在你浏览器里真跑一遍 OPFS 存 N 个小文件 vs SQLite 存一个库，亲眼看「数据库 vs 文件」的开销差。">
+  <title>文件系统，本来就是个数据库 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/sql.js@1/dist/sql-wasm.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-database"></i> 文件系统，本来就是个数据库</h1>
+    <p>先别急着问「有没有基于数据库的文件系统」——反过来才对：文件系统本身就是一棵带索引的专用数据库。下面点一个文件看它怎么被查出来，再在你浏览器里真跑一次「存 N 个小文件 vs 一个库」，亲眼看那笔固定开销差多少。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       模块 1 - 同一份数据，两种视角
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-fold-up"></i> 模块一 · 同一份数据，两种视角</span>
+      <span class="card-hint">点左边的文件，看它在右边的「表 + B 树索引」里是怎么被查出来的</span>
+    </div>
+
+    <div class="dual-view">
+      <!-- 左：文件树 -->
+      <div class="panel">
+        <div class="panel-label"><i class="ti ti-folder"></i> 文件系统视角 · 点一个文件</div>
+        <div class="tree-box" id="fileTree"></div>
+      </div>
+      <!-- 右：inode 表 + B 树 -->
+      <div class="panel">
+        <div class="panel-label"><i class="ti ti-table"></i> 数据库视角 · inode 表 + B 树索引</div>
+        <div class="inode-wrap">
+          <table class="inode-table" id="inodeTable">
+            <thead><tr><th>inode</th><th>路径</th><th>类型</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="btree-label"><i class="ti ti-binary-tree-2"></i> 目录路径 B 树索引（按路径字典序）</div>
+        <div class="btree-box" id="btreeViz"></div>
+      </div>
+    </div>
+
+    <!-- 开关 + 代价对比 -->
+    <div class="cmp-row">
+      <label class="switch">
+        <input type="checkbox" id="indexToggle" checked>
+        <span class="switch-track"></span>
+        <span class="switch-text">使用 B 树索引</span>
+      </label>
+      <div class="cmp-stats">
+        <div class="cmp-stat"><span class="cmp-label">有索引 · 比较次数</span><span class="cmp-val hl-gold" id="cmpIndexed">—</span></div>
+        <div class="cmp-stat"><span class="cmp-label">无索引 · 线性扫描</span><span class="cmp-val hl-red" id="cmpLinear">—</span></div>
+        <div class="cmp-stat"><span class="cmp-label">差距</span><span class="cmp-val hl-green" id="cmpDiff">—</span></div>
+      </div>
+    </div>
+    <p class="micro-note" id="cmpExplain">关掉索引开关，看查找如何从「沿树几步」退化成「逐行扫表」。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       模块 2 - 真·浏览器实测
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-bolt"></i> 模块二 · 真·浏览器实测</span>
+      <span class="card-hint">下面这一跑是你浏览器里真实发生的，不是我编的数字</span>
+    </div>
+
+    <!-- 降级提示（默认隐藏） -->
+    <div class="notice notice-red" id="opfsUnsupported" style="display:none">
+      <i class="ti ti-alert-triangle"></i>
+      <span>当前为<b>模拟估算模式</b>：你的浏览器不支持 OPFS 实测，下面的数字由成本模型估算得出，并非真实计时。换用 Chrome/Edge 桌面版可获得真实数据。</span>
+    </div>
+
+    <!-- N 选择 -->
+    <div class="n-row">
+      <span class="n-label"><i class="ti ti-adjustments"></i> 选 N（条小数据）</span>
+      <div class="n-presets" id="nPresets"></div>
+      <div class="n-slider-row">
+        <input type="range" id="nSlider" min="0" max="3" step="1" value="1">
+        <span class="n-value hl-gold" id="nValue">500</span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary btn-run" id="runBtn">
+        <i class="ti ti-player-play-filled"></i> 开始实测
+      </button>
+    </div>
+
+    <!-- 进度反馈 -->
+    <div class="progress-area" id="progressArea" style="display:none">
+      <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText">准备中…</div>
+    </div>
+
+    <!-- 结果区 -->
+    <div class="result-area" id="resultArea" style="display:none">
+      <div class="ratio-line" id="ratioLine">—</div>
+      <div class="explain-line" id="explainLine">—</div>
+
+      <div class="chart-block">
+        <div class="chart-title"><i class="ti ti-chart-bar"></i> 写 N 条 / 读 N 条 · 真实毫秒数</div>
+        <div class="chart-canvas-wrap"><canvas id="barChart"></canvas></div>
+      </div>
+      <div class="chart-block">
+        <div class="chart-title"><i class="ti ti-chart-line"></i> 随 N 增长的耗时曲线（可多点几个 N 累积数据点）</div>
+        <div class="chart-canvas-wrap"><canvas id="lineChart"></canvas></div>
+        <div class="btn-row btn-row-sm">
+          <button class="btn btn-secondary btn-sm" id="clearLineBtn"><i class="ti ti-trash"></i> 清空曲线</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 诚实说明 -->
+    <div class="notice notice-blue" id="dbNote">
+      <i class="ti ti-info-circle"></i>
+      <span><b>诚实说明：</b>数据库侧（SQLite-WASM）数据已载入内存，读取走内存；文件侧（OPFS）是真落盘。这看起来对 DB 有利——但这恰恰就是 SQLite《35% Faster Than the Filesystem》的真实论点：<b>数据库文件只 open 一次，之后全在进程内，省掉的正是每个文件的 open/close/元数据这套系统调用</b>。这不是作弊，是数据库相对文件系统的结构性优势。</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       模块 3 - 光谱收尾
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-line-gradient"></i> 模块三 · 文件 ↔ 数据库 光谱</span>
+      <span class="card-hint">拖一下滑块，看真实系统落在这条光谱的哪里</span>
+    </div>
+
+    <div class="spectrum-wrap">
+      <div class="spectrum-ends">
+        <span class="end-left"><i class="ti ti-file"></i> 每条数据一个文件</span>
+        <span class="end-right"><i class="ti ti-database"></i> 全塞进一个库</span>
+      </div>
+      <div class="spectrum-track" id="spectrumTrack"></div>
+      <input type="range" id="spectrumSlider" min="0" max="100" step="1" value="32" class="spectrum-slider">
+    </div>
+
+    <div class="system-detail" id="systemDetail">—</div>
+
+    <div class="conclusion">
+      <i class="ti ti-bulb"></i>
+      <p>所以问题从来不是「有没有基于数据库的文件系统」，而是<b class="hl-gold">文件系统和数据库本就是同一件事的两种极端形态</b>，工程上按 workload 在这条光谱上取点：要 POSIX 语义、要人类可读目录树，就偏左；要事务、要并发、要结构化查询，就偏右。NTFS 的 MFT、ext4 的 HTree 是左端的数据库；S3、JuiceFS、GridFS 是中段的折中；WinFS 想一路冲到右端，结果败给了阻抗失配。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="./logic.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

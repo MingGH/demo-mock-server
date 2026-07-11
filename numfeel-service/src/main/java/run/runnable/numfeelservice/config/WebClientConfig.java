@@ -26,6 +26,9 @@ public class WebClientConfig {
     @Value("${umami.base-url:https://umami.runnable.run}")
     private String umamiBaseUrl;
 
+    @Value("${randomorg.base-url:https://www.random.org}")
+    private String randomOrgBaseUrl;
+
     /** 访问 api.996.ninja 的客户端（信任全部证书，带超时）。 */
     @Bean
     public WebClient ninjaApiWebClient() {
@@ -36,6 +39,12 @@ public class WebClientConfig {
     @Bean
     public WebClient umamiWebClient() {
         return buildTrustAllClient().baseUrl(umamiBaseUrl).build();
+    }
+
+    /** 访问 random.org 大气噪声熵源的客户端（信任全部证书，带超时）。 */
+    @Bean
+    public WebClient randomOrgWebClient() {
+        return buildTrustAllClient().baseUrl(randomOrgBaseUrl).build();
     }
 
     private WebClient.Builder buildTrustAllClient() {

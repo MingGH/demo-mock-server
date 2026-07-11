@@ -89,4 +89,46 @@ public final class UtilityRequests {
      */
     public record WordCloudQuery(String search) {
     }
+
+    /**
+     * 真随机字节接口查询参数。
+     *
+     * @param count 需要的随机字节个数（1–8192）
+     * @param source 熵源：quantum（量子真空涨落，默认）、atmospheric（大气噪声）、secure（本地 SecureRandom）
+     */
+    public record RandomBytesQuery(
+            String count,
+            String source
+    ) {
+    }
+
+    /**
+     * 真随机彩票接口查询参数。
+     *
+     * @param type 玩法：ssq（双色球）、dlt（大乐透）
+     * @param source 熵源；留空走量子优先链
+     */
+    public record RandomLotteryQuery(
+            String type,
+            String source
+    ) {
+    }
+
+    /**
+     * 真随机固定位数/区间随机数查询参数。
+     *
+     * @param length 固定位数模式下数字字符串的位数（1–20）
+     * @param min 区间模式最小值（含）
+     * @param max 区间模式最大值（含）
+     * @param count 区间模式生成个数（1–100）
+     * @param source 熵源；留空走量子优先链
+     */
+    public record RandomDigitsQuery(
+            String length,
+            String min,
+            String max,
+            String count,
+            String source
+    ) {
+    }
 }

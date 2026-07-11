@@ -106,6 +106,20 @@ public final class GameplayEntities {
     ) {
     }
 
+    /** 人脑算力排行榜成绩表映射。 */
+    @Table("brain_compute_leaderboard")
+    public record BrainComputeEntry(
+            @Id Long id,
+            String name,
+            int score,
+            @Column("reaction_ms") int reactionMs,
+            @Column("cat_ms") int catMs,
+            @Column("ball_score") int ballScore,
+            String grade,
+            @Column("created_at") long createdAt
+    ) {
+    }
+
     /** 无限猴子实验统计表映射。 */
     @Table("monkey_stats")
     public record MonkeyStat(

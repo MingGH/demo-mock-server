@@ -170,6 +170,32 @@ public final class GameplayResponses {
             long total
     ) {
     }
+    /** 人脑算力排行榜提交响应。 @param name 玩家名 @param score 综合分 @param grade 评级 @param rank 当前名次 @param total 总人数 */
+    public record BrainComputeSubmitResponse(
+            String name,
+            int score,
+            String grade,
+            long rank,
+            long total
+    ) {
+    }
+    /** 人脑算力排行榜条目。 @param rank 排名 @param name 玩家名 @param score 综合分 @param reactionMs 反应延迟 @param catMs 找猫耗时 @param ballScore 接球分 @param grade 评级 */
+    public record BrainComputeLeader(
+            int rank,
+            String name,
+            int score,
+            int reactionMs,
+            int catMs,
+            int ballScore,
+            String grade
+    ) {
+    }
+    /** 人脑算力排行榜 top 响应。 @param leaders 排行榜列表 @param total 总样本数 */
+    public record BrainComputeTopResponse(
+            List<BrainComputeLeader> leaders,
+            long total
+    ) {
+    }
 
     /** @param targetText 成功生成的目标文本 @param targetLength 目标长度 @param totalAttempts 尝试次数 @param success 是否成功 */
     public record MonkeyLeaderboardEntry(

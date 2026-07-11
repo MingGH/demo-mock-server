@@ -141,6 +141,24 @@ public final class GameplayRequests {
     }
 
     /**
+     * 人脑算力排行榜成绩提交参数。
+     *
+     * @param name 玩家昵称
+     * @param reactionMs 平均反应延迟（毫秒）
+     * @param catMs 找猫耗时（毫秒）
+     * @param ballScore 接球预判得分（0-100）
+     * @param cfTurnstileToken Cloudflare Turnstile 人机验证 token
+     */
+    public record BrainComputeSubmitRequest(
+            String name,
+            Integer reactionMs,
+            Integer catMs,
+            Integer ballScore,
+            String cfTurnstileToken
+    ) {
+    }
+
+    /**
      * 无限猴子实验提交参数。
      *
      * @param targetText 目标文本

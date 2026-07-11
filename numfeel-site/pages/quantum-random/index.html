@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="怎样做到绝对随机？用真空量子涨落摇一注双色球/大乐透，切换量子/大气/密码学三种熵源，亲眼看真随机和伪随机到底差在哪。">
+  <title>怎样做到绝对随机 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-atom"></i> 怎样做到绝对随机</h1>
+    <p>都说随机，可 <code>Math.random()</code> 给定种子输出完全可复现——那只是「伪随机」。要拿真随机，必须向物理世界取熵。下面用真空量子涨落给你摇一注，再让你亲手对比真随机和伪随机到底差在哪。</p>
+  </div>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-art" id="heroArt">
+      <!-- 纯 SVG 插画：量子涨落的真空 + 一颗摇出号码的彩球，无外部图片依赖 -->
+      <svg viewBox="0 0 400 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <radialGradient id="vac" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.35"/>
+            <stop offset="60%" stop-color="#a855f7" stop-opacity="0.12"/>
+            <stop offset="100%" stop-color="#0f3460" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="orb" cx="32%" cy="28%" r="75%">
+            <stop offset="0%" stop-color="#fff7e0"/>
+            <stop offset="55%" stop-color="#ffd700"/>
+            <stop offset="100%" stop-color="#c08a00"/>
+          </radialGradient>
+        </defs>
+        <circle cx="200" cy="120" r="110" fill="url(#vac)"/>
+        <g fill="rgba(255,255,255,0.5)">
+          <circle cx="80" cy="60" r="1.6"/><circle cx="320" cy="70" r="1.2"/>
+          <circle cx="60" cy="180" r="1.4"/><circle cx="340" cy="190" r="1.6"/>
+          <circle cx="130" cy="40" r="1"/><circle cx="280" cy="200" r="1"/>
+          <circle cx="150" cy="210" r="1.2"/><circle cx="250" cy="50" r="1.3"/>
+        </g>
+        <circle cx="200" cy="120" r="46" fill="url(#orb)" stroke="rgba(255,215,0,0.5)" stroke-width="2">
+          <animate attributeName="r" values="46;49;46" dur="3.2s" repeatCount="indefinite"/>
+        </circle>
+        <text x="200" y="131" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="26" font-weight="700" fill="#1a1a2e">07</text>
+        <text x="200" y="200" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="12" fill="rgba(255,255,255,0.55)">真空量子涨落 · 抽出的一注</text>
+      </svg>
+    </div>
+    <div class="hero-copy">
+      <p class="hero-lead">先说结论：纯软件算法再精妙，给定了种子结果就完全确定，那只是「伪随机」。只有向<strong>量子真空涨落</strong>这样的物理熵源取数，才称得上「原理上不可预测」——它不是「我们算不出」，是「宇宙自己也没算好」。</p>
+      <p class="hero-hint">下面三种玩法点了就出，先选熵源再摇号，每颗球逐个揭晓。</p>
+      <button class="btn btn-primary btn-lg" id="heroBtn"><i class="ti ti-bolt"></i> 用真空量子涨落摇一注</button>
+    </div>
+  </section>
+
+  <!-- ══════════ 第一关：摇号 ══════════ -->
+  <section class="section" id="drawSection">
+    <div class="round-head">
+      <span class="tag tag-fun">动手玩</span>
+      <h2><i class="ti ti-dice-5"></i> 选玩法，摇一注</h2>
+    </div>
+    <p class="section-desc">三种玩法都是预设好的，点了就出。号码全由后端从你选的熵源取真随机字节，再用<b>拒绝采样</b>无偏映射到号码区间——不偷懒取模，每个号码等概率。下面有徽章如实显示这一注到底用了哪个源。</p>
+
+    <!-- 玩法预设 -->
+    <div class="preset-row" id="presetRow">
+      <div class="preset-card active" data-preset="ssq">
+        <h4><i class="ti ti-ticket"></i> 双色球</h4>
+        <p>红球 6 个 01–33 不重复 + 蓝球 1 个 01–16</p>
+      </div>
+      <div class="preset-card" data-preset="dlt">
+        <h4><i class="ti ti-ticket"></i> 大乐透</h4>
+        <p>前区 5 个 01–35 不重复 + 后区 2 个 01–12 不重复</p>
+      </div>
+      <div class="preset-card" data-preset="digits">
+        <h4><i class="ti ti-hash"></i> 固定位数</h4>
+        <p>指定位数或区间，一键生成无偏随机数</p>
+      </div>
+    </div>
+
+    <!-- 熵源选择器 -->
+    <div class="module">
+      <h3><i class="ti ti-source-code"></i> 选熵源</h3>
+      <p class="module-hint">默认量子真空涨落。量子源失败会自动降级，徽章会诚实标注，绝不会谎称量子。</p>
+      <div class="source-pick" id="sourcePick">
+        <span class="source-chip active" data-source="quantum"><i class="ti ti-atom"></i> 量子真空涨落 (ANU)</span>
+        <span class="source-chip" data-source="atmospheric"><i class="ti ti-wind"></i> 大气噪声 (random.org)</span>
+        <span class="source-chip" data-source="secure"><i class="ti ti-lock"></i> 密码学安全 (本地兜底)</span>
+      </div>
+      <div class="source-explain" id="sourceExplain"></div>
+    </div>
+
+    <!-- 摇号舞台 -->
+    <div class="module">
+      <h3><i class="ti ti-dice-5"></i> 摇号</h3>
+      <p class="module-hint" id="drawHint">点下面按钮，号码会逐个揭晓——别急着一次性出，每颗球落定都有反馈。</p>
+      <div class="draw-stage">
+        <div class="draw-row" id="ballRow"></div>
+        <div class="draw-status" id="drawStatus">还没摇号。点「摇一注」开始。</div>
+        <div class="draw-result" id="drawResult"></div>
+      </div>
+      <div id="sourceBadgeWrap"></div>
+      <div class="action-bar">
+        <button class="btn btn-primary" id="rollBtn"><i class="ti ti-bolt"></i> 摇一注</button>
+        <button class="btn btn-secondary" id="copyBtn" hidden><i class="ti ti-copy"></i> 复制本注号码</button>
+        <button class="btn btn-secondary btn-sm raw-toggle" id="rawToggle" hidden><i class="ti ti-code"></i> 查看原始随机字节</button>
+      </div>
+      <div class="raw-stream" id="rawStream" hidden></div>
+    </div>
+
+    <!-- 自定义位数控制（固定位数玩法时出现） -->
+    <div class="module" id="digitsPanel" hidden>
+      <h3><i class="ti ti-adjustments"></i> 固定位数参数</h3>
+      <p class="module-hint">生成一个指定位数的随机数字串，或指定区间内若干个无偏随机整数。首位不为 0，避免短一位。</p>
+      <div class="digit-controls">
+        <div class="digit-field">
+          <label>位数</label>
+          <input type="number" id="digitLength" value="6" min="1" max="20">
+        </div>
+        <div class="digit-field">
+          <label>区间最小值（留空用位数模式）</label>
+          <input type="number" id="digitMin" placeholder="如 100">
+        </div>
+        <div class="digit-field">
+          <label>区间最大值</label>
+          <input type="number" id="digitMax" placeholder="如 999">
+        </div>
+        <div class="digit-field">
+          <label>生成个数（区间模式）</label>
+          <input type="number" id="digitCount" value="1" min="1" max="10">
+        </div>
+      </div>
+      <div class="digit-output" id="digitOutput">点「摇一注」生成</div>
+    </div>
+  </section>
+
+  <!-- ══════════ 第二关：随机性体检 ══════════ -->
+  <section class="section" id="healthSection">
+    <div class="round-head">
+      <span class="tag tag-medium">看数据</span>
+      <h2><i class="ti ti-heart-pulse"></i> 随机性体检：真随机 vs 伪随机</h2>
+    </div>
+    <p class="section-desc">同一批样本量，并排画出「伪随机 <code>Math.random()</code>」和「真随机（你当前熵源）」的字节分布直方图。数据全部来自本页真实生成——下面点「再采一批」就重新抓一次字节。<b>你要看的不只是直方图长得像不像，而是上面那颗球来自哪里——熵源决定一切。</b></p>
+    <div class="chart-grid">
+      <div class="chart-wrap">
+        <div class="chart-title"><span class="tag-pr">PRNG</span> 伪随机字节分布</div>
+        <canvas id="prngChart" height="200"></canvas>
+        <div class="chart-meta" id="prngMeta"><span>样本：0 字节</span><span>χ² = <span class="hl">—</span></span></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title"><span class="tag-tr">真随机</span> <span id="trSourceLabel">量子真空涨落</span>字节分布</div>
+        <canvas id="trChart" height="200"></canvas>
+        <div class="chart-meta" id="trMeta"><span>样本：0 字节</span><span>χ² = <span class="hl">—</span></span></div>
+      </div>
+    </div>
+    <div class="health-note">
+      <i class="ti ti-info-circle"></i>
+      <p><span class="hl">注意</span>：单看直方图，真随机和伪随机长得几乎一样——这正是 PRNG 设计的目标。它们的差别不在「分布像不像均匀」，而在「<b>能不能预测</b>」：伪随机给定种子完全可复现，真随机不行。把鼠标移到两边的卡方值上，你会看到两者量级相当——所以判断真伪不能只看直方图，要看熵从哪来。</p>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-primary" id="resampleBtn"><i class="ti ti-refresh"></i> 再采 4096 字节</button>
+      <span class="source-badge badge-quantum" id="healthBadge"><i class="ti ti-atom"></i> 量子真空涨落</span>
+    </div>
+  </section>
+
+  <!-- ══════════ 熵源科普 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-easy">科普</span>
+      <h2><i class="ti ti-school"></i> 三种熵源，差在哪</h2>
+    </div>
+    <p class="section-desc">绝对随机这件事，严格讲只有量子随机配得上——它不是「我们算不出」，是「宇宙自己也没算好」。</p>
+    <div class="module">
+      <h3><i class="ti ti-atom"></i> 量子真空涨落（ANU QRNG）</h3>
+      <p class="source-explain">澳大利亚国立大学用激光做零差探测，测量<b>真空的量子涨落</b>来产生随机数。按量子力学，单次测量结果在原理上不可预测——即便拥有全部信息也无法预知。<b>这是目前最接近「绝对随机」的来源。</b></p>
+      <p class="source-prov">来源：quantumnumbers.anu.edu.au / qrng.anu.edu.au</p>
+    </div>
+    <div class="module">
+      <h3><i class="ti ti-wind"></i> 大气噪声（random.org）</h3>
+      <p class="source-explain">用大气中的电噪声作熵源。实践中不可预测，但本质是「确定性混沌」——原理上若有足够信息能算出大气所有状态，理论上可推。<b>够用，但不配叫「绝对随机」。</b></p>
+      <p class="source-prov">来源：random.org</p>
+    </div>
+    <div class="module">
+      <h3><i class="ti ti-lock"></i> 密码学安全（本地 SecureRandom 兜底）</h3>
+      <p class="source-explain">后端用 <code>SecureRandom</code>（CSPRNG）兜底，浏览器端用 <code>crypto.getRandomValues</code>。密码学安全，但仍属伪随机，给定内部状态理论可复现。<b>诚实标注：不是真随机。</b>这也是为什么本页把它放在链尾，绝不冒充量子。</p>
+    </div>
+    <div class="module">
+      <h3><i class="ti ti-flag"></i> 顺带一提：Cloudflare 熔岩灯</h3>
+      <p class="source-explain">Cloudflare 用一整面墙的熔岩灯阵列拍照取熵，本质也是确定性混沌，画面慢变+光照扰动让结果在实践中不可预测。</p>
+      <p class="source-prov">来源：blog.cloudflare.com</p>
+    </div>
+  </section>
+
+  <!-- ══════════ 关于取模偏差 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-medium">严谨</span>
+      <h2><i class="ti ti-ruler-3"></i> 为什么不能直接取模</h2>
+    </div>
+    <p class="section-desc">「随机字节 <code>% 33</code> 不就有 1–33 的号了吗？」听起来没毛病，可它会让一些号码概率偏高。本页的每颗球都用<b>拒绝采样</b>把越界字节剔掉再取模，保证等概率——代码全开源、有单测。</p>
+    <div class="module">
+      <h3><i class="ti ti-math-symbols"></i> 取模偏差示意</h3>
+      <p class="source-explain">256 个可能字节值映射到 33 个号码，256 ÷ 33 = 7 余 25。前 25 个号（01–25）会出现 8 次，后 8 个号（26–33）只出现 7 次——概率被悄悄拉偏约 <b>14%</b>。拒绝采样把字节里超出的那段（这里 <code>limit = 256 - 25 = 231</code>，越界 25 个值）丢弃重抽，每个号才回到 1/33。</p>
+      <p class="source-prov">这一节逻辑在 <code>logic.js</code> 的 <code>sampleUniform</code>，单测 <code>quantum-random.test.js</code> 已覆盖。</p>
+    </div>
+  </section>
+
+  <div class="restart-bar">
+    <button class="btn btn-secondary" id="topBtn"><i class="ti ti-arrow-up"></i> 回到顶部再摇</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Chart.js 通过 header.js 全局加载（loadChartJS），与 brain-compute 一致 -->
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

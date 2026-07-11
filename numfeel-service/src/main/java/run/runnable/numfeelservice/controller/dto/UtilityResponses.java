@@ -266,4 +266,67 @@ public final class UtilityResponses {
             long updatedAt
     ) {
     }
+
+    /**
+     * 真随机字节接口响应。
+     *
+     * @param bytes 随机字节序列（0–255）
+     * @param source 实际使用的熵源：quantum / atmospheric / secure
+     * @param provider 上游供应商描述
+     * @param degraded 是否从用户请求的源被降级过（诚实标注）
+     * @param requestedSource 用户原本请求的熵源
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record RandomBytesResponse(
+            List<Integer> bytes,
+            String source,
+            String provider,
+            Boolean degraded,
+            String requestedSource
+    ) {
+    }
+
+    /**
+     * 真随机彩票接口响应。
+     *
+     * @param type 玩法：ssq 或 dlt
+     * @param red 双色球红球（6 个）
+     * @param blue 双色球蓝球（1 个）
+     * @param front 大乐透前区（5 个）
+     * @param back 大乐透后区（2 个）
+     * @param source 实际使用的熵源
+     * @param provider 上游供应商描述
+     * @param degraded 是否被降级过
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record RandomLotteryResponse(
+            String type,
+            List<Integer> red,
+            Integer blue,
+            List<Integer> front,
+            List<Integer> back,
+            String source,
+            String provider,
+            Boolean degraded
+    ) {
+    }
+
+    /**
+     * 真随机固定位数/区间随机数接口响应。
+     *
+     * @param values 生成的随机数列表（区间模式）
+     * @param value 生成的随机数字字符串（固定位数模式）
+     * @param source 实际使用的熵源
+     * @param provider 上游供应商描述
+     * @param degraded 是否被降级过
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record RandomDigitsResponse(
+            List<Integer> values,
+            String value,
+            String source,
+            String provider,
+            Boolean degraded
+    ) {
+    }
 }

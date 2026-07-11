@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="人脑的计算能力真的高吗？亲手做三件事：跟电脑比心算、测自己的反应延迟、在一堆狗里秒找出猫、预判接球落点，最后用每瓦算力看人脑到底强在哪。">
+  <title>人脑算力，到底行不行 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-brain"></i> 人脑算力，到底行不行</h1>
+    <p>都说人脑是"最强计算机"。别急着信，也别急着反驳。往下做四个小实验，每一个都让你亲手比一次——先被电脑碾一遍，再反手赢回来，最后看清人脑真正强在哪。</p>
+  </div>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-art">
+      <img src="../../images/brain-compute/hero.jpg" alt="人脑对决芯片" />
+    </div>
+    <div class="hero-copy">
+      <p class="hero-lead">先说结论：论"死算"，你的大脑被一块几十块钱的芯片按在地上摩擦；论"感知和预测"，全世界的超算加起来都追得很吃力。</p>
+      <p class="hero-hint">下面四关，每关 1 分钟。手别停，边玩边看数字。</p>
+      <button class="btn btn-primary btn-lg" id="startBtn"><i class="ti ti-player-play"></i> 从第一关开始</button>
+    </div>
+  </section>
+
+  <!-- ══════════ 第一关：死算被碾压 ══════════ -->
+  <section class="section" id="round1">
+    <div class="round-head">
+      <span class="tag tag-easy">第一关 · 入门</span>
+      <h2><i class="ti ti-cpu"></i> 论死算，大脑烂透了</h2>
+    </div>
+    <p class="section-desc">这一关只做两件事：跟电脑比心算，再测你按按钮的反应有多慢。目的就一个——让你心服口服地承认，大脑不是拿来"算"的。</p>
+
+    <!-- 心算竞速 -->
+    <div class="module" id="mathGame">
+      <h3><i class="ti ti-math-symbols"></i> 心算竞速</h3>
+      <p class="module-hint">点开始，题目出现就尽快算，把答案敲进去回车。前两题热身，第三题……你自己看。</p>
+      <div class="math-stage">
+        <div class="math-main">
+          <div class="math-progress" id="mathProgress">准备好了吗</div>
+          <div class="math-prompt" id="mathPrompt">— — —</div>
+          <div class="math-input-row">
+            <input type="text" inputmode="numeric" id="mathInput" placeholder="你的答案" disabled autocomplete="off">
+            <button class="btn btn-primary" id="mathSubmit" disabled>提交</button>
+          </div>
+          <div class="math-feedback" id="mathFeedback">&nbsp;</div>
+        </div>
+        <div class="math-side">
+          <div class="race-row">
+            <span class="race-label"><i class="ti ti-user"></i> 你</span>
+            <span class="race-time" id="mathTimer">0.00 秒</span>
+          </div>
+          <div class="race-row computer">
+            <span class="race-label"><i class="ti ti-cpu"></i> 电脑</span>
+            <span class="race-time" id="mathComputer">待命</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="mathStart"><i class="ti ti-player-play"></i> 开始心算</button>
+    </div>
+
+    <!-- 反应时间 -->
+    <div class="module" id="reactionGame">
+      <h3><i class="ti ti-bolt"></i> 反应延迟测试</h3>
+      <p class="module-hint">点开始后盯着方块，它<strong>变绿的瞬间</strong>立刻点。测 3 次取平均。抢跳（还没变绿就点）不算数。</p>
+      <div class="reaction-box waiting" id="reactionBox">
+        <span id="reactionStatus">点下方按钮开始</span>
+      </div>
+      <div class="reaction-dots" id="reactionDots"></div>
+      <div class="reaction-summary" id="reactionSummary"></div>
+      <button class="btn btn-primary" id="reactionStart"><i class="ti ti-player-play"></i> 开始测试</button>
+    </div>
+
+    <div class="verdict verdict-lose" id="verdict1" hidden>
+      <i class="ti ti-mood-sad"></i>
+      <div>
+        <strong>第一关结论</strong>
+        <p id="verdict1Text">论一板一眼地死算，几十块的芯片就能把大脑按在地上。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 第二关：大脑反杀 ══════════ -->
+  <section class="section" id="round2">
+    <div class="round-head">
+      <span class="tag tag-fun">第二关 · 动手玩</span>
+      <h2><i class="ti ti-eye-check"></i> 论感知，大脑反杀</h2>
+    </div>
+    <p class="section-desc">刚被电脑碾完，别灰心。换个赛道：在一堆狗里找出那只猫，再预判一个飞过来的球落在哪。这两件你几乎不用"想"，可它们恰恰是计算机曾经的老大难。</p>
+
+    <!-- 找猫 -->
+    <div class="module" id="catGame">
+      <h3><i class="ti ti-cat"></i> 一堆狗里，找那只猫</h3>
+      <p class="module-hint">点开始，格子铺满的一瞬间，找到唯一那只猫并点它。计时从铺满开始。</p>
+      <div class="cat-grid" id="catGrid"></div>
+      <div class="cat-status" id="catStatus">点开始，猫就在里面</div>
+      <button class="btn btn-primary" id="catStart"><i class="ti ti-player-play"></i> 开始找猫</button>
+    </div>
+
+    <!-- 接球预测 -->
+    <div class="module" id="ballGame">
+      <h3><i class="ti ti-ball-basketball"></i> 预判落点</h3>
+      <p class="module-hint">点发射，球会沿抛物线飞出去。在它落地前，点你觉得它会落地的位置。你的大脑其实在偷偷解方程。</p>
+      <div class="ball-wrap">
+        <canvas id="ballCanvas" width="720" height="360"></canvas>
+      </div>
+      <div class="ball-status" id="ballStatus">点发射，试着预判它落在哪</div>
+      <button class="btn btn-primary" id="ballLaunch"><i class="ti ti-player-play"></i> 发射</button>
+    </div>
+
+    <div class="verdict verdict-win" id="verdict2" hidden>
+      <i class="ti ti-mood-happy"></i>
+      <div>
+        <strong>第二关结论</strong>
+        <p id="verdict2Text">找猫、接球这种"一眼就会"的事，你用不到 1 秒；让机器做到同样水平，人类花了几十年、烧掉海量算力才勉强追上。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 第三关：量化收尾 ══════════ -->
+  <section class="section" id="round3">
+    <div class="round-head">
+      <span class="tag tag-medium">第三关 · 看数据</span>
+      <h2><i class="ti ti-scale"></i> 那人脑到底强在哪</h2>
+    </div>
+    <p class="section-desc">把两边摆到同一把尺子上。别只看谁算得快，看看每一瓦电换来多少算力——这才是大脑真正吓人的地方。</p>
+
+    <div class="eff-stats" id="effStats"></div>
+    <div class="chart-wrap">
+      <canvas id="effChart" height="220"></canvas>
+    </div>
+    <div class="eff-conclusion" id="effConclusion">
+      <i class="ti ti-bulb"></i>
+      <p><strong>大脑赢的从来不是速度。</strong>它用一盏灯泡的功率（约 20 瓦），干出了和一台吃掉整座小电厂的超算同一量级的活。每一瓦电能换来的算力，大脑领先大约 <span class="hl" id="ratioText">100 万</span> 倍。这就是它值得被叫"最强"的真正理由。</p>
+    </div>
+
+    <p class="source-note">
+      数据来源：神经元数量约 860 亿（Azevedo et al., 2009 / Herculano-Houzel）；人脑功耗约 20 瓦（约占静息代谢 20%，常见引用）；Frontier 超算约 1.1 EFLOP/s、整机功耗约 21 MW（TOP500 / Green500）。人脑"等效算力"学界仍有争议，本页取约 1 EFLOP 作<strong>数量级估算</strong>，仅用于同尺度对比，非精确值。
+    </p>
+  </section>
+
+  <!-- ══════════ 排行榜 ══════════ -->
+  <section class="section" id="leaderboard">
+    <div class="round-head">
+      <span class="tag tag-medium">排行榜</span>
+      <h2><i class="ti ti-trophy"></i> 把成绩挂上榜</h2>
+    </div>
+    <p class="section-desc">反应、找猫、接球三项都玩过之后，会算出你的综合分（满分 300）。心算那关是用来打击你的，不进排名。填个昵称、过一下人机验证就能挂榜——验证是为了挡住脚本刷分，让榜单干净点。</p>
+
+    <div class="score-card">
+      <div id="scorePending">先把第一关的反应测试、第二关的找猫和接球都玩一遍，这里会亮出你的综合分。</div>
+      <div id="scoreReady" hidden>
+        <div class="score-big"><span id="scoreValue">0</span><small> / 300</small></div>
+        <div class="score-grade" id="scoreGrade">—</div>
+        <div class="score-parts" id="scoreParts"></div>
+      </div>
+    </div>
+
+    <div class="submit-box" id="submitBox" hidden>
+      <input type="text" id="lbName" maxlength="24" placeholder="你的昵称（最多 24 字）" autocomplete="off">
+      <div id="turnstileWidget" class="turnstile-widget"></div>
+      <button class="btn btn-primary" id="lbSubmit"><i class="ti ti-upload"></i> 提交成绩</button>
+      <div class="lb-status" id="lbStatus"></div>
+    </div>
+
+    <div class="lb-table-wrap">
+      <div class="lb-table-head">
+        <span><i class="ti ti-list-numbers"></i> 排行榜 Top 20</span>
+        <button class="btn btn-secondary btn-sm" id="lbRefresh"><i class="ti ti-refresh"></i> 刷新</button>
+      </div>
+      <div class="lb-table-scroll">
+        <table class="lb-table">
+          <thead><tr><th>#</th><th>昵称</th><th>综合分</th><th>反应</th><th>找猫</th><th>接球</th><th>评级</th></tr></thead>
+          <tbody id="lbBody"><tr><td colspan="7" class="lb-empty">加载中…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="lb-total" id="lbTotal"></div>
+    </div>
+  </section>
+
+  <div class="restart-bar">
+    <button class="btn btn-secondary" id="restartBtn"><i class="ti ti-rotate"></i> 再玩一遍</button>
+    <button class="btn btn-secondary" id="copyBtn"><i class="ti ti-copy"></i> 复制我的成绩</button>
+  </div>
+</div>
+
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

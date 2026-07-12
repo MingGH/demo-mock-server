@@ -253,7 +253,6 @@
     catState.target = grid.targetIndex;
     catState.done = false;
     var el = $('catGrid');
-    el.style.gridTemplateColumns = 'repeat(' + CAT_COLS + ', 1fr)';
     el.innerHTML = '';
     var cells = [];
     grid.cells.forEach(function (kind, i) {

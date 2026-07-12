@@ -174,9 +174,90 @@ body {
 
 /* ── 响应式 ── */
 @media (max-width: 720px) {
-  .header h1 { font-size: 1.8rem; }
-  .hero { grid-template-columns: 1fr; }
-  .preset-row { grid-template-columns: 1fr; }
-  .chart-grid { grid-template-columns: 1fr; }
-  .ball { width: 46px; height: 46px; font-size: 1.1rem; }
+  .container {
+    padding: 14px;
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  /* Header */
+  .header { padding: 28px 10px 18px; margin-bottom: 14px; }
+  .header h1 { font-size: 1.6rem; }
+  .header p { font-size: 0.88rem; }
+
+  /* Hero */
+  .hero { grid-template-columns: 1fr; gap: 16px; padding: 16px; margin-bottom: 20px; }
+  .hero-art { min-height: 180px; }
+  .hero-lead { font-size: 0.98rem; }
+  .hero-hint { font-size: 0.84rem; margin-bottom: 16px; }
+  .hero-copy .btn-lg { width: 100%; justify-content: center; }
+
+  /* Section */
+  .section { padding: 18px 14px; margin-bottom: 18px; border-radius: 14px; }
+  .section h2 { font-size: 1.2rem; }
+  .section-desc { font-size: 0.85rem; margin-bottom: 16px; }
+
+  /* Module */
+  .module { padding: 14px; margin-bottom: 14px; border-radius: 12px; }
+  .module h3 { font-size: 1rem; }
+  .module-hint { font-size: 0.82rem; margin-bottom: 14px; }
+
+  /* 预设卡片：3 列紧凑布局 */
+  .preset-row { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .preset-card { padding: 12px 8px; border-radius: 10px; }
+  .preset-card h4 { font-size: 0.88rem; gap: 4px; margin-bottom: 4px; }
+  .preset-card p { font-size: 0.7rem; line-height: 1.4; }
+
+  /* 熵源选择器：增大触摸区域 */
+  .source-pick { gap: 8px; }
+  .source-chip { padding: 9px 14px; font-size: 0.82rem; }
+
+  /* 摇号球：缩小到单行可容纳 8 个元素 */
+  .draw-row { gap: 6px; margin: 14px 0; }
+  .ball { width: 38px; height: 38px; font-size: 1rem; }
+  .ball-divider { height: 28px; margin: 0 2px; }
+  .draw-status { font-size: 0.84rem; }
+  .draw-result { font-size: 0.92rem; }
+
+  /* 固定位数：输入框 2 列布局 */
+  .digit-controls { gap: 8px; }
+  .digit-field { flex: 1 1 calc(50% - 4px); min-width: 0; }
+  .digit-field input { width: 100%; }
+  .digit-output { font-size: 1rem; padding: 12px; }
+
+  /* 体检图表 */
+  .chart-grid { grid-template-columns: 1fr; gap: 12px; }
+  .chart-wrap { padding: 12px; border-radius: 10px; }
+  .chart-title { font-size: 0.86rem; }
+
+  /* 按钮 */
+  .action-bar { gap: 8px; }
+  .btn { padding: 10px 14px; font-size: 0.88rem; }
+
+  /* 原始字节流 */
+  .raw-stream { font-size: 0.76rem; padding: 10px; line-height: 1.45; }
+
+  /* 体检说明 */
+  .health-note { font-size: 0.84rem; padding: 12px; }
+
+  /* Toast 避开底部安全区 */
+  .toast { bottom: max(30px, env(safe-area-inset-bottom)); font-size: 0.84rem; padding: 8px 18px; }
+}
+
+@media (max-width: 380px) {
+  .header h1 { font-size: 1.35rem; }
+  .section h2 { font-size: 1.08rem; }
+
+  /* 超小屏球进一步缩小，确保 8 元素单行 */
+  .ball { width: 34px; height: 34px; font-size: 0.88rem; }
+  .ball-divider { height: 24px; }
+  .draw-row { gap: 4px; }
+
+  /* 预设卡片文字更紧凑 */
+  .preset-card { padding: 10px 6px; }
+  .preset-card h4 { font-size: 0.82rem; }
+  .preset-card p { font-size: 0.64rem; }
+
+  /* 输入框单列堆叠 */
+  .digit-field { flex: 1 1 100%; }
 }

@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 真随机熵源服务：熵源链 + 字节池缓存 + 无偏抽取。
  * <p>
  * 熵源链（按可预测性递增）：
- * 1. {@code quantum}——真空量子涨落，经 api.996.ninja 代理 ANU QRNG（{@link #ninjaApiWebClient}）。
+ * 1. {@code quantum}——真空量子涨落 ANU QRNG（{@link #ninjaApiWebClient}）。
  * 2. {@code atmospheric}——大气噪声，random.org 公开整数接口（{@link #randomOrgWebClient}）。
  * 3. {@code secure}——本地 {@link SecureRandom}（CSPRNG，诚实标注非真随机）。
  * <p>
@@ -265,7 +265,7 @@ public class QuantumRandomService {
 
     private String providerOf(String source) {
         return switch (source) {
-            case SOURCE_QUANTUM -> "ANU QRNG（经 api.996.ninja 代理，测量真空量子涨落）";
+            case SOURCE_QUANTUM -> "ANU QRNG（测量真空量子涨落）";
             case SOURCE_ATMOSPHERIC -> "random.org（大气噪声）";
             case SOURCE_SECURE -> "本地 SecureRandom（CSPRNG，非真随机）";
             default -> "";

@@ -91,7 +91,7 @@
       defer: true,
       src: 'https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js'
     });
-    ensureLink('data-tabler-css', 'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css');
+    ensureLink('data-tabler-css', 'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css');
     ensureLink('data-header-theme', prefix + 'components/header.css');
   }
 

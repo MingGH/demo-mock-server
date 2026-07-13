@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ECB 企鹅图：用真实 AES 加密亲手复现密码学经典视觉梗。ECB 模式加密后企鹅轮廓依然可见，CBC 模式则变成纯噪声。交互式对比，块重复可视化。">
+  <title>ECB 企鹅图 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ═══════ Hero ═══════ -->
+  <div class="header">
+    <h1><i class="ti ti-lock"></i> ECB 企鹅图</h1>
+    <p>同样的 AES 加密，ECB 模式加密后企鹅轮廓清晰可见，CBC 模式则变成纯噪声。亲手加密一只企鹅，看工作模式如何决定安全性。</p>
+  </div>
+
+  <div class="hero-cta">
+    <button class="btn-hero" id="heroBtn">
+      <i class="ti ti-mickey"></i> 加密这只企鹅
+      <i class="ti ti-arrow-down"></i>
+    </button>
+  </div>
+
+  <!-- ═══════ 步骤 1：选图 ═══════ -->
+  <section class="step-section" id="step1">
+    <div class="step-label">步骤 1 / 3</div>
+    <h2 class="step-title"><i class="ti ti-photo"></i> 选择图片</h2>
+    <p class="step-hint">从预设中选一张，或上传自己的图片。图片越有大片同色区域，ECB 效果越明显。</p>
+
+    <div class="preset-grid">
+      <div class="preset-card" data-preset="tux">
+        <div class="preset-thumb preset-tux">
+          <img src="images/Tux.png" alt="Tux 企鹅">
+        </div>
+        <div class="preset-name">Tux 企鹅</div>
+        <div class="preset-tag tag-fun">经典案例</div>
+      </div>
+      <div class="preset-card" data-preset="blocks">
+        <div class="preset-thumb preset-blocks"></div>
+        <div class="preset-name">纯色块</div>
+        <div class="preset-tag tag-easy">效果最强</div>
+      </div>
+      <div class="preset-card" data-preset="checker">
+        <div class="preset-thumb preset-checker"></div>
+        <div class="preset-name">棋盘格</div>
+        <div class="preset-tag tag-easy">重复模式</div>
+      </div>
+      <div class="preset-card" data-preset="gradient">
+        <div class="preset-thumb preset-gradient"></div>
+        <div class="preset-name">渐变图</div>
+        <div class="preset-tag tag-medium">平滑过渡</div>
+      </div>
+    </div>
+
+    <div class="upload-zone" id="uploadZone">
+      <i class="ti ti-cloud-upload upload-icon"></i>
+      <div class="upload-text">上传自己的图片</div>
+      <div class="upload-sub">点击选择，支持 PNG / JPG / GIF</div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none">
+    </div>
+
+    <div class="original-preview" id="originalPreview" style="display:none">
+      <div class="preview-label">
+        <i class="ti ti-eye"></i> 原始图像（已量化处理）
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="originalCanvas"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ 步骤 2：了解模式 ═══════ -->
+  <section class="step-section" id="step2" style="display:none">
+    <div class="step-label">步骤 2 / 3</div>
+    <h2 class="step-title"><i class="ti ti-info-circle"></i> 了解加密模式</h2>
+    <p class="step-hint">两种模式都会执行，加密后并排对比效果差异。</p>
+
+    <div class="mode-cards">
+      <div class="mode-card mode-ecb">
+        <div class="mode-badge danger">
+          <i class="ti ti-alert-triangle"></i> 危险
+        </div>
+        <h3>ECB 模式</h3>
+        <div class="mode-desc">
+          <p>Electronic Codebook，电子密码本。</p>
+          <p>把明文切成 16 字节的块，<strong>每块独立</strong>用同一个密钥加密，块之间没有任何关联。</p>
+          <p class="mode-flaw">相同明文块 → 永远得到相同的密文块。图像轮廓原样泄漏。</p>
+        </div>
+      </div>
+      <div class="mode-card mode-cbc">
+        <div class="mode-badge safe">
+          <i class="ti ti-shield-check"></i> 安全
+        </div>
+        <h3>CBC 模式</h3>
+        <div class="mode-desc">
+          <p>Cipher Block Chaining，密文块链接。</p>
+          <p>每块加密前先与前一块的密文做 XOR，再加密。<strong>块之间链式关联</strong>。</p>
+          <p class="mode-pro">相同明文块 → 产生不同的密文块。输出变成不可辨认的噪声。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="quantize-control">
+      <div class="quantize-header">
+        <i class="ti ti-palette"></i>
+        <label>色彩量化</label>
+        <span class="quantize-value" id="quantizeValue">4 级 / 64 色</span>
+      </div>
+      <input type="range" min="2" max="16" value="4" id="quantizeSlider" class="quantize-slider">
+      <div class="quantize-hint">减少颜色数让相同像素块更多，ECB 效果更明显。拖动滑块实时预览。</div>
+    </div>
+
+    <button class="btn-primary" id="nextBtn">
+      <i class="ti ti-arrow-right"></i> 下一步：加密
+    </button>
+  </section>
+
+  <!-- ═══════ 步骤 3：加密对比 ═══════ -->
+  <section class="step-section" id="step3" style="display:none">
+    <div class="step-label">步骤 3 / 3</div>
+    <h2 class="step-title"><i class="ti ti-bolt"></i> 加密对比</h2>
+    <p class="step-hint">点击加密，看 ECB 和 CBC 两种模式的输出差异。用的是真 AES-128，不是模拟。</p>
+
+    <button class="btn-encrypt" id="encryptBtn">
+      <i class="ti ti-lock"></i> 加密
+    </button>
+
+    <div class="progress-section" id="progressSection" style="display:none">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="progress-text" id="progressText">准备中...</div>
+    </div>
+
+    <div class="result-comparison" id="resultComparison" style="display:none">
+      <div class="result-card result-ecb">
+        <div class="result-header">
+          <span class="result-badge danger"><i class="ti ti-alert-triangle"></i> ECB</span>
+          <span class="result-verdict">轮廓泄漏</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="ecbCanvas"></canvas>
+        </div>
+        <div class="result-stats" id="ecbStats"></div>
+      </div>
+      <div class="result-card result-cbc">
+        <div class="result-header">
+          <span class="result-badge safe"><i class="ti ti-shield-check"></i> CBC</span>
+          <span class="result-verdict">纯噪声</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="cbcCanvas"></canvas>
+        </div>
+        <div class="result-stats" id="cbcStats"></div>
+      </div>
+    </div>
+
+    <div class="retry-section" id="retrySection" style="display:none">
+      <button class="btn-secondary" id="retryBtn">
+        <i class="ti ti-refresh"></i> 换密钥重试
+      </button>
+      <span class="retry-hint">ECB 结果不变（轮廓还在），CBC 结果每次不同（纯噪声）</span>
+    </div>
+  </section>
+
+  <!-- ═══════ 块重复可视化 ═══════ -->
+  <section class="step-section block-viz-section" id="blockViz" style="display:none">
+    <div class="step-label">点睛之笔</div>
+    <h2 class="step-title"><i class="ti ti-grid-dots"></i> 块重复可视化</h2>
+    <p class="step-hint">高亮区域 = 内容完全相同的 16 字节块。ECB 让这些重复原样出现在密文中，这就是轮廓泄漏的根源。</p>
+
+    <div class="block-viz-grid">
+      <div class="block-viz-card">
+        <div class="block-viz-label">
+          <i class="ti ti-image"></i> 原始图像重复块
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="blockVizOriginalCanvas"></canvas>
+        </div>
+        <div class="block-viz-stats" id="origBlockStats"></div>
+      </div>
+      <div class="block-viz-card">
+        <div class="block-viz-label">
+          <i class="ti ti-alert-triangle" style="color:#ff6b6b"></i> ECB 密文重复块
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="blockVizEcbCanvas"></canvas>
+        </div>
+        <div class="block-viz-stats" id="ecbBlockStats"></div>
+      </div>
+      <div class="block-viz-card">
+        <div class="block-viz-label">
+          <i class="ti ti-shield-check" style="color:#81c784"></i> CBC 密文重复块
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="blockVizCbcCanvas"></canvas>
+        </div>
+        <div class="block-viz-stats" id="cbcBlockStats"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ 原理说明 ═══════ -->
+  <section class="explain-section">
+    <h2 class="step-title"><i class="ti ti-book-2"></i> 原理</h2>
+    <p class="step-hint">三分钟搞懂为什么 ECB 会泄漏、CBC 为什么不会。</p>
+
+    <div class="explain-grid">
+      <div class="explain-card">
+        <div class="explain-num">1</div>
+        <h3>块加密</h3>
+        <p>AES 一次处理固定长度的块——<strong>16 字节</strong>。无论密钥是 128 位还是 256 位，块大小不变。图片的像素数据被当成一连串字节，按 16 字节切块。</p>
+      </div>
+      <div class="explain-card">
+        <div class="explain-num">2</div>
+        <h3>ECB：各管各</h3>
+        <p>ECB 把每块独立加密，块之间零关联。<span class="text-danger">相同的 16 字节明文 → 永远得到相同的 16 字节密文</span>。图片有大片同色区域（企鹅白肚皮、纯色背景），这些区域产生大量相同的明文块，加密后依旧是大量相同的密文块——轮廓、边缘、纹理原样泄漏。</p>
+      </div>
+      <div class="explain-card">
+        <div class="explain-num">3</div>
+        <h3>CBC：链式链接</h3>
+        <p>CBC 在每块加密前，先与前一块密文做 XOR，再加密。第一块与随机 IV 做 XOR。<span class="text-success">相同的明文块 → 因前一块不同而产生不同的密文块</span>。输出变成不可辨认的纯噪声，肉眼完全看不出原图。</p>
+      </div>
+      <div class="explain-card">
+        <div class="explain-num">4</div>
+        <h3>正确姿势</h3>
+        <p>别用 ECB。用 <span class="text-success">CBC</span>（需自己处理认证）、<span class="text-success">CTR</span>（流模式）、或 <span class="text-success">GCM</span>（带认证，首选）。更重要的是：<strong>不要自己拼加密方案</strong>，用成熟库的安全默认模式。AES 算法本身是安全的，出问题的是你选的工作模式。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ 分享 ═══════ -->
+  <div class="share-section">
+    <button class="btn-share" id="shareBtn">
+      <i class="ti ti-link"></i> 复制分享链接
+    </button>
+    <span class="share-toast" id="shareToast">链接已复制</span>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

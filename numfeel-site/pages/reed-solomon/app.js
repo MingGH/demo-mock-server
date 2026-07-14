@@ -141,16 +141,34 @@
   }
 
   // ── 入场动画 ──
-  function animateBlocks(containerId) {
-    if (typeof gsap === 'undefined') return;
-    var blocks = $(containerId).querySelectorAll('.symbol-block');
-    gsap.from(blocks, {
-      scale: 0,
-      opacity: 0,
-      duration: 0.3,
-      stagger: 0.04,
-      ease: 'back.out(1.7)'
+  // 说明：GSAP 动画只是锦上添花。无论动画是否播放/播完，方块最终都必须回到
+  // CSS 默认的完整可见状态，因此这里额外加了兜底：清理内联样式 + 超时强制复位，
+  // 避免动画在后台标签页被 rAF 节流卡住时，方块永久停在 scale:0/opacity:0 而「消失」。
+  function clearBlockInline(blocks) {
+    blocks.forEach(function (b) {
+      b.style.opacity = '';
+      b.style.transform = '';
     });
+  }
+  function animateBlocks(containerId) {
+    var blocks = $(containerId).querySelectorAll('.symbol-block');
+    if (blocks.length === 0) return;
+    if (typeof gsap === 'undefined') {
+      clearBlockInline(blocks); // 无 GSAP：保持 CSS 默认，完整可见
+      return;
+    }
+    gsap.killTweensOf(blocks);
+    gsap.fromTo(blocks,
+      { scale: 0.4, opacity: 0 },
+      {
+        scale: 1, opacity: 1, duration: 0.3, stagger: 0.04,
+        ease: 'back.out(1.7)', overwrite: true,
+        clearProps: 'transform,opacity'
+      }
+    );
+    // 兜底：即便动画未触发 onComplete（后台节流等），也在预期时长后强制复位
+    var safetyMs = 300 + blocks.length * 40 + 400;
+    setTimeout(function () { clearBlockInline(blocks); }, safetyMs);
   }
 
   // ── 切换损坏 ──

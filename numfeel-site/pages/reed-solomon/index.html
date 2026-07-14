@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="二维码被遮住一角照样能扫、老 CD 划痕累累还能读、旅行者号 40 亿公里传照片没雪花--背后都是同一个 1960 年的数学模型：里德-所罗门纠错码。亲手把数据打烂再一键恢复，感受数学的起死回生。">
+  <title>里德-所罗门纠错码 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-qrcode"></i> 里德-所罗门纠错码</h1>
+    <p>二维码被手指遮住一角照样能扫、划痕累累的老 CD 还能放、40 多亿公里外旅行者号传回的照片没有雪花点--背后都是同一个 1960 年的数学模型在「起死回生」。</p>
+  </div>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-art">
+      <img src="hero.jpg" alt="被污损的二维码正在被金色数据碎片自动复原的插画" loading="eager">
+    </div>
+    <div class="hero-copy">
+      <p class="hero-lead">这个几乎没人叫得出名字的数学模型，每天在你口袋里安静工作。它让二维码容忍遮挡、让 CD 原谅划痕、让深空信号穿越宇宙噪声。<strong>你亲手把数据「打烂」，点一下，数据完整复活。</strong></p>
+      <p class="hero-hint">下面从选场景开始，一步步感受纠错码怎么救场。</p>
+      <button class="btn btn-primary btn-lg" id="heroBtn"><i class="ti ti-bolt"></i> 亲手打烂一段数据试试</button>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 0：场景选择 ══════════ -->
+  <section class="section" id="sceneSection">
+    <div class="round-head">
+      <span class="tag tag-fun">选场景</span>
+      <h2><i class="ti ti-grid-dots"></i> 选一个真实场景</h2>
+    </div>
+    <p class="section-desc">每个场景对应不同的冗余参数，点一下就切换。</p>
+    <div class="scene-row" id="sceneRow">
+      <div class="scene-card active" data-scene="qrcode">
+        <div class="scene-icon"><i class="ti ti-qrcode"></i></div>
+        <h4>二维码扫描</h4>
+        <p>遮挡一角照样能扫</p>
+        <span class="scene-meta">H 级纠错约 30%</span>
+      </div>
+      <div class="scene-card" data-scene="cd">
+        <div class="scene-icon"><i class="ti ti-disc"></i></div>
+        <h4>老 CD 划痕</h4>
+        <p>划痕累累还能播放</p>
+        <span class="scene-meta">CIRC 级联约 25%</span>
+      </div>
+      <div class="scene-card" data-scene="voyager">
+        <div class="scene-icon"><i class="ti ti-rocket"></i></div>
+        <h4>旅行者号深空</h4>
+        <p>40 亿公里传照片</p>
+        <span class="scene-meta">RS 级联码</span>
+      </div>
+      <div class="scene-card" data-scene="raid">
+        <div class="scene-icon"><i class="ti ti-database"></i></div>
+        <h4>硬盘 RAID</h4>
+        <p>坏两块盘不丢数据</p>
+        <span class="scene-meta">RAID 6 双校验</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 1：编码 ══════════ -->
+  <section class="section" id="encodeSection">
+    <div class="round-head">
+      <span class="tag tag-easy">编码</span>
+      <h2><i class="ti ti-shield-plus"></i> 加上「救命的冗余」</h2>
+    </div>
+    <p class="section-desc">输入一小段文本，RS 码会在数据后面追加校验符号。共 n 个符号 = 数据 + 校验，理论上最多可恢复等于校验数个擦除。</p>
+    <div class="module">
+      <h3><i class="ti ti-keyboard"></i> 输入数据</h3>
+      <p class="module-hint">默认给了一句示例，你也可以改成自己的文本。</p>
+      <div class="input-row">
+        <input type="text" id="dataInput" value="RS码改变世界" maxlength="20" placeholder="输入文本...">
+        <button class="btn btn-primary" id="encodeBtn"><i class="ti ti-shield-plus"></i> 编码</button>
+      </div>
+      <div class="encode-info" id="encodeInfo"></div>
+    </div>
+    <div class="module">
+      <h3><i class="ti ti-grid-pattern"></i> 码字可视化</h3>
+      <p class="module-hint">蓝色方块是数据符号，金色方块是校验符号。每个符号是一个 GF(256) 域元素。</p>
+      <div class="codeword-vis" id="codewordVis">
+        <p class="placeholder-text">点「编码」生成码字方块</p>
+      </div>
+      <div class="codeword-legend">
+        <span class="legend-item"><span class="legend-box legend-data"></span> 数据符号</span>
+        <span class="legend-item"><span class="legend-box legend-parity"></span> 校验符号</span>
+        <span class="legend-item"><span class="legend-box legend-damaged"></span> 已损坏</span>
+        <span class="legend-item"><span class="legend-box legend-recovered"></span> 已恢复</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 2：损坏 ══════════ -->
+  <section class="section" id="damageSection">
+    <div class="round-head">
+      <span class="tag tag-fun">动手</span>
+      <h2><i class="ti ti-bug"></i> 把数据「打烂」</h2>
+    </div>
+    <p class="section-desc">点击任意方块把它擦除，模拟污损、丢包、遮挡。实时显示已损坏数与冗余上限。</p>
+    <div class="module">
+      <div class="damage-status" id="damageStatus">
+        <span class="status-label">已损坏 <strong id="damagedCount">0</strong> / 冗余上限 <strong id="parityCount">0</strong></span>
+        <span class="status-hint" id="damageHint">先编码再动手打烂</span>
+      </div>
+      <div class="codeword-vis" id="damageVis">
+        <p class="placeholder-text">编码后这里会出现可点击的方块</p>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-secondary btn-sm" id="clearDamageBtn"><i class="ti ti-rotate"></i> 全部复原</button>
+        <button class="btn btn-secondary btn-sm" id="randomDamageBtn"><i class="ti ti-dice-5"></i> 随机打烂</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 3：恢复 ══════════ -->
+  <section class="section" id="recoverSection">
+    <div class="round-head">
+      <span class="tag tag-medium">恢复</span>
+      <h2><i class="ti ti-heartbeat"></i> 见证复活</h2>
+    </div>
+    <p class="section-desc">点击恢复，校验符号参与计算，被损坏的方块逐个变绿复原。若损坏超过上限，数据无法恢复。</p>
+    <div class="module">
+      <div class="recover-stage">
+        <div class="codeword-vis" id="recoverVis">
+          <p class="placeholder-text">编码并打烂后，点下方按钮恢复</p>
+        </div>
+        <div class="recover-result" id="recoverResult"></div>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-primary btn-lg" id="recoverBtn" disabled><i class="ti ti-bolt"></i> 恢复数据</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 4：阈值实验 ══════════ -->
+  <section class="section" id="thresholdSection">
+    <div class="round-head">
+      <span class="tag tag-fun">实验</span>
+      <h2><i class="ti ti-chart-line"></i> 冗余越多越安全？没那么简单</h2>
+    </div>
+    <p class="section-desc">拖动滑块调节冗余比例，图表实时展示「损坏比例 -> 恢复成功率」的关系。注意阈值处的骤降--这就是纠错能力的硬边界。</p>
+    <div class="module">
+      <div class="threshold-controls">
+        <label class="slider-label">冗余比例：<strong id="redundancyVal">30%</strong></label>
+        <input type="range" id="redundancySlider" min="5" max="60" value="30" step="5">
+      </div>
+      <div class="chart-wrap">
+        <canvas id="thresholdChart" height="260"></canvas>
+      </div>
+      <div class="threshold-note" id="thresholdNote"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 5：应用场景 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-easy">科普</span>
+      <h2><i class="ti ti-world"></i> 它藏在你生活的哪里</h2>
+    </div>
+    <p class="section-desc">里德-所罗门码无处不在，只是从不露脸。</p>
+    <div class="app-grid">
+      <div class="app-card">
+        <div class="app-icon"><i class="ti ti-qrcode"></i></div>
+        <h4>二维码 QR Code</h4>
+        <p>四个纠错等级 L / M / Q / H，分别可恢复约 7% / 15% / 25% / 30% 的数据。这就是 Logo 能印在二维码中间还能扫的原因。</p>
+        <span class="app-source">来源：ISO/IEC 18004</span>
+      </div>
+      <div class="app-card">
+        <div class="app-icon"><i class="ti ti-disc"></i></div>
+        <h4>CD / DVD</h4>
+        <p>使用 CIRC（交叉交织里德-所罗门码），能纠正长达约 2.5mm 的划痕。没它你的老唱片早就花屏了。</p>
+        <span class="app-source">来源：IEC 60908 (CD-DA)</span>
+      </div>
+      <div class="app-card">
+        <div class="app-icon"><i class="ti ti-rocket"></i></div>
+        <h4>旅行者号深空通信</h4>
+        <p>40 多亿公里外的探测器，用 RS 码级联卷积码，把照片一个像素不错地传回地球。信号弱到几乎淹没在噪声里。</p>
+        <span class="app-source">来源：NASA / CCSDS 标准</span>
+      </div>
+      <div class="app-card">
+        <div class="app-icon"><i class="ti ti-database"></i></div>
+        <h4>硬盘 RAID 6 / 纠删码</h4>
+        <p>RAID 6 用双重校验容忍同时坏两块盘。云存储的纠删码本质也是 RS 码，用更高效的变体降低开销。</p>
+        <span class="app-source">来源：SNIA / 分布式存储标准</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="restart-bar">
+    <button class="btn btn-secondary" id="topBtn"><i class="ti ti-arrow-up"></i> 回到顶部再玩</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="rs-core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

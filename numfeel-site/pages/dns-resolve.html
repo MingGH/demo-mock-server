@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="1983年之前，全球互联网的地址簿是一个人手动维护的文本文件。体验HOSTS.TXT的线性查找之痛，对比DNS分层查询的优雅。">
+  <title>DNS 解析：从一人维护到分布式 | 数字直觉</title>
+  <script src="../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+    /* Header */
+    .header { text-align: center; padding: 40px 0 30px; }
+    .header h1 {
+      font-size: 2.2rem; color: #ffd700; margin-bottom: 12px;
+      background: linear-gradient(90deg, #ffd700, #fff5b0, #ffd700);
+      background-size: 200% auto;
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: 200% center; } }
+    .header p { color: #888; font-size: 0.95rem; line-height: 1.6; }
+
+    /* Sections */
+    .section {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .section h2 {
+      color: #ffd700; font-size: 1.3rem; margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-hint { color: #888; font-size: 0.85rem; margin-bottom: 18px; }
+
+    /* Scenario Cards */
+    .scenario-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .scenario-card {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.3s;
+      text-align: center;
+    }
+    .scenario-card:hover { border-color: #ffd700; background: rgba(255,215,0,0.08); }
+    .scenario-card.active { border-color: #ffd700; background: rgba(255,215,0,0.12); }
+    .scenario-card .sc-icon { font-size: 1.5rem; color: #90caf9; margin-bottom: 8px; }
+    .scenario-card .sc-title { font-size: 0.9rem; font-weight: 600; color: #e0e0e0; }
+    .scenario-card .sc-desc { font-size: 0.75rem; color: #888; margin-top: 4px; }
+
+    /* Terminal Panel */
+    .hosts-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .terminal-panel {
+      background: #0a0a0a; border-radius: 12px; border: 1px solid #333;
+      overflow: hidden; max-height: 420px; display: flex; flex-direction: column;
+    }
+    .terminal-titlebar {
+      background: #1a1a1a; padding: 8px 12px; font-size: 0.8rem; color: #888;
+      display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #333;
+    }
+    .terminal-body {
+      font-family: 'Courier New', monospace; font-size: 0.8rem; padding: 12px;
+      overflow-y: auto; flex: 1; line-height: 1.6;
+    }
+    .terminal-body .line { color: #4caf50; white-space: nowrap; padding: 1px 4px; border-radius: 2px; }
+    .terminal-body .line.scanning { background: rgba(255,215,0,0.3); color: #ffd700; }
+    .terminal-body .line.found { background: rgba(255,215,0,0.2); color: #ffd700; font-weight: bold; }
+    .terminal-body .line.header-line { color: #888; }
+    .terminal-cursor { color: #4caf50; animation: blink 1s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Operation Panel */
+    .op-panel { display: flex; flex-direction: column; gap: 12px; }
+    .op-group { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 14px; }
+    .op-group label { font-size: 0.8rem; color: #90caf9; display: block; margin-bottom: 6px; }
+    .op-input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .op-input {
+      flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px; padding: 8px 12px; color: #e0e0e0; font-size: 0.85rem;
+    }
+    .op-input:focus { outline: none; border-color: #ffd700; }
+    .btn {
+      background: rgba(255,215,0,0.15); border: 1px solid rgba(255,215,0,0.4);
+      border-radius: 8px; padding: 8px 16px; color: #ffd700; font-size: 0.85rem;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn:hover { background: rgba(255,215,0,0.25); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-green { background: rgba(129,199,132,0.15); border-color: rgba(129,199,132,0.4); color: #81c784; }
+    .btn-green:hover { background: rgba(129,199,132,0.25); }
+    .btn-red { background: rgba(255,107,107,0.15); border-color: rgba(255,107,107,0.4); color: #ff6b6b; }
+    .btn-red:hover { background: rgba(255,107,107,0.25); }
+
+    .scan-result {
+      background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px 14px;
+      font-size: 0.85rem; color: #90caf9; margin-top: 8px; display: none;
+    }
+    .scan-result.show { display: block; }
+    .scan-result .found-ip { color: #ffd700; font-weight: bold; }
+
+    .conflict-box {
+      background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3);
+      border-radius: 8px; padding: 12px; font-size: 0.82rem; color: #ff6b6b;
+      margin-top: 8px; display: none;
+    }
+    .conflict-box.show { display: block; }
+
+    /* Number Shock */
+    .number-shock { display: none; }
+    .number-shock.show { display: block; }
+    .shock-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 14px; }
+    .shock-item {
+      background: rgba(255,255,255,0.04); border-radius: 12px; padding: 18px; text-align: center;
+    }
+    .shock-value { font-size: 2rem; font-weight: bold; color: #ffd700; }
+    .shock-label { font-size: 0.8rem; color: #888; margin-top: 4px; }
+    .shock-item.danger .shock-value { color: #ff6b6b; }
+
+    /* Line counter */
+    .line-counter {
+      font-size: 0.8rem; color: #888; text-align: right; margin-top: 6px;
+    }
+    .line-counter span { color: #ffd700; font-weight: bold; }
+
+    /* DNS Query Module */
+    .dns-nodes { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; margin: 20px 0; }
+    .dns-node {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px; padding: 12px 16px; text-align: center; min-width: 90px;
+      transition: all 0.3s; position: relative;
+    }
+    .dns-node .node-icon { font-size: 1.2rem; margin-bottom: 4px; }
+    .dns-node .node-label { font-size: 0.75rem; color: #888; }
+    .dns-node.active { border-color: #ffd700; background: rgba(255,215,0,0.12); transform: scale(1.05); }
+    .dns-node.active .node-label { color: #ffd700; }
+    .dns-arrow { color: #555; font-size: 1.2rem; }
+
+    .bubble-container { min-height: 50px; display: flex; justify-content: center; align-items: center; margin: 12px 0; }
+    .bubble {
+      background: rgba(144,202,249,0.12); border: 1px solid rgba(144,202,249,0.3);
+      border-radius: 12px; padding: 10px 18px; font-size: 0.85rem; color: #90caf9;
+      max-width: 400px; text-align: center; opacity: 0;
+    }
+    .bubble.show { opacity: 1; }
+
+    .dns-summary { text-align: center; margin-top: 16px; display: none; }
+    .dns-summary.show { display: block; }
+    .dns-summary .summary-num { font-size: 1.8rem; font-weight: bold; color: #ffd700; }
+    .dns-summary .summary-label { font-size: 0.8rem; color: #888; }
+
+    .domain-cards { display: flex; gap: 10px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .domain-card {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px; padding: 10px 20px; cursor: pointer; transition: all 0.3s;
+      font-size: 0.85rem; color: #e0e0e0; font-family: monospace;
+    }
+    .domain-card:hover { border-color: #90caf9; }
+    .domain-card.active { border-color: #ffd700; background: rgba(255,215,0,0.1); color: #ffd700; }
+
+    .latency-tag {
+      font-size: 0.7rem; color: #ce93d8; background: rgba(206,147,216,0.1);
+      border-radius: 4px; padding: 2px 6px; display: inline-block; margin-top: 2px;
+    }
+
+    /* Comparison Table */
+    .compare-table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    .compare-table th, .compare-table td {
+      padding: 12px 16px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.85rem;
+    }
+    .compare-table th { color: #90caf9; font-weight: 600; }
+    .compare-table .col-old { color: #ff6b6b; }
+    .compare-table .col-new { color: #81c784; }
+    .compare-table .num-highlight { color: #ffd700; font-weight: bold; }
+    .compare-table td:first-child { color: #888; }
+
+    /* Timeline */
+    .timeline { position: relative; padding: 20px 0; }
+    .timeline::before {
+      content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
+      width: 2px; background: rgba(255,255,255,0.1); transform: translateX(-50%);
+    }
+    .tl-event {
+      position: relative; width: 50%; padding: 12px 20px; margin-bottom: 16px;
+      opacity: 0;
+    }
+    .tl-event:nth-child(odd) { left: 0; text-align: right; padding-right: 30px; }
+    .tl-event:nth-child(even) { left: 50%; padding-left: 30px; }
+    .tl-event .tl-dot {
+      position: absolute; top: 16px; width: 12px; height: 12px;
+      border-radius: 50%; background: #ffd700; border: 2px solid #16213e; z-index: 1;
+    }
+    .tl-event:nth-child(odd) .tl-dot { right: -6px; }
+    .tl-event:nth-child(even) .tl-dot { left: -6px; }
+    .tl-card {
+      background: rgba(255,255,255,0.05); border-radius: 10px; padding: 14px;
+      border: 1px solid rgba(255,255,255,0.08); transition: all 0.3s;
+    }
+    .tl-card:hover { border-color: #ffd700; }
+    .tl-year { font-size: 1.1rem; font-weight: bold; color: #ffd700; }
+    .tl-desc { font-size: 0.82rem; color: #888; margin-top: 4px; line-height: 1.5; }
+
+    .hidden { display: none !important; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container { padding: 12px; }
+      .scenario-cards { grid-template-columns: 1fr; }
+      .hosts-layout { grid-template-columns: 1fr; }
+      .shock-grid { grid-template-columns: 1fr; }
+      .dns-nodes { flex-direction: column; align-items: center; gap: 2px; }
+      .dns-node { min-width: 70px; padding: 8px 12px; }
+      .dns-node .node-icon { font-size: 1rem; }
+      .dns-node .node-label { font-size: 0.7rem; }
+      .dns-arrow { transform: rotate(90deg); font-size: 0.9rem; }
+      .bubble { max-width: 90vw; font-size: 0.8rem; padding: 8px 14px; }
+      .domain-cards { flex-direction: column; align-items: center; }
+      .domain-card { width: 100%; text-align: center; }
+      .compare-table { font-size: 0.75rem; display: block; overflow-x: auto; }
+      .compare-table th, .compare-table td { padding: 8px 10px; white-space: nowrap; }
+      .timeline::before { left: 20px; }
+      .tl-event { width: 100%; left: 0 !important; padding-left: 40px !important; padding-right: 10px !important; text-align: left !important; }
+      .tl-event .tl-dot { left: 14px !important; right: auto !important; }
+      .section { padding: 18px 14px; }
+      .header h1 { font-size: 1.6rem; }
+    }
+
+    @media (max-width: 380px) {
+      .dns-node .node-label { font-size: 0.65rem; }
+      .dns-node { min-width: 60px; padding: 6px 8px; }
+      .shock-value { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-world-www"></i> DNS 解析：从一人维护到分布式</h1>
+    <p>1983 年之前，全球互联网的「地址簿」是一个人手动维护的文本文件。<br>体验 HOSTS.TXT 的线性查找之痛，对比 DNS 分层查询的优雅。</p>
+  </div>
+
+  <!-- ════════ 模块一：HOSTS.TXT 模拟器 ════════ -->
+  <div class="section" id="module1">
+    <h2><i class="ti ti-file-text"></i> 模块一：HOSTS.TXT 模拟器</h2>
+    <p class="section-hint">选一个年代场景，亲手体验 1982 年的「域名系统」有多原始。输入主机名查找，看要扫描多少行。</p>
+
+    <div class="scenario-cards" id="scenarioCards">
+      <div class="scenario-card" data-scenario="1973">
+        <div class="sc-icon"><i class="ti ti-history"></i></div>
+        <div class="sc-title">1973 年 ARPANET</div>
+        <div class="sc-desc">40 台主机</div>
+      </div>
+      <div class="scenario-card" data-scenario="1982">
+        <div class="sc-icon"><i class="ti ti-clock-pause"></i></div>
+        <div class="sc-title">1982 年 互联网前夜</div>
+        <div class="sc-desc">500 台主机</div>
+      </div>
+      <div class="scenario-card" data-scenario="today">
+        <div class="sc-icon"><i class="ti ti-alert-triangle"></i></div>
+        <div class="sc-title">假如今天还用 HOSTS.TXT</div>
+        <div class="sc-desc">3.5 亿域名</div>
+      </div>
+    </div>
+
+    <!-- 数字冲击区（选择第三个场景时显示） -->
+    <div class="number-shock" id="numberShock">
+      <div class="shock-grid">
+        <div class="shock-item">
+          <div class="shock-value" id="shockSize">0</div>
+          <div class="shock-label">HOSTS.TXT 文件大小</div>
+        </div>
+        <div class="shock-item">
+          <div class="shock-value" id="shockTime">0</div>
+          <div class="shock-label">100Mbps 下载耗时</div>
+        </div>
+        <div class="shock-item">
+          <div class="shock-value" id="shockRate">0</div>
+          <div class="shock-label">每秒新增域名数</div>
+        </div>
+        <div class="shock-item danger">
+          <div class="shock-value"><i class="ti ti-bolt-off"></i></div>
+          <div class="shock-label">斯坦福断电 = 全球互联网瘫痪</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOSTS.TXT 终端 + 操作面板 -->
+    <div class="hosts-layout" id="hostsLayout">
+      <div class="terminal-panel">
+        <div class="terminal-titlebar">
+          <i class="ti ti-terminal-2"></i>
+          <span>HOSTS.TXT - Stanford NIC</span>
+        </div>
+        <div class="terminal-body" id="terminalBody">
+          <div class="line header-line"># 请选择一个年代场景开始体验</div>
+        </div>
+      </div>
+
+      <div class="op-panel">
+        <div class="op-group">
+          <label><i class="ti ti-search"></i> 查找主机</label>
+          <div class="op-input-row">
+            <input type="text" class="op-input" id="searchInput" placeholder="输入主机名，如 ucla-1" disabled>
+            <button class="btn" id="searchBtn" disabled>查找</button>
+          </div>
+          <div class="scan-result" id="scanResult"></div>
+        </div>
+
+        <div class="op-group">
+          <label><i class="ti ti-plus"></i> 添加主机</label>
+          <div class="op-input-row">
+            <input type="text" class="op-input" id="addNameInput" placeholder="主机名" disabled>
+            <input type="text" class="op-input" id="addIpInput" placeholder="IP 地址" disabled>
+            <button class="btn btn-green" id="addBtn" disabled>添加</button>
+          </div>
+        </div>
+
+        <div class="op-group">
+          <label><i class="ti ti-alert-octagon"></i> 命名冲突演示</label>
+          <button class="btn btn-red" id="conflictBtn" disabled>模拟冲突</button>
+          <div class="conflict-box" id="conflictBox">
+            <strong>MIT 和 Harvard 同时申请注册 "mail-server"</strong><br>
+            结果：谁先发邮件给 Elizabeth Feinler 谁赢。没有仲裁机制，没有自动检测，全靠人工判断。<br>
+            在 3.5 亿域名的今天，这种冲突每秒发生数千次。
+          </div>
+        </div>
+
+        <div class="line-counter" id="lineCounter">
+          文件行数：<span id="lineCount">0</span> 行
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ 模块二：DNS 分层查询动画 ════════ -->
+  <div class="section" id="module2">
+    <h2><i class="ti ti-route"></i> 模块二：DNS 分层查询动画</h2>
+    <p class="section-hint">选一个域名，逐步点击「下一步」，看 DNS 如何通过分层查询从根服务器找到 IP。</p>
+
+    <div class="domain-cards" id="domainCards">
+      <div class="domain-card active" data-domain="www.zhihu.com">www.zhihu.com</div>
+      <div class="domain-card" data-domain="docs.google.com">docs.google.com</div>
+      <div class="domain-card" data-domain="api.github.com">api.github.com</div>
+    </div>
+
+    <div class="dns-nodes" id="dnsNodes">
+      <div class="dns-node" data-node="browser">
+        <div class="node-icon"><i class="ti ti-browser"></i></div>
+        <div class="node-label">浏览器</div>
+      </div>
+      <span class="dns-arrow"><i class="ti ti-arrow-right"></i></span>
+      <div class="dns-node" data-node="resolver">
+        <div class="node-icon"><i class="ti ti-server"></i></div>
+        <div class="node-label">递归解析器</div>
+      </div>
+      <span class="dns-arrow"><i class="ti ti-arrow-right"></i></span>
+      <div class="dns-node" data-node="root">
+        <div class="node-icon"><i class="ti ti-world"></i></div>
+        <div class="node-label">根服务器 .</div>
+      </div>
+      <span class="dns-arrow"><i class="ti ti-arrow-right"></i></span>
+      <div class="dns-node" data-node="tld">
+        <div class="node-icon"><i class="ti ti-world-pin"></i></div>
+        <div class="node-label">TLD .com</div>
+      </div>
+      <span class="dns-arrow"><i class="ti ti-arrow-right"></i></span>
+      <div class="dns-node" data-node="auth">
+        <div class="node-icon"><i class="ti ti-shield-check"></i></div>
+        <div class="node-label">权威服务器</div>
+      </div>
+      <span class="dns-arrow"><i class="ti ti-arrow-right"></i></span>
+      <div class="dns-node" data-node="result">
+        <div class="node-icon"><i class="ti ti-ip"></i></div>
+        <div class="node-label">IP 结果</div>
+      </div>
+    </div>
+
+    <div class="bubble-container">
+      <div class="bubble" id="dnsBubble"></div>
+    </div>
+
+    <div style="text-align: center; margin: 16px 0;">
+      <button class="btn" id="startResolveBtn"><i class="ti ti-player-play"></i> 开始解析</button>
+      <button class="btn btn-green hidden" id="nextStepBtn"><i class="ti ti-arrow-right"></i> 下一步</button>
+      <button class="btn btn-green hidden" id="retryResolveBtn"><i class="ti ti-refresh"></i> 再查一次（缓存）</button>
+    </div>
+
+    <div class="dns-summary" id="dnsSummary">
+      <div class="summary-num" id="summaryQueries">4</div>
+      <div class="summary-label">总查询次数</div>
+      <div class="summary-num" id="summaryLatency" style="margin-top: 8px;">≈ 80ms</div>
+      <div class="summary-label">总耗时（含网络开销）</div>
+    </div>
+  </div>
+
+  <!-- ════════ 模块三：HOSTS.TXT vs DNS 数据对比 ════════ -->
+  <div class="section" id="module3">
+    <h2><i class="ti ti-arrows-exchange"></i> 模块三：HOSTS.TXT vs DNS 数据对比</h2>
+    <p class="section-hint">用数字说话，直观对比两种方案。关键数字滚动动画在进入视口时触发。</p>
+
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>维度</th>
+          <th class="col-old">HOSTS.TXT (1982)</th>
+          <th class="col-new">DNS (今天)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>维护者</td>
+          <td class="col-old">1 人（Elizabeth Feinler）</td>
+          <td class="col-new">全球分布式</td>
+        </tr>
+        <tr>
+          <td>记录数</td>
+          <td class="col-old num-highlight" data-count="500">~500</td>
+          <td class="col-new num-highlight" data-count="350000000">~3.5 亿</td>
+        </tr>
+        <tr>
+          <td>更新方式</td>
+          <td class="col-old">邮件申请 + FTP 下载</td>
+          <td class="col-new">秒级传播</td>
+        </tr>
+        <tr>
+          <td>查找复杂度</td>
+          <td class="col-old">O(n) 线性扫描</td>
+          <td class="col-new">O(层级) ≈ 3-4 次查询</td>
+        </tr>
+        <tr>
+          <td>单点故障</td>
+          <td class="col-old">斯坦福断电 = 全网瘫</td>
+          <td class="col-new num-highlight" data-count="13">13 组根服务器 + 任播冗余</td>
+        </tr>
+        <tr>
+          <td>命名冲突</td>
+          <td class="col-old">人工判断</td>
+          <td class="col-new">层级命名空间天然隔离</td>
+        </tr>
+        <tr>
+          <td>解析耗时</td>
+          <td class="col-old">数秒 ~ 数分钟</td>
+          <td class="col-new num-highlight">≈ 80ms（缓存命中 < 1ms）</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ════════ 模块四：历史时间线 ════════ -->
+  <div class="section" id="module4">
+    <h2><i class="ti ti-clock-hour-4"></i> 模块四：历史时间线</h2>
+    <p class="section-hint">滚动浏览 DNS 诞生的关键节点，每个事件会随滚动淡入。</p>
+
+    <div class="timeline" id="timeline">
+      <div class="tl-event">
+        <div class="tl-dot"></div>
+        <div class="tl-card">
+          <div class="tl-year">1969</div>
+          <div class="tl-desc">ARPANET 诞生，4 个节点，hosts 文件只有 4 行。一切从这里开始。</div>
+        </div>
+      </div>
+      <div class="tl-event">
+        <div class="tl-dot"></div>
+        <div class="tl-card">
+          <div class="tl-year">1973</div>
+          <div class="tl-desc">40 台主机。Elizabeth Feinler 在斯坦福 NIC 开始手动维护 HOSTS.TXT，所有人通过 FTP 下载最新版。</div>
+        </div>
+      </div>
+      <div class="tl-event">
+        <div class="tl-dot"></div>
+        <div class="tl-card">
+          <div class="tl-year">1982</div>
+          <div class="tl-desc">500+ 主机，系统不堪重负：更新延迟数天、命名冲突无法仲裁、FTP 服务器经常过载。</div>
+        </div>
+      </div>
+      <div class="tl-event">
+        <div class="tl-dot"></div>
+        <div class="tl-card">
+          <div class="tl-year">1983</div>
+          <div class="tl-desc">Paul Mockapetris 发表 RFC 882/883，发明 DNS。分层命名空间 + 分布式存储 + 缓存机制，彻底重构互联网的地址系统。</div>
+        </div>
+      </div>
+      <div class="tl-event">
+        <div class="tl-dot"></div>
+        <div class="tl-card">
+          <div class="tl-year">1984</div>
+          <div class="tl-desc">第一批 DNS 根服务器上线。全球 13 组根服务器，通过任播技术分散到数百个节点。</div>
+        </div>
+      </div>
+      <div class="tl-event">
+        <div class="tl-dot"></div>
+        <div class="tl-card">
+          <div class="tl-year">1985</div>
+          <div class="tl-desc">.com 域名开始注册，第一个是 symbolics.com。没人想到这个决定会催生数亿个域名。</div>
+        </div>
+      </div>
+      <div class="tl-event">
+        <div class="tl-dot"></div>
+        <div class="tl-card">
+          <div class="tl-year">2024</div>
+          <div class="tl-desc">全球域名总数超 3.5 亿，单次解析 ≈ 50ms，加上缓存大多数时候 < 1ms。DNS 太成功了，成功到隐形。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ════════ 数据 ════════
+  var HOST_DATA = {
+    '1973': generateHosts(40, 'arpanet'),
+    '1982': generateHosts(500, 'internet'),
+    'today': null
+  };
+
+  var DOMAIN_MAP = {
+    'www.zhihu.com': { ip: '118.89.204.198', tld: 'com', zone: 'zhihu.com', ns: 'ns1.zhihu.com', root: '192.5.6.30' },
+    'docs.google.com': { ip: '142.250.80.46', tld: 'com', zone: 'google.com', ns: 'ns1.google.com', root: '192.5.6.30' },
+    'api.github.com': { ip: '140.82.121.6', tld: 'com', zone: 'github.com', ns: 'ns1.github.com', root: '192.5.6.30' }
+  };
+
+  var DNS_STEPS_TEMPLATE = [
+    { from: 'browser', to: 'resolver', fromLabel: '浏览器', toLabel: '递归解析器' },
+    { from: 'resolver', to: 'root', fromLabel: '递归解析器', toLabel: '根服务器' },
+    { from: 'root', to: 'resolver', fromLabel: '根服务器', toLabel: '递归解析器' },
+    { from: 'resolver', to: 'tld', fromLabel: '递归解析器', toLabel: '.com TLD' },
+    { from: 'tld', to: 'resolver', fromLabel: '.com TLD', toLabel: '递归解析器' },
+    { from: 'resolver', to: 'auth', fromLabel: '递归解析器', toLabel: '权威服务器' },
+    { from: 'auth', to: 'resolver', fromLabel: '权威服务器', toLabel: '递归解析器' },
+    { from: 'resolver', to: 'browser', fromLabel: '递归解析器', toLabel: '浏览器' }
+  ];
+
+  function generateHosts(count, prefix) {
+    var arr = [];
+    var names = ['ucla', 'sri', 'ucsb', 'utah', 'mit', 'harvard', 'stanford', 'bell', 'rand', 'bbn'];
+    for (var i = 0; i < count; i++) {
+      var name = i < names.length ? names[i] : prefix + '-' + (i + 1);
+      var ip = '10.' + (i % 256) + '.' + Math.floor(i / 256) + '.' + ((i * 7) % 256);
+      arr.push({ name: name, ip: ip });
+    }
+    return arr;
+  }
+
+  // ════════ 模块一：HOSTS.TXT 模拟器 ════════
+  var currentScenario = null;
+  var currentHosts = [];
+  var terminalBody = document.getElementById('terminalBody');
+  var lineCountEl = document.getElementById('lineCount');
+
+  document.querySelectorAll('.scenario-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var scenario = card.dataset.scenario;
+      document.querySelectorAll('.scenario-card').forEach(function(c) { c.classList.remove('active'); });
+      card.classList.add('active');
+      selectScenario(scenario);
+    });
+  });
+
+  function selectScenario(scenario) {
+    currentScenario = scenario;
+    var numberShock = document.getElementById('numberShock');
+    var hostsLayout = document.getElementById('hostsLayout');
+
+    if (scenario === 'today') {
+      numberShock.classList.add('show');
+      hostsLayout.classList.add('hidden');
+      animateNumberShock();
+      return;
+    }
+
+    numberShock.classList.remove('show');
+    hostsLayout.classList.remove('hidden');
+
+    currentHosts = HOST_DATA[scenario];
+    renderTerminal(currentHosts, scenario === '1982' ? 50 : currentHosts.length);
+    lineCountEl.textContent = currentHosts.length;
+
+    document.getElementById('searchInput').disabled = false;
+    document.getElementById('searchBtn').disabled = false;
+    document.getElementById('addNameInput').disabled = false;
+    document.getElementById('addIpInput').disabled = false;
+    document.getElementById('addBtn').disabled = false;
+    document.getElementById('conflictBtn').disabled = false;
+  }
+
+  function renderTerminal(hosts, maxLines) {
+    var html = '<div class="line header-line"># HOSTS.TXT - maintained by Elizabeth Feinler @ SRI NIC</div>';
+    html += '<div class="line header-line"># Last updated: ' + (currentScenario === '1973' ? '1973-06-15' : '1982-09-20') + '</div>';
+    html += '<div class="line header-line"># Total hosts: ' + hosts.length + '</div>';
+    html += '<div class="line header-line">---</div>';
+    var limit = Math.min(maxLines, hosts.length);
+    for (var i = 0; i < limit; i++) {
+      html += '<div class="line" data-index="' + i + '">' + hosts[i].ip + '  ' + hosts[i].name + '</div>';
+    }
+    if (hosts.length > maxLines) {
+      html += '<div class="line header-line">... (' + (hosts.length - maxLines) + ' more lines)</div>';
+    }
+    html += '<div class="line terminal-cursor">_</div>';
+    terminalBody.innerHTML = html;
+  }
+
+  // 查找主机
+  document.getElementById('searchBtn').addEventListener('click', function() {
+    var query = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (!query) return;
+    performSearch(query);
+  });
+
+  document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      var query = this.value.trim().toLowerCase();
+      if (query) performSearch(query);
+    }
+  });
+
+  function performSearch(query) {
+    var lines = terminalBody.querySelectorAll('.line:not(.header-line):not(.terminal-cursor)');
+    var scanResult = document.getElementById('scanResult');
+    scanResult.classList.remove('show');
+
+    var found = false;
+    var foundIndex = -1;
+    var i = 0;
+
+    function scanNext() {
+      if (i >= lines.length) {
+        scanResult.innerHTML = '<i class="ti ti-x"></i> 未找到主机 <strong>' + query + '</strong>，共扫描 ' + lines.length + ' 行';
+        scanResult.classList.add('show');
+        return;
+      }
+
+      lines[i].classList.add('scanning');
+
+      setTimeout(function() {
+        lines[i].classList.remove('scanning');
+        var lineText = lines[i].textContent.toLowerCase();
+        if (lineText.indexOf(query) !== -1 && !found) {
+          found = true;
+          foundIndex = i;
+          lines[i].classList.add('found');
+          var parts = lines[i].textContent.trim().split(/\s+/);
+          var ip = parts[0];
+          scanResult.innerHTML = '<i class="ti ti-check"></i> 找到主机 <strong>' + query + '</strong>，IP: <span class="found-ip">' + ip + '</span>，扫描了 ' + (i + 1) + ' 行';
+          scanResult.classList.add('show');
+
+          if (typeof gsap !== 'undefined') {
+            gsap.fromTo(scanResult, { scale: 0.95, opacity: 0.5 }, { scale: 1, opacity: 1, duration: 0.3 });
+          }
+          return;
+        }
+        i++;
+        scanNext();
+      }, currentScenario === '1973' ? 30 : 15);
+    }
+
+    lines.forEach(function(l) { l.classList.remove('found', 'scanning'); });
+    scanNext();
+  }
+
+  // 添加主机
+  document.getElementById('addBtn').addEventListener('click', function() {
+    var name = document.getElementById('addNameInput').value.trim();
+    var ip = document.getElementById('addIpInput').value.trim();
+    if (!name || !ip) return;
+
+    currentHosts.push({ name: name, ip: ip });
+    var newLine = document.createElement('div');
+    newLine.className = 'line';
+    newLine.setAttribute('data-index', currentHosts.length - 1);
+    newLine.textContent = ip + '  ' + name;
+
+    var cursor = terminalBody.querySelector('.terminal-cursor');
+    terminalBody.insertBefore(newLine, cursor);
+
+    if (typeof gsap !== 'undefined') {
+      gsap.fromTo(newLine, { x: -20, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3 });
+    }
+
+    lineCountEl.textContent = currentHosts.length;
+    document.getElementById('addNameInput').value = '';
+    document.getElementById('addIpInput').value = '';
+  });
+
+  // 命名冲突
+  document.getElementById('conflictBtn').addEventListener('click', function() {
+    var box = document.getElementById('conflictBox');
+    box.classList.toggle('show');
+    if (box.classList.contains('show') && typeof gsap !== 'undefined') {
+      gsap.fromTo(box, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.4 });
+    }
+  });
+
+  function animateNumberShock() {
+    animateNumber('shockSize', 0, 10, 1.5, ' GB');
+    animateNumber('shockTime', 0, 13, 1.5, ' 分钟');
+    animateNumber('shockRate', 0, 1200, 1.5, ' /秒');
+  }
+
+  function animateNumber(id, from, to, duration, suffix) {
+    var el = document.getElementById(id);
+    var obj = { val: from };
+    if (typeof gsap !== 'undefined') {
+      gsap.to(obj, {
+        val: to, duration: duration, ease: 'power2.out',
+        onUpdate: function() {
+          el.textContent = Math.round(obj.val) + suffix;
+        }
+      });
+    } else {
+      el.textContent = to + suffix;
+    }
+  }
+
+  // ════════ 模块二：DNS 分层查询动画 ════════
+  var currentDomain = 'www.zhihu.com';
+  var dnsStepIndex = 0;
+  var dnsNodes = document.querySelectorAll('.dns-node');
+  var dnsBubble = document.getElementById('dnsBubble');
+  var dnsCache = {};
+
+  document.querySelectorAll('.domain-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      document.querySelectorAll('.domain-card').forEach(function(c) { c.classList.remove('active'); });
+      card.classList.add('active');
+      currentDomain = card.dataset.domain;
+      resetDNS();
+    });
+  });
+
+  document.getElementById('startResolveBtn').addEventListener('click', function() {
+    resetDNS();
+    document.getElementById('startResolveBtn').classList.add('hidden');
+    document.getElementById('nextStepBtn').classList.remove('hidden');
+    dnsStepIndex = 0;
+    nextDNSStep();
+  });
+
+  document.getElementById('nextStepBtn').addEventListener('click', function() {
+    dnsStepIndex++;
+    if (dnsStepIndex >= DNS_STEPS_TEMPLATE.length) {
+      finishDNSResolve();
+      return;
+    }
+    nextDNSStep();
+  });
+
+  document.getElementById('retryResolveBtn').addEventListener('click', function() {
+    if (dnsCache[currentDomain]) {
+      dnsNodes.forEach(function(n) { n.classList.remove('active'); });
+      var resultNode = document.querySelector('.dns-node[data-node="result"]');
+      var resolverNode = document.querySelector('.dns-node[data-node="resolver"]');
+
+      dnsBubble.textContent = '缓存命中！直接返回 IP：' + dnsCache[currentDomain];
+      dnsBubble.style.color = '#81c784';
+      dnsBubble.style.borderColor = 'rgba(129,199,132,0.3)';
+      dnsBubble.style.background = 'rgba(129,199,132,0.12)';
+      dnsBubble.classList.add('show');
+
+      resolverNode.classList.add('active');
+      if (typeof gsap !== 'undefined') {
+        gsap.fromTo(resolverNode, { scale: 1 }, { scale: 1.1, duration: 0.2, yoyo: true, repeat: 1 });
+      }
+
+      setTimeout(function() {
+        resultNode.classList.add('active');
+        if (typeof gsap !== 'undefined') {
+          gsap.fromTo(resultNode, { scale: 1 }, { scale: 1.15, duration: 0.2, yoyo: true, repeat: 1 });
+        }
+
+        var summary = document.getElementById('dnsSummary');
+        document.getElementById('summaryQueries').textContent = '0';
+        document.getElementById('summaryLatency').textContent = '≈ 1ms';
+        document.getElementById('summaryLatency').style.color = '#81c784';
+        summary.classList.add('show');
+      }, 300);
+    }
+  });
+
+  function resetDNS() {
+    dnsNodes.forEach(function(n) { n.classList.remove('active'); });
+    dnsBubble.classList.remove('show');
+    dnsBubble.style.color = '';
+    dnsBubble.style.borderColor = '';
+    dnsBubble.style.background = '';
+    document.getElementById('dnsSummary').classList.remove('show');
+    document.getElementById('startResolveBtn').classList.remove('hidden');
+    document.getElementById('nextStepBtn').classList.add('hidden');
+    document.getElementById('retryResolveBtn').classList.add('hidden');
+    dnsStepIndex = 0;
+  }
+
+  function nextDNSStep() {
+    dnsNodes.forEach(function(n) { n.classList.remove('active'); });
+
+    var step = DNS_STEPS_TEMPLATE[dnsStepIndex];
+    var info = DOMAIN_MAP[currentDomain];
+    var queryText = '';
+    var latency = 0;
+
+    switch (dnsStepIndex) {
+      case 0:
+        queryText = '请问 ' + currentDomain + ' 在哪？';
+        latency = 1;
+        break;
+      case 1:
+        queryText = '谁管 .' + info.tld + '？';
+        latency = 20;
+        break;
+      case 2:
+        queryText = '去问 ' + info.root;
+        latency = 20;
+        break;
+      case 3:
+        queryText = '谁管 ' + info.zone + '？';
+        latency = 15;
+        break;
+      case 4:
+        queryText = '去问 ' + info.ns;
+        latency = 15;
+        break;
+      case 5:
+        queryText = currentDomain.split('.')[0] + ' 的 A 记录？';
+        latency = 15;
+        break;
+      case 6:
+        queryText = info.ip;
+        latency = 15;
+        break;
+      case 7:
+        queryText = '结果是 ' + info.ip;
+        latency = 1;
+        break;
+    }
+
+    var fromNode = document.querySelector('.dns-node[data-node="' + step.from + '"]');
+    var toNode = document.querySelector('.dns-node[data-node="' + step.to + '"]');
+
+    if (fromNode) {
+      fromNode.classList.add('active');
+      if (typeof gsap !== 'undefined') {
+        gsap.fromTo(fromNode, { scale: 1 }, { scale: 1.08, duration: 0.2, yoyo: true, repeat: 1 });
+      }
+    }
+
+    setTimeout(function() {
+      if (toNode) {
+        toNode.classList.add('active');
+        if (typeof gsap !== 'undefined') {
+          gsap.fromTo(toNode, { scale: 1 }, { scale: 1.08, duration: 0.2, yoyo: true, repeat: 1 });
+        }
+      }
+    }, 200);
+
+    // Typewriter effect for bubble
+    dnsBubble.style.color = '#90caf9';
+    dnsBubble.style.borderColor = 'rgba(144,202,249,0.3)';
+    dnsBubble.style.background = 'rgba(144,202,249,0.12)';
+    dnsBubble.textContent = '';
+    dnsBubble.classList.add('show');
+
+    var latencyTag = document.createElement('span');
+    latencyTag.className = 'latency-tag';
+    latencyTag.textContent = ' ~' + latency + 'ms';
+
+    typeText(dnsBubble, queryText, function() {
+      dnsBubble.appendChild(document.createElement('br'));
+      dnsBubble.appendChild(latencyTag);
+    });
+  }
+
+  function typeText(el, text, callback) {
+    var i = 0;
+    var speed = 30;
+    function type() {
+      if (i < text.length) {
+        el.textContent = text.slice(0, i + 1);
+        i++;
+        setTimeout(type, speed);
+      } else if (callback) {
+        callback();
+      }
+    }
+    type();
+  }
+
+  function finishDNSResolve() {
+    var info = DOMAIN_MAP[currentDomain];
+    dnsCache[currentDomain] = info.ip;
+
+    dnsNodes.forEach(function(n) { n.classList.remove('active'); });
+    var resultNode = document.querySelector('.dns-node[data-node="result"]');
+    resultNode.classList.add('active');
+
+    dnsBubble.textContent = '解析完成！' + currentDomain + ' -> ' + info.ip;
+    dnsBubble.style.color = '#ffd700';
+    dnsBubble.style.borderColor = 'rgba(255,215,0,0.3)';
+    dnsBubble.style.background = 'rgba(255,215,0,0.12)';
+    dnsBubble.classList.add('show');
+
+    var summary = document.getElementById('dnsSummary');
+    document.getElementById('summaryQueries').textContent = '4';
+    document.getElementById('summaryLatency').textContent = '≈ 80ms';
+    document.getElementById('summaryLatency').style.color = '#ffd700';
+    summary.classList.add('show');
+
+    document.getElementById('nextStepBtn').classList.add('hidden');
+    document.getElementById('retryResolveBtn').classList.remove('hidden');
+
+    if (typeof gsap !== 'undefined') {
+      gsap.fromTo(summary, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 });
+    }
+  }
+
+  // ════════ 模块三：数字滚动动画 ════════
+  function initCountAnimation() {
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          var el = entry.target;
+          var target = parseInt(el.dataset.count);
+          var originalText = el.textContent;
+          var suffix = originalText.replace(/[\d~]/g, '').trim();
+
+          var obj = { val: 0 };
+          if (typeof gsap !== 'undefined') {
+            gsap.to(obj, {
+              val: target, duration: 1.5, ease: 'power2.out',
+              onUpdate: function() {
+                var displayVal;
+                if (target >= 100000000) {
+                  displayVal = '~' + (obj.val / 100000000).toFixed(1) + ' 亿';
+                } else if (target >= 10000) {
+                  displayVal = '~' + Math.round(obj.val).toLocaleString();
+                } else {
+                  displayVal = Math.round(obj.val);
+                }
+                el.textContent = displayVal;
+              },
+              onComplete: function() {
+                el.textContent = originalText;
+              }
+            });
+          } else {
+            el.textContent = originalText;
+          }
+          observer.unobserve(el);
+        }
+      });
+    }, { threshold: 0.5 });
+
+    document.querySelectorAll('[data-count]').forEach(function(el) {
+      observer.observe(el);
+    });
+  }
+
+  // ════════ 模块四：时间线动画 ════════
+  function initTimelineAnimation() {
+    var events = document.querySelectorAll('.tl-event');
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          var el = entry.target;
+          var isOdd = el.classList.contains('odd');
+          if (typeof gsap !== 'undefined') {
+            gsap.fromTo(el,
+              { opacity: 0, x: el.parentElement.querySelector('.tl-event:nth-child(odd)') === el ? -40 : 40 },
+              { opacity: 1, x: 0, duration: 0.6, ease: 'power2.out' }
+            );
+          } else {
+            el.style.opacity = 1;
+          }
+          observer.unobserve(el);
+        }
+      });
+    }, { threshold: 0.3 });
+
+    events.forEach(function(el) { observer.observe(el); });
+  }
+
+  // ════════ 初始化 ════════
+  initCountAnimation();
+  initTimelineAnimation();
+
+  // 默认选中第一个场景
+  document.querySelector('.scenario-card[data-scenario="1973"]').click();
+
+})();
+</script>
+</body>
+</html>

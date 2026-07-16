@@ -7,6 +7,7 @@
   <title>高智商矩阵推理测试 | 数字直觉</title>
   <script src="../components/header.js" defer></script>
   <script src="./iq-matrix-test-logic.js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -135,11 +136,49 @@
     .sources b { color: #888; }
     .hidden { display: none !important; }
 
+    /* 排行榜 */
+    .lb-section { margin-top: 30px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .lb-section h3 { color: #ffd700; font-size: 16px; margin-bottom: 16px; }
+    .lb-submit-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 16px; }
+    .lb-submit-row input { flex: 1; min-width: 140px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 14px; color: #fff; font-size: 14px; }
+    .lb-submit-row input::placeholder { color: rgba(255,255,255,0.35); }
+    .turnstile-widget { margin-bottom: 12px; }
+    .lb-status { font-size: 13px; margin-top: 8px; min-height: 20px; }
+    .lb-status.error { color: #ff6b6b; }
+    .lb-status.success { color: #81c784; }
+    .lb-status.loading { color: #90caf9; }
+    .lb-table-wrap { margin-top: 18px; }
+    .lb-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .lb-table th { color: rgba(255,255,255,0.5); font-weight: 500; padding: 8px 6px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .lb-table td { padding: 10px 6px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .lb-table tr.lb-me { background: rgba(255,215,0,0.08); }
+    .lb-rank-1 { color: #ffd700; font-weight: 700; }
+    .lb-rank-2 { color: #c0c0c0; font-weight: 700; }
+    .lb-rank-3 { color: #cd7f32; font-weight: 700; }
+    .lb-empty { text-align: center; color: rgba(255,255,255,0.3); padding: 24px; }
+    .lb-total { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 10px; text-align: right; }
+    .lb-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
     @media (max-width: 640px) {
-      .header h1 { font-size: 1.6rem; }
+      body { padding: 16px 10px; }
+      .header h1 { font-size: 1.4rem; }
+      .header p { font-size: 13px; }
       .options { grid-template-columns: repeat(2,1fr); }
       .score-grid, .insight-grid { grid-template-columns: 1fr; }
       .matrix, .options { max-width: 100%; }
+      .nback-grid { max-width: 280px; gap: 8px; }
+      .nb-cell { border-radius: 8px; }
+      .btn-row { flex-direction: column; gap: 10px; }
+      .btn-row .btn { width: 100%; }
+      .hero-lead { font-size: 13px; }
+      .card { padding: 18px 14px; }
+      .card-title { font-size: 15px; }
+      .insight-card { padding: 16px; }
+      .lb-submit-row { flex-direction: column; }
+      .lb-submit-row input { width: 100%; }
+      .lb-table { font-size: 12px; }
+      .lb-table th, .lb-table td { padding: 8px 4px; }
+      .chart-wrap { height: 220px; }
     }
   </style>
 </head>
@@ -230,6 +269,25 @@
         - Raven, J. (2000). The Raven's Progressive Matrices: Change and stability over culture and time.<br>
         - Colom et al. (2004). Working memory and intelligence are highly related constructs (r=.72)<br>
         - Haier et al. (1988). Cortical glucose metabolic rate correlates of abstract reasoning and attention (Neural Efficiency)
+      </div>
+      <!-- 排行榜 -->
+      <div class="lb-section">
+        <h3><i class="ti ti-trophy"></i> 排行榜</h3>
+        <div class="lb-submit-row">
+          <input type="text" id="lbName" maxlength="24" placeholder="你的昵称（最多 24 字）" autocomplete="off">
+          <button class="btn btn-primary" id="lbSubmitBtn"><i class="ti ti-upload"></i> 提交成绩</button>
+        </div>
+        <div id="turnstileWidget" class="turnstile-widget"></div>
+        <div class="lb-status" id="lbStatus"></div>
+        <div class="lb-table-wrap">
+          <div class="lb-table-scroll">
+            <table class="lb-table">
+              <thead><tr><th>#</th><th>昵称</th><th>矩阵</th><th>反应</th><th>记忆</th><th>综合</th></tr></thead>
+              <tbody id="lbBody"><tr><td colspan="6" class="lb-empty">加载中…</td></tr></tbody>
+            </table>
+          </div>
+          <div class="lb-total" id="lbTotal"></div>
+        </div>
       </div>
     </section>
   </div>
@@ -426,11 +484,18 @@
       $('nbProgress').textContent = '0';
       $('nbAcc').textContent = '--';
       $('nbFeedback').innerHTML = '';
-      // 倒计时提示后开始
-      $('nbFeedback').innerHTML = '<div class="fb-explain">' + n + '-back 即将开始，记住当前位置与 ' + n + ' 步前是否相同…</div>';
-      setTimeout(function () { $('nbFeedback').innerHTML = ''; runNBackStep(); }, 1400);
-    }
 
+      // 显示准备提示，等用户点击才开始
+      $('nbFeedback').innerHTML = '<div class="fb-explain" style="text-align:center;">' +
+        '<p style="font-size:16px;margin-bottom:12px;">' + n + '-back 测试</p>' +
+        '<p style="color:rgba(255,255,255,0.6);margin-bottom:16px;">方块会在九宫格中依次闪现，判断当前位置是否与 <strong style="color:#ffd700;">' + n + ' 步前</strong> 相同</p>' +
+        '<button class="btn btn-primary" id="nbReadyBtn" style="margin-top:8px;">准备好了，开始</button>' +
+        '</div>';
+      $('nbReadyBtn').onclick = function () {
+        $('nbFeedback').innerHTML = '';
+        runNBackStep();
+      };
+    }
     function runNBackStep() {
       if (state.nbStep >= state.nbSeq.positions.length) {
         finishNBackStage();
@@ -444,24 +509,48 @@
       var cell = cells[pos - 1];
       cell.classList.add('active');
 
-      // 等待用户响应窗口（闪现时间内可点）
+      // 前 n 步只是展示序列，无需作答
+      if (state.nbStep < state.nbSeq.n) {
+        $('nbSameBtn').disabled = true;
+        $('nbDiffBtn').disabled = true;
+        $('nbFeedback').innerHTML = '<div class="fb-explain" style="color:rgba(255,255,255,0.5);">记住这个位置（热身 ' + (state.nbStep + 1) + '/' + state.nbSeq.n + '）</div>';
+        state.nbTimer = setTimeout(function () {
+          cell.classList.remove('active');
+          updateNbProgress();
+          state.nbStep++;
+          state.nbTimer = setTimeout(function () {
+            $('nbFeedback').innerHTML = '';
+            runNBackStep();
+          }, NB_GAP);
+        }, NB_FLASH);
+        return;
+      }
+
+      // 正式题目：方块保持高亮，启用按钮等待用户作答
+      $('nbSameBtn').disabled = false;
+      $('nbDiffBtn').disabled = false;
+      $('nbFeedback').innerHTML = '<div class="fb-explain" style="color:#ffd700;">这个位置与 ' + state.nbSeq.n + ' 步前相同吗？</div>';
+
       var answered = false;
       var onResp = function (saidSame) {
         if (answered) return;
         answered = true;
         state.nbResponses[state.nbStep] = saidSame;
+        $('nbSameBtn').disabled = true;
+        $('nbDiffBtn').disabled = true;
+        cell.classList.remove('active');
+        var isMatch = state.nbSeq.matches[state.nbStep];
+        var correct = (saidSame === isMatch);
+        $('nbFeedback').innerHTML = '<div class="fb-explain" style="color:' + (correct ? '#81c784' : '#ff6b6b') + ';">' + (correct ? '正确' : '错误，正确答案是「' + (isMatch ? '相同' : '不同') + '」') + '</div>';
+        updateNbProgress();
+        state.nbStep++;
+        state.nbTimer = setTimeout(function () {
+          $('nbFeedback').innerHTML = '';
+          runNBackStep();
+        }, 800);
       };
       $('nbSameBtn').onclick = function () { onResp(true); };
       $('nbDiffBtn').onclick = function () { onResp(false); };
-
-      state.nbTimer = setTimeout(function () {
-        cell.classList.remove('active');
-        // 记录未答为 false
-        if (state.nbResponses[state.nbStep] === null) state.nbResponses[state.nbStep] = false;
-        updateNbProgress();
-        state.nbStep++;
-        state.nbTimer = setTimeout(runNBackStep, NB_GAP);
-      }, NB_FLASH);
     }
 
     function updateNbProgress() {
@@ -506,6 +595,9 @@
       $('iEff').textContent = '综合百分位 ' + Math.round(perf.overall * 100) + '%';
 
       drawNormChart(ms, wmAcc);
+      // 排行榜：渲染 Turnstile 并加载榜单
+      renderTurnstile();
+      loadLeaderboard();
     }
 
     function drawNormChart(ms, wmAcc) {
@@ -577,6 +669,132 @@
     }
     function fallbackCopy(t) { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); alert('结果已复制'); } catch (e) { prompt('请手动复制', t); } document.body.removeChild(ta); }
 
+
+    // ── 排行榜 ─────────────────────────────────────────
+    var LB_API = 'https://numfeel-api.996.ninja';
+    var TURNSTILE_SITE_KEY = '0x4AAAAAADsMioJW-WyC3Fwm';
+    var turnstileId = null;
+    var lastSubmittedName = null;
+
+    function renderTurnstile() {
+      var container = $('turnstileWidget');
+      if (!container) return;
+      if (typeof turnstile === 'undefined') { setTimeout(renderTurnstile, 400); return; }
+      if (turnstileId !== null) return;
+      turnstileId = turnstile.render(container, {
+        sitekey: TURNSTILE_SITE_KEY,
+        action: 'iq-matrix-submit',
+        theme: 'dark'
+      });
+    }
+    function resetTurnstile() {
+      if (turnstileId !== null && typeof turnstile !== 'undefined') {
+        turnstile.reset(turnstileId);
+      }
+    }
+    function getTurnstileToken() {
+      if (typeof turnstile === 'undefined' || turnstileId === null) return null;
+      return turnstile.getResponse(turnstileId) || null;
+    }
+
+    function submitScore() {
+      var statusEl = $('lbStatus');
+      var name = ($('lbName').value || '').trim();
+      if (!name) { statusEl.className = 'lb-status error'; statusEl.textContent = '先起个昵称吧'; return; }
+      if (name.length > 24) { statusEl.className = 'lb-status error'; statusEl.textContent = '昵称最多24个字符'; return; }
+      var token = getTurnstileToken();
+      if (!token) { statusEl.className = 'lb-status error'; statusEl.textContent = '请先完成上方的人机验证'; return; }
+
+      var ms = L.computeMatrixScore(state.results);
+      var wmAcc = (state.nbAcc2 + state.nbAcc3) / 2;
+      var perf = L.summarizePerformance(ms, wmAcc);
+
+      var btn = $('lbSubmitBtn');
+      btn.disabled = true;
+      statusEl.className = 'lb-status loading';
+      statusEl.textContent = '正在提交…';
+
+      var body = {
+        name: name,
+        matrixAccuracy: Math.round(ms.accuracy * 100),
+        avgReactionMs: Math.round(ms.avgRT),
+        wmAccuracy: Math.round(wmAcc * 100),
+        overallPercentile: Math.round(perf.overall * 100),
+        cfTurnstileToken: token
+      };
+
+      fetch(LB_API + '/iq-matrix/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+        .then(function (r) { return r.json().then(function (j) { return { http: r.status, json: j }; }); })
+        .then(function (res) {
+          var j = res.json;
+          if (j.status === 200 && j.data) {
+            lastSubmittedName = name;
+            statusEl.className = 'lb-status success';
+            statusEl.textContent = '提交成功！你是第 ' + j.data.rank + ' 名（共 ' + j.data.total + ' 人）';
+            loadLeaderboard();
+          } else if (res.http === 429 || j.status === 429) {
+            statusEl.className = 'lb-status error';
+            statusEl.textContent = '提交太频繁了，歇会儿再来';
+          } else {
+            statusEl.className = 'lb-status error';
+            statusEl.textContent = j.message || '提交失败，检查下网络';
+          }
+        })
+        .catch(function () {
+          statusEl.className = 'lb-status error';
+          statusEl.textContent = '网络错误，稍后重试';
+        })
+        .finally(function () {
+          btn.disabled = false;
+          resetTurnstile();
+        });
+    }
+
+    function loadLeaderboard() {
+      fetch(LB_API + '/iq-matrix/leaderboard?limit=20')
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (j.status === 200 && j.data) { renderLeaderboard(j.data); }
+          else { renderLeaderboard({ leaders: [], total: 0 }); }
+        })
+        .catch(function () {
+          $('lbBody').innerHTML = '<tr><td colspan="6" class="lb-empty">榜单加载失败，刷新页面重试</td></tr>';
+        });
+    }
+
+    function renderLeaderboard(data) {
+      var body = $('lbBody');
+      var leaders = data.leaders || [];
+      if (leaders.length === 0) {
+        body.innerHTML = '<tr><td colspan="6" class="lb-empty">还没有人上榜，来当第一个</td></tr>';
+        $('lbTotal').textContent = '';
+        return;
+      }
+      body.innerHTML = leaders.map(function (d) {
+        var rankCls = d.rank <= 3 ? ' class="lb-rank-' + d.rank + '"' : '';
+        var meCls = (lastSubmittedName && d.name === lastSubmittedName) ? ' class="lb-me"' : '';
+        return '<tr' + meCls + '>' +
+          '<td' + rankCls + '>' + d.rank + '</td>' +
+          '<td>' + escHtml(d.name) + '</td>' +
+          '<td>' + d.matrixAccuracy + '%</td>' +
+          '<td>' + (d.avgReactionMs / 1000).toFixed(1) + 's</td>' +
+          '<td>' + d.wmAccuracy + '%</td>' +
+          '<td style="color:#ffd700;font-weight:600;">' + d.overallPercentile + '%</td>' +
+          '</tr>';
+      }).join('');
+      $('lbTotal').textContent = '共 ' + data.total + ' 人参与';
+    }
+
+    function escHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+
     // ── 事件绑定 ───────────────────────────────────────
     $('startMatrixBtn').onclick = startMatrix;
     $('startNbackBtn').onclick = startNbackOnly;
@@ -584,6 +802,7 @@
       hide($('resultSection')); show($('heroSection')); state.mode = 'idle'; state.locked = false;
     };
     $('shareBtn').onclick = shareResult;
+    $('lbSubmitBtn').onclick = submitScore;
 
     // 构建初始 N-back 网格（9 格）
     var g = $('nbackGrid');

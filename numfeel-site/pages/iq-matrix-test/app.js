@@ -4,7 +4,7 @@
   var L = window.IQMatrixLogic;
   var QUESTION_TIME_SECONDS = 30;
   var NB_FLASH_MS = 800;
-  var NB_RESPONSE_WINDOW_MS = 1300;
+  var NB_GAP_MS = 500;
   var NB_TRIALS = 20;
   var API_BASE = 'https://numfeel-api.996.ninja';
   var TURNSTILE_SITE_KEY = '0x4AAAAAADsMioJW-WyC3Fwm';
@@ -291,53 +291,47 @@
     var cells = $('nbackGrid').children;
     Array.prototype.forEach.call(cells, function (cell) { cell.classList.remove('active'); });
     cells[position - 1].classList.add('active');
+    $('nbSameBtn').disabled = true;
+    $('nbDiffBtn').disabled = true;
 
     if (step < state.nbSeq.n) {
-      $('nbSameBtn').disabled = true;
-      $('nbDiffBtn').disabled = true;
       $('nbFeedback').innerHTML = '<div class="fb-explain">记住位置（热身 ' + (step + 1) + '/' + state.nbSeq.n + '）</div>';
       scheduleNBack(function () { cells[position - 1].classList.remove('active'); }, NB_FLASH_MS);
       scheduleNBack(function () {
         state.nbStep++;
         $('nbFeedback').innerHTML = '';
         runNBackStep();
-      }, NB_RESPONSE_WINDOW_MS);
+      }, NB_FLASH_MS + NB_GAP_MS);
       return;
     }
 
-    state.nbAccepting = true;
-    $('nbSameBtn').disabled = false;
-    $('nbDiffBtn').disabled = false;
-    $('nbFeedback').innerHTML = '<div class="fb-explain">是否与 ' + state.nbSeq.n + ' 步前相同？</div>';
-    scheduleNBack(function () { cells[position - 1].classList.remove('active'); }, NB_FLASH_MS);
+    $('nbFeedback').innerHTML = '<div class="fb-explain">记住当前位置…</div>';
     scheduleNBack(function () {
-      finalizeNBackStep(step);
-    }, NB_RESPONSE_WINDOW_MS);
+      if (state.mode !== 'nback' || step !== state.nbStep) return;
+      cells[position - 1].classList.remove('active');
+      state.nbAccepting = true;
+      $('nbSameBtn').disabled = false;
+      $('nbDiffBtn').disabled = false;
+      $('nbFeedback').innerHTML = '<div class="fb-explain">是否与 ' + state.nbSeq.n + ' 步前相同？作答后进入下一题</div>';
+    }, NB_FLASH_MS);
   }
 
   function handleNBackResponse(saidSame) {
     if (!state.nbAccepting || state.mode !== 'nback') return;
     state.nbAccepting = false;
-    state.nbResponses[state.nbStep] = saidSame;
+    var step = state.nbStep;
+    state.nbResponses[step] = saidSame;
     $('nbSameBtn').disabled = true;
     $('nbDiffBtn').disabled = true;
-    var correct = saidSame === state.nbSeq.matches[state.nbStep];
+    var correct = saidSame === state.nbSeq.matches[step];
     $('nbFeedback').innerHTML = '<div class="fb-explain ' + (correct ? 'v-green' : 'fb-wrong') + '">' +
-      (correct ? '正确' : '错误，正确答案是「' + (state.nbSeq.matches[state.nbStep] ? '相同' : '不同') + '」') + '</div>';
-  }
-
-  function finalizeNBackStep(step) {
-    if (step !== state.nbStep) return;
-    if (state.nbAccepting) {
-      state.nbAccepting = false;
-      state.nbResponses[step] = null;
-      $('nbFeedback').innerHTML = '<div class="fb-wrong">未作答，本题计错</div>';
-    }
-    $('nbSameBtn').disabled = true;
-    $('nbDiffBtn').disabled = true;
+      (correct ? '正确' : '错误，正确答案是「' + (state.nbSeq.matches[step] ? '相同' : '不同') + '」') + '</div>';
     updateNBackProgress();
     state.nbStep++;
-    runNBackStep();
+    scheduleNBack(function () {
+      $('nbFeedback').innerHTML = '';
+      runNBackStep();
+    }, NB_GAP_MS);
   }
 
   function updateNBackProgress() {

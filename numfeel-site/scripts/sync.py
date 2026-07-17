@@ -3,7 +3,7 @@
 sync.py — 从 data/demos.json 同步生成：
   1. sitemap.xml
   2. README.md 演示列表
-  3. 为每个 pages/*.html 注入 meta description（如果还没有）
+  3. 为 pages/ 下的 HTML（含子目录 index.html）注入 meta description（如果还没有）
 
 用法：python3 scripts/sync.py
 """
@@ -105,44 +105,43 @@ with open(README, 'w', encoding='utf-8') as f:
 
 print(f'✓ README.md 演示列表已更新，共 {len(all_demos)} 个 demo')
 
-# ── 3. 为 pages/*.html 注入 meta description ─────────────
-# 建立 href basename → desc 的映射
+# ── 3. 为 pages/ 下的 HTML 注入 meta description ──────────
+# href 使用相对于站点根目录的 POSIX 路径，目录型页面映射到 index.html。
 desc_map = {}
 for demo in all_demos:
-    basename = os.path.basename(demo['href'])  # xxx.html
-    # desc 去掉中文引号，截断到 120 字符
+    href = demo['href'].strip('/')
+    html_href = f'{href}/index.html' if not href.endswith('.html') else href
     desc = demo['desc'].replace('「', '').replace('」', '')
     if len(desc) > 120:
         desc = desc[:120] + '...'
-    desc_map[basename] = desc
+    desc_map[html_href] = desc
 
 injected = 0
-skipped  = 0
+skipped = 0
 
-for filename in os.listdir(PAGES_DIR):
-    if not filename.endswith('.html'):
-        continue
-    if filename not in desc_map:
-        continue
+for current_dir, _, filenames in os.walk(PAGES_DIR):
+    for filename in filenames:
+        if not filename.endswith('.html'):
+            continue
+        filepath = os.path.join(current_dir, filename)
+        relative_href = os.path.relpath(filepath, ROOT).replace(os.sep, '/')
+        if relative_href not in desc_map:
+            continue
 
-    filepath = os.path.join(PAGES_DIR, filename)
-    with open(filepath, 'r', encoding='utf-8') as f:
-        html = f.read()
+        with open(filepath, 'r', encoding='utf-8') as f:
+            html = f.read()
 
-    # 已有 meta description 就跳过
-    if 'name="description"' in html or "name='description'" in html:
-        skipped += 1
-        continue
+        if 'name="description"' in html or "name='description'" in html:
+            skipped += 1
+            continue
 
-    desc = desc_map[filename].replace('"', '&quot;')
-    meta_tag = f'  <meta name="description" content="{desc}">\n'
-
-    # 插在 <title> 之前
-    new_html = re.sub(r'(\s*<title>)', f'\n{meta_tag}\\1', html, count=1)
-    if new_html != html:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(new_html)
-        injected += 1
+        desc = desc_map[relative_href].replace('"', '&quot;')
+        meta_tag = f'  <meta name="description" content="{desc}">\n'
+        new_html = re.sub(r'(\s*<title>)', f'\n{meta_tag}\\1', html, count=1)
+        if new_html != html:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(new_html)
+            injected += 1
 
 print(f'✓ meta description：注入 {injected} 个页面，跳过 {skipped} 个（已有）')
 print('\n全部完成。')

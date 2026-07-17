@@ -30,10 +30,10 @@ import java.util.function.Predicate;
  * <p>
  * 规则（每个 IP）：
  * <ul>
- *   <li>全局：每分钟 1000 次（所有请求）</li>
+ *   <li>全局：每分钟 200 次（所有请求）</li>
  *   <li>{@code POST /fingerprint/collect}：每分钟 60 次</li>
  *   <li>{@code POST /social-engineering/submit}：每分钟 30 次</li>
- *   <li>其余写接口（各种 {@code /submit}、{@code POST /inference/leaderboard}）：每分钟 10 次</li>
+ *   <li>其余写接口（各种 {@code /submit}、排行榜 POST）：每分钟 10 次</li>
  * </ul>
  * 命中任一规则上限即返回 429。请求需同时满足全局规则与最具体的匹配规则。
  */
@@ -87,7 +87,7 @@ public class RateLimitWebFilter implements WebFilter {
 
     public RateLimitWebFilter() {
         // 全局：200/min
-        rules.add(new Rule(req -> true, req -> "global", 1000, 60));
+        rules.add(new Rule(req -> true, req -> "global", 200, 60));
         // 指纹采集：60/min
         rules.add(new Rule(isPost("/fingerprint/collect"), RateLimitWebFilter::routeKey, 60, 60));
         // 社工防骗提交：30/min
@@ -107,7 +107,7 @@ public class RateLimitWebFilter implements WebFilter {
             // 指纹与社工有更专门的规则，这里排除避免重复计入 10/min 桶
             return !path.endsWith("/fingerprint/collect") && !path.endsWith("/social-engineering/submit");
         }
-        return "POST".equals(method) && path.endsWith("/inference/leaderboard");
+        return "POST".equals(method) && path.endsWith("/leaderboard");
     }
 
     private static String routeKey(ServerHttpRequest req) {

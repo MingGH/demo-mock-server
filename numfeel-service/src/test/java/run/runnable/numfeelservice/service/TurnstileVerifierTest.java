@@ -140,6 +140,56 @@ class TurnstileVerifierTest {
     }
 
     @Test
+    void verify_expectedAction_matchesResponse() {
+        mockServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"success\":true,\"action\":\"iq-matrix-submit\",\"hostname\":\"numfeel.996.ninja\"}"));
+
+        StepVerifier.create(verifier.verify("valid-token", "127.0.0.1", "iq-matrix-submit"))
+                .verifyComplete();
+    }
+
+    @Test
+    void verify_expectedAction_rejectsTokenFromAnotherWidget() {
+        mockServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"success\":true,\"action\":\"another-action\"}"));
+
+        StepVerifier.create(verifier.verify("valid-token", "127.0.0.1", "iq-matrix-submit"))
+                .expectErrorMatches(error -> error instanceof IllegalArgumentException
+                        && "Turnstile action mismatch".equals(error.getMessage()))
+                .verify();
+    }
+
+    @Test
+    void verify_expectedHostname_matchesResponse() {
+        mockServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"success\":true,\"action\":\"iq-matrix-submit\",\"hostname\":\"numfeel.996.ninja\"}"));
+
+        StepVerifier.create(verifier.verify("valid-token", "127.0.0.1",
+                        "iq-matrix-submit", "numfeel.996.ninja"))
+                .verifyComplete();
+    }
+
+    @Test
+    void verify_expectedHostname_rejectsAnotherHost() {
+        mockServer.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("{\"success\":true,\"action\":\"iq-matrix-submit\",\"hostname\":\"evil.example\"}"));
+
+        StepVerifier.create(verifier.verify("valid-token", "127.0.0.1",
+                        "iq-matrix-submit", "numfeel.996.ninja"))
+                .expectErrorMatches(error -> error instanceof IllegalArgumentException
+                        && "Turnstile hostname mismatch".equals(error.getMessage()))
+                .verify();
+    }
+
+    @Test
     void verify_invalidJsonResponse_returnsUnavailable() {
         mockServer.enqueue(new MockResponse()
                 .setResponseCode(200)

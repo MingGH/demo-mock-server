@@ -421,3 +421,16 @@ CREATE TABLE IF NOT EXISTS brain_compute_leaderboard (
     INDEX idx_score (score DESC),
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 矩阵推理与工作记忆挑战排行榜
+CREATE TABLE IF NOT EXISTS iq_matrix_leaderboard (
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name             VARCHAR(96)  NOT NULL,
+    matrix_accuracy  TINYINT      NOT NULL,
+    avg_reaction_ms  INT          NOT NULL,
+    wm_accuracy      TINYINT      NOT NULL,
+    overall_score    TINYINT      NOT NULL,
+    created_at       BIGINT       NOT NULL,
+    INDEX idx_iq_rank (overall_score DESC, matrix_accuracy DESC, wm_accuracy DESC, avg_reaction_ms ASC),
+    INDEX idx_iq_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

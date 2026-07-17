@@ -120,6 +120,19 @@ public final class GameplayEntities {
     ) {
     }
 
+    /** 矩阵推理与工作记忆挑战排行榜表映射。 */
+    @Table("iq_matrix_leaderboard")
+    public record IqMatrixEntry(
+            @Id Long id,
+            String name,
+            @Column("matrix_accuracy") int matrixAccuracy,
+            @Column("avg_reaction_ms") int avgReactionMs,
+            @Column("wm_accuracy") int wmAccuracy,
+            @Column("overall_score") int overallScore,
+            @Column("created_at") long createdAt
+    ) {
+    }
+
     /** 无限猴子实验统计表映射。 */
     @Table("monkey_stats")
     public record MonkeyStat(

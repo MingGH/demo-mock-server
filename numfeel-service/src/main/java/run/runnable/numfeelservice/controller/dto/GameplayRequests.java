@@ -159,6 +159,24 @@ public final class GameplayRequests {
     }
 
     /**
+     * 矩阵推理与工作记忆排行榜提交参数。
+     *
+     * @param name 玩家昵称
+     * @param matrixAccuracy 9 道矩阵题正确率（0-100）
+     * @param avgReactionMs 答对矩阵题的平均反应时间（毫秒）
+     * @param wmAccuracy 2-back 与 3-back 的平均正确率（0-100）
+     * @param cfTurnstileToken Cloudflare Turnstile 人机验证 token
+     */
+    public record IqMatrixSubmitRequest(
+            String name,
+            Integer matrixAccuracy,
+            Integer avgReactionMs,
+            Integer wmAccuracy,
+            String cfTurnstileToken
+    ) {
+    }
+
+    /**
      * 无限猴子实验提交参数。
      *
      * @param targetText 目标文本

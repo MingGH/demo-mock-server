@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="完成矩阵推理与 N-back 工作记忆挑战，查看分项成绩和全站排行榜。题目实时生成，本工具仅供趣味认知训练，不用于 IQ 诊断。">
+  <title>矩阵推理与工作记忆挑战 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./iq-matrix-test-logic.js" defer></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1><i class="ti ti-brain"></i> 矩阵推理与工作记忆挑战</h1>
+      <p>实时生成的模式识别题与 N-back 任务，用于趣味认知训练，不等同于标准化 IQ 测验</p>
+    </header>
+
+    <section class="card hero" id="heroSection">
+      <span class="tag tag-fun">趣味实验</span>
+      <p class="hero-lead">先完成 9 道矩阵推理，再挑战 2-back 与 3-back。<b>完整挑战</b>结束后可以提交全站排行榜。</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="startMatrixBtn"><i class="ti ti-grid-dots"></i> 开始完整挑战</button>
+        <button class="btn btn-secondary" id="startNbackBtn"><i class="ti ti-cpu"></i> 仅练习工作记忆</button>
+      </div>
+      <p class="hero-note">完整挑战约需 8–12 分钟；仅工作记忆模式不会生成综合排名</p>
+    </section>
+
+    <section class="card hidden" id="matrixSection" aria-live="polite">
+      <div class="card-title"><i class="ti ti-grid-dots"></i> 矩阵推理</div>
+      <p class="hint">找出 3×3 矩阵每一行的变化规则，选择右下角缺失图形。每题 30 秒，超时计错。</p>
+      <div class="test-bar">
+        <div class="test-meta">
+          <span class="meta-chip">第 <b id="qIndex">1</b> / 9 题</span>
+          <span class="meta-chip">用时 <b id="qTimer">0.0</b>s</span>
+          <span id="qLevelTag" class="tag tag-easy">入门</span>
+        </div>
+        <div class="timer-wrap">
+          <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+          <div class="timer-label" id="timerLabel">剩余 30s</div>
+        </div>
+      </div>
+      <div class="matrix" id="matrixGrid"></div>
+      <div class="options-label">从下列 6 个选项中选择答案</div>
+      <div class="options" id="optionsGrid"></div>
+      <div class="feedback" id="feedback"></div>
+    </section>
+
+    <section class="card hidden" id="nbackSection" aria-live="polite">
+      <div class="card-title"><i class="ti ti-cpu"></i> 工作记忆测试（N-back）</div>
+      <p class="hint">方块显示 800ms，随后留出 500ms 作答。判断当前位置是否与 <b>N 步之前</b>相同；漏答计错。</p>
+      <div class="nb-level-tag" id="nbLevelTag">2-back 阶段</div>
+      <div class="nb-progress">进度：<b id="nbProgress">0</b> / <span id="nbTotal">20</span> | 正确率：<b id="nbAcc">--</b></div>
+      <div class="nback-grid" id="nbackGrid"></div>
+      <div class="nb-row">
+        <button class="nb-btn nb-same" id="nbSameBtn" disabled><i class="ti ti-check"></i> 相同</button>
+        <button class="nb-btn nb-diff" id="nbDiffBtn" disabled><i class="ti ti-x"></i> 不同</button>
+      </div>
+      <div class="feedback" id="nbFeedback"></div>
+    </section>
+
+    <section class="card hidden" id="resultSection">
+      <div class="card-title"><i class="ti ti-chart-histogram"></i> 挑战结果</div>
+      <p class="hint">综合分按矩阵正确率 50%、工作记忆 40%、答对题速度 10% 计算；速度分会受矩阵正确率约束，避免盲猜获益。</p>
+      <div class="score-grid">
+        <div class="score-box"><div class="label">模式识别正确率</div><div class="value v-gold" id="rMatrix">--</div><div class="sub" id="rMatrixSub">9 道矩阵题</div></div>
+        <div class="score-box"><div class="label">答对题平均反应</div><div class="value v-blue" id="rRT">--</div><div class="sub" id="rRTSub">只统计答对题目</div></div>
+        <div class="score-box"><div class="label">工作记忆正确率</div><div class="value v-green" id="rWM">--</div><div class="sub" id="rWMSub">2-back 与 3-back 平均</div></div>
+      </div>
+      <div class="overall-box hidden" id="overallBox">
+        <span>本次综合分</span><strong id="rOverall">--</strong><span>/ 100</span>
+      </div>
+      <div class="chart-wrap" id="chartWrap"><canvas id="resultChart"></canvas></div>
+      <div class="insight-grid">
+        <div class="insight-card"><div class="ic-title v-gold"><i class="ti ti-bolt"></i> 模式识别</div><div class="ic-body">观察正确率与作答过程，不要把少量随机题直接换算成 IQ 数值。</div><div class="ic-stat" id="iMatrix">--</div></div>
+        <div class="insight-card"><div class="ic-title v-green"><i class="ti ti-cpu"></i> 工作记忆</div><div class="ic-body">N-back 衡量持续更新和比对短时信息的表现，状态、设备和练习都会影响结果。</div><div class="ic-stat" id="iWM">--</div></div>
+        <div class="insight-card"><div class="ic-title v-blue"><i class="ti ti-gauge"></i> 综合表现</div><div class="ic-body">综合分只服务于本站同规则挑战排名，不是医学、心理学或智力诊断结论。</div><div class="ic-stat" id="iOverall">--</div></div>
+      </div>
+      <div class="btn-row result-actions">
+        <button class="btn btn-primary" id="retryBtn"><i class="ti ti-refresh"></i> 再测一次</button>
+        <button class="btn btn-secondary" id="shareBtn"><i class="ti ti-copy"></i> 复制结果</button>
+        <a class="btn btn-secondary" href="#leaderboardSection"><i class="ti ti-trophy"></i> 查看排行榜</a>
+      </div>
+      <div class="sources"><b>说明：</b>本挑战借鉴矩阵推理和 N-back 任务形式，但题目、计分与样本均未经标准化常模验证。不同设备、环境和熟练度会影响结果，请勿据此进行个人能力诊断。</div>
+    </section>
+
+    <section class="card leaderboard-card" id="leaderboardSection">
+      <div class="card-title card-title-row">
+        <span><i class="ti ti-trophy"></i> 全站排行榜</span>
+        <button class="icon-btn" id="lbRefreshBtn" title="刷新排行榜" aria-label="刷新排行榜"><i class="ti ti-refresh"></i></button>
+      </div>
+      <p class="hint">榜单始终位于页面底部。完成完整挑战后，提交入口会在这里解锁。</p>
+      <div class="lb-locked" id="lbLocked"><i class="ti ti-lock"></i> 完整挑战完成后可提交成绩</div>
+      <div class="lb-submit-panel hidden" id="lbSubmitPanel">
+        <div class="lb-submit-row">
+          <label class="sr-only" for="lbName">排行榜昵称</label>
+          <input type="text" id="lbName" maxlength="24" placeholder="你的昵称（最多 24 个字符）" autocomplete="nickname">
+          <button class="btn btn-primary" id="lbSubmitBtn"><i class="ti ti-upload"></i> 提交成绩</button>
+        </div>
+        <div id="turnstileWidget" class="turnstile-widget"></div>
+      </div>
+      <div class="lb-status loading" id="lbStatus" aria-live="polite">正在加载排行榜…</div>
+      <div class="lb-table-wrap">
+        <div class="lb-table-scroll">
+          <table class="lb-table">
+            <thead><tr><th>#</th><th>昵称</th><th>矩阵</th><th>答对题反应</th><th>记忆</th><th>综合</th></tr></thead>
+            <tbody id="lbBody"><tr><td colspan="6" class="lb-empty">加载中…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="lb-total" id="lbTotal"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

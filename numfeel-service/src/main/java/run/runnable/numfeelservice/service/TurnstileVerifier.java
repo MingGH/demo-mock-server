@@ -44,6 +44,31 @@ public class TurnstileVerifier {
      * @return 验证通过返回空 Mono，失败返回 error
      */
     public Mono<Void> verify(String token, String remoteIp) {
+        return verify(token, remoteIp, null, null);
+    }
+
+    /**
+     * 校验 Turnstile token，并在指定时验证 widget action，防止其他页面的 token 被复用。
+     *
+     * @param token 前端生成的 token
+     * @param remoteIp 客户端真实 IP
+     * @param expectedAction 期望 action；为空时不校验
+     * @return 验证通过返回空 Mono，失败返回 error
+     */
+    public Mono<Void> verify(String token, String remoteIp, String expectedAction) {
+        return verify(token, remoteIp, expectedAction, null);
+    }
+
+    /**
+     * 校验 Turnstile token 的成功状态、action 与 hostname。
+     *
+     * @param token 前端生成的 token
+     * @param remoteIp 客户端真实 IP
+     * @param expectedAction 期望 action；为空时不校验
+     * @param expectedHostname 期望 hostname；为空时不校验
+     * @return 验证通过返回空 Mono，失败返回 error
+     */
+    public Mono<Void> verify(String token, String remoteIp, String expectedAction, String expectedHostname) {
         if (token == null || token.isBlank()) {
             return Mono.error(new IllegalArgumentException("turnstile token is required"));
         }
@@ -55,26 +80,38 @@ public class TurnstileVerifier {
                         .with("remoteip", remoteIp != null ? remoteIp : ""))
                 .retrieve()
                 .bodyToMono(SiteverifyResponse.class)
-                .<Void>flatMap(r -> {
-                    if (r.success()) {
-                        return Mono.empty();
+                .<Void>flatMap(response -> {
+                    if (!response.success()) {
+                        String errors = response.errorCodes() != null
+                                ? String.join(",", response.errorCodes())
+                                : "unknown";
+                        log.warn("Turnstile verification failed: {}", errors);
+                        return Mono.error(new IllegalArgumentException(
+                                "Turnstile verification failed: " + errors));
                     }
-                    String errors = r.errorCodes() != null
-                            ? String.join(",", r.errorCodes())
-                            : "unknown";
-                    log.warn("Turnstile verification failed: {}", errors);
-                    return Mono.error(new IllegalArgumentException(
-                            "Turnstile verification failed: " + errors));
+                    if (expectedAction != null && !expectedAction.equals(response.action())) {
+                        log.warn("Turnstile action mismatch: expected={}, actual={}",
+                                expectedAction, response.action());
+                        return Mono.error(new IllegalArgumentException("Turnstile action mismatch"));
+                    }
+                    if (expectedHostname != null && !expectedHostname.equalsIgnoreCase(response.hostname())) {
+                        log.warn("Turnstile hostname mismatch: expected={}, actual={}",
+                                expectedHostname, response.hostname());
+                        return Mono.error(new IllegalArgumentException("Turnstile hostname mismatch"));
+                    }
+                    return Mono.empty();
                 })
-                .onErrorMap(e -> !(e instanceof IllegalArgumentException),
-                        e -> {
-                            log.warn("Turnstile siteverify request failed: {}", e.getMessage());
+                .onErrorMap(error -> !(error instanceof IllegalArgumentException),
+                        error -> {
+                            log.warn("Turnstile siteverify request failed: {}", error.getMessage());
                             return new IllegalArgumentException("Turnstile verification unavailable");
                         });
     }
 
     /** Cloudflare siteverify 返回格式。 */
     record SiteverifyResponse(boolean success,
+                              String action,
+                              String hostname,
                               @JsonProperty("error-codes") List<String> errorCodes) {
     }
 }

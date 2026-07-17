@@ -197,6 +197,32 @@ public final class GameplayResponses {
     ) {
     }
 
+    /** 矩阵挑战提交响应。 @param rank 当前名次 @param total 总人数 @param overallScore 后端权威综合分 */
+    public record IqMatrixSubmitResponse(
+            long rank,
+            long total,
+            int overallScore
+    ) {
+    }
+
+    /** 矩阵挑战排行榜条目。 @param rank 名次 @param name 昵称 @param matrixAccuracy 矩阵正确率 @param avgReactionMs 答对题平均反应时间 @param wmAccuracy 工作记忆正确率 @param overallScore 综合分 */
+    public record IqMatrixLeader(
+            int rank,
+            String name,
+            int matrixAccuracy,
+            int avgReactionMs,
+            int wmAccuracy,
+            int overallScore
+    ) {
+    }
+
+    /** 矩阵挑战排行榜响应。 @param leaders 排行榜列表 @param total 总人数 */
+    public record IqMatrixTopResponse(
+            List<IqMatrixLeader> leaders,
+            long total
+    ) {
+    }
+
     /** @param targetText 成功生成的目标文本 @param targetLength 目标长度 @param totalAttempts 尝试次数 @param success 是否成功 */
     public record MonkeyLeaderboardEntry(
             String targetText,

@@ -60,6 +60,25 @@ class RateLimitWebFilterTest {
         assertThat(rejected.getResponse().getStatusCode().value()).isEqualTo(429);
     }
 
+    @Test
+    void iqMatrixLeaderboardPostUsesGenericWriteLimit() {
+        RateLimitWebFilter filter = new RateLimitWebFilter();
+        AtomicInteger passed = new AtomicInteger();
+        WebFilterChain chain = exchange -> {
+            passed.incrementAndGet();
+            return Mono.empty();
+        };
+
+        for (int i = 0; i < 10; i++) {
+            filter.filter(exchange(HttpMethod.POST, "/iq-matrix/leaderboard"), chain).block();
+        }
+        MockServerWebExchange rejected = exchange(HttpMethod.POST, "/iq-matrix/leaderboard");
+        filter.filter(rejected, chain).block();
+
+        assertThat(passed).hasValue(10);
+        assertThat(rejected.getResponse().getStatusCode().value()).isEqualTo(429);
+    }
+
     private MockServerWebExchange exchange(HttpMethod method, String path) {
         return MockServerWebExchange.from(
                 MockServerHttpRequest.method(method, path)

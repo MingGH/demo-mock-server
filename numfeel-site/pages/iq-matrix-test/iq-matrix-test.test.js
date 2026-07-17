@@ -1,9 +1,11 @@
 /**
  * 高智商矩阵推理测试 - 单元测试
- * 运行命令: node pages/iq-matrix-test.test.js
+ * 运行命令: node pages/iq-matrix-test/iq-matrix-test.test.js
  */
 
 var L = require('./iq-matrix-test-logic.js');
+var fs = require('fs');
+var vm = require('vm');
 
 var passed = 0;
 var failed = 0;
@@ -60,12 +62,12 @@ for (var t = 0; t < 50; t++) {
       assert(i2 === expected, 'arithmetic 规则行内推导一致（行' + r + '）');
     }
   } else {
-    // xor：第三列 = idx0 ^ idx1
+    // combine：第三列索引 = 前两列索引之和取模
     for (var r2 = 0; r2 < 3; r2++) {
       var x0 = domain.indexOf(q2.grid[r2][0][rule.attr]);
       var x1 = domain.indexOf(q2.grid[r2][1][rule.attr]);
       var x2 = domain.indexOf(q2.grid[r2][2][rule.attr]);
-      assert(x2 === ((x0 ^ x1) % domain.length), 'xor 规则第三列=前两列异或（行' + r2 + '）');
+      assert(x2 === ((x0 + x1) % domain.length), 'combine 规则第三列=前两列模加（行' + r2 + '）');
     }
   }
 }
@@ -138,17 +140,23 @@ assertApprox(avgRatio, 0.30, 0.08, '30 次 2-back 平均 match 比例 ≈ 30%');
 // ========== 6. N-back 评分 ==========
 console.log('\n🏆 6. N-back 评分');
 
-// 全对的情形
-var nbPerfect = { positions: [1, 2, 1, 2, 1, 2], matches: [false, false, false, false, true, false], n: 2 };
-var respPerfect = [false, false, false, false, true, false];
+// 全对的情形（matches 与 positions 严格一致）
+var nbPerfect = { positions: [1, 2, 1, 3, 1, 4], matches: [false, false, true, false, true, false], n: 2 };
+var respPerfect = [false, false, true, false, true, false];
 var sc = L.scoreNBack(nbPerfect, respPerfect);
-assert(sc.hit === 1 && sc.miss === 0 && sc.fa === 0 && sc.cr === 3, '全对：1 hit / 3 cr');
+assert(sc.hit === 2 && sc.miss === 0 && sc.fa === 0 && sc.cr === 2, '全对：2 hit / 2 cr');
 assertApprox(sc.accuracy, 1.0, 0.001, '全对正确率=100%');
 
-// 全错（漏掉 + 误报）
-var respBad = [false, false, false, false, false, true];
+// 漏答必须进入分母并计错
+var respOmitted = [false, false, true, null, true, false];
+var scOmitted = L.scoreNBack(nbPerfect, respOmitted);
+assert(scOmitted.omissions === 1 && scOmitted.total === 4, '漏答计入总题数');
+assertApprox(scOmitted.accuracy, 0.75, 0.001, '一次漏答后正确率=75%');
+
+// 漏掉 match + 对 non-match 误报
+var respBad = [false, false, false, true, true, false];
 var scBad = L.scoreNBack(nbPerfect, respBad);
-assert(scBad.hit === 0 && scBad.miss === 1 && scBad.fa === 1 && scBad.cr === 2, '全错：1 miss / 1 fa');
+assert(scBad.hit === 1 && scBad.miss === 1 && scBad.fa === 1 && scBad.cr === 1, '错误分类统计正确');
 
 // ========== 7. 常模 & 正态分布 ==========
 console.log('\n📊 7. 常模与正态分布');
@@ -187,8 +195,18 @@ var results = [
 ];
 var ms = L.computeMatrixScore(results);
 assertApprox(ms.accuracy, 0.75, 1e-9, '矩阵正确率=75%');
-assertApprox(ms.avgRT, 15000, 1e-9, '平均反应时间=15000ms');
+assertApprox(ms.avgRT, 15000, 1e-9, '全部题目平均反应时间=15000ms');
+assertApprox(ms.avgCorrectRT, 10000, 1e-9, '只统计答对题的平均反应时间=10000ms');
 assert(ms.correct === 3 && ms.total === 4, '3/4 正确');
+
+var noCorrect = L.computeMatrixScore([{ correct: false, reactionTime: 100 }]);
+assert(noCorrect.avgCorrectRT === 30000, '全错时答对题反应按30秒下限计，不能靠盲猜获速度分');
+
+var overall = L.computeOverallScore(ms, 0.82);
+assert(overall.score >= 0 && overall.score <= 100, '综合分在0~100之间');
+assert(overall.components.effectiveSpeed <= overall.components.speed, '速度有效分受矩阵正确率约束');
+var guessed = L.computeOverallScore(noCorrect, 0);
+assert(guessed.score === 0, '快速盲猜且工作记忆全错时综合分为0');
 
 var perf = L.summarizePerformance(ms, 0.82);
 assert(perf.matrixPercentile > 0.9, '75% 正确率在一般人群中百分位很高');
@@ -215,6 +233,14 @@ var q1 = L.generateQuestion(2, r1);
 var q2 = L.generateQuestion(2, r2);
 assert(cellKey(q1.answer) === cellKey(q2.answer), '同种子生成相同答案');
 assert(q1.explanation === q2.explanation, '同种子生成相同解释');
+
+// ========== 11. 浏览器导出完整性 ==========
+console.log('\n🌐 11. 浏览器导出完整性');
+var browserContext = {};
+vm.createContext(browserContext);
+vm.runInContext(fs.readFileSync(require.resolve('./iq-matrix-test-logic.js'), 'utf8'), browserContext);
+assert(typeof browserContext.IQMatrixLogic.computeOverallScore === 'function', '浏览器全局导出 computeOverallScore');
+assert(typeof browserContext.IQMatrixLogic.generateTestSet === 'function', '浏览器全局导出 generateTestSet');
 
 // ── 汇总 ────────────────────────────────────────────────
 console.log('\n────────────────────────────────');

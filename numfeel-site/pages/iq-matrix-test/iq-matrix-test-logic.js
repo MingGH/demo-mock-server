@@ -1,7 +1,7 @@
 /**
  * 高智商矩阵推理测试 - 核心逻辑（与 DOM 解耦的纯函数）
  * 包含：矩阵题目随机生成、规则推导、选项与干扰项生成、N-back 序列与评分、常模与正态分布计算。
- * 运行测试：node pages/iq-matrix-test.test.js
+ * 运行测试：node pages/iq-matrix-test/iq-matrix-test.test.js
  */
 
 var IQMatrixLogic = (function () {
@@ -72,7 +72,8 @@ var IQMatrixLogic = (function () {
    * 为指定难度生成一道矩阵题。
    * 规则模型：每条规则作用于一个属性，描述该属性沿行内列方向的演变。
    *   arithmetic：value(r,c) = domain[(startIdx_r + c * step) % len]，step 在所有行一致。
-   *   xor：value(r,2) = domain[(idx(r,0) ^ idx(r,1)) % len]
+   *   combine：value(r,2) = domain[(idx(r,0) + idx(r,1)) % len]。
+   * combine 使用模加法，避免非 2 次幂属性域上直接异或取模造成的分布偏差。
    * 非规则属性在全网格保持常量，避免干扰。
    * @param {number} level 1|2|3
    * @param {function} rng mulberry32 实例
@@ -84,9 +85,9 @@ var IQMatrixLogic = (function () {
 
     var rules = chosenAttrs.map(function (attr) {
       var domain = DOMAINS[attr];
-      var useXor = (attr !== 'count' && attr !== 'rotation' && rng() < 0.3);
-      if (useXor) {
-        return { attr: attr, type: 'xor', step: 0 };
+      var useCombine = rng() < 0.3;
+      if (useCombine) {
+        return { attr: attr, type: 'combine', step: 0 };
       }
       var maxStep = Math.max(1, domain.length - 1);
       var step = 1 + Math.floor(rng() * Math.min(2, maxStep));
@@ -124,7 +125,7 @@ var IQMatrixLogic = (function () {
             var idx = (startIdx[rule.attr] + c * rule.step) % domain.length;
             cell[rule.attr] = domain[idx];
           } else {
-            // xor：前两列自由随机，第三列由前两列异或得到（第二遍赋值）
+            // combine：前两列自由随机，第三列在本行结束后由前两列模加得到
             if (c < 2) {
               cell[rule.attr] = domain[Math.floor(rng() * domain.length)];
             } else {
@@ -135,13 +136,13 @@ var IQMatrixLogic = (function () {
         row.push(cell);
       }
 
-      // xor 第二遍：算第三列
+      // combine 第二遍：第三列索引为前两列索引之和取模
       rules.forEach(function (rule) {
-        if (rule.type === 'xor') {
+        if (rule.type === 'combine') {
           var domain = DOMAINS[rule.attr];
           var i0 = domain.indexOf(row[0][rule.attr]);
           var i1 = domain.indexOf(row[1][rule.attr]);
-          row[2][rule.attr] = domain[(i0 ^ i1) % domain.length];
+          row[2][rule.attr] = domain[(i0 + i1) % domain.length];
         }
       });
 
@@ -243,27 +244,23 @@ var IQMatrixLogic = (function () {
   }
 
   function buildExplanation(rules) {
+    var labels = {
+      count: '图形数量',
+      rotation: '旋转角度',
+      shape: '形状',
+      fill: '填充方式',
+      size: '图形大小',
+      position: '元素位置'
+    };
     var parts = rules.map(function (rule) {
-      var domain = DOMAINS[rule.attr];
-      if (rule.attr === 'count') {
-        return '每行图形数量依次 +' + rule.step;
+      var label = labels[rule.attr] || rule.attr;
+      if (rule.type === 'combine') {
+        return label + '由每行前两格组合决定';
       }
       if (rule.attr === 'rotation') {
         return '每格顺时针旋转 ' + (rule.step * 45) + '°';
       }
-      if (rule.attr === 'shape') {
-        return '形状按固定顺序循环变化';
-      }
-      if (rule.attr === 'fill') {
-        return '填充方式循环变化（实心→空心→半填充）';
-      }
-      if (rule.attr === 'size') {
-        return '图形大小依次递增';
-      }
-      if (rule.attr === 'position') {
-        return '元素位置沿对角线移动';
-      }
-      return rule.attr + ' 规则变化';
+      return label + '按固定步长循环变化';
     });
     if (parts.length === 1) return parts[0];
     return '规则叠加：' + parts.join('；');
@@ -423,19 +420,25 @@ var IQMatrixLogic = (function () {
    * @param {boolean[]} responses 用户每个位置是否按「相同」
    */
   function scoreNBack(seq, responses) {
-    var hit = 0, miss = 0, fa = 0, cr = 0;
+    var hit = 0, miss = 0, fa = 0, cr = 0, omissions = 0;
     var start = seq.n;
-    for (var i = start; i < seq.positions.length; i++) {
+    var end = Math.min(seq.positions.length, responses.length);
+    for (var i = start; i < end; i++) {
+      var response = responses[i];
+      if (response === null || response === undefined) {
+        omissions++;
+        continue;
+      }
       var isMatch = seq.matches[i];
-      var said = !!(responses[i]);
+      var said = !!response;
       if (isMatch && said) hit++;
       else if (isMatch && !said) miss++;
       else if (!isMatch && said) fa++;
       else cr++;
     }
-    var total = hit + miss + fa + cr;
+    var total = hit + miss + fa + cr + omissions;
     var accuracy = total > 0 ? (hit + cr) / total : 0;
-    return { hit: hit, miss: miss, fa: fa, cr: cr, accuracy: accuracy, total: total };
+    return { hit: hit, miss: miss, fa: fa, cr: cr, omissions: omissions, accuracy: accuracy, total: total };
   }
 
   // ── 常模 & 正态分布 ─────────────────────────────────────
@@ -482,23 +485,58 @@ var IQMatrixLogic = (function () {
    */
   function computeMatrixScore(results) {
     var len = results.length;
-    var correct = 0, sumRT = 0;
+    var correct = 0, sumRT = 0, sumCorrectRT = 0;
     for (var i = 0; i < len; i++) {
-      if (results[i].correct) correct++;
-      sumRT += results[i].reactionTime;
+      var reactionTime = Number(results[i].reactionTime);
+      if (!Number.isFinite(reactionTime) || reactionTime < 0) reactionTime = 0;
+      if (results[i].correct) {
+        correct++;
+        sumCorrectRT += reactionTime;
+      }
+      sumRT += reactionTime;
     }
     return {
       accuracy: len ? correct / len : 0,
       avgRT: len ? sumRT / len : 0,
+      avgCorrectRT: correct ? sumCorrectRT / correct : 30000,
       correct: correct,
       total: len
     };
   }
 
-  /** 综合成绩概要 */
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  /**
+   * 计算本站挑战综合分。矩阵正确率占 50%，工作记忆占 40%，答对题速度占 10%。
+   * 速度分乘以矩阵正确率，防止快速盲猜获得额外收益。
+   * @param {{accuracy:number,avgCorrectRT:number,correct:number}} matrixScore 矩阵成绩
+   * @param {number} nbackAccuracy N-back 正确率（0~1）
+   * @returns {{score:number,components:{matrix:number,workingMemory:number,speed:number,effectiveSpeed:number}}}
+   */
+  function computeOverallScore(matrixScore, nbackAccuracy) {
+    var matrix = clamp(Number(matrixScore.accuracy) * 100 || 0, 0, 100);
+    var workingMemory = clamp(Number(nbackAccuracy) * 100 || 0, 0, 100);
+    var reactionTime = matrixScore.correct > 0 ? Number(matrixScore.avgCorrectRT) : 30000;
+    if (!Number.isFinite(reactionTime)) reactionTime = 30000;
+    var speed = clamp((30000 - reactionTime) / 29000 * 100, 0, 100);
+    var effectiveSpeed = speed * matrix / 100;
+    return {
+      score: Math.round(matrix * 0.5 + workingMemory * 0.4 + effectiveSpeed * 0.1),
+      components: {
+        matrix: matrix,
+        workingMemory: workingMemory,
+        speed: speed,
+        effectiveSpeed: effectiveSpeed
+      }
+    };
+  }
+
+  /** 旧版参考模型概要，仅保留用于兼容已有调用；不代表标准化 IQ 常模。 */
   function summarizePerformance(matrixScore, nbackAccuracy) {
     var matrixPct = percentileRank(matrixScore.accuracy, NORMS.matrixReasoning.general.mean, NORMS.matrixReasoning.general.sd);
-    var rtPct = 1 - percentileRank(matrixScore.avgRT, NORMS.reactionTime.general.mean, NORMS.reactionTime.general.sd); // 反应越快越好
+    var rtPct = 1 - percentileRank(matrixScore.avgCorrectRT, NORMS.reactionTime.general.mean, NORMS.reactionTime.general.sd);
     var wmPct = percentileRank(nbackAccuracy, NORMS.workingMemory.general.mean, NORMS.workingMemory.general.sd);
     return {
       matrixPercentile: matrixPct,
@@ -526,6 +564,7 @@ var IQMatrixLogic = (function () {
       erf: erf,
       percentileRank: percentileRank,
       computeMatrixScore: computeMatrixScore,
+      computeOverallScore: computeOverallScore,
       summarizePerformance: summarizePerformance,
       LEVEL_NAMES: LEVEL_NAMES,
       DOMAINS: DOMAINS,
@@ -549,6 +588,7 @@ var IQMatrixLogic = (function () {
     erf: erf,
     percentileRank: percentileRank,
     computeMatrixScore: computeMatrixScore,
+    computeOverallScore: computeOverallScore,
     summarizePerformance: summarizePerformance,
     LEVEL_NAMES: LEVEL_NAMES,
     DOMAINS: DOMAINS,

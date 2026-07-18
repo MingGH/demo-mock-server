@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="为什么常见的有二进制、八进制、十六进制，唯独少了四进制？亲手把二进制按 2、3、4 位分组，对比四、八、十六进制的长度与用途，一次搞懂四进制输在哪里。">
+  <title>四进制去哪了：给二进制重新分组 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./quaternary-system-logic.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1><i class="ti ti-number-4"></i> 四进制去哪了？</h1>
+      <p class="subtitle">同一串二进制，2 位一组是四进制，3 位一组是八进制，4 位一组是十六进制。亲手分一次，就知道四进制输在哪里。</p>
+    </header>
+
+    <!-- ── Hero 区 ── -->
+    <section class="card hero" id="heroSection">
+      <span class="tag tag-fun">动手实验</span>
+      <p class="hero-lead">选一个数字开始，把它的二进制按不同位数分组，亲眼看到四、八、十六进制是怎么从同一串 bit 折叠出来的。</p>
+      <div class="preset-row" id="presetRow">
+        <button class="preset-card" data-value="42" type="button">
+          <span class="preset-num">42</span>
+          <span class="preset-label">宇宙答案</span>
+        </button>
+        <button class="preset-card" data-value="255" type="button">
+          <span class="preset-num">255</span>
+          <span class="preset-label">一个字节</span>
+        </button>
+        <button class="preset-card active" data-value="2026" type="button">
+          <span class="preset-num">2026</span>
+          <span class="preset-label">推荐</span>
+        </button>
+      </div>
+      <div class="input-row">
+        <label class="sr-only" for="decimalInput">输入十进制整数</label>
+        <input type="text" id="decimalInput" inputmode="numeric" placeholder="输入 0 ~ 18446744073709551615 的整数（可选）" autocomplete="off">
+        <button class="btn btn-primary" id="startBtn" type="button"><i class="ti ti-arrows-split"></i> 开始给二进制分组</button>
+      </div>
+      <p class="hero-error" id="inputError" role="alert" aria-live="assertive"></p>
+      <p class="hero-note">无需输入也能完成全流程，直接点上方数字卡即可开始</p>
+    </section>
+
+    <!-- ── 第一幕：数字展开 ── -->
+    <section class="card hidden" id="act1Section" aria-live="polite">
+      <div class="card-title"><i class="ti ti-binary"></i> 第一幕 · 数字展开</div>
+      <p class="hint">选中的十进制数被转换成二进制。每个方块就是 1 个 bit，它只可能是 0 或 1。注意观察总位数。</p>
+      <div class="decimal-display" id="decimalDisplay">
+        <span class="dd-label">十进制</span>
+        <span class="dd-value" id="decimalValue">-</span>
+      </div>
+      <div class="bit-row" id="bitRow"></div>
+      <p class="bit-fact" id="bitFact">每个二进制数字携带 1 bit 信息</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="toAct2Btn" type="button"><i class="ti ti-arrows-merge"></i> 开始合并成四进制</button>
+        <button class="btn btn-secondary" id="resetBtn1" type="button"><i class="ti ti-arrow-left"></i> 重新选数字</button>
+      </div>
+    </section>
+
+    <!-- ── 第二幕：亲手合并成四进制 ── -->
+    <section class="card hidden" id="act2Section" aria-live="polite">
+      <div class="card-title"><i class="ti ti-arrows-merge"></i> 第二幕 · 亲手合并成四进制</div>
+      <p class="hint">从右向左每 2 位分成一组。如果最左侧不足 2 位，会自动补前导零——补零不改变数值，只是让分组整齐。点击「合并下一组」逐组操作。</p>
+      <div class="group-stage" id="groupStage">
+        <div class="group-binary-row" id="quaternaryBitRow"></div>
+        <div class="group-result-row" id="quaternaryResultRow"></div>
+      </div>
+      <p class="group-padding-hint" id="paddingHint"></p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="mergeNextBtn" type="button"><i class="ti ti-plus"></i> 合并下一组</button>
+        <button class="btn btn-secondary" id="quickFinishBtn" type="button"><i class="ti ti-player-skip-forward"></i> 快速完成本幕</button>
+      </div>
+      <div class="final-result hidden" id="quaternaryFinal">
+        <span class="fr-label">四进制结果</span>
+        <span class="fr-value" id="quaternaryValue">-</span>
+      </div>
+    </section>
+
+    <!-- ── 第三幕：换一种分组 ── -->
+    <section class="card hidden" id="act3Section" aria-live="polite">
+      <div class="card-title"><i class="ti ti-arrows-shuffle"></i> 第三幕 · 换一种分组</div>
+      <p class="hint">四进制把 2 个 bit 压成 1 个数字。如果把同一串二进制按 3 位、4 位分组呢？分别点击下方模式卡查看。</p>
+      <p class="mode-progress-hint" id="modeProgressHint">两个模式都完成后，会自动展示四种进制的并排对比</p>
+      <div class="mode-grid">
+        <button class="mode-card" id="modeOctalBtn" type="button">
+          <span class="mode-tag tag-medium">3 位一组</span>
+          <span class="mode-name">八进制</span>
+          <span class="mode-desc">每 3 bit 折成 1 个数字（0-7）</span>
+        </button>
+        <button class="mode-card" id="modeHexBtn" type="button">
+          <span class="mode-tag tag-medium">4 位一组</span>
+          <span class="mode-name">十六进制</span>
+          <span class="mode-desc">每 4 bit 折成 1 个数字（0-F）</span>
+        </button>
+      </div>
+
+      <div class="mode-detail hidden" id="octalDetail">
+        <div class="md-title"><i class="ti ti-number-8"></i> 八进制分组</div>
+        <div class="group-binary-row" id="octalBitRow"></div>
+        <div class="group-result-row" id="octalResultRow"></div>
+        <div class="final-result inline">
+          <span class="fr-label">八进制结果</span>
+          <span class="fr-value" id="octalValue">-</span>
+        </div>
+      </div>
+
+      <div class="mode-detail hidden" id="hexDetail">
+        <div class="md-title"><i class="ti ti-hexagon"></i> 十六进制分组</div>
+        <div class="group-binary-row" id="hexBitRow"></div>
+        <div class="group-result-row" id="hexResultRow"></div>
+        <div class="final-result inline">
+          <span class="fr-label">十六进制结果</span>
+          <span class="fr-value" id="hexValue">-</span>
+        </div>
+      </div>
+
+      <div class="comparison hidden" id="comparisonGrid">
+        <div class="comp-title"><i class="ti ti-columns"></i> 四种进制并排对比</div>
+        <div class="comp-grid" id="compGrid"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="toAct4Btn" type="button"><i class="ti ti-chart-histogram"></i> 看长度赛跑</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 第四幕：长度赛跑与历史解释 ── -->
+    <section class="card hidden" id="act4Section" aria-live="polite">
+      <div class="card-title"><i class="ti ti-chart-histogram"></i> 第四幕 · 长度赛跑</div>
+      <p class="hint">固定 bit 宽度下，不同进制各需要多少个数字来表示？切换位数看柱状图变化。同时关注右侧的「字母表大小」和「所需位数」——两个可验证指标，自己做权衡。</p>
+      <div class="bitwidth-row">
+        <button class="bw-btn active" data-bw="8" type="button">8 bit</button>
+        <button class="bw-btn" data-bw="16" type="button">16 bit</button>
+        <button class="bw-btn" data-bw="32" type="button">32 bit</button>
+        <button class="bw-btn" data-bw="64" type="button">64 bit</button>
+      </div>
+      <div class="chart-layout">
+        <div class="chart-wrap"><canvas id="lengthChart"></canvas></div>
+        <div class="chart-summary" id="chartSummary" aria-live="polite"></div>
+      </div>
+
+      <div class="explain-grid">
+        <div class="explain-card">
+          <div class="ec-icon v-gold"><i class="ti ti-number-10"></i></div>
+          <div class="ec-name">十进制</div>
+          <div class="ec-body">人类长期使用的计数习惯，十个手指的自然延伸。</div>
+        </div>
+        <div class="explain-card">
+          <div class="ec-icon v-blue"><i class="ti ti-cpu"></i></div>
+          <div class="ec-name">二进制</div>
+          <div class="ec-body">底层电路的双稳态优势：通电/断电、高/低电平，天然对应 0 和 1。</div>
+        </div>
+        <div class="explain-card">
+          <div class="ec-icon v-green"><i class="ti ti-number-8"></i></div>
+          <div class="ec-name">八进制</div>
+          <div class="ec-body">3 bit 一组。部分早期计算机字长适合按 3 bit 分组，Unix 权限模型保留了它的现实入口。</div>
+        </div>
+        <div class="explain-card">
+          <div class="ec-icon v-purple"><i class="ti ti-hexagon"></i></div>
+          <div class="ec-name">十六进制</div>
+          <div class="ec-body">4 bit 一组。一个字节恰好写成两个十六进制数字，程序员读内存最顺手的选择。</div>
+        </div>
+      </div>
+
+      <div class="conclusion-box">
+        <i class="ti ti-flag-3"></i>
+        <p>四进制没有消失，它只是没有赢得一个足够独特的使用位置。</p>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="copyBtn" type="button"><i class="ti ti-copy"></i> 复制本次对比</button>
+        <button class="btn btn-secondary" id="resetBtn2" type="button"><i class="ti ti-refresh"></i> 换一个数字</button>
+      </div>
+      <p class="copy-feedback" id="copyFeedback" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+</body>
+</html>

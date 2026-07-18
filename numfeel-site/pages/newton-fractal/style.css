@@ -532,28 +532,65 @@ input[type="range"]::-moz-range-thumb {
 .desktop-hint { display: inline; }
 
 @media (max-width: 680px) {
-  .container { padding: 12px; }
-  .hero { padding: 32px 12px 24px; }
-  .hero h1 { font-size: 1.7rem; gap: 8px; }
-  .hero h1 i { font-size: 1.6rem; }
-  .hero .subtitle { font-size: 0.92rem; }
-  .section { padding: 16px; }
-  .section h2 { font-size: 1.15rem; }
-  .tracker-layout { grid-template-columns: 1fr; }
-  .sensitivity-layout { grid-template-columns: 1fr; }
-  .controls { grid-template-columns: 1fr; }
+  .container { padding: 10px; }
+  .hero { padding: 28px 12px 20px; }
+  .hero h1 { font-size: 1.5rem; gap: 8px; }
+  .hero h1 i { font-size: 1.4rem; }
+  .hero .subtitle { font-size: 0.88rem; margin-bottom: 20px; }
+  .hero .start-btn { padding: 12px 24px; font-size: 0.95rem; }
+  .section { padding: 14px; margin-bottom: 16px; border-radius: 12px; }
+  .section h2 { font-size: 1.05rem; gap: 8px; }
+  .section .section-hint { font-size: 0.8rem; margin-bottom: 12px; }
+  .tracker-layout { grid-template-columns: 1fr; gap: 14px; }
+  .tracker-canvas-wrap { aspect-ratio: 1/1; max-height: 320px; }
+  .tracker-presets { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tracker-preset-btn { padding: 10px; min-height: 44px; }
+  .tracker-data { min-height: 160px; }
+  .tracker-table { max-height: 140px; font-size: 0.7rem; }
+  .tracker-table th, .tracker-table td { padding: 3px 6px; }
+  .sensitivity-layout { grid-template-columns: 1fr; gap: 14px; }
+  .sensitivity-canvas-wrap { max-height: 300px; }
+  .sensitivity-chart-wrap { height: 180px; }
+  .controls { grid-template-columns: 1fr; gap: 12px; }
+  .control-group { padding: 12px; }
   .canvas-container { aspect-ratio: 1/1; }
-  .tracker-presets { grid-template-columns: 1fr 1fr; }
-  .equation-grid { grid-template-columns: 1fr 1fr; }
-  .preset-grid { grid-template-columns: repeat(3, 1fr); }
+  .equation-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .equation-btn { padding: 8px 6px; font-size: 0.78rem; min-height: 44px; }
+  .equation-btn .eq-formula { font-size: 0.78rem; }
+  .equation-btn .eq-tag { font-size: 0.65rem; }
+  .color-options { gap: 6px; }
+  .color-btn { padding: 8px 12px; font-size: 0.78rem; min-height: 36px; }
+  .preset-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .preset-btn { padding: 8px; font-size: 0.75rem; min-height: 44px; }
   .principle-grid { grid-template-columns: 1fr; }
-  .stats-row { gap: 10px; }
-  .canvas-overlay { top: 8px; left: 8px; }
-  .canvas-info { font-size: 0.7rem; padding: 4px 8px; }
+  .stats-row { gap: 8px; padding: 10px 12px; flex-wrap: wrap; justify-content: center; }
+  .stat-item .val { font-size: 0.95rem; }
+  .stat-item .lbl { font-size: 0.68rem; }
+  .root-share { gap: 6px; }
+  .root-share .share-item { font-size: 0.72rem; padding: 3px 8px; }
+  .canvas-overlay { top: 6px; left: 6px; }
+  .canvas-info { font-size: 0.65rem; padding: 3px 6px; }
+  .insight-box { padding: 14px 16px; }
+  .insight-box p { font-size: 0.85rem; }
+  .formula-box { padding: 14px; font-size: 0.82rem; }
+  .formula-box .formula-main { font-size: 0.95rem; }
+  .slider-group { margin-bottom: 10px; }
+  .btn-row { gap: 8px; }
+  .btn-sm { padding: 8px 12px; font-size: 0.78rem; min-height: 36px; }
   .desktop-hint { display: none; }
   .mobile-hint { display: inline; }
   .mobile-zoom-bar { display: flex; }
-  .tracker-table { max-height: 160px; }
+  .page-footer { padding: 20px 12px; }
+  .page-footer .footer-link { padding: 8px 12px; font-size: 0.78rem; }
+}
+
+/* Small phones (< 380px) */
+@media (max-width: 380px) {
+  .hero h1 { font-size: 1.3rem; }
+  .tracker-presets { grid-template-columns: 1fr; }
+  .equation-grid { grid-template-columns: 1fr; }
+  .preset-grid { grid-template-columns: 1fr; }
+  .stats-row { flex-direction: column; align-items: center; }
 }
 
 @media (pointer: coarse) {
@@ -563,4 +600,10 @@ input[type="range"]::-moz-range-thumb {
   .mobile-zoom-bar { display: flex; }
   .desktop-hint { display: none; }
   .mobile-hint { display: inline; }
+}
+
+/* Safe area for notched devices */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .container { padding-bottom: env(safe-area-inset-bottom); }
+  .page-footer { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
 }

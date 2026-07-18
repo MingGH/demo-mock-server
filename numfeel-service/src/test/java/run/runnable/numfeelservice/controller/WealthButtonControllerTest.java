@@ -109,7 +109,7 @@ class WealthButtonControllerTest {
     @Test
     void leaderboard_submitV2_validBody_returnsOk() {
         when(mockService.submitLeaderboardV2(anyString(), anyInt(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
-                .thenReturn(Mono.just(new WealthButtonLeaderboardSubmitResponse(1, 2, 10)));
+                .thenReturn(Mono.just(new WealthButtonLeaderboardSubmitResponse(1, 2, 3, 10)));
 
         client.post().uri("/wealth-button/leaderboard/submit-v2")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -120,6 +120,7 @@ class WealthButtonControllerTest {
                 .jsonPath("$.status").isEqualTo(200)
                 .jsonPath("$.data.wealthRank").isEqualTo(1)
                 .jsonPath("$.data.returnRank").isEqualTo(2)
+                .jsonPath("$.data.pressCountRank").isEqualTo(3)
                 .jsonPath("$.data.total").isEqualTo(10);
     }
 
@@ -217,7 +218,7 @@ class WealthButtonControllerTest {
 
         when(mockService.getLeaderboard(anyInt()))
                 .thenReturn(Mono.just(new WealthButtonLeaderboardResponse(
-                        List.of(item1, item2), List.of(item1, item2), 2)));
+                        List.of(item1, item2), List.of(item1, item2), List.of(item1, item2), 2)));
 
         client.get().uri("/wealth-button/leaderboard?limit=10")
                 .exchange()
@@ -227,13 +228,14 @@ class WealthButtonControllerTest {
                 .jsonPath("$.data.byWealth[0].username").isEqualTo("Alice")
                 .jsonPath("$.data.byWealth[0].rank").isEqualTo(1)
                 .jsonPath("$.data.byReturn[1].username").isEqualTo("Bob")
+                .jsonPath("$.data.byPressCount[0].username").isEqualTo("Alice")
                 .jsonPath("$.data.total").isEqualTo(2);
     }
 
     @Test
     void leaderboard_get_defaultLimit() {
         when(mockService.getLeaderboard(10))
-                .thenReturn(Mono.just(new WealthButtonLeaderboardResponse(List.of(), List.of(), 0)));
+                .thenReturn(Mono.just(new WealthButtonLeaderboardResponse(List.of(), List.of(), List.of(), 0)));
 
         client.get().uri("/wealth-button/leaderboard")
                 .exchange()

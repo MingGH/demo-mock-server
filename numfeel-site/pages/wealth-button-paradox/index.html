@@ -205,6 +205,9 @@
         <button class="lb-tab" data-tab="return" onclick="switchLeaderboardTab('return')">
           <i class="ti ti-trending-up"></i> 收益率排行
         </button>
+        <button class="lb-tab" data-tab="press" onclick="switchLeaderboardTab('press')">
+          <i class="ti ti-clock"></i> 存活时长
+        </button>
       </div>
       <button class="lb-submit-trigger" onclick="showLeaderboardSubmitModal()">
         <i class="ti ti-upload"></i> 提交成绩
@@ -238,6 +241,22 @@
           </tr>
         </thead>
         <tbody id="lbReturnBody">
+          <tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);padding:20px;">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="lbPressTable" style="display:none;">
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>用户名</th>
+            <th>按下次数</th>
+            <th>资产</th>
+            <th>详情</th>
+          </tr>
+        </thead>
+        <tbody id="lbPressBody">
           <tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);padding:20px;">加载中...</td></tr>
         </tbody>
       </table>

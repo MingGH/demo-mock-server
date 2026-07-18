@@ -541,15 +541,17 @@ public final class GameplayResponses {
     }
 
     /**
-     * 排行榜响应（含两个榜单）。
+     * 排行榜响应（含三个榜单）。
      *
      * @param byWealth 资产排行 top10
      * @param byReturn 收益率排行 top10
+     * @param byPressCount 存活时长排行 top10（按按下次数降序）
      * @param total 排行榜总条目数
      */
     public record WealthButtonLeaderboardResponse(
             List<WealthButtonLeaderboardItem> byWealth,
             List<WealthButtonLeaderboardItem> byReturn,
+            List<WealthButtonLeaderboardItem> byPressCount,
             long total
     ) {
     }
@@ -573,11 +575,13 @@ public final class GameplayResponses {
      *
      * @param wealthRank 当前资产排名（-1 表示未进榜）
      * @param returnRank 当前收益率排名（-1 表示未进榜）
+     * @param pressCountRank 当前存活时长排名（-1 表示未进榜）
      * @param total 排行榜总条目数
      */
     public record WealthButtonLeaderboardSubmitResponse(
             int wealthRank,
             int returnRank,
+            int pressCountRank,
             long total
     ) {
     }

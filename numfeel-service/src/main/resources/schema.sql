@@ -395,6 +395,9 @@ CREATE TABLE IF NOT EXISTS wealth_button_leaderboard (
     INDEX idx_created  (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 存活时长排行索引（后加，避免 CREATE TABLE IF NOT EXISTS 对已有表不生效）
+CREATE INDEX IF NOT EXISTS idx_press ON wealth_button_leaderboard (press_count DESC);
+
 -- 排除选项改答案 用户行为记录
 CREATE TABLE IF NOT EXISTS switch_answer_rounds (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,

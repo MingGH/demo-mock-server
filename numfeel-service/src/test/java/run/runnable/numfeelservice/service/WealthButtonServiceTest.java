@@ -222,6 +222,7 @@ class WealthButtonServiceTest {
                 .assertNext(resp -> {
                     assertEquals(1, resp.wealthRank());
                     assertEquals(1, resp.returnRank());
+                    assertEquals(1, resp.pressCountRank());
                     assertEquals(1, resp.total());
                 })
                 .verifyComplete();
@@ -258,12 +259,18 @@ class WealthButtonServiceTest {
                 .assertNext(resp -> {
                     assertEquals(2, resp.byWealth().size());
                     assertEquals(2, resp.byReturn().size());
+                    assertEquals(2, resp.byPressCount().size());
                     assertEquals("Bob", resp.byWealth().get(0).username());
                     assertEquals("Alice", resp.byWealth().get(1).username());
                     assertEquals(1000000.0, resp.byWealth().get(1).finalWealth());
                     assertEquals("Bob", resp.byReturn().get(0).username());
                     assertEquals("Alice", resp.byReturn().get(1).username());
                     assertEquals(900.0, resp.byReturn().get(1).returnRate());
+                    // 存活时长：Bob(30) > Alice(20)
+                    assertEquals("Bob", resp.byPressCount().get(0).username());
+                    assertEquals(30, resp.byPressCount().get(0).pressCount());
+                    assertEquals("Alice", resp.byPressCount().get(1).username());
+                    assertEquals(20, resp.byPressCount().get(1).pressCount());
                     assertEquals(2, resp.total());
                 })
                 .verifyComplete();
@@ -283,6 +290,7 @@ class WealthButtonServiceTest {
                 .assertNext(resp -> {
                     assertEquals(2, resp.byWealth().size());
                     assertEquals(2, resp.byReturn().size());
+                    assertEquals(2, resp.byPressCount().size());
                     assertEquals("C", resp.byWealth().get(0).username());
                     assertEquals("B", resp.byWealth().get(1).username());
                 })
@@ -298,6 +306,7 @@ class WealthButtonServiceTest {
                 .assertNext(resp -> {
                     assertTrue(resp.byWealth().isEmpty());
                     assertTrue(resp.byReturn().isEmpty());
+                    assertTrue(resp.byPressCount().isEmpty());
                     assertEquals(0, resp.total());
                 })
                 .verifyComplete();

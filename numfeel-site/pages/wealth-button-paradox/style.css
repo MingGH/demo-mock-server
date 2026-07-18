@@ -277,10 +277,16 @@ body {
   margin-top: 0;
 }
 .skin-list.expanded {
-  max-height: 300px;
+  max-height: 420px;
   opacity: 1;
   margin-top: 10px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,215,0,0.3) transparent;
 }
+.skin-list.expanded::-webkit-scrollbar { width: 6px; }
+.skin-list.expanded::-webkit-scrollbar-track { background: transparent; }
+.skin-list.expanded::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.3); border-radius: 3px; }
 .skin-item {
   display: flex;
   flex-direction: column;
@@ -678,6 +684,7 @@ body {
 .lb-tabs {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
 }
 .lb-tab {
   background: rgba(255,255,255,0.05);

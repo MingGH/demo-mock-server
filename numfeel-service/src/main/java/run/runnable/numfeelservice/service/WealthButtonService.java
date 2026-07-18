@@ -176,7 +176,8 @@ public class WealthButtonService {
                 .then(template.insert(WealthButtonLeaderboardEntry.class)
                         .using(entity)
                         .then(ServiceSupport.selectAll(template, WealthButtonLeaderboardEntry.class))
-                        .map(rows -> computeRanks(rows, username, replayResult.finalWealth(), replayResult.returnRate())));
+                        .map(rows -> computeRanks(rows, username, replayResult.finalWealth(),
+                                replayResult.returnRate(), replayResult.pressCount())));
     }
 
     /** 查询排行榜 top N（按用户名去重）。 */
@@ -341,26 +342,31 @@ public class WealthButtonService {
         usedPowHashes.put(powHash, Boolean.TRUE);
     }
 
-    /** 计算当前提交在资产和收益率两个榜的排名。 */
+    /** 计算当前提交在资产、收益率和存活时长三个榜的排名。 */
     private WealthButtonLeaderboardSubmitResponse computeRanks(
-            List<WealthButtonLeaderboardEntry> rows, String username, double finalWealth, double returnRate) {
-        // 按用户名去重：每人只取最高资产
+            List<WealthButtonLeaderboardEntry> rows, String username,
+            double finalWealth, double returnRate, int pressCount) {
+        // 按用户名去重：每人只取最高值
         Map<String, Double> bestWealth = new java.util.HashMap<>();
         Map<String, Double> bestReturn = new java.util.HashMap<>();
+        Map<String, Integer> bestPressCount = new java.util.HashMap<>();
         for (WealthButtonLeaderboardEntry r : rows) {
             bestWealth.merge(r.username(), r.finalWealth(), Math::max);
             bestReturn.merge(r.username(), r.returnRate(), Math::max);
+            bestPressCount.merge(r.username(), r.pressCount(), Math::max);
         }
 
         // 计算当前用户的排名
         double myBestWealth = bestWealth.getOrDefault(username, finalWealth);
         double myBestReturn = bestReturn.getOrDefault(username, returnRate);
+        int myBestPressCount = bestPressCount.getOrDefault(username, pressCount);
 
         long wealthRank = bestWealth.values().stream().filter(v -> v > myBestWealth).count() + 1;
         long returnRank = bestReturn.values().stream().filter(v -> v > myBestReturn).count() + 1;
+        long pressCountRank = bestPressCount.values().stream().filter(v -> v > myBestPressCount).count() + 1;
 
         return new WealthButtonLeaderboardSubmitResponse(
-                (int) wealthRank, (int) returnRank, bestWealth.size());
+                (int) wealthRank, (int) returnRank, (int) pressCountRank, bestWealth.size());
     }
 
     /** 构建完整排行榜响应（按用户名去重，各取 top N）。 */
@@ -389,6 +395,17 @@ public class WealthButtonService {
                 Comparator.comparingDouble(WealthButtonLeaderboardEntry::returnRate).reversed()
                         .thenComparingLong(WealthButtonLeaderboardEntry::createdAt));
 
+        // 存活时长排行：每用户取最高按下次数那条记录
+        Map<String, WealthButtonLeaderboardEntry> bestPressCountEntries = new java.util.HashMap<>();
+        for (WealthButtonLeaderboardEntry r : rows) {
+            bestPressCountEntries.merge(r.username(), r,
+                    (a, b) -> a.pressCount() >= b.pressCount() ? a : b);
+        }
+        List<WealthButtonLeaderboardEntry> pressCountSorted = ServiceSupport.sorted(
+                new ArrayList<>(bestPressCountEntries.values()),
+                Comparator.comparingInt(WealthButtonLeaderboardEntry::pressCount).reversed()
+                        .thenComparingLong(WealthButtonLeaderboardEntry::createdAt));
+
         List<WealthButtonLeaderboardItem> byWealth = new ArrayList<>();
         int rank = 1;
         for (WealthButtonLeaderboardEntry e : wealthSorted.stream().limit(limit).toList()) {
@@ -401,8 +418,14 @@ public class WealthButtonService {
             byReturn.add(toItem(e, rank++));
         }
 
+        List<WealthButtonLeaderboardItem> byPressCount = new ArrayList<>();
+        rank = 1;
+        for (WealthButtonLeaderboardEntry e : pressCountSorted.stream().limit(limit).toList()) {
+            byPressCount.add(toItem(e, rank++));
+        }
+
         long totalUsers = bestWealthEntries.size();
-        return new WealthButtonLeaderboardResponse(byWealth, byReturn, totalUsers);
+        return new WealthButtonLeaderboardResponse(byWealth, byReturn, byPressCount, totalUsers);
     }
 
     private WealthButtonLeaderboardItem toItem(WealthButtonLeaderboardEntry e, int rank) {

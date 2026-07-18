@@ -1,0 +1,660 @@
+/* Canvas vs HTML/CSS 能力对决 */
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  font-size: 2rem;
+  background: linear-gradient(135deg, #ffd700, #ffaa00, #ffd700);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s ease infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.header p {
+  color: #aaa;
+  margin-top: 8px;
+  font-size: 0.95rem;
+}
+
+/* ── 卡片 ─────────────────────── */
+.card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.card-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title i {
+  color: #ffd700;
+}
+
+.hint {
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+/* ── Hero 区 ──────────────────── */
+.hero {
+  text-align: center;
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.03), rgba(255, 215, 0, 0.01));
+}
+
+.hero-lead {
+  font-size: 1.1rem;
+  color: #e0e0e0;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.hero-lead b { color: #ffd700; }
+
+.hero-stats {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  display: block;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.v-gold { color: #ffd700; }
+.v-red { color: #ff6b6b; }
+.v-green { color: #81c784; }
+.v-blue { color: #90caf9; }
+
+/* ── 标签 ─────────────────────── */
+.tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.tag-easy { background: rgba(129, 199, 132, 0.15); color: #81c784; }
+.tag-medium { background: rgba(255, 183, 77, 0.15); color: #ffb74d; }
+.tag-fun { background: rgba(206, 147, 216, 0.15); color: #ce93d8; }
+.tag-danger { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+
+/* ── 分类 tab ─────────────────── */
+.cat-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.cat-tab {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #ccc;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cat-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cat-tab.active {
+  border-color: #ffd700;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+}
+
+/* ── 特性对比表 ───────────────── */
+.feature-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: border-color 0.2s;
+}
+
+.feature-row:hover {
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.feature-name {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.feature-verdict {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 4px;
+}
+
+.support-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.support-native {
+  background: rgba(129, 199, 132, 0.15);
+  color: #81c784;
+}
+
+.support-partial {
+  background: rgba(255, 183, 77, 0.15);
+  color: #ffb74d;
+}
+
+.support-manual {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+}
+
+.support-none {
+  background: rgba(150, 150, 150, 0.15);
+  color: #999;
+}
+
+/* ── 代码对比 ─────────────────── */
+.code-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .code-compare { grid-template-columns: 1fr; }
+}
+
+.code-panel {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.code-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.code-panel-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.code-panel-lines {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+
+.lines-html {
+  background: rgba(129, 199, 132, 0.15);
+  color: #81c784;
+}
+
+.lines-canvas {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+}
+
+.code-panel pre {
+  padding: 14px;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  color: #ccc;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* ── 性能图表 ─────────────────── */
+.chart-container {
+  position: relative;
+  height: 300px;
+  margin: 16px 0;
+}
+
+.perf-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.perf-label {
+  font-size: 0.82rem;
+  color: #888;
+}
+
+.perf-slider {
+  flex: 1;
+  min-width: 120px;
+}
+
+.perf-value {
+  font-weight: 700;
+  color: #ffd700;
+  font-size: 0.9rem;
+  min-width: 100px;
+}
+
+.crossover-note {
+  text-align: center;
+  padding: 12px;
+  background: rgba(255, 215, 0, 0.05);
+  border: 1px dashed rgba(255, 215, 0, 0.3);
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: #e0e0e0;
+}
+
+.crossover-note b { color: #ffd700; }
+
+/* ── Canvas 擅长 ──────────────── */
+.strength-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.strength-card {
+  background: rgba(129, 199, 132, 0.04);
+  border: 1px solid rgba(129, 199, 132, 0.15);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.strength-name {
+  font-weight: 700;
+  color: #81c784;
+  margin-bottom: 6px;
+}
+
+.strength-reason {
+  font-size: 0.82rem;
+  color: #bbb;
+  margin-bottom: 8px;
+}
+
+.strength-typical {
+  font-size: 0.78rem;
+  color: #888;
+}
+
+/* ── 结论评分 ─────────────────── */
+.score-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 480px) {
+  .score-summary { grid-template-columns: 1fr; }
+}
+
+.score-card {
+  text-align: center;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.score-card-html {
+  background: rgba(129, 199, 132, 0.06);
+  border: 1px solid rgba(129, 199, 132, 0.2);
+}
+
+.score-card-canvas {
+  background: rgba(255, 107, 107, 0.06);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.score-title {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.score-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.score-sub {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 4px;
+}
+
+/* ── 按钮 ─────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  color: #1a1a2e;
+}
+
+.btn-primary:hover { background: linear-gradient(135deg, #ffe033, #ffbb33); }
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.12); }
+
+.btn-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+/* ── live demo 区域 ───────────── */
+.live-demo-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+@media (max-width: 640px) {
+  .live-demo-wrap { grid-template-columns: 1fr; }
+}
+
+.live-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.live-panel-header {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.live-panel-body {
+  padding: 24px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.html-demo-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  background: #4a90d9;
+  color: white;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: background 0.2s;
+  font-size: 0.9rem;
+}
+
+.html-demo-btn:hover { background: #357abd; }
+.html-demo-btn:focus { outline: 2px solid #90caf9; outline-offset: 2px; }
+
+.canvas-demo-canvas {
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* ── 实验区 ───────────────────── */
+.experiment-area {
+  border: 1px dashed rgba(206, 147, 216, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+  background: rgba(206, 147, 216, 0.03);
+}
+
+.experiment-title {
+  font-weight: 700;
+  color: #ce93d8;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.experiment-desc {
+  font-size: 0.85rem;
+  color: #aaa;
+  margin-bottom: 16px;
+}
+
+.test-list {
+  display: grid;
+  gap: 8px;
+}
+
+.test-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+.test-icon {
+  font-size: 1.1rem;
+}
+
+.test-text {
+  flex: 1;
+  font-size: 0.85rem;
+}
+
+.test-result {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.result-pass {
+  background: rgba(129, 199, 132, 0.15);
+  color: #81c784;
+}
+
+.result-fail {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+}
+
+/* ── 结论区 ───────────────────── */
+.verdict-box {
+  background: rgba(255, 215, 0, 0.04);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.verdict-title {
+  font-weight: 700;
+  color: #ffd700;
+  margin-bottom: 8px;
+  font-size: 1.05rem;
+}
+
+.verdict-text {
+  font-size: 0.9rem;
+  color: #ddd;
+  line-height: 1.6;
+}
+
+/* ── 信息来源 ─────────────────── */
+.sources {
+  margin-top: 24px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #888;
+  line-height: 1.6;
+}
+
+.sources a {
+  color: #90caf9;
+  text-decoration: none;
+}
+
+.sources a:hover { text-decoration: underline; }
+
+/* ── 响应式 ───────────────────── */
+@media (max-width: 480px) {
+  .header h1 { font-size: 1.5rem; }
+  .feature-row { grid-template-columns: 1fr; gap: 8px; }
+  .hero-stats { gap: 16px; }
+  .stat-value { font-size: 1.4rem; }
+}
+
+
+/* ── Canvas 主场 Demo ─────────── */
+.demo-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.demo-tab {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #ccc;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.demo-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.demo-tab.active {
+  border-color: #81c784;
+  color: #81c784;
+  background: rgba(129, 199, 132, 0.08);
+}
+
+.demo-canvas-wrap {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.demo-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+}
+
+.demo-instructions {
+  text-align: center;
+  font-size: 0.82rem;
+  color: #888;
+  padding: 8px;
+}

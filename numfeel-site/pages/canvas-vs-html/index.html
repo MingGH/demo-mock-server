@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Canvas 能替代 HTML/CSS 吗？12 项特性实测对比、代码量对决、性能交叉点可视化，用数据告诉你答案。">
+  <title>Canvas vs HTML/CSS 能力对决 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <h1><i class="ti ti-brush"></i> Canvas vs HTML/CSS 能力对决</h1>
+      <p>Canvas 能替代 HTML 和 CSS 吗？12 项特性实测、代码量对比、性能交叉点模拟——用数据说话</p>
+    </header>
+
+    <!-- Hero 区 -->
+    <section class="card hero" id="heroSection">
+      <span class="tag tag-fun">动手实验</span>
+      <p class="hero-lead">很多人觉得 Canvas 能画出任何界面就能替代 HTML/CSS。<br>下面用 <b>12 项特性对比</b>、<b>代码量实测</b>、<b>性能模拟</b> 告诉你真相。</p>
+      <div class="hero-stats" id="heroStats">
+        <!-- JS 填充 -->
+      </div>
+    </section>
+
+    <!-- Live Demo: 两种实现对比 -->
+    <section class="card" id="liveDemoSection">
+      <div class="card-title"><i class="ti ti-code"></i> 实时对比：同一个按钮的两种实现</div>
+      <p class="hint">左边是 HTML + CSS 实现，右边是 Canvas 实现。试试以下操作，看看哪边能响应。</p>
+      
+      <div class="live-demo-wrap">
+        <div class="live-panel">
+          <div class="live-panel-header">HTML + CSS（12 行代码）</div>
+          <div class="live-panel-body">
+            <button class="html-demo-btn" id="htmlDemoBtn">Click me</button>
+          </div>
+        </div>
+        <div class="live-panel">
+          <div class="live-panel-header">Canvas（85 行代码）</div>
+          <div class="live-panel-body">
+            <canvas id="canvasDemoCanvas" class="canvas-demo-canvas" width="200" height="80"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="experiment-area">
+        <div class="experiment-title"><i class="ti ti-flask"></i> 亲手试验</div>
+        <p class="experiment-desc">对两边的按钮执行以下操作，观察结果差异：</p>
+        <div class="test-list" id="testList">
+          <!-- JS 填充 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 特性对比 -->
+    <section class="card" id="featureSection">
+      <div class="card-title"><i class="ti ti-list-check"></i> 12 项特性能力对比</div>
+      <p class="hint">点击分类标签切换，每项特性标注两种技术的支持程度</p>
+      
+      <div class="cat-tabs" id="catTabs">
+        <!-- JS 填充 -->
+      </div>
+      <div class="feature-grid" id="featureGrid">
+        <!-- JS 填充 -->
+      </div>
+    </section>
+
+    <!-- 代码复杂度 -->
+    <section class="card" id="codeSection">
+      <div class="card-title"><i class="ti ti-file-code"></i> 代码量对决</div>
+      <p class="hint" id="codeTaskDesc"><!-- JS 填充 --></p>
+      <div class="code-compare" id="codeCompare">
+        <!-- JS 填充 -->
+      </div>
+    </section>
+
+    <!-- 性能对比 -->
+    <section class="card" id="perfSection">
+      <div class="card-title"><i class="ti ti-gauge"></i> 性能交叉点：多少元素时 Canvas 才更快？</div>
+      <p class="hint">拖动滑块改变渲染元素数量，观察 DOM 和 Canvas 的帧率变化。性能模型基于 Chrome DevTools 的典型测量数据。</p>
+      
+      <div class="perf-controls">
+        <span class="perf-label">元素数量：</span>
+        <input type="range" id="perfSlider" class="perf-slider" min="1" max="50000" value="10" step="1">
+        <span class="perf-value" id="perfValue">10 个</span>
+      </div>
+      
+      <div class="chart-container">
+        <canvas id="perfChart"></canvas>
+      </div>
+      
+      <div class="crossover-note" id="crossoverNote">
+        <!-- JS 填充 -->
+      </div>
+    </section>
+
+    <!-- Canvas 擅长的场景 -->
+    <section class="card" id="strengthSection">
+      <div class="card-title"><i class="ti ti-trophy"></i> Canvas 的主场：五个正确使用场景</div>
+      <p class="hint">Canvas 不适合做 UI，但这些场景里它无可替代</p>
+      <div class="strength-grid" id="strengthGrid">
+        <!-- JS 填充 -->
+      </div>
+    </section>
+
+    <!-- Canvas 主场 Live Demo -->
+    <section class="card" id="strengthDemoSection">
+      <div class="card-title"><i class="ti ti-player-play"></i> 亲手体验 Canvas 主场</div>
+      <p class="hint">点击每个 demo 触发效果，这些场景 HTML/CSS 做不到或做不好</p>
+
+      <div class="demo-tabs" id="demoTabs">
+        <button class="demo-tab active" data-demo="particles"><i class="ti ti-sparkles"></i> 粒子系统</button>
+        <button class="demo-tab" data-demo="chart"><i class="ti ti-chart-dots-3"></i> 数据可视化</button>
+        <button class="demo-tab" data-demo="game"><i class="ti ti-device-gamepad-2"></i> 游戏</button>
+        <button class="demo-tab" data-demo="imageproc"><i class="ti ti-photo-edit"></i> 图像处理</button>
+        <button class="demo-tab" data-demo="drawing"><i class="ti ti-pencil"></i> 绘图白板</button>
+      </div>
+
+      <div class="demo-canvas-wrap">
+        <canvas id="strengthDemoCanvas" width="800" height="350"></canvas>
+      </div>
+
+      <div class="demo-instructions" id="demoInstructions">
+        <!-- JS 填充 -->
+      </div>
+    </section>
+
+    <!-- 结论 -->
+    <section class="card" id="verdictSection">
+      <div class="card-title"><i class="ti ti-bulb"></i> 最终结论</div>
+      <div class="score-summary" id="scoreSummary">
+        <!-- JS 填充 -->
+      </div>
+      <div class="verdict-box" id="verdictBox">
+        <!-- JS 填充 -->
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="copyBtn"><i class="ti ti-copy"></i> 复制结论</button>
+      </div>
+    </section>
+
+    <div class="sources">
+      <b>数据与模型说明：</b>特性支持级别基于 MDN Web Docs、WAI-ARIA 规范和 Chrome DevTools 文档。
+      性能模型基于 DOM 节点 reflow/repaint 成本对数增长模型与 Canvas 批量渲染固定开销模型，
+      交叉点约 <span id="crossoverValue">~1000</span> 个同质动画元素（实际结果因设备、浏览器、具体实现而异）。
+      代码行数为实现等价功能（含 hover、焦点、无障碍）的最小完整代码。
+    </div>
+  </main>
+
+  <script src="./canvas-vs-html-logic.js"></script>
+  <script src="./app.js"></script>
+  <script src="./strength-demos.js"></script>
+</body>
+</html>

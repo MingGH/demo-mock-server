@@ -58,9 +58,11 @@ function formatComplex(zr, zi, digits) {
   return zr.toFixed(digits) + ' ' + sign + ' ' + Math.abs(zi).toFixed(digits) + 'i';
 }
 
-// 限制 DPR 在 2x，避免 4x Retina 卡顿
+// 限制 DPR：移动端 cap 在 1.5x（性能优先），桌面端 cap 在 2x
 function capDPR() {
-  return Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = window.devicePixelRatio || 1;
+  const isMobile = window.innerWidth <= 680 || ('ontouchstart' in window);
+  return Math.min(dpr, isMobile ? 1.5 : 2);
 }
 
 // 取得方程对应的 stepFn 和 roots
@@ -398,8 +400,10 @@ function initFractal() {
 function setupFractalCanvas() {
   const rect = fractal.canvas.parentElement.getBoundingClientRect();
   const dpr = capDPR();
-  fractal.canvas.width = Math.floor(rect.width * dpr);
-  fractal.canvas.height = Math.floor(rect.height * dpr);
+  // Cap canvas pixels to avoid rendering too many on mobile
+  const maxDim = window.innerWidth <= 680 ? 600 : 2200;
+  fractal.canvas.width = Math.min(Math.floor(rect.width * dpr), maxDim);
+  fractal.canvas.height = Math.min(Math.floor(rect.height * dpr), maxDim);
 }
 
 function setupFractalControls() {
@@ -562,17 +566,17 @@ function onFractalTouchMove(e) {
     const factor = dist / touchState.pinchStartDist;
     state.zoom = Math.max(0.5, touchState.pinchStartZoom * factor);
     clearPresetActive();
-    renderFractal();
+    throttledRender();
   } else if (touchState.isPanning && e.touches.length === 1) {
     const dx = e.touches[0].clientX - touchState.panStartX;
     const dy = e.touches[0].clientY - touchState.panStartY;
     const rect = fractal.canvas.getBoundingClientRect();
     const dpr = fractal.canvas.width / rect.width;
-    const scale = 4.0 / (fractal.canvas.width * state.zoom);
+    const scale = 4.0 / (Math.min(fractal.canvas.width, fractal.canvas.height) * state.zoom);
     state.centerX = touchState.panCenterX - dx * dpr * scale;
     state.centerY = touchState.panCenterY - dy * dpr * scale;
     clearPresetActive();
-    renderFractal();
+    throttledRender();
   }
 }
 
@@ -612,6 +616,16 @@ function fractalTouchToComplex(touch) {
   return complexFromPixel(px, py);
 }
 
+// 触摸移动时节流渲染（避免每帧都渲染导致卡顿）
+let _throttleRaf = null;
+function throttledRender() {
+  if (_throttleRaf) return;
+  _throttleRaf = requestAnimationFrame(function () {
+    _throttleRaf = null;
+    renderFractal();
+  });
+}
+
 // 分块渲染主入口
 function renderFractal() {
   state.renderGeneration++;
@@ -646,7 +660,9 @@ function renderFractal() {
   let totalIter = 0;
   const rootCounts = new Array(roots.length).fill(0);
 
-  const CHUNK_ROWS = 16;
+  // 移动端用更小的 chunk，让 UI 更流畅（每帧渲染更少行）
+  const isMobile = window.innerWidth <= 680 || ('ontouchstart' in window);
+  const CHUNK_ROWS = isMobile ? 8 : 16;
   let currentRow = 0;
 
   function renderChunk() {

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="牛顿分形：高中学的牛顿迭代法，把复平面每个点当初始值跑一遍，三个根像三个国家瓜分了整个平面。边界处初始值差一个像素，命运完全不同——点击单点追踪、切换方程、放大边界，体验「求根公式画出的战争地图」。">
+  <title>牛顿分形：一个求根公式画出的战争地图 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <!-- GSAP 用于轨迹动画与缩放过渡 -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Hero 区 ── -->
+  <div class="hero">
+    <h1><i class="ti ti-math-function"></i> 牛顿分形：一个求根公式画出的战争地图</h1>
+    <p class="subtitle">把复平面每个点塞进同一个迭代函数，三个根像三个国家一样瓜分了整个平面——它们的边界是无限复杂的分形。</p>
+    <button class="start-btn" id="startBtn" type="button">
+      <i class="ti ti-player-play-filled"></i>
+      开始探索
+    </button>
+  </div>
+
+  <!-- ── 模块 1 · 单点追踪 ── -->
+  <div class="section" id="tracker">
+    <h2><i class="ti ti-target-arrow"></i> 模块 1 · 单点追踪：看一个点如何被「吸」走</h2>
+    <p class="section-hint">在复平面上点一个起点，观察牛顿迭代如何把它一步步拉向某个根。也可以从下方预设按钮直接选一个起点。</p>
+
+    <div class="tracker-layout">
+      <div class="tracker-canvas-wrap">
+        <canvas id="trackerCanvas"></canvas>
+        <span class="axis-label real">实部 →</span>
+        <span class="axis-label imag">虚部 ↑</span>
+        <div class="click-hint" id="trackerHint">点击画布选起点</div>
+      </div>
+
+      <div class="tracker-side">
+        <div class="tracker-presets" id="trackerPresets"></div>
+
+        <div class="tracker-data">
+          <div class="tracker-summary" id="trackerSummary">
+            <span class="chip">起点：<span id="trackerStart">-</span></span>
+            <span class="chip">迭代次数：<span id="trackerIter">-</span></span>
+            <span class="chip" id="trackerRootChip">收敛根：<span id="trackerRoot">-</span></span>
+          </div>
+          <div class="tracker-table">
+            <table>
+              <thead>
+                <tr><th>步</th><th>zₙ (实部, 虚部)</th><th>|zₙ - root|</th></tr>
+              </thead>
+              <tbody id="trackerTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 模块 2 · 全局染色 ── -->
+  <div class="section" id="global">
+    <h2><i class="ti ti-map-2"></i> 模块 2 · 全局染色：三个根的「领地战争」</h2>
+    <p class="section-hint">把平面上每个点都跑一次牛顿迭代，按最终收敛到哪个根染色。你会看到三个根像国家一样瓜分了整个复平面。</p>
+
+    <div class="canvas-container" id="canvasContainer">
+      <canvas id="fractalCanvas"></canvas>
+      <div class="canvas-overlay">
+        <div class="canvas-info">中心 <span class="val" id="infoCenter">0 + 0i</span></div>
+        <div class="canvas-info">缩放 <span class="val" id="infoZoom">1×</span></div>
+        <div class="canvas-info">方程 <span class="val" id="infoEq">z³ - 1</span></div>
+        <div class="canvas-info">迭代 <span class="val" id="infoIter">100</span></div>
+      </div>
+      <div class="zoom-hint" id="zoomHint">
+        <span class="desktop-hint">点击放大 · 右键缩小 · 滚轮缩放</span>
+        <span class="mobile-hint">双击放大 · 单指拖拽 · 双指缩放</span>
+      </div>
+      <div class="render-progress"><div class="render-progress-fill" id="progressBar"></div></div>
+    </div>
+
+    <div class="mobile-zoom-bar" id="mobileZoomBar">
+      <button class="zoom-btn" id="zoomOutBtn" type="button" aria-label="缩小"><i class="ti ti-minus"></i></button>
+      <span class="zoom-level" id="mobileZoomLevel">1×</span>
+      <button class="zoom-btn" id="zoomInBtn" type="button" aria-label="放大"><i class="ti ti-plus"></i></button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item"><span class="val" id="statTime">-</span><span class="lbl">渲染耗时</span></div>
+      <div class="stat-item"><span class="val" id="statPixels">-</span><span class="lbl">像素数</span></div>
+      <div class="stat-item"><span class="val" id="statConverged">-</span><span class="lbl">收敛率</span></div>
+      <div class="stat-item"><span class="val" id="statAvgIter">-</span><span class="lbl">平均迭代</span></div>
+    </div>
+    <div class="root-share" id="rootShare"></div>
+
+    <div class="controls">
+      <div class="control-group">
+        <h3><i class="ti ti-calculator"></i> 方程选择</h3>
+        <div class="equation-grid" id="equationGrid">
+          <button class="equation-btn active" data-eq="3" type="button">
+            <span class="eq-formula">z³ - 1 = 0</span>
+            <span class="eq-tag">三根 · 经典</span>
+          </button>
+          <button class="equation-btn" data-eq="4" type="button">
+            <span class="eq-formula">z⁴ - 1 = 0</span>
+            <span class="eq-tag">四根</span>
+          </button>
+          <button class="equation-btn" data-eq="5" type="button">
+            <span class="eq-formula">z⁵ - 1 = 0</span>
+            <span class="eq-tag">五根</span>
+          </button>
+          <button class="equation-btn" data-eq="custom" type="button">
+            <span class="eq-formula">z³ - 2z + 2 = 0</span>
+            <span class="eq-tag">非对称根</span>
+          </button>
+        </div>
+
+        <h3 style="margin-top:16px;"><i class="ti ti-palette"></i> 配色方案</h3>
+        <div class="color-options" id="colorOptions">
+          <button class="color-btn active" data-scheme="classic" type="button">经典</button>
+          <button class="color-btn" data-scheme="heat" type="button">热力</button>
+          <button class="color-btn" data-scheme="ice" type="button">冰蓝</button>
+          <button class="color-btn" data-scheme="neon" type="button">霓虹</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <h3><i class="ti ti-adjustments"></i> 参数</h3>
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>最大迭代次数</span>
+            <span class="val" id="iterVal">100</span>
+          </div>
+          <input type="range" id="iterSlider" min="50" max="500" value="100" step="10">
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary btn-sm" id="resetBtn" type="button"><i class="ti ti-refresh"></i> 重置</button>
+          <button class="btn btn-secondary btn-sm" id="downloadBtn" type="button"><i class="ti ti-download"></i> 下载图片</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 模块 3 · 放大边界 ── -->
+  <div class="section" id="boundary">
+    <h2><i class="ti ti-zoom-in-area"></i> 模块 3 · 放大边界：「国界线」的无限复杂</h2>
+    <p class="section-hint">越靠近边界，命运对初始值越敏感。放大观察，边界永远不会变成光滑曲线。点击下方预设坐标，画布会动画缩放到目标位置。</p>
+
+    <div class="preset-grid" id="boundaryPresets"></div>
+    <p style="color:#90caf9; font-size:0.82rem; margin-top:14px; line-height:1.7;">
+      <i class="ti ti-info-circle"></i> 提示：放大后可以继续在上方画布上点击/双击进一步探索；右键或双指捏合可缩小回到全景。
+    </p>
+  </div>
+
+  <!-- ── 模块 4 · 敏感性实验 ── -->
+  <div class="section" id="sensitivity">
+    <h2><i class="ti ti-arrows-split"></i> 模块 4 · 敏感性实验：差 0.001，命运不同</h2>
+    <p class="section-hint">在左侧画布点选一个边界区域的点 A，系统会自动生成一个距 A 仅 0.001 的点 B。同时观察两条轨迹，看它们如何分道扬镳。</p>
+
+    <div class="sensitivity-layout">
+      <div class="sensitivity-canvas-wrap">
+        <canvas id="sensitivityCanvas"></canvas>
+        <div class="click-hint" id="sensitivityHint">点击边界区域选点 A</div>
+      </div>
+
+      <div class="sensitivity-side">
+        <div class="sensitivity-points">
+          <div class="point-row a">
+            <span class="point-label"><i class="ti ti-circle-filled" style="color:#ffd700;"></i> 点 A</span>
+            <span class="point-value" id="pointA">-</span>
+          </div>
+          <div class="point-row a">
+            <span class="point-label">A 收敛根</span>
+            <span class="point-value" id="rootA">-</span>
+          </div>
+          <div class="point-row b">
+            <span class="point-label"><i class="ti ti-circle-filled" style="color:#90caf9;"></i> 点 B（距 A 仅 0.001）</span>
+            <span class="point-value" id="pointB">-</span>
+          </div>
+          <div class="point-row b">
+            <span class="point-label">B 收敛根</span>
+            <span class="point-value" id="rootB">-</span>
+          </div>
+        </div>
+
+        <div class="sensitivity-chart-wrap">
+          <canvas id="sensitivityChart"></canvas>
+        </div>
+
+        <div class="sensitivity-conclusion" id="sensitivityConclusion">
+          点击左侧画布的边界区域，看两个相距 0.001 的点如何走向完全不同的结局。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 模块 5 · 数学原理 ── -->
+  <div class="section" id="principle">
+    <h2><i class="ti ti-brain"></i> 模块 5 · 数学原理</h2>
+
+    <div class="formula-box">
+      <p>牛顿迭代公式（求方程 f(z)=0 的根）：</p>
+      <p class="formula-main">z<sub>n+1</sub> = z<sub>n</sub> - f(z<sub>n</sub>) / f'(z<sub>n</sub>)</p>
+      <p>对于 f(z) = z³ - 1：</p>
+      <p class="formula-main">z<sub>n+1</sub> = z<sub>n</sub> - (z<sub>n</sub>³ - 1) / (3·z<sub>n</sub>²) = (2·z<sub>n</sub>³ + 1) / (3·z<sub>n</sub>²)</p>
+      <p>三个根分别为：1, e<sup>2πi/3</sup>, e<sup>4πi/3</sup>（即 1, -1/2+√3/2·i, -1/2-√3/2·i，在复平面上构成正三角形的三个顶点）</p>
+      <p class="formula-note">
+        染色规则：每个像素代表复平面上的一个起点 z₀，反复代入公式得到一个序列 z₀ → z₁ → z₂ → …，看它最终收敛到哪个根。<br>
+        迭代次数越少（收敛越快）颜色越亮，越多（越接近边界）颜色越暗——边界区域因此自动呈现暗色分形纹路。
+      </p>
+    </div>
+
+    <div class="insight-box">
+      <h3><i class="ti ti-bulb"></i> 关键洞察</h3>
+      <p>牛顿迭代本来是寻找答案的方法。把所有起点同时画出来后，我们看到的却是答案之间的战争。离答案很远的地方，结果反而稳定；在几个答案势均力敌的地方，命运对初始条件极端敏感。</p>
+    </div>
+
+    <div class="insight-box green">
+      <h3><i class="ti ti-atom-2"></i> 附加彩蛋</h3>
+      <p>如果你觉得「简单规则生成无穷复杂」很有意思，可以看看另一个经典分形——曼德勃罗集：<a href="../../pages/mandelbrot/">无限放大的数学宇宙</a>。同样是迭代，同样在边界处藏着一个无穷宇宙。</p>
+    </div>
+  </div>
+
+  <!-- ── 页脚 ── -->
+  <div class="page-footer">
+    <div class="footer-actions">
+      <a class="footer-link" href="../../index.html"><i class="ti ti-arrow-left"></i> 返回首页</a>
+      <a class="footer-link" href="../../pages/mandelbrot/"><i class="ti ti-atom-2"></i> 看看曼德勃罗集</a>
+    </div>
+    <p>把每个像素塞进同一个求根公式，整张复平面就变成了一幅分形战争地图。</p>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

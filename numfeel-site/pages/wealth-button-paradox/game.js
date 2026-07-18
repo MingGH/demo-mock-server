@@ -585,11 +585,12 @@ async function submitToLeaderboard() {
     const json = await res.json();
 
     if (json.status === 200 && json.data) {
-      const { wealthRank, returnRank, total } = json.data;
+      const { wealthRank, returnRank, pressCountRank, total } = json.data;
       let msg = '提交成功!';
       if (wealthRank <= 10) msg += ` 资产榜第${wealthRank}名`;
       if (returnRank <= 10) msg += ` 收益率榜第${returnRank}名`;
-      if (wealthRank > 10 && returnRank > 10) msg += ` 共${total}人参与`;
+      if (pressCountRank <= 10) msg += ` 存活榜第${pressCountRank}名`;
+      if (wealthRank > 10 && returnRank > 10 && pressCountRank > 10) msg += ` 共${total}人参与`;
       statusEl.textContent = msg;
       statusEl.className = 'lb-status success';
       loadLeaderboard();
@@ -626,6 +627,7 @@ function renderLeaderboard() {
   if (!leaderboardData) return;
   renderLeaderboardTable('lbWealthBody', leaderboardData.byWealth, 'wealth');
   renderLeaderboardTable('lbReturnBody', leaderboardData.byReturn, 'return');
+  renderLeaderboardTable('lbPressBody', leaderboardData.byPressCount, 'press');
   const totalEl = document.getElementById('lbTotal');
   if (totalEl) totalEl.textContent = leaderboardData.total;
 }
@@ -640,10 +642,23 @@ function renderLeaderboardTable(tbodyId, items, type) {
   tbody.innerHTML = items.map((item, index) => {
     const rankIcons = ['<i class="ti ti-trophy" style="color:#ffd700"></i>','<i class="ti ti-trophy" style="color:#c0c0c0"></i>','<i class="ti ti-trophy" style="color:#cd7f32"></i>'];
     const rankIcon = item.rank <= 3 ? rankIcons[item.rank - 1] : `#${item.rank}`;
-    const mainVal = type === 'wealth' ? formatMoney(item.finalWealth) : formatReturnRate(item.returnRate);
-    const subVal = type === 'wealth' ? formatReturnRate(item.returnRate, 1) : formatMoney(item.finalWealth);
-    const mainHint = type === 'wealth' ? formatMoneyHint(item.finalWealth) : formatReturnRateHint(item.returnRate);
-    const subHint = type === 'wealth' ? formatReturnRateHint(item.returnRate, 1) : formatMoneyHint(item.finalWealth);
+    var mainVal, subVal, mainHint, subHint;
+    if (type === 'wealth') {
+      mainVal = formatMoney(item.finalWealth);
+      subVal = formatReturnRate(item.returnRate, 1);
+      mainHint = formatMoneyHint(item.finalWealth);
+      subHint = formatReturnRateHint(item.returnRate, 1);
+    } else if (type === 'return') {
+      mainVal = formatReturnRate(item.returnRate);
+      subVal = formatMoney(item.finalWealth);
+      mainHint = formatReturnRateHint(item.returnRate);
+      subHint = formatMoneyHint(item.finalWealth);
+    } else {
+      mainVal = item.pressCount + '次';
+      subVal = formatMoney(item.finalWealth);
+      mainHint = item.pressCount + '次';
+      subHint = formatMoneyHint(item.finalWealth);
+    }
     const loseCountValue = item.pressCount - item.winCount;
     return `<tr>
       <td class="lb-rank">${rankIcon}</td>
@@ -684,7 +699,10 @@ function replayStoredGame(startWealth, historyString) {
 
 function showLeaderboardReplay(type, index) {
   if (!leaderboardData) return;
-  const items = type === 'return' ? leaderboardData.byReturn : leaderboardData.byWealth;
+  var items;
+  if (type === 'return') items = leaderboardData.byReturn;
+  else if (type === 'press') items = leaderboardData.byPressCount;
+  else items = leaderboardData.byWealth;
   const item = items && items[index];
   if (!item) return;
 
@@ -746,6 +764,7 @@ function switchLeaderboardTab(tab) {
   if (target) target.classList.add('active');
   document.getElementById('lbWealthTable').style.display = tab === 'wealth' ? '' : 'none';
   document.getElementById('lbReturnTable').style.display = tab === 'return' ? '' : 'none';
+  document.getElementById('lbPressTable').style.display = tab === 'press' ? '' : 'none';
 }
 
 // ========== Game Over ==========
@@ -831,7 +850,13 @@ const SKINS = [
   { id: 'diablo',    name: '暗黑破坏神', url: '../../images/wealth-button/skins/diablo.jpg',    glow: 'rgba(200,30,30,0.55)',  ring: 'rgba(255,80,40,0.45)' },
   { id: 'minecraft', name: 'MC·TNT',     url: '../../images/wealth-button/skins/minecraft.jpg', glow: 'rgba(255,80,80,0.45)',  ring: 'rgba(200,200,200,0.35)' },
   { id: 'overwatch', name: '守望先锋',   url: '../../images/wealth-button/skins/overwatch.jpg', glow: 'rgba(255,150,40,0.5)',  ring: 'rgba(255,180,80,0.4)' },
-  { id: 'mario',     name: '马里奥蘑菇', url: '../../images/wealth-button/skins/mario.jpg',     glow: 'rgba(255,80,80,0.45)',  ring: 'rgba(255,255,255,0.45)' }
+  { id: 'mario',     name: '马里奥蘑菇', url: '../../images/wealth-button/skins/mario.jpg',     glow: 'rgba(255,80,80,0.45)',  ring: 'rgba(255,255,255,0.45)' },
+  { id: 'gold',      name: '黄金宝藏',   url: '../../images/wealth-button/skins/gold.jpg',      glow: 'rgba(255,215,0,0.5)',   ring: 'rgba(255,215,0,0.4)' },
+  { id: 'cosmic',    name: '宇宙星云',   url: '../../images/wealth-button/skins/cosmic.jpg',    glow: 'rgba(150,80,255,0.5)',  ring: 'rgba(120,120,255,0.4)' },
+  { id: 'quantum',   name: '量子核心',   url: '../../images/wealth-button/skins/quantum.jpg',   glow: 'rgba(0,200,255,0.5)',   ring: 'rgba(0,255,255,0.4)' },
+  { id: 'skull',     name: '骷髅死神',   url: '../../images/wealth-button/skins/skull.jpg',     glow: 'rgba(200,30,30,0.5)',   ring: 'rgba(255,50,50,0.4)' },
+  { id: 'diamond',   name: '钻石冰晶',   url: '../../images/wealth-button/skins/diamond.jpg',   glow: 'rgba(150,220,255,0.5)', ring: 'rgba(200,240,255,0.4)' },
+  { id: 'magma',     name: '熔岩烈焰',   url: '../../images/wealth-button/skins/magma.jpg',     glow: 'rgba(255,80,0,0.5)',    ring: 'rgba(255,120,0,0.4)' }
 ];
 let currentSkinId = 'default';
 let skinPickerExpanded = false;

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CIE 1931 标准观察者实验：全球屏幕色彩标准由 17 位英国年轻白人男性的暗室实验决定。亲自参与辨色测试与灰色调校，看看你和「标准人眼」的偏差。">
+  <title>17 人定义了你的屏幕颜色 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="container">
+  <header class="header">
+    <h1><i class="ti ti-eye"></i> 17 人定义了你的屏幕颜色</h1>
+    <p>CIE 1931 标准观察者--全球几十亿块屏幕的色彩基础，样本量 n=17</p>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════
+       第一段：你能分辨几组颜色？
+  ══════════════════════════════════════════════════════════ -->
+  <section class="card" id="section1">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-color-swatch"></i> 第一段：你能分辨几组颜色？</span>
+      <span class="card-hint">8 组色块，每组判断「相同」还是「不同」。答完一组自动跳下一组，约需 30 秒。</span>
+    </div>
+
+    <div class="pair-progress">
+      <div class="pair-progress-bar" id="pairProgressBar"></div>
+      <span class="pair-progress-text" id="pairProgressText">0 / 8</span>
+    </div>
+
+    <div class="pair-stage" id="pairStage">
+      <!-- 由 app.js 渲染 -->
+    </div>
+
+    <div class="pair-buttons" id="pairButtons">
+      <button class="btn btn-same" id="btnSame" type="button">
+        <i class="ti ti-check"></i> 相同
+      </button>
+      <button class="btn btn-diff" id="btnDiff" type="button">
+        <i class="ti ti-x"></i> 不同
+      </button>
+    </div>
+
+    <div class="pair-result" id="pairResult" hidden>
+      <!-- 测试结果，由 app.js 渲染 -->
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       第二段：你的灰色不是灰色
+  ══════════════════════════════════════════════════════════ -->
+  <section class="card" id="section2">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-adjustments"></i> 第二段：你的灰色不是灰色</span>
+      <span class="card-hint">在彩色背景上，拖动滑块把中间方块调成「最纯的灰」。你的大脑会骗你。</span>
+    </div>
+
+    <div class="scene-switcher" id="sceneSwitcher">
+      <!-- 由 app.js 渲染 -->
+    </div>
+
+    <div class="gray-stage" id="grayStage">
+      <div class="gray-box" id="grayBox"></div>
+    </div>
+
+    <div class="scene-hint" id="sceneHint">
+      提示：背景色会让你的大脑产生反向补偿，你看到的「灰」未必是真正的灰。
+    </div>
+
+    <div class="slider-row">
+      <label for="hueSlider">色相偏移 <span id="hueValue">0°</span></label>
+      <input type="range" id="hueSlider" min="-30" max="30" step="1" value="0">
+    </div>
+    <div class="slider-row">
+      <label for="satSlider">饱和度 <span id="satValue">0%</span></label>
+      <input type="range" id="satSlider" min="0" max="15" step="0.5" value="0">
+    </div>
+
+    <div class="age-input-row">
+      <span>你的年龄</span>
+      <input type="number" id="ageInput" min="10" max="100" value="30">
+      <span style="color:#888;font-size:0.78rem;">岁（影响晶状体黄化程度）</span>
+    </div>
+
+    <button class="btn btn-primary" id="confirmGrayBtn" type="button">
+      <i class="ti ti-check"></i> 确认我的灰色
+    </button>
+
+    <div class="gray-result" id="grayResult" hidden>
+      <!-- 揭示结果，由 app.js 渲染 -->
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       第三段：17 个人的暗室
+  ══════════════════════════════════════════════════════════ -->
+  <section class="card" id="section3">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-chart-dots"></i> 第三段：17 个人的暗室</span>
+      <span class="card-hint">看看这 17 个人决定了什么，以及「标准」背后的偏见。</span>
+    </div>
+
+    <!-- 数字冲击卡片 -->
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-num" data-target="17">0</div>
+        <div class="stat-label">实验总人数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" data-target="1931">0</div>
+        <div class="stat-label">CIE 标准发布</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statYears" data-target="95">0</div>
+        <div class="stat-label">沿用年数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" data-target="80" data-suffix="亿+">0</div>
+        <div class="stat-label">受影响设备</div>
+      </div>
+    </div>
+
+    <!-- CIE 1931 CMF 曲线 -->
+    <div class="chart-section-title">
+      <i class="ti ti-chart-line"></i> CIE 1931 色彩匹配函数（x̄ / ȳ / z̄）
+    </div>
+    <div class="chart-section-sub">
+      这就是那 17 人的「平均眼」--所有屏幕色域的源头。蓝紫波段（420-460nm）的 z̄ 峰值，
+      决定了你手机能显示的每一种蓝。
+    </div>
+    <div class="chart-wrap">
+      <canvas id="cmfChart"></canvas>
+    </div>
+
+    <!-- 观察者变异系数 -->
+    <div class="chart-section-title">
+      <i class="ti ti-wave-square"></i> 17 人之间的离散度（变异系数 CV%）
+    </div>
+    <div class="chart-section-sub">
+      短波长（蓝紫光）区域 CV 高达 <strong style="color:#ff6b6b">38%</strong>，
+      长波长也有 25%--「标准人眼」其实根本不存在。
+      <span id="userCVLine" hidden>你的位置已用金色虚线标出。</span>
+    </div>
+    <div class="chart-wrap mini">
+      <canvas id="cvChart"></canvas>
+    </div>
+
+    <!-- 标准的偏见 -->
+    <div class="chart-section-title">
+      <i class="ti ti-alert-triangle"></i> 「标准」的偏见
+    </div>
+    <div class="bias-grid">
+      <div class="bias-item">
+        <i class="ti ti-users"></i>
+        <div class="bias-text">17 人<strong>全是英国人</strong>，种族单一，色素密度分布不代表全球人群</div>
+      </div>
+      <div class="bias-item">
+        <i class="ti ti-gender-male"></i>
+        <div class="bias-text">全是<strong>20-30 岁年轻男性</strong>，女性与年长者色觉差异被忽略</div>
+      </div>
+      <div class="bias-item">
+        <i class="ti ti-focus-2"></i>
+        <div class="bias-text">只用 <strong>2° 视角</strong>，仅覆盖视网膜中央凹最中心那一点</div>
+      </div>
+      <div class="bias-item">
+        <i class="ti ti-clock"></i>
+        <div class="bias-text">1964 年补充了 <strong>10° 标准（49 人）</strong>，但 1931 版仍是最广泛使用的</div>
+      </div>
+    </div>
+
+    <!-- 时间线 -->
+    <div class="chart-section-title">
+      <i class="ti ti-history"></i> 95 年没换过的标准
+    </div>
+    <div class="timeline" id="timeline">
+      <!-- 由 app.js 渲染 -->
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       你的色觉报告
+  ══════════════════════════════════════════════════════════ -->
+  <section class="card report-card" id="reportCard" hidden>
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-report"></i> 你的色觉报告</span>
+      <span class="card-hint">基于你刚才两段测试的综合结果</span>
+    </div>
+    <div class="report-body" id="reportBody">
+      <!-- 由 app.js 渲染 -->
+    </div>
+    <button class="btn btn-primary" id="copyShareBtn" type="button">
+      <i class="ti ti-copy"></i> 复制分享文案
+    </button>
+  </section>
+
+  <!-- 提示卡片 -->
+  <div class="card" style="background:rgba(144,202,249,0.05);border-color:rgba(144,202,249,0.18);">
+    <div class="card-title" style="color:#90caf9;"><i class="ti ti-info-circle"></i> 一句话总结</div>
+    <p style="color:#b8b8b8;font-size:0.9rem;line-height:1.7;margin-top:8px;">
+      下次调 CSS 颜色时想想：<strong style="color:#ffd700;">你写的每个 hex 码最终都要经过这 17 人的「投票」</strong>。
+      他们不是色彩权威，只是 1928 年伦敦暗室里被选中的一小撮年轻人。
+    </p>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="./color-standard-17-logic.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

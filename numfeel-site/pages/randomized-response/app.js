@@ -171,15 +171,15 @@
       return;
     }
 
-    // 翻转动画
+    // 翻转动画：cycle 只生成中间乱跳帧，终结回调统一设置最终点数
     var frames = 0;
     var maxFrames = 10;
     privateTimeline = gsap.timeline();
     var cycle = function() {
       if (flowId !== privateFlowId) return;
-      privateEls.diceFace.textContent = engine.rollDie(secureRandom);
       frames++;
       if (frames < maxFrames) {
+        privateEls.diceFace.textContent = engine.rollDie(secureRandom);
         privateTimeline.call(cycle, null, '+=0.05');
       }
     };
@@ -191,7 +191,7 @@
       gsap.set(privateEls.diceFace, { rotation: 0 });
       privateTimeline = null;
       finishDieRoll(finalFace, flowId);
-    });
+    }, null, '+=0.08');
   }
 
   function finishDieRoll(face, flowId) {

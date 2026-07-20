@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="问「你作弊过吗」没人肯认？一枚骰子就能让敏感调查更诚实。亲自体验随机化回答技术：私下掷骰子后再作答，单个回答不能确定真值，群体比例仍能估计。">
+  <title>一枚骰子，怎样让敏感调查更诚实 | 随机化回答实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-dice-6"></i> 一枚骰子，怎样让敏感调查更诚实</h1>
+    <p>问「你作弊过吗」没人肯认。受访者私下掷骰子，掷出 1 强制答「是」、掷出 2 强制答「否」、3～6 如实回答。调查者只看到最终回答，无法确定哪个是真相、哪个是骰子要求，但仍会得到有限的概率线索。收够人后，群体比例仍能反推。</p>
+  </div>
+
+  <!-- 模块 1：首屏 Hero + 私密作答体验 -->
+  <div class="section hero-question">
+    <div class="hero-copy">
+      <div class="eyebrow"><i class="ti ti-eye-off"></i> 私密作答体验</div>
+      <h2>一枚只有你知道结果的骰子，能让敏感调查更诚实吗？</h2>
+      <p class="section-desc">先在心里想好你的真实情况（是/否），不要输入页面。然后掷骰子、按规则提交。你会看到调查者收到的只是一个普通的「是/否」，却无法锁定你的真相。</p>
+      <div class="hero-actions">
+        <button id="startPrivateBtn" class="btn-primary"><i class="ti ti-player-play"></i> 开始一次私密作答</button>
+      </div>
+    </div>
+    <div class="hero-rule-card">
+      <div class="rule-title"><i class="ti ti-dice-6"></i> 骰子规则（默认 t = 2/3）</div>
+      <div class="rule-line"><span class="face">1</span> 强制回答「是」</div>
+      <div class="rule-line"><span class="face">2</span> 强制回答「否」</div>
+      <div class="rule-line"><span class="face">3-6</span> 如实回答</div>
+      <div class="rule-line" style="color:#888;font-size:0.8rem;margin-top:8px;">骰子结果只有你知道。严谨调查中应使用实体骰子或受访者自有的随机装置。</div>
+    </div>
+  </div>
+
+  <!-- 步骤面板 -->
+  <div class="section" id="privateSection" style="display:none;">
+    <h2><i class="ti ti-user-secret"></i> 私密作答流程</h2>
+    <p class="section-desc">分四步完成，每步完成后进入下一步。你的真实情况永远不离开你的脑子。</p>
+
+    <div class="step-nav" id="stepNav">
+      <div class="step-dot active" data-step="1"><span class="num">1</span> 心里保留事实</div>
+      <div class="step-dot" data-step="2"><span class="num">2</span> 私下掷骰子</div>
+      <div class="step-dot" data-step="3"><span class="num">3</span> 提交答案</div>
+      <div class="step-dot" data-step="4"><span class="num">4</span> 揭示</div>
+    </div>
+
+    <!-- 步骤 1 -->
+    <div class="step-panel active" id="panel1">
+      <h3><i class="ti ti-thought"></i> 第 1 步：心里保留事实</h3>
+      <p class="step-hint">想一个问题：「<span class="hl-gold">过去一年，你是否做过一件不愿公开承认的事？</span>」<br>只在心里回答<span class="hl-gold">「是」或「否」</span>。<span class="hl-red">不要把真实情况输入页面、不要告诉任何人。</span>这一步只为让你有一个明确的真值，后面验证用。</p>
+      <button class="btn-primary" id="toStep2Btn"><i class="ti ti-arrow-right"></i> 我已经想好了</button>
+    </div>
+
+    <!-- 步骤 2 -->
+    <div class="step-panel" id="panel2">
+      <h3><i class="ti ti-dice-6"></i> 第 2 步：私下掷骰子</h3>
+      <p class="step-hint">调查者看不到你的骰子结果。首选用<span class="hl-blue">实体骰子</span>（如果你手边有），掷完后记住点数。也可以用下方的<span class="hl-blue">本地骰子演示</span>——它只在你的浏览器里运行，结果不会被发送。</p>
+      <div class="dice-area">
+        <div class="dice-face" id="diceFace">?</div>
+        <div class="dice-info">
+          <div class="dice-label" id="diceLabel">还没掷骰子</div>
+          <div class="dice-result" id="diceResult">-</div>
+          <div class="dice-mechanism" id="diceMechanism">-</div>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn-primary" id="rollDieBtn"><i class="ti ti-dice-6"></i> 使用本地骰子演示</button>
+        <button class="btn-secondary" id="usedPhysicalDieBtn"><i class="ti ti-check"></i> 我已用实体骰子掷好</button>
+      </div>
+      <div id="dieInputArea" class="physical-die-note" style="display:none;margin-top:12px;">
+        <p class="step-hint" style="margin-bottom:8px;"><span class="hl-blue">不要把点数告诉页面。</span>请只在心里记住点数，并按上方规则决定最终答案。</p>
+        <button class="btn-primary" id="physicalDieContinueBtn"><i class="ti ti-lock-check"></i> 我已按规则决定答案</button>
+      </div>
+    </div>
+
+    <!-- 步骤 3 -->
+    <div class="step-panel" id="panel3">
+      <h3><i class="ti ti-send"></i> 第 3 步：根据规则提交最终答案</h3>
+      <p class="step-hint" id="ruleReminder">规则提醒：<span class="hl-gold">掷出 1 → 强制「是」</span>，<span class="hl-gold">掷出 2 → 强制「否」</span>，<span class="hl-gold">3～6 → 如实回答</span>。<br>请按规则点击下方按钮提交最终答案。调查者只会收到这个「是/否」。</p>
+      <div class="answer-buttons">
+        <button class="answer-btn" id="answerYesBtn"><i class="ti ti-thumb-up"></i> 是</button>
+        <button class="answer-btn" id="answerNoBtn"><i class="ti ti-thumb-down"></i> 否</button>
+      </div>
+    </div>
+
+    <!-- 步骤 4 -->
+    <div class="step-panel" id="panel4">
+      <h3><i class="ti ti-eye"></i> 第 4 步：揭示调查者收到了什么</h3>
+      <p class="step-hint">现在分两栏看：左边只有你知道，右边是调查者实际收到的。</p>
+      <div class="reveal-grid">
+        <div class="reveal-card private">
+          <div class="reveal-title"><i class="ti ti-lock"></i> 只有你知道</div>
+          <div class="reveal-body" id="privateReveal">
+            真实情况：<span class="big" id="privateTruth">-</span>
+            骰子点数：<span class="big" id="privateDie">-</span>
+            机制：<span id="privateMechanism">-</span>
+          </div>
+        </div>
+        <div class="reveal-card surveyor">
+          <div class="reveal-title"><i class="ti ti-mail"></i> 调查者只收到</div>
+          <div class="reveal-body">
+            最终回答：<span class="big" id="surveyorAnswer">-</span>
+            <div class="possible-sources" id="possibleSources">
+              <div class="ps-title">这个回答可能来自：</div>
+              <div class="ps-line" id="psLine1">-</div>
+              <div class="ps-line" id="psLine2">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="conclusion-line" id="conclusionLine">调查者不能从一个回答确定真实情况，但会获得有限的概率线索——这就是合理否认空间。</div>
+      <div class="hero-actions" style="margin-top:16px;">
+        <button class="btn-primary" id="retryPrivateBtn"><i class="ti ti-refresh"></i> 再体验一次</button>
+        <button class="btn-secondary" id="goToSurveyBtn"><i class="ti ti-arrow-down"></i> 去看调查者视角</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模块 2：调查者视角——逐批收集群体回答 -->
+  <div class="section">
+    <h2><i class="ti ti-clipboard-data"></i> 调查者视角：逐批收集群体回答</h2>
+    <p class="section-desc">选一个虚构场景，每次点击「调查下一批」新增一批回答。先看调查者能看到的「是/否」数量，再看反推的真实比例估计如何随样本量收敛。<span class="sim-tag">虚构模拟</span></p>
+
+    <div class="scenario-grid" id="scenarioGrid">
+      <button class="scenario-card active" data-scenario="cheating">
+        <i class="ti ti-school"></i>
+        <span class="sc-name">考试作弊</span>
+        <span class="sc-detail">过去一年是否作弊过</span>
+        <span class="sc-truth">真实比例 30%</span>
+      </button>
+      <button class="scenario-card" data-scenario="expense">
+        <i class="ti ti-receipt"></i>
+        <span class="sc-name">报销夹带私人消费</span>
+        <span class="sc-detail">过去一年是否夹带过</span>
+        <span class="sc-truth">真实比例 12%</span>
+      </button>
+      <button class="scenario-card" data-scenario="redLight">
+        <i class="ti ti-traffic-lights"></i>
+        <span class="sc-name">闯红灯</span>
+        <span class="sc-detail">过去一年是否闯过</span>
+        <span class="sc-truth">真实比例 45%</span>
+      </button>
+    </div>
+
+    <div class="batch-controls">
+      <button class="btn-primary" id="nextBatchBtn"><i class="ti ti-plus"></i> 调查下一批</button>
+      <button class="btn-secondary" id="resetSurveyBtn"><i class="ti ti-refresh"></i> 重新调查</button>
+      <span style="color:#888;font-size:0.84rem;align-self:center;" id="batchHint">建议阶段：50 → 100 → 200 → 500 → 1000</span>
+    </div>
+
+    <div class="batch-dots" id="batchDots" aria-label="受访者回答数据点"></div>
+
+    <div class="surveyor-stats">
+      <div class="stat-card">
+        <div class="stat-label">累计样本量</div>
+        <div class="stat-value" id="statSampleSize">0</div>
+        <div class="stat-sub">调查者可见</div>
+      </div>
+      <div class="stat-card highlight">
+        <div class="stat-label">回答「是」人数</div>
+        <div class="stat-value" id="statYesCount">0</div>
+        <div class="stat-sub" id="statYesRate">0.0%</div>
+      </div>
+      <div class="stat-card reference">
+        <div class="stat-label">RRT 估计 π̂</div>
+        <div class="stat-value" id="statEstimate">-</div>
+        <div class="stat-sub" id="statEstimateSub">反推的真实比例</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">95% 置信区间</div>
+        <div class="stat-value" id="statCI">-</div>
+        <div class="stat-sub" id="statCISub">标准误 -</div>
+      </div>
+    </div>
+
+    <div class="ci-bar" id="ciBar">
+      <div class="ci-range" id="ciRange"></div>
+      <div class="ci-marker" id="ciMarker"></div>
+      <div class="ci-truth" id="ciTruth"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;color:#888;font-size:0.76rem;margin-top:4px;">
+      <span>0%</span>
+      <span><i class="ti ti-point-filled" style="color:#ffd700;"></i> 估计值</span>
+      <span><i class="ti ti-point-filled" style="color:#90caf9;"></i> 真实比例</span>
+      <span>100%</span>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="convergenceChart"></canvas>
+    </div>
+  </div>
+
+  <!-- 模块 3：为什么直接问会失败 -->
+  <div class="section">
+    <h2><i class="ti ti-scale"></i> 为什么直接问会失败</h2>
+    <p class="section-desc">同一虚构人群，左边直接提问、右边随机化回答。拖动「隐瞒概率」滑块，看直接调查如何系统性偏低。<span class="sim-tag">虚构模拟</span></p>
+
+    <div class="slider-group">
+      <label>敏感事实拥有者的隐瞒概率（模拟参数）</label>
+      <input type="range" id="concealSlider" min="0" max="0.8" step="0.05" value="0.5">
+      <div class="slider-row"><span>0%（完全诚实）</span><strong id="concealValue">50%</strong><span>80%（大部分撒谎）</span></div>
+    </div>
+
+    <div class="compare-layout">
+      <div class="compare-box direct">
+        <div class="cb-title"><i class="ti ti-mail-question"></i> 直接调查</div>
+        <div class="cb-desc">无随机化保护，有事实者按隐瞒概率撒谎</div>
+        <div class="cb-value" id="directEstimate">-</div>
+        <div class="cb-truth" id="directTruth">真实比例 -</div>
+      </div>
+      <div class="compare-box rrt">
+        <div class="cb-title"><i class="ti ti-dice-6"></i> 随机化回答</div>
+        <div class="cb-desc">有事实者按骰子规则作答，降低隐瞒动机</div>
+        <div class="cb-value" id="rrtCompareEstimate">-</div>
+        <div class="cb-truth" id="rrtCompareTruth">真实比例 -</div>
+      </div>
+    </div>
+
+    <div class="assumption-note">
+      <span class="hl-blue">关键假设：</span>RRT 分支默认假设参与者遵守随机规则。这是方法成立的前提——如果有人不按骰子结果作答，估计也会产生偏差。
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-label">
+        仍有人不遵守规则会怎样？
+        <span class="dim">开启后，一部分有事实者忽略骰子直接撒谎，RRT 估计也会偏低</span>
+      </div>
+      <div class="toggle-switch" id="nonComplianceToggle" role="switch" aria-checked="false" tabindex="0">
+        <div class="toggle-knob"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模块 4：隐私与精度调节台 -->
+  <div class="section">
+    <h2><i class="ti ti-adjustments-horizontal"></i> 隐私与精度调节台</h2>
+    <p class="section-desc">拖动「如实回答概率 t」和「样本量 n」，看隐私强度（ε）与统计精度（标准误、CI 宽度）如何此消彼长。</p>
+
+    <div class="tuning-layout">
+      <div class="tuning-controls">
+        <div class="slider-group">
+          <label>如实回答概率 t</label>
+          <input type="range" id="tSlider" min="0.2" max="0.9" step="0.05" value="0.667">
+          <div class="slider-row"><span>隐私强</span><strong id="tValue">0.667</strong><span>精度高</span></div>
+        </div>
+        <div class="slider-group">
+          <label>样本量 n</label>
+          <input type="range" id="nSlider" min="50" max="5000" step="50" value="1000">
+          <div class="slider-row"><span>50</span><strong id="nValue">1000</strong><span>5000</span></div>
+        </div>
+        <div class="slider-group">
+          <label>模拟真实比例 π（由场景卡控制）</label>
+          <div class="slider-row"><strong id="piDisplay">30%</strong><span style="color:#888;">当前场景：考试作弊</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="tuning-readouts">
+          <div class="readout-card">
+            <div class="rc-label">强制「是」概率</div>
+            <div class="rc-value blue" id="rcForcedYes">16.7%</div>
+          </div>
+          <div class="readout-card">
+            <div class="rc-label">强制「否」概率</div>
+            <div class="rc-value blue" id="rcForcedNo">16.7%</div>
+          </div>
+          <div class="readout-card">
+            <div class="rc-label">ε 隐私指标</div>
+            <div class="rc-value purple" id="rcEpsilon">1.609</div>
+            <div class="rc-sub" id="rcEpsilonSub">= ln(5)</div>
+          </div>
+          <div class="readout-card">
+            <div class="rc-label">估计标准误</div>
+            <div class="rc-value" id="rcSE">-</div>
+          </div>
+          <div class="readout-card">
+            <div class="rc-label">95% CI 宽度</div>
+            <div class="rc-value green" id="rcCIWidth">-</div>
+          </div>
+          <div class="readout-card">
+            <div class="rc-label">样本倍率 1/t²</div>
+            <div class="rc-value" id="rcMultiplier">2.25×</div>
+            <div class="rc-sub">π≈50% 附近近似</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="seesaw">
+      <div class="seesaw-labels">
+        <span class="sl-left"><i class="ti ti-shield-lock"></i> 隐私保护</span>
+        <span class="sl-right"><i class="ti ti-target-arrow"></i> 统计精度</span>
+      </div>
+      <div class="seesaw-bar">
+        <div class="seesaw-pointer" id="seesawPointer" style="left:66.7%;"></div>
+      </div>
+      <div class="seesaw-scale">
+        <span>t 低 → ε 小 → 隐私强</span>
+        <span>t 高 → ε 大 → 精度高</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模块 5：这题其实有两类问题 -->
+  <div class="section">
+    <h2><i class="ti ti-bulb"></i> 这题其实有两类问题</h2>
+    <p class="section-desc">「防止乱回答」不是一个问题，是两类。敏感问题要降低隐瞒动机；粗心乱答要靠质量检查。方法选错，努力白费。</p>
+
+    <div class="method-group">
+      <div class="method-group-title"><i class="ti ti-shield-half-filled"></i> 让敏感问题更容易诚实回答</div>
+      <div class="method-grid">
+        <div class="method-card">
+          <h4><i class="ti ti-dice-6"></i> 随机化回答</h4>
+          <div class="mc-row"><span class="mc-key">机制：</span>受访者私下用随机装置决定是否如实回答。</div>
+          <div class="mc-row"><span class="mc-key">适用：</span>敏感行为、违规经历等易隐瞒问题。</div>
+          <div class="mc-limit">局限：依赖受访者遵守规则，方差增大需要更多样本。</div>
+        </div>
+        <div class="method-card">
+          <h4><i class="ti ti-list"></i> 列表实验 / 无匹配计数法</h4>
+          <div class="mc-row"><span class="mc-key">机制：</span>给一组陈述，受访者只回答「同意几条」不说是哪条。</div>
+          <div class="mc-row"><span class="mc-key">适用：</span>敏感态度、群体隶属等。</div>
+          <div class="mc-limit">局限：需要对照组，小样本下估计噪声大。</div>
+        </div>
+        <div class="method-card">
+          <h4><i class="ti ti-mailbox"></i> 自填问卷 / 强化匿名</h4>
+          <div class="mc-row"><span class="mc-key">机制：</span>受访者自行填写，调查者无法追溯到个人。</div>
+          <div class="mc-row"><span class="mc-key">适用：</span>面对面访谈中受访者不敢坦言的场景。</div>
+          <div class="mc-limit">局限：匿名承诺的可信度取决于执行细节。</div>
+        </div>
+        <div class="method-card">
+          <h4><i class="ti ti-message-2-question"></i> 间接提问</h4>
+          <div class="mc-row"><span class="mc-key">机制：</span>问「你身边的人是否…」而非「你是否…」。</div>
+          <div class="mc-row"><span class="mc-key">适用：</span>极度敏感、直接问必拒答的问题。</div>
+          <div class="mc-limit">局限：投射偏差，估计的是群体感知而非真实比例。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="method-group">
+      <div class="method-group-title"><i class="ti ti-alert-circle"></i> 识别粗心、乱点和机器作答</div>
+      <div class="method-grid">
+        <div class="method-card">
+          <h4><i class="ti ti-eye-check"></i> 注意力检查题</h4>
+          <div class="mc-row"><span class="mc-key">机制：</span>插入「请选「有时」」类指令题，答错视为未认真读题。</div>
+          <div class="mc-row"><span class="mc-key">适用：</span>检测没看题、机械勾选的受访者。</div>
+          <div class="mc-limit">局限：过度使用会引起反感，被识别后效果递减。</div>
+        </div>
+        <div class="method-card">
+          <h4><i class="ti ti-arrows-shuffle"></i> 逻辑一致性与重复题</h4>
+          <div class="mc-row"><span class="mc-key">机制：</span>同一问题换表述问两次，或设互斥选项检查矛盾。</div>
+          <div class="mc-row"><span class="mc-key">适用：</span>检测前后矛盾、随机作答。</div>
+          <div class="mc-limit">局限：正常人也可能有合理的态度变化。</div>
+        </div>
+        <div class="method-card">
+          <h4><i class="ti ti-clock"></i> 作答时长 / 直线作答</h4>
+          <div class="mc-row"><span class="mc-key">机制：</span>过短时长、全选同一列（straightlining）标记为可疑。</div>
+          <div class="mc-row"><span class="mc-key">适用：</span>检测敷衍、批量刷答。</div>
+          <div class="mc-limit">局限：快不代表错，需结合内容判断。</div>
+        </div>
+        <div class="method-card">
+          <h4><i class="ti ti-ban"></i> 不可能选项 / 虚假条目</h4>
+          <div class="mc-row"><span class="mc-key">机制：</span>插入不存在的选项或虚构条目，选了说明在乱选。</div>
+          <div class="mc-row"><span class="mc-key">适用：</span>检测不读选项、随机勾选。</div>
+          <div class="mc-limit">局限：只能抓一部分，不影响有策略的作答者。</div>
+        </div>
+        <div class="method-card">
+          <h4><i class="ti ti-history"></i> 回访 / 外部记录验证</h4>
+          <div class="mc-row"><span class="mc-key">机制：</span>隔期回访或与行政记录交叉核对。</div>
+          <div class="mc-row"><span class="mc-key">适用：</span>高价值调查、可获取合规授权的场景。</div>
+          <div class="mc-limit">局限：成本高、涉及隐私法规，敏感问题很难适用。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模块 6：结果复制与带走结论 -->
+  <div class="section">
+    <h2><i class="ti ti-copy"></i> 复制本轮结果</h2>
+    <p class="section-desc">把当前模拟的关键数据复制带走，方便分享或引用。所有比例均为虚构模拟参数。</p>
+
+    <div class="copy-area">
+      <button class="btn-primary" id="copyResultBtn"><i class="ti ti-copy"></i> 复制本轮结果</button>
+      <span class="copy-feedback" id="copyFeedback"></span>
+    </div>
+    <div class="result-preview" id="resultPreview">先在上方完成一轮调查，这里会显示可复制的结果摘要。</div>
+  </div>
+
+  <!-- 原则总结 -->
+  <div class="section principle-section">
+    <h2><i class="ti ti-bulb"></i> 你应该带走的直觉</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h3>合理否认空间</h3>
+        <p>骰子让每个「是」都可能只是随机规则的结果，降低承认敏感事实的风险感。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h3>群体仍可估计</h3>
+        <p>个体答案不可信，但收集足够多人后，随机噪声的规律已知，可以反推真实比例。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h3>隐私有代价</h3>
+        <p>t 越低隐私越强，但方差增大、需要更多样本。隐私和精度是一对跷跷板。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

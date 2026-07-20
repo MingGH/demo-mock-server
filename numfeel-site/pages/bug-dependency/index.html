@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="为什么程序会依赖bug运行？交互式积木塔模拟器：亲手修复底层bug，看上层如何连锁崩塌。可视化 Hyrum's Law。">
+  <title>程序依赖 Bug 运行：积木塔崩塌模拟器 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-building"></i> 程序为什么会「依赖 Bug 运行」</h1>
+    <p>修一个底层 bug，整栋楼塌了——用积木塔亲手体验 Hyrum's Law</p>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- Hero 区：场景选择 -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-clipboard-list"></i> 选一个场景</h2>
+    <p class="section-desc">每个场景是一个真实软件栈的简化版。点击卡片开始体验。</p>
+    <div class="scenario-grid" id="scenarioGrid"></div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- 积木塔交互区 -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="section" id="towerSection" style="display:none;">
+    <h2><i class="ti ti-building"></i> <span id="scenarioTitle">积木塔</span></h2>
+    <p class="section-desc" id="scenarioDesc"></p>
+
+    <!-- 风险指标 -->
+    <div class="risk-bar">
+      <span class="risk-label">修复风险</span>
+      <div class="risk-track">
+        <div class="risk-fill" id="riskFill"></div>
+      </div>
+      <span class="risk-value" id="riskValue">0%</span>
+    </div>
+
+    <!-- 积木塔 -->
+    <div class="tower-container" id="towerContainer">
+      <div class="tower-stack" id="towerStack"></div>
+    </div>
+
+    <!-- 操作面板 -->
+    <div class="action-panel">
+      <button class="btn btn-danger" id="fixBugBtn" onclick="handleFixBug()">
+        <i class="ti ti-bug-off"></i> 修复 Bug
+      </button>
+      <button class="btn btn-secondary" id="keepBugBtn" onclick="handleKeepBug()">
+        <i class="ti ti-shield-check"></i> 保留 Bug（不改）
+      </button>
+      <button class="btn btn-secondary" id="resetBtn" onclick="handleReset()" style="display:none;">
+        <i class="ti ti-refresh"></i> 重置
+      </button>
+    </div>
+
+    <!-- 崩塌结果 -->
+    <div class="result-box" id="collapseResult">
+      <div class="result-title" id="collapseTitle"></div>
+      <div class="result-text" id="collapseText"></div>
+      <div class="collapse-detail" id="collapseDetail"></div>
+    </div>
+
+    <!-- 保留结果 -->
+    <div class="result-box" id="keepResult">
+      <div class="result-title"><i class="ti ti-check"></i> 系统继续稳定运行</div>
+      <div class="result-text">
+        虽然底层有 bug，但所有上层模块都已适配这个「错误行为」。
+        修复的风险 > 保留的风险，这就是工程上的「won't fix」决策。
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- Hyrum's Law 时间线 -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="section" id="timelineSection" style="display:none;">
+    <h2><i class="ti ti-timeline"></i> Hyrum's Law 时间线</h2>
+    <p class="section-desc">拖动时间轴，看一个 bug 是如何从「小问题」变成「不可修复」的。</p>
+
+    <div class="timeline-control">
+      <input type="range" id="timelineSlider" min="0" max="100" value="0" class="timeline-slider">
+      <div class="timeline-labels">
+        <span>第 1 天</span>
+        <span id="timelineDay">第 1 天</span>
+        <span>第 1000 天</span>
+      </div>
+    </div>
+
+    <div class="timeline-info">
+      <div class="timeline-stat">
+        <div class="label">经过天数</div>
+        <div class="value" id="tlDays">1</div>
+      </div>
+      <div class="timeline-stat">
+        <div class="label">依赖此 bug 的模块数</div>
+        <div class="value" id="tlDependents">0</div>
+      </div>
+      <div class="timeline-stat">
+        <div class="label">修复成本</div>
+        <div class="value" id="tlCost">极低</div>
+      </div>
+    </div>
+
+    <div class="timeline-event" id="tlEvent" style="display:none;">
+      <i class="ti ti-alert-circle"></i>
+      <span id="tlEventText"></span>
+    </div>
+
+    <!-- 里程碑列表 -->
+    <div class="milestones" id="milestones"></div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════ -->
+  <!-- 科普总结 -->
+  <!-- ════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <h2><i class="ti ti-bulb"></i> 为什么会这样</h2>
+    <div class="insight-box">
+      <h4><i class="ti ti-book"></i> Hyrum's Law（海勒姆定律）</h4>
+      <p>
+        "当一个 API 的用户数量足够多时，你在契约中承诺了什么已经不重要——系统的所有可观察行为都会被某人依赖。"
+        ——Hyrum Wright, Google 软件工程师
+      </p>
+      <p style="margin-top:10px;">
+        翻译成人话：<strong>只要有人在用，bug 就是 feature。</strong>用的人越多、用的时间越长，修复它的代价越大。
+      </p>
+    </div>
+
+    <div class="insight-box green" style="margin-top:12px;">
+      <h4><i class="ti ti-history"></i> 真实案例</h4>
+      <p>
+        <strong>Linux 内核：</strong>系统调用 stat() 在某些文件系统上返回的 st_ino 字段有截断 bug，
+        但修复后会破坏 glibc 的内部缓存机制。内核维护者 Linus Torvalds 的原则是：
+        "We don't break userspace"——即使内核有错，也不能通过修正内核来破坏上层应用。
+      </p>
+      <p style="margin-top:10px;">
+        <strong>IE Quirks Mode：</strong>早期 IE 对 CSS 盒模型的实现是错误的（width 包含 padding），
+        但数以百万计的网站基于这个错误来布局。所有现代浏览器至今仍保留「怪异模式」来兼容。
+      </p>
+      <p style="margin-top:10px;">
+        <strong>Python 2 的 print：</strong>print 作为语句而非函数是设计失误，但迁移到 Python 3 花了 10+ 年，
+        至今仍有项目无法升级。
+      </p>
+    </div>
+
+    <div class="insight-box" style="margin-top:12px;border-color:rgba(206,147,216,0.3);">
+      <h4><i class="ti ti-dna"></i> 生物学类比</h4>
+      <p>
+        镰刀型红细胞是基因层面的「bug」——红细胞形状异常，携氧能力下降。
+        但在疟疾高发区，这个「bug」恰好让疟原虫无法正常寄生，成了生存优势。
+        修复这个「bug」（比如基因治疗），反而会让人失去疟疾抵抗力。
+      </p>
+      <p style="margin-top:8px;">
+        软件世界的逻辑一模一样：<strong>一个 bug 如果提供了被依赖的副作用，它就进化成了生态的一部分。</strong>
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="bug-dependency-logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -162,36 +162,40 @@
     privateFlowId++;
     var flowId = privateFlowId;
     if (privateTimeline) privateTimeline.kill();
-    var finalFace = engine.rollDie(secureRandom);
     privateEls.diceLabel.textContent = '本地骰子（仅你的浏览器可见）';
 
     if (reduceMotion || !window.gsap) {
-      privateEls.diceFace.textContent = finalFace;
-      finishDieRoll(finalFace, flowId);
+      var face = engine.rollDie(secureRandom);
+      privateEls.diceFace.textContent = face;
+      finishDieRoll(face, flowId);
       return;
     }
 
-    // 翻转动画：cycle 只生成中间乱跳帧，终结回调统一设置最终点数
-    var frames = 0;
-    var maxFrames = 10;
+    // 翻转动画：每帧生成一个随机数，最终显示的那帧就是结果
+    var totalFrames = 12;
+    var currentFrame = 0;
+    var lastFace = 1;
     privateTimeline = gsap.timeline();
-    var cycle = function() {
+    privateTimeline.to(privateEls.diceFace, { rotation: 360, duration: 0.6, ease: 'power2.out' }, 0);
+
+    function tick() {
       if (flowId !== privateFlowId) return;
-      frames++;
-      if (frames < maxFrames) {
-        privateEls.diceFace.textContent = engine.rollDie(secureRandom);
-        privateTimeline.call(cycle, null, '+=0.05');
+      currentFrame++;
+      lastFace = engine.rollDie(secureRandom);
+      privateEls.diceFace.textContent = lastFace;
+      if (currentFrame < totalFrames) {
+        privateTimeline.call(tick, null, '+=' + (0.03 + currentFrame * 0.008));
+      } else {
+        // 动画结束，lastFace 就是最终结果
+        privateTimeline.call(function() {
+          if (flowId !== privateFlowId) return;
+          gsap.set(privateEls.diceFace, { rotation: 0 });
+          privateTimeline = null;
+          finishDieRoll(lastFace, flowId);
+        }, null, '+=0.1');
       }
-    };
-    privateTimeline.to(privateEls.diceFace, { rotation: 360, duration: 0.5, ease: 'power2.out' }, 0);
-    privateTimeline.call(cycle, null, 0);
-    privateTimeline.call(function() {
-      if (flowId !== privateFlowId) return;
-      privateEls.diceFace.textContent = finalFace;
-      gsap.set(privateEls.diceFace, { rotation: 0 });
-      privateTimeline = null;
-      finishDieRoll(finalFace, flowId);
-    }, null, '+=0.08');
+    }
+    privateTimeline.call(tick, null, 0.05);
   }
 
   function finishDieRoll(face, flowId) {

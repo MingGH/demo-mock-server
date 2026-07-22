@@ -1,0 +1,581 @@
+/* ============ 基础 ============ */
+body {
+  background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+  background-attachment: fixed;
+  color: #e8e8e8;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  margin: 0;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  font-size: 2rem;
+  color: #ffd700;
+  margin-bottom: 12px;
+  background: linear-gradient(90deg, #ffd700, #ffaa00, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+.header h1 i { -webkit-text-fill-color: #ffd700; }
+
+.header p {
+  color: #aaa;
+  line-height: 1.75;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ============ 通用 section ============ */
+.section {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  padding: 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16);
+}
+
+.section h2 {
+  color: #e8e8e8;
+  font-size: 1.28rem;
+  margin: 0 0 8px;
+}
+
+.section h2 i { color: #ffd700; margin-right: 6px; }
+
+.section-desc {
+  color: #888;
+  font-size: 0.92rem;
+  line-height: 1.75;
+  margin: 0 0 20px;
+}
+
+.hl-gold { color: #ffd700; font-weight: 700; }
+.hl-blue { color: #90caf9; font-weight: 700; }
+.hl-red  { color: #ff6b6b; font-weight: 700; }
+.hl-green{ color: #81c784; font-weight: 700; }
+.dim     { color: #888; }
+
+.sim-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: #90caf9;
+  border: 1px solid rgba(144, 202, 249, 0.35);
+  border-radius: 6px;
+  padding: 1px 7px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ============ 按钮 ============ */
+.btn-primary, .btn-secondary, .btn-ghost {
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.2s, border-color 0.2s, opacity 0.2s;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
+.btn-primary {
+  padding: 12px 22px;
+  color: #1a1a2e;
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  min-height: 44px;
+}
+
+.btn-secondary {
+  padding: 10px 16px;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.28);
+  min-height: 44px;
+}
+
+.btn-ghost {
+  padding: 10px 16px;
+  color: #90caf9;
+  background: rgba(144, 202, 249, 0.08);
+  border: 1px solid rgba(144, 202, 249, 0.22);
+  min-height: 44px;
+}
+
+.btn-primary:hover, .btn-secondary:hover, .btn-ghost:hover { transform: translateY(-1px); }
+.btn-primary:disabled, .btn-secondary:disabled, .btn-ghost:disabled {
+  opacity: 0.4; cursor: not-allowed; transform: none;
+}
+
+/* ============ Hero ============ */
+.hero {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: center;
+}
+
+.hero-art img {
+  width: 100%;
+  border-radius: 16px;
+  display: block;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #90caf9;
+  border: 1px solid rgba(144, 202, 249, 0.3);
+  border-radius: 20px;
+  padding: 3px 12px;
+  margin-bottom: 12px;
+}
+
+.hero-copy h2 {
+  font-size: 1.25rem;
+  color: #fff;
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.hero-hint { color: #888; font-size: 0.84rem; }
+
+/* ============ 数字选择 ============ */
+.picker-label { color: #aaa; font-size: 0.9rem; margin-bottom: 10px; }
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.preset-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 14px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.2s, transform 0.15s, background 0.2s;
+}
+
+.preset-card:hover { transform: translateY(-2px); border-color: rgba(255, 215, 0, 0.5); }
+.preset-card.active { border-color: #ffd700; background: rgba(255, 215, 0, 0.08); }
+
+.pc-num { font-size: 1.35rem; font-weight: 800; color: #ffd700; }
+
+.pc-tag {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.tag-easy   { color: #81c784; background: rgba(129, 199, 132, 0.14); }
+.tag-medium { color: #ffb74d; background: rgba(255, 183, 77, 0.14); }
+.tag-fun    { color: #ce93d8; background: rgba(206, 147, 216, 0.14); }
+.tag-red    { color: #ff6b6b; background: rgba(255, 107, 107, 0.14); }
+
+.custom-input { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.custom-input input {
+  flex: 1;
+  min-width: 200px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+}
+.custom-input input:focus { outline: none; border-color: #ffd700; }
+
+/* ============ 受审面板 ============ */
+.target-panel {
+  margin-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 20px;
+}
+
+.target-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.target-label { display: block; color: #888; font-size: 0.8rem; }
+
+.target-n {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  word-break: break-all;
+  line-height: 1.3;
+  max-width: 520px;
+}
+
+.target-digits { color: #888; font-size: 0.78rem; }
+
+.target-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.verdict-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(144, 202, 249, 0.08);
+  border: 1px solid rgba(144, 202, 249, 0.25);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #cfd8dc;
+  font-size: 0.98rem;
+  margin-bottom: 16px;
+  transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+.verdict-banner i { font-size: 1.4rem; }
+.verdict-banner.composite {
+  background: rgba(255, 107, 107, 0.12);
+  border-color: rgba(255, 107, 107, 0.4);
+  color: #ffb4b4;
+}
+.verdict-banner.prime {
+  background: rgba(129, 199, 132, 0.12);
+  border-color: rgba(129, 199, 132, 0.4);
+  color: #b9e6bc;
+}
+
+/* 错误概率仪表 */
+.error-meter {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 18px;
+}
+.em-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.em-label { color: #aaa; font-size: 0.86rem; }
+.em-value { font-size: 1.1rem; font-weight: 800; font-family: "SF Mono", Menlo, monospace; }
+.em-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 10px 0 8px;
+}
+.em-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #81c784, #ffd700);
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+.em-sub { color: #888; font-size: 0.78rem; }
+
+/* 证人卡片轨道 */
+.witness-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.witness-card {
+  flex: 1 1 220px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 14px;
+  min-width: 0;
+}
+.witness-card.pass { border-color: rgba(129, 199, 132, 0.45); }
+.witness-card.catch { border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.06); }
+
+.wc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.wc-title { font-size: 0.82rem; color: #aaa; }
+.wc-base { font-weight: 800; color: #90caf9; font-family: "SF Mono", Menlo, monospace; }
+.wc-verdict { font-size: 0.86rem; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+.wc-verdict.pass { color: #81c784; }
+.wc-verdict.catch { color: #ff6b6b; }
+.wc-seq {
+  font-size: 0.74rem;
+  color: #999;
+  font-family: "SF Mono", Menlo, monospace;
+  line-height: 1.6;
+  word-break: break-all;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+.wc-seq b { color: #ffd700; }
+
+/* 插画 */
+.jury-art, .duel-art { text-align: center; }
+.jury-art { margin-top: 22px; }
+.jury-art img {
+  width: 100%;
+  max-width: 620px;
+  border-radius: 14px;
+  display: block;
+  margin: 0 auto 8px;
+}
+.art-caption { display: block; color: #888; font-size: 0.78rem; }
+
+/* ============ 费马对决 ============ */
+.duel-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 22px;
+  align-items: start;
+}
+.duel-art img { width: 100%; border-radius: 14px; display: block; margin-bottom: 8px; }
+
+.duel-target { color: #ccc; margin-bottom: 14px; font-size: 0.95rem; }
+.duel-target strong { color: #ff6b6b; font-size: 1.15rem; }
+
+.duel-results {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.duel-card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 14px;
+  transition: border-color 0.3s;
+}
+.dc-title { font-size: 0.86rem; color: #aaa; margin-bottom: 8px; }
+.dc-title i { color: #ffd700; }
+.dc-verdict { font-size: 1.05rem; font-weight: 800; margin-bottom: 6px; color: #ccc; }
+.dc-detail { font-size: 0.78rem; color: #888; line-height: 1.6; }
+.duel-card.fooled { border-color: rgba(255, 107, 107, 0.5); }
+.duel-card.fooled .dc-verdict { color: #ff6b6b; }
+.duel-card.caught { border-color: rgba(129, 199, 132, 0.5); }
+.duel-card.caught .dc-verdict { color: #81c784; }
+
+/* ============ RSA ============ */
+.bits-picker { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.bit-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px 18px;
+  color: #ccc;
+  cursor: pointer;
+  font-weight: 700;
+  transition: border-color 0.2s, background 0.2s;
+  min-height: 44px;
+}
+.bit-card.active { border-color: #ffd700; background: rgba(255, 215, 0, 0.1); color: #ffd700; }
+
+.rsa-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+
+.rsa-stage {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.rsa-stat {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+.rs-label { color: #888; font-size: 0.8rem; margin-bottom: 6px; }
+.rs-value { font-size: 1.6rem; font-weight: 800; font-family: "SF Mono", Menlo, monospace; }
+
+.rsa-ticker {
+  min-height: 26px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.tick-chip {
+  font-size: 0.72rem;
+  font-family: "SF Mono", Menlo, monospace;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 107, 107, 0.1);
+  color: #ff9d9d;
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+.tick-chip.hit {
+  background: rgba(129, 199, 132, 0.14);
+  color: #a5d6a7;
+  border-color: rgba(129, 199, 132, 0.4);
+}
+
+.rsa-result {
+  background: rgba(129, 199, 132, 0.08);
+  border: 1px solid rgba(129, 199, 132, 0.35);
+  border-radius: 12px;
+  padding: 16px;
+}
+.rr-label { color: #81c784; font-weight: 700; margin-bottom: 8px; }
+.rr-num {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 1rem;
+  color: #fff;
+  word-break: break-all;
+  line-height: 1.5;
+}
+.rr-sub { color: #888; font-size: 0.8rem; margin-top: 8px; }
+
+/* ============ 滑块 & 误差图 ============ */
+.slider-group { margin-bottom: 18px; }
+.slider-group label { display: block; color: #ccc; font-size: 0.9rem; margin-bottom: 10px; }
+.slider-group input[type="range"] {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  outline: none;
+}
+.slider-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #ffd700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.slider-group input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px; border: none; border-radius: 50%; background: #ffd700; cursor: pointer;
+}
+.slider-row { display: flex; justify-content: space-between; align-items: center; color: #888; font-size: 0.8rem; margin-top: 6px; }
+.slider-row strong { color: #ffd700; font-size: 1.1rem; }
+
+.error-readout { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+.ero-card { background: rgba(0, 0, 0, 0.2); border-radius: 12px; padding: 14px; }
+.ero-label { color: #888; font-size: 0.8rem; margin-bottom: 6px; }
+.ero-value { font-size: 1.05rem; font-weight: 700; font-family: "SF Mono", Menlo, monospace; line-height: 1.4; }
+
+.chart-wrap {
+  position: relative;
+  height: 300px;
+  margin-bottom: 18px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.compare-list {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.cmp-head { color: #aaa; font-size: 0.84rem; margin-bottom: 10px; }
+.cmp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.88rem;
+}
+.cmp-row .cmp-icon { width: 20px; text-align: center; }
+.cmp-row.beaten .cmp-icon { color: #81c784; }
+.cmp-row .cmp-icon { color: #555; }
+.cmp-label { flex: 1; color: #ccc; }
+.cmp-prob { color: #888; font-family: "SF Mono", Menlo, monospace; font-size: 0.8rem; }
+.cmp-row.beaten .cmp-label { color: #fff; }
+
+.source-note {
+  color: #777;
+  font-size: 0.74rem;
+  line-height: 1.7;
+  margin-top: 14px;
+}
+
+/* ============ 复制 ============ */
+.copy-area { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.copy-feedback { color: #81c784; font-size: 0.85rem; }
+.result-preview {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  padding: 16px;
+  color: #bbb;
+  font-size: 0.86rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  font-family: "SF Mono", Menlo, monospace;
+}
+
+/* ============ 原则 ============ */
+.principle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.principle-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 18px;
+}
+.principle-card .num { color: #ffd700; font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; }
+.principle-card h3 { color: #fff; font-size: 1rem; margin: 0 0 8px; }
+.principle-card p { color: #aaa; font-size: 0.86rem; line-height: 1.7; margin: 0; }
+.principle-card strong { color: #ffd700; }
+
+/* ============ 响应式 ============ */
+@media (max-width: 760px) {
+  .container { padding: 14px; }
+  .header h1 { font-size: 1.5rem; }
+  .hero { grid-template-columns: 1fr; }
+  .hero-art { max-width: 200px; margin: 0 auto; }
+  .duel-layout { grid-template-columns: 1fr; }
+  .duel-art { max-width: 220px; margin: 0 auto; }
+  .duel-results { grid-template-columns: 1fr; }
+  .error-readout { grid-template-columns: 1fr; }
+  .rsa-stage { grid-template-columns: 1fr; }
+  .principle-grid { grid-template-columns: 1fr; }
+  .target-head { flex-direction: column; }
+  .target-n { font-size: 1.2rem; }
+  .rs-value { font-size: 1.3rem; }
+  .chart-wrap { height: 240px; }
+  .section { padding: 20px 16px; }
+}

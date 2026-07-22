@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="RSA 加密要用几百位的大质数，可计算机根本没法逐一验证。米勒-拉宾素性测试用随机证人投票的方式判断质数：一票能定罪、放行只是大概率。亲手召唤证人给数字定罪，看错误概率怎样一路跌到比中彩票还小。">
+  <title>用抛硬币的方式判断质数：米勒-拉宾素性测试 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <!-- 头部 -->
+  <div class="header">
+    <h1><i class="ti ti-dice-3"></i> 用抛硬币的方式判断质数</h1>
+    <p>你每次打开 https 网站，服务器都在赌一件事：这个几百位的大数「大概率」是质数。它没法证明，只是把赌错的概率压到比中彩票还小。这就是米勒-拉宾素性测试——概率论给整个互联网加密打的地基。</p>
+  </div>
+
+  <!-- 模块 0：Hero -->
+  <div class="section hero">
+    <div class="hero-art">
+      <img src="../../images/miller-rabin/detective.jpeg" alt="侦探用放大镜检查一个数字" loading="lazy">
+    </div>
+    <div class="hero-copy">
+      <div class="eyebrow"><i class="ti ti-lock"></i> 密码学里的概率论</div>
+      <h2>RSA 需要两个几百位的大质数，可你连怎么验证它是质数都做不到</h2>
+      <p class="section-desc">分解一个 600 位的数，用尽全世界的算力也要跑到宇宙热寂。但你的手机造一对这样的质数只要几十毫秒。秘密在于：它<span class="hl-gold">根本不去证明</span>，而是找一群随机「证人」投票。一票有罪就当场定罪，全票通过也只说「大概率是质数」。</p>
+      <div class="hero-actions">
+        <button id="heroStartBtn" class="btn-primary"><i class="ti ti-gavel"></i> 亲手给一个数字定罪</button>
+        <span class="hero-hint">先从抓一个「伪装成质数的合数」开始</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模块 1：证人投票台 -->
+  <div class="section" id="witnessSection">
+    <h2><i class="ti ti-users-group"></i> 证人投票台：给一个数字定罪</h2>
+    <p class="section-desc">选一个数字，然后一个个召唤随机「证人」（底数 a）。每位证人做一次快速运算：<span class="hl-red">只要有一位喊「有罪」，这个数就<strong>铁定是合数</strong>，不用再问</span>；如果证人都说「看着像质数」，它是质数的把握就越来越大——但永远差一点点到 100%。</p>
+
+    <div class="picker">
+      <div class="picker-label">先挑一个数字：</div>
+      <div class="preset-grid" id="presetGrid">
+        <button class="preset-card" data-n="97" data-kind="prime">
+          <span class="pc-num">97</span>
+          <span class="pc-tag tag-easy">小质数</span>
+        </button>
+        <button class="preset-card" data-n="91" data-kind="composite">
+          <span class="pc-num">91</span>
+          <span class="pc-tag tag-red">合数 (7×13)</span>
+        </button>
+        <button class="preset-card" data-n="561" data-kind="carmichael">
+          <span class="pc-num">561</span>
+          <span class="pc-tag tag-fun">卡迈克尔数</span>
+        </button>
+        <button class="preset-card" data-n="1000000007" data-kind="prime">
+          <span class="pc-num">10⁹+7</span>
+          <span class="pc-tag tag-easy">竞赛大质数</span>
+        </button>
+        <button class="preset-card" data-n="2305843009213693951" data-kind="prime">
+          <span class="pc-num">2⁶¹−1</span>
+          <span class="pc-tag tag-medium">梅森质数</span>
+        </button>
+      </div>
+      <div class="custom-input">
+        <input type="text" id="customN" inputmode="numeric" placeholder="或输入你自己的正整数，比如 123456789">
+        <button class="btn-secondary" id="useCustomBtn"><i class="ti ti-check"></i> 用这个数</button>
+      </div>
+    </div>
+
+    <div class="target-panel" id="targetPanel" style="display:none;">
+      <div class="target-head">
+        <div class="target-meta">
+          <span class="target-label">当前受审数字</span>
+          <span class="target-n" id="targetN">-</span>
+          <span class="target-digits" id="targetDigits"></span>
+        </div>
+        <div class="target-actions">
+          <button class="btn-primary" id="summonBtn"><i class="ti ti-user-plus"></i> 召唤一位随机证人</button>
+          <button class="btn-ghost" id="resetWitnessBtn"><i class="ti ti-refresh"></i> 换个数字</button>
+        </div>
+      </div>
+
+      <div class="verdict-banner" id="verdictBanner">
+        <i class="ti ti-scale" id="verdictIcon"></i>
+        <span id="verdictText">还没有证人。召唤第一位来投票吧。</span>
+      </div>
+
+      <!-- 错误概率仪表 -->
+      <div class="error-meter" id="errorMeter">
+        <div class="em-row">
+          <span class="em-label">通过证人数</span>
+          <span class="em-value" id="witnessCount">0</span>
+        </div>
+        <div class="em-row">
+          <span class="em-label">若判它质数，最大误判概率</span>
+          <span class="em-value hl-gold" id="errorProb">—</span>
+        </div>
+        <div class="em-bar"><div class="em-fill" id="emFill"></div></div>
+        <div class="em-sub" id="emSub">每多一位证人通过，误判上界就再除以 4。</div>
+      </div>
+
+      <div class="witness-track" id="witnessTrack"></div>
+    </div>
+
+    <div class="jury-art">
+      <img src="../../images/miller-rabin/jury.jpeg" alt="三位证人举手投票" loading="lazy">
+      <span class="art-caption">证人只会说「看着像」或「抓到了」——放行靠人数堆概率，定罪只要一票。</span>
+    </div>
+  </div>
+
+  <!-- 模块 2：费马 vs 米勒-拉宾 -->
+  <div class="section" id="carmichaelSection">
+    <h2><i class="ti ti-mask"></i> 为什么不用更简单的费马测试</h2>
+    <p class="section-desc">费马测试更早也更简单，但有个致命死角：<span class="hl-red">卡迈克尔数</span>——一种能骗过费马所有互质证人的合数。561 就是最小的一个。下面用同一批证人，看两种测试谁被骗、谁识破。<span class="sim-tag">现场计算</span></p>
+
+    <div class="duel-layout">
+      <div class="duel-art">
+        <img src="../../images/miller-rabin/carmichael.jpeg" alt="合数 4 戴着写有 PRIME 的面具伪装成质数" loading="lazy">
+        <span class="art-caption">卡迈克尔数：披着「质数」面具的合数。</span>
+      </div>
+      <div class="duel-controls">
+        <div class="duel-target">受审：<strong id="duelN">561</strong>　<span class="dim">= 3 × 11 × 17，货真价实的合数</span></div>
+        <button class="btn-primary" id="duelRunBtn"><i class="ti ti-swords"></i> 让两种测试同时审 561</button>
+        <div class="duel-results">
+          <div class="duel-card fermat" id="fermatCard">
+            <div class="dc-title"><i class="ti ti-mail-question"></i> 费马测试</div>
+            <div class="dc-verdict" id="fermatVerdict">待运行</div>
+            <div class="dc-detail" id="fermatDetail">用与 561 互质的底数测试 a^560 mod 561</div>
+          </div>
+          <div class="duel-card mr" id="mrCard">
+            <div class="dc-title"><i class="ti ti-dice-3"></i> 米勒-拉宾</div>
+            <div class="dc-verdict" id="mrVerdict">待运行</div>
+            <div class="dc-detail" id="mrDetail">同样的底数，多看了几步平方</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模块 3：RSA 造质数 -->
+  <div class="section" id="rsaSection">
+    <h2><i class="ti ti-key"></i> 造一个大质数：RSA 每天在做的事</h2>
+    <p class="section-desc">生成 RSA 密钥的第一步就是找大质数。做法很暴力：<span class="hl-blue">随机摇一个大奇数，用米勒-拉宾测一遍，不是就再摇一个</span>，直到摇中。选个位数，亲眼看它摇了多少次、丢了多少个合数。<span class="sim-tag">现场计算</span></p>
+
+    <div class="bits-picker" id="bitsPicker">
+      <button class="bit-card active" data-bits="32">32 位</button>
+      <button class="bit-card" data-bits="64">64 位</button>
+      <button class="bit-card" data-bits="128">128 位</button>
+      <button class="bit-card" data-bits="256">256 位</button>
+    </div>
+
+    <div class="rsa-controls">
+      <button class="btn-primary" id="rsaRunBtn"><i class="ti ti-dice"></i> 开始摇质数</button>
+      <span class="dim" id="rsaExpect">预计平均要摇 ~11 个奇数</span>
+    </div>
+
+    <div class="rsa-stage">
+      <div class="rsa-stat">
+        <div class="rs-label">已摇候选</div>
+        <div class="rs-value" id="rsaAttempts">0</div>
+      </div>
+      <div class="rsa-stat">
+        <div class="rs-label">丢弃的合数</div>
+        <div class="rs-value hl-red" id="rsaRejected">0</div>
+      </div>
+      <div class="rsa-stat">
+        <div class="rs-label">状态</div>
+        <div class="rs-value" id="rsaStatus">待开始</div>
+      </div>
+    </div>
+
+    <div class="rsa-ticker" id="rsaTicker"></div>
+
+    <div class="rsa-result" id="rsaResult" style="display:none;">
+      <div class="rr-label"><i class="ti ti-check"></i> 摇到一个大概率质数</div>
+      <div class="rr-num" id="rsaPrime">-</div>
+      <div class="rr-sub" id="rsaResultSub"></div>
+    </div>
+  </div>
+
+  <!-- 模块 4：错误概率可视化 -->
+  <div class="section" id="errorSection">
+    <h2><i class="ti ti-chart-line"></i> 「大概率」到底有多大概率</h2>
+    <p class="section-desc">放行一个数字时，误判概率的上界是 (1/4)<sup>k</sup>，k 是通过的证人数。拖动滑块，看这条线怎么跌下去，以及它什么时候比「被闪电劈中」「中彩票头奖」还小。</p>
+
+    <div class="slider-group">
+      <label>通过的证人轮数 k</label>
+      <input type="range" id="roundSlider" min="1" max="150" step="1" value="20">
+      <div class="slider-row"><span>1</span><strong id="roundValue">20</strong><span>150</span></div>
+    </div>
+
+    <div class="error-readout">
+      <div class="ero-card">
+        <div class="ero-label">误判概率上界 (1/4)<sup>k</sup></div>
+        <div class="ero-value hl-gold" id="errFormula">≈ 9.1 × 10⁻¹³</div>
+      </div>
+      <div class="ero-card">
+        <div class="ero-label">换个说法</div>
+        <div class="ero-value" id="errPlain">比连抛 40 次硬币全是正面还罕见</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="errorChart"></canvas>
+    </div>
+
+    <div class="compare-list" id="compareList">
+      <div class="cmp-head">当前设置下，误判一次比下面这些事更不可能（✓ 表示已经超越）：</div>
+    </div>
+    <p class="source-note">对照概率来源：单年被闪电击中约 1/1,222,000（美国国家气象局 NWS）；双色球一等奖 1/17,721,088（红球 C(33,6)×蓝球 16，中国福利彩票官方赔率）；可观测宇宙原子总数约 10⁸⁰（常见天体物理估计）。</p>
+  </div>
+
+  <!-- 模块 5：复制结果 -->
+  <div class="section">
+    <h2><i class="ti ti-copy"></i> 复制本轮结论</h2>
+    <p class="section-desc">把当前受审数字和证人投票结果复制带走，方便分享。</p>
+    <div class="copy-area">
+      <button class="btn-primary" id="copyBtn"><i class="ti ti-copy"></i> 复制结论</button>
+      <span class="copy-feedback" id="copyFeedback"></span>
+    </div>
+    <div class="result-preview" id="resultPreview">先在上方给一个数字定罪，这里会显示可复制的结论。</div>
+  </div>
+
+  <!-- 原则总结 -->
+  <div class="section principle-section">
+    <h2><i class="ti ti-bulb"></i> 你应该带走的直觉</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h3>定罪只要一票</h3>
+        <p>只要一个证人揭穿，这个数<strong>必定</strong>是合数，这个结论 100% 可靠，没有例外。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h3>放行靠堆概率</h3>
+        <p>说「是质数」永远差一点点到 100%。但每多一位证人，误判上界就除以 4，很快小到可以忽略。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h3>够用就是安全</h3>
+        <p>测几十轮后，误判概率比硬件本身出错还小。密码学要的不是绝对确定，而是「错到不可能发生」。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

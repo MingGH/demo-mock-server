@@ -25,10 +25,10 @@ function assertClose(actual, expected, tol, msg) {
 // ─────────────────────────────────────────────────────────
 console.log('\n── 1. 贝叶斯后验 P(罪犯|纹身) ──');
 
-// 默认参数：先验 1% × 罪犯纹身率 44.7% × 普通人纹身率 32%
-// = 0.447*0.01 / (0.447*0.01 + 0.32*0.99) = 0.00447/0.32127 ≈ 0.01391
-assertClose(L.posterior(0.01, 0.447, 0.32), 0.01391, 0.0005,
-  '默认参数：纹身者真正犯罪概率约 1.4%');
+// 默认参数：先验 1% × 罪犯纹身率 52% × 普通人纹身率 32%
+// = 0.52*0.01 / (0.52*0.01 + 0.32*0.99) = 0.0052/0.322 ≈ 0.01615
+assertClose(L.posterior(0.01, 0.52, 0.32), 0.01615, 0.0005,
+  '默认参数：纹身者真正犯罪概率约 1.6%');
 
 // 完美证据：50% 先验 + 100% 命中 + 0% 误报 -> 100%
 assertClose(L.posterior(0.5, 1, 0), 1, 1e-9,
@@ -60,17 +60,17 @@ assert(harsh < 0.03,
 // ─────────────────────────────────────────────────────────
 console.log('\n── 2. 10 万人沙盘 ──');
 
-var box = L.buildSandbox(0.01, 0.447, 0.32);
+var box = L.buildSandbox(0.01, 0.52, 0.32);
 assert(box.total === 100000, '默认样本总数 10 万');
 assert(box.criminal + box.innocent === box.total, '罪犯+良民 守恒');
 assert(box.criminal === 1000, '1% × 10万 = 1000 名罪犯');
 assert(box.innocent === 99000, '剩余 9.9 万良民');
-assert(box.tattooedCriminal === 447, '罪犯中纹身 1000×44.7% = 447');
+assert(box.tattooedCriminal === 520, '罪犯中纹身 1000×52% = 520');
 assert(box.tattooedInnocent === 31680, '良民中纹身 99000×32% = 31680');
-assert(box.tattooedTotal === 32127, '纹身者总数 = 447 + 31680');
-assertClose(box.posterior, 447 / 32127, 1e-9,
-  '沙盘后验 = 447/32127 ≈ 1.39%');
-assertClose(box.posterior, L.posterior(0.01, 0.447, 0.32), 1e-9,
+assert(box.tattooedTotal === 32200, '纹身者总数 = 520 + 31680');
+assertClose(box.posterior, 520 / 32200, 1e-9,
+  '沙盘后验 = 520/32200 ≈ 1.61%');
+assertClose(box.posterior, L.posterior(0.01, 0.52, 0.32), 1e-9,
   '沙盘后验与公式一致');
 
 var box2 = L.buildSandbox(0.5, 0.5, 0.5, 100);
@@ -130,7 +130,7 @@ assert(ratio > 1.5 && ratio < 2.5,
 // ─────────────────────────────────────────────────────────
 console.log('\n── 6. 格式化 ──');
 
-assert(L.formatPct(0.01391, 1) === '1.4%', 'formatPct(0.01391) -> 1.4%');
+assert(L.formatPct(0.01615, 1) === '1.6%', 'formatPct(0.01615) -> 1.6%');
 assert(L.formatPct(0.5) === '50.0%', 'formatPct 默认 1 位小数');
 assert(L.formatOdds(2.5) === '×2.50', 'formatOdds(2.5) -> ×2.50');
 assert(L.formatUplift(0.245) === '+24.5%', 'formatUplift(0.245) -> +24.5%');
@@ -142,7 +142,7 @@ assert(L.formatUplift(-0.1) === '-10.0%', 'formatUplift 负值带负号');
 // ─────────────────────────────────────────────────────────
 console.log('\n── 7. 风险分级 ──');
 
-assert(L.rateRisk(1.4).level === 'low', '1.4% -> low（极低）');
+assert(L.rateRisk(1.6).level === 'low', '1.6% -> low（极低）');
 assert(L.rateRisk(10).level === 'mid', '10% -> mid（不高）');
 assert(L.rateRisk(30).level === 'high', '30% -> high（偏高）');
 assert(L.rateRisk(60).level === 'vhigh', '60% -> vhigh（很高）');

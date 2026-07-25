@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Claude Opus 5 系统提示词泄漏：20 万字符里藏了什么？分屏对比 4.7 vs 5，8 个亮点解读，记忆操作系统解剖。">
+  <title>Opus 5 提示词泄漏：20 万字符里藏了什么 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="read-progress" id="readProgress"></div>
+
+<!-- ════════════ 第一屏：报纸版式 + hero ════════════ -->
+<section class="screen screen-wall" id="wall">
+  <div class="newspaper" aria-hidden="true">
+    <div class="np-masthead">
+      <div class="np-name">The Claude Times</div>
+      <div class="np-meta">Vol. MMXXVI · No. 5 · Prompt Edition · 203 KB Edition</div>
+    </div>
+    <div class="np-rule np-rule-double"></div>
+    <div class="np-headline-row">
+      <div class="np-kicker">PROMPT LEAK · INSIDE THE 203 KB CONSTITUTION</div>
+      <h2 class="np-headline">Every Word You Read Is Quietly Telling the Model What to Be</h2>
+      <div class="np-deck">Eight years of prompts grew from 23 KB to 203 KB. What Anthropic is afraid of lives in the 800 new lines of memory code.</div>
+    </div>
+    <div class="np-rule"></div>
+    <div class="np-columns">
+      <div class="np-col"></div>
+      <div class="np-col"></div>
+      <div class="np-col"></div>
+      <div class="np-col"></div>
+      <div class="np-col"></div>
+      <div class="np-col"></div>
+    </div>
+    <div class="np-rule"></div>
+    <div class="np-byline">By the System Prompt Desk · Wire Reports</div>
+  </div>
+
+  <div class="wall-overlay">
+    <div class="wall-inner">
+      <div class="wall-dateline" data-reveal>2026 · 07 · 25 · 提示词考古 · 8 分钟</div>
+      <h1 class="wall-title" data-reveal>你现在看到的每一个字<br>都在悄悄决定 <em>Claude</em> 怎么回你</h1>
+      <p class="wall-deck" data-reveal>Claude Opus 5 系统提示词泄漏，203 KB，2049 行。往下滚，感受一下这个体量。</p>
+      <div class="wall-stats" data-reveal>
+        <span class="ws-item"><b id="wallBytes">203</b> KB</span>
+        <span class="ws-sep"></span>
+        <span class="ws-item"><b id="wallLines">2049</b> 行</span>
+        <span class="ws-sep"></span>
+        <span class="ws-item">比 Sonnet 3.5 大 <b id="wallRatio">8.8</b> 倍</span>
+      </div>
+      <div class="wall-hint" data-reveal><i class="ti ti-mouse"></i> 滚动开始</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ 第二屏：演化 + 分屏对比 ════════════ -->
+<section class="screen screen-evolution" id="evolution">
+  <div class="section-head">
+    <span class="section-num">01</span>
+    <h2>20 万这个数字，骗了你</h2>
+    <p class="section-deck">提示词膨胀不是 Opus 5 的突变。4.7 已经 15 万了。真正的增量几乎全是一个模块。</p>
+  </div>
+
+  <!-- 演化柱状图 -->
+  <div class="chart-wrap">
+    <canvas id="evolutionChart"></canvas>
+  </div>
+  <p class="chart-caption">数据来源：CL4R1T4S 仓库 ANTHROPIC 目录各文件实测字节数（wc -c）</p>
+
+  <!-- 4.7 vs 5 分屏对比 -->
+  <div class="section-head sub">
+    <span class="section-num">02</span>
+    <h2>分屏对比：4.7 vs 5</h2>
+    <p class="section-deck">左边 Opus 4.7，右边 Opus 5。绿色 = 5 新增，红色 = 5 移除，金色 = 记忆系统大升级。</p>
+  </div>
+
+  <div class="diff-controls">
+    <button class="diff-filter active" data-filter="all">全部</button>
+    <button class="diff-filter" data-filter="new">仅新增</button>
+    <button class="diff-filter" data-filter="changed">仅变化</button>
+  </div>
+
+  <div class="split-diff" id="splitDiff">
+    <div class="diff-col diff-col-47">
+      <div class="diff-col-head">Claude Opus 4.7 <span class="diff-size">150 KB</span></div>
+      <div class="diff-list" id="diffList47"></div>
+    </div>
+    <div class="diff-divider"></div>
+    <div class="diff-col diff-col-5">
+      <div class="diff-col-head">Claude Opus 5 <span class="diff-size">203 KB</span></div>
+      <div class="diff-list" id="diffList5"></div>
+    </div>
+  </div>
+
+  <div class="growth-callout" id="growthCallout"></div>
+</section>
+
+<!-- ════════════ 第三屏：亮点卡片 ════════════ -->
+<section class="screen screen-highlights" id="highlights">
+  <div class="section-head">
+    <span class="section-num">03</span>
+    <h2 class="accent-title">我在提示词里挖到的 8 个亮点</h2>
+    <p class="section-deck">每张卡片：英文原文 + 中文翻译 + 一句冷吐槽。点开看详情。</p>
+  </div>
+  <div class="highlight-grid" id="highlightGrid"></div>
+</section>
+
+<!-- ════════════ 第四屏：记忆系统解剖 ════════════ -->
+<section class="screen screen-memory" id="memory">
+  <div class="section-head">
+    <span class="section-num">04</span>
+    <h2>记忆操作系统：从 3 行到 800 行</h2>
+    <p class="section-deck">4.7 只有一句"用户没开记忆功能"。5 把它变成了一套带隐私法的文件系统。</p>
+  </div>
+
+  <!-- 目录树 -->
+  <div class="memory-tree-section">
+    <h3 class="mem-sub-title"><i class="ti ti-folder-tree"></i> 记忆文件分类法</h3>
+    <div class="memory-tree" id="memoryTree"></div>
+  </div>
+
+  <!-- 隐私三级 -->
+  <div class="memory-tree-section">
+    <h3 class="mem-sub-title"><i class="ti ti-shield-lock"></i> 隐私三级分类 <span class="mem-mini">一部微型数据保护法</span></h3>
+    <div class="privacy-tiers" id="privacyTiers"></div>
+  </div>
+
+  <!-- 记得但假装不记得 -->
+  <div class="memory-paradox">
+    <div class="paradox-label">核心张力</div>
+    <h3 class="paradox-title">记得，但假装不记得</h3>
+    <p class="paradox-body">记忆系统的设计目标是"记得"用户说过的每件事，但行为规则要求它在用户未主动提起时"假装不记得"。Anthropic 怕主动提起敏感记忆会伤害用户。</p>
+    <blockquote class="paradox-quote" id="paradoxQuote"></blockquote>
+  </div>
+</section>
+
+<!-- ════════════ 中英对照浏览 ════════════ -->
+<section class="screen screen-bilingual" id="bilingual">
+  <div class="section-head">
+    <span class="section-num">05</span>
+    <h2>行为宪法 · 中英对照</h2>
+    <p class="section-deck">Opus 5 提示词的指令部分全文翻译。点击章节展开中英对照。</p>
+  </div>
+  <div class="bilingual-list" id="bilingualList">
+    <div class="bi-loading">翻译加载中…</div>
+  </div>
+</section>
+
+<!-- ════════════ 尾部 ════════════ -->
+<footer class="leak-footer">
+  <p>数据来源：<a href="https://github.com/" target="_blank">CL4R1T4S 仓库</a> · ANTHROPIC 目录各版本系统提示词</p>
+  <p class="footer-note">本页为科普分析用途，提示词版权归 Anthropic 所有。翻译仅供参考。</p>
+</footer>
+
+<script src="engine.js"></script>
+<script src="translations.js"></script>
+<script src="app.js" defer></script>
+</body>
+</html>

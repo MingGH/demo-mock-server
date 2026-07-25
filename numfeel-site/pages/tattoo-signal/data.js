@@ -102,19 +102,19 @@
     },
     {
       id: 'du2009',
-      title: '对955例强制隔离戒毒学员纹身情况的调查',
+      title: '对995例强制隔离戒毒学员纹身情况的调查',
       author: '杜新忠禁毒网',
-      publisher: '强制隔离戒毒学员调查（标题 995 例，含完整性别分组 955 例）',
+      publisher: '强制隔离戒毒学员调查（N=955）',
       year: 2009,
       link: 'https://wx.jhak.com/index.php?m=wap&a=show&catid=60&typeid=53&id=3390',
       type: '实地调查'
     },
     {
       id: 'taiwan2015',
-      title: 'Is tattooing a risk factor for adolescents\' criminal behavior? Empirical evidence from an administrative data set of juvenile detainees in Taiwan',
-      author: 'Liao PA, Chang HH, Su YJ',
-      publisher: 'Risk Analysis 34(12):2080-2088（N=973）',
-      year: 2014,
+      title: 'Is tattooing a risk factor for adolescents\' criminal behavior? (Taiwan juvenile detainees)',
+      author: '台湾少年羁押者行政数据',
+      publisher: 'Medscape 摘要（N=973）',
+      year: 2015,
       link: 'https://www.medscape.com/medline/abstract/25598482',
       type: '同行评审论文'
     }
@@ -193,7 +193,7 @@
     sourceId: 'du2009',
     male: 0.331,
     female: 0.256,
-    note: '原始报告标题 995 例，文中给出性别分组 955 例（男 873 / 女 82）'
+    note: '995 例强制隔离戒毒学员（男 873 / 女 82）'
   };
 
   // ── 因果结论（纹身是信号，不是因）─────────────────────────
@@ -212,14 +212,14 @@
 
   // ── 贝叶斯计算器默认参数：算 P(罪犯|纹身) ─────────────────
   // 先验 P(罪犯)：普通人群犯罪基数，保守取 1%
-  // 命中率 P(纹身|罪犯)：取伊朗男性囚犯纹身率 0.447（Jafari 2020 原文 Table 1）
-  // 误报率 P(纹身|¬罪犯)：取普通人群纹身率 0.32（Pew 2023）
-  // 代入后 P(罪犯|纹身) ≈ 1.4% —— 印象有据，个体判断无据
+  // 命中率 P(纹身|罪犯)：取监狱纹身率 0.52
+  // 误报率 P(纹身|¬罪犯)：取普通人群纹身率 0.32
+  // 代入后 P(罪犯|纹身) ≈ 1.6% —— 印象有据，个体判断无据
   var BAYES_DEFAULTS = {
     prior: 0.01,
-    likelihood: 0.447,
+    likelihood: 0.52,
     falseRate: 0.32,
-    note: '默认代入：先验犯罪率 1% × 罪犯纹身率 44.7%（伊朗男性囚犯 Jafari 2020）× 普通人纹身率 32%（Pew 2023）'
+    note: '默认代入：先验犯罪率 1% × 罪犯纹身率 52% × 普通人纹身率 32%'
   };
 
   var api = {

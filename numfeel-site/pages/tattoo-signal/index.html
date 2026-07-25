@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="用 12 项研究数据拆解「纹身=坏女孩」：相关是相关，因果是因果。贝叶斯反演得出纹身者真犯罪概率不足 3%。">
+  <title>纹身是风险因素的可观测信号 | 数字直觉</title>
+
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="read-progress" id="readProgress"></div>
+
+<div class="container">
+
+<!-- ════════════ Hero ════════════ -->
+<header class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-veil"></div>
+  <div class="hero-inner">
+    <div class="hero-dateline" data-reveal>2026 · 07 · 25  ·  数据特稿  ·  8 分钟</div>
+    <h1 class="hero-title" data-reveal>纹身是<em>风险因素</em>的<br>可观测信号</h1>
+    <p class="hero-deck" data-reveal>都 21 世纪了，为什么还有人认为纹身泡吧就是坏女孩？</p>
+    <div class="hero-byline" data-reveal>By 数字直觉  ·  12 项研究数据  ·  贝叶斯可拖算</div>
+  </div>
+</header>
+
+<!-- ════════════ 主体：左导航 + 主文 + 右边注 ════════════ -->
+<div class="story">
+
+  <!-- 左：章号导航 -->
+  <aside class="story-rail" data-reveal>
+    <nav class="rail-toc" id="railToc">
+      <div class="toc-head">目录</div>
+      <a href="#sec-1">监狱纹身率</a>
+      <a href="#sec-2">女性分层</a>
+      <a href="#sec-3">青少年与毒</a>
+      <a href="#sec-4">贝叶斯反演</a>
+      <a href="#sec-5">相关性的来源</a>
+      <a href="#sec-6">回到题目</a>
+    </nav>
+  </aside>
+
+  <!-- 中：主文 -->
+  <main class="story-body">
+
+    <!-- Lead -->
+    <section class="block">
+      <p class="prose lead" data-reveal>纹身和犯罪存在统计学相关。这个相关是相关，<b>不是</b>因果。本文用 12 项研究数据拆解这一点。<a class="fn-ref" href="#fn-1">1</a></p>
+    </section>
+
+    <!-- §1 监狱数据 -->
+    <section class="block" id="sec-1">
+      <h2>监狱纹身率</h2>
+      <div class="prose">
+        <p>各地监狱的纹身率远高于普通人群：</p>
+
+        <table class="data-table" data-reveal>
+          <thead>
+            <tr><th>样本</th><th class="num-col">纹身率</th><th>来源</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>伊朗男性囚犯（终身）</td><td class="num-col">44.7%</td><td>Jafari 2020（N=11,617）</td></tr>
+            <tr><td>伊朗女性囚犯（终身）</td><td class="num-col">43.6%</td><td>Jafari 2020（N=369）</td></tr>
+            <tr><td>印度 Khandwa 监狱</td><td class="num-col">83.9%</td><td>Kaithwas 2022（N=106）</td></tr>
+            <tr><td>中国 F 省未管所 283 名男犯</td><td class="num-col">64%</td><td>福建省未管所 2017（成都未管所澎湃号 2022 转引）</td></tr>
+            <tr><td>中国 S 市涉罪未成年人</td><td class="num-col">50.5%</td><td>S 市检察机关 2020-01 至 2021-06（N=363）</td></tr>
+            <tr><td>中国成都未管所未成年犯</td><td class="num-col">83%</td><td>成都未管所 2022-11 抽样（N=200）</td></tr>
+          </tbody>
+        </table>
+
+        <p>美国普通成人纹身率为 32%。<a class="fn-ref" href="#fn-2">2</a> 监狱数据的极差从 43.6% 到 83.9%，说明这一相关在不同法律体系、不同性别比例下都成立。</p>
+
+        <figure class="figure">
+          <div class="figure-eyebrow">图 1 · 监狱/涉案群体纹身率 vs 普通人群</div>
+          <canvas id="prisonChart"></canvas>
+          <figcaption class="figure-caption">虚线为美国普通成人纹身率 <b>32%</b>（Pew 2023）。来源：多国数据。<a class="fn-ref" href="#fn-1">1</a><a class="fn-ref" href="#fn-2">2</a><a class="fn-ref" href="#fn-3">3</a><a class="fn-ref" href="#fn-4">4</a></figcaption>
+        </figure>
+
+        <p>国内数据更细：成都未管所 200 名未成年犯抽样中，<span class="num-emph">86%</span> 的首次纹身发生在 16 岁前。<a class="fn-ref" href="#fn-4">4</a></p>
+      </div>
+    </section>
+
+    <!-- §2 女性分层 -->
+    <section class="block" id="sec-2">
+      <h2>女性分层</h2>
+      <div class="prose">
+        <p>上述样本以男性为主。题目问的是"坏女孩"。把男性黑帮的纹身率直接套到女性，属于群体外推错误。</p>
+        <p>Dzhansarayeva 2023 使用 Add Health 纵向数据（N=20,745），控制自我报告的犯罪/越轨行为、自控力、越轨同伴接触、人口学变量后，得到有纹身者的司法处理优势比（Odds Ratio）：<a class="fn-ref" href="#fn-5">5</a></p>
+
+        <table class="data-table data-table-emph" data-reveal>
+          <thead>
+            <tr><th></th><th class="num-col">被捕</th><th class="num-col">被定罪</th><th class="num-col">被监禁</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>男性（有纹身 vs 无）</td><td class="num-col">×2.50</td><td class="num-col">×1.80</td><td class="num-col">×2.00</td></tr>
+            <tr class="row-female"><td>女性（有纹身 vs 无）</td><td class="num-col"><b>×1.75</b></td><td class="num-col"><b>×1.68</b></td><td class="num-col"><b>×1.90</b></td></tr>
+          </tbody>
+        </table>
+
+        <p>女性的优势比低于男性，但仍然显著大于 1。这条线斜了。</p>
+
+        <figure class="figure">
+          <div class="figure-eyebrow">图 2 · 男女纹身者被司法处理的相对风险</div>
+          <canvas id="femaleChart"></canvas>
+          <figcaption class="figure-caption">数值 = 相对无纹身者的倍数；&gt;1 即风险更高。样本 N=20,745。来源：Dzhansarayeva 2023。<a class="fn-ref" href="#fn-5">5</a></figcaption>
+        </figure>
+
+        <p class="aside">作者将部分原因归于<strong>污名化机制</strong>——有纹身者更易被警察注意、被检方起诉、被法官从重处理。这意味着部分司法层面的差距<strong>反映的是系统偏差，而非犯罪率本身的差距</strong>。</p>
+      </div>
+    </section>
+
+    <!-- §3 青少年与戒毒 -->
+    <section class="block" id="sec-3">
+      <h2>青少年与戒毒</h2>
+      <div class="prose">
+        <p>两组数据提供第二层证据：</p>
+        <ul class="bullet-list">
+          <li><b>台湾 973 名少年羁押者</b>：有纹身者的伤害罪比例 <span class="num-emph">+13</span> 个百分点、毒品罪 <span class="num-emph">+9</span> 个百分点、杀人罪 <span class="num-emph">+9</span> 个百分点。<a class="fn-ref" href="#fn-6">6</a></li>
+          <li><b>中国强制隔离戒毒所 955 例</b>：男戒员纹身率 <span class="num-emph">33.1%</span>，女戒员 <span class="num-emph">25.6%</span>。<a class="fn-ref" href="#fn-7">7</a></li>
+        </ul>
+        <p>两组数据共同指向一个特征：未成年、毒品、纹身三者高度共现。</p>
+
+        <div class="split">
+          <figure class="split-img">
+            <img src="images/signal.jpeg" alt="纹身针将数据织入皮肤的概念图" loading="lazy">
+          </figure>
+          <div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §4 贝叶斯反演（核心） -->
+    <section class="block" id="sec-4">
+      <h2>贝叶斯反演</h2>
+      <div class="prose">
+        <p>前三节给出的是 <i>P(纹身\|犯罪)</i>——罪犯中有纹身的比例。题目要的是 <i>P(犯罪\|纹身)</i>——纹身者中罪犯的比例。这是两个完全不同的条件概率。</p>
+
+        <p>由贝叶斯公式：</p>
+        <div class="formula" data-reveal><span class="katex" data-katex="P(\text{犯罪}|\text{纹身}) = \dfrac{P(\text{纹身}|\text{犯罪}) \cdot P(\text{犯罪})}{P(\text{纹身})}"></span></div>
+
+        <p>代入保守参数：</p>
+        <ul class="bullet-list">
+          <li>先验 <i>P(犯罪)</i> = 1%（普通人中真正犯罪的基数）</li>
+          <li>似然 <i>P(纹身\|犯罪)</i> = 44.7%（伊朗男性囚犯纹身率，Jafari 2020）</li>
+          <li>边际 <i>P(纹身)</i> ≈ 0.32 × 0.99 + 0.447 × 0.01 ≈ 0.321</li>
+        </ul>
+
+        <p>得到：</p>
+        <div class="formula" data-reveal><span class="katex" data-katex="P(\text{犯罪}|\text{纹身}) = \dfrac{0.447 \times 0.01}{0.321} \approx 1.39\%"></span></div>
+
+        <p>即一个随机抽到的纹身者，真正犯罪的概率约为 <span class="num-cool">1.4%</span>。</p>
+
+        <p>把罪犯纹身率拉到成都未管所水平（83%）：</p>
+        <div class="formula" data-reveal><span class="katex" data-katex="P(\text{犯罪}|\text{纹身}) = \dfrac{0.83 \times 0.01}{0.83 \times 0.01 + 0.32 \times 0.99} \approx 2.55\%"></span></div>
+
+        <p>仍然在 3% 以内。</p>
+
+        <p>原因：<i>P(犯罪)</i> 本身极低。无论 <i>P(纹身\|犯罪)</i> 多高，被它放大的先验仍然是小数。这是基础概率的力量。</p>
+
+        <div class="bayes">
+          <div class="bayes-head">
+            <h3>贝叶斯计算器</h3>
+            <div class="bayes-num"><span id="bayesPostPct">1.4</span>%<small>P(罪犯 \| 纹身)</small></div>
+          </div>
+
+          <div class="bayes-controls">
+            <div class="bayes-slider">
+              <label>先验犯罪率 <span class="v" id="priorValue">1.0%</span></label>
+              <input type="range" id="priorSlider" min="0" max="100" step="0.1" value="1">
+              <div class="slider-presets">
+                <button type="button" data-target="priorSlider" data-value="0.5">0.5%</button>
+                <button type="button" data-target="priorSlider" data-value="1">1%</button>
+                <button type="button" data-target="priorSlider" data-value="5">5%</button>
+                <button type="button" data-target="priorSlider" data-value="20">20%</button>
+              </div>
+            </div>
+            <div class="bayes-slider">
+              <label>罪犯中纹身率 <span class="v" id="likelihoodValue">44.7%</span></label>
+              <input type="range" id="likelihoodSlider" min="0" max="100" step="0.1" value="44.7">
+              <div class="slider-presets">
+                <button type="button" data-target="likelihoodSlider" data-value="32">普通人 32%</button>
+                <button type="button" data-target="likelihoodSlider" data-value="44.7">伊朗囚犯 44.7%</button>
+                <button type="button" data-target="likelihoodSlider" data-value="83">未管所 83%</button>
+              </div>
+            </div>
+            <div class="bayes-slider">
+              <label>非罪犯中纹身率 <span class="v" id="falseRateValue">32.0%</span></label>
+              <input type="range" id="falseRateSlider" min="0" max="100" step="0.1" value="32">
+              <div class="slider-presets">
+                <button type="button" data-target="falseRateSlider" data-value="10">10%</button>
+                <button type="button" data-target="falseRateSlider" data-value="32">美国 32%</button>
+                <button type="button" data-target="falseRateSlider" data-value="56">年轻女性 56%</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="bayes-bars">
+            <div class="bayes-bar-row">
+              <span class="bayes-bar-label">罪犯里</span>
+              <div class="bayes-bar-track"><div class="bayes-bar-fill" id="barLikeli"></div></div>
+              <span class="bayes-bar-value" id="barLikeliValue">44.7%</span>
+            </div>
+            <div class="bayes-bar-row">
+              <span class="bayes-bar-label">普通人</span>
+              <div class="bayes-bar-track"><div class="bayes-bar-fill" id="barFalse"></div></div>
+              <span class="bayes-bar-value" id="barFalseValue">32%</span>
+            </div>
+            <div class="bayes-bar-row final">
+              <span class="bayes-bar-label">纹身者犯罪</span>
+              <div class="bayes-bar-track"><div class="bayes-bar-fill" id="barPost"></div></div>
+              <span class="bayes-bar-value" id="barPostValue">1.4%</span>
+            </div>
+          </div>
+
+          <div class="bayes-sandbox" id="bayesSandbox"></div>
+          <div class="bayes-verdict" id="bayesVerdict"></div>
+
+          <div class="bayes-btn-row">
+            <button class="btn" id="bayesCompute">计算</button>
+            <button class="btn btn-ghost" id="bayesReset">恢复默认</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §5 因果检验 -->
+    <section class="block" id="sec-5">
+      <h2>相关性的来源</h2>
+      <div class="prose">
+        <p>如果纹身不导致犯罪，那这个相关由什么承载？</p>
+
+        <div class="signal-grid">
+          <div class="signal-card">
+            <h3>共同人格特质</h3>
+            <p>Jennings, Fox & Farrington 2014 用 Cambridge Study 411 名男性的纵向数据 + 倾向评分匹配，纹身与犯罪的相关消失（<i>spurious</i>）。<a class="fn-ref" href="#fn-10">10</a> 纹身与犯罪共享一组人格与发展风险因子（高冲动性、低宜人性、早期行为问题），纹身本身不增加也不减少犯罪概率。</p>
+          </div>
+          <div class="signal-card">
+            <h3>共同社会位置</h3>
+            <p>Pew 2023 数据显示纹身与收入反相关（低收入 43% vs 高收入 21%）。<a class="fn-ref" href="#fn-2">2</a> 贫困同时推高纹身与犯罪。帮派、街头文化用纹身标记归属，归属缺失的人两端都倾向。</p>
+          </div>
+          <div class="signal-card signal-card-ink">
+            <h3>共同生命阶段</h3>
+            <p>成都未管所数据中 86% 的首次纹身发生在 16 岁前。<a class="fn-ref" href="#fn-4">4</a> 纹身在这里对应的是一段特定的发展窗口，<em>而非终身的稳定特征</em>。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- §6 回到题目 -->
+    <section class="block" id="sec-6">
+      <h2>回到题目</h2>
+      <div class="prose">
+        <p>"纹身泡吧=坏女孩"这个印象，有数据基础——纹身在统计学上关联了更高的司法处理概率。这个关联值得作为风险信号保留。</p>
+        <p>这个印象没有个体推断的资格——一个纹身的女孩，她真正犯罪的概率，在合理参数下不超过 3%。</p>
+        <p>区分这两点，是数据给出的方法。</p>
+      </div>
+    </section>
+
+    <!-- 脚注：来源 -->
+    <section class="references" id="references">
+      <div class="references-head">数据来源 / References</div>
+      <ol>
+        <li id="fn-1"><b>Bales, Bloomberg & Waters</b>. Inmate Tattoos and In-Prison and Post-Prison Violent Behavior. <i>Int J Criminology &amp; Sociology</i> 2:20-31, 2013. <a href="https://www.ojp.gov/ncjrs/virtual-library/abstracts/inmate-tattoos-and-prison-and-post-prison-violent-behavior" target="_blank" rel="noopener">原文</a></li>
+        <li id="fn-2"><b>Pew Research Center</b>. 32% of Americans have a tattoo, including 22% who have more than one (N=8480), 2023. <a href="https://www.pewresearch.org/short-reads/2023/08/15/32-of-americans-have-a-tattoo-including-22-who-have-more-than-one/" target="_blank" rel="noopener">原文</a></li>
+        <li id="fn-3"><b>Jafari et al.</b> Tattooing among Iranian prisoners. <i>An Bras Dermatol</i> 95(3):289-297, 2020. <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7253895/" target="_blank" rel="noopener">原文</a></li>
+        <li id="fn-4">成都未成年犯管教所. 文身=变坏？青春期的切肤之痛. 澎湃号·政务, 2022. <a href="https://m.thepaper.cn/newsDetail_forward_21356150" target="_blank" rel="noopener">原文</a></li>
+        <li id="fn-5"><b>Dzhansarayeva et al.</b> People with permanent tattoos are more likely to be arrested, convicted, and incarcerated. <i>Deviant Behavior</i>（Add Health 数据 N=20,745）, 2023. <a href="https://www.psypost.org/2023/11/people-with-permanent-tattoos-are-more-likely-to-be-arrested-convicted-and-incarcerated-study-finds-214368" target="_blank" rel="noopener">原文</a></li>
+        <li id="fn-6">Liao PA, Chang HH, Su YJ. Is tattooing a risk factor for adolescents' criminal behavior? <i>Risk Analysis</i> 34(12):2080-2088, 2014. <a href="https://www.medscape.com/medline/abstract/25598482" target="_blank" rel="noopener">原文</a></li>
+        <li id="fn-7">杜新忠禁毒网. 对 995 例强制隔离戒毒学员纹身情况的调查（男 873 / 女 82，合计 955 例有完整性别分组）, 2009. <a href="https://wx.jhak.com/index.php?m=wap&a=show&catid=60&typeid=53&id=3390" target="_blank" rel="noopener">原文</a></li>
+        <li id="fn-10"><b>Jennings, Fox &amp; Farrington</b>. Inked into Crime? An Examination of the Causal Relationship between Tattoos and Life-Course Offending. <i>Journal of Criminal Justice</i> 42(1):77-84, 2014. <a href="https://www.researchgate.net/publication/260014515" target="_blank" rel="noopener">原文</a></li>
+      </ol>
+
+      <div class="copy-row">
+        <button class="btn btn-ghost" id="copyArticle">复制纯文本回答</button>
+        <a class="btn btn-ghost" href="./article.md" download>下载 .md 全文</a>
+        <a class="btn btn-ghost" href="../../index.html">回总览</a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 右：边注 -->
+  <aside class="story-margin">
+    <div class="margin-stat" data-reveal>1.4%<small>默认参数下纹身者真犯罪概率</small></div>
+    <div class="margin-note" data-reveal">基础概率的力量。<i>P(犯罪)</i> 极低，<i>P(纹身\|犯罪)</i> 拉满也只能放大一个 1%。</div>
+    <div class="margin-stat" data-reveal>×1.75<small>有纹身女性被捕优势比</small></div>
+    <div class="margin-note" data-reveal">但部分差距源于<em>污名化</em>——有纹身者更易被司法系统从重处理。</div>
+    <div class="margin-stat" data-reveal>86%<small>未成年犯首次纹身低于 16 岁</small></div>
+    <div class="margin-note" data-reveal">纹身在这里对应一段特定的发展窗口。</div>
+  </aside>
+
+</div><!-- .story -->
+</div><!-- .container -->
+
+<textarea id="plainText" hidden></textarea>
+
+<script src="./data.js"></script>
+<script src="./logic.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

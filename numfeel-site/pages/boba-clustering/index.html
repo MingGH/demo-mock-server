@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="为什么奶茶店、麦当劳、肯德基总爱扎堆开在一起？用 1929 年霍特林线性城市模型，拖动店铺看市场份额如何被贪心吃掉，一键演示纳什均衡如何把两家店都拽到街中央。">
+  <title>为什么奶茶店都扎堆：霍特林模型 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <!-- GSAP 动画库 -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-cup-soda"></i> 为什么奶茶店都扎堆开在一起</h1>
+    <p class="subtitle">一条街、两家店、一群懒得走远的顾客。<br>拖动店铺，看「理性」如何把两家店都拽到街中央。</p>
+    <img class="hero-img" src="images/hero.jpg" alt="两家奶茶店扎堆开在街道正中间的插画">
+    <div class="hero-caption">两家奶茶店紧挨着开在街中央——背后是博弈论的必然。</div>
+  </div>
+
+  <!-- Card 1：拖动街道 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-hand-move"></i> 先动手：拖两家店，看谁吃掉谁</div>
+    <div class="card-desc">
+      长度 1 公里的街上住满了均匀分布的顾客，每个人只去最近的奶茶店。
+      <strong>拖动两家店的位置</strong>，右边的分割线会实时显示市场版图，下方是顾客平均要走多远。
+    </div>
+
+    <div class="street-wrap">
+      <div class="street" id="street">
+        <div class="divider" id="divider"><div class="divider-label" id="dividerLabel">中点</div></div>
+        <div class="shop shop-a" id="shopA" data-i="0">
+          <span class="shop-tag">喜啡</span>
+          <i class="ti ti-cup-soda"></i>
+        </div>
+        <div class="shop shop-b" id="shopB" data-i="1">
+          <span class="shop-tag">茶颜</span>
+          <i class="ti ti-cup-soda"></i>
+        </div>
+      </div>
+      <div class="street-ends"><span>街尾 0</span><span>街尾 1000m</span></div>
+    </div>
+
+    <div class="share-bar" id="shareBar">
+      <div class="share-seg a" id="shareA">50%</div>
+      <div class="share-seg b" id="shareB">50%</div>
+    </div>
+
+    <div class="result-grid">
+      <div class="result-item blue"><div class="label">喜啡 位置</div><div class="value" id="posA">250m</div></div>
+      <div class="result-item blue"><div class="label">茶颜 位置</div><div class="value" id="posB">750m</div></div>
+      <div class="result-item green"><div class="label">平均走路距离</div><div class="value" id="avgDist">125m</div></div>
+      <div class="result-item"><div class="label">谁更赚</div><div class="value" id="whoWin">平局</div></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="btnNash"><i class="ti ti-target-arrow"></i> 跳到纳什均衡</button>
+      <button class="btn btn-secondary" id="btnSocial"><i class="ti ti-heart-handshake"></i> 跳到社会最优</button>
+      <button class="btn btn-secondary" id="btnReset"><i class="ti ti-refresh"></i> 重置</button>
+    </div>
+    <div class="tip">提示：把一家店拖到对手旁边，能瞬间抢走半个市场——这就是扎堆的诱因。</div>
+
+    <div class="insight-box" id="dragInsight">
+      <strong>先猜一下：</strong>如果你是喜啡的老板，对手站在 750m，你会站在哪？
+      站在 250m 只能拿到左半边一半顾客；站在 749m 就能把对手挤到只剩右半边一点点。
+      <strong>贪心会逼你往对手身上贴。</strong>
+    </div>
+  </div>
+
+  <!-- Card 2：自私的老板动画 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-flame"></i> 自私的老板：看两家店如何被贪心拽到一起</div>
+    <div class="card-desc">
+      假设两家店轮流「向最优位置移动一步」。一开始分散在街两头，看起来挺和谐。
+      点开始，看每一轮谁在动、为什么动。<strong>结局只有一种：都挤到正中央，谁也吃不掉谁。</strong>
+    </div>
+
+    <div class="conv-stage" id="convStage">
+      <div class="conv-track"></div>
+      <div class="shop shop-a" id="convA" style="position:absolute;top:50%;"><i class="ti ti-cup-soda"></i></div>
+      <div class="shop shop-b" id="convB" style="position:absolute;top:50%;"><i class="ti ti-cup-soda"></i></div>
+      <div class="conv-step" id="convStep">第 0 轮 · 初始</div>
+    </div>
+
+    <div class="result-grid">
+      <div class="result-item"><div class="label">喜啡 位置</div><div class="value" id="convPosA">100m</div></div>
+      <div class="result-item"><div class="label">茶颜 位置</div><div class="value" id="convPosB">900m</div></div>
+      <div class="result-item green"><div class="label">平均走路距离</div><div class="value" id="convDist">250m</div></div>
+      <div class="result-item red"><div class="label">相比社会最优多走</div><div class="value" id="convLoss">+125m</div></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="btnPlay"><i class="ti ti-player-play"></i> 开始博弈</button>
+      <button class="btn btn-secondary" id="btnStep"><i class="ti ti-arrow-right"></i> 单步</button>
+      <button class="btn btn-secondary" id="btnConvReset"><i class="ti ti-refresh"></i> 重置</button>
+    </div>
+
+    <div class="insight-box" id="convInsight">
+      点「开始博弈」，看贪心如何一步步毁掉分散的和谐。
+    </div>
+  </div>
+
+  <!-- Card 3：扎堆 vs 分散对比 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-arrows-diff"></i> 两种结局：扎堆（纳什均衡） vs 分散（社会最优）</div>
+    <div class="card-desc">
+      把两种摆法放一起比一比。左边是「每家店自私选择」的纳什均衡，右边是「让所有顾客走路最少」的社会最优。
+      <strong>市场份额都是各 50%，但顾客平均走路距离差了一倍。</strong>
+    </div>
+
+    <img class="compare-img" src="images/compare.jpg" alt="扎堆开店与分散开店的对比插画">
+
+    <div class="result-grid">
+      <div class="result-item red"><div class="label">扎堆·平均走路</div><div class="value" id="cmpNashDist">250m</div></div>
+      <div class="result-item green"><div class="label">分散·平均走路</div><div class="value" id="cmpSocDist">125m</div></div>
+      <div class="result-item red"><div class="label">福利损失</div><div class="value" id="cmpLoss">2.0×</div></div>
+      <div class="result-item blue"><div class="label">谁更赚（份额）</div><div class="value">都是50%</div></div>
+    </div>
+
+    <div class="chart-box"><canvas id="cmpChart"></canvas></div>
+
+    <div class="insight-box">
+      <strong>关键矛盾：</strong>对老板来说，两种摆法市场份额一模一样（各 50%），
+      所以没人有动力主动分散开。<span class="red">但对顾客来说，扎堆让所有人平均多走一倍路。</span>
+      <br><br>
+      这就是「<strong>纳什均衡 ≠ 社会最优</strong>」最直观的例子：
+      每个人都在做对自己最好的选择，合起来却把整条街的效率拉到最差。
+    </div>
+  </div>
+
+  <!-- Card 4：N 家店 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-users"></i> 那三家店呢？会打成一团</div>
+    <div class="card-desc">
+      Hotelling 模型有个反直觉结论：<strong>2 家店有均衡（都到中间），3 家及以上反而没有纯策略均衡。</strong>
+      选店铺数量，看会发生什么。
+    </div>
+
+    <div class="shop-selector" id="shopSelector">
+      <button data-n="2" class="active">2 家</button>
+      <button data-n="3">3 家</button>
+      <button data-n="4">4 家</button>
+      <button data-n="5">5 家</button>
+    </div>
+
+    <div class="conv-stage" id="nStage">
+      <div class="conv-track"></div>
+      <div class="conv-step" id="nStep">第 0 轮</div>
+    </div>
+
+    <div class="result-grid">
+      <div class="result-item green"><div class="label">社会最优·平均走路</div><div class="value" id="nSocDist">125m</div></div>
+      <div class="result-item red"><div class="label">扎堆·平均走路</div><div class="value" id="nNashDist">250m</div></div>
+      <div class="result-item"><div class="label">福利损失</div><div class="value" id="nLoss">2.0×</div></div>
+      <div class="result-item blue"><div class="label">是否有均衡</div><div class="value" id="nEq">有</div></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="btnNPlay"><i class="ti ti-player-play"></i> 开始博弈</button>
+      <button class="btn btn-secondary" id="btnNReset"><i class="ti ti-refresh"></i> 重置</button>
+    </div>
+
+    <div class="insight-box" id="nInsight">
+      选店铺数量，点开始看博弈过程。
+    </div>
+  </div>
+
+  <!-- Card 5：现实案例 -->
+  <div class="card">
+    <div class="card-title"><i class="ti ti-world"></i> 现实里到处都是这条街</div>
+    <div class="case-grid">
+      <div class="case-item">
+        <div class="case-icon"><i class="ti ti-building-store"></i></div>
+        <div class="case-title">奶茶一条街 / 餐饮扎堆</div>
+        <div class="case-desc">同品类店铺挤在同一条街、同一个商场同一层。背后是博弈论在起作用：离对手远 = 白送市场。</div>
+      </div>
+      <div class="case-item">
+        <div class="case-icon"><i class="ti ti-brand-zara"></i></div>
+        <div class="case-title">快餐店 / 零售巨头</div>
+        <div class="case-desc">同类竞品门店选址高度重合。丹佛地区最近的 Target 与 Walmart 平均距离仅 2 英里，跟随机分布差几十倍。</div>
+      </div>
+      <div class="case-item">
+        <div class="case-icon"><i class="ti ti-vote"></i></div>
+        <div class="case-title">政党立场 / 中间选民定理</div>
+        <div class="case-desc">选举中各党派政纲越来越像，都往中间靠。选民均匀分布在政治光谱上，靠中间才能拿到最多票——和奶茶店一模一样。</div>
+      </div>
+      <div class="case-item">
+        <div class="case-icon"><i class="ti ti-device-tv"></i></div>
+        <div class="case-title">电视节目 / 短视频同质化</div>
+        <div class="case-desc">为什么所有平台综艺都长一个样？观众注意力均匀分布，内容方扎堆做「中间口味」最安全，差异化反而是风险。</div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <strong>一句话总结：</strong>扎堆是博弈的引力在拽，老板也身不由己。
+      只要顾客懒得走远、对手能贴上来抢市场，分散就不稳定。<br><br>
+      想让奶茶店分散开？要么改变客流分布（让顾客聚集在多个点），要么靠规划限制（外部强制）。
+      光靠市场自己，最后一定都挤到街中央。
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+/* 奶茶店扎堆：霍特林线性城市模型 - 页面样式 */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh;
+  color: #e4e4e4;
+  padding: 20px 16px 60px;
+  line-height: 1.6;
+}
+
+.container { max-width: 960px; margin: 0 auto; }
+
+/* ── 头部 ── */
+.header { text-align: center; margin: 30px 0 30px; }
+.header h1 {
+  font-size: 2.1rem; font-weight: 800;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+  background-size: 200% 100%;
+  background-clip: text; -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s ease infinite;
+  letter-spacing: 1px;
+}
+@keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+.header .subtitle { color: rgba(255,255,255,0.55); margin-top: 14px; font-size: 15px; }
+.header .hero-img {
+  width: 100%; max-width: 380px; max-height: 220px; object-fit: cover;
+  border-radius: 16px; margin: 20px auto 0;
+  display: block; box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.hero-caption { color: rgba(255,255,255,0.35); font-size: 12px; margin-top: 8px; }
+
+/* ── 卡片 ── */
+.card {
+  background: rgba(255,255,255,0.03);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 22px 20px;
+  margin-bottom: 22px;
+  backdrop-filter: blur(6px);
+}
+.card-title {
+  color: #fbbf24; font-size: 16px; font-weight: 700; margin-bottom: 16px;
+  padding-left: 10px; border-left: 3px solid #fbbf24;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-desc { color: rgba(255,255,255,0.5); font-size: 13px; margin-bottom: 18px; line-height: 1.7; }
+.card-desc strong { color: #fbbf24; font-weight: 600; }
+
+/* ── 按钮 ── */
+.btn {
+  padding: 11px 24px; font-size: 14px; font-weight: 600; border: none;
+  border-radius: 24px; cursor: pointer; transition: all 0.25s;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(251,191,36,0.32); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-secondary {
+  background: rgba(255,255,255,0.06); color: #fbbf24;
+  border: 1px solid rgba(251,191,36,0.3);
+}
+.btn-secondary:hover { background: rgba(251,191,36,0.14); box-shadow: none; }
+.btn-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+/* ── 街道交互区 ── */
+.street-wrap {
+  background: rgba(0,0,0,0.22); border-radius: 14px; padding: 30px 16px 20px;
+  margin: 10px 0 4px; user-select: none; -webkit-user-select: none;
+}
+.street {
+  position: relative; height: 90px; width: 100%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+  border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);
+  touch-action: none; cursor: crosshair;
+}
+/* 消费者小点 */
+.customer-dot {
+  position: absolute; width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(255,255,255,0.18); top: 50%; transform: translate(-50%,-50%);
+  pointer-events: none;
+}
+/* 中点分割线 */
+.divider {
+  position: absolute; top: -6px; bottom: -6px; width: 2px;
+  background: repeating-linear-gradient(180deg, #fbbf24 0 6px, transparent 6px 12px);
+  transform: translateX(-50%); pointer-events: none; opacity: 0.85;
+}
+.divider-label {
+  position: absolute; top: -22px; left: 50%; transform: translateX(-50%);
+  font-size: 11px; color: #fbbf24; white-space: nowrap;
+}
+/* 店铺 */
+.shop {
+  position: absolute; top: 50%; transform: translate(-50%,-50%);
+  width: 46px; height: 46px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: grab; z-index: 3; transition: box-shadow 0.2s;
+  font-size: 22px; color: #fff;
+}
+.shop i { pointer-events: none; }
+.shop:active { cursor: grabbing; }
+.shop-a {
+  background: linear-gradient(135deg, #f472b6, #ec4899);
+  box-shadow: 0 4px 14px rgba(236,72,153,0.5);
+}
+.shop-b {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  box-shadow: 0 4px 14px rgba(14,165,233,0.5);
+}
+.shop.dragging { z-index: 5; transform: translate(-50%,-50%) scale(1.12); }
+.shop-tag {
+  position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+  font-size: 11px; font-weight: 700; white-space: nowrap; color: #fff;
+  background: rgba(0,0,0,0.4); padding: 1px 6px; border-radius: 8px;
+}
+.street-ends {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 6px; padding: 0 4px;
+}
+
+/* ── 数据指标 ── */
+.result-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px; margin: 16px 0;
+}
+.result-item {
+  background: rgba(0,0,0,0.22); border-radius: 12px; padding: 14px 10px; text-align: center;
+}
+.result-item .label { color: rgba(255,255,255,0.5); font-size: 12px; margin-bottom: 6px; }
+.result-item .value { font-size: 1.5rem; font-weight: 800; color: #fbbf24; }
+.result-item.green .value { color: #4ade80; }
+.result-item.red .value { color: #f87171; }
+.result-item.blue .value { color: #60a5fa; }
+
+/* ── 份额条 ── */
+.share-bar {
+  display: flex; height: 30px; border-radius: 8px; overflow: hidden;
+  margin: 10px 0; border: 1px solid rgba(255,255,255,0.06);
+}
+.share-seg {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff; transition: width 0.4s ease;
+}
+.share-seg.a { background: linear-gradient(90deg, #f472b6, #ec4899); }
+.share-seg.b { background: linear-gradient(90deg, #38bdf8, #0ea5e9); }
+
+/* ── 洞察框 ── */
+.insight-box {
+  background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.05));
+  border: 1px solid rgba(251,191,36,0.2); border-radius: 12px;
+  padding: 16px 18px; margin-top: 16px; line-height: 1.8; font-size: 13.5px;
+  color: rgba(255,255,255,0.72);
+}
+.insight-box strong { color: #fbbf24; }
+.insight-box .red { color: #f87171; font-weight: 600; }
+.insight-box .green { color: #4ade80; font-weight: 600; }
+
+/* ── 收敛动画区 ── */
+.conv-stage {
+  position: relative; height: 110px; width: 100%;
+  background: rgba(0,0,0,0.22); border-radius: 12px; margin: 12px 0;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.conv-track {
+  position: absolute; left: 16px; right: 16px; top: 50%; height: 2px;
+  background: rgba(255,255,255,0.08); transform: translateY(-50%);
+}
+.conv-step {
+  position: absolute; bottom: 8px; left: 16px;
+  font-size: 12px; color: rgba(255,255,255,0.5);
+}
+.conv-step strong { color: #fbbf24; }
+
+/* ── 对比图 ── */
+.compare-img {
+  width: 100%; max-width: 440px; max-height: 240px; object-fit: cover;
+  border-radius: 12px; margin: 10px auto; display: block;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.chart-box { position: relative; height: 320px; margin-top: 14px; }
+
+/* ── N 家店选择器 ── */
+.shop-selector { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.shop-selector button {
+  flex: 1; min-width: 64px; padding: 10px 8px; font-size: 13px; font-weight: 600;
+  border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.7); cursor: pointer;
+  transition: all 0.2s;
+}
+.shop-selector button:hover { border-color: rgba(251,191,36,0.4); color: #fbbf24; }
+.shop-selector button.active {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a1a2e;
+  border-color: transparent;
+}
+
+/* ── 现实案例网格 ── */
+.case-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px; margin-top: 8px;
+}
+.case-item {
+  background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px; text-align: center;
+}
+.case-item .case-icon { font-size: 26px; margin-bottom: 8px; color: #fbbf24; }
+.case-item .case-title { color: #fbbf24; font-weight: 700; margin-bottom: 6px; font-size: 14px; }
+.case-item .case-desc { font-size: 12.5px; color: rgba(255,255,255,0.55); line-height: 1.7; }
+
+.hidden { display: none; }
+.tip { color: rgba(255,255,255,0.35); font-size: 12px; margin-top: 10px; }
+
+/* ── 移动端 ── */
+@media (max-width: 600px) {
+  .header h1 { font-size: 1.55rem; }
+  .card { padding: 18px 14px; }
+  .street { height: 80px; }
+  .shop { width: 40px; height: 40px; font-size: 19px; }
+  .result-grid { grid-template-columns: repeat(2, 1fr); }
+  .chart-box { height: 260px; }
+  .btn { padding: 10px 18px; font-size: 13px; }
+}

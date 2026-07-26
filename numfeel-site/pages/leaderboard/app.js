@@ -5,15 +5,16 @@
   var PREFIX = '../../'; // 榜单页在 pages/leaderboard/ 下，回到站点根
 
   var RANGE_HINTS = {
+    last24Hours: '最近 24 小时内最活跃的实验，谁正在被疯传一目了然。',
     last7Days: '最近一周涨势最猛的实验，新上线的 demo 最容易在这里冒头。',
     last30Days: '最近 30 天的综合人气，兼顾热度与稳定性。',
     allTime: '从开站至今的累计浏览量，是经过时间检验的常青实验。'
   };
 
   var state = {
-    data: null,      // 后端返回的 {last7Days, last30Days, allTime, updatedAt}
-    demoIndex: {},   // path → demo 元信息
-    range: 'last7Days'
+    data: null,      // 后端返回的 {last24Hours, last7Days, last30Days, allTime, updatedAt}
+    demoIndex: {},   // path -> demo 元信息
+    range: 'last24Hours'
   };
 
   document.addEventListener('DOMContentLoaded', boot);

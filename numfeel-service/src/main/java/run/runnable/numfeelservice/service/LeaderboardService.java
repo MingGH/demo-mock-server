@@ -21,7 +21,7 @@ import java.util.Map;
 /**
  * Demo 热门排行榜服务。
  * <p>
- * 每小时定时登录 Umami 统计后台，拉取近 7 天 / 近 30 天 / 历史总榜三个口径的
+ * 每小时定时登录 Umami 统计后台，拉取近 24 小时 / 近 7 天 / 近 30 天 / 历史总榜四个口径的
  * 页面浏览量（{@code type=path}），清洗（剔除首页、广告变体、合并重复子路径、
  * 仅保留 {@code /pages/} 下的真实 demo）后构建内存快照。前端始终读取最新快照，
  * 因此无缓存空窗；若某次拉取失败，则保留上一次成功的快照（降级返回旧数据）。
@@ -46,7 +46,7 @@ public class LeaderboardService {
 
     /** 当前对外提供的排行榜快照（volatile 保证可见性）。 */
     private volatile LeaderboardResponse snapshot =
-            new LeaderboardResponse(List.of(), List.of(), List.of(), 0L);
+            new LeaderboardResponse(List.of(), List.of(), List.of(), List.of(), 0L);
 
     public LeaderboardService(@Qualifier("umamiWebClient") WebClient umamiWebClient,
                               @Value("${umami.website-id:}") String websiteId,
@@ -67,7 +67,7 @@ public class LeaderboardService {
     /**
      * 返回当前排行榜快照（永不阻塞，永不抛错）。
      *
-     * @return 三个口径的榜单及数据更新时间
+     * @return 四个口径的榜单及数据更新时间
      */
     public LeaderboardResponse getLeaderboard() {
         return snapshot;
@@ -88,9 +88,9 @@ public class LeaderboardService {
                 .subscribe(
                         fresh -> {
                             snapshot = fresh;
-                            log.info("Leaderboard snapshot refreshed: 7d={}, 30d={}, all={}",
-                                    fresh.last7Days().size(), fresh.last30Days().size(),
-                                    fresh.allTime().size());
+                            log.info("Leaderboard snapshot refreshed: 24h={}, 7d={}, 30d={}, all={}",
+                                    fresh.last24Hours().size(), fresh.last7Days().size(),
+                                    fresh.last30Days().size(), fresh.allTime().size());
                         },
                         err -> log.warn("Leaderboard refresh failed, keeping previous snapshot: {}",
                                 err.getMessage())
@@ -114,15 +114,16 @@ public class LeaderboardService {
                 });
     }
 
-    /** 并发拉取三个口径并组装快照。 */
+    /** 并发拉取四个口径并组装快照。 */
     private Mono<LeaderboardResponse> fetchAllRanges(String token) {
         long now = System.currentTimeMillis();
         return Mono.zip(
+                        fetchRange(token, now - DAY_MS, now),
                         fetchRange(token, now - 7 * DAY_MS, now),
                         fetchRange(token, now - 30 * DAY_MS, now),
                         fetchRange(token, ALL_TIME_START_MS, now))
                 .map(tuple -> new LeaderboardResponse(
-                        tuple.getT1(), tuple.getT2(), tuple.getT3(), now));
+                        tuple.getT1(), tuple.getT2(), tuple.getT3(), tuple.getT4(), now));
     }
 
     /** 拉取单个时间窗的 path 指标并清洗为榜单条目。 */

@@ -12,7 +12,7 @@ import tools.jackson.databind.JsonNode;
 /**
  * Demo 热门排行榜接口。
  * <p>
- * {@code GET /leaderboard} 返回近 7 天 / 近 30 天 / 历史总榜三个口径的热门 demo 列表。
+ * {@code GET /leaderboard} 返回近 24 小时 / 近 7 天 / 近 30 天 / 历史总榜四个口径的热门 demo 列表。
  * 数据由 {@link LeaderboardService} 每小时定时刷新内存快照，本接口仅读取快照，
  * 永不阻塞、永不抛错。
  */

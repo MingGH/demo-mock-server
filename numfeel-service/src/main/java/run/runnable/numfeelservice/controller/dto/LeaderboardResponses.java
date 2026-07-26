@@ -24,14 +24,16 @@ public final class LeaderboardResponses {
     }
 
     /**
-     * 排行榜聚合响应：包含三个口径的榜单及数据更新时间。
+     * 排行榜聚合响应：包含四个口径的榜单及数据更新时间。
      *
+     * @param last24Hours 近 24 小时热门榜
      * @param last7Days 近 7 天热门榜
      * @param last30Days 近 30 天热门榜
      * @param allTime 历史总榜
      * @param updatedAt 数据快照更新时间戳（毫秒），0 表示尚未拉取到数据
      */
     public record LeaderboardResponse(
+            List<LeaderboardEntry> last24Hours,
             List<LeaderboardEntry> last7Days,
             List<LeaderboardEntry> last30Days,
             List<LeaderboardEntry> allTime,

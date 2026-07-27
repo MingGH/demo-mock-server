@@ -87,10 +87,12 @@ function bestResponse(positions, i) {
   for (var idx = 0; idx < positions.length; idx++) {
     if (idx !== i) others.push(positions[idx]);
   }
-  var step = 0.002;
+  var numSteps = 500;
   var bestPos = positions[i];
   var bestShare = -1;
-  for (var p = 0; p <= 1 + 1e-9; p += step) {
+
+  function tryPos(p) {
+    if (p < 0) p = 0;
     if (p > 1) p = 1;
     var all = others.slice();
     all.push(p);
@@ -100,6 +102,17 @@ function bestResponse(positions, i) {
       bestShare = share;
       bestPos = p;
     }
+  }
+
+  // 网格搜索（用 s/numSteps 避免浮点累积）
+  for (var s = 0; s <= numSteps; s++) {
+    tryPos(s / numSteps);
+  }
+  // 紧贴每个竞争对手的候选位置（Hotelling 最优响应的本质）
+  var eps = 0.005;
+  for (var j = 0; j < others.length; j++) {
+    tryPos(others[j] - eps);
+    tryPos(others[j] + eps);
   }
   return bestPos;
 }
@@ -160,22 +173,47 @@ function simulateConvergence(n, rounds, initialPositions, lr) {
   var convRound = -1;
 
   for (var r = 0; r < rounds; r++) {
-    var newPositions = [];
     var maxDelta = 0;
-    for (var i = 0; i < n; i++) {
-      var br = bestResponse(positions, i);
-      var np = positions[i] + lr * (br - positions[i]);
-      if (np < 0) np = 0;
-      if (np > 1) np = 1;
-      newPositions.push(np);
-      var delta = Math.abs(br - positions[i]);
-      if (delta > maxDelta) maxDelta = delta;
+    if (n <= 2) {
+      // 2 家：同时更新 + 学习率（平滑收敛到 [0.5, 0.5]）
+      var newPositions = [];
+      for (var i = 0; i < n; i++) {
+        var br = bestResponse(positions, i);
+        var np = positions[i] + lr * (br - positions[i]);
+        if (np < 0) np = 0;
+        if (np > 1) np = 1;
+        newPositions.push(np);
+        var delta = Math.abs(br - positions[i]);
+        if (delta > maxDelta) maxDelta = delta;
+      }
+      positions = newPositions;
+    } else {
+      // 3 家及以上：顺序全步更新（展示追逐动态，无纯策略均衡）
+      for (var i = 0; i < n; i++) {
+        var br = bestResponse(positions, i);
+        var delta = Math.abs(br - positions[i]);
+        if (delta > maxDelta) maxDelta = delta;
+        positions[i] = br;
+      }
     }
-    positions = newPositions;
     history.push(positions.slice());
     if (maxDelta < 0.002 && !converged) {
-      converged = true;
-      convRound = r + 1;
+      // 验证是否真的是 Nash 均衡（3 家以上不应通过）
+      var curShares = marketShares(positions);
+      var isNash = true;
+      for (var i = 0; i < n; i++) {
+        var br = bestResponse(positions, i);
+        var trial = positions.slice();
+        trial[i] = br;
+        if (marketShares(trial)[i] > curShares[i] + 0.001) {
+          isNash = false;
+          break;
+        }
+      }
+      if (isNash) {
+        converged = true;
+        convRound = r + 1;
+      }
     }
   }
   return { history: history, converged: converged, convergenceRound: convRound, finalPositions: positions };

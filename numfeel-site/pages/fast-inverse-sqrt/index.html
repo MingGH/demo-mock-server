@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Quake III 源码中的黑魔法：一行位运算把 1/√x 加速近 4 倍。拖动滑块实时看结果，逐比特分解每一步变换，探索魔法常数 0x5f3759df 的奥秘。">
+  <title>平方根倒数速算法 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Hero ── -->
+  <div class="header">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <div class="hero-tag"><i class="ti ti-bolt"></i> Quake III 1999</div>
+      <h1>平方根倒数速算法</h1>
+      <p>一行位运算黑魔法，把 1/√x 的计算加速近 4 倍。拖动滑块，逐比特看它如何施展魔法。</p>
+    </div>
+  </div>
+
+  <!-- ── 速算挑战 ── -->
+  <div class="section">
+    <h2><i class="ti ti-target"></i> 速算挑战</h2>
+    <p class="hint">拖动滑块或点击预设值，实时对比标准计算与速算结果。</p>
+
+    <div class="challenge-area">
+      <div class="slider-row">
+        <span class="slider-label">x =</span>
+        <input type="range" id="xSlider" min="0" max="1000" step="1" value="460">
+        <span class="slider-value" id="xSliderVal">2.00</span>
+      </div>
+      <div class="input-row">
+        <input type="number" id="xInput" min="0.01" max="100000" step="0.01" value="2">
+        <span class="input-suffix">精确输入</span>
+      </div>
+
+      <div class="preset-chips" id="presetChips">
+        <button class="chip" data-x="2">2</button>
+        <button class="chip" data-x="0.15625">0.15625</button>
+        <button class="chip" data-x="1">1</button>
+        <button class="chip" data-x="100">100</button>
+        <button class="chip" data-x="0.01">0.01</button>
+        <button class="chip" data-x="3.14159">π</button>
+      </div>
+
+      <div class="result-cards">
+        <div class="result-card standard">
+          <div class="card-icon"><i class="ti ti-calculator"></i></div>
+          <div class="card-label">标准计算 1/√x</div>
+          <div class="card-value" id="exactValue">0.707107</div>
+          <div class="card-sub">Math.sqrt</div>
+        </div>
+        <div class="result-card fast">
+          <div class="card-icon"><i class="ti ti-bolt"></i></div>
+          <div class="card-label">速算结果</div>
+          <div class="card-value" id="fastValue">0.706930</div>
+          <div class="card-sub">位运算 + 牛顿迭代</div>
+        </div>
+        <div class="result-card error" id="errorCard">
+          <div class="card-icon"><i class="ti ti-ruler"></i></div>
+          <div class="card-label">相对误差</div>
+          <div class="card-value" id="errorValue">0.0250%</div>
+          <div class="card-badge" id="errorBadge">excellent</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 逐比特分解 ── -->
+  <div class="section">
+    <h2><i class="ti ti-binary-tree"></i> 逐比特分解</h2>
+    <p class="hint">点击「播放」逐步查看 32 位浮点数如何被位运算一步步变换为 1/√x。</p>
+
+    <div class="decompose-controls">
+      <button class="btn btn-primary" id="playBtn"><i class="ti ti-player-play"></i> 播放</button>
+      <button class="btn btn-secondary" id="prevBtn"><i class="ti ti-chevron-left"></i></button>
+      <button class="btn btn-secondary" id="nextBtn"><i class="ti ti-chevron-right"></i></button>
+      <div class="step-dots" id="stepDots"></div>
+      <span class="step-indicator" id="stepIndicator">0 / 5</span>
+    </div>
+
+    <div class="decompose-display">
+      <div class="step-header">
+        <span class="step-number" id="stepNumber">Step 0</span>
+        <span class="step-title" id="stepTitle">输入浮点数 x</span>
+      </div>
+      <div class="step-desc" id="stepDesc">将 x 存入 32 位浮点寄存器</div>
+
+      <div class="bit-display-wrapper">
+        <div class="bit-display" id="bitDisplay"></div>
+        <div class="bit-legend">
+          <span class="legend-item"><span class="legend-dot sign"></span> 符号 1bit</span>
+          <span class="legend-item"><span class="legend-dot exp"></span> 指数 8bit</span>
+          <span class="legend-item"><span class="legend-dot mant"></span> 尾数 23bit</span>
+        </div>
+      </div>
+
+      <div class="step-values">
+        <div class="value-box">
+          <div class="vb-label">浮点值</div>
+          <div class="vb-value" id="stepFloat">2.000000</div>
+        </div>
+        <div class="value-box">
+          <div class="vb-label">整数</div>
+          <div class="vb-value" id="stepInt">1073741824</div>
+        </div>
+        <div class="value-box">
+          <div class="vb-label">十六进制</div>
+          <div class="vb-value mono" id="stepHex">0x40000000</div>
+        </div>
+        <div class="value-box" id="stepErrorBox" style="display:none;">
+          <div class="vb-label">误差</div>
+          <div class="vb-value" id="stepError">-</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 牛顿迭代的威力 ── -->
+  <div class="section">
+    <h2><i class="ti ti-arrow-bar-right"></i> 牛顿迭代的威力</h2>
+    <p class="hint">位运算给出粗略近似，一次牛顿迭代让误差骤降一个数量级。</p>
+
+    <div class="newton-bars" id="newtonBars"></div>
+
+    <div class="formula-box">
+      <div class="formula-label">牛顿迭代公式</div>
+      <div class="formula">y = y × (1.5 − 0.5 × x × y²)</div>
+      <p class="formula-desc">牛顿-拉弗森法利用当前点的切线逼近零点。对于 1/√x，迭代以平方速度收敛--一次迭代误差降到 0.2% 以内，两次接近机器精度。</p>
+    </div>
+  </div>
+
+  <!-- ── 全局精度扫描 ── -->
+  <div class="section">
+    <h2><i class="ti ti-chart-line"></i> 全局精度扫描</h2>
+    <p class="hint">在 0.01 ~ 1000 范围内采样，切换迭代次数对比误差分布。</p>
+
+    <div class="scan-toggles" id="scanToggles">
+      <button class="toggle-btn active" data-iter="0">仅位运算</button>
+      <button class="toggle-btn active" data-iter="1">+1次牛顿</button>
+      <button class="toggle-btn" data-iter="2">+2次牛顿</button>
+    </div>
+
+    <div class="chart-wrap" style="height:340px;">
+      <canvas id="accuracyChart"></canvas>
+    </div>
+
+    <div class="scan-stats" id="scanStats"></div>
+  </div>
+
+  <!-- ── 魔法常数探秘 ── -->
+  <div class="section">
+    <h2><i class="ti ti-wand"></i> 魔法常数探秘</h2>
+    <p class="hint">如果不用 0x5f3759df，换个常数会怎样？输入试试，或在图表上拖动看附近常数的表现。</p>
+
+    <div class="constant-explorer">
+      <div class="constant-input-row">
+        <label>魔法常数</label>
+        <input type="text" id="constInput" value="0x5f3759df" class="mono const-input" spellcheck="false">
+        <button class="btn btn-sm btn-primary" id="evalConstBtn"><i class="ti ti-bolt"></i> 评估</button>
+      </div>
+
+      <div class="const-result" id="constResult"></div>
+
+      <div class="chart-wrap" style="height:260px;">
+        <canvas id="constScanChart"></canvas>
+      </div>
+      <p class="hint" style="margin-top:8px;">纵轴为各常数在 0.001~1000 范围内的最大误差。红线标示 Quake III 原始常数 0x5f3759df。</p>
+    </div>
+  </div>
+
+  <!-- ── 原理简述 ── -->
+  <div class="section">
+    <h2><i class="ti ti-bulb"></i> 为什么这能行？</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>IEEE 754 的巧合</h4>
+        <p>32 位浮点数的指数段恰好近似 log₂(x) 的整数部分。右移一位 ≈ 指数除以 2 ≈ 开平方。尾数段也近似对数的小数部分，使整体位模式接近 log₂(x)。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>对数域线性近似</h4>
+        <p>1/√x = x^(−0.5)，取对数后是 −0.5 × log₂(x)。整数右移一位完成 ÷2，魔法常数修正偏差并取反符号，一步搞定对数域的缩放与取反。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>牛顿迭代收尾</h4>
+        <p>位运算给出 4% 以内的初始近似。牛顿法以平方速度收敛--一次迭代误差降到 0.2% 以内，两次接近机器精度。这就是为什么只需要一次迭代。</p>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <h3><i class="ti ti-history"></i> 传奇起源</h3>
+      <p>这段代码最早出现在 1999 年 Quake III Arena 源码的 <span class="mono">q_math.c</span> 文件中，函数名 <span class="mono">Q_rsqrt</span>。原始注释写着「what the fuck?」。魔法常数 0x5f3759df 的最优值由数学家 Chris Lomont 在 2003 年严格推导验证，他找到的理论最优值 0x5f37642f 与原版几乎一致。后来 Gary Tarolli 透露这是 SGI 工作站时代逐步调优的经验值，不是一人之功。</p>
+    </div>
+
+    <div class="insight-box green">
+      <h3><i class="ti ti-cpu"></i> 现在还需要吗？</h3>
+      <p>现代 CPU 有了 <span class="mono">rsqrtss</span> 等硬件指令，一条指令就能完成近似平方根倒数，比这个算法还快。但这段代码的意义不在于速度--它是对浮点数底层结构的深刻洞察，是「把数据的不同解释玩出花来」的经典案例。理解它，你就理解了计算机如何真正存储和处理数字。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

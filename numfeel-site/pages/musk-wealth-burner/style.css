@@ -1,0 +1,365 @@
+/* musk-wealth-burner style.css — 深色奢华赌场金色调 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold: #ffd700;
+  --gold-dim: #c9a227;
+  --emerald: #1e5631;
+  --emerald-bright: #2d7a46;
+  --bg-1: #0d0d1a;
+  --bg-2: #141428;
+  --bg-3: #1a1a2e;
+  --red: #ff6b6b;
+  --green: #4ade80;
+  --blue: #90caf9;
+  --purple: #ce93d8;
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --card-border: rgba(255, 215, 0, 0.15);
+  --text: #f5f5f5;
+  --text-dim: rgba(255, 255, 255, 0.55);
+  --text-mute: rgba(255, 255, 255, 0.4);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', Roboto, sans-serif;
+  background: radial-gradient(ellipse at top, var(--bg-3) 0%, var(--bg-2) 45%, var(--bg-1) 100%);
+  min-height: 100vh;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.container { max-width: 1080px; margin: 0 auto; padding: 0 18px 60px; }
+
+/* ── 返回链 ── */
+.back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--text-dim); text-decoration: none;
+  font-size: 0.85rem; padding: 14px 0 4px;
+}
+.back-link:hover { color: var(--gold); }
+
+/* ── 标题 ── */
+.header { text-align: center; padding: 18px 0 6px; }
+.header h1 {
+  font-size: clamp(1.7rem, 5vw, 2.7rem);
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, var(--gold) 0%, #fff3a0 40%, var(--gold-dim) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 2px 12px rgba(255, 215, 0, 0.25));
+}
+.header .subtitle { color: var(--text-dim); font-size: 0.92rem; margin-top: 6px; }
+.header .subtitle b { color: var(--gold); }
+
+/* ── Hero 仪表盘 ── */
+.dash {
+  position: relative;
+  margin-top: 18px;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  background: var(--bg-2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.dash-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0.35;
+  filter: saturate(1.1) contrast(1.05);
+  transition: opacity 0.6s;
+}
+.dash-bg::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(13,13,26,0.55) 0%, rgba(13,13,26,0.92) 100%);
+}
+.dash-inner { position: relative; padding: 26px 24px 22px; }
+.dash-wealth { text-align: center; }
+.dash-wealth .label {
+  font-size: 0.72rem; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--text-mute); margin-bottom: 6px;
+}
+.dash-wealth .amount {
+  font-size: clamp(2.2rem, 8vw, 3.6rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #fff3a0, var(--gold));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+  transition: transform 0.25s;
+}
+.dash-wealth .amount.bump { transform: scale(1.04); }
+.dash-wealth .amount.broke {
+  background: linear-gradient(135deg, var(--red), #ff9a8b);
+  -webkit-background-clip: text; background-clip: text;
+}
+.dash-wealth .spent {
+  margin-top: 8px; font-size: 0.82rem; color: var(--text-dim);
+}
+.dash-wealth .spent b { color: var(--red); }
+
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+}
+.stat {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: center;
+}
+.stat .k { font-size: 0.68rem; color: var(--text-mute); margin-bottom: 4px; }
+.stat .v { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--gold); }
+.stat .v.green { color: var(--green); }
+.stat .v.red { color: var(--red); }
+.stat .v.blue { color: var(--blue); }
+
+/* 进度条：财富消耗 */
+.wealth-bar {
+  margin-top: 16px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.wealth-bar > i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--red), var(--gold));
+  border-radius: 999px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+.dash-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+
+/* ── 按钮 ── */
+.btn {
+  border: none; border-radius: 12px;
+  padding: 11px 20px; font-size: 0.92rem; font-weight: 700;
+  cursor: pointer; transition: transform 0.15s, filter 0.15s, box-shadow 0.15s;
+  display: inline-flex; align-items: center; gap: 7px;
+  color: #1a1a1a;
+}
+.btn:hover { transform: translateY(-2px); filter: brightness(1.05); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.btn-gold { background: linear-gradient(135deg, #ffe566, var(--gold) 60%, var(--gold-dim)); box-shadow: 0 6px 18px rgba(255,215,0,0.25); }
+.btn-emerald { background: linear-gradient(135deg, #34d399, var(--emerald-bright)); color: #06281a; box-shadow: 0 6px 18px rgba(45,122,70,0.3); }
+.btn-red { background: linear-gradient(135deg, #ff8a8a, var(--red)); color: #2a0a0a; }
+.btn-ghost { background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid rgba(255,255,255,0.12); }
+.btn-sm { padding: 7px 13px; font-size: 0.82rem; border-radius: 9px; }
+
+/* ── 卡片通用 ── */
+.card {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  padding: 22px;
+  margin-top: 18px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+}
+.card h2 {
+  font-size: 1.15rem; color: var(--gold); margin-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card .card-hint { font-size: 0.8rem; color: var(--text-mute); margin-bottom: 16px; }
+.card .card-hint b { color: var(--blue); }
+
+/* ── 赌桌模块 ── */
+.table-felt {
+  position: relative;
+  border-radius: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--emerald) 0%, #154028 100%);
+  border: 6px solid #5a3a1a;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.4);
+  overflow: hidden;
+}
+.table-felt .felt-img {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0.18; mix-blend-mode: luminosity;
+}
+.table-felt > * { position: relative; }
+
+.bet-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.bet-row .bet-label { font-size: 0.85rem; color: rgba(255,255,255,0.8); min-width: 70px; }
+.bet-amount {
+  font-size: 1.4rem; font-weight: 800; color: var(--gold);
+  font-variant-numeric: tabular-nums; min-width: 130px; text-align: right;
+}
+
+/* 自定义 range */
+input[type=range].slider {
+  -webkit-appearance: none; appearance: none;
+  flex: 1; min-width: 160px;
+  height: 8px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--gold) 0%, var(--gold) var(--pct,50%), rgba(255,255,255,0.12) var(--pct,50%));
+  outline: none; cursor: pointer;
+}
+input[type=range].slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff3a0, var(--gold));
+  border: 2px solid #1a1a2e;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  cursor: pointer;
+}
+input[type=range].slider::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--gold); border: 2px solid #1a1a2e; cursor: pointer;
+}
+
+.bet-presets { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+/* 赌桌统计网格 */
+.odds-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  margin-top: 16px;
+}
+.odds {
+  background: rgba(0,0,0,0.35);
+  border-radius: 11px; padding: 13px 14px;
+  border-left: 3px solid var(--gold);
+}
+.odds .ok { font-size: 0.7rem; color: var(--text-mute); margin-bottom: 4px; }
+.odds .ov { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--gold); }
+.odds.green { border-left-color: var(--green); }
+.odds.green .ov { color: var(--green); }
+.odds.red { border-left-color: var(--red); }
+.odds.red .ov { color: var(--red); }
+.odds.blue { border-left-color: var(--blue); }
+.odds.blue .ov { color: var(--blue); }
+
+.result-line {
+  text-align: center; font-size: 1.1rem; font-weight: 700;
+  margin: 14px 0 4px; min-height: 28px;
+}
+.result-line.win { color: var(--green); }
+.result-line.lose { color: var(--red); }
+.result-line .cnt { color: var(--text-dim); font-size: 0.8rem; font-weight: 400; }
+
+.chart-wrap { position: relative; height: 200px; margin-top: 12px; }
+
+.compare {
+  margin-top: 14px; font-size: 0.82rem; color: var(--text-dim);
+  background: rgba(0,0,0,0.25); border-radius: 10px; padding: 11px 14px;
+  border-left: 3px solid var(--purple);
+}
+.compare b { color: var(--purple); }
+
+/* ── 烧钱商店 ── */
+.shop-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px;
+}
+.shop-card {
+  position: relative; border-radius: 16px; overflow: hidden;
+  background: var(--bg-2);
+  border: 1px solid rgba(255,255,255,0.07);
+  transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s;
+}
+.shop-card:hover { transform: translateY(-4px); border-color: var(--card-border); box-shadow: 0 14px 30px rgba(0,0,0,0.4); }
+.shop-card.disabled { opacity: 0.5; filter: grayscale(0.5); }
+.shop-img { height: 120px; background-size: cover; background-position: center; position: relative; }
+.shop-img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgba(13,13,26,0.95) 100%); }
+.shop-own {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  background: rgba(0,0,0,0.6); color: var(--gold);
+  font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--card-border);
+}
+.shop-body { padding: 13px 14px 15px; }
+.shop-body .name { font-size: 1rem; font-weight: 700; color: var(--text); }
+.shop-body .desc { font-size: 0.76rem; color: var(--text-mute); margin: 2px 0 9px; }
+.shop-body .price { font-size: 1.1rem; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+.shop-body .buy { margin-top: 10px; width: 100%; justify-content: center; }
+
+.quick-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+/* ── 数学解释 ── */
+.formula {
+  background: rgba(0,0,0,0.3); border-radius: 10px;
+  padding: 12px 15px; margin: 12px 0;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-size: 0.9rem; color: var(--gold);
+  overflow-x: auto; border-left: 3px solid var(--gold);
+}
+.formula .mute { color: var(--text-mute); }
+.formula .red { color: var(--red); }
+.formula .green { color: var(--green); }
+.analysis p { color: var(--text-dim); line-height: 1.85; margin-bottom: 12px; font-size: 0.9rem; }
+.analysis p b { color: var(--text); }
+.analysis .hl { color: var(--red); font-weight: 700; }
+.analysis .ok { color: var(--green); font-weight: 700; }
+
+/* ── 结算弹窗 ── */
+.modal {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: rgba(5,5,12,0.88); backdrop-filter: blur(10px);
+  align-items: center; justify-content: center; padding: 20px;
+}
+.modal.show { display: flex; animation: fadeIn 0.4s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-card {
+  max-width: 460px; width: 100%; text-align: center;
+  background: linear-gradient(180deg, var(--bg-3), var(--bg-2));
+  border: 1px solid var(--card-border); border-radius: 22px;
+  padding: 34px 26px;
+}
+.modal-card .icon { font-size: 3.4rem; }
+.modal-card h3 {
+  font-size: 1.8rem; margin: 12px 0 6px;
+  background: linear-gradient(135deg, var(--red), var(--gold));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.modal-card .msg { color: var(--text-dim); font-size: 0.9rem; line-height: 1.7; margin: 10px 0 18px; }
+.modal-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+.modal-stats .ms { background: rgba(255,255,255,0.05); border-radius: 11px; padding: 12px; }
+.modal-stats .ms .mv { font-size: 1.2rem; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+.modal-stats .ms .mk { font-size: 0.7rem; color: var(--text-mute); margin-top: 3px; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 26px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: rgba(0,0,0,0.85); color: var(--text);
+  padding: 11px 22px; border-radius: 999px;
+  border: 1px solid var(--card-border);
+  font-size: 0.88rem; opacity: 0; transition: all 0.3s; z-index: 10000;
+  max-width: 90vw; text-align: center;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast b { color: var(--gold); }
+.toast .neg b { color: var(--red); }
+
+/* ── 飘字（花钱反馈）── */
+.float-num {
+  position: fixed; pointer-events: none; z-index: 9998;
+  font-size: 1.1rem; font-weight: 800;
+  animation: floatUp 1s ease-out forwards;
+}
+.float-num.neg { color: var(--red); }
+.float-num.pos { color: var(--green); }
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-60px); }
+}
+
+/* ── 响应式 ── */
+@media (max-width: 640px) {
+  .dash-stats { grid-template-columns: 1fr; }
+  .odds-grid { grid-template-columns: 1fr; }
+  .bet-amount { min-width: 100px; font-size: 1.1rem; }
+  .modal-stats { grid-template-columns: 1fr; }
+  .container { padding: 0 14px 50px; }
+}

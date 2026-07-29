@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="育碧从100亿欧元市值到5亿：一家游戏公司如何用8年时间把自己作到濒死。纽约时报财经风格数据可视化。">
+  <title>育碧帝国陨落：从100亿到5亿的八年作死路 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js 图表库 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- GSAP 动画库 -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+</head>
+<body>
+
+<!-- 纽约时报式刊头 -->
+<div class="masthead">
+  <div class="pub-name">数字直觉 · 财经观察</div>
+  <div class="pub-date">2026年7月 · 游戏产业深度报道</div>
+</div>
+
+<div class="container">
+
+  <!-- 文章头部 -->
+  <div class="article-header">
+    <div class="kicker">游戏产业 · 深度分析</div>
+    <h1>育碧帝国陨落：从100亿到5亿的八年作死路</h1>
+    <p class="dek">十年前手握刺客信条、孤岛惊魂、彩虹六号，市值百亿欧元，被视作开放世界游戏的统治者。如今市值5亿，创纪录亏损13亿。一家游戏巨头如何精准踩中每一个作死的坑。</p>
+    <div class="byline">数据可视化 · 交互式财报分析 | 数据来源：育碧财报、Kotaku、Bloomberg</div>
+  </div>
+
+  <!-- Hero 图 -->
+  <div class="hero-wrap">
+    <img class="hero-img" src="images/hero.jpg" alt="游戏王座崩塌的纽约时报风格插画">
+    <div class="hero-caption">育碧曾被视为开放世界游戏的统治者。十年后，王座碎了一地。插画 / 数字直觉</div>
+  </div>
+
+  <!-- 核心数据：三个大数字 -->
+  <div class="data-card">
+    <div class="data-card-title">核心数据一览</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:center;">
+      <div class="big-stat">
+        <div class="number" id="statDecline">95%</div>
+        <div class="label">市值跌幅</div>
+      </div>
+      <div class="big-stat">
+        <div class="number" id="statLoss">13.2亿</div>
+        <div class="label">年度运营亏损（欧元）</div>
+      </div>
+      <div class="big-stat">
+        <div class="number" id="statSunk">13.9亿</div>
+        <div class="label">沉没研发成本（欧元）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 第一章：市值崩塌 -->
+  <h2 class="section-title">一、市值崩塌：100亿到5亿</h2>
+  <p class="section-dek">从2018年击退维旺迪的高光时刻，到2026年市值低于年度亏损额。拖动时间轴，看帝国如何一阶一阶往下掉。</p>
+
+  <div class="data-card">
+    <div class="data-card-title">育碧市值变化（亿欧元）</div>
+    <div class="chart-container tall">
+      <canvas id="marketCapChart"></canvas>
+    </div>
+    <div class="chart-source">来源：Bloomberg、育碧财报、Investing.com。市值为各时点近似值。</div>
+
+    <div class="btn-row" id="periodBtns">
+      <button class="btn active" data-period="all">全程</button>
+      <button class="btn" data-period="decline">崩塌期(2021-2026)</button>
+      <button class="btn" data-period="crash">加速坠落(2024-2026)</button>
+    </div>
+
+    <div id="declineHighlight" style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;color:#666;margin-top:12px;padding:12px;background:#f5f3f0;line-height:1.6;">
+      点击图表上的数据点查看关键事件。
+    </div>
+  </div>
+
+  <!-- 第二章：时间线 -->
+  <h2 class="section-title">二、作死时间线：每一步都踩得精准</h2>
+  <p class="section-dek">从巅峰到深渊，九年九个关键节点。点击展开详情。</p>
+
+  <div class="data-card">
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <!-- 第三章：碧海黑帆 -->
+  <h2 class="section-title">三、《碧海黑帆》：8.5亿美元换来381人在线</h2>
+  <p class="section-dek">育碧CEO称之为「首款4A级游戏」。10年开发，7次延期，成本够做20个《黑神话：悟空》。</p>
+
+  <div class="data-card">
+    <img class="inline-img" src="images/skull-bones.jpg" alt="海盗战船在暴风雨中断裂沉没的插画" style="max-height:300px;object-fit:cover;">
+    <div class="inline-caption">《碧海黑帆》-- 一艘造了十年的船，下水即沉没。</div>
+
+    <div class="data-card-title">开发成本对比（亿美元）</div>
+    <div class="chart-container short">
+      <canvas id="costChart"></canvas>
+    </div>
+    <div class="chart-source">来源：Kotaku、彭博社、游戏产业报告。碧海黑帆成本为6.5-8.5亿美元区间估计值。</div>
+
+    <div class="pullquote">
+      「没人知道他们究竟在干什么。许多工作没有任何意义，在这个基础上打磨作品仅仅只是浪费时间。」
+      <div class="pullquote-attr">-- 育碧前开发者，接受Kotaku采访</div>
+    </div>
+  </div>
+
+  <!-- 第四章：作死四连击 -->
+  <h2 class="section-title">四、作死四连击：精准击穿每一条护城河</h2>
+  <p class="section-dek">育碧的护城河是IP矩阵、工业化产能、创意文化。四个动作，每一条都没放过。点击展开详情。</p>
+
+  <div class="data-card">
+    <div id="fatalBlows"></div>
+  </div>
+
+  <!-- 第五章：财务对比 -->
+  <h2 class="section-title">五、巅峰与现在：一张表看完八年</h2>
+  <p class="section-dek">2018年的育碧 vs 2026年的育碧。每一个数字都在讲故事。</p>
+
+  <div class="data-card">
+    <table class="compare-table" id="compareTable">
+      <thead>
+        <tr>
+          <th>指标</th>
+          <th class="num">巅峰（约2018-2021）</th>
+          <th class="num">现在（2025-26）</th>
+        </tr>
+      </thead>
+      <tbody id="compareBody"></tbody>
+    </table>
+  </div>
+
+  <!-- 第六章：沉没成本 -->
+  <h2 class="section-title">六、18亿研发，75%打了水漂</h2>
+  <p class="section-dek">2026财年研发支出18.55亿欧元。其中13.9亿直接与取消或延期的项目相关。</p>
+
+  <div class="data-card">
+    <div class="data-card-title">研发支出构成（亿欧元）</div>
+    <div class="sunk-bar" id="sunkBar">
+      <div class="sunk" id="sunkBarSunk" style="width:75%;">沉没成本 13.9亿</div>
+      <div class="active" id="sunkBarActive" style="width:25%;">有效投入 4.65亿</div>
+    </div>
+    <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;color:#666;margin-top:12px;line-height:1.6;">
+      取消6个项目（含《波斯王子：时之砂重制版》），推迟7款游戏。仅项目减值就占据了亏损的绝大多数份额。
+    </div>
+  </div>
+
+  <!-- 引用 -->
+  <div class="pullquote">
+    「Yves容忍有毒管理，只要这些管理者的业绩超过其毒性。」
+    <div class="pullquote-attr">-- 育碧前HR负责人 Cécile Cornet，被Libération调查曝光</div>
+  </div>
+
+  <!-- 结论 -->
+  <h2 class="section-title">结论：作死的本质是执行力失控</h2>
+  <div class="data-card">
+    <p style="font-size:1rem;line-height:1.8;color:#333;">
+      育碧的护城河是<strong>IP矩阵 + 工业化产能 + 创意文化</strong>。碧海黑帆证明了项目管理能力崩塌，性骚扰丑闻证明创意文化腐坏，罐头化证明产品力枯竭。
+      <br><br>
+      同样被骂「作死」的KONAMI靠战略收缩活得滋润（FY26净利1000亿日元），育碧却越扩张越亏。这说明作死的本质从来不是转型方向错了，而是<strong>执行力与成本结构的全面失控</strong>。
+      <br><br>
+      市场给的惩罚很直接：从100亿到5亿，95%的市值蒸发，只需要八年。
+    </p>
+  </div>
+
+  <!-- 数据来源 -->
+  <div class="sources">
+    <h3>数据来源</h3>
+    <ol>
+      <li>育碧2025-26财年财报（2026年5月发布）</li>
+      <li>育碧2026年Q1财报（2026年7月发布）</li>
+      <li>Kotaku：《碧海黑帆》漫长开发历程调查报道（2021年7月）</li>
+      <li>Bloomberg / Investing.com：育碧股价与市值数据</li>
+      <li>育碧官方公告：Vantage Studios腾讯投资完成（2025年11月）</li>
+      <li>Libération：育碧职场不当行为调查报道（2020年7月）</li>
+      <li>界面新闻、机核网：育碧危机相关报道</li>
+    </ol>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

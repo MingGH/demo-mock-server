@@ -19,14 +19,11 @@ import java.util.List;
  * 启动时执行 {@code schema.sql} 建表（迁移自旧版各 Service 的 initTable）。
  * <p>
  * 逐条执行每个 CREATE 语句（IF NOT EXISTS，可重复执行），单条失败仅记录告警、不影响其他语句，
- * 也不阻断服务启动——与旧版 best-effort 行为一致，但相比 ResourceDatabasePopulator
- * 能清楚地看到是哪一条语句失败。
+ * 也不阻断服务启动
  */
 @Slf4j
 @Component
 public class SchemaInitializer {
-
-    private static final Logger log = LoggerFactory.getLogger(SchemaInitializer.class);
 
     private final DatabaseClient db;
 

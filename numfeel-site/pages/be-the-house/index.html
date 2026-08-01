@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="当一次庄家：2.7% 的优势怎么在 100 万手后变成确定性。6 个交互模块把大数定律、赌徒破产、桌限、平衡账本和真实案例拆给你看，文章里引用的每个数字都能在页面上亲手复现。">
+  <title>当一次庄家：它为什么不怕你赢 | 数字直觉</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="bh-wrap">
+
+      <a href="../../index.html" class="back-link"><i class="ti ti-arrow-left"></i> 返回首页</a>
+
+      <!-- ═══════════════ Hero ═══════════════ -->
+      <section class="bh-hero">
+        <div class="bh-hero-eyebrow">
+          <i class="ti ti-crown"></i>
+          <span>博弈论 · 反直觉实验</span>
+        </div>
+        <img src="images/hero.jpg" alt="庄家 vs 玩家筹码对比" class="bh-hero-img">
+        <h1>当一次庄家：它为什么不怕你赢</h1>
+        <p class="bh-hero-sub">概率对你和赌场完全一样。不一样的是你们各自站在这条曲线的哪一端。</p>
+        <a href="#bh-module-2" class="bh-cta">
+          <i class="ti ti-arrow-down"></i>
+          当一次庄家 →
+        </a>
+      </section>
+
+      <!-- ═══════════════ 模块一：优势小到你察觉不到 ═══════════════ -->
+      <section class="bh-module" id="bh-module-1">
+        <h2 class="bh-module-title">
+          <i class="ti ti-ruler"></i>
+          一、优势小到你察觉不到
+        </h2>
+        <p class="bh-module-hint">选一个游戏当庄家。下面所有模块都会沿用这张卡里的庄家优势。</p>
+
+        <div class="bh-card">
+          <h3 class="bh-card-title"><i class="ti ti-cards"></i> 各游戏庄家优势</h3>
+          <p class="bh-card-hint">点击任一卡片选中它。点欧式轮盘（1/37）看 2.7% 在概率上意味着什么。</p>
+          <div class="bh-edge-grid" id="bh-edge-grid"></div>
+          <div class="bh-insight" id="bh-edge-insight">
+            如果轮盘每转一次明抢你 30%，没人会坐下。2.70% 才让你觉得这游戏挺公平。
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════ 模块二：大数定律的两端 ═══════════════ -->
+      <section class="bh-module" id="bh-module-2">
+        <h2 class="bh-module-title">
+          <i class="ti ti-chart-histogram"></i>
+          二、大数定律的两端
+          <span class="bh-module-tag">核心</span>
+        </h2>
+        <p class="bh-module-hint">拖动滑块。数学公式：玩家盈利概率 = Φ(−e·√n)，e 是庄家优势，n 是手数。</p>
+
+        <div class="bh-card">
+          <h3 class="bh-card-title"><i class="ti ti-adjustments"></i> 实时参数</h3>
+          <p class="bh-card-hint">左边是手数 n（对数刻度），右边是庄家优势。当前 edge = <b id="bh-current-edge">2.70%</b>（沿用模块一的选择）。</p>
+
+          <div class="bh-slider-row">
+            <label>庄家优势</label>
+            <input type="range" id="bh-edge-slider" min="0" max="5" step="0.1" value="2.7">
+            <span class="bh-val" id="bh-edge-slider-val">2.70%</span>
+          </div>
+          <div class="bh-slider-row">
+            <label>手数 n</label>
+            <input type="range" id="bh-n-slider" min="10" max="1000000" step="1" value="1000">
+            <span class="bh-val" id="bh-n-slider-val">1,000</span>
+          </div>
+
+          <div class="bh-stats" id="bh-lln-stats">
+            <div class="bh-stat">
+              <div class="bh-stat-label">玩家盈利概率</div>
+              <div class="bh-stat-value gold" id="bh-stat-profit-prob">37.6%</div>
+            </div>
+            <div class="bh-stat">
+              <div class="bh-stat-label">期望损失</div>
+              <div class="bh-stat-value red" id="bh-stat-exp-loss">27.0</div>
+            </div>
+            <div class="bh-stat">
+              <div class="bh-stat-label">标准差 √n</div>
+              <div class="bh-stat-value blue" id="bh-stat-stdev">31.6</div>
+            </div>
+          </div>
+
+          <div class="bh-chart-wrap">
+            <canvas id="bh-curve-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="bh-card">
+          <h3 class="bh-card-title"><i class="ti ti-arrows-horizontal"></i> 你的一晚 vs 赌场的一晚</h3>
+          <p class="bh-card-hint">同一个庄家优势：左边 n=100，右边 n=1,000,000。点「跑一次」看分布。</p>
+          <div class="bh-btn-row">
+            <button class="bh-btn" id="bh-lln-run-btn" type="button">
+              <i class="ti ti-refresh"></i> 跑一次（5000 样本）
+            </button>
+          </div>
+          <div class="bh-martingale-compare">
+            <div>
+              <div style="text-align:center;color:rgba(255,255,255,0.6);font-size:12px;margin-bottom:4px;">你的一晚 · n=100</div>
+              <div class="bh-chart-wrap bh-chart-wrap-sm"><canvas id="bh-dist-n100"></canvas></div>
+            </div>
+            <div>
+              <div style="text-align:center;color:rgba(255,255,255,0.6);font-size:12px;margin-bottom:4px;">赌场的一晚 · n=1,000,000</div>
+              <div class="bh-chart-wrap bh-chart-wrap-sm"><canvas id="bh-dist-n1m"></canvas></div>
+            </div>
+          </div>
+          <div class="bh-insight">
+            期望按 n 长（-e·n），标准差只按 √n 长（σ·√n）。所以信噪比随 √n 提升——n 越大，结果越确定，玩家越输。
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════ 模块三：破产线是不对称的 ═══════════════ -->
+      <section class="bh-module" id="bh-module-3">
+        <h2 class="bh-module-title">
+          <i class="ti ti-trending-down"></i>
+          三、破产线是不对称的
+        </h2>
+        <p class="bh-module-hint">玩家 vs 庄家的本金不对称。先调滑块，再分步跑 1 个、100 个、10000 个赌徒。</p>
+
+        <div class="bh-card">
+          <h3 class="bh-card-title"><i class="ti ti-coins"></i> 本金配置</h3>
+          <div class="bh-slider-row">
+            <label>玩家本金</label>
+            <input type="range" id="bh-gr-player" min="100" max="10000" step="100" value="500">
+            <span class="bh-val" id="bh-gr-player-val">500</span>
+          </div>
+          <div class="bh-slider-row">
+            <label>庄家本金</label>
+            <input type="range" id="bh-gr-house" min="10000" max="100000000" step="10000" value="1000000">
+            <span class="bh-val" id="bh-gr-house-val">1,000,000</span>
+          </div>
+
+          <div class="bh-stats" id="bh-gr-stats">
+            <div class="bh-stat">
+              <div class="bh-stat-label">解析解破产概率</div>
+              <div class="bh-stat-value gold" id="bh-gr-analytical">99.95%</div>
+            </div>
+            <div class="bh-stat">
+              <div class="bh-stat-label">当前 edge</div>
+              <div class="bh-stat-value blue" id="bh-gr-edge">2.70%</div>
+            </div>
+            <div class="bh-stat">
+              <div class="bh-stat-label">最新蒙特卡洛</div>
+              <div class="bh-stat-value red" id="bh-gr-mc">—</div>
+            </div>
+          </div>
+
+          <div class="bh-step-row" id="bh-gr-steps">
+            <button class="bh-step-btn" data-step="1" type="button">跑 1 个赌徒</button>
+            <button class="bh-step-btn" data-step="100" type="button">跑 100 个</button>
+            <button class="bh-step-btn" data-step="10000" type="button">跑 10,000 个</button>
+            <button class="bh-step-btn" id="bh-gr-reset" type="button" style="margin-left:auto;border-color:rgba(255,255,255,0.12);">重置</button>
+          </div>
+
+          <div id="bh-gr-step-result" class="bh-step-result" style="display:none;"></div>
+
+          <div class="bh-chart-wrap bh-chart-wrap-tall" id="bh-gr-chart-wrap" style="display:none;">
+            <canvas id="bh-gr-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="bh-insight">
+          即使抽水调成 0，先摸到零的那个人也几乎已经定了。庄家用资金量买到的是「能扛多少次连续不利波动还留在桌上」。
+        </div>
+      </section>
+
+      <!-- ═══════════════ 模块四：桌限是专门用来杀倍投的 ═══════════════ -->
+      <section class="bh-module" id="bh-module-4">
+        <h2 class="bh-module-title">
+          <i class="ti ti-ban"></i>
+          四、桌限是专门用来杀倍投的
+          <span class="bh-module-tag">核心</span>
+        </h2>
+        <p class="bh-module-hint">马丁格尔：每输一把就把下一手翻倍。你会先觉得这是必胜法，然后被桌限一棍打死。</p>
+
+        <div class="bh-card">
+          <img src="images/martingale.jpg" alt="倍投策略与桌限" class="bh-martingale-img" style="max-width:340px;">
+
+          <h3 class="bh-card-title"><i class="ti ti-player-play-filled"></i> 严格两步</h3>
+          <p class="bh-card-hint">先点第 1 步（同策略同本金，只是不设桌限）。再点第 2 步（加一条桌限 = 1000）。两条都跑完再下结论。</p>
+
+          <div class="bh-martingale-compare">
+            <div class="bh-martingale-step" id="bh-mg-step1">
+              <div class="bh-martingale-step-num">1</div>
+              <div class="bh-martingale-step-title">无桌限跑倍投</div>
+              <div class="bh-martingale-step-desc">本金 3000、baseBet = 1、桌限 = ∞</div>
+              <button class="bh-btn bh-btn-gold" id="bh-mg-btn1" type="button">
+                <i class="ti ti-player-play-filled"></i> 跑 100 次
+              </button>
+              <div class="bh-martingale-step-result" id="bh-mg-result1">点击按钮开始</div>
+            </div>
+            <div class="bh-martingale-step" id="bh-mg-step2">
+              <div class="bh-martingale-step-num">2</div>
+              <div class="bh-martingale-step-title">现在把桌限设成 1000</div>
+              <div class="bh-martingale-step-desc">本金 3000、baseBet = 1、桌限 = 1000</div>
+              <button class="bh-btn bh-btn-red" id="bh-mg-btn2" type="button">
+                <i class="ti ti-player-play-filled"></i> 跑 100 次
+              </button>
+              <div class="bh-martingale-step-result" id="bh-mg-result2">点击按钮开始</div>
+            </div>
+          </div>
+
+          <div class="bh-chart-wrap bh-chart-wrap-tall" id="bh-mg-chart-wrap" style="display:none;">
+            <canvas id="bh-mg-chart"></canvas>
+          </div>
+          <div id="bh-mg-truncated-info" class="bh-insight red" style="display:none;"></div>
+        </div>
+
+        <div class="bh-insight">
+          桌限不是防你赢太多。无限资金下倍投确实必胜；桌限一设，它立刻变成必败。
+        </div>
+      </section>
+
+      <!-- ═══════════════ 模块五：真正的庄家不赌 ═══════════════ -->
+      <section class="bh-module" id="bh-module-5">
+        <h2 class="bh-module-title">
+          <i class="ti ti-scale"></i>
+          五、真正的庄家不赌
+          <span class="bh-module-tag">核心</span>
+        </h2>
+        <p class="bh-module-hint">体育博彩的真本事不在猜比赛——是把账本做平衡，让两边押注抽到的水都进自己口袋。</p>
+
+        <div class="bh-card">
+          <img src="images/balanced-book.jpg" alt="平衡账本抽水" class="bh-martingale-img" style="max-width:340px;">
+
+          <h3 class="bh-card-title"><i class="ti ti-calculator"></i> 账本设置</h3>
+          <p class="bh-card-hint">输入两侧押注额，下面实时算两种结果下庄家的净收益。抽水率 = 1/A赔率 + 1/B赔率 − 1。</p>
+
+          <div class="bh-bk-inputs">
+            <div class="bh-bk-input">
+              <label>A 队押注额</label>
+              <input type="number" id="bh-bk-amountA" value="10000" min="0" step="100">
+            </div>
+            <div class="bh-bk-input">
+              <label>B 队押注额</label>
+              <input type="number" id="bh-bk-amountB" value="10000" min="0" step="100">
+            </div>
+            <div class="bh-bk-input">
+              <label>A 队赔率（十进制）</label>
+              <input type="number" id="bh-bk-oddsA" value="1.9" min="1.01" step="0.01">
+            </div>
+            <div class="bh-bk-input">
+              <label>B 队赔率（十进制）</label>
+              <input type="number" id="bh-bk-oddsB" value="1.9" min="1.01" step="0.01">
+            </div>
+          </div>
+
+          <div class="bh-bk-presets">
+            <button class="bh-step-btn" data-bk-preset="balanced" type="button">平衡账本</button>
+            <button class="bh-step-btn" data-bk-preset="tilted" type="button">严重失衡</button>
+            <button class="bh-step-btn" data-bk-preset="leicester" type="button">莱斯特城情景</button>
+            <button class="bh-step-btn" data-bk-preset="reset" type="button" style="margin-left:auto;border-color:rgba(255,255,255,0.12);">重置</button>
+          </div>
+
+          <div class="bh-bk-result" id="bh-bk-result">
+            <div class="bh-stat">
+              <div class="bh-stat-label">A 赢时庄家净收益</div>
+              <div class="bh-stat-value gold" id="bh-bk-netA">$1,000</div>
+            </div>
+            <div class="bh-stat">
+              <div class="bh-stat-label">B 赢时庄家净收益</div>
+              <div class="bh-stat-value gold" id="bh-bk-netB">$1,000</div>
+            </div>
+            <div class="bh-stat">
+              <div class="bh-stat-label">抽水率（overround）</div>
+              <div class="bh-stat-value blue" id="bh-bk-vig">5.26%</div>
+            </div>
+            <div class="bh-stat">
+              <div class="bh-stat-label">总押注池</div>
+              <div class="bh-stat-value purple" id="bh-bk-pool">$20,000</div>
+            </div>
+          </div>
+
+          <div class="bh-insight" id="bh-bk-insight">
+            账本平衡时，两种结果下庄家收益几乎相等且均为正——收益与比赛结果无关。
+          </div>
+        </div>
+
+        <div class="bh-insight">
+          5000:1 这个数字本来就不是概率估计，是为了吸引投注刻意放大的营销赔率，真实水平大概 1000:1 到 2000:1。
+        </div>
+      </section>
+
+      <!-- ═══════════════ 模块六：庄家真的倒过 ═══════════════ -->
+      <section class="bh-module" id="bh-module-6">
+        <h2 class="bh-module-title">
+          <i class="ti ti-history"></i>
+          六、庄家真的倒过
+        </h2>
+        <p class="bh-module-hint">翻完这些案例你会看到：几乎没有一家赌场是被运气搞垮的。</p>
+
+        <div class="bh-cases" id="bh-cases"></div>
+
+        <div class="bh-insight gold">
+          垮掉的是债务、成本、竞争和合规。少数真被赌客打穿的，对手靠的也是把期望值扳到正。
+        </div>
+      </section>
+
+      <!-- ═══════════════ 结尾区 ═══════════════ -->
+      <section class="bh-outro">
+        <h3 class="bh-outro-title">把这一套结构抬一层</h3>
+        <p>保险公司赚保费差、做市商赚买卖价差、交易所和平台赚手续费与抽成、彩票发行方……同一套结构，都不赌方向，只从别人的方差里提取确定性收益。</p>
+        <p class="bh-outro-quote">"庄家从来不指望赢下这一把，它赌的是下一把还有。"</p>
+        <p>把整套数学做成了可以自己拖的演示。<br>最有意思的是模块四：先无桌限跑一遍倍投，你会觉得自己发现了必胜法；然后把桌限打开，同样的策略、同样的本金，只多一条规则。</p>
+        <button class="bh-copy-btn" id="bh-copy-btn" type="button">
+          <i class="ti ti-copy"></i>
+          复制结论分享
+        </button>
+      </section>
+
+    </div>
+  </div>
+
+  <div class="bh-toast" id="bh-toast">已复制到剪贴板</div>
+
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

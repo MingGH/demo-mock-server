@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="一克 DNA 能存 215 PB 数据。把文字变成 ATCG 碱基序列，亲手走过喷泉码编码、生物学体检、信道丢包突变、剥离译码的完整流程，看冗余如何对抗丢失。基于 2017 年 Science 论文 DNA Fountain 的真实数据。">
+  <title>DNA 存储：把照片写成 ATCG | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-dna-2"></i> DNA 存储：把照片写成 ATCG</h1>
+    <p>一克 DNA 能装下整个人类互联网的数据流量。2017 年科学家把一个操作系统和一部电影写进 DNA 分子，完美读回--用的就是你即将亲手操作的那套算法。</p>
+  </div>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-art">
+      <img src="hero.jpg" alt="DNA 双螺旋与 ATCG 碱基序列交织的数据存储概念图" loading="eager">
+    </div>
+    <div class="hero-copy">
+      <p class="hero-lead">DNA 是地球上最致密的信息载体：<strong>每克 215 PB</strong>，距理论上限只差 14%。它比硬盘小一亿倍，比闪存耐用一万倍。问题是--怎么把 0 和 1 写进 A、T、C、G 四个字母，还能一字不差地读回来？</p>
+      <p class="hero-hint">下面从选一段数据开始，分四步把它编码成碱基，再模拟测序丢包，看冗余如何救场。</p>
+      <button class="btn btn-primary btn-lg" id="heroBtn"><i class="ti ti-bolt"></i> 开始把数据写进 DNA</button>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 1：选数据 ══════════ -->
+  <section class="section" id="dataSection">
+    <div class="round-head">
+      <span class="tag tag-fun">选数据</span>
+      <h2><i class="ti ti-file-text"></i> 第一步：选一段要存储的数据</h2>
+    </div>
+    <p class="section-desc">DNA 存储不挑格式--文字、照片、操作系统都是一串字节。选一个预设或自己输入，我们会把它拆成字节。</p>
+    <div class="scene-row" id="dataRow">
+      <div class="scene-card active" data-data="DNA存储">
+        <div class="scene-icon"><i class="ti ti-letter-d"></i></div>
+        <h4>短文本</h4>
+        <p>DNA存储</p>
+        <span class="scene-meta" id="meta0">约 9 字节</span>
+      </div>
+      <div class="scene-card" data-data="Hello,DNA世界！">
+        <div class="scene-icon"><i class="ti ti-message"></i></div>
+        <h4>混合文本</h4>
+        <p>Hello,DNA世界！</p>
+        <span class="scene-meta" id="meta1">约 18 字节</span>
+      </div>
+      <div class="scene-card" data-data="把照片电影操作系统统统写进DNA分子里永久保存">
+        <div class="scene-icon"><i class="ti ti-photo"></i></div>
+        <h4>长文本</h4>
+        <p>一段完整的句子</p>
+        <span class="scene-meta" id="meta2">约 40+ 字节</span>
+      </div>
+      <div class="scene-card" data-data="pixel-art">
+        <canvas class="scene-canvas-icon" id="pixelArtPreview" width="24" height="24"></canvas>
+        <h4>内置像素画</h4>
+        <p>笑脸 24×24</p>
+        <span class="scene-meta">576 字节</span>
+      </div>
+      <div class="scene-card" data-data="upload">
+        <div class="scene-icon"><i class="ti ti-photo-up"></i></div>
+        <h4>上传我的图片</h4>
+        <p>缩放到 24×24</p>
+        <span class="scene-meta">576 字节</span>
+      </div>
+      <div class="scene-card" data-data="custom">
+        <div class="scene-icon"><i class="ti ti-edit"></i></div>
+        <h4>自定义</h4>
+        <p>输入你自己的</p>
+        <span class="scene-meta">任意文本</span>
+      </div>
+    </div>
+    <div class="module custom-input-module" id="customInputModule" style="display:none;">
+      <div class="input-row">
+        <input type="text" id="customData" value="" placeholder="输入要存储的文本..." maxlength="60">
+        <button class="btn btn-primary" id="customConfirmBtn"><i class="ti ti-check"></i> 确认</button>
+      </div>
+    </div>
+    <input type="file" id="imageUpload" accept="image/*" style="display:none;">
+    <div class="module image-preview-module" id="imagePreviewModule" style="display:none;">
+      <h3><i class="ti ti-photo"></i> 图片预览</h3>
+      <p class="module-hint">这是缩放到 24×24 灰度后的图片，即将被编码成 ATCG 碱基。每个像素 = 1 个字节。</p>
+      <div class="image-preview-wrap">
+        <canvas id="imagePreviewCanvas" width="24" height="24"></canvas>
+      </div>
+    </div>
+    <div class="encode-info" id="dataInfo"></div>
+  </section>
+
+  <!-- ══════════ 模块 2：编码（4 小步）══════════ -->
+  <section class="section" id="encodeSection">
+    <div class="round-head">
+      <span class="tag tag-easy">编码</span>
+      <h2><i class="ti ti-dna-2"></i> 第二步：编码成碱基序列</h2>
+    </div>
+    <p class="section-desc">编码分四步：切分段 → 生成液滴 → 转碱基 → 体检筛选。点按钮逐步执行，每步看到中间结果。</p>
+
+    <!-- 步骤导航 -->
+    <div class="stepper" id="stepper">
+      <div class="step-item active" data-step="1">
+        <span class="step-num">1</span>
+        <span class="step-label">切分段</span>
+      </div>
+      <div class="step-item" data-step="2">
+        <span class="step-num">2</span>
+        <span class="step-label">生成液滴</span>
+      </div>
+      <div class="step-item" data-step="3">
+        <span class="step-num">3</span>
+        <span class="step-label">转碱基</span>
+      </div>
+      <div class="step-item" data-step="4">
+        <span class="step-num">4</span>
+        <span class="step-label">体检筛选</span>
+      </div>
+    </div>
+
+    <!-- 步骤 1：切分段 -->
+    <div class="module step-panel" id="step1Panel">
+      <h3><i class="ti ti-scissors"></i> 切分段</h3>
+      <p class="module-hint">把字节序列按固定长度切段，末段补 0。每段是一个独立的数据块。</p>
+      <div class="seg-controls">
+        <label class="slider-label">段长：<strong id="segLenVal">4</strong> 字节</label>
+        <input type="range" id="segLenSlider" min="2" max="8" value="4" step="1">
+      </div>
+      <button class="btn btn-primary" id="step1Btn"><i class="ti ti-scissors"></i> 切分段</button>
+      <div class="seg-vis" id="segVis">
+        <p class="placeholder-text">点击「切分段」查看分段结果</p>
+      </div>
+      <div class="codeword-legend">
+        <span class="legend-item"><span class="legend-box legend-seg"></span> 数据段（补齐 0）</span>
+        <span class="legend-item"><span class="legend-box legend-pad"></span> 补齐字节</span>
+      </div>
+    </div>
+
+    <!-- 步骤 2：生成液滴 -->
+    <div class="module step-panel" id="step2Panel" style="display:none;">
+      <h3><i class="ti ti-droplet"></i> 生成 LT 液滴</h3>
+      <p class="module-hint">每个液滴随机选若干段做 XOR，得到一条混合数据。种子决定选哪些段，可由种子单独重放。</p>
+      <div class="redundancy-controls">
+        <label class="slider-label">冗余率：<strong id="redundancyVal2">100%</strong>（目标条数 <span id="targetCount">-</span>）</label>
+        <input type="range" id="redundancySlider2" min="20" max="200" value="100" step="10">
+      </div>
+      <button class="btn btn-primary" id="step2Btn"><i class="ti ti-droplet"></i> 生成液滴</button>
+      <div class="droplet-vis" id="dropletVis">
+        <p class="placeholder-text">点击「生成液滴」查看喷泉码液滴</p>
+      </div>
+      <div class="single-droplet-demo">
+        <h3 class="sub-h3"><i class="ti ti-droplet-half"></i> 单条液滴演示</h3>
+        <p class="module-hint">每次点击用递增的种子生成一条新液滴，感受不同的度数 d 和连接方式。</p>
+        <button class="btn btn-secondary" id="singleDropletBtn"><i class="ti ti-droplet"></i> 生成一个液滴</button>
+        <div class="single-droplet-vis" id="singleDropletVis">
+          <p class="placeholder-text">点击按钮，看一条液滴怎么从多个段 XOR 产生</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步骤 3：转碱基 -->
+    <div class="module step-panel" id="step3Panel" style="display:none;">
+      <h3><i class="ti ti-dna"></i> 映射成 ATCG 碱基</h3>
+      <p class="module-hint">每 2 个比特对应 1 个碱基：00→A、01→C、10→G、11→T。每条液滴变成一段 ATCG 序列。</p>
+      <button class="btn btn-primary" id="step3Btn"><i class="ti ti-dna"></i> 转换碱基</button>
+      <div class="base-vis" id="baseVis">
+        <p class="placeholder-text">点击「转换碱基」查看 ATCG 序列</p>
+      </div>
+      <div class="base-legend">
+        <span class="base-chip base-A">A · 00</span>
+        <span class="base-chip base-C">C · 01</span>
+        <span class="base-chip base-G">G · 10</span>
+        <span class="base-chip base-T">T · 11</span>
+      </div>
+    </div>
+
+    <!-- 步骤 4：体检筛选 -->
+    <div class="module step-panel" id="step4Panel" style="display:none;">
+      <h3><i class="ti ti-shield-check"></i> 生物学体检</h3>
+      <p class="module-hint">真实的 DNA 合成与测序有物理限制：GC 含量过高或过低、连续重复碱基过长都会导致错误。不通过的液滴被丢弃，换种子重试。默认 GC 窗口 45%~55%、同碱基重复 ≤ 3（文献常用区间 GC 40%~60%、重复上限 3~4）。</p>
+      <button class="btn btn-primary" id="step4Btn"><i class="ti ti-shield-check"></i> 体检筛选</button>
+      <div class="screen-vis" id="screenVis">
+        <p class="placeholder-text">点击「体检筛选」查看通过率</p>
+      </div>
+      <div class="screen-summary" id="screenSummary"></div>
+      <div class="retry-section">
+        <h3 class="sub-h3"><i class="ti ti-refresh"></i> 亲手试种子</h3>
+        <p class="module-hint">点按钮用随机种子现场生成一条液滴、转碱基、跑体检，看它能不能过 GC 和重复关。</p>
+        <button class="btn btn-secondary" id="retrySeedBtn"><i class="ti ti-refresh"></i> 换个种子重试</button>
+        <div class="retry-vis" id="retryVis"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 3：信道模拟 ══════════ -->
+  <section class="section" id="channelSection">
+    <div class="round-head">
+      <span class="tag tag-medium">信道</span>
+      <h2><i class="ti ti-broadcast"></i> 第三步：模拟测序信道</h2>
+    </div>
+    <p class="section-desc">DNA 测序不完美：部分 oligo 丢失（dropout），部分碱基突变（mutation）。拖滑块调节损坏程度，点按钮模拟。</p>
+    <div class="module">
+      <div class="channel-controls">
+        <div class="ctrl-item">
+          <label class="slider-label">丢失率 dropout：<strong id="dropoutVal">10%</strong></label>
+          <input type="range" id="dropoutSlider" min="0" max="80" value="10" step="5">
+        </div>
+        <div class="ctrl-item">
+          <label class="slider-label">突变率 mutation：<strong id="mutationVal">0%</strong></label>
+          <input type="range" id="mutationSlider" min="0" max="20" value="0" step="1">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="channelBtn"><i class="ti ti-broadcast"></i> 模拟测序</button>
+      <div class="channel-vis" id="channelVis">
+        <p class="placeholder-text">先完成编码，再模拟测序信道</p>
+      </div>
+      <div class="channel-summary" id="channelSummary"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 4：解码动画 ══════════ -->
+  <section class="section" id="decodeSection">
+    <div class="round-head">
+      <span class="tag tag-fun">解码</span>
+      <h2><i class="ti ti-puzzle"></i> 第四步：剥离译码动画</h2>
+    </div>
+    <p class="section-desc">译码器像剥洋葱：先找只连着 1 个未知段的液滴，解出该段；再把它从其他液滴里消去，如此反复，直到全部解出或卡住。</p>
+    <div class="module">
+      <div class="decode-stage">
+        <div class="decode-canvas-wrap" id="decodeCanvasWrap" style="display:none;">
+          <p class="module-hint" style="margin-bottom:10px;">解码出来的像素逐块长出来：</p>
+          <canvas id="decodeCanvas" width="24" height="24"></canvas>
+        </div>
+        <div class="decode-segments" id="decodeSegments">
+          <p class="placeholder-text">模拟测序后，点下方按钮开始解码</p>
+        </div>
+        <div class="decode-log" id="decodeLog"></div>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-primary btn-lg" id="decodeBtn" disabled><i class="ti ti-puzzle"></i> 开始解码</button>
+      </div>
+      <div class="decode-result" id="decodeResult"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 5：冗余曲线 ══════════ -->
+  <section class="section" id="sweepSection">
+    <div class="round-head">
+      <span class="tag tag-fun">实验</span>
+      <h2><i class="ti ti-chart-line"></i> 第五步：冗余 vs 成功率</h2>
+    </div>
+    <p class="section-desc">冗余越高越能扛丢包，但也费更多 DNA。蒙特卡洛模拟：在不同冗余率下各跑 30 次，看成功率怎么变化。拖滑块调节信道丢失率。</p>
+    <div class="module">
+      <div class="threshold-controls">
+        <label class="slider-label">信道丢失率：<strong id="sweepDropoutVal">10%</strong></label>
+        <input type="range" id="sweepDropoutSlider" min="5" max="50" value="10" step="5">
+      </div>
+      <button class="btn btn-primary" id="sweepBtn"><i class="ti ti-chart-line"></i> 跑蒙特卡洛模拟</button>
+      <div class="chart-wrap">
+        <canvas id="sweepChart" height="280"></canvas>
+      </div>
+      <div class="threshold-note" id="sweepNote"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 6：密度计算器 ══════════ -->
+  <section class="section" id="densitySection">
+    <div class="round-head">
+      <span class="tag tag-easy">密度</span>
+      <h2><i class="ti ti-scale"></i> 第六步：存储密度有多恐怖</h2>
+    </div>
+    <p class="section-desc">论文实测密度 215 PB/克。输入想存的数据量，算算需要多少 DNA--质量小到看不见。</p>
+    <div class="module">
+      <div class="density-input-row">
+        <input type="number" id="densityInput" value="2146816" min="1" placeholder="字节数">
+        <span class="density-unit">字节</span>
+      </div>
+      <div class="density-presets" id="densityPresets">
+        <button class="btn btn-secondary btn-sm" data-bytes="2146816">论文实测 2.1 MB</button>
+        <button class="btn btn-secondary btn-sm" data-bytes="1073741824">1 GB</button>
+        <button class="btn btn-secondary btn-sm" data-bytes="1099511627776">1 TB</button>
+        <button class="btn btn-secondary btn-sm" data-bytes="1125899906842624">1 PB</button>
+      </div>
+      <div class="density-result" id="densityResult"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 7：论文出处 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-easy">出处</span>
+      <h2><i class="ti ti-book"></i> 论文与数据来源</h2>
+    </div>
+    <p class="section-desc">本演示的所有数字均来自以下论文，未做任何夸大或编造。</p>
+    <div class="app-grid">
+      <div class="app-card">
+        <div class="app-icon"><i class="ti ti-flask"></i></div>
+        <h4>DNA Fountain</h4>
+        <p>Yaniv Erlich &amp; Dina Zielinski. <em>DNA Fountain enables a robust and efficient storage architecture</em>. Science, 2017-03-03, 355(6328):950-954.</p>
+        <span class="app-source">DOI: 10.1126/science.aaj2038</span>
+      </div>
+      <div class="app-card">
+        <div class="app-icon"><i class="ti ti-chart-dots"></i></div>
+        <h4>关键数字</h4>
+        <p>存储密度 215 PB/克；实测写入并完美读回 2,146,816 字节（含一个完整图形操作系统和一部电影）；密度距理论上限仅差 14%；经多轮 PCR 扩增后仍完整取回。</p>
+        <span class="app-source">来源：Science 355(6328) 正文及补充材料</span>
+      </div>
+      <div class="app-card">
+        <div class="app-icon"><i class="ti ti-droplet-half"></i></div>
+        <h4>喷泉码与体检</h4>
+        <p>核心是 LT 喷泉码 + Robust Soliton 度分布 + 生物学筛选。本演示默认 GC 45%~55%、同碱基重复 ≤ 3，文献常用区间为 GC 40%~60%、重复上限 3~4，默认值非论文原值。</p>
+        <span class="app-source">来源：Luby LT Codes (2002) + DNA Fountain 筛选策略</span>
+      </div>
+      <div class="app-card">
+        <div class="app-icon"><i class="ti ti-info-circle"></i></div>
+        <h4>演示说明</h4>
+        <p>本页为教学演示，算法经简化以便浏览器实时运行：种子直接嵌入 oligo、白化平衡碱基、单字节 checksum 检测突变。真实系统还含地址索引、纠错内码、旋转编码等工程细节。</p>
+        <span class="app-source">来源：本演示实现</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="restart-bar">
+    <button class="btn btn-secondary" id="topBtn"><i class="ti ti-arrow-up"></i> 回到顶部再玩</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="dna-core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

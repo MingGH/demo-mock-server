@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="一个 175GB 的游戏里，程序代码只有 15.56 MB。基于 Valve 公开的 TF2 源码逐字节实测，配一台能拨出百 G 包体的装机台：拨七个滑块，亲手把 12MB 的游戏拨成 175GB。">
+  <title>游戏包体实验室：175GB 里那 15MB 代码 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <!-- ECharts：treemap 钻取 + 对照柱状图 -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <!-- GSAP：缩放缓动与滚动触发 -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+</head>
+<body>
+
+<div class="container gsl">
+
+  <!-- ══════════════ Hero ══════════════ -->
+  <header class="hero">
+    <div class="kicker"><i class="ti ti-device-desktop-analytics"></i> 交互实验 · 游戏产业</div>
+    <h1>一个 175GB 的游戏里<br><span class="gold">代码只有 15.56 MB</span></h1>
+    <p class="dek">
+      Valve 在 2025 年 2 月公开了《军团要塞 2》的全部游戏代码。我把仓库整个拉下来逐字节数了一遍，
+      然后照着真实的贴图与音频公式搭了一台装机台。你可以亲手把一个 12MB 的游戏拨成 175GB。
+    </p>
+
+    <figure class="hero-fig">
+      <img src="images/hero.jpg" alt="堆满贴图与音频箱子的巨大仓库，地面上只有一张发光的代码纸" loading="eager">
+      <figcaption>整座仓库都是贴图、语音和地图。地上那张发光的纸，是全部游戏代码。</figcaption>
+    </figure>
+
+    <div class="hero-cta">
+      <button class="btn btn-primary btn-lg" id="ctaStart">
+        <i class="ti ti-zoom-in"></i> 先来找找那 15MB 代码
+      </button>
+      <button class="btn btn-ghost btn-lg" id="ctaBuild">
+        <i class="ti ti-adjustments-horizontal"></i> 直接去装机台
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════════ 第一幕：放大镜 ══════════════ -->
+  <section class="act" id="act-zoom">
+    <div class="act-head">
+      <div class="act-no">第一幕</div>
+      <h2>在 175GB 里找到代码，需要放大 11,519 倍</h2>
+      <p class="act-hint">
+        下面这条就是一个 175GB 的安装包，从左到右按体积排开。代码在最右端。
+        按住按钮不放，条带会持续放大——松手就停，随时能看当前倍率。
+      </p>
+    </div>
+
+    <div class="panel">
+      <div class="zoom-meter">
+        <div class="zoom-mult">
+          <span id="zoomValue">1</span><span class="x">倍</span>
+        </div>
+        <div class="zoom-goal">
+          目标 <strong>11,519 倍</strong>
+          <div class="zoom-progress"><i id="zoomProgress"></i></div>
+        </div>
+      </div>
+
+      <div class="zoom-viewport" id="zoomViewport" aria-live="polite">
+        <div class="zoom-strip" id="zoomStrip"></div>
+        <div class="zoom-edge-label">← 安装包的其余部分</div>
+      </div>
+
+      <p class="zoom-caption" id="zoomCaption">整块条带就是一个 175 GB 的安装包。代码在里面，你看不见。</p>
+
+      <div class="btn-row">
+        <button class="btn btn-primary btn-hold" id="zoomHold">
+          <i class="ti ti-zoom-in"></i> 按住放大
+        </button>
+        <button class="btn btn-ghost" id="zoomStep"><i class="ti ti-chevrons-right"></i> 放大 10 倍</button>
+        <button class="btn btn-ghost" id="zoomReset"><i class="ti ti-refresh"></i> 重置</button>
+      </div>
+
+      <div class="reveal-card" id="zoomReveal" hidden>
+        <div class="reveal-title"><i class="ti ti-check"></i> 找到了</div>
+        <p>
+          那一整条金色，就是《军团要塞 2》全部 <strong class="gold">533,158 行</strong>游戏代码，
+          <strong class="gold">15.56 MB</strong>。
+          它和它所在的安装包之间差了 <strong class="gold">11,519 倍</strong>。
+        </p>
+        <p class="muted">
+          再补一刀：这 15.56 MB 用 <code>gzip -9</code> 压一下只剩 3.29 MB。
+          而一张 4096×4096 的未压缩贴图是 64 MB——一张贴图能装 19 份完整的游戏代码。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ 第二幕：装机台 ══════════════ -->
+  <section class="act" id="act-build">
+    <div class="act-head">
+      <div class="act-no">第二幕</div>
+      <h2>你来当制作人，把包体拨大</h2>
+      <p class="act-hint">
+        先点一张预设卡看看手感，再自己拨滑块。每一项都是明摆着的乘法，公式在下面可以展开核对。
+      </p>
+    </div>
+
+    <figure class="inline-fig">
+      <img src="images/studio.jpg" alt="制作人在调音台前推动滑块，身后传送带上的游戏光盘越堆越高" loading="lazy">
+      <figcaption>拨一格滑块，硬盘多掉几个 G。</figcaption>
+    </figure>
+
+    <div class="preset-grid" id="presetGrid"></div>
+
+    <div class="panel build-panel">
+      <!-- 输出区 -->
+      <div class="readout">
+        <div class="readout-main">
+          <div class="readout-label">这台游戏的安装包</div>
+          <div class="readout-size"><span id="totalSize">0 GB</span></div>
+          <div class="readout-sub" id="closestGame"></div>
+        </div>
+        <div class="readout-side">
+          <div class="mini-stat">
+            <div class="mini-label">代码占比</div>
+            <div class="mini-value gold" id="codePercent">0%</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-label">单套材质贴图</div>
+            <div class="mini-value" id="materialSize">0 MB</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-label">单套材质 = 几份游戏代码</div>
+            <div class="mini-value" id="materialVsCode">0 份</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 堆叠条 -->
+      <div class="stack-bar" id="stackBar"></div>
+      <div class="stack-legend" id="stackLegend"></div>
+
+      <!-- 控件 -->
+      <div class="control-groups">
+        <div class="control-group">
+          <div class="cg-title"><i class="ti ti-photo"></i> 画面精度</div>
+
+          <div class="ctrl" data-ctrl="resIndex">
+            <label for="cRes">贴图分辨率 <b id="vRes"></b></label>
+            <input type="range" id="cRes" min="0" max="6" step="1">
+            <div class="ctrl-note">边长翻倍，体积变四倍</div>
+          </div>
+
+          <div class="ctrl">
+            <label>每套材质的贴图张数 <b id="vChannels"></b></label>
+            <div class="seg" id="cChannels" role="group" aria-label="贴图张数">
+              <button type="button" data-val="1">1 张</button>
+              <button type="button" data-val="2">2 张</button>
+              <button type="button" data-val="4">4 张</button>
+              <button type="button" data-val="6">6 张</button>
+            </div>
+            <div class="ctrl-note">1 张只有颜色；2 张是漫反射加法线，Source 时代的做法；6 张是完整 PBR（基础色、法线、粗糙度、金属度、AO、高度图）</div>
+          </div>
+
+          <div class="ctrl">
+            <label>压缩格式 <b id="vFormat"></b></label>
+            <div class="seg" id="cFormat" role="group" aria-label="压缩格式"></div>
+            <div class="ctrl-note" id="nFormat"></div>
+          </div>
+
+          <div class="ctrl">
+            <label>Mipmap <b id="vMipmap"></b></label>
+            <div class="seg" id="cMipmap" role="group" aria-label="Mipmap">
+              <button type="button" data-val="on">开启</button>
+              <button type="button" data-val="off">关闭</button>
+            </div>
+            <div class="ctrl-note">逐级缩小的副本，让远景不闪烁，代价是体积 ×4/3</div>
+          </div>
+
+          <div class="ctrl">
+            <label for="cMaterials">唯一材质数量 <b id="vMaterials"></b></label>
+            <input type="range" id="cMaterials" min="100" max="5000" step="100">
+            <div class="ctrl-note">场景里有多少种不重复的表面</div>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="cg-title"><i class="ti ti-map-2"></i> 内容体量</div>
+
+          <div class="ctrl">
+            <label for="cMaps">地图数量 <b id="vMaps"></b></label>
+            <input type="range" id="cMaps" min="1" max="120" step="1">
+          </div>
+
+          <div class="ctrl">
+            <label for="cPerMap">单张地图数据 <b id="vPerMap"></b></label>
+            <input type="range" id="cPerMap" min="0" max="8" step="1">
+            <div class="ctrl-note">几何、碰撞体与烘焙好的光照</div>
+          </div>
+
+          <div class="ctrl">
+            <label for="cLangs">配音语言数 <b id="vLangs"></b></label>
+            <input type="range" id="cLangs" min="1" max="12" step="1">
+          </div>
+
+          <div class="ctrl">
+            <label for="cVoice">每种语言的语音时长 <b id="vVoice"></b></label>
+            <input type="range" id="cVoice" min="0" max="8" step="1">
+          </div>
+
+          <div class="ctrl">
+            <label>音频码率 <b id="vBitrate"></b></label>
+            <div class="seg" id="cBitrate" role="group" aria-label="音频码率"></div>
+            <div class="ctrl-note" id="nBitrate"></div>
+          </div>
+
+          <div class="ctrl">
+            <label for="cDup">关卡重复打包 <b id="vDup"></b></label>
+            <input type="range" id="cDup" min="10" max="30" step="1">
+            <div class="ctrl-note">为了让读盘快一点，同一份资源在多个关卡里各存一份</div>
+          </div>
+
+          <div class="ctrl ctrl-code">
+            <label for="cCode">程序代码 <b id="vCode"></b></label>
+            <input type="range" id="cCode" min="1" max="500" step="1">
+            <div class="ctrl-note">拉到 500 MB 试试，看总量动不动</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="copyConfig"><i class="ti ti-copy"></i> 复制这台游戏的配置</button>
+        <button class="btn btn-ghost" id="resetConfig"><i class="ti ti-refresh"></i> 回到现代 3A</button>
+      </div>
+
+      <details class="formula">
+        <summary><i class="ti ti-math-function"></i> 展开公式，自己验算</summary>
+        <div class="formula-body" id="formulaBody"></div>
+      </details>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">和真实游戏放一起比</div>
+      <p class="act-hint">金色那条是你刚拨出来的。其余为各游戏公开标注的磁盘占用。</p>
+      <div class="chart-box" id="compareChart"></div>
+    </div>
+  </section>
+
+  <!-- ══════════════ 第三幕：源码解剖 ══════════════ -->
+  <section class="act" id="act-source">
+    <div class="act-head">
+      <div class="act-no">第三幕</div>
+      <h2>顺手拆了一下这个「开源」仓库</h2>
+      <p class="act-hint">
+        既然代码这么小，那 Valve 放出来的 464 MB 仓库里装了什么？点方块可以往下钻，点标题回上一层。
+      </p>
+    </div>
+
+    <figure class="inline-fig narrow">
+      <img src="images/crate.jpg" alt="贴着开源代码标签的木箱，里面几乎全是水泥砖，只有最上面一小叠代码纸" loading="lazy">
+      <figcaption>箱子上写着「开源代码」，打开一看，七成是预编译好的砖头。</figcaption>
+    </figure>
+
+    <div class="fact-grid">
+      <div class="fact">
+        <div class="fact-value" style="color:#ff6b6b">73.1%</div>
+        <div class="fact-label">预编译二进制</div>
+        <div class="fact-note">339.6 MB 的 .lib / .a / .so / .exe</div>
+      </div>
+      <div class="fact">
+        <div class="fact-value gold">14.9%</div>
+        <div class="fact-label">源码文本</div>
+        <div class="fact-note">69.3 MB 的 .cpp / .h</div>
+      </div>
+      <div class="fact">
+        <div class="fact-value" style="color:#90caf9">12.0%</div>
+        <div class="fact-label">其他</div>
+        <div class="fact-note">55.7 MB 的资源、文档与脚本</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="tree-crumb" id="treeCrumb"></div>
+      <div class="chart-box tall" id="treeChart"></div>
+      <p class="tree-note" id="treeNote">点任意方块往下钻一层。</p>
+    </div>
+
+    <div class="panel egg">
+      <div class="egg-tag"><i class="ti ti-bulb"></i> 拆到这里愣了一下</div>
+      <h3>那个叫 <code>src/engine</code> 的目录，只有一个文件</h3>
+      <div class="egg-file">
+        <i class="ti ti-file-code"></i>
+        <div>
+          <code>src/engine/audio/public/sound.h</code>
+          <span>3,134 字节</span>
+        </div>
+      </div>
+      <p>
+        Source 引擎本体从来没有开源。Valve 放出来的是游戏层代码——兵种、武器、回合规则这些，
+        引擎那部分依然是编译好的 <code>engine.dll</code>。
+        所以「TF2 开源了」这句话，得打个折扣听。
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════ 结论 ══════════════ -->
+  <section class="act">
+    <div class="conclusion">
+      <h2>所以硬盘是被谁吃掉的</h2>
+      <p>
+        拨完滑块你大概已经有数了：把包体推上去最快的那一格，永远是<strong class="gold">贴图分辨率</strong>和
+        <strong class="gold">PBR 通道数</strong>。一套 2K 六通道材质 32 MB，乘上三千多种材质就是一百多个 G。
+        语音排第二，十国配音能顶三十个 G。
+      </p>
+      <p>
+        代码在这场膨胀里几乎不参与。DOOM 的年代它还占包体的 <strong>6.8%</strong>，
+        到现代 3A 只剩 <strong>0.075%</strong>——九十倍的塌缩。
+        把代码滑块从 1 MB 拉到 500 MB，总量那根条几乎不动。
+      </p>
+      <p class="muted">
+        下次看到 175GB 的安装包，别问程序员写了多少代码。该问的是那批 4K 贴图开了几个通道，
+        以及有没有人真的需要那十种语言的配音。
+      </p>
+    </div>
+
+    <div class="sources">
+      <h3><i class="ti ti-list-details"></i> 数据来源</h3>
+      <ol>
+        <li>
+          <strong>源码实测数据</strong>：Valve Source SDK 2013 仓库（GitHub <code>ValveSoftware/source-sdk-2013</code>，master 分支）。
+          下载 tarball 后按文件扩展名逐字节统计，采集于 2026 年 8 月。
+          仓库全部文件 487,115,673 字节；源码文本 72,650,541 字节；预编译二进制 356,056,626 字节。
+        </li>
+        <li>
+          <strong>TF2 游戏代码</strong>：<code>src/game/{client,server,shared}/tf</code> 三个目录的 <code>.cpp</code> / <code>.h</code> 文本，
+          共 16,312,863 字节、533,158 行；<code>gzip -9</code> 压缩后 3,447,002 字节。
+        </li>
+        <li>
+          <strong>TF2 源码公开时间</strong>：2025 年 2 月 18 日随 TF2 补丁一同发布，见 teamfortress.com 官方公告与 TF2 Wiki 的 SDK 条目。
+        </li>
+        <li>
+          <strong>贴图与音频体积</strong>：按格式定义直接计算。未压缩 RGBA8 为每像素 4 字节，BC7/DXT5 为 1 字节，BC1/DXT1 为 0.5 字节；
+          mipmap 系数取 1+1/4+1/16+… = 4/3。音频按 码率 ÷ 8 × 秒数 计算。
+        </li>
+        <li>
+          <strong>真实游戏体积</strong>：Steam 商店系统需求页标注的磁盘空间。
+          《军团要塞 2》15 GB、《黑神话：悟空》130 GB、《赛博朋克 2077》70 GB、《GTA V》72 GB、《博德之门 3》150 GB。
+          《使命召唤：现代战争》175 GB 为含全部内容包时期的公开报道值。
+        </li>
+        <li>
+          <strong>模型与地图体积</strong>：本页模型为参数化估算（单模型体积随贴图精度档位提升），非实测值，用于让总量贴近公开标注体积。
+          这两项在页面里单独列出，不与实测数据混算。
+        </li>
+      </ol>
+    </div>
+  </section>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

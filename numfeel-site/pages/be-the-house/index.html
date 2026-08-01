@@ -157,7 +157,7 @@
           <div class="bh-step-row" id="bh-gr-steps">
             <button class="bh-step-btn" data-step="1" type="button">跑 1 个赌徒</button>
             <button class="bh-step-btn" data-step="100" type="button">跑 100 个</button>
-            <button class="bh-step-btn" data-step="10000" type="button">跑 10,000 个</button>
+            <button class="bh-step-btn" data-step="1000" type="button">跑 1,000 个</button>
             <button class="bh-step-btn" id="bh-gr-reset" type="button" style="margin-left:auto;border-color:rgba(255,255,255,0.12);">重置</button>
           </div>
 
@@ -173,39 +173,48 @@
         </div>
       </section>
 
-      <!-- ═══════════════ 模块四：桌限是专门用来杀倍投的 ═══════════════ -->
+      <!-- ═══════════════ 模块四：倍投的高胜率是怎么骗人的 ═══════════════ -->
       <section class="bh-module" id="bh-module-4">
         <h2 class="bh-module-title">
           <i class="ti ti-ban"></i>
-          四、桌限是专门用来杀倍投的
+          四、倍投的高胜率是怎么骗人的
           <span class="bh-module-tag">核心</span>
         </h2>
-        <p class="bh-module-hint">马丁格尔：每输一把就把下一手翻倍。你会先觉得这是必胜法，然后被桌限一棍打死。</p>
+        <p class="bh-module-hint">马丁格尔：每输一把就把下一手翻倍。三步走完你会看到它的胜率是真的，代价藏在别处。</p>
 
         <div class="bh-card">
           <img src="images/martingale.jpg" alt="倍投策略与桌限" class="bh-martingale-img" style="max-width:340px;">
 
-          <h3 class="bh-card-title"><i class="ti ti-player-play-filled"></i> 严格两步</h3>
-          <p class="bh-card-hint">先点第 1 步（同策略同本金，只是不设桌限）。再点第 2 步（加一条桌限 = 1000）。两条都跑完再下结论。</p>
+          <h3 class="bh-card-title"><i class="ti ti-player-play-filled"></i> 三步走</h3>
+          <p class="bh-card-hint">三步用的是同一副本金（10 万）、同一个最小注（10）、同一个随机种子、同一个目标（赚到 +500 就收手）。唯一变的只有桌限。按顺序点，每步都会给出新的一栏数字。</p>
 
           <div class="bh-martingale-compare">
             <div class="bh-martingale-step" id="bh-mg-step1">
               <div class="bh-martingale-step-num">1</div>
-              <div class="bh-martingale-step-title">无桌限跑倍投</div>
-              <div class="bh-martingale-step-desc">本金 3000、baseBet = 1、桌限 = ∞</div>
+              <div class="bh-martingale-step-title">无桌限，看达成率</div>
+              <div class="bh-martingale-step-desc">本金 10 万、最小注 10、桌限 = ∞、目标 +500</div>
               <button class="bh-btn bh-btn-gold" id="bh-mg-btn1" type="button">
-                <i class="ti ti-player-play-filled"></i> 跑 100 次
+                <i class="ti ti-player-play-filled"></i> 跑 400 场
               </button>
               <div class="bh-martingale-step-result" id="bh-mg-result1">点击按钮开始</div>
             </div>
             <div class="bh-martingale-step" id="bh-mg-step2">
               <div class="bh-martingale-step-num">2</div>
-              <div class="bh-martingale-step-title">现在把桌限设成 1000</div>
-              <div class="bh-martingale-step-desc">本金 3000、baseBet = 1、桌限 = 1000</div>
+              <div class="bh-martingale-step-title">同一批场次，看最差的一场</div>
+              <div class="bh-martingale-step-desc">参数一个字都不改，只是换个角度看结果</div>
               <button class="bh-btn bh-btn-red" id="bh-mg-btn2" type="button">
-                <i class="ti ti-player-play-filled"></i> 跑 100 次
+                <i class="ti ti-eye"></i> 揭示代价
               </button>
-              <div class="bh-martingale-step-result" id="bh-mg-result2">点击按钮开始</div>
+              <div class="bh-martingale-step-result" id="bh-mg-result2">先跑完第 1 步</div>
+            </div>
+            <div class="bh-martingale-step" id="bh-mg-step3">
+              <div class="bh-martingale-step-num">3</div>
+              <div class="bh-martingale-step-title">现在把桌限设成 2000</div>
+              <div class="bh-martingale-step-desc">本金、最小注、种子、目标全不变，只加一条桌限</div>
+              <button class="bh-btn bh-btn-red" id="bh-mg-btn3" type="button">
+                <i class="ti ti-player-play-filled"></i> 加上桌限再跑
+              </button>
+              <div class="bh-martingale-step-result" id="bh-mg-result3">先跑完第 2 步</div>
             </div>
           </div>
 
@@ -213,10 +222,11 @@
             <canvas id="bh-mg-chart"></canvas>
           </div>
           <div id="bh-mg-truncated-info" class="bh-insight red" style="display:none;"></div>
+          <div id="bh-mg-invariant" class="bh-insight gold" style="display:none;"></div>
         </div>
 
         <div class="bh-insight">
-          桌限不是防你赢太多。无限资金下倍投确实必胜；桌限一设，它立刻变成必败。
+          倍投的胜率是真的，它靠「频繁小赢换罕见巨亏」换来。桌限给那笔巨亏封了顶，同时把你为同一个目标押出去的总流水顶了上去。而期望亏损 = 庄家优势 × 总流水，桌限动不了这个乘法，它只往「总流水」那一项加码。被保护的是庄家。
         </div>
       </section>
 
@@ -259,6 +269,15 @@
             <button class="bh-step-btn" data-bk-preset="tilted" type="button">严重失衡</button>
             <button class="bh-step-btn" data-bk-preset="leicester" type="button">莱斯特城情景</button>
             <button class="bh-step-btn" data-bk-preset="reset" type="button" style="margin-left:auto;border-color:rgba(255,255,255,0.12);">重置</button>
+          </div>
+
+          <p class="bh-card-hint" style="margin-top:14px;">
+            随便改上面两侧的押注额，然后点这个按钮——庄家开盘做的就是这一步：按钱流进来的比例反解赔率，让两边赔付相等。
+          </p>
+          <div class="bh-bk-presets">
+            <button class="bh-btn bh-btn-gold" id="bh-bk-rebalance" type="button">
+              <i class="ti ti-scale-outline"></i> 按当前押注额反解平衡赔率（留 5% 抽水）
+            </button>
           </div>
 
           <div class="bh-bk-result" id="bh-bk-result">
@@ -310,7 +329,7 @@
         <h3 class="bh-outro-title">把这一套结构抬一层</h3>
         <p>保险公司赚保费差、做市商赚买卖价差、交易所和平台赚手续费与抽成、彩票发行方……同一套结构，都不赌方向，只从别人的方差里提取确定性收益。</p>
         <p class="bh-outro-quote">"庄家从来不指望赢下这一把，它赌的是下一把还有。"</p>
-        <p>把整套数学做成了可以自己拖的演示。<br>最有意思的是模块四：先无桌限跑一遍倍投，你会觉得自己发现了必胜法；然后把桌限打开，同样的策略、同样的本金，只多一条规则。</p>
+        <p>把整套数学做成了可以自己拖的演示。<br>最有意思的是模块四：先跑一遍倍投，98% 的场次都赚到了钱，你会觉得自己发现了必胜法；然后看最差的那一场，再加上桌限看总流水翻了几倍。</p>
         <button class="bh-copy-btn" id="bh-copy-btn" type="button">
           <i class="ti ti-copy"></i>
           复制结论分享

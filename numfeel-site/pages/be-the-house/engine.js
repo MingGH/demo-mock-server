@@ -1,6 +1,7 @@
 /**
  * engine.js - 当一次庄家：核心计算内核
- * 纯函数模块，无任何 DOM / Chart.js / GSAP / window / document 依赖
+ * 纯计算模块：不碰 DOM / Chart.js / GSAP，不读取任何页面状态。
+ * 唯一与宿主环境的接触点是文件末尾的导出——浏览器挂 window.bhEngine，Node 走 module.exports。
  * 可被 Node.js 直接 require 测试
  */
 
@@ -206,10 +207,10 @@ function simulateProfitDistribution(edge, n, samples, rng) {
   // 统计量
   var sum = 0;
   for (var k = 0; k < results.length; k++) sum += results[k];
-  var mean = sum / results.length;
+  var sampleMean = sum / results.length;
   var sqSum = 0;
-  for (var m = 0; m < results.length; m++) sqSum += (results[m] - mean) * (results[m] - mean);
-  var std = Math.sqrt(sqSum / results.length);
+  for (var m = 0; m < results.length; m++) sqSum += (results[m] - sampleMean) * (results[m] - sampleMean);
+  var sampleStd = Math.sqrt(sqSum / results.length);
 
   // 直方图分桶
   var sorted = results.slice().sort(function (a, b) { return a - b; });
@@ -233,7 +234,7 @@ function simulateProfitDistribution(edge, n, samples, rng) {
     bins.push({ lo: lo, hi: hi, count: count, label: Math.round((lo + hi) / 2) });
   }
 
-  return { results: results, bins: bins, mean: mean, std: std, min: min, max: max };
+  return { results: results, bins: bins, mean: sampleMean, std: sampleStd, min: min, max: max };
 }
 
 /* ============================================================
@@ -267,31 +268,31 @@ function gamblerRuinProbability(playerBank, houseBank, edge) {
 
   var p = (1 - edge) / 2;
   var q = 1 - p;
-  var r = q / p; // r > 1 when edge > 0
-
-  // 用对数空间计算避免溢出
-  // ruinProb = (r^N - r^W) / (r^N - 1)
-  // = r^W * (r^B - 1) / (r^N - 1)
-  // 取对数: ln(ruinProb) = W*ln(r) + ln(r^B - 1) - ln(r^N - 1)
-
+  var r = q / p;          // edge > 0 时 r > 1；edge < 0（玩家有优势）时 r < 1
   var lnR = Math.log(r);
 
-  // 当 r 很大或 N 很大时，r^N 可能溢出
-  // 使用 log-sum-exp 技巧
-  // ruinProb = (exp(N*lnR) - exp(W*lnR)) / (exp(N*lnR) - 1)
-  // 分子分母同除以 exp(N*lnR):
-  // = (1 - exp((W-N)*lnR)) / (1 - exp(-N*lnR))
-  // = (1 - exp(-B*lnR)) / (1 - exp(-N*lnR))
+  // 基础式：ruinProb = (r^N - r^W) / (r^N - 1)
+  // 直接算 r^N 在 N 很大时会溢出，所以按 lnR 的符号选一种「指数恒为负」的等价变形。
 
-  var expNegB = Math.exp(-B * lnR);
-  var expNegN = Math.exp(-N * lnR);
-
-  // 当 N*lnR 很大时，exp(-N*lnR) -> 0，ruinProb -> 1
-  if (expNegN < 1e-15) {
-    return 1.0 - expNegB; // 近似
+  if (lnR > 0) {
+    // 庄家有优势。分子分母同除 r^N：
+    // = (1 - r^(W-N)) / (1 - r^(-N)) = (1 - exp(-B*lnR)) / (1 - exp(-N*lnR))
+    var expNegB = Math.exp(-B * lnR);
+    var expNegN = Math.exp(-N * lnR);
+    if (expNegN < 1e-15) {
+      return 1.0 - expNegB;   // exp(-N*lnR) -> 0，破产几乎必然
+    }
+    return (1 - expNegB) / (1 - expNegN);
   }
 
-  return (1 - expNegB) / (1 - expNegN);
+  // 玩家有优势（edge < 0）。此时 r < 1，直接用正指数形式，两个 exp 都 ≤ 1：
+  // = (r^W - r^N) / (1 - r^N)
+  var expW = Math.exp(W * lnR);
+  var expN = Math.exp(N * lnR);
+  if (expN < 1e-15) {
+    return expW;              // 上界实际不可达，破产概率收敛到 r^W
+  }
+  return (expW - expN) / (1 - expN);
 }
 
 /**
@@ -324,8 +325,15 @@ function simulateGamblerRuin(playerBank, houseBank, edge, rng, maxRounds) {
     rounds++;
   }
 
+  var bankrupt = capital <= 0;
+  var hitCeiling = capital >= W + B;
+
   return {
-    bankrupt: capital <= 0,
+    bankrupt: bankrupt,
+    hitCeiling: hitCeiling,
+    // absorbed=false 表示在 maxRounds 内既没破产也没触顶，属于「未定局」，
+    // 不能当成存活来统计，否则会把庄家资金极大的场景误报成 0% 破产。
+    absorbed: bankrupt || hitCeiling,
     rounds: rounds,
     trajectory: trajectory,
     finalCapital: capital
@@ -342,34 +350,64 @@ function simulateGamblerRuin(playerBank, houseBank, edge, rng, maxRounds) {
  * @param {function} rng
  * @returns {{ruinCount: number, ruinRate: number, survivalRate: number, trajectories: number[][], avgRounds: number}}
  */
-function simulateGamblers(count, playerBank, houseBank, edge, rng) {
+function simulateGamblers(count, playerBank, houseBank, edge, rng, opts) {
   var rand = rng || Math.random;
+  opts = opts || {};
+
+  // 总步数预算：庄家资金极大 / edge 极小时，走到吸收需要上千万步，
+  // 不设预算会把主线程锁死几分钟。预算内没定局的样本单独归类。
+  var stepBudget = opts.stepBudget || 150000000;
+  var maxRounds = opts.maxRounds || Math.max(1000, Math.floor(stepBudget / Math.max(1, count)));
+  var keepTrajectories = opts.keepTrajectories === undefined ? 5 : opts.keepTrajectories;
+
   var ruinCount = 0;
+  var ceilingCount = 0;
+  var unabsorbedCount = 0;
   var trajectories = [];
   var totalRounds = 0;
 
   for (var i = 0; i < count; i++) {
-    var result = simulateGamblerRuin(playerBank, houseBank, edge, rand);
+    var result = simulateGamblerRuin(playerBank, houseBank, edge, rand, maxRounds);
     if (result.bankrupt) ruinCount++;
+    else if (result.hitCeiling) ceilingCount++;
+    else unabsorbedCount++;
     totalRounds += result.rounds;
-    // 只保留前 200 个点用于绘制，避免内存爆炸
-    var traj = result.trajectory;
-    if (traj.length > 200) {
-      var sampled = [];
-      var step = Math.ceil(traj.length / 200);
-      for (var j = 0; j < traj.length; j += step) {
-        sampled.push(traj[j]);
+
+    // 只保留少量轨迹用于绘制，避免大批量模拟时内存爆炸。
+    // 抽稀后必须把步长带出去，否则画图时会把「第 k 个采样点」当成「第 k 手」。
+    if (trajectories.length < keepTrajectories) {
+      var points = result.trajectory;
+      var stride = 1;
+      if (points.length > 200) {
+        stride = Math.ceil(points.length / 200);
+        var sampled = [];
+        for (var j = 0; j < points.length; j += stride) sampled.push(points[j]);
+        points = sampled;
       }
-      trajectories.push(sampled);
-    } else {
-      trajectories.push(traj);
+      trajectories.push({
+        points: points,
+        stride: stride,
+        rounds: result.rounds,
+        bankrupt: result.bankrupt,
+        absorbed: result.absorbed
+      });
     }
   }
 
+  var absorbedCount = ruinCount + ceilingCount;
+
   return {
     ruinCount: ruinCount,
+    ceilingCount: ceilingCount,
+    unabsorbedCount: unabsorbedCount,
+    absorbedCount: absorbedCount,
+    // ruinRate 以全部样本为分母（向后兼容）
     ruinRate: ruinCount / count,
-    survivalRate: 1 - ruinCount / count,
+    // 与解析解对照时应该用这个：只在已定局的样本里算破产占比
+    ruinRateAmongAbsorbed: absorbedCount > 0 ? ruinCount / absorbedCount : null,
+    survivalRate: ceilingCount / count,
+    truncated: unabsorbedCount > 0,
+    maxRounds: maxRounds,
     trajectories: trajectories,
     avgRounds: totalRounds / count,
     count: count
@@ -410,6 +448,13 @@ function simulateMartingale(params, rng) {
   var rounds = params.rounds;
   var p = (1 - edge) / 2; // 玩家胜率
 
+  // profitTarget：赚到「初始本金 + profitTarget」就收手离场。
+  // 倍投真正承诺的是「小额目标几乎必然达成」，所以这才是该被检验的指标。
+  var profitTarget = params.profitTarget;
+  var hasTarget = typeof profitTarget === 'number' && profitTarget > 0;
+  var targetBankroll = bankroll + (hasTarget ? profitTarget : 0);
+  var startBankroll = bankroll;
+
   var currentBet = baseBet;
   var trajectory = [bankroll];
   var betSequence = [];
@@ -417,9 +462,15 @@ function simulateMartingale(params, rng) {
   var wins = 0;
   var losses = 0;
   var maxBet = 0;
+  var totalWagered = 0;   // 总流水：期望亏损 = 庄家优势 × 总流水
   var bankrupt = false;
+  var reachedTarget = false;
 
   for (var i = 0; i < rounds; i++) {
+    if (hasTarget && bankroll >= targetBankroll) {
+      reachedTarget = true;
+      break;
+    }
     // 先应用桌限截断
     var desiredBet = currentBet;
     var actualBet = desiredBet;
@@ -437,6 +488,7 @@ function simulateMartingale(params, rng) {
     }
 
     if (actualBet > maxBet) maxBet = actualBet;
+    totalWagered += actualBet;
     betSequence.push({ round: i, desiredBet: desiredBet, actualBet: actualBet, truncated: truncated });
 
     // 下注
@@ -463,12 +515,17 @@ function simulateMartingale(params, rng) {
     }
   }
 
+  if (hasTarget && !bankrupt && bankroll >= targetBankroll) reachedTarget = true;
+
   return {
     trajectory: trajectory,
     betSequence: betSequence,
     bankrupt: bankrupt,
+    reachedTarget: reachedTarget,
     truncatedRounds: truncatedRounds,
     finalBankroll: bankroll,
+    netProfit: bankroll - startBankroll,
+    totalWagered: totalWagered,
     maxBet: maxBet,
     wins: wins,
     losses: losses,
@@ -487,15 +544,31 @@ function simulateMartingale(params, rng) {
 function simulateMartingaleBatch(count, params, rng) {
   var rand = rng || Math.random;
   var ruinCount = 0;
+  var targetCount = 0;
+  var profitSum = 0;
+  var wageredSum = 0;
+  var worstProfit = Infinity;
   var results = [];
   for (var i = 0; i < count; i++) {
     var r = simulateMartingale(params, rand);
     results.push(r);
     if (r.bankrupt) ruinCount++;
+    if (r.reachedTarget) targetCount++;
+    profitSum += r.netProfit;
+    wageredSum += r.totalWagered;
+    if (r.netProfit < worstProfit) worstProfit = r.netProfit;
   }
   return {
     ruinRate: ruinCount / count,
     ruinCount: ruinCount,
+    // 达成目标的比例：模块四用它做「桌限前 vs 桌限后」的受控对照
+    targetCount: targetCount,
+    targetRate: targetCount / count,
+    avgProfit: profitSum / count,
+    avgWagered: wageredSum / count,
+    // 理论期望亏损 = 庄家优势 × 总流水。桌限改变亏损的分布形状，改不了这一行。
+    theoreticalLoss: -(params.edge) * (wageredSum / count),
+    worstProfit: worstProfit === Infinity ? 0 : worstProfit,
     survivalRate: 1 - ruinCount / count,
     results: results,
     count: count
@@ -549,26 +622,64 @@ function bookmakerPayout(amountA, amountB, oddsA, oddsB) {
   };
 }
 
+/**
+ * 按两侧押注额反解「平衡账本」的赔率
+ *
+ * 庄家开盘的目的不是预测比分，而是让两侧押注额乘以各自赔率后相等，
+ * 于是无论谁赢，赔付都一样，庄家只收 vig。
+ *
+ * 令 totalPool = A + B，目标是两侧赔付都等于 totalPool * (1 - vig)：
+ *   oddsA = totalPool * (1 - vig) / amountA
+ *   oddsB = totalPool * (1 - vig) / amountB
+ *
+ * @param {number} amountA - A 侧押注总额
+ * @param {number} amountB - B 侧押注总额
+ * @param {number} vig - 目标抽水率（如 0.05 表示留 5%）
+ * @returns {{oddsA: number, oddsB: number, payout: number, impliedVig: number}|null}
+ */
+function balancedOdds(amountA, amountB, vig) {
+  if (vig === undefined) vig = 0.05;
+  if (amountA <= 0 || amountB <= 0) return null;
+  var totalPool = amountA + amountB;
+  var payout = totalPool * (1 - vig);
+  var oddsA = payout / amountA;
+  var oddsB = payout / amountB;
+  return {
+    oddsA: oddsA,
+    oddsB: oddsB,
+    payout: payout,
+    impliedVig: (1 / oddsA + 1 / oddsB) - 1
+  };
+}
+
 /* ============================================================
  * 模块导出
  * ============================================================ */
 
+var BH_ENGINE_API = {
+  mulberry32: mulberry32,
+  houseEdge: houseEdge,
+  edgeTable: edgeTable,
+  erf: erf,
+  normalCDF: normalCDF,
+  playerProfitProbability: playerProfitProbability,
+  llnStats: llnStats,
+  profitProbabilityCurve: profitProbabilityCurve,
+  simulateProfitDistribution: simulateProfitDistribution,
+  gamblerRuinProbability: gamblerRuinProbability,
+  simulateGamblerRuin: simulateGamblerRuin,
+  simulateGamblers: simulateGamblers,
+  simulateMartingale: simulateMartingale,
+  simulateMartingaleBatch: simulateMartingaleBatch,
+  bookmakerPayout: bookmakerPayout,
+  balancedOdds: balancedOdds
+};
+
+// 浏览器：显式挂命名空间，不依赖顶层函数隐式变成全局变量
+if (typeof window !== 'undefined') {
+  window.bhEngine = BH_ENGINE_API;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    mulberry32: mulberry32,
-    houseEdge: houseEdge,
-    edgeTable: edgeTable,
-    erf: erf,
-    normalCDF: normalCDF,
-    playerProfitProbability: playerProfitProbability,
-    llnStats: llnStats,
-    profitProbabilityCurve: profitProbabilityCurve,
-    simulateProfitDistribution: simulateProfitDistribution,
-    gamblerRuinProbability: gamblerRuinProbability,
-    simulateGamblerRuin: simulateGamblerRuin,
-    simulateGamblers: simulateGamblers,
-    simulateMartingale: simulateMartingale,
-    simulateMartingaleBatch: simulateMartingaleBatch,
-    bookmakerPayout: bookmakerPayout
-  };
+  module.exports = BH_ENGINE_API;
 }

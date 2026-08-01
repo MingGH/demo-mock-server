@@ -19,7 +19,10 @@
     distN1MChart: null,
     grChart: null,
     mgChart: null,
-    grStep: 0                    // 模块三：0=未跑, 1/100/10000
+    grStep: 0,                   // 模块三：0=未跑, 1/100/10000
+    grRunning: false,            // 模块三：分块模拟进行中
+    mgNoLimit: null,             // 模块四：第 1 步（无桌限）的结果，供第 2/3 步复用
+    mgLimited: null
   };
 
   // ============================================================
@@ -270,14 +273,19 @@
     wrap.style.display = 'block';
     if (state.grChart) state.grChart.destroy();
 
-    // 画一次代表性的轨迹 + 期望/标准差范围
+    // 画一条代表性轨迹 + 期望路径 / ±2σ 带。
+    // 轨迹是抽稀过的，第 i 个采样点对应第 i*stride 手，标签和统计量都要按真实手数走。
     var player = Number(el('bh-gr-player').value);
-    var house = Number(el('bh-gr-house').value);
-    var traj = latestResult.trajectories[latestResult.trajectories.length - 1] || [];
-    var labels = traj.map(function (_, i) { return i; });
-    var expLine = traj.map(function (_, i) { return player - state.currentEdge * i; });
-    var upper = traj.map(function (_, i) { return expLine[i] + 2 * Math.sqrt(i); });
-    var lower = traj.map(function (_, i) { return Math.max(0, expLine[i] - 2 * Math.sqrt(i)); });
+    var entry = (latestResult.trajectories || [])[0];
+    if (!entry) { wrap.style.display = 'none'; return; }
+    var traj = entry.points || [];
+    var stride = entry.stride || 1;
+    var roundAt = function (i) { return i * stride; };
+    var labels = traj.map(function (_, i) { return roundAt(i); });
+    var expLine = traj.map(function (_, i) { return player - state.currentEdge * roundAt(i); });
+    var sigmaAt = function (i) { return window.bhEngine.llnStats(state.currentEdge, roundAt(i), 1).stdDev; };
+    var upper = traj.map(function (_, i) { return expLine[i] + 2 * sigmaAt(i); });
+    var lower = traj.map(function (_, i) { return Math.max(0, expLine[i] - 2 * sigmaAt(i)); });
 
     state.grChart = new Chart(canvas, {
       type: 'line',
@@ -341,83 +349,201 @@
     });
   }
 
+  // 分块跑，避免大批量模拟把主线程锁死
   function runGRStep(count) {
+    if (state.grRunning) return;
     var player = Number(el('bh-gr-player').value);
     var house = Number(el('bh-gr-house').value);
+    var edge = state.currentEdge;
     var rng = window.bhEngine.mulberry32(42 + count + Date.now() % 1000);
-    var result = window.bhEngine.simulateGamblers(count, player, house, state.currentEdge, rng);
-    setText('bh-gr-mc', fmtPct(result.ruinRate, 2) + '（' + result.ruinCount + '/' + count + '）');
+
+    // 手数预算：既要够走到吸收，又不能把主线程占死。
+    // 下行漂移下走到破产的期望手数约为 玩家本金 / 庄家优势，取 4 倍留余量；
+    // 再用总步数封顶，庄家资金极大 / 优势极小时宁可如实报「未定局」。
+    var stepBudget = 60000000;
+    var needed = Math.ceil(4 * player / Math.max(edge, 1e-6));
+    var maxRounds = Math.min(
+      Math.max(2000, Math.floor(stepBudget / Math.max(1, count))),
+      Math.max(2000, needed)
+    );
+    var chunk = count <= 100 ? count : Math.max(25, Math.floor(count / 40));
+
+    var agg = { ruinCount: 0, ceilingCount: 0, unabsorbedCount: 0, totalRounds: 0, done: 0, trajectories: [] };
     var stepResult = el('bh-gr-step-result');
-    if (stepResult) {
-      stepResult.style.display = 'block';
+    if (stepResult) stepResult.style.display = 'block';
+    state.grRunning = true;
+
+    document.querySelectorAll('#bh-gr-steps .bh-step-btn').forEach(function (b) { b.classList.remove('active'); });
+    var activeBtn = document.querySelector('#bh-gr-steps .bh-step-btn[data-step="' + count + '"]');
+    if (activeBtn) activeBtn.classList.add('active');
+
+    function renderProgress() {
+      if (!stepResult) return;
       stepResult.innerHTML =
-        '<div class="bh-stats">' +
-        '  <div class="bh-stat"><div class="bh-stat-label">破产人数</div><div class="bh-stat-value red">' + result.ruinCount + ' / ' + count + '</div></div>' +
-        '  <div class="bh-stat"><div class="bh-stat-label">平均手数</div><div class="bh-stat-value blue">' + Math.round(result.avgRounds).toLocaleString() + '</div></div>' +
-        '  <div class="bh-stat"><div class="bh-stat-label">存活率</div><div class="bh-stat-value green">' + fmtPct(result.survivalRate, 2) + '</div></div>' +
+        '<div style="color:rgba(255,255,255,0.6);font-size:13px;">' +
+        '<i class="ti ti-loader-2"></i> 正在模拟 ' + agg.done.toLocaleString() + ' / ' + count.toLocaleString() + ' 名赌徒…' +
         '</div>';
     }
-    renderGRChart(result);
-    // GSAP 数字滚动
-    if (window.gsap) {
-      gsap.from('.bh-stat-value', { scale: 0.7, opacity: 0.4, duration: 0.4, stagger: 0.05, ease: 'back.out(2)' });
+
+    function renderFinal() {
+      var absorbed = agg.ruinCount + agg.ceilingCount;
+      var mcText = absorbed > 0
+        ? fmtPct(agg.ruinCount / absorbed, 2) + '（' + agg.ruinCount + '/' + absorbed + ' 已定局）'
+        : '本轮无人定局';
+      setText('bh-gr-mc', mcText);
+
+      var rows =
+        '<div class="bh-stats">' +
+        '  <div class="bh-stat"><div class="bh-stat-label">破产</div><div class="bh-stat-value red">' + agg.ruinCount.toLocaleString() + ' / ' + count.toLocaleString() + '</div></div>' +
+        '  <div class="bh-stat"><div class="bh-stat-label">打穿庄家</div><div class="bh-stat-value green">' + agg.ceilingCount.toLocaleString() + '</div></div>' +
+        '  <div class="bh-stat"><div class="bh-stat-label">平均手数</div><div class="bh-stat-value blue">' + Math.round(agg.totalRounds / count).toLocaleString() + '</div></div>' +
+        '</div>';
+
+      if (agg.unabsorbedCount > 0) {
+        rows +=
+          '<div class="bh-insight blue" style="margin-top:12px;">' +
+          '<i class="ti ti-info-circle"></i> 有 <b>' + agg.unabsorbedCount.toLocaleString() + '</b> 名赌徒在 ' +
+          maxRounds.toLocaleString() + ' 手预算内既没输光也没打穿庄家，属于未定局，没有计入上面的破产占比。' +
+          '庄家资金越大、优势越小，走到定局需要的手数就越多——这本身就是双方时间尺度的差距。' +
+          '</div>';
+      }
+      if (stepResult) stepResult.innerHTML = rows;
+
+      renderGRChart({ trajectories: agg.trajectories });
+      if (window.gsap) {
+        gsap.from('#bh-gr-step-result .bh-stat-value', { scale: 0.7, opacity: 0.4, duration: 0.4, stagger: 0.05, ease: 'back.out(2)' });
+      }
+      state.grRunning = false;
     }
-    // 高亮按钮
-    document.querySelectorAll('#bh-gr-steps .bh-step-btn').forEach(function (b) { b.classList.remove('active'); });
-    document.querySelector('#bh-gr-steps .bh-step-btn[data-step="' + count + '"]').classList.add('active');
+
+    function step() {
+      var n = Math.min(chunk, count - agg.done);
+      var part = window.bhEngine.simulateGamblers(n, player, house, edge, rng, {
+        maxRounds: maxRounds,
+        keepTrajectories: agg.trajectories.length < 5 ? 5 - agg.trajectories.length : 0
+      });
+      agg.ruinCount += part.ruinCount;
+      agg.ceilingCount += part.ceilingCount;
+      agg.unabsorbedCount += part.unabsorbedCount;
+      agg.totalRounds += part.avgRounds * n;
+      agg.done += n;
+      for (var t = 0; t < part.trajectories.length && agg.trajectories.length < 5; t++) {
+        agg.trajectories.push(part.trajectories[t]);
+      }
+      if (agg.done < count) {
+        renderProgress();
+        setTimeout(step, 0);
+      } else {
+        renderFinal();
+      }
+    }
+
+    renderProgress();
+    setTimeout(step, 0);
   }
 
   // ============================================================
   // 模块四：倍投（马丁格尔）两步对比
   // ============================================================
-  function runMartingaleOne(tableLimit, btnResult, step, count) {
-    var rng = window.bhEngine.mulberry32(tableLimit === Infinity ? 7 : 13);
-    var batch = window.bhEngine.simulateMartingaleBatch(count, {
-      bankroll: 3000,
-      baseBet: 1,
+  // 三步共用的固定参数：只有 tableLimit 会变，种子也固定，
+  // 这样第 1 步和第 3 步是严格的受控对照（同一串随机数）。
+  var MG_BASE = { bankroll: 100000, baseBet: 10, profitTarget: 500, rounds: 5000 };
+  var MG_SEED = 7;
+  var MG_COUNT = 400;
+  var MG_LIMIT = 2000;
+
+  function runMartingaleBatch(tableLimit) {
+    return window.bhEngine.simulateMartingaleBatch(MG_COUNT, {
+      bankroll: MG_BASE.bankroll,
+      baseBet: MG_BASE.baseBet,
       tableLimit: tableLimit,
       edge: state.currentEdge,
-      rounds: 1000
-    }, rng);
+      rounds: MG_BASE.rounds,
+      profitTarget: MG_BASE.profitTarget
+    }, window.bhEngine.mulberry32(MG_SEED));
+  }
 
-    var ruinPct = (batch.ruinRate * 100).toFixed(1);
-    var final = batch.results[0];
-    btnResult.className = 'bh-martingale-step-result ' + (batch.ruinRate > 0.5 ? 'red' : 'green');
-    btnResult.innerHTML =
-      '破产 ' + batch.ruinCount + ' / ' + count + '（<b style="color:' + (batch.ruinRate > 0.5 ? '#f87171' : '#4ade80') + '">' + ruinPct + '%</b>）' +
-      '<br><span style="font-size:11px;color:rgba(255,255,255,0.5);">示例：' +
-      (final.bankrupt ? '破产 @ 第 ' + final.rounds + ' 手 / maxBet=' + final.maxBet : '存活到第 ' + final.rounds + ' 手 / 期末 ' + Math.round(final.finalBankroll)) +
-      '</span>';
-
-    // 闪烁反馈
+  function flashStep(step, good) {
     var stepEl = el('bh-mg-step' + step);
-    if (stepEl) {
-      if (batch.ruinRate > 0.5) {
-        stepEl.classList.remove('flash-good');
-        stepEl.classList.add('flash-bad');
-        setTimeout(function () { stepEl.classList.remove('flash-bad'); }, 1500);
-      } else {
-        stepEl.classList.remove('flash-bad');
-        stepEl.classList.add('flash-good');
-        setTimeout(function () { stepEl.classList.remove('flash-good'); }, 1500);
-      }
+    if (!stepEl) return;
+    var cls = good ? 'flash-good' : 'flash-bad';
+    stepEl.classList.remove('flash-good', 'flash-bad');
+    stepEl.classList.add(cls);
+    setTimeout(function () { stepEl.classList.remove(cls); }, 1500);
+  }
+
+  // 第 1 步：无桌限，只看达成率——先让人觉得这是必胜法
+  function runMartingaleStep1() {
+    var batch = runMartingaleBatch(Infinity);
+    state.mgNoLimit = batch;
+    var res = el('bh-mg-result1');
+    res.className = 'bh-martingale-step-result green';
+    res.innerHTML =
+      '达成 +' + MG_BASE.profitTarget + ' 目标：<b style="color:#4ade80">' + fmtPct(batch.targetRate, 1) + '</b>' +
+      '（' + batch.targetCount + ' / ' + MG_COUNT + ' 场）' +
+      '<br><span style="font-size:11px;color:rgba(255,255,255,0.5);">几乎每一场都赚到了钱。看起来确实像必胜法。</span>';
+    flashStep(1, true);
+    drawMartingaleChart(batch, 1);
+    el('bh-mg-result2').textContent = '现在点第 2 步';
+    return batch;
+  }
+
+  // 第 2 步：同一批场次，换个角度看代价
+  function runMartingaleStep2() {
+    var batch = state.mgNoLimit || runMartingaleStep1();
+    var res = el('bh-mg-result2');
+    res.className = 'bh-martingale-step-result red';
+    res.innerHTML =
+      '最差一场：<b style="color:#f87171">' + fmtSigned(batch.worstProfit) + '</b>' +
+      '<br>400 场平均：<b style="color:#f87171">' + fmtSigned(batch.avgProfit) + '</b>' +
+      '<br><span style="font-size:11px;color:rgba(255,255,255,0.5);">高胜率是用「频繁小赢换罕见巨亏」买来的。平均下来仍然是亏。</span>';
+    flashStep(2, false);
+    el('bh-mg-result3').textContent = '现在点第 3 步';
+  }
+
+  // 第 3 步：只加一条桌限，其余全不变
+  function runMartingaleStep3() {
+    var noLimit = state.mgNoLimit || runMartingaleStep1();
+    var batch = runMartingaleBatch(MG_LIMIT);
+    state.mgLimited = batch;
+
+    var wageredRatio = noLimit.avgWagered > 0 ? (batch.avgWagered / noLimit.avgWagered) : 1;
+    var res = el('bh-mg-result3');
+    res.className = 'bh-martingale-step-result red';
+    res.innerHTML =
+      '达成率 ' + fmtPct(batch.targetRate, 1) + '，最差一场 ' + fmtSigned(batch.worstProfit) +
+      '<br>平均总流水：<b style="color:#fbbf24">' + fmtMoney(batch.avgWagered) + '</b>' +
+      '（无桌限时 ' + fmtMoney(noLimit.avgWagered) + '，<b style="color:#f87171">' + wageredRatio.toFixed(1) + ' 倍</b>）' +
+      '<br>平均盈亏：<b style="color:#f87171">' + fmtSigned(batch.avgProfit) + '</b>' +
+      '<br><span style="font-size:11px;color:rgba(255,255,255,0.5);">巨亏被桌限封了顶，代价是你要押上几倍的钱才能达成同一个目标。</span>';
+    flashStep(3, false);
+    drawMartingaleChart(batch, 3);
+
+    // 桌限截断的那一格
+    var info = el('bh-mg-truncated-info');
+    var firstTrunc = null;
+    for (var i = 0; i < batch.results.length; i++) {
+      if (batch.results[i].truncatedRounds.length > 0) { firstTrunc = batch.results[i]; break; }
+    }
+    if (firstTrunc) {
+      var desired = firstTrunc.betSequence[firstTrunc.truncatedRounds[0]];
+      info.style.display = 'block';
+      info.innerHTML =
+        '<i class="ti ti-alert-triangle"></i> 恢复链断裂的那一格：第 ' + (desired.round + 1) +
+        ' 手你想下注 <b style="color:#fbbf24">' + fmtMoney(desired.desiredBet) + '</b>，桌限只让下 <b style="color:#f87171">' +
+        fmtMoney(desired.actualBet) + '</b>。这一手之后，之前的连亏再也追不回来了。';
+      if (window.gsap) gsap.from(info, { scale: 0.95, opacity: 0, duration: 0.5 });
     }
 
-    // 画轨迹：同时画 step1 和 step2 的第一次轨迹（如 step===2 才有对比）
-    drawMartingaleChart(batch, step);
-
-    // 桌限截断信息
-    if (step === 2) {
-      var info = el('bh-mg-truncated-info');
-      var firstTrunc = batch.results.find(function (r) { return r.truncatedRounds.length > 0; });
-      if (firstTrunc && firstTrunc.truncatedRounds.length > 0) {
-        var desired = firstTrunc.betSequence[firstTrunc.truncatedRounds[0]];
-        info.style.display = 'block';
-        info.innerHTML =
-          '<i class="ti ti-alert-triangle"></i> 红色瞬间：第 ' + (desired.round + 1) + ' 手你想下注 <b style="color:#fbbf24">' + desired.desiredBet + '</b>，但桌限只让下 <b style="color:#f87171">' + desired.actualBet + '</b>。这一格就是整个策略的死因。';
-        if (window.gsap) gsap.from(info, { scale: 0.95, opacity: 0, duration: 0.5 });
-      }
-    }
+    // 不变量：期望亏损 = 庄家优势 × 总流水
+    var inv = el('bh-mg-invariant');
+    inv.style.display = 'block';
+    inv.innerHTML =
+      '<i class="ti ti-equal"></i> 对一下账：庄家优势 ' + fmtPct(state.currentEdge, 2) +
+      ' × 平均流水 ' + fmtMoney(batch.avgWagered) + ' = <b style="color:#fbbf24">' +
+      fmtSigned(batch.theoreticalLoss) + '</b>，实测平均盈亏 <b style="color:#fbbf24">' +
+      fmtSigned(batch.avgProfit) + '</b>。倍投改的是亏损的分布形状，改不了这一行乘法。';
+    if (window.gsap) gsap.from(inv, { y: 8, opacity: 0, duration: 0.45 });
   }
 
   function drawMartingaleChart(batch, step) {
@@ -504,6 +630,27 @@
       insight.className = 'bh-insight gold';
       insight.innerHTML = '<i class="ti ti-info-circle"></i> 轻微倾斜：账本还过得去，但庄家已经承担了单边风险。';
     }
+  }
+
+  // 按两侧押注额反解平衡赔率——庄家开盘的实际动作
+  function rebalanceBookie() {
+    var amountA = Number(el('bh-bk-amountA').value) || 0;
+    var amountB = Number(el('bh-bk-amountB').value) || 0;
+    var solved = window.bhEngine.balancedOdds(amountA, amountB, 0.05);
+    if (!solved) {
+      showToast('两侧都要有押注额才能平账');
+      return;
+    }
+    el('bh-bk-oddsA').value = solved.oddsA.toFixed(2);
+    el('bh-bk-oddsB').value = solved.oddsB.toFixed(2);
+    refreshBookie();
+    var insight = el('bh-bk-insight');
+    insight.className = 'bh-insight gold';
+    insight.innerHTML =
+      '<i class="ti ti-scale-outline"></i> 赔率已按押注额反解：A 侧 <b>' + solved.oddsA.toFixed(2) +
+      '</b>、B 侧 <b>' + solved.oddsB.toFixed(2) + '</b>，两边赔付都是 ' + fmtMoney(solved.payout) +
+      '。押注多的一侧赔率被压低，押注少的一侧被抬高——庄家没有预测任何结果，它只是在给钱流定价。';
+    if (window.gsap) gsap.from(insight, { y: 8, opacity: 0, duration: 0.4 });
   }
 
   function applyBookiePreset(preset) {
@@ -621,7 +768,8 @@
         '【当一次庄家：它为什么不怕你赢】\n' +
         '概率对你和赌场完全一样。不一样的是你们各自站在大数定律曲线的哪一端。\n' +
         '2.7% 的庄家优势 → 100 手时玩家盈利概率 46.0%，1000 手时 37.6%，10000 手时 15.9%，100 万手时 ≈ 0。\n' +
-        '桌限一开，无限资金下必胜的倍投立刻变成必败。平衡账本下，庄家收益与比赛结果无关。\n' +
+        '倍投能做到 98% 的场次都小赚，代价是罕见的一场巨亏；桌限给那笔巨亏封顶，同时把总流水顶上去。\n' +
+        '期望亏损 = 庄家优势 × 总流水，这一行乘法谁也改不了。平衡账本下，庄家收益与比赛结果无关。\n' +
         '庄家只怕两件事：有人把期望值扳到正，以及自己的生意算错了账。运气不在其中。\n' +
         '— 数字直觉 / https://numfeel.996.ninja/pages/be-the-house/';
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -711,12 +859,10 @@
     // 模块四
     var mgBtn1 = el('bh-mg-btn1');
     var mgBtn2 = el('bh-mg-btn2');
-    if (mgBtn1) mgBtn1.addEventListener('click', function () {
-      runMartingaleOne(Infinity, el('bh-mg-result1'), 1, 100);
-    });
-    if (mgBtn2) mgBtn2.addEventListener('click', function () {
-      runMartingaleOne(1000, el('bh-mg-result2'), 2, 100);
-    });
+    var mgBtn3 = el('bh-mg-btn3');
+    if (mgBtn1) mgBtn1.addEventListener('click', runMartingaleStep1);
+    if (mgBtn2) mgBtn2.addEventListener('click', runMartingaleStep2);
+    if (mgBtn3) mgBtn3.addEventListener('click', runMartingaleStep3);
 
     // 模块五
     ['bh-bk-amountA', 'bh-bk-amountB', 'bh-bk-oddsA', 'bh-bk-oddsB'].forEach(function (id) {
@@ -726,6 +872,8 @@
     document.querySelectorAll('[data-bk-preset]').forEach(function (btn) {
       btn.addEventListener('click', function () { applyBookiePreset(btn.dataset.bkPreset); });
     });
+    var rebalanceBtn = el('bh-bk-rebalance');
+    if (rebalanceBtn) rebalanceBtn.addEventListener('click', rebalanceBookie);
   }
 
   function syncEdgeCardFromSlider() {
@@ -748,30 +896,10 @@
   // 启动
   // ============================================================
   function init() {
-    // 暴露 engine 给全局
-    window.bhEngine = (typeof require !== 'undefined') ? require('./engine.js') : window.bhEngine;
-    // 浏览器里 engine.js 末尾的 module.exports 不会执行，但可以直接通过 window.bhEngine 暴露
-    // 为了避免双重定义，尝试从全局拿
+    // engine.js 自己挂 window.bhEngine，这里只做存在性检查
     if (!window.bhEngine) {
-      // 浏览器场景：直接调用时 engine.js 中的 if(typeof module...) 不会执行，
-      // 所以函数会成为全局变量。我们把它们塞进 window.bhEngine
-      window.bhEngine = {
-        mulberry32: window.mulberry32,
-        houseEdge: window.houseEdge,
-        edgeTable: window.edgeTable,
-        erf: window.erf,
-        normalCDF: window.normalCDF,
-        playerProfitProbability: window.playerProfitProbability,
-        llnStats: window.llnStats,
-        profitProbabilityCurve: window.profitProbabilityCurve,
-        simulateProfitDistribution: window.simulateProfitDistribution,
-        gamblerRuinProbability: window.gamblerRuinProbability,
-        simulateGamblerRuin: window.simulateGamblerRuin,
-        simulateGamblers: window.simulateGamblers,
-        simulateMartingale: window.simulateMartingale,
-        simulateMartingaleBatch: window.simulateMartingaleBatch,
-        bookmakerPayout: window.bookmakerPayout
-      };
+      console.error('engine.js 未加载：window.bhEngine 不存在');
+      return;
     }
 
     if (!window.Chart) {

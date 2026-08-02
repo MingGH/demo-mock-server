@@ -292,7 +292,8 @@
       btn.addEventListener('click', function () {
         var step = parseInt(btn.getAttribute('data-step').split('.')[1], 10);
         if (step > module3.step) return; // 必须按顺序
-        module3.step = step;
+        // 完成当前步后解锁下一步；重复点击已完成的步不倒退
+        module3.step = Math.max(module3.step, step + 1);
         showPane('pane-3-' + step);
         updateStepButtons();
         if (step === 1) step3_1();
@@ -325,7 +326,7 @@
     // 画恢复结果
     var rc = $('#rec-result');
     if (!rc) return;
-    if (!rec || !rec.ok) {
+    if (isWrongWidth || !rec || !rec.ok) {
       setCanvasSize(rc, samples.originalW, samples.originalH);
       var ctx2 = rc.getContext('2d');
       ctx2.fillStyle = '#2a3340';

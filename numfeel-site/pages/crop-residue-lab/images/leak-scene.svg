@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#111936"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="640" fill="url(#bg)"/>
+
+  <!-- 标题 -->
+  <text x="512" y="54" text-anchor="middle" font-size="26" fill="#e8eaed" font-weight="700" font-family="'Source Han Serif SC','Noto Serif CJK SC',serif">眼见不为实</text>
+  <text x="512" y="92" text-anchor="middle" font-size="15" fill="#8089a0" font-family="sans-serif">浏览器显示正常，文件尾部却藏着完整内容</text>
+
+  <!-- 左侧手机 -->
+  <g transform="translate(120, 140)">
+    <rect x="0" y="0" width="240" height="420" rx="22" fill="#151b2e" stroke="#2a3a5e" stroke-width="2"/>
+    <rect x="12" y="12" width="216" height="396" rx="6" fill="#0d1220"/>
+    <!-- 聊天标题栏 -->
+    <rect x="12" y="12" width="216" height="40" rx="6" fill="#1c2538"/>
+    <text x="120" y="38" text-anchor="middle" font-size="14" fill="#e8eaed" font-family="sans-serif">王总监</text>
+    <!-- 气泡 -->
+    <rect x="28" y="70" width="184" height="46" rx="8" fill="#1c2538"/>
+    <text x="120" y="98" text-anchor="middle" font-size="12" fill="#b6bcc5" font-family="sans-serif">卡号发我一下</text>
+    <rect x="48" y="132" width="164" height="90" rx="8" fill="#95ec69" opacity="0.15" stroke="#81c784" stroke-width="1"/>
+    <text x="130" y="160" text-anchor="middle" font-size="13" fill="#81c784" font-family="sans-serif">银行卡截图</text>
+    <text x="130" y="185" text-anchor="middle" font-size="13" fill="#8089a0" font-family="sans-serif">6222 **** 9012</text>
+    <text x="130" y="208" text-anchor="middle" font-size="11" fill="#4a5568" font-family="sans-serif">（已打码）</text>
+    <!-- 发送按钮 -->
+    <rect x="156" y="350" width="60" height="26" rx="4" fill="#576b95"/>
+    <text x="186" y="368" text-anchor="middle" font-size="12" fill="#fff" font-family="sans-serif">发送</text>
+  </g>
+
+  <!-- 箭头 -->
+  <g transform="translate(420, 320)">
+    <path d="M0 0 h120" stroke="#b8970a" stroke-width="3" stroke-dasharray="8,6"/>
+    <path d="M110 -8 l20 8 l-20 8 z" fill="#b8970a"/>
+    <text x="60" y="-16" text-anchor="middle" font-size="13" fill="#b8970a" font-family="sans-serif">上传到 Discord</text>
+  </g>
+
+  <!-- 右侧电脑屏幕 -->
+  <g transform="translate(600, 150)">
+    <rect x="0" y="0" width="340" height="240" rx="8" fill="#151b2e" stroke="#2a3a5e" stroke-width="2"/>
+    <rect x="6" y="6" width="328" height="228" rx="4" fill="#0d1220"/>
+    <!-- 窗口标题 -->
+    <rect x="6" y="6" width="328" height="28" rx="4" fill="#1c2538"/>
+    <circle cx="26" cy="20" r="4" fill="#ff6b6b"/>
+    <circle cx="40" cy="20" r="4" fill="#ffd700"/>
+    <circle cx="54" cy="20" r="4" fill="#81c784"/>
+    <text x="170" y="24" text-anchor="middle" font-size="12" fill="#8089a0" font-family="sans-serif">还原工具</text>
+    <!-- 还原结果 -->
+    <rect x="40" y="70" width="260" height="100" rx="6" fill="#1c2538" stroke="#ff6b6b" stroke-width="1"/>
+    <text x="170" y="100" text-anchor="middle" font-size="13" fill="#ff6b6b" font-family="sans-serif">从残留中恢复出完整号码</text>
+    <text x="170" y="140" text-anchor="middle" font-size="20" fill="#e8eaed" font-family="monospace" letter-spacing="2">6222 1234 5678 9012</text>
+    <text x="170" y="180" text-anchor="middle" font-size="12" fill="#b8970a" font-family="sans-serif">浏览器看到的截图里，这些数字被马赛克挡住了</text>
+  </g>
+
+  <!-- 底部说明 -->
+  <text x="512" y="580" text-anchor="middle" font-size="14" fill="#8089a0" font-family="sans-serif">Discord 原样保留了上传文件，残留跟着文件一起被发送出去</text>
+</svg>

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#111936"/>
+    </linearGradient>
+    <linearGradient id="bad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff6b6b"/>
+      <stop offset="1" stop-color="#c0392b"/>
+    </linearGradient>
+    <linearGradient id="good" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#81c784"/>
+      <stop offset="1" stop-color="#2e7d32"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="640" fill="url(#bg)"/>
+
+  <!-- 标题 -->
+  <text x="512" y="60" text-anchor="middle" font-size="28" fill="#e8eaed" font-weight="700" font-family="'Source Han Serif SC','Noto Serif CJK SC',serif">一个字母 t 的差别</text>
+  <text x="512" y="100" text-anchor="middle" font-size="16" fill="#8089a0" font-family="sans-serif">写入模式 vs 截断模式</text>
+
+  <!-- 左侧：写入模式（无截断） -->
+  <g transform="translate(80, 160)">
+    <rect x="0" y="0" width="420" height="420" rx="12" fill="#151b2e" stroke="#c0392b" stroke-width="2"/>
+    <text x="210" y="46" text-anchor="middle" font-size="20" fill="#ff6b6b" font-weight="700" font-family="sans-serif">写入模式（无截断）</text>
+    <text x="210" y="74" text-anchor="middle" font-size="14" fill="#8089a0" font-family="monospace">parseMode("w")</text>
+
+    <!-- 文件块 -->
+    <rect x="60" y="110" width="300" height="56" rx="4" fill="#2a3a5e"/>
+    <rect x="60" y="110" width="140" height="56" rx="4" fill="url(#bad)"/>
+    <text x="130" y="144" text-anchor="middle" font-size="13" fill="#fff" font-family="sans-serif">新数据</text>
+    <text x="250" y="144" text-anchor="middle" font-size="13" fill="#b6bcc5" font-family="sans-serif">旧数据残留</text>
+
+    <text x="210" y="220" text-anchor="middle" font-size="15" fill="#b6bcc5" font-family="sans-serif">新 PNG 只覆盖文件开头</text>
+    <text x="210" y="248" text-anchor="middle" font-size="15" fill="#b6bcc5" font-family="sans-serif">IEND 之后的原图字节原样留下</text>
+
+    <!-- 箭头 -->
+    <path d="M210 270 v60" stroke="#ff6b6b" stroke-width="3" marker-end="url(#arrowBad)"/>
+    <rect x="60" y="350" width="300" height="36" rx="4" fill="#c0392b" opacity="0.2"/>
+    <text x="210" y="374" text-anchor="middle" font-size="14" fill="#ff6b6b" font-family="sans-serif">危险：残留包含被裁掉的敏感信息</text>
+  </g>
+
+  <!-- 右侧：截断模式 -->
+  <g transform="translate(524, 160)">
+    <rect x="0" y="0" width="420" height="420" rx="12" fill="#151b2e" stroke="#2e7d32" stroke-width="2"/>
+    <text x="210" y="46" text-anchor="middle" font-size="20" fill="#81c784" font-weight="700" font-family="sans-serif">截断模式</text>
+    <text x="210" y="74" text-anchor="middle" font-size="14" fill="#8089a0" font-family="monospace">parseMode("wt")</text>
+
+    <!-- 文件块 -->
+    <rect x="60" y="110" width="140" height="56" rx="4" fill="url(#good)"/>
+    <text x="130" y="144" text-anchor="middle" font-size="13" fill="#fff" font-family="sans-serif">新数据</text>
+    <text x="260" y="144" text-anchor="middle" font-size="13" fill="#4a5568" font-family="sans-serif">（文件已被清空）</text>
+
+    <text x="210" y="220" text-anchor="middle" font-size="15" fill="#b6bcc5" font-family="sans-serif">写入前先把文件长度截成 0</text>
+    <text x="210" y="248" text-anchor="middle" font-size="15" fill="#b6bcc5" font-family="sans-serif">旧数据不会残留</text>
+
+    <path d="M210 270 v60" stroke="#81c784" stroke-width="3"/>
+    <rect x="60" y="350" width="300" height="36" rx="4" fill="#2e7d32" opacity="0.2"/>
+    <text x="210" y="374" text-anchor="middle" font-size="14" fill="#81c784" font-family="sans-serif">安全：文件里只有新内容</text>
+  </g>
+
+  <defs>
+    <marker id="arrowBad" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#ff6b6b"/>
+    </marker>
+  </defs>
+</svg>

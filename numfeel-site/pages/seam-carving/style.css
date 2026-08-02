@@ -66,7 +66,7 @@ body {
   position: relative; border-radius: 12px; overflow: hidden;
   border: 1px solid rgba(255,255,255,0.1); background: #000;
 }
-.canvas-box canvas { width: 100%; height: auto; display: block; }
+.canvas-box canvas { max-width: 100%; height: auto; display: block; }
 .canvas-label {
   position: absolute; top: 8px; left: 8px;
   background: rgba(0,0,0,0.75); padding: 4px 10px; border-radius: 6px;
@@ -196,8 +196,18 @@ input[type="range"]::-moz-range-thumb {
   .controls-row { flex-direction: column; }
   .control-group { min-width: auto; }
   .btn-hero { padding: 14px 24px; font-size: 1rem; }
-  .btn { min-height: 44px; }
-  .stats-row { gap: 10px; }
+  .btn { min-height: 44px; width: 100%; justify-content: center; }
+  .btn-row { flex-direction: column; }
+  .stats-row { gap: 10px; justify-content: center; }
   .principle-grid { grid-template-columns: 1fr; }
   .upload-zone { padding: 30px 16px; }
+  .toggle-group { justify-content: center; }
+  .toggle-btn { min-height: 40px; flex: 1; justify-content: center; text-align: center; }
+  .canvas-box canvas { max-width: 100%; height: auto; }
+  .stat-item .val { font-size: 0.95rem; }
+  .stat-item .lbl { font-size: 0.65rem; }
+  .slider-label { font-size: 0.78rem; }
+  input[type="range"] { height: 8px; }
+  input[type="range"]::-webkit-slider-thumb { width: 24px; height: 24px; }
+  input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; }
 }

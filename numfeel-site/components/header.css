@@ -13,8 +13,6 @@
 }
 html {
   background: var(--nf-bg);
-  /* 钳制根滚动区：溢出元素均被各自容器收纳，防止残留宽度传播为视口横滑 */
-  overflow-x: hidden;
 }
 body.numfeel-shell {
   min-height: 100vh;
@@ -784,10 +782,7 @@ body.numfeel-shell.detail-page .story-note {
   body.numfeel-shell .site-header-inner {
     grid-template-columns: 1fr;
   }
-  /* nav 链接横排可滚动，需允许收缩避免撑破 375px 视口 */
-  body.numfeel-shell .site-header nav {
-    min-width: 0;
-  }
+
   body.numfeel-shell .site-header .external-links {
     justify-content: flex-start;
   }

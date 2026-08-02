@@ -33,7 +33,7 @@
   <section class="mod" id="m1">
     <p class="mod-hint">零门槛 · 选一个场景看现场</p>
     <h3 class="mod-title">模块一 · 犯罪现场</h3>
-    <p class="mod-lead">三张伪造的截图。点哪个就裁哪个，看「裁掉 70% 画面，文件只小 3%」是怎么发生的。</p>
+    <p class="mod-lead">三张伪造的截图。点哪个就裁哪个，看「裁掉一半画面，文件一个字节都没变小」是怎么发生的。</p>
     <div class="scene-tabs">
       <button class="scene-tab is-active" data-scene="card"><i class="ti ti-credit-card"></i> 银行卡账单</button>
       <button class="scene-tab" data-scene="chat"><i class="ti ti-message"></i> 聊天记录</button>
@@ -46,10 +46,14 @@
         <div class="scene-meta" id="meta-original"></div>
       </div>
       <div class="scene-panel">
-        <div class="scene-panel-cap">裁剪后 · 用户看到的</div>
+        <div class="scene-panel-cap">裁剪后 · 你以为文件长这样</div>
         <canvas class="scene-canvas" id="canvas-cropped"></canvas>
         <div class="scene-meta" id="meta-cropped"></div>
       </div>
+    </div>
+    <div class="scene-downloads">
+      <button class="btn btn-mini" id="dl-original"><i class="ti ti-download"></i> 下载原图 PNG</button>
+      <button class="btn btn-mini" id="dl-buggy"><i class="ti ti-download"></i> 下载 buggy 文件（带残留）</button>
     </div>
     <div class="scene-stats">
       <div class="stat"><div class="stat-num" id="stat-area">—</div><div class="stat-label">被裁掉的画面比例</div></div>

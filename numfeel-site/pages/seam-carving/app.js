@@ -35,6 +35,7 @@
     DOM.uploadZone = document.getElementById('uploadZone');
     DOM.fileInput = document.getElementById('fileInput');
     DOM.useDefaultBtn = document.getElementById('useDefaultBtn');
+    DOM.usePortraitBtn = document.getElementById('usePortraitBtn');
     DOM.originalCanvas = document.getElementById('originalCanvas');
     DOM.resultCanvas = document.getElementById('resultCanvas');
     DOM.resultLabel = document.getElementById('resultLabel');
@@ -96,6 +97,10 @@
 
     DOM.useDefaultBtn.addEventListener('click', function () {
       loadDefaultImage();
+    });
+
+    DOM.usePortraitBtn.addEventListener('click', function () {
+      loadPortraitImage();
     });
 
     DOM.seamCountSlider.addEventListener('input', function () {
@@ -174,6 +179,11 @@
 
   function loadDefaultImage() {
     var src = 'images/sample.jpg';
+    loadImageToCanvas(src);
+  }
+
+  function loadPortraitImage() {
+    var src = 'images/portrait.jpg';
     loadImageToCanvas(src);
   }
 

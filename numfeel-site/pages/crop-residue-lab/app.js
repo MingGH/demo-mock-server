@@ -37,6 +37,8 @@
     var dpr = Math.max(1, window.devicePixelRatio || 1);
     canvas.width = Math.floor(w * dpr);
     canvas.height = Math.floor(h * dpr);
+    // 让 CSS 按逻辑比例布局，避免 canvas 按物理像素撑出黑块
+    canvas.style.aspectRatio = w + ' / ' + h;
     var ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return { ctx: ctx, w: w, h: h, dpr: dpr };
@@ -50,55 +52,120 @@
     ctx.putImageData(imgData, 0, 0);
   }
 
+  // 只画顶部 clipH 行（用于模块一展示，避免竖屏画布大片空白）
+  function drawToCanvasClipped(canvas, pixels, w, h, clipH) {
+    var showH = Math.min(clipH, h);
+    var setup = setCanvasSize(canvas, w, showH);
+    var ctx = setup.ctx;
+    var imgData = ctx.createImageData(w, showH);
+    var src = pixels.subarray ? pixels.subarray(0, w * showH * 4) : Array.prototype.slice.call(pixels, 0, w * showH * 4);
+    imgData.data.set(src);
+    ctx.putImageData(imgData, 0, 0);
+  }
+
   // ──────────────────────────────────────────────────────────
   // 模块一：场景
   // ──────────────────────────────────────────────────────────
-  function buildSamples() {
-    // 三张伪造截图，固定尺寸（保证 demo 的可重复性）
-    var scenes = {
-      card: { w: 720, h: 1280, fn: 'bank' },
-      chat: { w: 720, h: 1280, fn: 'chat' },
-      id:   { w: 720, h: 1280, fn: 'id' }
-    };
-    var out = {};
-    Object.keys(scenes).forEach(function (key) {
-      var sc = scenes[key];
-      var px = new Uint8ClampedArray(sc.w * sc.h * 4);
-      var ctx = document.createElement('canvas').getContext('2d');
-      var fakeCanvas = document.createElement('canvas');
-      fakeCanvas.width = sc.w; fakeCanvas.height = sc.h;
-      var fakeCtx = fakeCanvas.getContext('2d');
-      if (sc.fn === 'bank') PK.drawBankCardScene(fakeCtx, sc.w, sc.h, PK.fakeCardNumber(), PK.FAKE_NAMES[0]);
-      else if (sc.fn === 'chat') PK.drawChatScene(fakeCtx, sc.w, sc.h);
-      else if (sc.fn === 'id') PK.drawIdCardScene(fakeCtx, sc.w, sc.h);
-      var imgData = fakeCtx.getImageData(0, 0, sc.w, sc.h);
-      for (var i = 0; i < px.length; i++) px[i] = imgData.data[i];
-      // 裁剪：上半部 (w, h*0.45)
-      var cw = sc.w, ch = Math.floor(sc.h * 0.45);
-      var cpx = new Uint8ClampedArray(cw * ch * 4);
-      for (var y = 0; y < ch; y++) {
-        for (var x = 0; x < cw; x++) {
-          var si = (y * sc.w + x) * 4;
-          var di = (y * cw + x) * 4;
-          cpx[di] = px[si];
-          cpx[di + 1] = px[si + 1];
-          cpx[di + 2] = px[si + 2];
-          cpx[di + 3] = 255;
-        }
+  var SCENE_IMAGES = {
+    card: 'images/scene-bank.png',
+    chat: 'images/scene-chat.png',
+    id:   'images/scene-id.png'
+  };
+
+  function loadImage(src, cb) {
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function () { cb(img); };
+    img.onerror = function () { console.error('加载失败: ' + src); cb(null); };
+    img.src = src;
+  }
+
+  function buildSamplesFromImage(key, img) {
+    var W = 720, H = 1280;
+    var canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, W, H);
+    var imgData = ctx.getImageData(0, 0, W, H);
+    var px = new Uint8ClampedArray(imgData.data);
+
+    // 裁剪：上半部 45%
+    var cw = W, ch = Math.floor(H * 0.45);
+    var cpx = new Uint8ClampedArray(cw * ch * 4);
+    for (var y = 0; y < ch; y++) {
+      for (var x = 0; x < cw; x++) {
+        var si = (y * W + x) * 4;
+        var di = (y * cw + x) * 4;
+        cpx[di] = px[si];
+        cpx[di + 1] = px[si + 1];
+        cpx[di + 2] = px[si + 2];
+        cpx[di + 3] = 255;
       }
-      var origPng = PK.encodePNG({ width: sc.w, height: sc.h, pixels: px });
-      var cropPng = PK.encodePNG({ width: cw, height: ch, pixels: cpx });
-      // buggy = concat(crop, orig[crop..])
-      var buggy = new Uint8Array(cropPng.length + (origPng.length - cropPng.length));
-      buggy.set(cropPng, 0);
-      buggy.set(origPng.slice(cropPng.length), cropPng.length);
-      out[key] = {
-        originalPx: px, originalPng: origPng, originalW: sc.w, originalH: sc.h,
-        croppedPx: cpx, croppedPng: cropPng, croppedW: cw, croppedH: ch,
-        buggy: buggy
-      };
+    }
+    var origPng = PK.encodePNG({ width: W, height: H, pixels: px });
+    var cropPng = PK.encodePNG({ width: cw, height: ch, pixels: cpx });
+    // buggy = concat(crop, orig[crop..])
+    var buggy = new Uint8Array(origPng.length);
+    buggy.set(cropPng, 0);
+    buggy.set(origPng.subarray(cropPng.length), cropPng.length);
+
+    return {
+      originalPx: px, originalPng: origPng, originalW: W, originalH: H,
+      croppedPx: cpx, croppedPng: cropPng, croppedW: cw, croppedH: ch,
+      buggy: buggy
+    };
+  }
+
+  function buildSamples(onDone) {
+    var keys = Object.keys(SCENE_IMAGES);
+    var pending = keys.length;
+    var out = {};
+    keys.forEach(function (key) {
+      loadImage(SCENE_IMAGES[key], function (img) {
+        if (img) {
+          out[key] = buildSamplesFromImage(key, img);
+        } else {
+          // fallback: 用代码绘制
+          out[key] = buildSampleFallback(key);
+        }
+        pending--;
+        if (pending === 0) {
+          state.samples = out;
+          onDone();
+        }
+      });
     });
-    state.samples = out;
+  }
+
+  function buildSampleFallback(key) {
+    var W = 720, H = 1280;
+    var fakeCanvas = document.createElement('canvas');
+    fakeCanvas.width = W; fakeCanvas.height = H;
+    var fakeCtx = fakeCanvas.getContext('2d');
+    if (key === 'card') PK.drawBankCardScene(fakeCtx, W, H, PK.fakeCardNumber(), PK.FAKE_NAMES[0]);
+    else if (key === 'chat') PK.drawChatScene(fakeCtx, W, H);
+    else if (key === 'id') PK.drawIdCardScene(fakeCtx, W, H);
+    var imgData = fakeCtx.getImageData(0, 0, W, H);
+    var px = new Uint8ClampedArray(imgData.data);
+    var cw = W, ch = Math.floor(H * 0.45);
+    var cpx = new Uint8ClampedArray(cw * ch * 4);
+    for (var y = 0; y < ch; y++) {
+      for (var x = 0; x < cw; x++) {
+        var si = (y * W + x) * 4;
+        var di = (y * cw + x) * 4;
+        cpx[di] = px[si]; cpx[di+1] = px[si+1]; cpx[di+2] = px[si+2]; cpx[di+3] = 255;
+      }
+    }
+    var origPng = PK.encodePNG({ width: W, height: H, pixels: px });
+    var cropPng = PK.encodePNG({ width: cw, height: ch, pixels: cpx });
+    var buggy = new Uint8Array(origPng.length);
+    buggy.set(cropPng, 0);
+    buggy.set(origPng.subarray(cropPng.length), cropPng.length);
+    return {
+      originalPx: px, originalPng: origPng, originalW: W, originalH: H,
+      croppedPx: cpx, croppedPng: cropPng, croppedW: cw, croppedH: ch,
+      buggy: buggy
+    };
   }
 
   function renderScene() {
@@ -106,10 +173,11 @@
     if (!s) return;
     var oc = $('#canvas-original');
     var cc = $('#canvas-cropped');
+    // 展示完整内容（不裁剪），通过 CSS 限高 + aspect-ratio 控制布局
     if (oc) drawToCanvas(oc, s.originalPx, s.originalW, s.originalH);
     if (cc) drawToCanvas(cc, s.croppedPx, s.croppedW, s.croppedH);
     setText($('#meta-original'), '原图：' + s.originalW + ' × ' + s.originalH + ' · ' + formatBytes(s.originalPng.length));
-    setText($('#meta-cropped'), '裁剪后：' + s.croppedW + ' × ' + s.croppedH + ' · ' + formatBytes(s.croppedPng.length));
+    setText($('#meta-cropped'), '裁剪后应为：' + s.croppedW + ' × ' + s.croppedH + ' · ' + formatBytes(s.croppedPng.length) + '，但实际文件仍是 ' + formatBytes(s.buggy.length));
 
     // 三个统计
     var areaOrig = s.originalW * s.originalH;
@@ -129,6 +197,28 @@
 
     // 点睛文案
     setText($('#punchline'), '裁掉 ' + ratio.toFixed(0) + '% 的画面，文件一个字节都没变小。');
+
+    // 下载按钮绑定（每次切换场景重绑）
+    bindDownloadBtn('#dl-original', s.originalPng, 'original-' + state.scene + '.png');
+    bindDownloadBtn('#dl-buggy', s.buggy, 'buggy-' + state.scene + '.png');
+  }
+
+  function bindDownloadBtn(sel, data, filename) {
+    var btn = $(sel);
+    if (!btn) return;
+    var newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.addEventListener('click', function () {
+      var blob = new Blob([data], { type: 'image/png' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
   }
 
   function bindSceneTabs() {
@@ -661,16 +751,18 @@
       console.error('pngkit.js 没加载');
       return;
     }
-    buildSamples();
-    renderScene();
-    bindSceneTabs();
-    bindByteStage();
-    bindModule3();
-    bindModule4();
-    setupRecovery();
-    setupLeakDemo();
-    bindDropZone();
-    bindCopy();
+    // 异步加载图片后初始化
+    buildSamples(function () {
+      renderScene();
+      bindSceneTabs();
+      bindByteStage();
+      bindModule3();
+      bindModule4();
+      setupRecovery();
+      setupLeakDemo();
+      bindDropZone();
+      bindCopy();
+    });
   }
 
   if (document.readyState === 'loading') {

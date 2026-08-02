@@ -6,6 +6,9 @@
  *   - 模块化卡片、深色面板、紧凑栅格
  * ============================================================= */
 
+/* 页面级：防止本页内容撑出 375px 视口横滑 */
+html, body { overflow-x: hidden; }
+
 :root {
   --bg-0: #0a0e14;
   --bg-1: #11161d;
@@ -159,8 +162,7 @@ code, .mono { font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospa
   line-height: 1.75;
   margin: 0 0 32px;
   max-width: 720px;
-  overflow-wrap: break-word;
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 .mod-lead code {
   background: var(--bg-2);
@@ -203,12 +205,15 @@ code, .mono { font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospa
   grid-template-columns: 1fr 1fr;
   gap: 20px;
   margin-bottom: 24px;
+  align-items: start;
 }
 .scene-panel {
   background: var(--bg-1);
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 16px;
+  max-height: 520px;
+  overflow-y: auto;
 }
 .scene-panel-cap {
   font-size: 12px;
@@ -216,19 +221,37 @@ code, .mono { font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospa
   color: var(--text-2);
   margin-bottom: 12px;
   font-family: "SF Mono", Menlo, monospace;
+  position: sticky;
+  top: 0;
+  background: var(--bg-1);
+  padding-bottom: 8px;
+  z-index: 1;
 }
 .scene-canvas {
   display: block;
   width: 100%;
   height: auto;
   border-radius: 6px;
-  background: #000;
 }
 .scene-meta {
   margin-top: 12px;
   font-family: "SF Mono", Menlo, monospace;
   font-size: 12px;
   color: var(--text-2);
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-1);
+  padding-top: 8px;
+  z-index: 1;
+}
+.scene-downloads {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.scene-downloads .btn {
+  font-size: 13px;
+  padding: 8px 16px;
 }
 .scene-stats {
   display: grid;

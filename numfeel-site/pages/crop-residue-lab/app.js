@@ -69,7 +69,8 @@
   var SCENE_IMAGES = {
     card: 'images/scene-bank.png',
     chat: 'images/scene-chat.png',
-    id:   'images/scene-id.png'
+    id:   'images/scene-id.png',
+    beauty: 'images/scene-beauty.png'
   };
 
   function loadImage(src, cb) {
@@ -145,6 +146,7 @@
     if (key === 'card') PK.drawBankCardScene(fakeCtx, W, H, PK.fakeCardNumber(), PK.FAKE_NAMES[0]);
     else if (key === 'chat') PK.drawChatScene(fakeCtx, W, H);
     else if (key === 'id') PK.drawIdCardScene(fakeCtx, W, H);
+    else if (key === 'beauty') PK.drawIdCardScene(fakeCtx, W, H); // fallback: reuse id scene
     var imgData = fakeCtx.getImageData(0, 0, W, H);
     var px = new Uint8ClampedArray(imgData.data);
     var cw = W, ch = Math.floor(H * 0.45);

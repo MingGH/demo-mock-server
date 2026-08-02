@@ -318,7 +318,16 @@
       DOM.resultCanvas.height = currentH;
       var ctx = DOM.resultCanvas.getContext('2d');
       ctx.putImageData(dataToImageData(currentData, currentW, currentH), 0, 0);
-      DOM.resultLabel.textContent = '雕刻中... (' + (i + 1) + '/' + total + ')';
+
+      var removedPct = Math.round((1 - currentW / state.imgWidth) * 100);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, currentH - 22, currentW, 22);
+      ctx.fillStyle = '#ffd700';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('缩窄中 ' + removedPct + '%', currentW - 6, currentH - 6);
+
+      DOM.resultLabel.textContent = '雕刻中... (' + (i + 1) + '/' + total + ', ' + currentW + '×' + currentH + ')';
 
       setTimeout(function () {
         carveStep(i + 1, total);
@@ -427,7 +436,16 @@
       canvas.width = state.carvedW;
       canvas.height = state.carvedH;
       ctx.putImageData(dataToImageData(state.carvedData, state.carvedW, state.carvedH), 0, 0);
-      DOM.resultLabel.textContent = '雕刻结果';
+
+      var removedPct = Math.round((1 - state.carvedW / state.imgWidth) * 100);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, canvas.height - 22, canvas.width, 22);
+      ctx.fillStyle = '#ffd700';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('缩窄 ' + removedPct + '%', canvas.width - 6, canvas.height - 6);
+
+      DOM.resultLabel.textContent = '雕刻结果 (' + state.carvedW + ' × ' + state.carvedH + ')';
     } else {
       canvas.width = state.imgWidth;
       canvas.height = state.imgHeight;

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Seam Carving 内容感知缩放：上传图片，拖拽滑块，算法自动找到「能量最低」的像素路径并移除，主体纹丝不动，背景被智能裁剪。">
+  <title>Seam Carving：删掉30%像素，画面毫发无损 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  <script src="engine.js" defer></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-crop"></i> Seam Carving</h1>
+    <p>删掉图片 30% 的像素，画面竟然毫发无损。算法自动找到「能量最低」的像素路径（接缝）并移除，只裁剪背景，绕开主体。</p>
+  </div>
+
+  <div class="hero-cta" id="heroSection">
+    <button class="btn-hero" id="heroBtn">
+      <i class="ti ti-sparkles"></i> 开始体验
+      <i class="ti ti-arrow-down"></i>
+    </button>
+  </div>
+
+  <section class="section" id="step1" style="display:none;">
+    <div class="step-label">步骤 1 / 3</div>
+    <h2><i class="ti ti-photo"></i> 选择图片</h2>
+    <p class="step-hint">上传自己的图片，或使用默认示例图。选择主体突出、背景简单的图片效果最震撼。</p>
+
+    <div class="upload-zone" id="uploadZone">
+      <i class="ti ti-cloud-upload upload-icon"></i>
+      <div class="upload-text">点击上传图片，或拖拽图片到此处</div>
+      <span class="upload-hint">支持 JPG / PNG / WebP</span>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" hidden>
+
+    <div class="btn-row" style="margin-top:12px;justify-content:center;">
+      <button class="btn btn-secondary" id="useDefaultBtn"><i class="ti ti-image"></i> 使用默认示例图</button>
+    </div>
+  </section>
+
+  <section class="section" id="step2" style="display:none;">
+    <div class="step-label">步骤 2 / 3</div>
+    <h2><i class="ti ti-adjustments"></i> 调整参数</h2>
+    <p class="step-hint">拖动滑块选择要移除的接缝数量，然后点击"开始雕刻"。</p>
+
+    <div class="canvas-area" id="canvasArea">
+      <div class="canvas-pair">
+        <div class="canvas-box">
+          <div class="canvas-label">原图</div>
+          <canvas id="originalCanvas"></canvas>
+        </div>
+        <div class="canvas-box">
+          <div class="canvas-label" id="resultLabel">等待雕刻...</div>
+          <canvas id="resultCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <div class="control-group">
+          <h3><i class="ti ti-arrows-horizontal"></i> 垂直接缝（缩窄宽度）</h3>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>移除接缝数</span>
+              <span class="val" id="seamCountVal">50</span>
+            </div>
+            <input type="range" id="seamCountSlider" min="1" max="200" value="50">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>目标宽度</span>
+              <span class="val" id="targetWidthVal">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3><i class="ti ti-eye"></i> 可视化</h3>
+          <div class="toggle-group" id="toggleGroup">
+            <button class="toggle-btn" data-mode="energy"><i class="ti ti-flame"></i> 能量图</button>
+            <button class="toggle-btn" data-mode="seams"><i class="ti ti-grid-3x3"></i> 接缝线</button>
+            <button class="toggle-btn" data-mode="overlay"><i class="ti ti-layers-intersect"></i> 叠加对比</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="justify-content:center;margin-top:16px;">
+        <button class="btn btn-primary" id="carveBtn"><i class="ti ti-player-play"></i> 开始雕刻</button>
+        <button class="btn btn-secondary" id="resetBtn"><i class="ti ti-refresh"></i> 重置</button>
+        <button class="btn btn-secondary" id="downloadBtn"><i class="ti ti-download"></i> 下载结果</button>
+        <button class="btn btn-secondary" id="surpriseBtn"><i class="ti ti-dice-5"></i> 惊喜一下</button>
+      </div>
+
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">处理中...</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="step3" style="display:none;">
+    <div class="step-label">完成</div>
+    <h2><i class="ti ti-report-analytics"></i> 雕刻结果</h2>
+
+    <div class="stats-row">
+      <div class="stat-item"><span class="val" id="statOrigSize">—</span><span class="lbl">原图尺寸</span></div>
+      <div class="stat-item"><span class="val" id="statNewSize">—</span><span class="lbl">雕刻后尺寸</span></div>
+      <div class="stat-item"><span class="val" id="statRemoved">—</span><span class="lbl">移除像素</span></div>
+      <div class="stat-item"><span class="val" id="statTime">—</span><span class="lbl">处理耗时</span></div>
+    </div>
+
+    <div class="fact-box" id="factBox">
+      <i class="ti ti-info-circle fact-icon"></i>
+      <span class="fact-text" id="factText"></span>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2><i class="ti ti-bulb"></i> 原理：三步看懂 Seam Carving</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>计算能量图</h4>
+        <p>对每个像素计算梯度（与邻居的差异），变化越剧烈（边缘）能量越高，平坦区域（天空、墙壁）能量低。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>找最优接缝</h4>
+        <p>用动态规划找到一条从顶到底、总能量最低的连续路径——这条路径穿过的恰好是"最不重要的"像素。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>移除接缝</h4>
+        <p>删掉这条接缝，图片宽度减少 1 像素。重复以上步骤，直到移除指定数量的接缝。</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -341,3 +341,24 @@ body {
   opacity: 0; transition: opacity 0.3s; pointer-events: none;
 }
 .share-toast.show { opacity: 1; }
+
+/* ── 相关演示 ── */
+.related-lab { margin-top: 40px; }
+.related-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 20px; border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  text-decoration: none; color: inherit;
+  transition: all 0.2s;
+}
+.related-card:hover { border-color: rgba(255,215,0,0.5); background: rgba(255,215,0,0.05); }
+.related-icon {
+  font-size: 26px; color: #ffd700;
+  flex-shrink: 0;
+}
+.related-body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.related-title { font-size: 0.95rem; font-weight: 600; color: #fff; }
+.related-desc { font-size: 0.8rem; color: #94a3b8; line-height: 1.55; }
+.related-arrow { color: #94a3b8; font-size: 16px; transition: all 0.2s; }
+.related-card:hover .related-arrow { color: #ffd700; transform: translateX(3px); }

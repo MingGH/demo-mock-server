@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="2013 年德国研究者发现 Xerox 复印机把扫描图纸上的 14.13 静默换成 21.11，字迹却依然锐利。拖动模板合并激进度看体积一路降、画面一路干净、语义错误一路涨，亲手把 6 和 8 合并成同一个模板；再打开 SPM 修正开关看错...">
+
+  <title>复印机把数字改了：JBIG2 模板匹配事故</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="hero-img-wrap">
+      <img class="hero-img" src="images/hero.jpg" alt="复印机吐出建筑平面图，数字 14.13 正被 21.11 覆盖顶替">
+    </div>
+    <div class="hero-text">
+      <p class="hero-eyebrow">2013 · Xerox · JBIG2</p>
+      <h1 class="hero-title">复印机把数字改了</h1>
+      <p class="hero-lead">体积一路降，画面一路干净，数字已经错了。</p>
+      <p class="hero-sub">2013 年德国科学家 David Kriesel 发现：Xerox 复印机扫描的建筑图纸上，房间面积 14.13 平米被静默换成 21.11，而字迹依然锐利清晰。问题出在 JBIG2 的模板匹配——它把看起来相似的字符块共享成同一个模板。</p>
+      <a class="hero-cta" href="#m1"><i class="ti ti-printer"></i> 拉一下滑块，看数字自己变</a>
+      <p class="hero-note"><i class="ti ti-shield-check"></i> 全部计算在你浏览器里完成，不上传任何文件。</p>
+    </div>
+  </section>
+
+  <!-- 模块一 · 犯罪现场 -->
+  <section class="mod" id="m1">
+    <p class="mod-hint">零门槛 · 打开就在跑</p>
+    <h2 class="mod-title">模块一 · 犯罪现场</h2>
+    <p class="mod-lead">三张预设扫描件。默认加载建筑平面图，激进度已经拉到出错点。左边是「原始扫描」，右边是「JBIG2 解码」——被替换的数字会打红框，点一下看原本是什么。</p>
+    <div class="scene-tabs">
+      <button class="scene-tab is-active" data-scene="floor"><i class="ti ti-map"></i> 建筑平面图</button>
+      <button class="scene-tab" data-scene="invoice"><i class="ti ti-file-invoice"></i> 发票金额</button>
+      <button class="scene-tab" data-scene="rx"><i class="ti ti-pill"></i> 处方剂量</button>
+    </div>
+    <div class="scene-stage">
+      <div class="scene-panel">
+        <div class="scene-panel-cap">原始扫描 · 每个数字独立</div>
+        <canvas class="scene-canvas" id="canvas-original"></canvas>
+        <div class="scene-meta" id="meta-original">—</div>
+      </div>
+      <div class="scene-panel">
+        <div class="scene-panel-cap">JBIG2 解码 · 模板合并后</div>
+        <div class="canvas-wrap">
+          <canvas class="scene-canvas" id="canvas-decoded"></canvas>
+          <div class="subst-layer" id="subst-layer"></div>
+        </div>
+        <div class="scene-meta" id="meta-decoded">—</div>
+      </div>
+    </div>
+    <div class="scene-alert" id="scene-alert" hidden>
+      <i class="ti ti-alert-triangle"></i>
+      <span id="scene-alert-text">—</span>
+    </div>
+  </section>
+
+  <!-- 模块二 · 滑块 -->
+  <section class="mod" id="m2">
+    <p class="mod-hint">核心交互 · 拖动滑块看三联指标</p>
+    <h2 class="mod-title">模块二 · 模板合并激进度</h2>
+    <p class="mod-lead">0% 时每个字符块都是独立模板（无损）；拉高后，相似的块开始共享模板。看体积、伪影、语义错误数三条曲线如何分道扬镳。</p>
+
+    <div class="slider-card">
+      <div class="slider-header">
+        <label for="aggSlider">模板合并激进度</label>
+        <span class="slider-value" id="aggValue">55%</span>
+      </div>
+      <input type="range" id="aggSlider" min="0" max="100" value="55" step="1">
+      <p class="slider-equiv">等价于 jbig2enc <code>-t</code> 相似度阈值 ≈ <span id="aggEquiv">0.75</span>（默认 0.85，方向相反）</p>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label"><i class="ti ti-file-zip"></i> JBIG2 文件体积</div>
+        <div class="metric-num" id="m-size">—</div>
+        <div class="metric-sub" id="m-size-sub">通用区域：—</div>
+      </div>
+      <div class="metric-card metric-blue">
+        <div class="metric-label"><i class="ti ti-photo"></i> 同体积 JPEG 对照</div>
+        <div class="metric-num" id="m-jpeg">—</div>
+        <div class="metric-sub" id="m-jpeg-sub">质量系数 q ≈ —</div>
+      </div>
+      <div class="metric-card metric-red">
+        <div class="metric-label"><i class="ti ti-alert-triangle"></i> 语义错误数</div>
+        <div class="metric-num" id="m-errors">—</div>
+        <div class="metric-sub" id="m-errors-sub">被替换的实例</div>
+      </div>
+    </div>
+
+    <div class="jpeg-compare">
+      <div class="jpeg-col jpeg-clean">
+        <div class="jpeg-cap">JBIG2 解码 · 字迹锐利</div>
+        <canvas class="jpeg-canvas" id="jpeg-jbig2"></canvas>
+      </div>
+      <div class="jpeg-col jpeg-dirty">
+        <div class="jpeg-cap">同体积 JPEG · 一眼脏</div>
+        <canvas class="jpeg-canvas" id="jpeg-jpeg"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="sweepChart"></canvas>
+    </div>
+  </section>
+
+  <!-- 模块三 · 字典解剖 -->
+  <section class="mod" id="m3">
+    <p class="mod-hint">分步可视化 · 别一键跑完</p>
+    <h2 class="mod-title">模块三 · 字典解剖</h2>
+    <p class="mod-lead">JBIG2 把页面切成字符块，只存「模板 + 位置」。点下面的按钮，一步一步看字符块是怎么被归类进字典的。</p>
+    <div class="step-buttons">
+      <button class="btn btn-step is-active" data-step="1"><span class="step-num">1</span> 切分字符块</button>
+      <button class="btn btn-step" data-step="2" disabled><span class="step-num">2</span> 逐个匹配模板</button>
+      <button class="btn btn-step" data-step="3" disabled><span class="step-num">3</span> 重建页面</button>
+    </div>
+    <div class="dict-stage">
+      <div class="dict-page">
+        <div class="dict-page-cap">页面上的实例</div>
+        <div class="canvas-wrap">
+          <canvas class="dict-canvas" id="dict-page-canvas"></canvas>
+          <div class="dict-hover-hint" id="dict-hover-hint">—</div>
+        </div>
+      </div>
+      <div class="dict-panel">
+        <div class="dict-panel-cap">符号字典 · 每个模板被引用的次数</div>
+        <div class="dict-grid" id="dict-grid">
+          <p class="dict-placeholder">点击「切分字符块」开始</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 模块四 · 分割粒度 -->
+  <section class="mod" id="m4">
+    <p class="mod-hint">为什么「14.13」整串变成了「21.11」</p>
+    <h2 class="mod-title">模块四 · 分割粒度</h2>
+    <p class="mod-lead">单字符模式出错时只改一个数字；整块数字模式把「14.13」整个当成一个符号，一旦匹配错模板，整串一起变。同样的激进度，两种切分方式，错误的样子完全不同。</p>
+    <div class="granularity-tabs">
+      <button class="btn btn-tab is-active" data-mode="char"><i class="ti ti-letter-d"></i> 单字符切分</button>
+      <button class="btn btn-tab" data-mode="block"><i class="ti ti-text-resize"></i> 整块数字切分</button>
+    </div>
+    <div class="granularity-stage">
+      <div class="gran-col">
+        <div class="gran-cap">原始扫描</div>
+        <canvas class="gran-canvas" id="gran-original"></canvas>
+      </div>
+      <div class="gran-col">
+        <div class="gran-cap">JBIG2 解码</div>
+        <canvas class="gran-canvas" id="gran-decoded"></canvas>
+      </div>
+      <div class="gran-col gran-stats">
+        <div class="gran-stat">
+          <div class="gran-stat-label">切分模式</div>
+          <div class="gran-stat-num" id="gran-mode-label">单字符</div>
+        </div>
+        <div class="gran-stat">
+          <div class="gran-stat-label">语义错误数</div>
+          <div class="gran-stat-num" id="gran-errors">—</div>
+        </div>
+        <div class="gran-stat">
+          <div class="gran-stat-label">字典大小</div>
+          <div class="gran-stat-num" id="gran-dict">—</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 模块五 · SPM 修正开关 -->
+  <section class="mod" id="m5">
+    <p class="mod-hint">标准里有解法，出厂默认没开</p>
+    <h2 class="mod-title">模块五 · SPM 修正开关</h2>
+    <p class="mod-lead">Soft Pattern Matching（SPM）在共享模板的同时，为每个实例额外保存一份与模板的差分，解码时逐像素还原。打开开关，看错误数和体积怎么变。</p>
+    <div class="spm-switch">
+      <label class="switch">
+        <input type="checkbox" id="spmCheck">
+        <span class="switch-slider"></span>
+      </label>
+      <span class="switch-label">启用 SPM refinement</span>
+    </div>
+    <div class="spm-stage">
+      <div class="spm-col">
+        <div class="spm-cap">PM&S（默认）</div>
+        <canvas class="spm-canvas" id="spm-off-canvas"></canvas>
+        <div class="spm-meta" id="spm-off-meta">—</div>
+      </div>
+      <div class="spm-col spm-on">
+        <div class="spm-cap">SPM refinement</div>
+        <canvas class="spm-canvas" id="spm-on-canvas"></canvas>
+        <div class="spm-meta" id="spm-on-meta">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 模块六 · 自定义测试 -->
+  <section class="mod" id="m6">
+    <p class="mod-hint">拿你自己的东西试</p>
+    <h2 class="mod-title">模块六 · 输入任意数字串或上传图片</h2>
+    <p class="mod-lead">输入任意数字串，或上传一张带数字的图片，选择模拟扫描 DPI，看 JBIG2 会不会把它改错。</p>
+    <div class="custom-row">
+      <div class="custom-input">
+        <label>输入数字串</label>
+        <input type="text" id="customText" value="1234567890" maxlength="20">
+        <button class="btn btn-primary" id="customRunBtn"><i class="ti ti-player-play"></i> 跑一遍</button>
+      </div>
+      <div class="custom-upload">
+        <label class="btn btn-secondary upload-btn">
+          <i class="ti ti-upload"></i> 上传图片
+          <input type="file" id="customFile" accept="image/*" hidden>
+        </label>
+        <span class="upload-name" id="uploadName">未选择文件</span>
+      </div>
+      <div class="custom-dpi">
+        <label>模拟 DPI</label>
+        <select id="customDpi">
+          <option value="75">75 DPI</option>
+          <option value="150" selected>150 DPI</option>
+          <option value="300">300 DPI</option>
+        </select>
+      </div>
+    </div>
+    <div class="custom-result" id="customResult">
+      <div class="custom-col">
+        <div class="custom-cap">原始</div>
+        <canvas class="custom-canvas" id="custom-original"></canvas>
+      </div>
+      <div class="custom-col">
+        <div class="custom-cap">JBIG2 解码</div>
+        <canvas class="custom-canvas" id="custom-decoded"></canvas>
+        <div class="subst-layer" id="custom-subst-layer"></div>
+      </div>
+      <div class="custom-col custom-summary">
+        <div class="custom-stat"><span>体积</span><strong id="custom-size">—</strong></div>
+        <div class="custom-stat"><span>错误数</span><strong id="custom-errors">—</strong></div>
+        <div class="custom-stat"><span>字典大小</span><strong id="custom-dict">—</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 模块七 · 后果 -->
+  <section class="mod" id="m7">
+    <p class="mod-hint">只列已证实条目</p>
+    <h2 class="mod-title">模块七 · 后果：为什么扫描件不能当证据</h2>
+    <p class="mod-lead">这个 bug 存在了约八年，涉及全球数十万台 Xerox WorkCentre / ColorQube。补丁没有召回，只是把 pattern matching 默认关掉——此前扫过的文档无法回溯验证。</p>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-date">2013-07</div>
+        <div class="timeline-body">David Kriesel 扫描建筑平面图，发现房间面积数字被替换。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2013-08-02</div>
+        <div class="timeline-body">公开博文《Xerox scanners/photocopiers randomly alter numbers in scanned documents》。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2013-08-06</div>
+        <div class="timeline-body">BBC News 报道《Confused Xerox copiers rewrite documents, expert finds》。</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">2013-08-11</div>
+        <div class="timeline-body">Xerox 发博承诺补丁；补丁安装后自动禁用 pattern matching。</div>
+      </div>
+    </div>
+    <div class="reg-grid">
+      <div class="reg-card">
+        <div class="reg-head"><i class="ti ti-shield-off"></i> 德国 BSI TR-03138</div>
+        <p>替代性扫描技术指南规定：JBIG2 <strong>MUST NOT be used</strong>。</p>
+      </div>
+      <div class="reg-card">
+        <div class="reg-head"><i class="ti ti-file-alert"></i> 瑞士 KOST</div>
+        <p>建议在生成 PDF 时不要使用 JBIG2，避免数字替换风险。</p>
+      </div>
+      <div class="reg-card">
+        <div class="reg-head"><i class="ti ti-archive-off"></i> 美国 NARA</div>
+        <p>不接受用有损压缩（JPEG、JBIG2）保存的数字化记录 PDF。</p>
+      </div>
+    </div>
+    <div class="evidence-img">
+      <img src="images/mechanism.jpg" alt="模板匹配机制示意：左侧原始字符实例经相似度比对后共享同一符号模板，解码时被红框标记的字符块与模板不一致">
+    </div>
+    <div class="evidence-img">
+      <img src="images/evidence.jpg" alt="法庭证物桌上摊着扫描合同，金额数字处浮现被替换的双重影像">
+    </div>
+  </section>
+
+  <!-- 相关演示 -->
+  <section class="mod mod-related" id="related">
+    <p class="mod-hint">同一族问题</p>
+    <h2 class="mod-title">相关演示</h2>
+    <a class="related-card" href="../ecb-penguin/">
+      <span class="related-icon"><i class="ti ti-lock"></i></span>
+      <span class="related-body">
+        <span class="related-title">ECB 企鹅图：加密后还能看见企鹅</span>
+        <span class="related-desc">同一族问题：算法的结构假设泄漏成可观测的语义错误。</span>
+      </span>
+      <i class="ti ti-arrow-right related-arrow"></i>
+    </a>
+  </section>
+
+  <!-- 分享 -->
+  <section class="share-bar">
+    <button class="btn btn-primary btn-large" id="shareBtn"><i class="ti ti-link"></i> 复制本页链接</button>
+    <span class="share-toast" id="copyToast">链接已复制</span>
+  </section>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+<script src="jbig2.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

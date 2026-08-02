@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="马丁格尔策略模拟器：输了翻倍、赢了翻本——看起来完美，实际上是个陷阱。调参数亲手验证倍投为什么必死。">
+  <title>马丁格尔模拟器：倍投为什么必死 | 数字直觉</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.14.0/tabler-icons.min.css">
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero">
+    <img src="images/hero-bg.jpg" alt="">
+    <div class="hero-overlay">
+      <div class="hero-title">马丁格尔模拟器</div>
+      <div class="hero-desc">输了翻倍，赢了翻本——听起来完美，对吧？</div>
+    </div>
+  </div>
+
+  <!-- 第一步：设置参数 -->
+  <div class="panel" id="setupPanel">
+    <div class="panel-title"><i class="ti ti-settings"></i> 设置参数</div>
+    <div class="settings-grid">
+      <div class="setting-item">
+        <label>玩家本金</label>
+        <input type="number" id="playerMoney" value="10000" min="1" step="100">
+        <div class="hint">你手里有多少钱</div>
+      </div>
+      <div class="setting-item">
+        <label>庄家资金</label>
+        <input type="number" id="dealerMoney" value="100000" min="1" step="1000">
+        <div class="hint">庄家有多少钱等你赢</div>
+      </div>
+      <div class="setting-item">
+        <label>初始下注</label>
+        <input type="number" id="baseBet" value="10" min="1" step="5">
+        <div class="hint">第一把押多少</div>
+      </div>
+      <div class="setting-item">
+        <label>赌桌限红</label>
+        <input type="number" id="tableLimit" value="5000" min="1" step="100">
+        <div class="hint">赌桌允许的最大下注额</div>
+      </div>
+      <div class="setting-item">
+        <label>胜率</label>
+        <select id="winRate">
+          <option value="0.486">轮盘红黑 48.6%</option>
+          <option value="0.5">公平硬币 50%</option>
+          <option value="0.45">劣势 45%</option>
+          <option value="0.55">优势 55%</option>
+        </select>
+        <div class="hint">每局赢的概率</div>
+      </div>
+      <div class="setting-item">
+        <label>策略</label>
+        <select id="strategy">
+          <option value="martingale">马丁格尔（倍投）</option>
+          <option value="fixed">固定下注</option>
+          <option value="kelly">凯利公式</option>
+        </select>
+        <div class="hint">选择下注策略</div>
+      </div>
+    </div>
+    <div class="setup-actions">
+      <button class="btn btn-gold" id="startBtn" onclick="startGame()"><i class="ti ti-player-play"></i> 开始游戏</button>
+    </div>
+  </div>
+
+  <!-- 第二步：游戏区 -->
+  <div class="panel game-area" id="gamePanel">
+    <div class="panel-title"><i class="ti ti-target"></i> 赌局 <span style="color:rgba(255,255,255,0.3);font-size:0.8rem;font-weight:400;" id="roundDisplay">第 0 局</span></div>
+
+    <div class="money-bars">
+      <div class="money-row">
+        <div class="money-label">玩家</div>
+        <div class="money-bar-wrap">
+          <div class="money-bar player" id="playerBar" style="width:100%">
+            <span class="money-bar-text" id="playerMoneyText">¥10,000</span>
+          </div>
+        </div>
+      </div>
+      <div class="money-row">
+        <div class="money-label">庄家</div>
+        <div class="money-bar-wrap">
+          <div class="money-bar dealer" id="dealerBar" style="width:100%">
+            <span class="money-bar-text" id="dealerMoneyText">¥100,000</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bet-display">
+      <div class="bet-current" id="currentBetDisplay">¥10</div>
+      <div class="bet-label">当前下注</div>
+      <div class="bet-stats">
+        <span><i class="ti ti-trending-up"></i> 胜 <span id="winCount">0</span></span>
+        <span><i class="ti ti-trending-down"></i> 负 <span id="loseCount">0</span></span>
+        <span><i class="ti ti-link-off"></i> 连输 <span id="consecutiveLosses">0</span></span>
+      </div>
+      <div class="bet-warning" id="betWarning"><i class="ti ti-alert-triangle"></i> <span id="betWarningText"></span></div>
+    </div>
+
+    <div class="result-display" id="resultDisplay" style="display:none;">
+      <div class="result-text" id="resultText"></div>
+      <div class="result-detail" id="resultDetail"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-gold" id="betBtn" onclick="doBet()"><i class="ti ti-coin"></i> 下注</button>
+      <button class="btn btn-ghost btn-sm" onclick="autoPlayRounds(10)">自动 10 局</button>
+      <button class="btn btn-ghost btn-sm" onclick="autoPlayRounds(100)">自动 100 局</button>
+      <button class="btn btn-ghost btn-sm" onclick="resetGame()"><i class="ti ti-refresh"></i> 重置</button>
+    </div>
+  </div>
+
+  <!-- 操作记录 -->
+  <div class="panel game-area" id="historyPanel">
+    <div class="panel-title"><i class="ti ti-list"></i> 操作记录</div>
+    <div class="history-list" id="historyList">
+      <div class="empty-state">还没开始，点「下注」试试</div>
+    </div>
+  </div>
+
+  <!-- 蒙特卡洛模拟 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-chart-histogram"></i> 模拟</div>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchSimTab('monte')">蒙特卡洛</button>
+      <button class="tab-btn" onclick="switchSimTab('compare')">策略对比</button>
+      <button class="tab-btn" onclick="switchSimTab('sensitivity')">敏感度分析</button>
+    </div>
+
+    <div class="tab-content active" id="tabMonte">
+      <p style="font-size:0.85rem;color:rgba(255,255,255,0.5);margin-bottom:12px;">
+        跑 1000 个人各玩 500 局，看有多少人破产、多少人逼死庄家。
+      </p>
+      <button class="btn btn-ghost" onclick="runMonteCarlo()"><i class="ti ti-player-play"></i> 跑一轮模拟</button>
+      <div id="monteResults" style="display:none;margin-top:12px;">
+        <div class="sim-grid">
+          <div class="sim-card">
+            <div class="sim-card-label">破产率</div>
+            <div class="sim-card-value red" id="mcBankruptRate">-</div>
+          </div>
+          <div class="sim-card">
+            <div class="sim-card-label">逼死庄家率</div>
+            <div class="sim-card-value green" id="mcBeatDealer">-</div>
+          </div>
+          <div class="sim-card">
+            <div class="sim-card-label">平均剩余</div>
+            <div class="sim-card-value gold" id="mcAvg">-</div>
+          </div>
+          <div class="sim-card">
+            <div class="sim-card-label">中位数剩余</div>
+            <div class="sim-card-value gold" id="mcMedian">-</div>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="mcChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabCompare">
+      <p style="font-size:0.85rem;color:rgba(255,255,255,0.5);margin-bottom:12px;">
+        同参数下三种策略对比，看谁活得久。
+      </p>
+      <button class="btn btn-ghost" onclick="runComparison()"><i class="ti ti-player-play"></i> 开始对比</button>
+      <div id="compareResults" style="display:none;margin-top:12px;">
+        <table class="strategy-table">
+          <thead>
+            <tr><th>策略</th><th>破产率</th><th>逼死庄家</th><th>平均剩余</th><th>中位数</th></tr>
+          </thead>
+          <tbody id="compareBody"></tbody>
+        </table>
+        <div class="chart-box"><canvas id="compareChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabSensitivity">
+      <p style="font-size:0.85rem;color:rgba(255,255,255,0.5);margin-bottom:12px;">
+        初始下注从低到高，破产率怎么变化。
+      </p>
+      <button class="btn btn-ghost" onclick="runSensitivity()"><i class="ti ti-player-play"></i> 开始分析</button>
+      <div id="sensitivityResults" style="display:none;margin-top:12px;">
+        <div class="chart-box"><canvas id="sensitivityChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数学分析 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-math-function"></i> 为什么倍投会死</div>
+    <p><strong>翻倍速度</strong></p>
+    <p>连输 n 次，第 n+1 次需要下注 <span class="hl">2<sup>n</sup> × 初始下注</span>。</p>
+    <div class="formula-block" id="lossTable">
+      连输 1 次 → 下注 20 元（累计亏 30 元）<br>
+      连输 2 次 → 下注 40 元（累计亏 70 元）<br>
+      连输 3 次 → 下注 80 元（累计亏 150 元）<br>
+      连输 5 次 → 下注 320 元（累计亏 630 元）<br>
+      连输 10 次 → 下注 10,240 元（累计亏 20,470 元）<br>
+      连输 15 次 → 下注 327,680 元（累计亏 655,350 元）<br>
+    </div>
+    <p>翻倍是<span class="danger">指数增长</span>。你扛得住几次？</p>
+
+    <p style="margin-top:16px;"><strong>赌桌限红的作用</strong></p>
+    <p>连输到第 n 次时，下注额超过限红，翻倍策略直接失效——之前亏的全变成实亏。</p>
+
+    <p style="margin-top:16px;"><strong>庄家资金</strong></p>
+    <p>马丁格尔能赢的唯一条件是：你的钱比庄家多。否则连输几把之后，你还在翻倍，庄家却不会破产。</p>
+  </div>
+
+  <!-- 结论 -->
+  <div class="panel">
+    <div class="panel-title"><i class="ti ti-flag"></i> 结论</div>
+    <div class="conclusion-box">
+      马丁格尔在大多数时候让你小赚，<br>
+      但<span class="key">一次连输就能把之前全吐回去</span>。<br><br>
+      短期胜率高 ≠ 长期能赚钱。<br>
+      蜜月期很爽，爆仓只在一瞬间。<br><br>
+      <span class="hl">谁钱多谁赢——可惜你永远不会是那个钱多的。</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Game Over Modal -->
+<div class="modal-backdrop" id="gameOverModal">
+  <div class="modal-box">
+    <div class="modal-icon" id="modalIcon"></div>
+    <div class="modal-title" id="modalTitle">破产</div>
+    <div class="modal-stats">
+      <div class="modal-stat">
+        <div class="modal-stat-val" id="modalFinalMoney">-</div>
+        <div class="modal-stat-label">剩余资金</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-val" id="modalTotalRounds">-</div>
+        <div class="modal-stat-label">总局数</div>
+      </div>
+      <div class="modal-stat">
+        <div class="modal-stat-val" id="modalMaxLose">-</div>
+        <div class="modal-stat-label">最大连输</div>
+      </div>
+    </div>
+    <div class="modal-msg" id="modalMsg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">看看结果</button>
+      <button class="btn btn-gold" onclick="closeModal();resetGame();startGame();">再来一局</button>
+    </div>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

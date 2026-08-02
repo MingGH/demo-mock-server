@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="aCropalypse 裁剪残留漏洞交互演示：你裁掉的那半张截图，还在文件里。">
+<title>裁剪残留实验室：你裁掉的东西还在文件里</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+<script src="../../components/header.js" defer></script>
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+
+<div class="container">
+
+<main class="lab-main">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-img-wrap">
+      <img class="hero-img" src="images/hero.svg" alt="被裁剪的手机截图，残留内容以幽灵形态挂载在文件尾部">
+    </div>
+    <div class="hero-text">
+      <p class="hero-eyebrow">CVE-2023-21036 · aCropalypse</p>
+      <h2 class="hero-title">你裁掉的东西<br>还在文件里</h2>
+      <p class="hero-sub">2023 年 3 月被公开的一个 bug：Pixel 自带的截图编辑工具写文件时，<br>少了一个字母 t。五年内被你「裁掉」的半张图，可能连同银行卡号、<br>身份证、聊天记录，原样留在文件尾。</p>
+      <a class="hero-cta" href="#m1"><i class="ti ti-flask"></i> 造一张会漏的截图 →</a>
+      <p class="hero-note">所有解析都在你的浏览器里跑，文件不上传、不联网。</p>
+    </div>
+  </section>
+
+  <!-- 模块一 · 犯罪现场 -->
+  <section class="mod" id="m1">
+    <p class="mod-hint">零门槛 · 选一个场景看现场</p>
+    <h3 class="mod-title">模块一 · 犯罪现场</h3>
+    <p class="mod-lead">三张伪造的截图。点哪个就裁哪个，看「裁掉 70% 画面，文件只小 3%」是怎么发生的。</p>
+    <div class="scene-tabs">
+      <button class="scene-tab is-active" data-scene="card"><i class="ti ti-credit-card"></i> 银行卡账单</button>
+      <button class="scene-tab" data-scene="chat"><i class="ti ti-message"></i> 聊天记录</button>
+      <button class="scene-tab" data-scene="id"><i class="ti ti-id"></i> 身份证</button>
+    </div>
+    <div class="scene-stage">
+      <div class="scene-panel">
+        <div class="scene-panel-cap">原图 · 完整截图</div>
+        <canvas class="scene-canvas" id="canvas-original"></canvas>
+        <div class="scene-meta" id="meta-original"></div>
+      </div>
+      <div class="scene-panel">
+        <div class="scene-panel-cap">裁剪后 · 用户看到的</div>
+        <canvas class="scene-canvas" id="canvas-cropped"></canvas>
+        <div class="scene-meta" id="meta-cropped"></div>
+      </div>
+    </div>
+    <div class="scene-stats">
+      <div class="stat"><div class="stat-num" id="stat-area">—</div><div class="stat-label">被裁掉的画面比例</div></div>
+      <div class="stat"><div class="stat-num" id="stat-size">—</div><div class="stat-label">文件体积变化（buggy 文件 vs 原图）</div></div>
+      <div class="stat stat-hot"><div class="stat-num" id="stat-residual">—</div><div class="stat-label">残留字节数</div></div>
+    </div>
+    <p class="stat-size-note" id="stat-size-note">本该只有 — B，实际 — B</p>
+    <p class="punchline" id="punchline">裁掉 55% 的画面，文件一个字节都没变小。</p>
+    <p class="mod-hint size-hint"><i class="ti ti-info-circle"></i> 本页样本使用未压缩 IDAT 存储块，体积与像素数成正比；真实 PNG 的压缩比会不同。</p>
+  </section>
+
+  <!-- 模块二 · 一个字符的距离 -->
+  <section class="mod mod-split" id="m2">
+    <p class="mod-hint">一个字母 t 的差别</p>
+    <h3 class="mod-title">模块二 · 一个字符的距离</h3>
+    <p class="mod-lead">Markup 工具写裁剪结果时，调用了 Android 的 <code>ParcelFileDescriptor.parseMode(...)</code>。传 "w" 和传 "wt"，差一个字母，行为却完全相反。</p>
+    <div class="code-compare">
+      <div class="code-card code-card-bad">
+        <div class="code-card-head"><i class="ti ti-x"></i> Bug 写法：<code>parseMode("w")</code></div>
+        <div class="code-card-body"><span class="code-key">final</span> <span class="code-type">ParcelFileDescriptor</span> pfd =<br>&nbsp;&nbsp;ParcelFileDescriptor.<span class="code-fn">parseMode</span>(<span class="code-str">"w"</span>);</div>
+        <div class="code-card-foot">Android 10 起，"w" <strong>不再隐含截断</strong>。调用方代码没改，行为却悄悄变了。</div>
+      </div>
+      <div class="code-card code-card-good">
+        <div class="code-card-head"><i class="ti ti-check"></i> 正确写法：<code>parseMode("wt")</code></div>
+        <div class="code-card-body"><span class="code-key">final</span> <span class="code-type">ParcelFileDescriptor</span> pfd =<br>&nbsp;&nbsp;ParcelFileDescriptor.<span class="code-fn">parseMode</span>(<span class="code-str">"wt"</span>);</div>
+        <div class="code-card-foot">"wt" 显式声明「先截断再写」，文件被清空，新数据只占自己的长度。</div>
+      </div>
+    </div>
+    <div class="byte-stage">
+      <div class="byte-stage-cap" id="byte-stage-cap">点下面的「写入」按钮，把裁剪结果以 bug 模式写回原文件，看字节带的变化。</div>
+      <div class="byte-track" id="byte-track">
+        <div class="byte-row byte-row-original" id="byte-row-original">
+          <span class="byte-label">原文件</span>
+          <div class="byte-strip" id="byte-strip-original"></div>
+        </div>
+        <div class="byte-row byte-row-new" id="byte-row-new">
+          <span class="byte-label">新数据</span>
+          <div class="byte-strip" id="byte-strip-new"></div>
+        </div>
+        <div class="byte-row byte-row-buggy" id="byte-row-buggy">
+          <span class="byte-label">buggy 文件</span>
+          <div class="byte-strip" id="byte-strip-buggy"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="byte-write-btn"><i class="ti ti-pencil"></i> 写入（一个字符的距离）</button>
+    </div>
+    <div class="mech-img"><img src="images/mechanism.svg" alt="写入模式 vs 截断模式对比"></div>
+  </section>
+
+  <!-- 模块三 · 找到 IEND -->
+  <section class="mod" id="m3">
+    <p class="mod-hint">分步解析 · 四个按钮依次点亮</p>
+    <h3 class="mod-title">模块三 · 找到 IEND</h3>
+    <p class="mod-lead">每个 PNG 都是「8 字节签名 + 一串 chunk」。解码器读到 <code>IEND</code> 这个 chunk 就停下，IEND 之后挂多少字节都不影响显示 —— 这就是残留看不见的原因。</p>
+    <div class="step-buttons">
+      <button class="btn btn-step is-active" data-step="3.1"><span class="step-num">1</span> 校验签名</button>
+      <button class="btn btn-step" data-step="3.2" disabled><span class="step-num">2</span> 遍历 chunk</button>
+      <button class="btn btn-step" data-step="3.3" disabled><span class="step-num">3</span> 定位 IEND</button>
+      <button class="btn btn-step" data-step="3.4" disabled><span class="step-num">4</span> hex viewer</button>
+    </div>
+    <div class="step-pane" id="pane-3-1">
+      <h4>步骤 3.1 · 校验 8 字节签名</h4>
+      <p>合法的 PNG 一定以这 8 个字节开头：</p>
+      <div class="hex-row"><code>89 50 4E 47 0D 0A 1A 0A</code></div>
+      <div class="verify-result" id="sig-verify">—</div>
+    </div>
+    <div class="step-pane is-hidden" id="pane-3-2">
+      <h4>步骤 3.2 · 遍历 chunk</h4>
+      <p>从偏移 8 起，每 4 字节是大端长度，再 4 字节是 chunk 类型 ASCII，再 N 字节是数据，最后 4 字节是 CRC32。</p>
+      <div class="chunk-table-wrap"><table class="chunk-table" id="chunk-table"></table></div>
+    </div>
+    <div class="step-pane is-hidden" id="pane-3-3">
+      <h4>步骤 3.3 · 定位 IEND</h4>
+      <p>IEND 是恒定的 12 字节，文件解析器一遇到它就停。把 IEND 结束偏移和文件总长相减 ——</p>
+      <div class="big-num" id="residual-num">0</div>
+      <p class="big-num-caption">字节，没被任何看图软件读到。</p>
+    </div>
+    <div class="step-pane is-hidden" id="pane-3-4">
+      <h4>步骤 3.4 · hex viewer</h4>
+      <p>残留区前 256 字节，识别到的 chunk 头用颜色高亮。</p>
+      <div class="hex-viewer" id="hex-viewer"></div>
+    </div>
+  </section>
+
+  <!-- 模块四 · 把残留拼回图像 -->
+  <section class="mod" id="m4">
+    <p class="mod-hint">分步 · 五步对应算法核心</p>
+    <h3 class="mod-title">模块四 · 把残留拼回图像</h3>
+    <p class="mod-lead">PNG 编码器按扫描线写入，每行 1 字节 filter + 宽 × 3 字节 RGB。只要猜对原图宽度，残留字节立刻对齐成一幅画面。</p>
+    <div class="recovery-stage">
+      <div class="recovery-step" data-step="4.1">
+        <div class="recovery-step-head"><span class="step-num">1</span> 找 IEND 边界</div>
+        <div class="recovery-step-body" id="rec-1">点下面的按钮，扫描到 IEND。</div>
+        <button class="btn btn-mini" data-act="rec1">找 IEND</button>
+      </div>
+      <div class="recovery-step" data-step="4.2">
+        <div class="recovery-step-head"><span class="step-num">2</span> 找 IDAT 起点</div>
+        <div class="recovery-step-body" id="rec-2">顺序扫描 ASCII "IDAT"，按长度取数据并校验 CRC32。</div>
+        <button class="btn btn-mini" data-act="rec2">扫描 IDAT</button>
+      </div>
+      <div class="recovery-step" data-step="4.3">
+        <div class="recovery-step-head"><span class="step-num">3</span> 收集 IDAT 载荷</div>
+        <div class="recovery-step-body" id="rec-3">从 IDAT 起点正常遍历 chunk，把所有 IDAT 拼起来直到 IEND。</div>
+        <button class="btn btn-mini" data-act="rec3">收集载荷</button>
+      </div>
+      <div class="recovery-step" data-step="4.4">
+        <div class="recovery-step-head"><span class="step-num">4</span> zlib 存储块重同步</div>
+        <div class="recovery-step-body" id="rec-4">载荷是被切断的 zlib 流。逐字节找合法存储块头，第一个就停下。</div>
+        <button class="btn btn-mini" data-act="rec4">重同步</button>
+      </div>
+      <div class="recovery-step" data-step="4.5">
+        <div class="recovery-step-head"><span class="step-num">5</span> 猜宽度，对齐扫描线</div>
+        <div class="recovery-step-body" id="rec-5">选一个宽度，看对齐后能不能组成画面。</div>
+        <div class="width-choices">
+          <button class="btn btn-width" data-width="1080">1080</button>
+          <button class="btn btn-width" data-width="1440">1440</button>
+          <button class="btn btn-width" data-width="1284">1284</button>
+          <button class="btn btn-width" data-width="720">720</button>
+        </div>
+      </div>
+    </div>
+    <div class="recovery-output">
+      <div class="rec-col">
+        <div class="rec-cap">原图</div>
+        <canvas class="rec-canvas" id="rec-original"></canvas>
+      </div>
+      <div class="rec-col">
+        <div class="rec-cap">裁剪后</div>
+        <canvas class="rec-canvas" id="rec-cropped"></canvas>
+      </div>
+      <div class="rec-col rec-col-result">
+        <div class="rec-cap">恢复结果</div>
+        <canvas class="rec-canvas" id="rec-result"></canvas>
+        <div class="rec-meta" id="rec-meta">—</div>
+      </div>
+    </div>
+    <p class="disclaimer">
+      <i class="ti ti-info-circle"></i>
+      简化说明：本演示的 IDAT 用 zlib「未压缩存储块」写，让「从任意字节处接着解」变得确定可算。
+      真实漏洞的恢复还要额外做 DEFLATE 比特级重同步（Buchanan 的文章讲的就是这一步）。
+      其余流程与真实漏洞完全一致。
+    </p>
+  </section>
+
+  <!-- 模块五 · 为什么所有看图软件都看不出来 -->
+  <section class="mod" id="m5">
+    <p class="mod-hint">眼见不为实</p>
+    <h3 class="mod-title">模块五 · 为什么所有看图软件都看不出来</h3>
+    <p class="mod-lead">把带残留的 buggy 文件塞进 <code>&lt;img&gt;</code> 看一眼 —— 显示完全正常。再看字节总数，残留和 IEND 之后的内容都算在文件大小里，但只有你和我知道它们在那儿。</p>
+    <div class="leak-demo">
+      <div class="leak-img">
+        <img id="leak-img" alt="带残留的 buggy PNG，浏览器显示完全正常">
+        <div class="leak-meta" id="leak-meta">—</div>
+      </div>
+      <div class="leak-side">
+        <p>这张图是用我们自己的编码器造的 buggy 文件，残留字节数 = <span id="leak-residual">—</span>，等于把 IEND 之后的内容原样保留在磁盘上。</p>
+        <p>任何 <code>&lt;img&gt;</code>、任何看图软件、任何 CDN 都会把它当成合法 PNG 来显示，没有任何警告。</p>
+        <button class="btn btn-secondary" id="leak-download"><i class="ti ti-download"></i> 下载这张带残留的样本</button>
+      </div>
+    </div>
+    <div class="leak-scene"><img src="images/leak-scene.svg" alt="聊天截图发到 Discord 后，残留被还原出完整银行卡号"></div>
+  </section>
+
+  <!-- 模块六 · 测你自己的截图 -->
+  <section class="mod" id="m6">
+    <p class="mod-hint">文件不上传，全部在浏览器里解析</p>
+    <h3 class="mod-title">模块六 · 测你自己的截图</h3>
+    <p class="mod-lead">拖一张本地 PNG 进来，纯前端解析。看到残留字节数；能恢复就试一下。绝大多数现代设备已经打补丁，0 字节是常态 —— 那也值得你点一下确认。</p>
+    <div class="drop-zone" id="drop-zone">
+      <i class="ti ti-file-upload"></i>
+      <p>拖拽 PNG 到这里，或</p>
+      <label class="btn btn-primary"><input type="file" id="file-input" accept="image/png" hidden> 选择文件</label>
+      <p class="drop-note">不联网 · 不上传 · 仅在你的浏览器内解析</p>
+    </div>
+    <div class="user-result" id="user-result" hidden>
+      <div class="user-summary" id="user-summary">—</div>
+      <div class="user-detail" id="user-detail"></div>
+      <canvas class="user-canvas" id="user-canvas"></canvas>
+    </div>
+  </section>
+
+  <!-- 模块七 · 时间线与补丁表 -->
+  <section class="mod" id="m7">
+    <p class="mod-hint">只列已证实条目</p>
+    <h3 class="mod-title">模块七 · 时间线与补丁表</h3>
+    <div class="patch-grid">
+      <div class="patch-card patch-card-google">
+        <div class="patch-card-head">
+          <span class="patch-vendor">Google · Pixel</span>
+          <span class="patch-cve">CVE-2023-21036</span>
+        </div>
+        <ul class="patch-list">
+          <li><strong>触发组件：</strong>Pixel 自带截图工具 Markup（<code>parseMode("w")</code>）</li>
+          <li><strong>根因：</strong>Android 10 起 <code>parseMode</code> 不再隐含截断，调用方代码没改</li>
+          <li><strong>影响时间：</strong>约 5 年，Markup 自 Android 9 / Pixel 3 起随机附带</li>
+          <li><strong>公开者：</strong>Simon Aarons 与 David Buchanan，2023 年 3 月</li>
+          <li><strong>补丁：</strong>2023 年 3 月安全更新（Android 13 QPR2 / Pixel 补丁 2023-03）</li>
+        </ul>
+        <a class="patch-src" href="https://en.wikipedia.org/wiki/ACropalypse" target="_blank" rel="noopener">Wikipedia: aCropalypse →</a>
+      </div>
+      <div class="patch-card patch-card-ms">
+        <div class="patch-card-head">
+          <span class="patch-vendor">Microsoft · Windows</span>
+          <span class="patch-cve">CVE-2023-28303</span>
+        </div>
+        <ul class="patch-list">
+          <li><strong>触发组件：</strong>Windows 11 截图工具、Windows 10 Snip & Sketch</li>
+          <li><strong>评级：</strong>MSRC Low（CVSS 3.3）</li>
+          <li><strong>修复版本：</strong>11.2302.20.0 / 10.2008.3001.0</li>
+          <li><strong>公开者：</strong>David Buchanan</li>
+        </ul>
+        <a class="patch-src" href="https://msrc.microsoft.com/update-guide/vulnerability/CVE-2023-28303" target="_blank" rel="noopener">MSRC 官方公告 →</a>
+      </div>
+      <div class="patch-card patch-card-spread">
+        <div class="patch-card-head">
+          <span class="patch-vendor">传播放大器</span>
+          <span class="patch-cve">行为差异</span>
+        </div>
+        <ul class="patch-list">
+          <li><strong>保留文件：</strong>Discord 等平台原样保留上传文件，残留会一起被带走</li>
+          <li><strong>重新编码：</strong>会重新压缩的 CDN / App 顺手把残留抹掉，文件反而变干净</li>
+          <li><strong>银行卡案例：</strong>Aarons 在 Discord 上公开还原的演示就是这种情况</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 模块八 · 防御清单 -->
+  <section class="mod" id="m8">
+    <p class="mod-hint">把自己能做的列清楚</p>
+    <h3 class="mod-title">模块八 · 防御清单</h3>
+    <div class="defense-list">
+      <div class="defense-item">
+        <i class="ti ti-license"></i>
+        <div>
+          <h4>另存为新文件</h4>
+          <p>永远不要在原文件上覆盖。哪怕是「裁剪」也要「另存为」到新路径，原文件保持不动。</p>
+        </div>
+      </div>
+      <div class="defense-item">
+        <i class="ti ti-repeat"></i>
+        <div>
+          <h4>分享前重新编码</h4>
+          <p>把要发的图先转存成 JPEG 一遍，让任何残留都被压缩抹平。JPEG 本身就是重新编码。</p>
+        </div>
+      </div>
+      <div class="defense-item">
+        <i class="ti ti-grid-dots"></i>
+        <div>
+          <h4>打码靠像素化 + 重编码</h4>
+          <p>不要靠「盖图层」打码。盖的图层在原图文件里还在。必须把敏感区域像素化后再重新保存为新文件。</p>
+        </div>
+      </div>
+      <div class="defense-item">
+        <i class="ti ti-alert-triangle"></i>
+        <div>
+          <h4>留意体积异常</h4>
+          <p>裁掉了 90% 的画面，文件却只小了几个百分点，这本身就是个危险信号。怀疑了就别发。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <button class="btn btn-primary btn-large" id="copy-conclusion"><i class="ti ti-copy"></i> 复制本页结论</button>
+    <p class="cta-note" id="copy-note">把这一页的要点发到群里，让身边的人也少踩一次坑。</p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <span>裁剪残留实验室 · 用 60 行 zlib 存储块编码器复现 aCropalypse</span>
+  <span class="site-footer-spacer"></span>
+  <a href="../../index.html">← 回到 numfeel</a>
+</footer>
+
+</div>
+
+<!-- 第三方 CDN：GSAP / Chart.js（按需加载） -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+
+<!-- 业务脚本（ES5 风格） -->
+<script src="pngkit.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

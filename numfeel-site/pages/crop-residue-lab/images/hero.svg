@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="0.6" stop-color="#111936"/>
+      <stop offset="1" stop-color="#0a0e14"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe57f"/>
+      <stop offset="1" stop-color="#b8970a"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1024" height="640" fill="url(#bg)"/>
+
+  <!-- 背景网格 -->
+  <g stroke="#1e2740" stroke-width="1" opacity="0.4">
+    <line x1="0" y1="120" x2="1024" y2="120"/>
+    <line x1="0" y1="520" x2="1024" y2="520"/>
+    <line x1="160" y1="0" x2="160" y2="640"/>
+    <line x1="864" y1="0" x2="864" y2="640"/>
+  </g>
+
+  <!-- 文件流装饰 -->
+  <g fill="none" stroke="#2a3a5e" stroke-width="1.5" opacity="0.6">
+    <path d="M40 80 h200 M40 90 h160 M40 100 h240 M40 110 h140"/>
+    <path d="M784 540 h200 M824 550 h160 M744 560 h240 M864 570 h140"/>
+  </g>
+
+  <!-- 手机截图 -->
+  <g transform="translate(220, 80)">
+    <rect x="0" y="0" width="280" height="480" rx="24" fill="#151b2e" stroke="#2a3a5e" stroke-width="2"/>
+    <rect x="14" y="14" width="252" height="452" rx="8" fill="#0d1220"/>
+    <!-- 状态栏 -->
+    <rect x="14" y="14" width="252" height="34" rx="8" fill="#0b1020"/>
+    <circle cx="44" cy="31" r="5" fill="#4a5568"/>
+    <rect x="190" y="26" width="56" height="10" rx="5" fill="#4a5568"/>
+    <!-- 被保留的下半部分 -->
+    <rect x="30" y="160" width="220" height="120" rx="8" fill="#1c2538"/>
+    <text x="140" y="205" text-anchor="middle" font-size="16" fill="#90caf9" font-family="sans-serif">银行卡 6222 **** 9012</text>
+    <text x="140" y="235" text-anchor="middle" font-size="14" fill="#8089a0" font-family="sans-serif">已向 王总监 发送</text>
+    <!-- 剪刀裁剪线 -->
+    <line x1="-20" y1="140" x2="300" y2="140" stroke="#ff6b6b" stroke-width="3" stroke-dasharray="10,8"/>
+    <path d="M-30 130 l20 10 l-20 10" fill="#ff6b6b"/>
+    <path d="M310 130 l-20 10 l20 10" fill="#ff6b6b"/>
+  </g>
+
+  <!-- 被裁掉的幽灵残留 -->
+  <g transform="translate(220, 80)" opacity="0.55" filter="url(#glow)">
+    <rect x="30" y="42" width="220" height="110" rx="8" fill="#1c2538" stroke="#90caf9" stroke-width="1"/>
+    <text x="140" y="80" text-anchor="middle" font-size="14" fill="#e8eaed" font-family="sans-serif">身份证 110108 19950315</text>
+    <text x="140" y="110" text-anchor="middle" font-size="13" fill="#ff6b6b" font-family="sans-serif">地址：北京市朝阳区某某街道</text>
+    <text x="140" y="135" text-anchor="middle" font-size="12" fill="#b8970a" font-family="sans-serif">↑ 这部分已被裁掉，但仍在文件里</text>
+  </g>
+
+  <!-- 右侧说明 -->
+  <g transform="translate(600, 160)">
+    <text x="0" y="0" font-size="42" fill="#e8eaed" font-weight="700" font-family="'Source Han Serif SC','Noto Serif CJK SC',serif">裁剪残留实验室</text>
+    <text x="0" y="48" font-size="18" fill="#90caf9" font-family="sans-serif">CVE-2023-21036 · aCropalypse</text>
+    <text x="0" y="110" font-size="16" fill="#b6bcc5" font-family="sans-serif">你裁掉的那半张截图，</text>
+    <text x="0" y="140" font-size="16" fill="#b6bcc5" font-family="sans-serif">从未离开过文件。</text>
+    <rect x="0" y="180" width="280" height="2" fill="url(#gold)" opacity="0.8"/>
+    <text x="0" y="230" font-size="14" fill="#8089a0" font-family="sans-serif">所有解析都在浏览器本地完成</text>
+  </g>
+
+  <!-- 字节粒子 -->
+  <g fill="#4a5568" opacity="0.5" font-size="11" font-family="monospace">
+    <text x="560" y="80">89 50 4E 47</text>
+    <text x="580" y="110">49 48 44 52</text>
+    <text x="600" y="140">49 44 41 54</text>
+    <text x="620" y="170">49 45 4E 44</text>
+  </g>
+  <g fill="#b8970a" opacity="0.6" font-size="11" font-family="monospace">
+    <text x="680" y="460">49 44 41 54</text>
+    <text x="700" y="490">43 46 07 A9</text>
+    <text x="720" y="520">49 45 4E 44</text>
+  </g>
+</svg>

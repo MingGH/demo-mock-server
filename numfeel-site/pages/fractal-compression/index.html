@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="分形压缩：1990年代轰动一时的图像压缩技术，用几条数学公式代替整张图片。交互体验编码解码全过程，看噪音如何迭代成图像。">
+  <title>分形压缩：把图片写成一道数学公式 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  <script src="engine.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-math-symbols"></i> 分形压缩</h1>
+    <p>一张图片，可以写成一道数学公式吗？1990 年代，Michael Barnsley 说可以。他把图片拆成"自己缩小自己"的拼贴，声称 100:1 压缩比。编码慢到没法用，but 数学很美。</p>
+  </div>
+
+  <div class="hero-cta" id="heroSection">
+    <button class="btn-hero" id="heroBtn">
+      <i class="ti ti-sparkles"></i> 看噪音变成图片
+      <i class="ti ti-arrow-down"></i>
+    </button>
+  </div>
+
+  <section class="section" id="step1" style="display:none;">
+    <div class="step-label">步骤 1 / 3</div>
+    <h2><i class="ti ti-photo"></i> 选择图片</h2>
+    <p class="step-hint">选一张图，算法会找到它"自己缩小自己"的方式。小图处理更快，效果也更明显。</p>
+
+    <div class="upload-zone" id="uploadZone">
+      <i class="ti ti-cloud-upload upload-icon"></i>
+      <div class="upload-text">点击上传图片，或拖拽图片到此处</div>
+      <span class="upload-hint">支持 JPG / PNG / WebP</span>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" hidden>
+
+    <div class="btn-row" style="margin-top:12px;justify-content:center;">
+      <button class="btn btn-secondary" id="useSampleBtn"><i class="ti ti-pattern"></i> 使用几何图案</button>
+      <button class="btn btn-secondary" id="usePortraitBtn"><i class="ti ti-user"></i> 使用人像示例</button>
+    </div>
+  </section>
+
+  <section class="section" id="step2" style="display:none;">
+    <div class="step-label">步骤 2 / 3</div>
+    <h2><i class="ti ti-adjustments"></i> 编码参数</h2>
+    <p class="step-hint">算法把图片切成小块，然后为每块找"自己缩小的自己"。决定搜索精度和范围块大小。</p>
+
+    <div class="controls-row" id="encodeControls">
+      <div class="control-group">
+        <h3><i class="ti ti-grid-3x3"></i> 范围块大小</h3>
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>块大小</span>
+            <span class="val" id="rangeSizeVal">8×8</span>
+          </div>
+          <input type="range" id="rangeSizeSlider" min="4" max="16" value="8" step="4">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label">
+            <span>搜索精度</span>
+            <span class="val" id="strideVal">中</span>
+          </div>
+          <input type="range" id="strideSlider" min="0" max="2" value="1" step="1">
+        </div>
+      </div>
+      <div class="control-group">
+        <h3><i class="ti ti-info-circle"></i> 说明</h3>
+        <p style="color:#a0a0a0;font-size:0.85rem;line-height:1.7;">
+          块越小，压缩率越低但质量越好。<br>
+          搜索精度越高，编码越慢但匹配越好。
+        </p>
+      </div>
+    </div>
+
+    <div class="btn-row" style="justify-content:center;margin-top:16px;">
+      <button class="btn btn-primary" id="encodeBtn"><i class="ti ti-player-play"></i> 开始编码</button>
+    </div>
+
+    <div class="progress-wrap" id="encodeProgress" style="display:none;">
+      <div class="progress-bar">
+        <div class="progress-fill" id="encodeProgressFill"></div>
+      </div>
+      <div class="progress-text" id="encodeProgressText">正在搜索最佳匹配...</div>
+    </div>
+  </section>
+
+  <section class="section" id="step3" style="display:none;">
+    <div class="step-label">步骤 3 / 3</div>
+    <h2><i class="ti ti-eye"></i> 解码：从噪音到图像</h2>
+    <p class="step-hint">分形解码从随机噪音开始，每次迭代把图像"自己拼接自己"。数学保证它会收敛到原图。</p>
+
+    <div class="decoding-area" id="decodingArea">
+      <div class="canvas-pair">
+        <div class="canvas-box">
+          <div class="canvas-label">原图</div>
+          <canvas id="originalCanvas"></canvas>
+        </div>
+        <div class="canvas-box">
+          <div class="canvas-label" id="decodeLabel">解码中...</div>
+          <canvas id="decodeCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="decode-progress" id="decodeProgress">
+        <div class="decode-bar" id="decodeBar"></div>
+        <div class="decode-bar-fill" id="decodeBarFill"></div>
+        <div class="decode-iter-label" id="decodeIterLabel">迭代 0 / 12</div>
+      </div>
+
+      <div class="controls-row" id="decodeControls" style="display:none;">
+        <div class="control-group">
+          <h3><i class="ti ti-adjustments"></i> 控制</h3>
+          <div class="btn-row" style="margin:0;">
+            <button class="btn btn-primary" id="decodeBtn"><i class="ti ti-player-play"></i> 解码（12 次迭代）</button>
+            <button class="btn btn-secondary" id="decodeHighResBtn"><i class="ti ti-arrows-maximize"></i> 2x 分辨率解码</button>
+            <button class="btn btn-secondary" id="reencodeBtn"><i class="ti ti-refresh"></i> 换一张图</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-row" id="statsRow" style="display:none;">
+      <div class="stat-item"><span class="val" id="statOrigSize">—</span><span class="lbl">原图大小</span></div>
+      <div class="stat-item"><span class="val" id="statCompSize">—</span><span class="lbl">压缩后大小</span></div>
+      <div class="stat-item"><span class="val" id="statRatio">—</span><span class="lbl">压缩比</span></div>
+      <div class="stat-item"><span class="val" id="statBlocks">—</span><span class="lbl">分形块数</span></div>
+      <div class="stat-item"><span class="val" id="statPSNR">—</span><span class="lbl">PSNR</span></div>
+    </div>
+  </section>
+
+  <section class="section" id="explainSection">
+    <h2><i class="ti ti-bulb"></i> 分形压缩为什么"凉了"</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>拼贴定理</h4>
+        <p>一张图片可以用"自己缩小的副本"拼贴出来。每个小块在图中找一块比它大的相似区域，记录位置和变换。数学上这叫 PIFS（分区迭代函数系统）。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>解码比编码快一万倍</h4>
+        <p>编码要穷举所有可能的匹配，跑几个小时甚至几天。解码只需要迭代应用变换——任意一张噪音图，10 步之内收敛到原图附近。但用户等不了编码。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>JPEG 赢了</h4>
+        <p>JPEG 用 DCT 变换，几秒编完、质量可接受、硬件支持广泛。分形压缩号称 100:1，实际 20:1 就比 JPEG 好不了多少，编码时间却长 1000 倍。这就是"技术很好，但没赶上时机"的典型故事。</p>
+      </div>
+    </div>
+
+    <div class="insight-box" style="margin-top:20px;">
+      <i class="ti ti-alert-triangle" style="color:#ffd700;margin-right:8px;"></i>
+      <span style="color:#c0c0c0;font-size:0.9rem;">
+        分形压缩的"分辨率无关"特性仍然领先：解码时可以用任意尺寸输出，图像细节不会像素化。但 JPEG 在 1992 年就抢占了市场，分形压缩只能在学术论文里"虽败犹荣"。
+      </span>
+    </div>
+  </section>
+
+  <section class="section" id="collageSection" style="display:none;">
+    <h2><i class="ti ti-grid-pattern"></i> 拼贴可视化</h2>
+    <p class="step-hint">每个颜色块代表一个范围块，箭头指向它"借来"的域块位置。颜色越亮表示匹配越好。</p>
+    <div class="collage-wrap">
+      <canvas id="collageCanvas"></canvas>
+    </div>
+  </section>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

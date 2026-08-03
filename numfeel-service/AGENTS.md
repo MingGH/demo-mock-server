@@ -55,3 +55,24 @@
 
 - **所有 public 方法**必须写 Javadoc，包含方法说明、参数和返回值描述。
 - 使用 `/** ... */` 风格。保持简洁但信息充分。
+
+## 通用行为埋点（demo_events）
+
+- `demo_events` 是所有 demo 共用的一张事件表（`EventController` / `EventCollectService` /
+  `EventSummaryService`），定位是给"写数据分析文章"用的过程数据采集设施，不是监控系统。
+  **新 demo 优先接入这套通用埋点，不要再新建 submit/stats 表和接口**，除非涉及排行榜这类
+  必须服务端权威重算的场景（如 `WealthButtonService` 的 PoW + 回放校验）。
+- 公开面只有两个接口：`POST /events/collect`（批量上报，坏数据按条丢弃不影响整批）、
+  `GET /events/summary?demo=`（聚合摘要，Caffeine 60s 缓存）。**不做任何返回原始事件行、
+  可传 SQL 片段或任意字段的查询接口**——深度分析走直连数据库跑 SQL（见
+  `docs/analytics/`），这是刻意的隐私与安全边界，新增功能时不要突破它。
+- `props` 是原生 `JSON` 列：r2dbc-mysql 把 `MySqlType.JSON` 标记为 string 类型，
+  编解码走 `StringCodec`，因此 `EventEntities.DemoEvent.props` 映射成 Java `String`
+  即可，应用层用 Jackson 做 `Map<String,Object>` 与字符串之间的转换，不需要额外的
+  类型处理器；查询时用 `JSON_EXTRACT` / `->>` 语法。
+- 新增限流规则统一加在 `RateLimitWebFilter` 构造器的 `rules.add(...)` 里，
+  不要在 `EventController` 里内联限流逻辑（这是全项目的通用约束，不只是埋点特有）。
+  `/events/collect` 当前规则是 30 次/分钟/IP（每批最多 100 条事件，
+  上限约 3000 事件/分钟/IP）。
+- `ip_hash` 只用于短期防刷，不落原始 IP：`SHA-256(ip + 当日UTC日期 + 配置盐)` 取前 16 位，
+  盐从 `numfeel.events.salt` 读取（环境变量注入，不要硬编码真实盐值）。

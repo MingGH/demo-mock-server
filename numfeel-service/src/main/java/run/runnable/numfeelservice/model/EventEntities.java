@@ -17,8 +17,9 @@ public final class EventEntities {
     /**
      * 通用行为埋点事件表映射。
      * <p>
-     * {@code props} 本应使用 JSON 列，但项目内 r2dbc-mysql 绑定 JSON 类型缺乏先例，
-     * 这里降级为 TEXT，由 service 层负责 Jackson 序列化/反序列化。
+     * {@code props} 对应表中的 JSON 列。r2dbc-mysql 把 {@code MySqlType.JSON} 标记为
+     * string 类型，读写都走 {@code StringCodec}，因此这里映射为 Java {@code String}
+     * 即可，service 层负责 Jackson 序列化/反序列化，不需要额外的类型处理器。
      */
     @Table("demo_events")
     public record DemoEvent(

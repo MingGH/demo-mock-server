@@ -110,6 +110,36 @@ if (typeof module !== 'undefined' && module.exports) {
 - **统一响应格式**：成功 `{"status":200,"data":...}`，失败 `{"status":xxx,"message":"..."}`。前端取数据前先判断 `status === 200` 再读 `data`。
 - 写接口（各种 `/submit`）有 IP 限流，需处理 **429** 响应（提示用户稍后再试，不要无限重试）。
 
+## 如何给新 demo 加埋点
+
+**以后新 demo 优先用通用埋点（`components/track.js`，`window.NFTrack`），不要再为每个 demo
+新建 submit/stats 表和接口**，除非需要排行榜这类必须服务端权威校验的功能（如需要防作弊重算、
+需要展示"前 10 名"这种强一致排名）。通用埋点是给"写数据分析文章"用的过程数据，
+不是给每个 demo 单独造一套计数器。
+
+用法：
+
+```js
+NFTrack.track('press', { idx: 1, win: true, wealth: 899995 });     // 记一个事件
+NFTrack.trackOnce('session_start', { mode: 'standard' });          // 整个会话只记一次
+```
+
+- **slug 自动推导**：`window.NFTrack` 从 `location.pathname` 自动解析 demo slug
+  （`/pages/<slug>/` 或 `/pages/<slug>.html`），页面不需要手动声明，也不需要引入额外脚本，
+  `components/header.js` 已经全局注入了 `track.js`。
+- **props 只能放 number / boolean / 短字符串**（≤64 字符），最多 20 个 key。
+  嵌套对象、数组会被静默丢弃，不会报错也不会中断上报。
+- **绝对不能把用户输入的任何文本放进 props**（昵称、输入框内容等），这属于埋点隐私红线，
+  不是格式限制。
+- 高频事件（比如每次点击都触发的 `press`）**不要**加进 `window.NF_TRACK_UMAMI_MIRROR` 白名单，
+  只有低频里程碑事件（`session_end`、`bankrupt` 这类）才适合镜像到 umami。
+- **先想清楚要回答什么问题，再定事件和字段**。不要先把能拿到的字段都塞进去，
+  而是反过来想："如果我要写一篇分析这个 demo 的文章，需要区分哪些人群、算哪些分布？"
+  然后倒推需要哪些事件、哪些字段（可参考 `docs/analytics/wealth-button.sql` 里每条 SQL
+  开头的注释，那些就是从"要回答的问题"倒推出的事件设计）。
+- 埋点调用必须是安全的：`NFTrack` 未加载、上报失败都不能抛异常或阻塞页面，
+  SDK 内部已经做了 try/catch 兜底，业务代码调用时不需要再包一层。
+
 ## Git 提交规范
 
 - 使用 **Conventional Commits**：`feat: 新增xxx演示页面` / `fix: 修复xxx` / `chore: 更新首页卡片数据`。`docs:` 前缀仅用于项目文档（README 等）。

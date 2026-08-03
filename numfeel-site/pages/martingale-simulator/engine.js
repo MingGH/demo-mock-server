@@ -46,12 +46,12 @@ function checkGameStatus(state) {
 
 /**
  * 计算玩家赢钱后庄家应付金额
- * 轮盘赌红黑：下注1元，赢拿回2元（净赚1元）
+ * 轮盘赌红黑：1:1赔率，赢了净赚等额下注
  * @param {number} bet - 下注额
- * @returns {number} 庄家应付
+ * @returns {number} 庄家应付（净赔付）
  */
 function calcDealerPayout(bet) {
-  return bet * 2;
+  return bet;
 }
 
 /**
@@ -97,7 +97,7 @@ function playRound(state) {
   var payout = 0;
 
   if (won) {
-    payout = s.currentBet * 2;
+    payout = s.currentBet;
     s.playerMoney += payout;
     s.dealerMoney -= payout;
     s.wins++;

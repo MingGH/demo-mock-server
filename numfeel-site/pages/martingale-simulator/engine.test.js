@@ -47,8 +47,8 @@ assert(engine.checkGameStatus({ playerMoney: 10000, dealerMoney: 1000, baseBet: 
 assert(engine.checkGameStatus({ playerMoney: 100, dealerMoney: 1000, baseBet: 10, currentBet: 500, tableLimit: 5000 }) === 'player_bankrupt', '玩家钱不够当前下注');
 
 console.log('\n=== calcDealerPayout ===');
-assert(engine.calcDealerPayout(10) === 20, '下注10元，庄家应付20元');
-assert(engine.calcDealerPayout(100) === 200, '下注100元，庄家应付200元');
+assert(engine.calcDealerPayout(10) === 10, '下注10元，庄家应付10元（净赔付）');
+assert(engine.calcDealerPayout(100) === 100, '下注100元，庄家应付100元');
 assert(engine.calcDealerPayout(0) === 0, '下注0元，应付0元');
 
 console.log('\n=== createInitialState ===');
@@ -197,8 +197,8 @@ var bankruptState = engine.createInitialState({ playerMoney: 5, dealerMoney: 100
 assert(engine.checkGameStatus(bankruptState) === 'player_bankrupt', '玩家钱不够baseBet时破产');
 
 console.log('\n=== 边界情况：庄家破产 ===');
-var beatDealerState = engine.createInitialState({ playerMoney: 100000, dealerMoney: 15, baseBet: 10, tableLimit: 5000, winRate: 1 });
-// 玩一局，肯定赢，庄家破产
+var beatDealerState = engine.createInitialState({ playerMoney: 100000, dealerMoney: 5, baseBet: 10, tableLimit: 5000, winRate: 1 });
+// 玩一局，肯定赢，庄家资金不足赔付，破产
 var roundResult = engine.playRound(beatDealerState);
 assert(roundResult.status === 'dealer_bankrupt' && roundResult.state.dealerMoney === 0, '庄家被逼空');
 

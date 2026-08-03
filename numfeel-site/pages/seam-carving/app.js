@@ -36,6 +36,7 @@
     DOM.fileInput = document.getElementById('fileInput');
     DOM.useDefaultBtn = document.getElementById('useDefaultBtn');
     DOM.usePortraitBtn = document.getElementById('usePortraitBtn');
+    DOM.useVogueBtn = document.getElementById('useVogueBtn');
     DOM.originalCanvas = document.getElementById('originalCanvas');
     DOM.resultCanvas = document.getElementById('resultCanvas');
     DOM.resultLabel = document.getElementById('resultLabel');
@@ -101,6 +102,10 @@
 
     DOM.usePortraitBtn.addEventListener('click', function () {
       loadPortraitImage();
+    });
+
+    DOM.useVogueBtn.addEventListener('click', function () {
+      loadVogueImage();
     });
 
     DOM.seamCountSlider.addEventListener('input', function () {
@@ -187,6 +192,11 @@
     loadImageToCanvas(src);
   }
 
+  function loadVogueImage() {
+    var src = 'images/vogue-sample.jpg';
+    loadImageToCanvas(src);
+  }
+
   function loadImageToCanvas(src) {
     var img = new Image();
     img.crossOrigin = 'anonymous';
@@ -229,7 +239,7 @@
 
       displayOriginal();
       updateTargetWidth();
-      DOM.resultLabel.textContent = '等待雕刻...';
+      DOM.resultLabel.textContent = '等待处理...';
       renderEmptyResult();
       resetToggleStates();
       DOM.step3.style.display = 'none';
@@ -266,7 +276,7 @@
     ctx.fillStyle = '#555';
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('点击「开始雕刻」查看效果', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('点击「开始处理」查看效果', canvas.width / 2, canvas.height / 2);
   }
 
   function updateTargetWidth() {
@@ -337,7 +347,7 @@
       ctx.textAlign = 'right';
       ctx.fillText('缩窄中 ' + removedPct + '%', currentW - 6, currentH - 6);
 
-      DOM.resultLabel.textContent = '雕刻中... (' + (i + 1) + '/' + total + ', ' + currentW + '×' + currentH + ')';
+      DOM.resultLabel.textContent = '处理中... (' + (i + 1) + '/' + total + ', ' + currentW + '×' + currentH + ')';
 
       setTimeout(function () {
         carveStep(i + 1, total);
@@ -455,7 +465,7 @@
       ctx.textAlign = 'right';
       ctx.fillText('缩窄 ' + removedPct + '%', canvas.width - 6, canvas.height - 6);
 
-      DOM.resultLabel.textContent = '雕刻结果 (' + state.carvedW + ' × ' + state.carvedH + ')';
+      DOM.resultLabel.textContent = '处理结果 (' + state.carvedW + ' × ' + state.carvedH + ')';
     } else {
       canvas.width = state.imgWidth;
       canvas.height = state.imgHeight;
@@ -495,7 +505,7 @@
     state.mode = 'normal';
     resetToggleStates();
 
-    DOM.resultLabel.textContent = '等待雕刻...';
+    DOM.resultLabel.textContent = '等待处理...';
     DOM.step3.style.display = 'none';
     DOM.factBox.style.display = 'none';
     renderEmptyResult();

@@ -437,8 +437,9 @@ CREATE TABLE IF NOT EXISTS iq_matrix_leaderboard (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 通用行为埋点事件表（所有 demo 共用，不按 demo 分表）
--- props 本应使用 JSON 列，但项目内现有 r2dbc-mysql（1.4.2）绑定 JSON 类型缺乏先例验证，
--- 为避免引入风险，这里降级为 TEXT，写入/读取时在应用层手动做 Jackson 序列化。
+-- props 使用原生 JSON 列：已反编译验证 io.asyncer:r2dbc-mysql:1.4.2 的 MySqlType.JSON
+-- 被标记为 isString()=true，走 StringCodec 编解码，等价于把 JSON 列当字符串读写，
+-- 应用层用 Jackson 做 String <-> Map 转换即可，无需额外类型处理器。
 -- 列名用 event_name 而不是 event，因为 EVENT 是 MySQL 关键字，避免以后写裸 SQL 踩坑。
 CREATE TABLE IF NOT EXISTS demo_events (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -446,7 +447,7 @@ CREATE TABLE IF NOT EXISTS demo_events (
     event_name  VARCHAR(48) NOT NULL COMMENT '事件名，如 press / bankrupt / session_end',
     session_id  VARCHAR(32) NOT NULL COMMENT '客户端生成的会话 ID（sessionStorage，非持久标识）',
     seq         INT         NOT NULL DEFAULT 0 COMMENT '会话内事件序号，从 1 递增',
-    props       TEXT        NULL     COMMENT '事件属性 JSON 字符串，扁平结构，仅数值/布尔/短枚举',
+    props       JSON        NULL     COMMENT '事件属性，扁平结构，仅数值/布尔/短枚举',
     client_ts   BIGINT      NOT NULL DEFAULT 0 COMMENT '客户端事件发生时间（ms）',
     created_at  BIGINT      NOT NULL COMMENT '服务端入库时间（ms）',
     ip_hash     VARCHAR(16) NOT NULL DEFAULT '' COMMENT 'SHA-256(ip + 当日盐) 前 16 位，仅用于防刷',

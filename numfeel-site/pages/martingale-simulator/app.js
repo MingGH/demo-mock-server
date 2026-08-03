@@ -68,7 +68,7 @@ function doBet() {
   if (result.won) {
     resultText.textContent = '赢了！+' + formatMoney(result.payout);
     resultText.className = 'result-text win';
-    resultDetail.textContent = '下注 ' + formatMoney(state.history[state.history.length - 1].bet) + '，拿回 ' + formatMoney(result.payout);
+    resultDetail.textContent = '下注 ' + formatMoney(state.history[state.history.length - 1].bet) + '，净赚 ' + formatMoney(result.payout);
     resultEl.className = 'result-display win';
     gsap.fromTo(resultEl, { scale: 0.9, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(1.7)' });
   } else {

@@ -41,13 +41,14 @@
     <div class="btn-row" style="margin-top:12px;justify-content:center;">
       <button class="btn btn-secondary" id="useDefaultBtn"><i class="ti ti-image"></i> 使用默认示例图</button>
       <button class="btn btn-secondary" id="usePortraitBtn"><i class="ti ti-user"></i> 使用人像示例</button>
+      <button class="btn btn-secondary" id="useVogueBtn"><i class="ti ti-diamond"></i> 时尚杂志封面</button>
     </div>
   </section>
 
   <section class="section" id="step2" style="display:none;">
     <div class="step-label">步骤 2 / 3</div>
     <h2><i class="ti ti-adjustments"></i> 调整参数</h2>
-    <p class="step-hint">拖动滑块选择要移除的接缝数量，然后点击"开始雕刻"。</p>
+    <p class="step-hint">拖动滑块选择要移除的接缝数量，然后点击"开始处理"。</p>
 
     <div class="canvas-area" id="canvasArea">
       <div class="canvas-pair">
@@ -56,7 +57,7 @@
           <canvas id="originalCanvas"></canvas>
         </div>
         <div class="canvas-box">
-          <div class="canvas-label" id="resultLabel">等待雕刻...</div>
+          <div class="canvas-label" id="resultLabel">等待处理...</div>
           <canvas id="resultCanvas"></canvas>
         </div>
       </div>
@@ -90,7 +91,7 @@
       </div>
 
       <div class="btn-row" style="justify-content:center;margin-top:16px;">
-        <button class="btn btn-primary" id="carveBtn"><i class="ti ti-player-play"></i> 开始雕刻</button>
+        <button class="btn btn-primary" id="carveBtn"><i class="ti ti-player-play"></i> 开始处理</button>
         <button class="btn btn-secondary" id="resetBtn"><i class="ti ti-refresh"></i> 重置</button>
         <button class="btn btn-secondary" id="downloadBtn"><i class="ti ti-download"></i> 下载结果</button>
         <button class="btn btn-secondary" id="surpriseBtn"><i class="ti ti-dice-5"></i> 惊喜一下</button>
@@ -107,11 +108,11 @@
 
   <section class="section" id="step3" style="display:none;">
     <div class="step-label">完成</div>
-    <h2><i class="ti ti-report-analytics"></i> 雕刻结果</h2>
+    <h2><i class="ti ti-report-analytics"></i> 处理结果</h2>
 
     <div class="stats-row">
       <div class="stat-item"><span class="val" id="statOrigSize">—</span><span class="lbl">原图尺寸</span></div>
-      <div class="stat-item"><span class="val" id="statNewSize">—</span><span class="lbl">雕刻后尺寸</span></div>
+      <div class="stat-item"><span class="val" id="statNewSize">—</span><span class="lbl">处理后尺寸</span></div>
       <div class="stat-item"><span class="val" id="statRemoved">—</span><span class="lbl">移除像素</span></div>
       <div class="stat-item"><span class="val" id="statTime">—</span><span class="lbl">处理耗时</span></div>
     </div>

@@ -140,6 +140,21 @@ function replayStoredGame(initial, roundHistory, fee) {
   };
 }
 
+function reachesMultipleMilestone(currentWealth, initialWealthValue, multiplier) {
+  return currentWealth >= initialWealthValue * multiplier;
+}
+
+function reachesBillionaireMilestone(currentWealth) {
+  return currentWealth >= 1e8;
+}
+
+function computeUpdatedPeak(currentPeakWealth, currentPeakIndex, currentWealth, currentPressIndex) {
+  if (currentWealth > currentPeakWealth) {
+    return { peakWealth: currentWealth, peakPressIndex: currentPressIndex };
+  }
+  return { peakWealth: currentPeakWealth, peakPressIndex: currentPeakIndex };
+}
+
 function runBatchSimulation(people, presses, initial) {
   const results = [];
   for (let i = 0; i < people; i++) {
@@ -227,6 +242,25 @@ assert(sim.bankruptCount > 300, '破产率应较高（几何期望<1决定）: �
 // 平均值应远高于中位数（少数暴富拉高均值）
 assert(sim.avg > sim.median, '均值 > 中位数（右偏分布）');
 assert(sim.median < 100000, '中位数低于初始资金');
+
+console.log('\n=== 埋点辅助纯函数 ===');
+assert(reachesMultipleMilestone(1000000, 100000, 10) === true, '资产达到10倍应命中x10里程碑');
+assert(reachesMultipleMilestone(999999, 100000, 10) === false, '资产未达10倍不应命中x10里程碑');
+assert(reachesMultipleMilestone(10000000, 100000, 100) === true, '资产达到100倍应命中x100里程碑');
+assert(reachesBillionaireMilestone(1e8) === true, '资产恰好1亿应命中亿万富翁里程碑');
+assert(reachesBillionaireMilestone(1e8 - 1) === false, '资产差一点到1亿不应命中里程碑');
+assert(reachesBillionaireMilestone(2e8) === true, '资产超过1亿应命中里程碑');
+
+{
+  const p1 = computeUpdatedPeak(100000, 0, 150000, 1);
+  assert(p1.peakWealth === 150000 && p1.peakPressIndex === 1, '新资产超过峰值时刷新峰值与索引');
+
+  const p2 = computeUpdatedPeak(150000, 1, 90000, 2);
+  assert(p2.peakWealth === 150000 && p2.peakPressIndex === 1, '新资产未超过峰值时保持原峰值不变');
+
+  const p3 = computeUpdatedPeak(100000, 0, 100000, 1);
+  assert(p3.peakWealth === 100000 && p3.peakPressIndex === 0, '资产相等时不刷新峰值（严格大于才刷新）');
+}
 
 console.log('\n=== 边界情况 ===');
 // 连赢（无手续费，纯乘法验证）

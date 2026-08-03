@@ -62,6 +62,8 @@
 | 游戏统计 | `POST /xxx/submit` `GET /xxx/stats` | 21 个游戏/实验的统计接口 |
 | 排行榜 | `GET /xxx/leaderboard` | 记忆力挑战、推理、时间感知、级联故障 |
 | 热门榜 | `GET /leaderboard` | 全站 Demo 热门榜（基于 Umami 访问量，近 24 小时 / 近 7 天 / 近 30 天 / 历史总榜，每小时刷新） |
+| 通用行为埋点 | `POST /events/collect` | 批量上报行为事件，所有 demo 共用（不再需要为新 demo 新建 submit/stats 表） |
+| | `GET /events/summary?demo=` | 查询指定 demo 的聚合摘要（会话数、事件总数、按事件名分组计数） |
 
 ## 本地开发
 

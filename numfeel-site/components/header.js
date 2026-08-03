@@ -82,6 +82,11 @@
       src: 'https://umami.runnable.run/script.js',
       dataset: { websiteId: '60f1c767-3f2a-4be2-ad53-f9e4e1372785' }
     });
+    // 通用行为埋点 SDK（NFTrack）；demo 页面加载后按需调用 window.NFTrack.track(...)
+    ensureScript('data-track-script', {
+      defer: true,
+      src: prefix + 'components/track.js'
+    });
     ensureScript('data-ads-script', {
       async: true,
       src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3694254708490002',

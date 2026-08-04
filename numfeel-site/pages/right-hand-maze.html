@@ -478,6 +478,7 @@
       ? '这个迷宫对初始朝向不敏感，四个方向结果一致。'
       : '这个迷宫对初始朝向敏感，不同方向会出现不同结果。';
     document.getElementById('directionEffect').textContent = `${sensitivity} 当前统计：${summary}`;
+    nfTrack('run_single', { maze: mazeId, dir: initialDir, success: right.success ? 1 : 0 });
   }
 
   function updateBatchChart(summary) {
@@ -527,11 +528,13 @@
     document.getElementById('batchShortestAvg').textContent = String(summary.avgShortestDistance);
     document.getElementById('batchInsight').textContent = `在 ${summary.total} 次随机试验里，出口可达率是 ${reachableRate}%，但右手法成功率只有 ${successRate}%。大部分失败来自绕圈（${loopRate}%）。口诀能用，但不是万能钥匙。`;
     updateBatchChart(summary);
+    nfTrack('run_batch', { trials: trials, successRate: Number(successRate) });
   }
 
   runBtn.addEventListener('click', runSingle);
   toggleShortestBtn.addEventListener('click', () => {
     showShortestPath = !showShortestPath;
+    nfTrack('toggle_shortest', { show: showShortestPath ? 1 : 0 });
     if (lastSingle) {
       drawMaze(lastSingle.maze, lastSingle.right, lastSingle.shortest);
     }
@@ -543,6 +546,7 @@
   });
   replayPlayBtn.addEventListener('click', () => {
     if (!lastSingle) return;
+    nfTrack('replay', {});
     if (replayTimer) {
       clearReplayTimer();
       replayPlayBtn.textContent = '播放';
@@ -575,6 +579,18 @@
   buildMazeOptions();
   runSingle();
   runBatch();
+
+  // ── 行为埋点（NFTrack，见 components/track.js）──
+  // 事件：session_start / run_single / run_batch / toggle_shortest / replay / session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
 </script>
 </body>
 </html>

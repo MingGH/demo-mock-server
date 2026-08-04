@@ -347,6 +347,18 @@
   <div class="toast" id="toast">链接已复制到剪贴板</div>
 
   <script>
+    // ── 行为埋点（NFTrack，见 components/track.js）──
+    // 事件：session_start / sample / embed / extract / attack / download / session_end
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+    (function () {
+      try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+      window.addEventListener('pagehide', function () {
+        nfTrack('session_end', { reason: 'leave' }, { force: true });
+      });
+    })();
+
     document.addEventListener('DOMContentLoaded', () => {
       // 点击上传区域触发文件选择
       document.getElementById('spatialUpload').addEventListener('click', (e) => {
@@ -355,6 +367,24 @@
       document.getElementById('freqUpload').addEventListener('click', (e) => {
         if (e.target.tagName !== 'INPUT') document.getElementById('freqFileInput').click();
       });
+      // 操作按钮事件委托埋点（捕获阶段，先于 onclick 触发）
+      document.body.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('button') : null;
+        if (!btn) return;
+        var fn = (btn.getAttribute('onclick') || '').split('(')[0];
+        var map = {
+          loadSampleSpatial: ['sample', 'spatial'],
+          embedSpatial:      ['embed', 'spatial'],
+          extractSpatial:    ['extract', 'spatial'],
+          attackSpatial:     ['attack', 'spatial'],
+          loadSampleFrequency: ['sample', 'frequency'],
+          embedFrequency:      ['embed', 'frequency'],
+          extractFrequency:    ['extract', 'frequency'],
+          attackFrequency:     ['attack', 'frequency'],
+          downloadCanvas:      ['download', '']
+        };
+        if (map[fn]) nfTrack(map[fn][0], { mode: map[fn][1] });
+      }, true);
       // 初始化拖拽和文件上传
       initSpatial();
       initFrequency();

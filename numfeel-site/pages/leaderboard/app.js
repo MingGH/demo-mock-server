@@ -17,6 +17,18 @@
     range: 'last24Hours'
   };
 
+  // ── 行为埋点（NFTrack，见 components/track.js）──
+  // 事件：session_start / range_switch / leaderboard_load / session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
+
   document.addEventListener('DOMContentLoaded', boot);
 
   function boot() {
@@ -26,8 +38,10 @@
         state.demoIndex = window.LeaderboardLogic.buildDemoIndex(results[0]);
         state.data = results[1];
         render();
+        nfTrack('leaderboard_load', { ok: 1 });
       })
       .catch(function() {
+        nfTrack('leaderboard_load', { ok: 0 });
         showError();
       });
   }
@@ -54,6 +68,7 @@
       var range = btn.getAttribute('data-range');
       if (!range || range === state.range) return;
       state.range = range;
+      nfTrack('range_switch', { range: range });
       Array.prototype.forEach.call(tabs.querySelectorAll('.range-tab'), function(t) {
         t.classList.toggle('active', t === btn);
       });

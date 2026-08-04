@@ -136,7 +136,9 @@ function toggleMultiplier() {
 }
 // ========== 行为埋点（通用埋点 SDK，见 components/track.js） ==========
 // 只镜像这两个低频收尾事件到 umami；press / session_hidden / milestone 一律不镜像。
-window.NF_TRACK_UMAMI_MIRROR = ['bankrupt', 'session_end'];
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['bankrupt', 'session_end'];
+}
 // 这里只补充「过程」埋点，与上面 incrStat() 驱动的三个历史全球计数器并行存在，
 // 不修改、不依赖它们。埋点失败或 NFTrack 未加载都不能影响游戏本身。
 let peakWealth = initialWealth;
@@ -1114,10 +1116,34 @@ function applySkin(id) {
 }
 
 // ========== Init ==========
-initSkinPicker();
-updateDisplay();
-loadGlobalStats();
-loadLeaderboard();
-initParticles();
-registerTrackLeaveHandler();
-setInterval(loadGlobalStats, 3000);
+// 仅在浏览器环境启动；Node require（单元测试）时跳过所有 DOM 副作用
+if (typeof document !== 'undefined') {
+  initSkinPicker();
+  updateDisplay();
+  loadGlobalStats();
+  loadLeaderboard();
+  initParticles();
+  registerTrackLeaveHandler();
+  setInterval(loadGlobalStats, 3000);
+}
+
+// 条件导出：纯函数既能被浏览器 <script> 直接使用，也能被 Node 测试 require 真实现。
+// 注意：不要在这里导出任何依赖 DOM 的函数（pressButton / updateDisplay 等）。
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    shouldResetRoundState: shouldResetRoundState,
+    reachesMultipleMilestone: reachesMultipleMilestone,
+    reachesBillionaireMilestone: reachesBillionaireMilestone,
+    computeUpdatedPeak: computeUpdatedPeak,
+    getChineseLargeUnit: getChineseLargeUnit,
+    formatLargeChineseNumber: formatLargeChineseNumber,
+    formatPowerHint: formatPowerHint,
+    toSuperscript: toSuperscript,
+    formatScientific: formatScientific,
+    formatMoney: formatMoney,
+    formatReturnRate: formatReturnRate,
+    formatNumber: formatNumber,
+    buildChallengePayload: buildChallengePayload,
+    replayStoredGame: replayStoredGame
+  };
+}

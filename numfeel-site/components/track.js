@@ -392,18 +392,8 @@
       return;
     }
 
-    try {
-      if (global.navigator && typeof global.navigator.sendBeacon === 'function') {
-        var blob = new Blob([body], { type: 'application/json' });
-        var ok = global.navigator.sendBeacon(COLLECT_ENDPOINT, blob);
-        if (ok) {
-          return;
-        }
-      }
-    } catch (e) {
-      // 降级到 fetch
-    }
-
+    // 优先用 fetch(keepalive)：跨域 + application/json 需要 CORS 预检，fetch 会正常发起预检；
+    // sendBeacon 不发起预检，跨域请求会被静默丢弃却仍返回 true，导致数据丢失（见分析）。
     try {
       if (typeof global.fetch === 'function') {
         global.fetch(COLLECT_ENDPOINT, {
@@ -412,6 +402,17 @@
           body: body,
           keepalive: true
         }).catch(function () {});
+        return;
+      }
+    } catch (e) {
+      // 降级到 sendBeacon
+    }
+
+    // 仅当浏览器不支持 fetch 时才退回 sendBeacon（旧浏览器最后兜底）
+    try {
+      if (global.navigator && typeof global.navigator.sendBeacon === 'function') {
+        var blob = new Blob([body], { type: 'application/json' });
+        global.navigator.sendBeacon(COLLECT_ENDPOINT, blob);
       }
     } catch (e) {
       // 网络失败静默丢弃，不重试

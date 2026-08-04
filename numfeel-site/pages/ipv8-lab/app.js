@@ -8,6 +8,51 @@
 
   let currentStack = 'ipv4-app';
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js） ──
+  // 事件清单：
+  //   session_start (trackOnce) 记录一次会话及初始协议栈，回答「多少人体验、默认栈分布」
+  //   stack_change  用户切换协议栈，回答「用户倾向探索哪个栈的实现」
+  //   toggle_change 用户切换连接流程中的开关，回答「哪些配置最常被打开」
+  //   session_hidden (force) 切后台快照，回答「会话时长分布」
+  //   session_end    (force) 真正离页 pagehide，回答「单次会话时长」
+  // 仅低频收尾事件镜像到 umami。
+  if (typeof window !== 'undefined') {
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  }
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {
+      // 埋点绝不能影响主流程
+    }
+  }
+
+  /** 同名事件整个会话只记一次（对应 SDK 的 trackOnce）。 */
+  function nfTrackOnce(name, props) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+        window.NFTrack.trackOnce(name, props);
+      }
+    } catch (e) {
+      // 埋点绝不能影响主流程
+    }
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') {
+        nfTrack('session_hidden', { reason: 'hidden', stack: currentStack }, { force: true });
+      }
+    });
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave', stack: currentStack }, { force: true });
+    });
+  }
+
   function init() {
     renderFacts();
     renderProtocols();
@@ -25,7 +70,10 @@
 
     ['dhcpToggle', 'tokenToggle', 'dnsToggle', 'whoisToggle', 'literalIpToggle']
       .forEach(function(id) {
-        document.getElementById(id).addEventListener('change', updateFlow);
+        document.getElementById(id).addEventListener('change', function() {
+          nfTrack('toggle_change', { id: id, on: document.getElementById(id).checked });
+          updateFlow();
+        });
       });
 
     document.querySelectorAll('.stack-btn').forEach(function(button) {
@@ -34,6 +82,7 @@
         document.querySelectorAll('.stack-btn').forEach(function(item) {
           item.classList.toggle('active', item === button);
         });
+        nfTrack('stack_change', { stack: currentStack });
         updateFlow();
       });
     });
@@ -186,4 +235,6 @@
   }
 
   init();
+  nfTrackOnce('session_start', { stack: currentStack });
+  registerTrackLeaveHandler();
 })();

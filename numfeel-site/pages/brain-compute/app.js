@@ -20,6 +20,35 @@
     ballScore: null,
   };
 
+  // ══════════════════════════════════════════════════════════
+  // 行为埋点（NFTrack，见 components/track.js）
+  // 事件清单：
+  //   session_start   → 会话开始（trackOnce）
+  //   math_start / math_giveup / math_finish → 心算环节
+  //   reaction_finish → 反应测试完成 { avgMs }
+  //   cat_finish      → 找猫完成 { ms }
+  //   ball_finish     → 接球完成 { score }
+  //   score_submit    → 提交排行榜
+  //   session_end     → 离页（pagehide, force）
+  // ══════════════════════════════════════════════════════════
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  var trackSessionStarted = false;
+  function trackSessionStart() {
+    if (trackSessionStarted) return;
+    trackSessionStarted = true;
+    nfTrack('session_start', {});
+  }
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+  trackSessionStart();
+
   // 轻量动画封装：没有 GSAP 时降级为直接设值
   function pop(el) {
     if (!el) return;

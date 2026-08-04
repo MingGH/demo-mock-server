@@ -7,6 +7,33 @@ let weightChart, entropyChart, pieChart;
 let autoEntropyChart, greedyChart, exploreChart;
 const MAX_ROUNDS = 10;
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start (trackOnce) 页面加载
+//   feed_click    点击推荐内容，回答「用户偏好哪类内容」
+//   feed_result   10 轮结束，回答「用户测出的信息熵下降」
+//   auto_sim      自动模拟 100 轮
+//   run_compare   贪心 vs 探索对比
+//   session_end   (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['feed_result', 'session_end'];
+}
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+nfTrack('session_start', {});
+registerTrackLeaveHandler();
+
 // ── 初始化 ──
 function init() {
   engine = new RecommendEngine({ epsilon: 0, feedSize: 6 });
@@ -33,6 +60,7 @@ function renderFeed() {
 // ── 处理用户点击 ──
 function handleClick(catId) {
   engine.recordClick(catId);
+  nfTrack('feed_click', { catId: catId, round: engine.round });
 
   // 更新 UI
   document.getElementById('roundNum').textContent = Math.min(engine.round + 1, MAX_ROUNDS);
@@ -196,6 +224,13 @@ function showResult() {
   document.getElementById('resultSection').style.display = 'block';
   document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
 
+  // 埋点：记录 10 轮结果（仅数值）
+  nfTrack('feed_result', {
+    entropyDrop: parseFloat(summary.entropyDrop),
+    dominantPct: parseFloat(summary.dominantPercent),
+    convergeRound: summary.convergeRound
+  }, { force: true });
+
   // 提交结果到后端
   submitResult();
 }
@@ -250,6 +285,7 @@ function runAutoSim() {
   const result = autoSimulate(100, 0);
   const section = document.getElementById('autoSimSection');
   section.style.display = 'block';
+  nfTrack('auto_sim', {});
 
   // 熵曲线
   const ctx = document.getElementById('autoEntropyChart').getContext('2d');
@@ -327,6 +363,7 @@ function runAutoSim() {
 function runCompare() {
   document.getElementById('compareBtn').style.display = 'none';
   document.getElementById('compareGrid').style.display = 'grid';
+  nfTrack('run_compare', {});
 
   const rounds = 50;
   const greedyResult = autoSimulate(rounds, 0);

@@ -483,6 +483,31 @@ let simDay = 0;
 // (1 - p)^365 = 0.08 => p ≈ 0.00693
 const DAILY_RELAPSE_RATE = 0.00693;
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start   (trackOnce) 页面加载
+//   group_sim       100人模拟，回答「用户是否体验集体复赌演示」
+//   relapse_result  个人挑战结果，{success, day} 回答「用户坚持到第几天」
+//   session_end     (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['relapse_result', 'session_end'];
+}
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+nfTrack('session_start', {});
+registerTrackLeaveHandler();
+
 function initPeopleGrid() {
   const grid = document.getElementById('peopleGrid');
   grid.innerHTML = '';
@@ -502,6 +527,7 @@ function startSimulation() {
   if (simRunning) return;
   simRunning = true;
   document.getElementById('startBtn').disabled = true;
+  nfTrack('group_sim', {});
   
   simDay = 0;
   initPeopleGrid();
@@ -605,6 +631,8 @@ function resetChallenge() {
 }
 
 function showResult(success, day) {
+  // 埋点：记录个人挑战结果（仅布尔/数值）
+  nfTrack('relapse_result', { success: success, day: day }, { force: true });
   const modal = document.getElementById('resultModal');
   const icon = document.getElementById('resultIcon');
   const title = document.getElementById('resultTitle');

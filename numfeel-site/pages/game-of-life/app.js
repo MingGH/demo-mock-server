@@ -35,6 +35,33 @@ var offsetX = 0;
 var offsetY = 0;
 var popChart = null;
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start (trackOnce) 页面加载
+//   play          开始/暂停，回答「用户是否运行演化」
+//   step          单步演化
+//   pattern       放置图案，回答「用户最常玩哪种图案」
+//   random        随机填充
+//   session_end   (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+nfTrack('session_start', {});
+registerTrackLeaveHandler();
+
 var ALIVE_COLOR = '#ffd700';
 var DEAD_COLOR = 'rgba(15, 15, 35, 0.95)';
 var GRID_COLOR = 'rgba(255,255,255,0.06)';
@@ -245,6 +272,7 @@ function pause() {
 
 function togglePlay() {
   if (running) pause(); else start();
+  nfTrack('play', { running: running });
 }
 
 function reset() {
@@ -266,6 +294,7 @@ function placePattern() {
   updateStats();
   updateChart();
   submitPattern(key);
+  nfTrack('pattern', { pattern: key });
 }
 
 canvas.addEventListener('click', function (e) {
@@ -351,6 +380,7 @@ btnStep.addEventListener('click', function () {
   draw();
   updateStats();
   updateChart();
+  nfTrack('step', {});
 });
 btnClear.addEventListener('click', function () {
   pause();
@@ -367,6 +397,7 @@ btnRandom.addEventListener('click', function () {
   updateStats();
   updateChart();
   submitPattern('random');
+  nfTrack('random', { density: density });
 });
 btnFaster.addEventListener('click', function () {
   speedMult = speedMult >= 16 ? 1 : speedMult * 2;

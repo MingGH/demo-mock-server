@@ -873,9 +873,55 @@
   </div>
 
   <script>
+    // ========== 行为埋点（通用埋点 SDK，见 components/track.js） ==========
+    // 事件清单：
+    // - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+    // - tab_switch:    切换悖论标签 {tab}，回答"哪个悖论最受关注"
+    // - sim_action:    各悖论模拟动作 {paradox, action, n}，回答"哪个模拟玩法参与度最高"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    if (typeof window !== 'undefined') {
+      window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+    }
+    let trackSessionActive = false;
+
+    function nfTrack(name, props, opts) {
+      try {
+        if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+          window.NFTrack.track(name, props, opts);
+        }
+      } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+
     // ========== 标签切换 ==========
     document.querySelectorAll('.nav-tab').forEach(tab => {
       tab.addEventListener('click', () => {
+        trackSessionStart();
+        nfTrack('tab_switch', { tab: tab.dataset.tab });
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
         tab.classList.add('active');
@@ -917,6 +963,8 @@
     
     function simulateBirthday() {
       const n = parseInt(document.getElementById('peopleCount').value);
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'birthday', action: 'sim', n: n });
       const birthdays = [];
       const seen = new Set();
       let matchIndices = [];
@@ -947,6 +995,8 @@
     
     function simulateBirthdayMany(times) {
       const n = parseInt(document.getElementById('peopleCount').value);
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'birthday', action: 'sim_many', n: n, times: times });
       for (let t = 0; t < times; t++) {
         const birthdays = [];
         const seen = new Set();
@@ -984,6 +1034,8 @@
     function playStPetersburg(animate = true) {
       let flips = 0;
       let prize = 1;
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'stpetersburg', action: 'play' });
       
       const coin = document.getElementById('stpCoin');
       const result = document.getElementById('stpResult');
@@ -1018,6 +1070,8 @@
     }
     
     function playStPetersburgMany(times) {
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'stpetersburg', action: 'play_many', times: times });
       for (let i = 0; i < times; i++) {
         playStPetersburg(false);
       }
@@ -1085,6 +1139,8 @@
     function decideEnvelope(switchEnv) {
       if (envState.phase !== 'decide') return;
       envState.phase = 'done';
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'envelope', action: 'decide', switch: switchEnv ? 1 : 0 });
       
       const other = envState.selected === 1 ? 2 : 1;
       const myAmount = envState.amounts[envState.selected - 1];
@@ -1114,6 +1170,8 @@
     }
     
     function simulateEnvelopeMany(times) {
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'envelope', action: 'sim_many', times: times });
       for (let i = 0; i < times; i++) {
         const base = Math.floor(Math.random() * 100) + 10;
         const small = base, large = base * 2;
@@ -1143,6 +1201,8 @@
 
     // ========== 4. 辛普森悖论 ==========
     function generateSimpsonData() {
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'simpson', action: 'generate' });
       // 生成能产生辛普森悖论的数据
       // 药物A: 轻症多，重症少
       // 药物B: 轻症少，重症多
@@ -1206,6 +1266,8 @@
     
     function drawBertrandChord(animate = true) {
       const method = document.getElementById('bertrandMethod').value;
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'bertrand', action: 'draw', method: Number(method) });
       const svg = document.getElementById('bertrandSvg');
       const chord = document.getElementById('bertrandChord');
       
@@ -1280,6 +1342,8 @@
     }
     
     function drawBertrandMany(times) {
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'bertrand', action: 'draw_many', times: times });
       for (let i = 0; i < times; i++) {
         drawBertrandChord(false);
       }
@@ -1330,6 +1394,9 @@
     }
     
     function simulateBusWait(animate = true) {
+      const dist = document.getElementById('busDistribution').value;
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'waitingtime', action: 'sim', dist: dist });
       // 生成一天的公交时刻表（24小时 = 1440分钟）
       const intervals = [];
       let time = 0;
@@ -1367,6 +1434,8 @@
     }
     
     function simulateBusWaitMany(times) {
+      trackSessionStart();
+      nfTrack('sim_action', { paradox: 'waitingtime', action: 'sim_many', times: times });
       for (let i = 0; i < times; i++) {
         simulateBusWait(false);
       }
@@ -1400,6 +1469,10 @@
       document.getElementById('waitProgress').style.width = '0%';
       document.getElementById('waitTimeDisplay').textContent = '模拟中...';
     }
+
+    // 初始化埋点
+    trackSessionStart();
+    registerTrackLeaveHandler();
   </script>
 </body>
 </html>

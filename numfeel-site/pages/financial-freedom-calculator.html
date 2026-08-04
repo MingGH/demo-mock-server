@@ -355,6 +355,30 @@
 <script>
 let pieChart = null;
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start  (trackOnce) 页面加载，记录初始配置
+//   calc           每次计算，回答「用户最常算哪种支出/年限组合」
+//   session_end    (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  nfTrack('session_start', {});
+  registerTrackLeaveHandler();
+}
+
 function calculate() {
   // 获取所有输入
   const housing = parseFloat(document.getElementById('housing').value) || 0;
@@ -424,6 +448,15 @@ function calculate() {
   
   // 显示公式说明
   showFormula(yearlyExpense, realReturn, safetyMargin, years, baseAmount, totalAmount);
+  
+  // 埋点：记录本次计算的关键参数（不含任何用户输入文本）
+  nfTrack('calc', {
+    monthlyExpense: Math.round(monthlyExpense),
+    years: years,
+    realReturn: realReturn,
+    safetyMargin: safetyMargin,
+    totalAmount: Math.round(totalAmount)
+  });
   
   // 滚动到结果
   document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });

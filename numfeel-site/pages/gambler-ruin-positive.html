@@ -301,6 +301,31 @@ function getParams() {
   };
 }
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start  (trackOnce) 页面加载
+//   sim_run        每次模拟，回答「用户最常测的胜率/本金组合」
+//   preset         使用预设，回答「用户是否倾向用预设快速体验」
+//   session_end    (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+nfTrack('session_start', {});
+registerTrackLeaveHandler();
+
 function updateFormula() {
   const { p, N } = getParams();
   const q = 1 - p;
@@ -381,6 +406,15 @@ async function runSimulation() {
   simRunning = false;
   btnRun.disabled = false;
   btnRun.innerHTML = '<i class="ti ti-player-play"></i> 再次模拟';
+
+  // 埋点：记录本次模拟参数与结果（仅数值）
+  nfTrack('sim_run', {
+    p: Math.round(p * 1000) / 10,
+    N: N,
+    paths: paths,
+    maxSteps: maxSteps,
+    ruinCount: ruinCount
+  });
 }
 
 function appendLog(html) {
@@ -611,6 +645,7 @@ function applyPreset(p, N, paths, steps) {
   valPaths.textContent = paths;
   valSteps.textContent = steps.toLocaleString();
   updateFormula();
+  nfTrack('preset', { p: p, N: N });
 }
 
 document.getElementById('btnPreset1').addEventListener('click', () => applyPreset(50.1, 5000, 30, 100000));

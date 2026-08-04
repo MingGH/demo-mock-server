@@ -761,6 +761,70 @@
     let chart = null;
     let distributionChart = null;
     let hasRecordedPlayer = false;
+
+    // ========== 行为埋点（NFTrack，见 components/track.js） ==========
+    // 事件清单：
+    //   session_start  (trackOnce) 一局开始，记录初始配置
+    //   bet            每次下注，回答「用户平均下注多少局、胜率如何」（本地限流 300 条）
+    //   game_over      (force) 一局结束，{reason: bankrupt|success, bets, winRate, peakMoney}
+    //   mass_sim       批量模拟，回答「用户是否深挖 1000 人分布」
+    //   session_hidden (force) 切后台快照
+    //   session_end    (force) 真正离页 pagehide reason=leave / 重置 reason=reset
+    // 埋点不影响功能：NFTrack 不存在时静默跳过。
+    if (typeof window !== 'undefined') {
+      window.NF_TRACK_UMAMI_MIRROR = ['game_over', 'session_end'];
+    }
+    let activeTrackSession = false;
+    let trackedBetCount = 0;
+    const BET_TRACK_LIMIT = 300;
+    function nfTrack(name, props, opts) {
+      try {
+        if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+          window.NFTrack.track(name, props, opts);
+        }
+      } catch (e) {}
+    }
+    function currentTrackConfig() {
+      return { initialMoney: initialMoney, betAmount: betAmount, targetMoney: targetMoney };
+    }
+    function trackSessionStart() {
+      if (activeTrackSession) return;
+      activeTrackSession = true;
+      trackedBetCount = 0;
+      nfTrack('session_start', currentTrackConfig());
+    }
+    function trackSessionEnd(reason) {
+      if (!activeTrackSession) return;
+      activeTrackSession = false;
+      nfTrack('session_end', {
+        reason: reason,
+        bets: betCount,
+        money: Math.round(money),
+        peakMoney: Math.round(peakMoney),
+        winRate: betCount > 0 ? Math.round(winCount / betCount * 100) : 0
+      }, { force: true });
+    }
+    function trackSessionHidden() {
+      if (!activeTrackSession) return;
+      nfTrack('session_hidden', {
+        reason: 'hidden',
+        bets: betCount,
+        money: Math.round(money),
+        peakMoney: Math.round(peakMoney)
+      }, { force: true });
+    }
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+    function trackBet(win) {
+      if (trackedBetCount >= BET_TRACK_LIMIT) return;
+      trackedBetCount++;
+      nfTrack('bet', { idx: betCount, win: win, money: Math.round(money) });
+    }
+    registerTrackLeaveHandler();
     
     // 统计 API
     const STATS_API = 'https://numfeel-api.996.ninja/stats';
@@ -860,6 +924,7 @@
       // 首次下注记录玩家
       if (betCount === 0) {
         recordPlayer();
+        trackSessionStart();
       }
       
       const bet = Math.min(betAmount, money);
@@ -891,6 +956,7 @@
       betCount++;
       moneyHistory.push(money);
       
+      trackBet(win);
       updateDisplay();
       renderHistory();
       
@@ -967,6 +1033,15 @@
       document.getElementById('betBtn').disabled = true;
       document.getElementById('autoBtn').disabled = true;
       document.getElementById('autoUntilBtn').disabled = true;
+
+      // 埋点：一局结束
+      nfTrack('game_over', {
+        reason: success ? 'success' : 'bankrupt',
+        bets: betCount,
+        winRate: betCount > 0 ? Math.round(winCount / betCount * 100) : 0,
+        peakMoney: Math.round(peakMoney)
+      }, { force: true });
+      trackSessionEnd(success ? 'success' : 'bankrupt');
     }
     
     // 生成分享文案
@@ -1104,6 +1179,8 @@
     }
     
     function resetGame() {
+      // 重置视为一段会话结束
+      if (activeTrackSession) trackSessionEnd('reset');
       initialMoney = parseInt(document.getElementById('initialMoney').value) || 1000;
       betAmount = parseInt(document.getElementById('betAmount').value) || 100;
       targetMoney = parseInt(document.getElementById('targetMoney').value) || 2000;
@@ -1178,6 +1255,9 @@
         document.getElementById('batchResults').classList.add('show');
         
         drawDistribution(finalMoneys, target);
+        
+        // 埋点：记录批量模拟结果（仅数值）
+        nfTrack('mass_sim', { bankruptCount: bankruptCount, successCount: successCount });
         
         btn.disabled = false;
         btn.textContent = '🚀 重新模拟';

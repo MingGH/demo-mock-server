@@ -524,6 +524,43 @@
 (function() {
   'use strict';
 
+  // ════════ 行为埋点（NFTrack，见 components/track.js） ════════
+  // 事件清单（各事件回答什么问题）：
+  //  - session_start(trackOnce)：页面加载，标记会话开始
+  //  - scenario_select：选择年代场景（回答：用户对哪个年代场景最感兴趣）
+  //  - search_action：主机查找（回答：用户是否会主动查找、查找行为量）
+  //  - add_action：添加主机（回答：用户是否尝试扩容 HOSTS.TXT）
+  //  - conflict_action：模拟命名冲突
+  //  - dns_resolve：发起 DNS 分层查询（回答：用户是否体验查询动画）
+  //  - dns_cache：缓存命中查询
+  //  - session_hidden / session_end：切后台 / 离页
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  function registerTrackLeave() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') {
+        nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+      }
+    });
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  }
+  function trackSessionStart() {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+        window.NFTrack.trackOnce('session_start', {});
+      }
+    } catch (e) {}
+  }
+  trackSessionStart();
+  registerTrackLeave();
+
   // ════════ 数据 ════════
   var HOST_DATA = {
     '1973': generateHosts(40, 'arpanet'),
@@ -576,6 +613,7 @@
 
   function selectScenario(scenario) {
     currentScenario = scenario;
+    nfTrack('scenario_select', { scenario: scenario });
     var numberShock = document.getElementById('numberShock');
     var hostsLayout = document.getElementById('hostsLayout');
 
@@ -642,6 +680,7 @@
 
     function scanNext() {
       if (i >= lines.length) {
+        nfTrack('search_action', { found: false });
         scanResult.innerHTML = '<i class="ti ti-x"></i> 未找到主机 <strong>' + query + '</strong>，共扫描 ' + lines.length + ' 行';
         scanResult.classList.add('show');
         return;
@@ -655,6 +694,7 @@
         if (lineText.indexOf(query) !== -1 && !found) {
           found = true;
           foundIndex = i;
+          nfTrack('search_action', { found: true, scanned: i + 1 });
           lines[i].classList.add('found');
           var parts = lines[i].textContent.trim().split(/\s+/);
           var ip = parts[0];
@@ -680,6 +720,7 @@
     var name = document.getElementById('addNameInput').value.trim();
     var ip = document.getElementById('addIpInput').value.trim();
     if (!name || !ip) return;
+    nfTrack('add_action', {});
 
     currentHosts.push({ name: name, ip: ip });
     var newLine = document.createElement('div');
@@ -701,6 +742,7 @@
 
   // 命名冲突
   document.getElementById('conflictBtn').addEventListener('click', function() {
+    nfTrack('conflict_action', {});
     var box = document.getElementById('conflictBox');
     box.classList.toggle('show');
     if (box.classList.contains('show') && typeof gsap !== 'undefined') {
@@ -746,6 +788,7 @@
   });
 
   document.getElementById('startResolveBtn').addEventListener('click', function() {
+    nfTrack('dns_resolve', { domain: currentDomain });
     resetDNS();
     document.getElementById('startResolveBtn').classList.add('hidden');
     document.getElementById('nextStepBtn').classList.remove('hidden');
@@ -764,6 +807,7 @@
 
   document.getElementById('retryResolveBtn').addEventListener('click', function() {
     if (dnsCache[currentDomain]) {
+      nfTrack('dns_cache', { domain: currentDomain });
       dnsNodes.forEach(function(n) { n.classList.remove('active'); });
       var resultNode = document.querySelector('.dns-node[data-node="result"]');
       var resolverNode = document.querySelector('.dns-node[data-node="resolver"]');

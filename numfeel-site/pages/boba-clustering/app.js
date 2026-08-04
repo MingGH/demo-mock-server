@@ -27,6 +27,33 @@
 
   var state = { positions: [0.25, 0.75] }; // 初始为社会最优
 
+  // ══════════════════════════════════════════════════════════
+  // 行为埋点（NFTrack，见 components/track.js）
+  // 事件清单：
+  //   session_start → 会话开始（trackOnce）
+  //   nash_click / social_click / reset_click → 街道视图按钮
+  //   play_conv / step_conv / conv_reset → 收敛动画控制
+  //   n_select { n } / play_n / n_reset → N 家店控制
+  //   session_end   → 离页（pagehide, force）
+  // ══════════════════════════════════════════════════════════
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  var trackSessionStarted = false;
+  function trackSessionStart() {
+    if (trackSessionStarted) return;
+    trackSessionStarted = true;
+    nfTrack('session_start', {});
+  }
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+  trackSessionStart();
+
   function toMeter(p) { return Math.round(p * 1000) + 'm'; }
 
   function updateStreet() {
@@ -120,12 +147,15 @@
   }
 
   document.getElementById('btnNash').addEventListener('click', function () {
+    nfTrack('nash_click', {});
     animateTo([0.5, 0.5]);
   });
   document.getElementById('btnSocial').addEventListener('click', function () {
+    nfTrack('social_click', {});
     animateTo([0.25, 0.75]);
   });
   document.getElementById('btnReset').addEventListener('click', function () {
+    nfTrack('reset_click', {});
     animateTo([0.25, 0.75]);
   });
 
@@ -206,6 +236,7 @@
   }
 
   function playConv() {
+    nfTrack('play_conv', {});
     if (convTimer) { clearInterval(convTimer); convTimer = null; return; }
     if (convIdx >= convHistory.length - 1) { resetConv(); }
     convTimer = setInterval(function () {
@@ -221,8 +252,8 @@
   }
 
   document.getElementById('btnPlay').addEventListener('click', playConv);
-  document.getElementById('btnStep').addEventListener('click', stepConv);
-  document.getElementById('btnConvReset').addEventListener('click', resetConv);
+  document.getElementById('btnStep').addEventListener('click', function () { nfTrack('step_conv', {}); stepConv(); });
+  document.getElementById('btnConvReset').addEventListener('click', function () { nfTrack('conv_reset', {}); resetConv(); });
 
   // ══════════════════════════════════════
   // Card 3：扎堆 vs 分散对比图
@@ -394,12 +425,15 @@
   document.getElementById('shopSelector').addEventListener('click', function (e) {
     var btn = e.target.closest('button');
     if (!btn) return;
+    var nn = parseInt(btn.dataset.n, 10);
+    nfTrack('n_select', { n: nn });
     document.querySelectorAll('#shopSelector button').forEach(function (b) { b.classList.remove('active'); });
     btn.classList.add('active');
-    initN(parseInt(btn.dataset.n, 10));
+    initN(nn);
   });
-  document.getElementById('btnNPlay').addEventListener('click', playN);
+  document.getElementById('btnNPlay').addEventListener('click', function () { nfTrack('play_n', {}); playN(); });
   document.getElementById('btnNReset').addEventListener('click', function () {
+    nfTrack('n_reset', {});
     if (nState.timer) { clearInterval(nState.timer); nState.timer = null; }
     nState.idx = 0; showNStep(0);
   });

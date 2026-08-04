@@ -8,6 +8,32 @@ let fitnessHistory = []; // [{gen, best, avg}]
 let fitnessChart = null;
 let experimentChart = null;
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start (trackOnce) 页面加载
+//   evo_start     开始进化，回答「用户用的种群/变异率参数」
+//   evo_success   进化成功，{generation} 回答「多少代收敛」
+//   experiment    参数对比实验，回答「用户最常对比哪个参数」
+//   session_end   (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['evo_success', 'session_end'];
+}
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+nfTrack('session_start', {});
+registerTrackLeaveHandler();
+
 // ========== 参数读取 ==========
 function getParams() {
   return {
@@ -59,6 +85,7 @@ function setCustomTarget() {
 function startEvolution() {
   if (running) return;
   const params = getParams();
+  nfTrack('evo_start', { popSize: params.popSize, mutRate: params.mutRate, crossRate: params.crossRate, elite: params.elite });
 
   if (generation === 0) {
     population = initPopulation(params.popSize, target.length);
@@ -154,6 +181,7 @@ function tick(params) {
     document.getElementById('stepBtn').disabled = false;
     log('🎉 第 ' + generation + ' 代找到目标！', 'success');
     updateFitnessChart();
+    nfTrack('evo_success', { generation: generation }, { force: true });
   }
 
   // 防止无限循环
@@ -197,6 +225,7 @@ function runFullSpeed(params) {
 
   if (best.fitness === 1) {
     log('🎉 全速模式：第 ' + generation + ' 代找到目标，耗时 ' + elapsed + 'ms', 'success');
+    nfTrack('evo_success', { generation: generation }, { force: true });
   } else {
     log('⚠️ 全速模式：10000 代未收敛（' + elapsed + 'ms）', 'info');
   }
@@ -281,6 +310,7 @@ function runExperiment(paramName) {
   const btn = event.target.closest('.btn');
   btn.disabled = true;
   btn.innerHTML = '<i class="ti ti-loader"></i> 运行中…';
+  nfTrack('experiment', { paramName: paramName });
 
   setTimeout(() => {
     const results = [];

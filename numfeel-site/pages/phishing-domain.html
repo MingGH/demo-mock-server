@@ -475,6 +475,7 @@ function selectAnswer(el, isReal) {
 
   answered.push({ question: shuffledQuestions[currentIndex], correct: isCorrect });
   document.getElementById('scoreCorrect').textContent = correctCount;
+  nfTrack('answer', { correct: isCorrect ? 1 : 0 });
   document.getElementById('explainBox').classList.add('show');
   document.getElementById('nextBtn').style.display = '';
 }
@@ -491,6 +492,7 @@ function showResult() {
   const pct = Math.round(correctCount / shuffledQuestions.length * 100);
   document.getElementById('resultScore').textContent = pct + '%';
   document.getElementById('progressBar').style.width = '100%';
+  nfTrack('result', { score: pct });
 
   let grade, sub;
   if (pct === 100) { grade = '完美通关'; sub = '你对钓鱼域名有极强的辨别力，攻击者很难骗到你。'; }
@@ -638,6 +640,7 @@ function analyzeDomain(input) {
   }
 
   container.innerHTML = html;
+  nfTrack('analyze', { risk: score });
 }
 
 // ===== 工具 =====
@@ -649,6 +652,18 @@ function copyShareLink() {
     setTimeout(() => t.classList.remove('show'), 2000);
   });
 }
+
+// ── 行为埋点（NFTrack，见 components/track.js）──
+// 事件：session_start / answer / result / analyze / session_end
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+(function () {
+  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+})();
 
 // 启动
 document.addEventListener('DOMContentLoaded', startChallenge);

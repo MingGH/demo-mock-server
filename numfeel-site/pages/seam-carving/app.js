@@ -66,6 +66,18 @@
     animateHero();
   }
 
+  // ── 行为埋点（NFTrack，见 components/track.js）──
+  // 事件：session_start / image_load / seam_change / mode_change / carve / reset / download / session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
+
   function animateHero() {
     gsapReady.then(function () {
       gsap.fromTo(DOM.heroBtn, { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: 'back.out(1.7)' });
@@ -81,7 +93,10 @@
       DOM.fileInput.click();
     });
     DOM.fileInput.addEventListener('change', function (e) {
-      if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+      if (e.target.files && e.target.files[0]) {
+        nfTrack('image_load', { source: 'upload' });
+        handleFile(e.target.files[0]);
+      }
     });
     DOM.uploadZone.addEventListener('dragover', function (e) {
       e.preventDefault();
@@ -97,14 +112,17 @@
     });
 
     DOM.useDefaultBtn.addEventListener('click', function () {
+      nfTrack('image_load', { source: 'default' });
       loadDefaultImage();
     });
 
     DOM.usePortraitBtn.addEventListener('click', function () {
+      nfTrack('image_load', { source: 'portrait' });
       loadPortraitImage();
     });
 
     DOM.useVogueBtn.addEventListener('click', function () {
+      nfTrack('image_load', { source: 'vogue' });
       loadVogueImage();
     });
 
@@ -120,6 +138,7 @@
       if (btn.classList.contains('active')) {
         btn.classList.remove('active');
         state.mode = 'normal';
+        nfTrack('mode_change', { mode: 'normal' });
         renderResult();
         return;
       }
@@ -128,18 +147,22 @@
       });
       btn.classList.add('active');
       state.mode = btn.dataset.mode;
+      nfTrack('mode_change', { mode: state.mode });
       renderResult();
     });
 
     DOM.carveBtn.addEventListener('click', function () {
+      nfTrack('carve', { seams: parseInt(DOM.seamCountSlider.value) || 0 });
       startCarving();
     });
 
     DOM.resetBtn.addEventListener('click', function () {
+      nfTrack('reset', {});
       resetToOriginal();
     });
 
     DOM.downloadBtn.addEventListener('click', function () {
+      nfTrack('download', {});
       downloadResult();
     });
 

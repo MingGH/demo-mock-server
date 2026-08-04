@@ -585,6 +585,7 @@ document.getElementById('scenarios').addEventListener('click', (e) => {
   lambda = parseFloat(btn.dataset.lambda);
   scenarioName = btn.dataset.name;
   scenarioUnit = btn.dataset.unit;
+  nfTrack('scenario_select', { lambda: lambda });
   
   document.getElementById('lambdaSlider').value = lambda;
   updateLambdaDisplay();
@@ -602,6 +603,7 @@ document.getElementById('lambdaSlider').addEventListener('input', (e) => {
 
 // 模拟
 function simulate(count = 1) {
+  nfTrack('simulate', { count: count, lambda: lambda });
   const results = [];
   for (let i = 0; i < count; i++) {
     results.push(poissonRandom(lambda));
@@ -637,6 +639,7 @@ function simulate(count = 1) {
 }
 
 function resetSimulation() {
+  nfTrack('reset_sim', {});
   simHistory = [];
   document.getElementById('simResult').innerHTML = 
     '<span style="color: rgba(255,255,255,0.4);">点击上方按钮开始模拟</span>';
@@ -647,6 +650,18 @@ document.getElementById('simOnce').addEventListener('click', () => simulate(1));
 document.getElementById('sim100').addEventListener('click', () => simulate(100));
 document.getElementById('sim1000').addEventListener('click', () => simulate(1000));
 document.getElementById('resetSim').addEventListener('click', resetSimulation);
+
+// ── 行为埋点（NFTrack，见 components/track.js）──
+// 事件：session_start / scenario_select / simulate / reset_sim / session_end
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+(function () {
+  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+})();
 
 // 初始化
 updateChart();

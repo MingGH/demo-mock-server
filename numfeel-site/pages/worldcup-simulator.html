@@ -233,6 +233,7 @@
     });
 
     function runPreset(upset) {
+      nfTrack('preset', { upset: upset });
       document.getElementById('upsetSlider').value = upset * 100;
       document.getElementById('upsetLabel').textContent = upset.toFixed(2);
       runSimulation();
@@ -241,6 +242,7 @@
     function runSimulation() {
       const trials = parseInt(document.getElementById('trialsSlider').value);
       const upsetFactor = parseInt(document.getElementById('upsetSlider').value) / 100;
+      nfTrack('run_sim', { trials: trials, upsetFactor: upsetFactor });
       const btn = document.getElementById('runBtn');
       btn.disabled = true;
       document.getElementById('statusText').textContent = '模拟中...';
@@ -426,8 +428,20 @@
       document.getElementById('groupsView').classList.toggle('hidden', tab !== 'groups');
     }
 
-    // 页面加载后自动跑一次「真实模式」
-    window.addEventListener('load', () => { runPreset(0.3); });
+    // ── 行为埋点（NFTrack，见 components/track.js）──
+      // 事件：session_start / preset / run_sim / session_end
+      function nfTrack(name, props, opts) {
+        try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+      }
+      (function () {
+        try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+        window.addEventListener('pagehide', function () {
+          nfTrack('session_end', { reason: 'leave' }, { force: true });
+        });
+      })();
+
+      // 页面加载后自动跑一次「真实模式」
+      window.addEventListener('load', () => { runPreset(0.3); });
   </script>
 </body>
 </html>

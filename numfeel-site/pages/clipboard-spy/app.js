@@ -86,6 +86,7 @@ document.addEventListener('copy', function() {
   copyCount++;
   document.getElementById('copyCount').textContent = copyCount;
   addLogEntry('copy', text.substring(0, 500));
+  nfTrack('clipboard', { type: 'copy', chars: Math.min(text.length, 500) });
 });
 
 document.addEventListener('cut', function() {
@@ -94,6 +95,7 @@ document.addEventListener('cut', function() {
   cutCount++;
   document.getElementById('cutCount').textContent = cutCount;
   addLogEntry('cut', text.substring(0, 500));
+  nfTrack('clipboard', { type: 'cut', chars: Math.min(text.length, 500) });
 });
 
 document.addEventListener('paste', function(e) {
@@ -102,6 +104,7 @@ document.addEventListener('paste', function(e) {
   pasteCount++;
   document.getElementById('pasteCount').textContent = pasteCount;
   addLogEntry('paste', text.substring(0, 500));
+  nfTrack('clipboard', { type: 'paste', chars: Math.min(text.length, 500) });
 });
 
 /* ══════════ 实验二：富文本陷阱 ══════════ */
@@ -150,6 +153,7 @@ function analyzeRichPaste() {
   }
 
   panel.style.display = 'block';
+  nfTrack('analyze', { chars: plainText.length, zwsp: CE.countZwsp(plainText) });
 
   document.getElementById('revealPlainText').textContent =
     plainText.length > 80 ? plainText.substring(0, 80) + '...' : plainText;
@@ -194,6 +198,7 @@ function simulateDay() {
   document.getElementById('simTotal').textContent = '0';
   document.getElementById('simSensitive').textContent = '0';
   document.getElementById('simCategories').textContent = '0';
+  nfTrack('sim', { action: 'day' });
   scheduleNext();
 }
 window.simulateDay = simulateDay;
@@ -286,8 +291,21 @@ function resetSimulation() {
   document.getElementById('simTotal').textContent = '0';
   document.getElementById('simSensitive').textContent = '0';
   document.getElementById('simCategories').textContent = '0';
+  nfTrack('sim', { action: 'reset' });
 }
 window.resetSimulation = resetSimulation;
+
+// ── 行为埋点（NFTrack，见 components/track.js）──
+// 事件：session_start / clipboard(copy/cut/paste) / analyze / sim / session_end
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+(function () {
+  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+})();
 
 // fadeIn 动画
 var fadeStyle = document.createElement('style');

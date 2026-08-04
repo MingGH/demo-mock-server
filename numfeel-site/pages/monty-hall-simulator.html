@@ -515,6 +515,7 @@ function selectDoor(doorNum) {
   
   gameState.playerChoice = doorNum;
   gameState.phase = 'decide';
+  nfTrack('door_pick', { door: doorNum });
   
   // 高亮选中的门
   document.querySelectorAll('.door').forEach(door => {
@@ -559,6 +560,7 @@ function makeDecision(switchDoor) {
   }
   
   const won = finalChoice === gameState.carPosition;
+  nfTrack('decision', { switch: switchDoor ? 1 : 0, won: won ? 1 : 0 });
   
   if (switchDoor && won) stats.switchWin++;
   if (!switchDoor && won) stats.stayWin++;
@@ -649,12 +651,25 @@ function runSimulation() {
   // 显示本次模拟结果
   const switchRate = (switchWins / count * 100).toFixed(2);
   const stayRate = (stayWins / count * 100).toFixed(2);
+  nfTrack('run_sim', { trials: count, switchWinPct: Number(switchRate) });
   
   document.getElementById('gameMessage').innerHTML = 
     `🎲 模拟 ${count} 次完成！<br>` +
     `换门胜率: <span class="highlight">${switchRate}%</span> | ` +
     `不换胜率: <span class="highlight">${stayRate}%</span>`;
 }
+
+// ── 行为埋点（NFTrack，见 components/track.js）──
+// 事件：session_start / door_pick / decision / run_sim / session_end
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+(function () {
+  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+})();
 
 // 初始化游戏
 initGame();

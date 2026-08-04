@@ -149,6 +149,7 @@
         });
         btn.classList.add('active');
         currentFilter = btn.dataset.filter;
+        nfTrack('filter_change', { filter: currentFilter });
         buildRows();
       });
     });
@@ -186,6 +187,7 @@
       // 点击展开/收起
       card.querySelector('.hl-card-head').addEventListener('click', function () {
         card.classList.toggle('expanded');
+        nfTrack('card_expand', { id: h.id, expanded: card.classList.contains('expanded') ? 1 : 0 });
       });
       grid.appendChild(card);
     });
@@ -319,6 +321,18 @@
       bar.style.width = pct + '%';
     });
   }
+
+  // ════════════ 行为埋点（NFTrack，见 components/track.js）════════════
+  // 事件：session_start / filter_change / card_expand / session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
 
   // ════════════ 初始化 ════════════
   document.addEventListener('DOMContentLoaded', function () {

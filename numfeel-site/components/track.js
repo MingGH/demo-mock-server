@@ -31,6 +31,11 @@
   var MAX_PROPS_KEYS = 20;
   var MAX_PROPS_STRING_LENGTH = 64;
   var SESSION_STORAGE_KEY = 'nf_sid';
+  var SEQ_STORAGE_KEY = 'nf_seq';
+  var COUNT_STORAGE_KEY = 'nf_cnt';
+  var TRUNC_STORAGE_KEY = 'nf_trunc';
+  var ONCE_STORAGE_KEY = 'nf_once';
+  var MAX_ONCE_EVENTS = 200;
   var SESSION_ID_LENGTH = 16;
   var SESSION_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -190,6 +195,98 @@
     return typeof name === 'string' && /^[a-z][a-z0-9_]{0,47}$/.test(name);
   }
 
+  /**
+   * 把字符串解析成非负整数；缺失 / 非数字 / 负数 / 浮点 / 被人为改坏的垃圾值一律退化为 fallback。
+   * 纯函数，容忍任何输入，绝不抛异常。
+   *
+   * @param {string} str 待解析的字符串（可为 null / undefined）
+   * @param {number} fallback 解析失败时的兜底值
+   * @returns {number} 合法的非负整数，或 fallback
+   */
+  function parseNonNegInt(str, fallback) {
+    if (typeof str !== 'string' || str.trim() === '') {
+      return fallback;
+    }
+    var n = Number(str);
+    if (!isFinite(n) || n < 0) {
+      return fallback;
+    }
+    return Math.floor(n);
+  }
+
+  /**
+   * 把逗号分隔的 once 事件名列表还原成 firedOnce 集合对象。
+   * 纯函数：跳过空串与重复项，非法输入返回空对象。
+   *
+   * @param {string} str 逗号分隔的事件名列表，可为 null / undefined
+   * @returns {Object} 以事件名为 key 的集合对象
+   */
+  function parseOnceList(str) {
+    var map = {};
+    if (typeof str !== 'string' || str.length === 0) {
+      return map;
+    }
+    var parts = str.split(',');
+    for (var i = 0; i < parts.length; i++) {
+      var name = parts[i];
+      if (name && !Object.prototype.hasOwnProperty.call(map, name)) {
+        map[name] = true;
+      }
+    }
+    return map;
+  }
+
+  /**
+   * 把 firedOnce 集合对象序列化成逗号分隔字符串（保持插入顺序）。
+   * 纯函数，不修改传入对象。
+   *
+   * @param {Object} map firedOnce 集合对象
+   * @returns {string} 逗号分隔的事件名列表
+   */
+  function serializeOnceMap(map) {
+    var names = [];
+    for (var key in map) {
+      if (Object.prototype.hasOwnProperty.call(map, key)) {
+        names.push(key);
+      }
+    }
+    return names.join(',');
+  }
+
+  /**
+   * 从一组存储字符串恢复会话计数器与 once 集合（容错版）。
+   * 纯函数：任何一个值缺失 / 非法都会退化到该字段的初始值，绝不抛异常。
+   *
+   * @param {string} seqStr 存储的 seq 字符串
+   * @param {string} countStr 存储的 trackedCount 字符串
+   * @param {string} truncStr 存储的 truncated 标记（'1' 表示已截断）
+   * @param {string} onceStr 存储的 once 事件名列表
+   * @returns {{seq:number, trackedCount:number, truncated:boolean, firedOnce:Object}} 恢复后的状态
+   */
+  function restoreCounters(seqStr, countStr, truncStr, onceStr) {
+    return {
+      seq: parseNonNegInt(seqStr, 0),
+      trackedCount: parseNonNegInt(countStr, 0),
+      truncated: truncStr === '1',
+      firedOnce: parseOnceList(onceStr)
+    };
+  }
+
+  /**
+   * 限制 firedOnce 集合的大小，超出 {@link MAX_ONCE_EVENTS} 时丢弃最旧的事件名。
+   * 以对象自身的插入顺序（字符串 key）为淘汰依据。纯函数，直接修改并返回传入对象。
+   *
+   * @param {Object} map firedOnce 集合对象
+   * @returns {Object} 裁剪后的集合对象
+   */
+  function pruneOnceMap(map) {
+    var keys = Object.keys(map);
+    while (keys.length > MAX_ONCE_EVENTS) {
+      delete map[keys.shift()];
+    }
+    return map;
+  }
+
   // ── 浏览器相关的状态与副作用（不参与单元测试） ─────────────────────────
 
   var state = {
@@ -233,6 +330,31 @@
     } catch (e) {
       // sessionStorage 不可用（隐私模式等）时退化为内存态会话 ID，不持久但不影响当次上报
       return bytesToSessionId(getRandomBytes(SESSION_ID_LENGTH));
+    }
+  }
+
+  /** 安全读取 sessionStorage；不可用时返回 null，绝不抛异常。 */
+  function safeGetItem(key) {
+    try {
+      return global.sessionStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * 把 seq / trackedCount / truncated / firedOnce 持久化到 sessionStorage，
+   * 使同标签页刷新后 seq 从刷新前的值继续递增（跨刷新保持 trackOnce 契约）。
+   * 全部包在 try/catch 里，sessionStorage 不可用时退化为纯内存态。
+   */
+  function persistState() {
+    try {
+      global.sessionStorage.setItem(SEQ_STORAGE_KEY, String(state.seq));
+      global.sessionStorage.setItem(COUNT_STORAGE_KEY, String(state.trackedCount));
+      global.sessionStorage.setItem(TRUNC_STORAGE_KEY, state.truncated ? '1' : '0');
+      global.sessionStorage.setItem(ONCE_STORAGE_KEY, serializeOnceMap(state.firedOnce));
+    } catch (e) {
+      // sessionStorage 不可用则退化为纯内存态，不影响当次上报
     }
   }
 
@@ -329,6 +451,7 @@
       });
 
       mirrorToUmami(name, cleaned);
+      persistState();
       scheduleFlushIfNeeded();
     } catch (e) {
       // 绝不抛异常、绝不阻塞 UI
@@ -341,6 +464,7 @@
         return;
       }
       state.firedOnce[name] = true;
+      pruneOnceMap(state.firedOnce);
       track(name, props);
     } catch (e) {
       // 同上
@@ -376,6 +500,18 @@
       }
       state.slug = slug;
       state.sessionId = getOrCreateSessionId();
+
+      // 恢复跨刷新状态（容错：缺失/垃圾值退化为初始值）
+      var restored = restoreCounters(
+        safeGetItem(SEQ_STORAGE_KEY),
+        safeGetItem(COUNT_STORAGE_KEY),
+        safeGetItem(TRUNC_STORAGE_KEY),
+        safeGetItem(ONCE_STORAGE_KEY)
+      );
+      state.seq = restored.seq;
+      state.trackedCount = restored.trackedCount;
+      state.truncated = restored.truncated;
+      state.firedOnce = restored.firedOnce;
 
       state.flushTimer = global.setInterval(flush, FLUSH_INTERVAL_MS);
 
@@ -416,7 +552,12 @@
       shouldAcceptEvent: shouldAcceptEvent,
       stampTruncated: stampTruncated,
       bytesToSessionId: bytesToSessionId,
-      isValidEventName: isValidEventName
+      isValidEventName: isValidEventName,
+      parseNonNegInt: parseNonNegInt,
+      parseOnceList: parseOnceList,
+      serializeOnceMap: serializeOnceMap,
+      restoreCounters: restoreCounters,
+      pruneOnceMap: pruneOnceMap
     };
   }
 })(typeof window !== 'undefined' ? window : this);

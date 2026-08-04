@@ -54,6 +54,7 @@
   function handleGuess(btn, opt) {
     if (guessResolved) return;
     guessResolved = true;
+    nfTrack('guess', { value: opt.value, correct: !!opt.correct });
 
     var allBtns = $$('.guess-btn');
     allBtns.forEach(function (b) { b.disabled = true; });
@@ -509,6 +510,18 @@
     initSphereSelector();
     initExtension();
   }
+
+  // 行为埋点（NFTrack）
+  // 事件：session_start / guess / sphere_switch / session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

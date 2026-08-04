@@ -92,6 +92,9 @@ public class RateLimitWebFilter implements WebFilter {
         rules.add(new Rule(isPost("/fingerprint/collect"), RateLimitWebFilter::routeKey, 60, 60));
         // 社工防骗提交：30/min
         rules.add(new Rule(isPost("/social-engineering/submit"), RateLimitWebFilter::routeKey, 30, 60));
+        // 通用埋点批量上报：30/min/IP（每批最多100条事件，上限约3000事件/min/IP）。
+        // 路径不以 /submit 或 /leaderboard 结尾，不会被下面的通用写接口规则命中，需单独声明。
+        rules.add(new Rule(isPost("/events/collect"), RateLimitWebFilter::routeKey, 30, 60));
         // 其余写接口：10/min
         rules.add(new Rule(RateLimitWebFilter::isWriteThrottled, RateLimitWebFilter::routeKey, 10, 60));
     }

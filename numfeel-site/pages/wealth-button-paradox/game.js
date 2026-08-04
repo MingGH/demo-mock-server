@@ -21,6 +21,7 @@ let quantumFetching = false;
 let quantumSource = 'pseudo';
 function toggleRngSource() {
   useQuantum = !useQuantum;
+  nfTrack('rng_toggle', { to: useQuantum ? 'quantum' : 'pseudo', idx: pressCount });
   const track = document.getElementById('rngToggle');
   const pseudoLabel = document.getElementById('pseudoLabel');
   const quantumLabel = document.getElementById('quantumLabel');
@@ -106,6 +107,7 @@ function getRandomValue() {
 // ========== 自定义倍率 ==========
 function toggleMultiplier() {
   customMultiplier = !customMultiplier;
+  nfTrack('mode_toggle', { to: customMultiplier ? 'custom' : 'standard', idx: pressCount });
   const track = document.getElementById('multiplierToggle');
   const standardLabel = document.getElementById('standardLabel');
   const customLabel = document.getElementById('customLabel');
@@ -132,10 +134,172 @@ function toggleMultiplier() {
     if (submitTrigger) submitTrigger.innerHTML = '<i class="ti ti-upload"></i> 提交成绩';
   }
 }
+// ========== 行为埋点（通用埋点 SDK，见 components/track.js） ==========
+// 只镜像这两个低频收尾事件到 umami；press / session_hidden / milestone 一律不镜像。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['bankrupt', 'session_end'];
+}
+// 这里只补充「过程」埋点，与上面 incrStat() 驱动的三个历史全球计数器并行存在，
+// 不修改、不依赖它们。埋点失败或 NFTrack 未加载都不能影响游戏本身。
+let peakWealth = initialWealth;
+let peakPressIndex = 0;
+let activeTrackSession = false;
+let trackedPressCount = 0;
+let milestonesFired = {};
+let inBatchPress = false;
+let sessionHiddenCount = 0;
+const PRESS_TRACK_LIMIT = 300; // 单会话最多记 300 条 press 事件，之后停记（但 bankrupt/session_end 仍会发）
+const SESSION_HIDDEN_CAP = 20; // 每局最多发 20 条 session_hidden，防异常刷量
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {
+    // 埋点绝不能影响游戏主流程
+  }
+}
+
+function currentTrackMode() {
+  return customMultiplier ? 'custom' : 'standard';
+}
+
+function currentTrackRng() {
+  return (useQuantum && quantumSource === 'quantum') ? 'quantum' : 'pseudo';
+}
+
+/** 是否达到「资产 ≥ 初始资产 × multiplier」的里程碑（纯函数，可独立测试）。 */
+function reachesMultipleMilestone(currentWealth, initialWealthValue, multiplier) {
+  return currentWealth >= initialWealthValue * multiplier;
+}
+
+/** 是否达到资产过亿里程碑（纯函数，可独立测试）。 */
+function reachesBillionaireMilestone(currentWealth) {
+  return currentWealth >= 1e8;
+}
+
+/** 计算按下后是否刷新峰值资产；不修改传入值，返回新的 {peakWealth, peakPressIndex}（纯函数）。 */
+function computeUpdatedPeak(currentPeakWealth, currentPeakIndex, currentWealth, currentPressIndex) {
+  if (currentWealth > currentPeakWealth) {
+    return { peakWealth: currentWealth, peakPressIndex: currentPressIndex };
+  }
+  return { peakWealth: currentPeakWealth, peakPressIndex: currentPeakIndex };
+}
+
+/**
+ * 是否开启新的一局（重置该局派生状态）。
+ *
+ * 只有「资产还没按过」才算开新局：覆盖页面首次开局，以及 resetGame() 之后。
+ * 这保证「切后台再回来继续按」不会把本局已累计的 peakWealth / peakIdx / milestones 清掉
+ * （那是 P0-2 的核心修复）。纯函数，可独立测试。
+ *
+ * @param {number} p 当前 pressCount
+ * @returns {boolean} 是否应重置该局状态
+ */
+function shouldResetRoundState(p) {
+  return p === 0;
+}
+
+/** 一局的开始：trackOnce 语义由 activeTrackSession 手动去重实现（同一局内只发一次，reset 后允许再发）。 */
+function trackSessionStart() {
+  if (activeTrackSession) return;
+  activeTrackSession = true;
+  if (shouldResetRoundState(pressCount)) {
+    // 只有开新一局时才重置派生状态；切后台回来（pressCount>0）绝不重置
+    trackedPressCount = 0;
+    milestonesFired = {};
+    peakWealth = initialWealth;
+    peakPressIndex = 0;
+    sessionHiddenCount = 0;
+  }
+  nfTrack('session_start', {
+    initialWealth: initialWealth,
+    mode: currentTrackMode(),
+    rng: currentTrackRng()
+  });
+}
+
+/** 一局的结束（破产 / 重置 / 离开三种原因之一）；force:true 确保不被 SDK 会话上限丢弃。 */
+function trackSessionEnd(reason) {
+  if (!activeTrackSession) return;
+  activeTrackSession = false;
+  nfTrack('session_end', {
+    reason: reason,
+    presses: pressCount,
+    finalWealth: Math.round(wealth),
+    peakWealth: Math.round(peakWealth),
+    peakIdx: peakPressIndex,
+    winCount: winCount,
+    truncated: trackedPressCount >= PRESS_TRACK_LIMIT
+  }, { force: true });
+}
+
+/**
+ * 切到后台（标签页/App/锁屏，visibilitychange→hidden）时补发 session_hidden。
+ *
+ * 与 session_end 不同：不结束本局，不置 activeTrackSession=false，不重置任何派生状态，
+ * 所以切回来继续按不会触发新 session_start，peakWealth/peakIdx/milestones 都保留。
+ * 每局最多 SESSION_HIDDEN_CAP 条，超过即丢弃后续（天然低频）。分析时取该轮 seq 最大一条兜底。
+ */
+function trackSessionHidden() {
+  if (!activeTrackSession) return;
+  if (sessionHiddenCount >= SESSION_HIDDEN_CAP) return;
+  sessionHiddenCount++;
+  nfTrack('session_hidden', {
+    reason: 'hidden',
+    presses: pressCount,
+    finalWealth: Math.round(wealth),
+    peakWealth: Math.round(peakWealth),
+    peakIdx: peakPressIndex,
+    winCount: winCount,
+    truncated: trackedPressCount >= PRESS_TRACK_LIMIT
+  }, { force: true });
+}
+
+function trackPressEvent(win) {
+  if (trackedPressCount >= PRESS_TRACK_LIMIT) return;
+  trackedPressCount++;
+  nfTrack('press', {
+    idx: pressCount,
+    win: win,
+    wealth: Math.round(wealth),
+    batch: inBatchPress
+  });
+}
+
+function trackMilestones() {
+  if (!milestonesFired.x10 && reachesMultipleMilestone(wealth, initialWealth, 10)) {
+    milestonesFired.x10 = true;
+    nfTrack('milestone', { type: 'x10', idx: pressCount, wealth: Math.round(wealth) });
+  }
+  if (!milestonesFired.x100 && reachesMultipleMilestone(wealth, initialWealth, 100)) {
+    milestonesFired.x100 = true;
+    nfTrack('milestone', { type: 'x100', idx: pressCount, wealth: Math.round(wealth) });
+  }
+  if (!milestonesFired.billionaire && reachesBillionaireMilestone(wealth)) {
+    milestonesFired.billionaire = true;
+    nfTrack('milestone', { type: 'billionaire', idx: pressCount, wealth: Math.round(wealth) });
+  }
+}
+
+/** 关闭标签页 / 切到后台的兜底处理。
+ * 切后台（visibilitychange→hidden）只发 session_hidden，不结束本局；
+ * 真正离页（pagehide）才发 session_end(reason=leave) 结束本局。
+ * 真离页时两者依次触发是预期行为——局数只认 session_end，不会被重复计数。 */
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 // ========== 游戏逻辑 ==========
 function pressButton() {
   const btn = document.getElementById('pressBtn');
   if (btn.disabled) return;
+  if (!activeTrackSession) trackSessionStart();
   if (pressCount === 0 && !customMultiplier) recordPlayer();
   const before = wealth;
   const rand = getRandomValue();
@@ -151,6 +315,11 @@ function pressButton() {
   if (win) winCount++; else loseCount++;
   roundHistory.unshift({ round: pressCount, win, before, after: wealth });
   wealthHistory.push(wealth);
+  const updatedPeak = computeUpdatedPeak(peakWealth, peakPressIndex, wealth, pressCount);
+  peakWealth = updatedPeak.peakWealth;
+  peakPressIndex = updatedPeak.peakPressIndex;
+  trackPressEvent(win);
+  trackMilestones();
   flashScreen(win);
   updateDisplay();
   renderHistory();
@@ -159,14 +328,27 @@ function pressButton() {
     btn.disabled = true;
     btn.textContent = '破产';
     if (!customMultiplier) recordBankrupt();
+    nfTrack('bankrupt', {
+      idx: pressCount,
+      presses: pressCount,
+      peakWealth: Math.round(peakWealth),
+      peakIdx: peakPressIndex,
+      winCount: winCount
+    }, { force: true });
+    trackSessionEnd('bankrupt');
     setTimeout(showGameOver, 600);
   }
 }
 function batchPress(n) {
+  // 先在局内再发 batch_press，避免它落在 session_start 之前的「局外事件」混入轮次 CTE
+  if (!activeTrackSession) trackSessionStart();
+  nfTrack('batch_press', { n: n, idxBefore: pressCount });
+  inBatchPress = true;
   for (let i = 0; i < n; i++) {
     if (wealth < 1) break;
     pressButton();
   }
+  inBatchPress = false;
 }
 function flashScreen(win) {
   const el = document.getElementById('flashOverlay');
@@ -174,6 +356,9 @@ function flashScreen(win) {
   setTimeout(() => el.classList.remove('show'), 200);
 }
 function resetGame() {
+  // reset 视为一段会话结束：先关闭当前埋点会话（如果还没因破产而关闭），
+  // 下一次 press 会通过 trackSessionStart() 开启新的一段（同一 sessionId 内多轮，用 session_start 切分）。
+  if (activeTrackSession) trackSessionEnd('reset');
   initialWealth = parseInt(document.getElementById('initialWealth').value) || 100000;
   wealth = initialWealth;
   pressCount = 0;
@@ -181,6 +366,11 @@ function resetGame() {
   loseCount = 0;
   roundHistory = [];
   wealthHistory = [initialWealth];
+  peakWealth = initialWealth;
+  peakPressIndex = 0;
+  trackedPressCount = 0;
+  milestonesFired = {};
+  sessionHiddenCount = 0;
   const btn = document.getElementById('pressBtn');
   btn.disabled = false;
   btn.textContent = '按下';
@@ -593,6 +783,11 @@ async function submitToLeaderboard() {
       if (wealthRank > 10 && returnRank > 10 && pressCountRank > 10) msg += ` 共${total}人参与`;
       statusEl.textContent = msg;
       statusEl.className = 'lb-status success';
+      nfTrack('leaderboard_submit', {
+        presses: pressCount,
+        finalWealth: Math.round(wealth),
+        returnRate: Math.round((wealth / initialWealth - 1) * 100)
+      });
       loadLeaderboard();
       setTimeout(closeLeaderboardModal, 2500);
     } else {
@@ -921,9 +1116,34 @@ function applySkin(id) {
 }
 
 // ========== Init ==========
-initSkinPicker();
-updateDisplay();
-loadGlobalStats();
-loadLeaderboard();
-initParticles();
-setInterval(loadGlobalStats, 3000);
+// 仅在浏览器环境启动；Node require（单元测试）时跳过所有 DOM 副作用
+if (typeof document !== 'undefined') {
+  initSkinPicker();
+  updateDisplay();
+  loadGlobalStats();
+  loadLeaderboard();
+  initParticles();
+  registerTrackLeaveHandler();
+  setInterval(loadGlobalStats, 3000);
+}
+
+// 条件导出：纯函数既能被浏览器 <script> 直接使用，也能被 Node 测试 require 真实现。
+// 注意：不要在这里导出任何依赖 DOM 的函数（pressButton / updateDisplay 等）。
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    shouldResetRoundState: shouldResetRoundState,
+    reachesMultipleMilestone: reachesMultipleMilestone,
+    reachesBillionaireMilestone: reachesBillionaireMilestone,
+    computeUpdatedPeak: computeUpdatedPeak,
+    getChineseLargeUnit: getChineseLargeUnit,
+    formatLargeChineseNumber: formatLargeChineseNumber,
+    formatPowerHint: formatPowerHint,
+    toSuperscript: toSuperscript,
+    formatScientific: formatScientific,
+    formatMoney: formatMoney,
+    formatReturnRate: formatReturnRate,
+    formatNumber: formatNumber,
+    buildChallengePayload: buildChallengePayload,
+    replayStoredGame: replayStoredGame
+  };
+}

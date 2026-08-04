@@ -82,6 +82,12 @@
       src: 'https://umami.runnable.run/script.js',
       dataset: { websiteId: '60f1c767-3f2a-4be2-ad53-f9e4e1372785' }
     });
+    // 通用行为埋点 SDK（NFTrack）；demo 页面加载后按需调用 window.NFTrack.track(...)
+    // 动态注入的 <script> 天然是 async，defer 属性对它无效，故不写 defer:true。
+    // 首屏极早的点击可能因脚本未加载而丢事件，业务侧靠 nfTrack() 的 window.NFTrack 存在性判断兜底。
+    ensureScript('data-track-script', {
+      src: prefix + 'components/track.js'
+    });
     ensureScript('data-ads-script', {
       async: true,
       src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3694254708490002',

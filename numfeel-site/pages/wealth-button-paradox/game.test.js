@@ -1,7 +1,29 @@
 /**
  * wealth-button-paradox.html 核心逻辑单元测试
- * 运行: node pages/wealth-button-paradox.test.js
+ * 运行: node pages/wealth-button-paradox/game.test.js
+ *
+ * 重要：纯函数统一从 ./game.js **require 真实现**（game.js 顶部已做 DOM 副作用守卫，
+ * 底部条件导出，见 game.js 末尾 module.exports）。不要在这里复制一份同名函数，
+ * 否则 game.js 实现一旦改动，本测试仍会全部通过，等于没测。
+ * 仅当被测函数在 game.js 里不存在（纯数学/模拟函数）时才在本文件内自实现。
  */
+
+const {
+  shouldResetRoundState,
+  reachesMultipleMilestone,
+  reachesBillionaireMilestone,
+  computeUpdatedPeak,
+  getChineseLargeUnit,
+  formatLargeChineseNumber,
+  formatPowerHint,
+  toSuperscript,
+  formatScientific,
+  formatMoney,
+  formatReturnRate,
+  formatNumber,
+  buildChallengePayload,
+  replayStoredGame
+} = require('./game.js');
 
 let passed = 0;
 let failed = 0;
@@ -16,72 +38,7 @@ function approx(a, b, eps) {
   return Math.abs(a - b) < eps;
 }
 
-// ===== 被测逻辑 =====
-
-const CHINESE_LARGE_UNITS = ['', '万', '亿', '万亿', '京', '垓', '秭', '穰', '沟', '涧', '正', '载', '极', '恒河沙', '阿僧祇', '那由他', '不可思议', '无量', '大数'];
-
-function getChineseLargeUnit(groupIndex) {
-  if (groupIndex <= 0) return '';
-  const maxIndex = CHINESE_LARGE_UNITS.length - 1;
-  if (groupIndex <= maxIndex) return CHINESE_LARGE_UNITS[groupIndex];
-  const whole = Math.floor(groupIndex / maxIndex);
-  const rest = groupIndex % maxIndex;
-  return (rest > 0 ? CHINESE_LARGE_UNITS[rest] : '') + CHINESE_LARGE_UNITS[maxIndex].repeat(whole);
-}
-
-function formatLargeChineseNumber(abs, digits) {
-  const groupIndex = Math.floor(Math.log10(abs) / 4);
-  const scaled = abs / Math.pow(10, groupIndex * 4);
-  let fractionDigits = digits === undefined ? 2 : digits;
-  if (scaled >= 1000) fractionDigits = 0;
-  else if (scaled >= 100) fractionDigits = Math.min(fractionDigits, 1);
-  return {
-    text: scaled.toFixed(fractionDigits) + getChineseLargeUnit(groupIndex),
-    exponent: groupIndex * 4
-  };
-}
-
-function formatPowerHint(num) {
-  const abs = Math.abs(num);
-  if (!Number.isFinite(abs) || abs < 1e4) return '';
-  return `约 10 的 ${Math.floor(Math.log10(abs))} 次方量级`;
-}
-
-function toSuperscript(n) {
-  const map = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻','+':'⁺' };
-  return String(n).split('').map(c => map[c] || c).join('');
-}
-
-function formatScientific(abs, digits) {
-  if (abs === 0) return '0';
-  const exp = Math.floor(Math.log10(abs));
-  const mantissa = abs / Math.pow(10, exp);
-  return mantissa.toFixed(digits) + ' × 10' + toSuperscript(exp);
-}
-
-function formatMoney(num) {
-  if (!Number.isFinite(num)) return num < 0 ? '-\u00a5∞' : '\u00a5∞';
-  const sign = num < 0 ? '-' : '';
-  const abs = Math.abs(num);
-  if (abs === 0) return sign + '\u00a50.00';
-  if (abs >= 1e4 || abs < 0.01) return sign + '\u00a5' + formatScientific(abs, 2);
-  if (abs >= 1) return sign + '\u00a5' + abs.toFixed(2);
-  return sign + '\u00a5' + abs.toFixed(4);
-}
-
-function formatReturnRate(value, digits) {
-  const fixedDigits = digits === undefined ? 2 : digits;
-  if (!Number.isFinite(value)) return value < 0 ? '-∞%' : '+∞%';
-  const sign = value >= 0 ? '+' : '-';
-  const abs = Math.abs(value);
-  if (abs >= 1e4) return sign + formatScientific(abs, fixedDigits) + '%';
-  return sign + abs.toFixed(fixedDigits) + '%';
-}
-
-function formatNumber(n) {
-  if (n >= 10000) return (n / 10000).toFixed(1) + '万';
-  return n.toLocaleString();
-}
+// ===== 被测逻辑（仅本文件自实现，game.js 里没有的纯函数） =====
 
 function simulatePress(wealth, win, fee) {
   if (fee === undefined) fee = 5;
@@ -113,33 +70,6 @@ function normalizeQuantumNumbers(rawNumbers, maxVal) {
   return rawNumbers.map(n => n / maxVal);
 }
 
-function buildChallengePayload(challengeId, username, initial, roundHistory) {
-  return challengeId + '|' + username + '|' + initial + '|' + roundHistory;
-}
-
-function replayStoredGame(initial, roundHistory, fee) {
-  fee = fee === undefined ? 5 : fee;
-  let wealth = initial;
-  let winCount = 0;
-  const rounds = [];
-  for (let i = 0; i < roundHistory.length; i++) {
-    const before = wealth;
-    const win = roundHistory.charAt(i) === 'W';
-    if (win) winCount++;
-    wealth = win ? wealth * 9 : wealth * 0.1;
-    wealth -= fee;
-    if (wealth < 0) wealth = 0;
-    rounds.push({ round: i + 1, win, before, after: wealth });
-  }
-  return {
-    rounds,
-    finalWealth: wealth,
-    winCount: winCount,
-    loseCount: roundHistory.length - winCount,
-    returnRate: (wealth / initial - 1) * 100
-  };
-}
-
 function runBatchSimulation(people, presses, initial) {
   const results = [];
   for (let i = 0; i < people; i++) {
@@ -160,12 +90,12 @@ function runBatchSimulation(people, presses, initial) {
 // ===== 测试用例 =====
 
 console.log('\n=== formatMoney 测试 ===');
-assert(formatMoney(100000) === '\u00a51.00 × 10⁵', '10万显示为 ¥1.00 × 10⁵');
+assert(formatMoney(100000) === '\u00a5100000.00', '10万 < 1亿，用普通两位小数显示');
 assert(formatMoney(1e8) === '\u00a51.00 × 10⁸', '1亿显示为科学计数法');
 assert(formatMoney(5.5e12) === '\u00a55.50 × 10¹²', '5.5万亿显示为科学计数法');
 assert(formatMoney(1e16) === '\u00a51.00 × 10¹⁶', '1京显示为科学计数法');
 assert(formatMoney(1e96) === '\u00a51.00 × 10⁹⁶', '超大值显示为科学计数法');
-assert(formatMoney(25000) === '\u00a52.50 × 10⁴', '2.5万显示为科学计数法');
+assert(formatMoney(25000) === '\u00a525000.00', '2.5万 < 1亿，用普通两位小数显示');
 assert(formatMoney(0.5) === '\u00a50.5000', '0.5元 (4位小数)');
 assert(formatMoney(0.005).includes('× 10'), '0.005元使用科学计数法');
 assert(formatMoney(0.001).includes('× 10'), '极小值使用科学计数法');
@@ -228,23 +158,30 @@ assert(sim.bankruptCount > 300, '破产率应较高（几何期望<1决定）: �
 assert(sim.avg > sim.median, '均值 > 中位数（右偏分布）');
 assert(sim.median < 100000, '中位数低于初始资金');
 
-console.log('\n=== 边界情况 ===');
-// 连赢（无手续费，纯乘法验证）
-let w = 100;
-for (let i = 0; i < 5; i++) w = simulatePress(w, true, 0);
-assert(approx(w, 100 * Math.pow(9, 5), 1), '连赢5次: 100 * 9^5 = ' + (100 * Math.pow(9, 5)));
+console.log('\n=== 埋点辅助纯函数（来自 game.js 真实现） ===');
+assert(reachesMultipleMilestone(1000000, 100000, 10) === true, '资产达到10倍应命中x10里程碑');
+assert(reachesMultipleMilestone(999999, 100000, 10) === false, '资产未达10倍不应命中x10里程碑');
+assert(reachesMultipleMilestone(10000000, 100000, 100) === true, '资产达到100倍应命中x100里程碑');
+assert(reachesBillionaireMilestone(1e8) === true, '资产恰好1亿应命中亿万富翁里程碑');
+assert(reachesBillionaireMilestone(1e8 - 1) === false, '资产差一点到1亿不应命中里程碑');
+assert(reachesBillionaireMilestone(2e8) === true, '资产超过1亿应命中里程碑');
 
-// 连输
-w = 100000;
-for (let i = 0; i < 5; i++) w = simulatePress(w, false, 0);
-assert(approx(w, 100000 * Math.pow(0.1, 5), 0.01), '连输5次: 100000 * 0.1^5');
+{
+  const p1 = computeUpdatedPeak(100000, 0, 150000, 1);
+  assert(p1.peakWealth === 150000 && p1.peakPressIndex === 1, '新资产超过峰值时刷新峰值与索引');
 
-// 一赢一输交替（应逐渐下降）
-w = 100000;
-for (let i = 0; i < 10; i++) {
-  w = simulatePress(w, i % 2 === 0, 0); // 赢输交替
+  const p2 = computeUpdatedPeak(150000, 1, 90000, 2);
+  assert(p2.peakWealth === 150000 && p2.peakPressIndex === 1, '新资产未超过峰值时保持原峰值不变');
+
+  const p3 = computeUpdatedPeak(100000, 0, 100000, 1);
+  assert(p3.peakWealth === 100000 && p3.peakPressIndex === 0, '资产相等时不刷新峰值（严格大于才刷新）');
 }
-assert(w < 100000, '赢输交替后资产下降（因为9*0.1=0.9<1）');
+
+console.log('\n=== 切后台不应重置局状态 (shouldResetRoundState, 来自 game.js 真实现) ===');
+assert(shouldResetRoundState(0) === true, 'pressCount=0（首次开局 / reset 后）应重置派生状态');
+assert(shouldResetRoundState(1) === false, 'pressCount>0（切后台回来继续按）不应重置');
+assert(shouldResetRoundState(50) === false, '按了 50 次后切回来不应重置峰值/里程碑');
+assert(shouldResetRoundState(-1) === false, '负数也不应触发重置');
 
 // ===== 结果汇总 =====
 console.log(`\n========================================`);

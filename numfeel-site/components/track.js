@@ -196,6 +196,20 @@
   }
 
   /**
+   * 判断事件入队后是否需要立即发送（不等 5s 定时或离页 flush）。
+   *
+   * 典型场景是 session_end 这类收尾事件：页面在 pagehide 监听器里最后才入队，
+   * 而 SDK 自己的 pagehide flush 注册得更早、会先跑完，导致收尾事件留在队列里
+   * 再无发送机会而丢失。这类事件必须入队后立即发送。
+   *
+   * @param {string} name 事件名
+   * @returns {boolean} 是否需要立即 flush
+   */
+  function shouldImmediateFlush(name) {
+    return name === 'session_end';
+  }
+
+  /**
    * 把字符串解析成非负整数；缺失 / 非数字 / 负数 / 浮点 / 被人为改坏的垃圾值一律退化为 fallback。
    * 纯函数，容忍任何输入，绝不抛异常。
    *
@@ -452,7 +466,13 @@
 
       mirrorToUmami(name, cleaned);
       persistState();
-      scheduleFlushIfNeeded();
+      if (shouldImmediateFlush(name)) {
+        // 收尾事件（session_end）：页面可能紧接着销毁，定时/离页 flush 都来不及，
+        // 入队后立即发送，避免丢失。
+        flush();
+      } else {
+        scheduleFlushIfNeeded();
+      }
     } catch (e) {
       // 绝不抛异常、绝不阻塞 UI
     }
@@ -553,6 +573,7 @@
       stampTruncated: stampTruncated,
       bytesToSessionId: bytesToSessionId,
       isValidEventName: isValidEventName,
+      shouldImmediateFlush: shouldImmediateFlush,
       parseNonNegInt: parseNonNegInt,
       parseOnceList: parseOnceList,
       serializeOnceMap: serializeOnceMap,

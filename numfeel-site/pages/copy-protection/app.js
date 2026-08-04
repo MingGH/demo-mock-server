@@ -42,11 +42,15 @@
 
   window.toggleDefense = function (id) {
     const idx = activeDefenses.indexOf(id);
+    let enabled;
     if (idx > -1) {
       activeDefenses.splice(idx, 1);
+      enabled = false;
     } else {
       activeDefenses.push(id);
+      enabled = true;
     }
+    nfTrack('defense_toggle', { defense: id, enabled: enabled ? 1 : 0 });
     applyDefenses();
     updateProtectionMeter();
   };
@@ -187,6 +191,7 @@
 
   /* ── 事件监听（动态添加/移除） ── */
   function copyHandler(e) {
+    nfTrack('copy_attempt', { blocked: (activeDefenses.includes('js-copy-event') || activeDefenses.includes('js-clipboard-replace')) ? 1 : 0 });
     if (activeDefenses.includes('js-copy-event') || activeDefenses.includes('js-clipboard-replace')) {
       e.preventDefault();
       if (activeDefenses.includes('js-clipboard-replace')) {
@@ -199,6 +204,7 @@
     }
   }
   function contextmenuHandler(e) {
+    nfTrack('contextmenu', { blocked: activeDefenses.includes('js-contextmenu') ? 1 : 0 });
     if (activeDefenses.includes('js-contextmenu')) {
       e.preventDefault();
       logAction('右键菜单被拦截');
@@ -235,6 +241,7 @@
     const defenses = activeDefenses.length > 0
       ? TECHNIQUES.filter(t => activeDefenses.includes(t.id))
       : TECHNIQUES.slice(0, 3); // 默认用前三个
+    nfTrack('run_battle', { level: level, defenses: defenses.length });
     const result = simulateBattle(defenses, level);
 
     const resultArea = document.getElementById('battleResult');
@@ -285,6 +292,18 @@
       </div>`;
     }).join('');
   }
+
+  /* ══════════ 行为埋点（NFTrack，见 components/track.js）══════════ */
+  // 事件：session_start / defense_toggle / copy_attempt / contextmenu / run_battle / session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
 
   /* ══════════ 初始化 ══════════ */
   renderTechCards();

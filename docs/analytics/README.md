@@ -83,7 +83,15 @@ bankrupt（仅破产时） 与 session_end(reason='bankrupt') 同局并行
    来不及完成而丢包。这是指定 `application/json` 带来的固有成本，不要改成 `text/plain`。
 6. **`truncated` 的语义**：`press` 事件超过 300 条上限后停止记 press，但 `session_end` / `bankrupt`
    仍会发，且此时 `trackedPressCount >= PRESS_TRACK_LIMIT`，`session_end.truncated` 会置 1。
-   查询 8 统计的是「有 session_end 收尾且 truncatd=1」的局占比。
+   查询 8 统计的是「有 session_end 收尾且 truncated=1」的局占比。
+7. **`truncated` 有两个来源，force 收尾事件会被会话级标记覆盖。** (a) 游戏内的 300 条 press 上限
+   （`trackedPressCount >= PRESS_TRACK_LIMIT`，每局重置，正确）；(b) SDK 的 600 条事件会话上限
+   （`track.js` 的 `state.truncated`，**跨局、跨刷新持久化**，不会随 reset 清掉）。对 `session_end` /
+   `bankrupt` / `session_hidden` 这类 `force:true` 事件，SDK 若此前命中过 600 上限，会用
+   `stampTruncated` 把 `truncated:true` 打上去，**覆盖掉游戏按局算出的值**。结果是：若某会话在某局
+   命中过 600 上限，后续每一局的 `truncated` 恒为 true。实际影响小（300 条 press 上限已提前停记，
+   极难触到 600），但读查询 8 时要知道它统计的是「会话级被截断」而非严格按局。这是刻意保留的偏差，
+   未改动 SDK 的 stamp 逻辑。
 
 ---
 

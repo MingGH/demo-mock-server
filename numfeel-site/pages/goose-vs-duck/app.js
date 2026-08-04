@@ -8,6 +8,32 @@ let currentIndex = 0;
 let userAnswers = [];
 let quizOrder = []; // 随机排列的题目索引
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start (trackOnce) 页面加载
+//   quiz_start    开始测试
+//   answer        作答，回答「用户在每题上的判断正确率」
+//   quiz_result   (force) 完成测试，回答「用户答对几题」
+//   session_end   (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['quiz_result', 'session_end'];
+}
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+nfTrack('session_start', {});
+registerTrackLeaveHandler();
+
 /* ══════════════ Phase 切换 ══════════════ */
 function showPhase(id) {
   document.querySelectorAll('.phase').forEach(el => el.classList.remove('active'));
@@ -19,6 +45,7 @@ function showPhase(id) {
 function startQuiz() {
   currentIndex = 0;
   userAnswers = [];
+  nfTrack('quiz_start', {});
   // 随机打乱题目顺序
   quizOrder = shuffleArray([...Array(QUIZ_DATA.length).keys()]);
   showPhase('phase-quiz');
@@ -39,6 +66,7 @@ function answer(choice) {
   const q = QUIZ_DATA[quizOrder[currentIndex]];
   const correct = choice === q.answer;
   userAnswers.push({ questionIndex: quizOrder[currentIndex], choice, correct });
+  nfTrack('answer', { choice: choice, correct: correct, idx: currentIndex });
 
   // 闪烁反馈
   const wrap = document.getElementById('quizImageWrap');
@@ -57,6 +85,7 @@ function answer(choice) {
 function showResult() {
   const correctCount = userAnswers.filter(a => a.correct).length;
   const grade = GRADE_RULES.find(r => correctCount >= r.min);
+  nfTrack('quiz_result', { correctCount: correctCount }, { force: true });
 
   document.getElementById('scoreNumber').textContent = correctCount;
   document.getElementById('resultGrade').textContent = grade.grade;

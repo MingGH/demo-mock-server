@@ -98,6 +98,36 @@
 
   <script>
     const API_BASE = 'https://numfeel-api.996.ninja';
+
+    // ════════ 行为埋点（NFTrack，见 components/track.js） ════════
+    // 事件清单：
+    //  - session_start(trackOnce)：页面加载，标记会话开始
+    //  - press_action：按下按钮（回答：用户在本会话按了几次、是否反复尝试）
+    //  - session_hidden / session_end：切后台 / 离页
+    function nfTrack(name, props, opts) {
+      try {
+        if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+          window.NFTrack.track(name, props, opts);
+        }
+      } catch (e) {}
+    }
+    function registerTrackLeave() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+          nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+        }
+      });
+      window.addEventListener('pagehide', function () {
+        nfTrack('session_end', { reason: 'leave', presses: myPressCount }, { force: true });
+      });
+    }
+    try {
+      if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+        window.NFTrack.trackOnce('session_start', {});
+      }
+    } catch (e) {}
+    registerTrackLeave();
+
     let myPressCount = parseInt(localStorage.getItem('doomMyPress') || '0');
     let hasEverPressed = localStorage.getItem('doomEverPressed') === 'true';
     let isProcessing = false;
@@ -200,6 +230,7 @@
       myPressCount++;
       localStorage.setItem('doomMyPress', myPressCount);
       updateMyStats();
+      nfTrack('press_action', { count: myPressCount });
       
       // 记录到服务器
       recordPress();

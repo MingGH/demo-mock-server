@@ -486,10 +486,59 @@
   let floatAnimation = null;
   const pageSize = 5;
 
+  // ============ 行为埋点（通用埋点 SDK，见 components/track.js） ============
+  // 事件清单：
+  // - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+  // - generate:      触发一次生成 {count}，回答"生成数量分布、生成频率"
+  // - copy_all:      一键复制全部 {count}，回答"复制利用率"
+  // - page_nav:      翻页 {dir}，回答"翻页行为"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 注意：生成出的中文名属于生成内容，不是用户输入，但也不进 props（避免冗余/敏感）。
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  if (typeof window !== 'undefined') {
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  }
+  let trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+
   async function generate() {
     const count = parseInt(document.getElementById('count').value) || 5;
     const btn = document.getElementById('generateBtn');
     const stage = document.getElementById('stage');
+    trackSessionStart();
+    nfTrack('generate', { count: count });
     
     btn.disabled = true;
     btn.innerHTML = '⏳ 生成中...';
@@ -606,6 +655,7 @@
 
   async function prevPage() {
     if (currentPage > 1) {
+      nfTrack('page_nav', { dir: 'prev' });
       if (floatAnimation) floatAnimation.kill();
       await gsap.to('.name-card', {
         opacity: 0, 
@@ -623,6 +673,7 @@
   async function nextPage() {
     const totalPages = Math.ceil(allNames.length / pageSize);
     if (currentPage < totalPages) {
+      nfTrack('page_nav', { dir: 'next' });
       if (floatAnimation) floatAnimation.kill();
       await gsap.to('.name-card', {
         opacity: 0, 
@@ -656,6 +707,7 @@
       showToast('⚠️ 请先生成中文名');
       return;
     }
+    nfTrack('copy_all', { count: allNames.length });
     navigator.clipboard.writeText(allNames.join('\n')).then(() => {
       showToast(`✅ 已复制 ${allNames.length} 个中文名`);
     });
@@ -706,6 +758,10 @@
       }
     });
   });
+
+  // 初始化埋点
+  trackSessionStart();
+  registerTrackLeaveHandler();
 </script>
 </body>
 </html>

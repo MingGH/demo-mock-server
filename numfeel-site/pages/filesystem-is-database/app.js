@@ -7,6 +7,32 @@
   var FSDB = window.FSDB;
   var gsap; // 在 init 中赋值（GSAP 以 defer 加载，DOMContentLoaded 前才就绪）
 
+  // ========== 行为埋点（NFTrack，见 components/track.js） ==========
+  // 事件清单：
+  //   session_start (trackOnce) 页面加载
+  //   file_select   选中文件，回答「用户是否常点文件看查找动画」
+  //   index_toggle  切换索引开关
+  //   benchmark     (force) 跑一次实测，回答「用户是否实际运行基准测试」
+  //   session_end   (force) 真正离页 pagehide，reason=leave
+  // 埋点不影响功能：NFTrack 不存在时静默跳过。
+  if (typeof window !== 'undefined') {
+    window.NF_TRACK_UMAMI_MIRROR = ['benchmark', 'session_end'];
+  }
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  function registerTrackLeaveHandler() {
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  }
+  nfTrack('session_start', {});
+  registerTrackLeaveHandler();
+
   // ─────────────────────────────────────────────────────────
   // 模块 1：文件树 + inode 表 + B 树索引
   // ─────────────────────────────────────────────────────────
@@ -159,6 +185,7 @@
     if (currentIndexOn) animateBTreeSearch(path);
     else animateLinearScan(path);
     updateCmpStats(path);
+    nfTrack('file_select', { indexed: currentIndexOn });
   }
 
   // B 树查找动画
@@ -346,6 +373,7 @@
     showResult(result, N);
     running = false;
     btn.disabled = false;
+    nfTrack('benchmark', { N: N, real: !!result.real }, { force: true });
   }
 
   // 真实实测
@@ -586,6 +614,7 @@
     document.getElementById('indexToggle').addEventListener('change', function () {
       currentIndexOn = this.checked;
       if (currentPath) selectFile(currentPath, document.querySelector('#fileTree .tree-node.active'));
+      nfTrack('index_toggle', { on: currentIndexOn });
     });
   }
 

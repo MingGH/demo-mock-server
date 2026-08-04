@@ -7,6 +7,32 @@ var latencyClicks = { A: 0, B: 0 };
 var latencyRevealed = false;
 var latencyDelays = {}; // 随机分配
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start (trackOnce) 页面加载
+//   race_run      运行竞速，回答「用户最常测哪种密码长度/字符集」
+//   latency_guess 延迟感知猜测，回答「用户能否感知延迟差异」
+//   copy_share    复制分享
+//   session_end   (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+nfTrack('session_start', {});
+registerTrackLeaveHandler();
+
 // ── 初始化 ──
 (function init() {
   renderPresets();
@@ -84,6 +110,8 @@ function runRace(length, charsetKey, description) {
 
   // 更新分享文本
   updateShareText(description, results);
+
+  nfTrack('race_run', { length: length, charset: charsetKey });
 
   // 滚动到竞速区域
   section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -268,6 +296,7 @@ function guessLatency(guess) {
   var slower = latencyDelays.A > latencyDelays.B ? 'A' : 'B';
   var isCorrect = (guess === slower);
   var isSame = (guess === 'same');
+  nfTrack('latency_guess', { guess: guess, correct: isCorrect });
 
   // 高亮猜测按钮
   var btns = document.querySelectorAll('.guess-btn');
@@ -318,6 +347,7 @@ function updateShareText(desc, results) {
 
 function copyShare() {
   var text = document.getElementById('shareText').textContent;
+  nfTrack('copy_share', {});
   navigator.clipboard.writeText(text).then(function() {
     showToast('已复制到剪贴板');
   }).catch(function() {

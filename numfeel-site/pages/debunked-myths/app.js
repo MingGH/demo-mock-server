@@ -4,6 +4,39 @@ const API_BASE = 'https://numfeel-api.996.ninja';
 const CANVAS_SIZE = 400;
 const POINT_COUNT = 200;
 
+// ════════ 行为埋点（NFTrack，见 components/track.js） ════════
+// 事件清单（各事件回答什么问题）：
+//  - session_start(trackOnce)：页面加载，标记会话开始
+//  - quiz_answer：聚类错觉答题（回答：每轮猜对与否、正确率）
+//  - quiz_complete：完成 5 轮测验（回答：最终得分分布）
+//  - quiz_restart：重测
+//  - password_preset：点击密码预设（回答：用户对比了哪些密码）
+//  - diceware_generate：生成 Diceware 密码（回答：是否使用随机词生成器）
+//  - session_hidden / session_end：切后台 / 离页
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeave() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      nfTrack('session_hidden', { reason: 'hidden', round: quizState.round }, { force: true });
+    }
+  });
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave', round: quizState.round, score: quizState.score }, { force: true });
+  });
+}
+try {
+  if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+    window.NFTrack.trackOnce('session_start', {});
+  }
+} catch (e) {}
+registerTrackLeave();
+
 // ── 状态 ──
 let quizState = {
   round: 0,

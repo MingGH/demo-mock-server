@@ -9,6 +9,32 @@
   var phases = {};
   var els = {};
 
+  // ========== 行为埋点（NFTrack，见 components/track.js） ==========
+  // 事件清单：
+  //   session_start (trackOnce) 页面加载
+  //   quiz_start    开始测试
+  //   quiz_answer   选择答案，回答「用户在不同框架下的选择」
+  //   quiz_result   (force) 完成测试，回答「用户测出的框架效应指数」
+  //   session_end   (force) 真正离页 pagehide，reason=leave
+  // 埋点不影响功能：NFTrack 不存在时静默跳过。
+  if (typeof window !== 'undefined') {
+    window.NF_TRACK_UMAMI_MIRROR = ['quiz_result', 'session_end'];
+  }
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  function registerTrackLeaveHandler() {
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  }
+  nfTrack('session_start', {});
+  registerTrackLeaveHandler();
+
   function $(id) {
     return document.getElementById(id);
   }
@@ -52,6 +78,7 @@
     state.selectedChoice = null;
     showPhase('quiz');
     renderQuestion();
+    nfTrack('quiz_start', {});
   }
 
   function renderQuestion() {
@@ -110,6 +137,7 @@
       frame: q.frame,
       choice: state.selectedChoice
     });
+    nfTrack('quiz_answer', { frame: q.frame, choice: state.selectedChoice, idx: state.currentIndex });
 
     state.currentIndex++;
 
@@ -125,6 +153,7 @@
 
     var result = calcFramingIndex(state.answers);
     var rating = getFramingRating(result.framingIndex);
+    nfTrack('quiz_result', { framingIndex: result.framingIndex }, { force: true });
 
     els.resultHero.innerHTML =
       '<h2><i class="ti ti-chart-bar"></i> 你的框架效应测试结果</h2>' +

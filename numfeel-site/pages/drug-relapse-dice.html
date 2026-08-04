@@ -405,6 +405,38 @@
 </div>
 
 <script>
+// ════════ 行为埋点（NFTrack，见 components/track.js） ════════
+// 事件清单（各事件回答什么问题）：
+//  - session_start(trackOnce)：页面加载，标记会话开始
+//  - roll_action：掷骰子（回答：用户掷了几次、是否掷出 1）
+//  - batch_roll：批量模拟（回答：用户是否用批量模拟验证 1% 概率）
+//  - milestone：首次掷出 1（trackOnce，回答：用户多久才亲眼见到成功）
+//  - reset_action：重置统计
+//  - session_hidden / session_end：切后台 / 离页
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeave() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      nfTrack('session_hidden', { reason: 'hidden', rolls: totalRolls }, { force: true });
+    }
+  });
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave', rolls: totalRolls, success: successCount }, { force: true });
+  });
+}
+try {
+  if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+    window.NFTrack.trackOnce('session_start', {});
+  }
+} catch (e) {}
+registerTrackLeave();
+
 let totalRolls = 0;
 let successCount = 0;
 
@@ -445,6 +477,14 @@ function rollDice() {
       totalRolls++;
       const isSuccess = result === 1;
       if (isSuccess) successCount++;
+      nfTrack('roll_action', { result: result, success: isSuccess });
+      if (isSuccess && successCount === 1) {
+        try {
+          if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+            window.NFTrack.trackOnce('milestone', { rollsAtFirst: totalRolls });
+          }
+        } catch (e) {}
+      }
       
       // 更新显示
       if (isSuccess) {
@@ -470,6 +510,7 @@ function rollDice() {
 function batchRoll() {
   const selectEl = document.getElementById('batchCount');
   const count = parseInt(selectEl.value) || 1000;
+  nfTrack('batch_roll', { count: count });
   
   let batchSuccess = 0;
   for (let i = 0; i < count; i++) {
@@ -515,6 +556,7 @@ function updateStats() {
 function resetStats() {
   totalRolls = 0;
   successCount = 0;
+  nfTrack('reset_action', {});
   document.getElementById('dice').textContent = '?';
   document.getElementById('dice').classList.remove('win', 'lose');
   document.getElementById('resultText').textContent = '';

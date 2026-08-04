@@ -10,6 +10,32 @@
   let results = [];
   let chartInstance = null;
 
+  // ══════════════════════════════════════════════════════════
+  // 行为埋点（NFTrack，见 components/track.js）
+  // 事件清单：
+  //   session_start      → 会话开始（trackOnce）
+  //   quiz_start         → 开始一份测验（回答多少用户开始作答）
+  //   answer_submit      → 提交一题答案 { ai, errorPct }（回答锚定系数分布）
+  //   quiz_complete      → 完成全卷 { avgAI }（回答整体锚定强度）
+  //   session_end        → 离页（pagehide, force）
+  // ══════════════════════════════════════════════════════════
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  var trackSessionStarted = false;
+  function trackSessionStart() {
+    if (trackSessionStarted) return;
+    trackSessionStarted = true;
+    nfTrack('session_start', { total: TOTAL });
+  }
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+
   // ── DOM ──
   const $ = (sel) => document.querySelector(sel);
   const phases = {
@@ -32,6 +58,8 @@
   });
 
   function startQuiz() {
+    trackSessionStart();
+    nfTrack('quiz_start', {});
     questions = pickQuestions(TOTAL);
     currentIdx = 0;
     results = [];
@@ -118,6 +146,8 @@
       source: q.source
     });
 
+    nfTrack('answer_submit', { ai: Math.round(ai * 1000) / 1000, errorPct: Math.round(errorPct * 1000) / 1000 });
+
     // 禁用输入
     $('#answerInput').disabled = true;
     $('#submitAnswer').disabled = true;
@@ -194,6 +224,8 @@
 
     const avgAI = calcAverageAI(results);
     const rating = getAIRating(avgAI);
+
+    nfTrack('quiz_complete', { avgAI: Math.round(avgAI * 1000) / 1000, total: results.length });
 
     $('#summaryScore').textContent = (avgAI * 100).toFixed(1) + '%';
     $('#summaryScore').style.color = rating.color;

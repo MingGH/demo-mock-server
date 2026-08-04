@@ -6,6 +6,33 @@
 // ========== DOM refs ==========
 const $ = id => document.getElementById(id);
 
+// ══════════════════════════════════════════════════════════
+// 行为埋点（NFTrack，见 components/track.js）
+// 事件清单：
+//   session_start   → 会话开始（trackOnce）
+//   preset          → 应用快捷预设 { type }（回答是否直奔最优点）
+//   draw_once       → 摸一次（回答是否真的上手试了）
+//   run_mc          → 批量模拟 { n }
+//   session_end     → 离页（pagehide, force）
+// ══════════════════════════════════════════════════════════
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+var trackSessionStarted = false;
+function trackSessionStart() {
+  if (trackSessionStarted) return;
+  trackSessionStarted = true;
+  nfTrack('session_start', {});
+}
+window.addEventListener('pagehide', function () {
+  nfTrack('session_end', { reason: 'leave' }, { force: true });
+});
+trackSessionStart();
+
 // ========== 更新 UI ==========
 function updateUI() {
   const b1 = parseInt($('blackInA').value);
@@ -62,6 +89,7 @@ $('whiteInA').addEventListener('input', updateUI);
 
 // ========== 快捷预设 ==========
 function applyPreset(type) {
+  nfTrack('preset', { type: type });
   const blackSlider = $('blackInA');
   const whiteSlider = $('whiteInA');
   const opts = { naive: [25, 25], optimal: [1, 0], extreme: [50, 0] };
@@ -73,6 +101,7 @@ function applyPreset(type) {
 
 // ========== 摸一次 ==========
 function drawOnce() {
+  nfTrack('draw_once', {});
   const b1 = parseInt($('blackInA').value);
   const w1 = parseInt($('whiteInA').value);
   const result = simulateDraw(b1, w1);
@@ -109,6 +138,7 @@ function runMonteCarlo() {
   if (!valid) return;
 
   const n = Math.min(Math.max(parseInt($('simCount').value) || 1000, 10), 100000);
+  nfTrack('run_mc', { n: n });
   $('simCount').value = n;
 
   const batchSize = Math.max(10, Math.floor(n / 200));

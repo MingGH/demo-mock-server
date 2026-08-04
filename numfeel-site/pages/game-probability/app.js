@@ -57,6 +57,34 @@ let strategyChart = null;
 let fallacyChart = null;
 let pityCompareChart = null;
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start (trackOnce) 页面加载
+//   pool_select   选择卡池，回答「用户最常测哪种抽卡模型」
+//   sim_run       批量模拟，回答「用户测的模拟次数」
+//   pull          亲手抽卡，回答「用户手动抽了几抽」
+//   strategy      策略对比，回答「用户测的预算」
+//   pity_compare  保底 vs 无保底对比
+//   session_end   (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+nfTrack('session_start', {});
+registerTrackLeaveHandler();
+
 // ========== 初始化 ==========
 function init() {
   renderPoolSelector();
@@ -95,6 +123,7 @@ function selectPool(id) {
   updateConfigDisplay();
   updateExpectedStats();
   resetPull();
+  nfTrack('pool_select', { pool: id });
   // 隐藏旧结果
   document.getElementById('simResults').style.display = 'none';
   document.getElementById('strategyResults').style.display = 'none';
@@ -114,6 +143,7 @@ function runSimulation() {
   const btn = document.getElementById('runSimBtn');
   btn.disabled = true;
   btn.innerHTML = '<i class="ti ti-loader"></i> 模拟中…';
+  nfTrack('sim_run', { pool: currentPool.id, times: times });
 
   setTimeout(() => {
     const results = batchSimulate(currentPool, times);
@@ -250,6 +280,7 @@ function pullOnce() {
   pullState.count++;
   pullState.pity = result.newPity;
   pullState.dots.push(result.hit);
+  nfTrack('pull', { pool: currentPool.id, count: pullState.count, isTen: false });
 
   updatePullDisplay();
 
@@ -272,6 +303,7 @@ function pullTen() {
       pullState.hits.push(pullState.count);
     }
   }
+  nfTrack('pull', { pool: currentPool.id, count: pullState.count, isTen: true });
   updatePullDisplay();
   if (pullState.hits.length > 0) {
     showHitMessage();
@@ -306,6 +338,7 @@ function showHitMessage() {
 function runStrategy() {
   const budget = parseInt(document.getElementById('budgetSlider').value);
   const times = 5000;
+  nfTrack('strategy', { budget: budget, pool: currentPool.id });
 
   const results = { yolo: [], save: [], discount: [] };
 
@@ -481,6 +514,7 @@ function drawFallacyChart(streaks, probs, rate) {
 // ========== 保底 vs 无保底对比 ==========
 function runPityComparison() {
   const times = 10000;
+  nfTrack('pity_compare', { pool: currentPool.id });
 
   // 有保底
   const withPity = batchSimulate(currentPool, times);

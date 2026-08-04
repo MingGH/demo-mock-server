@@ -29,6 +29,56 @@ var state = {
   jamScore: 0
 };
 
+// ========== 行为埋点（通用埋点 SDK，见 components/track.js） ==========
+// 事件清单：
+// - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+// - phase_start:   进入某个实验阶段 {phase}，回答"漏斗——多少人走到哪一关"
+// - hick_round:    Hick 一轮点击 {n, correct, rt}，回答"各选项数的反应时间"
+// - fatigue_choose: 疲劳题作答 {optionCount, rt}，回答"选项数与决策质量"
+// - fatigue_timeout: 疲劳题超时，回答"超时频率"
+// - jam_confirm:   果酱实验确认 {round, rt, count}，回答"选项数量对决策时间的影响"
+// - jam_sat:       满意度评分 {round, val}，回答"满意度与选项数关系"
+// - result:        完成全部 {index}，回答"完成率"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+var trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 // ── 决策疲劳题库 ──
 var FATIGUE_QUESTIONS = [
   { q: '你更喜欢哪种天气？', opts: ['晴天', '阴天'] },
@@ -59,6 +109,8 @@ function showPhase(id) {
 }
 
 function startExperiment() {
+  trackSessionStart();
+  nfTrack('phase_start', { phase: 'hick' });
   showPhase('phaseHick');
   document.getElementById('hickTotalRounds').textContent = state.hickRounds.length;
   startHickRound();
@@ -123,6 +175,7 @@ function onHickClick(e) {
   var n = state.hickRounds[state.hickCurrent];
 
   state.hickResults.push({ n: n, rt: Math.round(rt), correct: correct });
+  nfTrack('hick_round', { n: n, correct: correct ? 1 : 0, rt: Math.round(rt) });
 
   // 禁用所有按钮
   var btns = document.querySelectorAll('.hick-btn');
@@ -203,6 +256,8 @@ function drawHickChart(canvasId, data, fit) {
 // 关卡二：决策疲劳
 // ══════════════════════════════════════
 function startFatiguePhase() {
+  trackSessionStart();
+  nfTrack('phase_start', { phase: 'fatigue' });
   showPhase('phaseFatigue');
   state.fatigueCurrent = 0;
   state.fatigueResults = [];
@@ -262,12 +317,14 @@ function onFatigueChoose(idx) {
     impulsive: isImpulsive(rt),
     optionCount: q.opts.length
   });
+  nfTrack('fatigue_choose', { optionCount: q.opts.length, rt: Math.round(rt), impulsive: isImpulsive(rt) ? 1 : 0 });
   state.fatigueCurrent++;
   showFatigueQuestion();
 }
 
 function onFatigueTimeout() {
   var q = FATIGUE_QUESTIONS[state.fatigueCurrent];
+  nfTrack('fatigue_timeout', { optionCount: q.opts.length });
   state.fatigueResults.push({
     rt: state.fatigueTimeLimit,
     chose: -1,
@@ -370,6 +427,8 @@ function renderJamShelf(round, count) {
   var shelfId = 'jamShelf' + round;
   var shelf = document.getElementById(shelfId);
   shelf.innerHTML = '';
+  trackSessionStart();
+  nfTrack('phase_start', { phase: 'jam' + round, count: count });
 
   state.jamSelected = null;
   state.jamHoverCount = 0;
@@ -403,6 +462,7 @@ function selectJam(idx, round) {
 
 function confirmJam(round) {
   var rt = performance.now() - state.jamStartTime;
+  nfTrack('jam_confirm', { round: round, rt: Math.round(rt), count: round === 1 ? 6 : 24 });
   if (round === 1) {
     state.jamData.round1 = { rt: Math.round(rt), hovers: state.jamHoverCount, selected: state.jamSelected };
     document.getElementById('jamRound1').style.display = 'none';
@@ -433,6 +493,7 @@ function renderSatStars(round) {
 
 function rateSat(val, round) {
   state.jamSatisfaction[round - 1] = val;
+  nfTrack('jam_sat', { round: round, val: val });
   var stars = document.querySelectorAll('#satRow' + round + ' .sat-star');
   for (var i = 0; i < stars.length; i++) {
     stars[i].classList.toggle('active', parseInt(stars[i].getAttribute('data-val')) <= val);
@@ -494,6 +555,12 @@ function showJamSummary() {
 // ══════════════════════════════════════
 function showResult() {
   showPhase('phaseResult');
+  trackSessionStart();
+  nfTrack('result', { index: choiceOverloadIndex({
+    hickScore: state.hickScore,
+    fatigueScore: state.fatigueScore,
+    jamScore: state.jamScore
+  }) });
 
   var index = choiceOverloadIndex({
     hickScore: state.hickScore,

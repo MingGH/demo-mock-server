@@ -272,6 +272,37 @@
   </svg>
 
   <script>
+    // ════════ 行为埋点（NFTrack，见 components/track.js） ════════
+    // 事件清单（各事件回答什么问题）：
+    //  - session_start(trackOnce)：页面加载，标记会话开始
+    //  - photo_upload：上传照片（回答：用户是否上传照片尝试）
+    //  - analyze_result：评分结果（回答：用户获得的分数分布，用于娱乐可见性）
+    //  - reupload_action：重新上传
+    //  - session_hidden / session_end：切后台 / 离页
+    function nfTrack(name, props, opts) {
+      try {
+        if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+          window.NFTrack.track(name, props, opts);
+        }
+      } catch (e) {}
+    }
+    function registerTrackLeave() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+          nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+        }
+      });
+      window.addEventListener('pagehide', function () {
+        nfTrack('session_end', { reason: 'leave' }, { force: true });
+      });
+    }
+    try {
+      if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+        window.NFTrack.trackOnce('session_start', {});
+      }
+    } catch (e) {}
+    registerTrackLeave();
+
     let modelsLoaded = false;
     
     // 加载 face-api 模型
@@ -314,6 +345,7 @@
     });
     
     function handleFile(file) {
+      nfTrack('photo_upload', {});
       const reader = new FileReader();
       reader.onload = (e) => {
         document.getElementById('previewImg').src = e.target.result;
@@ -325,6 +357,7 @@
     }
     
     function resetUpload() {
+      nfTrack('reupload_action', {});
       document.getElementById('uploadArea').style.display = 'block';
       document.getElementById('previewArea').style.display = 'none';
       document.getElementById('resultCard').style.display = 'none';
@@ -479,6 +512,7 @@
       );
       // 映射到 50-92 分，更有区分度
       const score = Math.round(50 + Math.max(0, Math.min(1, rawScore)) * 42);
+      nfTrack('analyze_result', { score: score, gender: result.gender === 'male' ? 'male' : 'female' });
       
       // 显示分数动画
       const scoreCircle = document.getElementById('scoreCircle');

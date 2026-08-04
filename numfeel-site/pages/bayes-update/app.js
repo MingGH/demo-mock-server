@@ -28,6 +28,33 @@
   var resultCard = $('resultCard');
   var progressRail = $('progressRail');
 
+  // ══════════════════════════════════════════════════════════
+  // 行为埋点（NFTrack，见 components/track.js）
+  // 事件清单：
+  //   session_start   → 会话开始（trackOnce）
+  //   preset_click    → 选用预设场景 { idx }（回答哪个场景最常用）
+  //   compute         → 点「计算」按钮（回答有多少人真正算了一次）
+  //   reset           → 重置（回答反复调整比例的行为）
+  //   session_end     → 离页（pagehide, force）
+  // ══════════════════════════════════════════════════════════
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  var trackSessionStarted = false;
+  function trackSessionStart() {
+    if (trackSessionStarted) return;
+    trackSessionStarted = true;
+    nfTrack('session_start', {});
+  }
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+  trackSessionStart();
+
   // 步骤 ID（按填写顺序）
   var STEPS = ['subject', 'prior', 'evidence', 'likelihood', 'falseRate', 'guess'];
   var stepEls = {};
@@ -55,6 +82,7 @@
   function onPresetClick(e) {
     var idx = parseInt(e.currentTarget.getAttribute('data-idx'), 10);
     var p = L.PRESETS[idx];
+    nfTrack('preset_click', { idx: idx });
     subjectInput.value = p.subject;
     evidenceInput.value = p.evidence;
     setSlider(priorSlider, p.prior * 100);
@@ -177,6 +205,7 @@
 
   // ── 计算并渲染结果 ──
   function compute() {
+    nfTrack('compute', {});
     var prior = parseFloat(priorSlider.value) / 100;
     var likelihood = parseFloat(likelihoodSlider.value) / 100;
     var falseRate = parseFloat(falseRateSlider.value) / 100;
@@ -265,6 +294,7 @@
 
   // ── 重置 ──
   function reset() {
+    nfTrack('reset', {});
     subjectInput.value = '';
     evidenceInput.value = '';
     setSlider(priorSlider, 5);

@@ -586,8 +586,54 @@ const DATA = {
 let currentUnit = 'mb';
 let particleAnimation = null;
 
+// ============ 行为埋点（通用埋点 SDK，见 components/track.js） ============
+// 事件清单：
+// - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+// - unit_select:   切换数据单位 {unit}，回答"哪些量级被浏览最多"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 function selectUnit(unit) {
   currentUnit = unit;
+  trackSessionStart();
+  nfTrack('unit_select', { unit: unit });
   
   // 更新按钮状态
   document.querySelectorAll('.unit-btn').forEach(btn => {
@@ -761,6 +807,7 @@ function createParticle(container) {
 
 // 初始化
 selectUnit('mb');
+registerTrackLeaveHandler();
 </script>
 
 </body>

@@ -23,6 +23,32 @@
   // 其余按「现代 3A」预设的资产比例切分，保证 总量/代码 = 11,519 精确成立
   var heroSegments = [];
 
+  // ========== 行为埋点（NFTrack，见 components/track.js） ==========
+  // 事件清单：
+  //   session_start (trackOnce) 页面加载
+  //   zoom_reached  第一幕放大到底，回答「用户是否完成放大体验」
+  //   preset_select 选择预设，回答「用户最常试哪种装机预设」
+  //   copy_config   复制配置文本
+  //   session_end   (force) 真正离页 pagehide，reason=leave
+  // 埋点不影响功能：NFTrack 不存在时静默跳过。
+  if (typeof window !== 'undefined') {
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  }
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  function registerTrackLeaveHandler() {
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  }
+  nfTrack('session_start', {});
+  registerTrackLeaveHandler();
+
   document.addEventListener('DOMContentLoaded', init);
 
   function init() {
@@ -200,6 +226,7 @@
 
   function onZoomReached() {
     zoomDone = true;
+    nfTrack('zoom_reached', {});
     var reveal = $('zoomReveal');
     var btn = $('zoomHold');
     var stepBtn = $('zoomStep');
@@ -275,6 +302,7 @@
       config = cloneConfig(preset.config);
       syncControlsFromConfig();
       render();
+      nfTrack('preset_select', { preset: preset.id });
     });
   }
 
@@ -516,6 +544,7 @@
     if (copy) {
       copy.addEventListener('click', function () {
         copyText(buildConfigText(), copy);
+        nfTrack('copy_config', {});
       });
     }
     if (reset) {

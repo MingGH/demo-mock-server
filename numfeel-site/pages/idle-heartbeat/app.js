@@ -47,6 +47,65 @@
   var elapsedTimer = null;
   var updateTimer = null;
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js） ──
+  // 事件清单：
+  //   session_start   (trackOnce) 记录一次会话及初始心跳间隔，回答「多少人体验、默认间隔分布」
+  //   interval_change 用户拖动心跳间隔滑块，回答「用户倾向选多长间隔」
+  //   reconnect_action 用户手动重连，回答「自动断线重连的用户行为」
+  //   session_hidden  (force) 切后台快照，回答「会话时长分布」
+  //   session_end     (force) 真正离页 pagehide，回答「单次会话时长与流量」
+  // 仅低频收尾事件镜像到 umami。
+  if (typeof window !== 'undefined') {
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  }
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {
+      // 埋点绝不能影响主流程
+    }
+  }
+
+  /** 同名事件整个会话只记一次（对应 SDK 的 trackOnce）。 */
+  function nfTrackOnce(name, props) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+        window.NFTrack.trackOnce(name, props);
+      }
+    } catch (e) {
+      // 埋点绝不能影响主流程
+    }
+  }
+
+  function trackSessionEnd(reason) {
+    nfTrack('session_end', {
+      reason: reason,
+      interval: currentIntervalS,
+      heartbeats: heartbeatCount,
+      appBytes: Math.round(appBytesTotal),
+      elapsedSec: Math.round(getElapsedSeconds())
+    }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') {
+        nfTrack('session_hidden', {
+          reason: 'hidden',
+          interval: currentIntervalS,
+          heartbeats: heartbeatCount,
+          appBytes: Math.round(appBytesTotal),
+          elapsedSec: Math.round(getElapsedSeconds())
+        }, { force: true });
+      }
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+
   // ── 工具 ──
 
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
@@ -313,9 +372,11 @@
     var val = parseInt(this.value);
     currentIntervalS = val;
     intervalValue.textContent = val + 's';
+    nfTrack('interval_change', { interval: val });
   });
 
   reconnectBtn.addEventListener('click', function() {
+    nfTrack('reconnect_action', { interval: currentIntervalS });
     disconnect();
     connect();
   });
@@ -325,6 +386,8 @@
   intervalSlider.value = currentIntervalS;
   renderTimeline();
   renderCompare();
+  nfTrackOnce('session_start', { interval: currentIntervalS });
+  registerTrackLeaveHandler();
 
   // 自动连接
   connect();

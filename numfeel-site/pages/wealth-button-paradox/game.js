@@ -107,6 +107,7 @@ function getRandomValue() {
 // ========== 自定义倍率 ==========
 function toggleMultiplier() {
   customMultiplier = !customMultiplier;
+  nfTrack('mode_toggle', { to: customMultiplier ? 'custom' : 'standard', idx: pressCount });
   const track = document.getElementById('multiplierToggle');
   const standardLabel = document.getElementById('standardLabel');
   const customLabel = document.getElementById('customLabel');
@@ -134,6 +135,8 @@ function toggleMultiplier() {
   }
 }
 // ========== 行为埋点（通用埋点 SDK，见 components/track.js） ==========
+// 只镜像这两个低频收尾事件到 umami；press / session_hidden / milestone 一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['bankrupt', 'session_end'];
 // 这里只补充「过程」埋点，与上面 incrStat() 驱动的三个历史全球计数器并行存在，
 // 不修改、不依赖它们。埋点失败或 NFTrack 未加载都不能影响游戏本身。
 let peakWealth = initialWealth;
@@ -142,7 +145,9 @@ let activeTrackSession = false;
 let trackedPressCount = 0;
 let milestonesFired = {};
 let inBatchPress = false;
+let sessionHiddenCount = 0;
 const PRESS_TRACK_LIMIT = 300; // 单会话最多记 300 条 press 事件，之后停记（但 bankrupt/session_end 仍会发）
+const SESSION_HIDDEN_CAP = 20; // 每局最多发 20 条 session_hidden，防异常刷量
 
 /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
 function nfTrack(name, props, opts) {
@@ -181,14 +186,32 @@ function computeUpdatedPeak(currentPeakWealth, currentPeakIndex, currentWealth, 
   return { peakWealth: currentPeakWealth, peakPressIndex: currentPeakIndex };
 }
 
+/**
+ * 是否开启新的一局（重置该局派生状态）。
+ *
+ * 只有「资产还没按过」才算开新局：覆盖页面首次开局，以及 resetGame() 之后。
+ * 这保证「切后台再回来继续按」不会把本局已累计的 peakWealth / peakIdx / milestones 清掉
+ * （那是 P0-2 的核心修复）。纯函数，可独立测试。
+ *
+ * @param {number} p 当前 pressCount
+ * @returns {boolean} 是否应重置该局状态
+ */
+function shouldResetRoundState(p) {
+  return p === 0;
+}
+
 /** 一局的开始：trackOnce 语义由 activeTrackSession 手动去重实现（同一局内只发一次，reset 后允许再发）。 */
 function trackSessionStart() {
   if (activeTrackSession) return;
   activeTrackSession = true;
-  trackedPressCount = 0;
-  milestonesFired = {};
-  peakWealth = initialWealth;
-  peakPressIndex = 0;
+  if (shouldResetRoundState(pressCount)) {
+    // 只有开新一局时才重置派生状态；切后台回来（pressCount>0）绝不重置
+    trackedPressCount = 0;
+    milestonesFired = {};
+    peakWealth = initialWealth;
+    peakPressIndex = 0;
+    sessionHiddenCount = 0;
+  }
   nfTrack('session_start', {
     initialWealth: initialWealth,
     mode: currentTrackMode(),
@@ -202,6 +225,28 @@ function trackSessionEnd(reason) {
   activeTrackSession = false;
   nfTrack('session_end', {
     reason: reason,
+    presses: pressCount,
+    finalWealth: Math.round(wealth),
+    peakWealth: Math.round(peakWealth),
+    peakIdx: peakPressIndex,
+    winCount: winCount,
+    truncated: trackedPressCount >= PRESS_TRACK_LIMIT
+  }, { force: true });
+}
+
+/**
+ * 切到后台（标签页/App/锁屏，visibilitychange→hidden）时补发 session_hidden。
+ *
+ * 与 session_end 不同：不结束本局，不置 activeTrackSession=false，不重置任何派生状态，
+ * 所以切回来继续按不会触发新 session_start，peakWealth/peakIdx/milestones 都保留。
+ * 每局最多 SESSION_HIDDEN_CAP 条，超过即丢弃后续（天然低频）。分析时取该轮 seq 最大一条兜底。
+ */
+function trackSessionHidden() {
+  if (!activeTrackSession) return;
+  if (sessionHiddenCount >= SESSION_HIDDEN_CAP) return;
+  sessionHiddenCount++;
+  nfTrack('session_hidden', {
+    reason: 'hidden',
     presses: pressCount,
     finalWealth: Math.round(wealth),
     peakWealth: Math.round(peakWealth),
@@ -237,10 +282,13 @@ function trackMilestones() {
   }
 }
 
-/** 关闭标签页 / 切到后台时补发 session_end(reason=leave)，否则「主动收手」的人永远统计不到。 */
+/** 关闭标签页 / 切到后台的兜底处理。
+ * 切后台（visibilitychange→hidden）只发 session_hidden，不结束本局；
+ * 真正离页（pagehide）才发 session_end(reason=leave) 结束本局。
+ * 真离页时两者依次触发是预期行为——局数只认 session_end，不会被重复计数。 */
 function registerTrackLeaveHandler() {
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden') trackSessionEnd('leave');
+    if (document.visibilityState === 'hidden') trackSessionHidden();
   });
   window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
 }
@@ -290,6 +338,8 @@ function pressButton() {
   }
 }
 function batchPress(n) {
+  // 先在局内再发 batch_press，避免它落在 session_start 之前的「局外事件」混入轮次 CTE
+  if (!activeTrackSession) trackSessionStart();
   nfTrack('batch_press', { n: n, idxBefore: pressCount });
   inBatchPress = true;
   for (let i = 0; i < n; i++) {
@@ -316,6 +366,9 @@ function resetGame() {
   wealthHistory = [initialWealth];
   peakWealth = initialWealth;
   peakPressIndex = 0;
+  trackedPressCount = 0;
+  milestonesFired = {};
+  sessionHiddenCount = 0;
   const btn = document.getElementById('pressBtn');
   btn.disabled = false;
   btn.textContent = '按下';

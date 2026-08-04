@@ -155,6 +155,10 @@ function computeUpdatedPeak(currentPeakWealth, currentPeakIndex, currentWealth, 
   return { peakWealth: currentPeakWealth, peakPressIndex: currentPeakIndex };
 }
 
+function shouldResetRoundState(p) {
+  return p === 0;
+}
+
 function runBatchSimulation(people, presses, initial) {
   const results = [];
   for (let i = 0; i < people; i++) {
@@ -261,6 +265,12 @@ assert(reachesBillionaireMilestone(2e8) === true, '资产超过1亿应命中里�
   const p3 = computeUpdatedPeak(100000, 0, 100000, 1);
   assert(p3.peakWealth === 100000 && p3.peakPressIndex === 0, '资产相等时不刷新峰值（严格大于才刷新）');
 }
+
+console.log('\n=== 切后台不应重置局状态 (shouldResetRoundState) ===');
+assert(shouldResetRoundState(0) === true, 'pressCount=0（首次开局 / reset 后）应重置派生状态');
+assert(shouldResetRoundState(1) === false, 'pressCount>0（切后台回来继续按）不应重置');
+assert(shouldResetRoundState(50) === false, '按了 50 次后切回来不应重置峰值/里程碑');
+assert(shouldResetRoundState(-1) === false, '负数也不应触发重置');
 
 console.log('\n=== 边界情况 ===');
 // 连赢（无手续费，纯乘法验证）

@@ -1,5 +1,6 @@
 package run.runnable.numfeelservice.controller;
 
+import run.runnable.numfeelservice.controller.dto.EventRequests.EventItem;
 import run.runnable.numfeelservice.controller.dto.EventResponses.EventCollectResponse;
 import run.runnable.numfeelservice.controller.dto.EventResponses.EventSummaryResponse;
 import run.runnable.numfeelservice.service.EventCollectService;
@@ -7,6 +8,7 @@ import run.runnable.numfeelservice.service.EventSummaryService;
 import run.runnable.numfeelservice.web.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
@@ -14,11 +16,14 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
+import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class EventControllerTest {
@@ -120,6 +125,13 @@ class EventControllerTest {
                 .bodyValue(body.toString())
                 .exchange()
                 .expectStatus().isOk();
+
+        // 真正验证截断：collect() 收到的 list 必须被截断到 100 条
+        ArgumentCaptor<List<EventItem>> captor = ArgumentCaptor.forClass(List.class);
+        verify(mockCollectService).collect(anyString(), anyString(), captor.capture(), anyString());
+        assertEquals(100, captor.getValue().size(), "超过 100 条的事件应在到达 service 前被截断到 100");
+        assertEquals(1, captor.getValue().get(0).seq(), "截断后保留前 100 条（seq 1..100）");
+        assertEquals(100, captor.getValue().get(99).seq(), "第 100 条的 seq 应为 100");
     }
 
     @Test

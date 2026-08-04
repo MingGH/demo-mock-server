@@ -173,6 +173,54 @@ class EventCollectServiceTest {
     }
 
     @Test
+    void cleanProps_singleValueTripsByteLimit_thatKeyDroppedOthersKept() {
+        // 前面已接近 1024 字节上限，此时加入一个超大字符串值会超限 → 该 key 被丢弃，
+        // 但已接受的 key 保留，且后续仍会继续尝试更小的 key（continue 而非 break）。
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("small", "ok");
+        for (int i = 0; i < 20; i++) {
+            raw.put("k" + i, "v".repeat(64));
+        }
+        raw.put("big", "z".repeat(64));
+
+        Map<String, Object> cleaned = EventCollectService.cleanProps(raw);
+
+        assertEquals("ok", cleaned.get("small"));
+        assertFalse(cleaned.containsKey("big"), "超限的 key 应被丢弃");
+        assertTrue(cleaned.size() <= 20);
+    }
+
+    @Test
+    void cleanProps_multipleMediumKeys_accumulateOverLimit_laterDroppedKeptUnchanged() {
+        // 多个中等 key 累加超限 → 后续 key 被丢弃，且已接受的 key 保持不变（不被回滚）
+        Map<String, Object> raw = new LinkedHashMap<>();
+        for (int i = 0; i < 30; i++) {
+            raw.put("k" + i, "v".repeat(64));
+        }
+
+        Map<String, Object> cleaned = EventCollectService.cleanProps(raw);
+
+        assertTrue(cleaned.size() < 30, "超限后应丢弃部分 key");
+        // 已接受的 key 必须原样保留
+        for (String key : cleaned.keySet()) {
+            assertEquals("v".repeat(64), cleaned.get(key));
+        }
+    }
+
+    @Test
+    void cleanProps_byteLimitRespected_serializedSizeUnder1024() {
+        Map<String, Object> raw = new LinkedHashMap<>();
+        for (int i = 0; i < 25; i++) {
+            raw.put("k" + i, "v".repeat(64));
+        }
+        Map<String, Object> cleaned = EventCollectService.cleanProps(raw);
+        // 用 Jackson 序列化后的字节数验证真正落在 1024 以内
+        String json = new tools.jackson.databind.ObjectMapper().writeValueAsString(cleaned);
+        assertTrue(json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= 1024,
+                "cleaned props 应控制在 1024 字节以内, 实际 " + json.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
+    }
+
+    @Test
     void cleanProps_nullOrEmptyInput_returnsEmptyMap() {
         assertTrue(EventCollectService.cleanProps(null).isEmpty());
         assertTrue(EventCollectService.cleanProps(Map.of()).isEmpty());

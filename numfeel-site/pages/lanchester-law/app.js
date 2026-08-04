@@ -300,6 +300,7 @@
   // ── 战斗控制 ──────────────────────────────────────────
   function startFight() {
     // 重建一局干净的战斗
+    nfTrack('fight', { mode: mode, teamA: teamA, teamB: teamB });
     buildBattle(teamA, teamB);
     if (!pixiReady) { finishInstantly(); return; }
     running = true;
@@ -455,6 +456,7 @@
 
   // ── 蒙特卡洛 ──────────────────────────────────────────
   function runMonteCarlo() {
+    nfTrack('monte_carlo', { mode: mode, teamA: teamA, teamB: teamB });
     var mc = L.monteCarlo({
       a: teamA, b: teamB,
       hp: BATTLE_OPTS.hp, dpsA: BATTLE_OPTS.dpsA, dpsB: BATTLE_OPTS.dpsB,
@@ -493,6 +495,18 @@
       });
     });
   }
+
+  // ── 行为埋点（NFTrack，见 components/track.js）──────────
+  // 事件：session_start / fight（开战参数）/ monte_carlo / mode_switch / session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
 
   // ── 交互绑定 ──────────────────────────────────────────
   function clampTeam(n) { return Math.max(1, Math.min(8, n)); }

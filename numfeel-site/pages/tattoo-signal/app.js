@@ -20,6 +20,18 @@
 
   document.addEventListener('DOMContentLoaded', init);
 
+  // 行为埋点（NFTrack）
+  // 事件：session_start / bayes_compute / session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
+
   function init() {
     fillPlainText();
     initKatex();
@@ -159,6 +171,7 @@
     }
 
     function compute() {
+      nfTrack('bayes_compute', {});
       var p = readParams();
       var post = L.posterior(p.prior, p.likelihood, p.falseRate);
       var box = L.buildSandbox(p.prior, p.likelihood, p.falseRate);

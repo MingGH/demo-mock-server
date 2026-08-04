@@ -19,8 +19,21 @@ function initApp() {
   }
 }
 
+// ========== 行为埋点（NFTrack）==========
+// 事件：session_start / search（搜索字符串长度）/ preset_click / session_end
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+if (typeof window !== 'undefined') {
+  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+
 // ========== 快速场景预设 ==========
 function fillScenario(type) {
+  nfTrack('preset_click', { type: type });
   const input = document.getElementById('searchInput');
   switch (type) {
     case 'password':
@@ -49,6 +62,7 @@ function fillScenario(type) {
 function doSearch() {
   const input = document.getElementById('searchInput');
   const raw = input.value.trim();
+  nfTrack('search', { length: raw ? raw.length : 0 });
 
   if (!raw) { alert('请输入要搜索的数字序列'); return; }
   if (!/^\d+$/.test(raw)) { alert('请只输入数字（0-9）'); return; }

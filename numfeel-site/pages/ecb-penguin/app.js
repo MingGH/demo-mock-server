@@ -25,6 +25,18 @@
     updateQuantizeLabel();
   }
 
+  // 行为埋点（NFTrack）
+  // 事件：session_start / select_image（选图）/ encrypt（执行加密）/ session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
+
   function cacheElements() {
     var ids = [
       'heroBtn', 'uploadZone', 'fileInput', 'originalPreview', 'originalCanvas',
@@ -88,6 +100,7 @@
 
   // ── 预设图片选择 ──
   function selectPreset(name, card) {
+    nfTrack('select_image', { source: 'preset', name: name });
     el.presetCards.forEach(function (c) { c.classList.remove('active'); });
     if (card) card.classList.add('active');
 
@@ -239,6 +252,7 @@
 
   // ── 执行加密 ──
   function performEncryption() {
+    nfTrack('encrypt', { retry: hasEncrypted });
     var isRetry = hasEncrypted;
 
     el.encryptBtn.disabled = true;

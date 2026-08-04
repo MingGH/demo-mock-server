@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function revealTracking() {
   report = tracker.getReport();
   tracker.destroy();
+  nfTrack('reveal', { clicks: report.clickCount, ms: report.duration });
 
   // 隐藏揭露按钮
   document.querySelector('.reveal-section').style.display = 'none';
@@ -263,6 +264,7 @@ function prepareReplay() {
 }
 
 function startReplay() {
+  nfTrack('replay', {});
   if (replayTimer) {
     clearInterval(replayTimer);
     replayTimer = null;
@@ -358,3 +360,15 @@ function startReplay() {
 // 暴露到全局
 window.revealTracking = revealTracking;
 window.startReplay = startReplay;
+
+// ── 行为埋点（NFTrack，见 components/track.js）──
+// 事件：session_start / reveal / replay / session_end
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+(function () {
+  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+})();

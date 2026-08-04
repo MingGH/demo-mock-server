@@ -41,6 +41,7 @@ function startGame() {
   game.chosen = null;
   game.chosenIdx = -1;
   game.history = [];
+  nfTrack('game_start', { n: game.n, scenario: game.scenario });
 
   document.getElementById('gameSetup').style.display = 'none';
   document.getElementById('gamePlay').style.display = '';
@@ -146,6 +147,7 @@ function showCandidate() {
 }
 
 function skipCandidate() {
+  nfTrack('action', { type: 'skip' });
   game.history.push({ score: game.candidates[game.currentIdx], status: 'skipped' });
   game.currentIdx++;
 
@@ -162,6 +164,7 @@ function skipCandidate() {
 }
 
 function chooseCandidate() {
+  nfTrack('action', { type: 'choose' });
   game.chosenIdx = game.currentIdx;
   game.chosen = game.candidates[game.currentIdx];
   game.history.push({ score: game.chosen, status: 'chosen' });
@@ -190,6 +193,7 @@ function showResult() {
   var optRank = sortedAll.indexOf(optResult.chosen) + 1;
 
   var isBest = game.chosen === best;
+  nfTrack('game_result', { best: isBest ? 1 : 0, rank: yourRank, n: game.n });
 
   // Banner
   var banner = document.getElementById('resultBanner');
@@ -267,6 +271,7 @@ function runSim() {
 
   setTimeout(function() {
     var result = runSimulation(n, count);
+    nfTrack('run_sim', { trials: count, n: n, optimalPct: Math.round(result.optimal * 1000) / 10 });
 
     // 统计卡片
     document.getElementById('simStats').style.display = '';
@@ -411,3 +416,15 @@ function runScan() {
     document.getElementById('scanBtn').innerHTML = '<i class="ti ti-player-play"></i> 重新扫描';
   }, 50);
 }
+
+// ── 行为埋点（NFTrack，见 components/track.js）──
+// 事件：session_start / game_start / action / game_result / run_sim / session_end
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+(function () {
+  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+})();

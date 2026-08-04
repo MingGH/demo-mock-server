@@ -659,6 +659,7 @@
       
       balance -= item.price;
       cart[id] = (cart[id] || 0) + 1;
+      nfTrack('buy', { item: item.id, price: item.price });
       
       showToast(`买了 ${item.icon} ${item.name}！`);
       updateDisplay();
@@ -679,10 +680,12 @@
       });
       showToast('每样都买了一个！');
       updateDisplay();
+      nfTrack('buy_all', {});
     }
     
     function filterCategory(category) {
       currentCategory = category;
+      nfTrack('category', { category: category });
       document.querySelectorAll('.category-tab').forEach(tab => tab.classList.remove('active'));
       document.querySelector(`.category-tab[onclick="filterCategory('${category}')"]`).classList.add('active');
       renderItems();
@@ -691,6 +694,7 @@
     function resetGame() {
       balance = 100000000;
       cart = {};
+      nfTrack('reset', {});
       updateDisplay();
       showToast('重新获得一个亿！');
     }
@@ -702,6 +706,18 @@
       setTimeout(() => toast.classList.remove('show'), 2000);
     }
     
+    // ── 行为埋点（NFTrack，见 components/track.js）──
+    // 事件：session_start / buy / buy_all / category / reset / session_end
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+    (function () {
+      try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+      window.addEventListener('pagehide', function () {
+        nfTrack('session_end', { reason: 'leave' }, { force: true });
+      });
+    })();
+
     // 初始化
     updateDisplay();
   </script>

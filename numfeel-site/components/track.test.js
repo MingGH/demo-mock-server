@@ -10,7 +10,12 @@ const {
   shouldAcceptEvent,
   stampTruncated,
   bytesToSessionId,
-  isValidEventName
+  isValidEventName,
+  parseNonNegInt,
+  parseOnceList,
+  serializeOnceMap,
+  restoreCounters,
+  pruneOnceMap
 } = require('./track.js');
 
 let passed = 0;
@@ -155,7 +160,59 @@ console.log('\n\u2705 isValidEventName');
   assert(isValidEventName('a'.repeat(48)) === true, '恰好48字符合法');
 }
 
-// ========== 总结 ==========
-console.log(`\n${'='.repeat(40)}`);
+// ========== parseNonNegInt ==========
+console.log('\n\ud83d\udccf parseNonNegInt: 容错解析');
+{
+  assert(parseNonNegInt('42', 0) === 42, '正常数字');
+  assert(parseNonNegInt('0', 0) === 0, '0 合法');
+  assert(parseNonNegInt(null, 5) === 5, 'null 退化到 fallback');
+  assert(parseNonNegInt(undefined, 5) === 5, 'undefined 退化到 fallback');
+  assert(parseNonNegInt('abc', 5) === 5, '非数字字符串退化');
+  assert(parseNonNegInt('-3', 5) === 5, '负数退化');
+  assert(parseNonNegInt('3.7', 5) === 3, '浮点向下取整');
+  assert(parseNonNegInt('', 5) === 5, '空字符串退化');
+}
+
+// ========== parseOnceList / serializeOnceMap ==========
+console.log('\n\ud83d\udce1 parseOnceList / serializeOnceMap: 往返');
+{
+  assert(Object.keys(parseOnceList(null)).length === 0, 'null 返回空集合');
+  assert(Object.keys(parseOnceList('')).length === 0, '空串返回空集合');
+  const parsed = parseOnceList('session_start,milestone,session_start');
+  assert(parsed.session_start === true && parsed.milestone === true, '解析去重');
+  assert(Object.keys(parsed).length === 2, '重复项只算一次');
+  assert(serializeOnceMap(parsed) === 'session_start,milestone', '序列化保持插入顺序');
+  assert(serializeOnceMap({}) === '', '空集合序列化为空串');
+}
+
+// ========== restoreCounters ==========
+console.log('\n\ud83d\udee0\ufe0f restoreCounters: 容错恢复');
+{
+  const ok = restoreCounters('10', '20', '1', 'a,b');
+  assert(ok.seq === 10 && ok.trackedCount === 20 && ok.truncated === true, '正常值恢复');
+  assert(ok.firedOnce.a === true && ok.firedOnce.b === true, 'once 集合恢复');
+
+  const missing = restoreCounters(null, null, null, null);
+  assert(missing.seq === 0 && missing.trackedCount === 0 && missing.truncated === false, '缺失退化为初始值');
+  assert(Object.keys(missing.firedOnce).length === 0, '缺失时 once 为空');
+
+  const garbage = restoreCounters('abc', '-5', 'yes', 'x,y,,z');
+  assert(garbage.seq === 0 && garbage.trackedCount === 0 && garbage.truncated === false, '垃圾值退化为初始值');
+  assert(garbage.firedOnce.x === true && garbage.firedOnce.y === true && garbage.firedOnce.z === true, 'once 忽略空项');
+
+  const negative = restoreCounters('-1', '0', '0', '');
+  assert(negative.seq === 0 && negative.truncated === false, '负数 seq 与 truncated=0 正确');
+}
+
+// ========== pruneOnceMap ==========
+console.log('\n\ud83d\udeae pruneOnceMap: 超长 once 列表裁剪');
+{
+  const map = {};
+  for (let i = 0; i < 205; i++) map['k' + i] = true;
+  pruneOnceMap(map);
+  assert(Object.keys(map).length === 200, '超过 200 条时裁剪到 200');
+  assert(map['k4'] === undefined, '丢弃最旧的超限项');
+  assert(map['k204'] === true, '保留最新的 200 条');
+}
 console.log(`总计: ${passed + failed} 测试, \u2705 ${passed} 通过, \u274c ${failed} 失败`);
 if (failed > 0) process.exit(1);

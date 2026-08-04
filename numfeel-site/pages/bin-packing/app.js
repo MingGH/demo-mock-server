@@ -1,15 +1,44 @@
 // ========== 主控制逻辑 ==========
 
+// ══════════════════════════════════════════════════════════
+// 行为埋点（NFTrack，见 components/track.js）
+// 事件清单：
+//   session_start   → 会话开始（trackOnce）
+//   tetris_start    → 开始或重开一局俄罗斯方块
+//   tetris_finish   → 一局结束 { utilization }（回答人类装箱空间利用率）
+//   compare         → 与算法对比（回答是否走到对比环节）
+//   session_end     → 离页（pagehide, force）
+// ══════════════════════════════════════════════════════════
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+var trackSessionStarted = false;
+function trackSessionStart() {
+  if (trackSessionStarted) return;
+  trackSessionStarted = true;
+  nfTrack('session_start', {});
+}
+window.addEventListener('pagehide', function () {
+  nfTrack('session_end', { reason: 'leave' }, { force: true });
+});
+trackSessionStart();
+
 // ── 俄罗斯方块部分 ──
 TETRIS.init('tetrisCanvas', 'nextCanvas', onTetrisFinish);
 
 document.getElementById('startTetrisBtn').addEventListener('click', () => {
+  nfTrack('tetris_start', { attempt: 'first' });
   document.getElementById('tetrisOverlay').style.display = 'none';
   document.getElementById('tetrisResult').style.display = 'none';
   TETRIS.start();
 });
 
 document.getElementById('retryTetrisBtn').addEventListener('click', () => {
+  nfTrack('tetris_start', { attempt: 'retry' });
   document.getElementById('tetrisResult').style.display = 'none';
   TETRIS.start();
 });
@@ -38,6 +67,7 @@ document.getElementById('ctrlDrop').addEventListener('click', () => TETRIS.hardD
 
 function onTetrisFinish(utilization) {
   const pct = (utilization * 100).toFixed(1);
+  nfTrack('tetris_finish', { utilization: Math.round(utilization * 1000) / 1000 });
   document.getElementById('tetrisUtilization').textContent = pct + '%';
 
   let comment = '';
@@ -58,6 +88,7 @@ document.getElementById('resetPackingBtn').addEventListener('click', () => {
 });
 
 document.getElementById('compareBtn').addEventListener('click', () => {
+  nfTrack('compare', {});
   const humanUtil = PACKING.getHumanUtilization();
   const ffdPlacements = PACKING.solveFFD();
   const bfdPlacements = PACKING.solveBFD();

@@ -25,6 +25,34 @@
     mgLimited: null
   };
 
+  // ══════════════════════════════════════════════════════════
+  // 行为埋点（NFTrack，见 components/track.js）
+  // 事件清单：
+  //   session_start   → 会话开始（trackOnce）
+  //   edge_select     → 选择庄家优势卡片 { edgeId }（回答哪种优势最被关注）
+  //   run_lln         → 跑大数定律分布模拟
+  //   run_gr          → 跑赌徒破产分块模拟 { count }
+  //   run_mg          → 跑倍投三步 { step }（回答用户是否走完三步）
+  //   session_end     → 离页（pagehide, force）
+  // ══════════════════════════════════════════════════════════
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  var trackSessionStarted = false;
+  function trackSessionStart() {
+    if (trackSessionStarted) return;
+    trackSessionStarted = true;
+    nfTrack('session_start', {});
+  }
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+  trackSessionStart();
+
   // ============================================================
   // 工具函数
   // ============================================================
@@ -76,6 +104,7 @@
       card.addEventListener('click', function () {
         state.currentEdge = e.edge;
         state.currentEdgeId = e.id;
+        nfTrack('edge_select', { edgeId: e.id });
         // 更新 UI
         document.querySelectorAll('.bh-edge-card').forEach(function (c) { c.classList.remove('active'); });
         card.classList.add('active');
@@ -243,6 +272,7 @@
   }
 
   function runLLNDistribution() {
+    nfTrack('run_lln', { edge: Math.round(state.currentEdge * 10000) / 10000 });
     var edge = state.currentEdge;
     var rng = window.bhEngine.mulberry32(Date.now() & 0xFFFFFFFF);
     // n=100 样本
@@ -352,6 +382,7 @@
   // 分块跑，避免大批量模拟把主线程锁死
   function runGRStep(count) {
     if (state.grRunning) return;
+    nfTrack('run_gr', { count: count });
     var player = Number(el('bh-gr-player').value);
     var house = Number(el('bh-gr-house').value);
     var edge = state.currentEdge;
@@ -474,6 +505,7 @@
 
   // 第 1 步：无桌限，只看达成率——先让人觉得这是必胜法
   function runMartingaleStep1() {
+    nfTrack('run_mg', { step: 1 });
     var batch = runMartingaleBatch(Infinity);
     state.mgNoLimit = batch;
     var res = el('bh-mg-result1');
@@ -490,6 +522,7 @@
 
   // 第 2 步：同一批场次，换个角度看代价
   function runMartingaleStep2() {
+    nfTrack('run_mg', { step: 2 });
     var batch = state.mgNoLimit || runMartingaleStep1();
     var res = el('bh-mg-result2');
     res.className = 'bh-martingale-step-result red';
@@ -503,6 +536,7 @@
 
   // 第 3 步：只加一条桌限，其余全不变
   function runMartingaleStep3() {
+    nfTrack('run_mg', { step: 3 });
     var noLimit = state.mgNoLimit || runMartingaleStep1();
     var batch = runMartingaleBatch(MG_LIMIT);
     state.mgLimited = batch;

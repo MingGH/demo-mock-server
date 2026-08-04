@@ -4,15 +4,44 @@ var currentIndex = 0;
 var ratings = [null, null, null, null, null];
 var testStarted = false;
 
+// ══════════════════════════════════════════════════════════
+// 行为埋点（NFTrack，见 components/track.js）
+// 事件清单：
+//   session_start   → 会话开始（trackOnce）
+//   test_start      → 开始测试 { group }（回答人口分组）
+//   rating          → 给某条描述打分 { rating, index }
+//   test_complete   → 完成测试 { avgRating, group }（回答巴纳姆效应强度）
+//   session_end     → 离页（pagehide, force）
+// ══════════════════════════════════════════════════════════
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+var trackSessionStarted = false;
+function trackSessionStart() {
+  if (trackSessionStarted) return;
+  trackSessionStarted = true;
+  nfTrack('session_start', {});
+}
+window.addEventListener('pagehide', function () {
+  nfTrack('session_end', { reason: 'leave' }, { force: true });
+});
+
 function showEl(id) { document.getElementById(id).classList.remove('hidden'); }
 function hideEl(id) { document.getElementById(id).classList.add('hidden'); }
 
 function startTest() {
+  trackSessionStart();
   userGroup = assignGroup();
   statements = getStatements(5);
   currentIndex = 0;
   ratings = [null, null, null, null, null];
   testStarted = true;
+
+  nfTrack('test_start', { group: userGroup });
 
   hideEl('introSection');
   showEl('testSection');
@@ -72,6 +101,7 @@ function highlightRating(val) {
 function selectRating(rating) {
   ratings[currentIndex] = rating;
   highlightRating(rating);
+  nfTrack('rating', { rating: rating, index: currentIndex });
   setTimeout(function () { nextStatement(); }, 300);
 }
 
@@ -102,6 +132,8 @@ function finishTest() {
   var stats = computeStats(ratings.map(function (r, i) {
     return { statementIndex: statements[i].index, rating: r };
   }));
+
+  nfTrack('test_complete', { avgRating: Math.round(stats.avgRating * 100) / 100, group: userGroup });
 
   document.getElementById('statsGrid').innerHTML = [
     { label: '平均评分', value: stats.avgRating.toFixed(2) + ' / 5' },

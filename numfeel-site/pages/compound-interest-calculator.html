@@ -293,6 +293,51 @@
 <script>
 let growthChart = null;
 
+// ============ 行为埋点（通用埋点 SDK，见 components/track.js） ============
+// 事件清单：
+// - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+// - calculate:     计算一次终值 {payment, years, rate, frequency, timing, compound}，
+//                  回答"用户常用哪组参数配置"（均为数值/选项，非自由文本）
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 function calculate() {
   const payment = parseFloat(document.getElementById('payment').value) || 0;
   const frequency = document.getElementById('frequency').value;
@@ -300,6 +345,15 @@ function calculate() {
   const years = parseInt(document.getElementById('years').value) || 0;
   const timing = document.getElementById('timing').value;
   const compound = document.getElementById('compound').value;
+  trackSessionStart();
+  nfTrack('calculate', {
+    payment: payment,
+    years: years,
+    rate: Math.round(annualRate * 1000) / 10,
+    frequency: frequency,
+    timing: timing,
+    compound: compound
+  });
   
   // 计算期数和每期利率
   let periodsPerYear = frequency === 'monthly' ? 12 : 1;
@@ -489,6 +543,10 @@ function formatMoney(num) {
   if (num >= 10000) return (num / 10000).toFixed(4) + '万';
   return num.toFixed(2);
 }
+
+// 初始化埋点
+trackSessionStart();
+registerTrackLeaveHandler();
 </script>
 
 </body>

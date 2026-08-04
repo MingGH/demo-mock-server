@@ -503,6 +503,52 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = ChickenLegSimulator;
 }
 
+// ============ 行为埋点（通用埋点 SDK，见 components/track.js） ============
+// 事件清单：
+// - session_start: 首次进入页面初始化（trackOnce），回答"这个 demo 有多少独立访问、是否被打开"
+// - sim_start:     开始一次模拟 {n, speed}，回答"不同规模/速度下模拟的发起频率"
+// - sim_batch:     运行批量模拟 {times, n}，回答"多少人做多次模拟对比分布"
+// - sim_reset:     重置模拟，回答"用户是否反复重置比较"
+// - session_end:   pagehide 离开页面时的收尾（force:true，镜像到 umami），回答"真实离开时长/频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 // ============ UI 交互 ============
 let simulationRunning = false;
 let chart = null;
@@ -537,6 +583,8 @@ async function startSimulation() {
   
   const n = parseInt(document.getElementById('chickenCount').value) || 1000000;
   const speed = document.getElementById('simSpeed').value;
+  trackSessionStart();
+  nfTrack('sim_start', { n: n, speed: speed });
   
   document.getElementById('startBtn').disabled = true;
   
@@ -586,6 +634,7 @@ async function startSimulation() {
 
 function resetSimulation() {
   const n = parseInt(document.getElementById('chickenCount').value) || 1000000;
+  nfTrack('sim_reset', { n: n });
   updateDisplay(n, 0, 0, 0, n);
   document.getElementById('theoryValue').textContent = '-';
   document.getElementById('simValue').textContent = '-';
@@ -607,6 +656,8 @@ function addFlyingChicken() {
 function runMultipleSimulations(times) {
   const n = parseInt(document.getElementById('chickenCount').value) || 1000000;
   const smallN = Math.min(n, 10000); // 为了速度，用较小的N
+  trackSessionStart();
+  nfTrack('sim_batch', { times: times, n: smallN });
   
   const results = ChickenLegSimulator.simulateMultiple(smallN, times);
   const stats = ChickenLegSimulator.calculateStats(results);
@@ -697,6 +748,8 @@ function drawHistogram(results, theory) {
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   resetSimulation();
+  trackSessionStart();
+  registerTrackLeaveHandler();
 });
 </script>
 </body>

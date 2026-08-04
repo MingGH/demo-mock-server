@@ -319,12 +319,41 @@
     </div>
   </div>
   <script>
+    // ========== 行为埋点（NFTrack，见 components/track.js） ==========
+    // 事件清单：
+    //   session_start    (trackOnce) 页面加载
+    //   scene_switch     场景切换，回答「用户最常玩哪个博弈场景」
+    //   play_ultimatum   最后通牒，回答「用户倾向给多少金额」
+    //   play_chicken     懦夫博弈，回答「用户偏向让步还是硬刚」
+    //   run_repeat       重复博弈，回答「用户选择哪种策略组合」
+    //   run_tournament   策略锦标赛
+    //   session_end      (force) 真正离页 pagehide，reason=leave
+    // 埋点不影响功能：NFTrack 不存在时静默跳过。
+    if (typeof window !== 'undefined') {
+      window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+    }
+    function nfTrack(name, props, opts) {
+      try {
+        if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+          window.NFTrack.track(name, props, opts);
+        }
+      } catch (e) {}
+    }
+    function registerTrackLeaveHandler() {
+      window.addEventListener('pagehide', function () {
+        nfTrack('session_end', { reason: 'leave' }, { force: true });
+      });
+    }
+    nfTrack('session_start', {});
+    registerTrackLeaveHandler();
+
     // ===== 场景切换 =====
     function switchScene(id) {
       document.querySelectorAll('.scene-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('scene-' + id).classList.add('active');
       event.target.closest('.tab-btn').classList.add('active');
+      nfTrack('scene_switch', { scene: id });
     }
 
     // ===== 场景1: 砍价博弈 =====
@@ -400,6 +429,7 @@
       var p = ultimatumAcceptProb(o);
       var accepted = Math.random() < p;
       var el = document.getElementById('ultimatumResult');
+      nfTrack('play_ultimatum', { offer: o, accepted: accepted });
       if (accepted) {
         el.innerHTML = '<div class="result-msg win"><i class="ti ti-check"></i> 对方接受了！你获得 ' + (100 - o) + ' 元，对方获得 ' + o + ' 元。</div>';
       } else {
@@ -461,6 +491,7 @@
       chickenHistory.yourScore += pay[0];
       chickenHistory.oppScore += pay[1];
       var el = document.getElementById('chickenResult');
+      nfTrack('play_chicken', { myChoice: myChoice, opp: opp, outcome: pay[0] });
       var oppText = opp === 'swerve' ? '让步' : '不让';
       var myText = myChoice === 'swerve' ? '让步' : '不让';
       if (pay[0] === -100) {
@@ -563,6 +594,7 @@
       document.getElementById('repeatChartBox').style.display = 'block';
       var ctx = document.getElementById('repeatChart').getContext('2d');
       if (repeatChart) repeatChart.destroy();
+      nfTrack('run_repeat', { myStrategy: myStrategy, oppStrategy: oppStrategy, myTotal: myTotal });
       repeatChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -612,6 +644,7 @@
       html += '</table>';
       document.getElementById('tournamentResult').style.display = 'block';
       document.getElementById('tournamentTable').innerHTML = html;
+      nfTrack('run_tournament', {});
     }
   </script>
 </body>

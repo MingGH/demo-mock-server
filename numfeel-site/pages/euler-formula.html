@@ -638,6 +638,39 @@
 </div>
 
 <script>
+// ════════ 行为埋点（NFTrack，见 components/track.js） ════════
+// 事件清单（各事件回答什么问题）：
+//  - session_start(trackOnce)：页面加载，标记会话开始
+//  - constant_hover：点击五大常数卡片（回答：用户对哪个常数感兴趣）
+//  - animate_rotation：播放旋转动画（回答：用户是否深度体验可视化）
+//  - draw_spiral：绘制螺旋
+//  - animate_derivation：播放推导动画
+//  - share_copy：复制分享
+//  - session_hidden / session_end：切后台 / 离页
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeave() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+  });
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+try {
+  if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+    window.NFTrack.trackOnce('session_start', {});
+  }
+} catch (e) {}
+registerTrackLeave();
+
 // ========== 复平面可视化 ==========
 const complexCanvas = document.getElementById('complexPlane');
 const complexCtx = complexCanvas.getContext('2d');
@@ -872,6 +905,7 @@ function animateRotation() {
     animationId = null;
     return;
   }
+  nfTrack('animate_rotation', {});
   
   let startTheta = 0;
   const duration = 4000;
@@ -909,6 +943,7 @@ function resetToPI() {
 
 function drawSpiral() {
   const val = parseFloat(realCoefSlider.value);
+  nfTrack('draw_spiral', { realCoef: val });
   // 添加动画效果：先清空再重绘
   const { width, height } = initCanvas(spiralCanvas);
   spiralCtx.clearRect(0, 0, width, height);
@@ -1061,6 +1096,7 @@ function formatTheta(theta) {
 
 // ========== 推导动画 ==========
 function animateDerivation() {
+  nfTrack('animate_derivation', {});
   const steps = document.querySelectorAll('.derivation-step');
   steps.forEach(step => step.classList.remove('visible'));
   
@@ -1075,6 +1111,7 @@ function animateDerivation() {
 function highlightConstant(card) {
   document.querySelectorAll('.constant-card').forEach(c => c.classList.remove('active'));
   card.classList.add('active');
+  nfTrack('constant_hover', { constant: card.dataset.constant });
   
   const constant = card.dataset.constant;
   const descriptions = {
@@ -1091,6 +1128,7 @@ function highlightConstant(card) {
 
 // ========== 分享功能 ==========
 function copyShareText() {
+  nfTrack('share_copy', {});
   const shareText = `🌟 欧拉公式 e^(iπ) + 1 = 0
 
 被费曼称为"数学的珠宝"，这个公式用7个符号连接了数学五大领域：

@@ -14,6 +14,31 @@
   var soloState = { capital: 100, round: 0, wins: 0, losses: 0, history: [100], streak: 0, streakType: null };
   var MAX_SOLO_ROUNDS = 50;
 
+  // ========== 行为埋点（NFTrack，见 components/track.js） ==========
+  // 事件清单：
+  //   session_start (trackOnce) 页面加载
+  //   pop_run       群体模拟，回答「用户测的轮数/模式」
+  //   solo_bet      单人下注，回答「用户单人模式的资金演变」（本地限流 50 条）
+  //   session_end   (force) 真正离页 pagehide，reason=leave
+  // 埋点不影响功能：NFTrack 不存在时静默跳过。
+  if (typeof window !== 'undefined') {
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  }
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  function registerTrackLeaveHandler() {
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  }
+  nfTrack('session_start', {});
+  registerTrackLeaveHandler();
+
   // ── DOM 引用 ──
   var els = {};
 
@@ -180,6 +205,7 @@
 
     // 画直方图
     drawHistogram(pop);
+    nfTrack('pop_run', { rounds: rounds, mode: currentMode });
   }
 
   function drawHistogram(pop) {
@@ -318,6 +344,7 @@
     soloState.history.push(soloState.capital);
 
     updateSoloUI(isWin);
+    nfTrack('solo_bet', { round: soloState.round, win: isWin, capital: Math.round(soloState.capital * 100) / 100 });
 
     if (soloState.round >= MAX_SOLO_ROUNDS) {
       els.betBtn.disabled = true;

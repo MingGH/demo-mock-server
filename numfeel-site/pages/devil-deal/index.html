@@ -104,12 +104,45 @@
 <div class="toast" id="toast">已复制</div>
 
 <script>
+// ════════ 行为埋点（NFTrack，见 components/track.js） ════════
+// 事件清单（各事件回答什么问题）：
+//  - session_start(trackOnce)：页面加载，标记会话开始
+//  - start_test：开始诊断（回答：启动率）
+//  - answer_pick：选择答案（回答：用户在每题的选择、完成进度）
+//  - test_complete：测试完成（回答：最终契约类型分布）
+//  - restart：重新测试（回答：复测率）
+//  - session_hidden / session_end：切后台 / 离页
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeave() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      nfTrack('session_hidden', { reason: 'hidden', answered: curIdx }, { force: true });
+    }
+  });
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave', answered: curIdx }, { force: true });
+  });
+}
+try {
+  if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+    window.NFTrack.trackOnce('session_start', {});
+  }
+} catch (e) {}
+registerTrackLeave();
+
 // ===== 状态 =====
 var curIdx = 0;
 var answers = [];
 for (var i = 0; i < QUESTIONS.length; i++) answers.push(null);
 
 function startTest() {
+  nfTrack('start_test', {});
   document.getElementById('introSection').style.display = 'none';
   document.getElementById('testSection').style.display = '';
   renderQ();
@@ -142,6 +175,7 @@ function renderQ() {
 
 function pick(i) {
   answers[curIdx] = i;
+  nfTrack('answer_pick', { q: curIdx, answer: i });
   renderQ();
 }
 
@@ -158,6 +192,7 @@ function prevQ() {
 }
 
 function restart() {
+  nfTrack('restart', {});
   curIdx = 0;
   answers = [];
   for (var i = 0; i < QUESTIONS.length; i++) answers.push(null);
@@ -179,6 +214,7 @@ function showResult() {
   var secondDim = findSecondDimension(rawScores);
   var result = DEAL_RESULTS[topDim];
   var topDimObj = DIMENSIONS.filter(function(d) { return d.id === topDim; })[0];
+  nfTrack('test_complete', { topDim: topDim, secondDim: secondDim });
 
   // 契约卡
   var dc = document.getElementById('dealCard');

@@ -206,6 +206,53 @@ let stageChart = null;
 let histChart = null;
 let simRunning = false;
 
+// ============ 行为埋点（通用埋点 SDK，见 components/track.js） ============
+// 事件清单：
+// - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+// - sim_single:    单次动画抽卡 {n}，回答"单次演示的参与度"
+// - sim_fast:      快速单次模拟 {n}，回答"快速验证频率"
+// - sim_batch:     批量模拟 {trials, n}，回答"多少人做分布验证"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 说明：滑块拖动高频触发 onParamChange，不逐条埋点；只记低频的模拟动作。
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 function getN() { return parseInt(document.getElementById('n-slider').value); }
 
 function onParamChange() {
@@ -322,6 +369,8 @@ async function runSingleSim() {
   if (simRunning) return;
   simRunning = true;
   const n = getN();
+  trackSessionStart();
+  nfTrack('sim_single', { n: n });
   initCollectionGrid(n);
   const log = document.getElementById('sim-log');
   log.style.display = 'block';
@@ -364,6 +413,8 @@ async function runSingleSim() {
 // 快速模拟（无动画）
 function runSingleSimFast() {
   const n = getN();
+  trackSessionStart();
+  nfTrack('sim_fast', { n: n });
   initCollectionGrid(n);
   const result = CouponCollectorLogic.simulateOnce(n);
 
@@ -386,6 +437,8 @@ function runSingleSimFast() {
 // 批量模拟
 function runBatchSim(trials) {
   const n = getN();
+  trackSessionStart();
+  nfTrack('sim_batch', { trials: trials, n: n });
   const results = CouponCollectorLogic.simulateBatch(n, trials);
   const stats = CouponCollectorLogic.computeStats(results);
   const theory = CouponCollectorLogic.expectedDraws(n);
@@ -476,6 +529,8 @@ function updateCompareTable() {
 
 // 初始化
 onParamChange();
+trackSessionStart();
+registerTrackLeaveHandler();
 </script>
 </body>
 </html>

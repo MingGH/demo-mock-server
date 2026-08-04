@@ -377,6 +377,41 @@
 <div class="toast" id="toast">已复制到剪贴板</div>
 
 <script>
+// ════════ 行为埋点（NFTrack，见 components/track.js） ════════
+// 事件清单（各事件回答什么问题）：
+//  - session_start(trackOnce)：页面加载，标记会话开始
+//  - box_action：放入箱子的操作（回答：用户倾向哪种下注策略——手动/凯利/全押）
+//  - box_round：每轮结果（回答：赢/输次数与轮数）
+//  - bankrupt：总资产归零（回答：全押是否真的导致破产）
+//  - compare_run：策略对比模拟（回答：用户是否对比三种策略）
+//  - mass_sim：千人批量模拟
+//  - reset_player：重来（回答：用户重玩次数）
+//  - share_copy：复制分享
+//  - session_hidden / session_end：切后台 / 离页
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeave() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      nfTrack('session_hidden', { reason: 'hidden', rounds: playRounds }, { force: true });
+    }
+  });
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave', rounds: playRounds, wins: playWins, losses: playLosses }, { force: true });
+  });
+}
+try {
+  if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+    window.NFTrack.trackOnce('session_start', {});
+  }
+} catch (e) {}
+registerTrackLeave();
+
 // ========== 核心算法（可独立测试） ==========
 function calcKelly(p, b) {
   // p=赢的概率, b=净赔率(赢了净赚几倍)
@@ -431,6 +466,7 @@ function putMoneyInBox() {
   if (!amount || amount <= 0 || amount > playerMoney) {
     showToast('金额无效或超过总资产'); return;
   }
+  nfTrack('box_action', { strategy: 'manual', amount: Math.round(amount) });
   doBoxRound(amount);
 }
 
@@ -441,10 +477,12 @@ function putKelly() {
   const amount = Math.floor(playerMoney * kelly);
   if (amount < 1) { showToast('资金不足'); return; }
   document.getElementById('putAmount').value = amount;
+  nfTrack('box_action', { strategy: 'kelly', amount: Math.round(amount) });
   doBoxRound(amount);
 }
 
 function putAll() {
+  nfTrack('box_action', { strategy: 'allin', amount: Math.round(playerMoney) });
   doBoxRound(playerMoney);
 }
 
@@ -461,20 +499,26 @@ function doBoxRound(amount) {
       const winnings = amount * mult;
       playerMoney = playerMoney - amount + winnings;
       playWins++;
+      nfTrack('box_round', { win: true, round: playRounds });
       result.className = 'box-result win';
       result.textContent = '翻倍！放入 ' + formatMoney(amount) + ' → 拿回 ' + formatMoney(winnings);
     } else {
       playerMoney -= amount;
       playLosses++;
+      nfTrack('box_round', { win: false, round: playRounds });
       result.className = 'box-result lose';
       result.textContent = '消失了... ' + formatMoney(amount) + ' 没了';
     }
     updatePlayerDisplay();
+    if (playerMoney < 1) {
+      nfTrack('bankrupt', { rounds: playRounds, wins: playWins, losses: playLosses }, { force: true });
+    }
   }, 500);
 }
 
 function resetPlayer() {
   playerMoney = 10000; playRounds = 0; playWins = 0; playLosses = 0;
+  nfTrack('reset_player', {});
   document.getElementById('boxResult').textContent = '';
   document.getElementById('putAmount').value = 2500;
   updatePlayerDisplay();
@@ -501,6 +545,7 @@ function runComparison() {
   const mult = getMultiplier();
   const rounds = parseInt(document.getElementById('simRounds').value) || 1000;
   const kelly = calcKelly(0.5, mult - 1);
+  nfTrack('compare_run', { rounds: rounds, mult: mult });
 
   // 生成共享随机序列
   const randoms = Array.from({length: rounds}, () => Math.random());
@@ -547,6 +592,7 @@ function runMassSim() {
   const mult = getMultiplier();
   const rounds = parseInt(document.getElementById('simRounds').value) || 1000;
   const kelly = calcKelly(0.5, mult - 1);
+  nfTrack('mass_sim', { rounds: rounds, mult: mult });
 
   const resultsKelly = [], resultsAllIn = [];
   for (let p = 0; p < 1000; p++) {
@@ -616,6 +662,7 @@ function showToast(msg) {
 function copyShareText() {
   const mult = getMultiplier();
   const kelly = calcKelly(0.5, mult - 1);
+  nfTrack('share_copy', {});
   const text = `【薛定谔的钱箱】
 50%概率翻${mult}倍，50%概率消失。你会放钱进去吗？
 

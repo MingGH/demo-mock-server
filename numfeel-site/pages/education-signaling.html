@@ -267,6 +267,38 @@
   </div>
 
   <script>
+    // ════════ 行为埋点（NFTrack，见 components/track.js） ════════
+    // 事件清单（各事件回答什么问题）：
+    //  - session_start(trackOnce)：页面加载，标记会话开始
+    //  - signaling_calc：计算 Spence 信号均衡（回答：用户是否尝试调整参数）
+    //  - hiring_sim：单次招聘模拟
+    //  - hiring_batch：1000 次招聘分布模拟
+    //  - inflation_sim：学历通胀模拟
+    //  - session_hidden / session_end：切后台 / 离页
+    function nfTrack(name, props, opts) {
+      try {
+        if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+          window.NFTrack.track(name, props, opts);
+        }
+      } catch (e) {}
+    }
+    function registerTrackLeave() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+          nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+        }
+      });
+      window.addEventListener('pagehide', function () {
+        nfTrack('session_end', { reason: 'leave' }, { force: true });
+      });
+    }
+    try {
+      if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+        window.NFTrack.trackOnce('session_start', {});
+      }
+    } catch (e) {}
+    registerTrackLeave();
+
     let blsChart, signalingChart, hiringChart, inflationChart;
 
     // ========== 初始化 ==========
@@ -359,6 +391,7 @@
       const lowOutput = parseFloat(document.getElementById('lowOutput').value);
       const highCost = parseFloat(document.getElementById('highCost').value);
       const lowCost = parseFloat(document.getElementById('lowCost').value);
+      nfTrack('signaling_calc', { highRatio: Math.round(highRatio * 100) });
 
       const eq = calcSignalingEquilibrium(highRatio, highOutput, lowOutput, highCost, lowCost);
 
@@ -440,6 +473,7 @@
       const highEdu = parseFloat(document.getElementById('highEduRate').value) / 100;
       const lowEdu = parseFloat(document.getElementById('lowEduRate').value) / 100;
       const highRatio = parseFloat(document.getElementById('highRatio').value) / 100;
+      nfTrack('hiring_sim', { candidates: total, hire: hire });
 
       const r = simulateHiring(total, hire, highRatio, highEdu, lowEdu);
       document.getElementById('eduHighRate').textContent = (r.eduHighRate * 100).toFixed(1) + '%';
@@ -474,6 +508,7 @@
       const highEdu = parseFloat(document.getElementById('highEduRate').value) / 100;
       const lowEdu = parseFloat(document.getElementById('lowEduRate').value) / 100;
       const highRatio = parseFloat(document.getElementById('highRatio').value) / 100;
+      nfTrack('hiring_batch', { candidates: total, hire: hire });
 
       const eduRates = [], randRates = [];
       for (let i = 0; i < 1000; i++) {
@@ -517,6 +552,7 @@
     function runInflationSim() {
       const popularity = parseFloat(document.getElementById('eduPopularity').value) / 100;
       const highRatio = parseFloat(document.getElementById('highRatio').value) / 100;
+      nfTrack('inflation_sim', { popularity: Math.round(popularity * 100) });
       const points = [];
       for (let pop = 0.1; pop <= 0.95; pop += 0.05) {
         const highEdu = Math.min(0.95, pop + (1 - pop) * 0.7);

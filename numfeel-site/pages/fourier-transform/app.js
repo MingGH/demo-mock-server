@@ -4,6 +4,32 @@ let harmonicCount = 1;
 let animating = false;
 let animFrame = null;
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start (trackOnce) 页面加载
+//   wave_type     切换波形类型，回答「用户最常听/看哪种波形」
+//   play_tone     播放试听音色，回答「用户是否试听音色差异」
+//   animate       切换动画模式
+//   session_end   (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+nfTrack('session_start', {});
+registerTrackLeaveHandler();
+
 const synthCanvas = document.getElementById('synthCanvas');
 const synthCtx = synthCanvas.getContext('2d');
 
@@ -13,6 +39,7 @@ function setWaveType(type) {
     b.classList.toggle('active', b.dataset.type === type);
   });
   updateSynth();
+  nfTrack('wave_type', { type: type });
 }
 
 function updateSynth() {
@@ -152,6 +179,7 @@ function updateStats() {
 function toggleAnimate() {
   animating = !animating;
   const btn = document.getElementById('animateBtn');
+  nfTrack('animate', { on: animating });
   if (animating) {
     btn.innerHTML = '<i class="ti ti-player-pause"></i> 暂停';
     animateStep();
@@ -176,6 +204,7 @@ let audioCtx = null;
 
 function playTone(type) {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  nfTrack('play_tone', { type: type });
 
   // 高亮按钮
   document.querySelectorAll('.sound-btn').forEach(b => b.classList.remove('playing'));

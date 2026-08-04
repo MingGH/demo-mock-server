@@ -3,6 +3,32 @@
 var E = (typeof module !== 'undefined' && module.exports) ? require('./trading-engine.js') : window;
 var hasChart = typeof Chart !== 'undefined';
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start  (trackOnce) 页面加载
+//   preset_selected 选择预设场景，回答「用户最常试哪种交易频率」
+//   race_start     策略对决（单局），回答「用户是否观看三频对决」
+//   race_100       跑 100 次蒙特卡洛
+//   session_end    (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+nfTrack('session_start', {});
+registerTrackLeaveHandler();
+
 // ─── 工具 ───────────────────────────────────────────
 function $(id) { return document.getElementById(id); }
 function on(el, ev, fn) { if (el) el.addEventListener(ev, fn); }
@@ -207,6 +233,7 @@ function fillPresetFees() {
 
 function animateToPreset(key) {
   var target = PRESETS[key];
+  nfTrack('preset_selected', { preset: key });
   var ids = { principal: 'principalInput', cost: 'costInput', freq: 'freqInput', std: 'stdInput', win: 'winInput', time: 'timeInput' };
   var start = {};
   Object.keys(ids).forEach(function(k) { start[k] = +$(ids[k]).value; });
@@ -428,6 +455,7 @@ function showRaceConclusion(result) {
 
 function raceStart() {
   if (M3.racing) return;
+  nfTrack('race_start', {});
   $('raceConclusion').style.display = 'none';
   $('mcSection').style.display = 'none';
   var result = runOneRace();
@@ -438,6 +466,7 @@ function raceRerun() { raceStart(); }
 
 function race100() {
   if (M3.racing) return;
+  nfTrack('race_100', {});
   $('raceConclusion').style.display = 'none';
   var c = M3.common;
   var stats = {};

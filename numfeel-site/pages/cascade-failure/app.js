@@ -12,6 +12,54 @@ let animTimer = null;
 let isAnimating = false;
 let hoveredNode = -1;
 
+// ===== 行为埋点（通用埋点 SDK，见 components/track.js） =====
+// 事件清单：
+// - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+// - mode_switch:   切换模式 {mode}，回答"三种玩法哪个更受关注"
+// - cascade:       引爆一次级联 {topology, coupling, strategy, triggerPos, survivalRate}，
+//                  回答"不同参数下网络韧性表现"（低频收尾性质事件）
+// - regenerate:    重新生成网络 {topology, coupling, capacity, strategy}，回答"参数调整频率"
+// - challenge_end: 挑战结束 {mode, accuracy, best}，回答"挑战完成率与精准度"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 // ── 模式状态 ──
 let currentMode = 'achilles'; // achilles | architect | sandbox
 let challengeState = null;    // 挑战模式状态
@@ -652,6 +700,14 @@ function triggerNode(nodeId) {
 
   var result = simulateCascade(nodeId);
   var triggerPos = nodes[nodeId].degree >= 6 ? 'hub' : (nodes[nodeId].degree <= 2 ? 'edge' : 'mid');
+  trackSessionStart();
+  nfTrack('cascade', {
+    topology: document.getElementById('topology').value,
+    coupling: parseInt(document.getElementById('coupling').value),
+    strategy: document.getElementById('strategy').value,
+    triggerPos: triggerPos,
+    survivalRate: Math.round(result.survivalRate * 100)
+  });
 
   // 设置时间线
   timelineSnapshots = result.snapshots;
@@ -825,6 +881,8 @@ function showResult(r, triggerPos) {
 function switchMode(mode) {
   currentMode = mode;
   challengeState = null;
+  trackSessionStart();
+  nfTrack('mode_switch', { mode: mode });
 
   // 更新 tab 样式
   document.querySelectorAll('.mode-tab').forEach(function(tab) {
@@ -959,6 +1017,8 @@ function handleAchillesAttempt(result) {
 function showAchillesResult() {
   var cs = challengeState;
   var accuracy = cs.bestDamage / cs.optimalDamage;
+  trackSessionStart();
+  nfTrack('challenge_end', { mode: 'achilles', accuracy: Math.round(accuracy * 100), best: cs.bestDamage });
   var panel = document.getElementById('challengeResult');
   panel.classList.remove('hidden');
 
@@ -1034,6 +1094,8 @@ function handleArchitectAttempt(result) {
 function showArchitectResult() {
   var cs = challengeState;
   var panel = document.getElementById('challengeResult');
+  trackSessionStart();
+  nfTrack('challenge_end', { mode: 'architect', best: Math.round(cs.bestSurvival * 100), attempts: cs.attempts });
   panel.classList.remove('hidden');
 
   var icon = document.getElementById('crIcon');
@@ -1088,6 +1150,8 @@ function regenerate() {
   var coupling = parseInt(document.getElementById('coupling').value);
   var capacity = parseInt(document.getElementById('capacity').value);
   var strategy = document.getElementById('strategy').value;
+  trackSessionStart();
+  nfTrack('regenerate', { topology: topo, coupling: coupling, strategy: strategy });
 
   generateNetwork(topo, coupling);
   initLoads(capacity, strategy);
@@ -1199,6 +1263,8 @@ function startPulseAnimation() {
 document.addEventListener('DOMContentLoaded', function() {
   initCanvas();
   switchMode('achilles');
+  trackSessionStart();
+  registerTrackLeaveHandler();
   loadStats();
   loadLeaderboard();
   startPulseAnimation();

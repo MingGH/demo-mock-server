@@ -356,6 +356,51 @@
     
     const JIA_COINS = 101;
     const YI_COINS = 100;
+
+    // ============ 行为埋点（通用埋点 SDK，见 components/track.js） ============
+    // 事件清单：
+    // - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+    // - flip:          一次模拟 {n}，回答"模拟规模分布、参与度"
+    // - reset:         重置模拟，回答"用户是否反复重置"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    if (typeof window !== 'undefined') {
+      window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+    }
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try {
+        if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+          window.NFTrack.track(name, props, opts);
+        }
+      } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
     
     function flipCoins(count) {
       let heads = 0;
@@ -437,11 +482,12 @@
       simulate(true);
     }
     
-    document.getElementById('flipOnce').onclick = () => simulate(true);
-    document.getElementById('flip100').onclick = () => simulateMany(100);
-    document.getElementById('flip1000').onclick = () => simulateMany(1000);
-    document.getElementById('flip10000').onclick = () => simulateMany(10000);
+    document.getElementById('flipOnce').onclick = () => { trackSessionStart(); nfTrack('flip', { n: 1 }); simulate(true); };
+    document.getElementById('flip100').onclick = () => { trackSessionStart(); nfTrack('flip', { n: 100 }); simulateMany(100); };
+    document.getElementById('flip1000').onclick = () => { trackSessionStart(); nfTrack('flip', { n: 1000 }); simulateMany(1000); };
+    document.getElementById('flip10000').onclick = () => { trackSessionStart(); nfTrack('flip', { n: 10000 }); simulateMany(10000); };
     document.getElementById('resetBtn').onclick = () => {
+      nfTrack('reset', {});
       totalRounds = 0;
       jiaWins = 0;
       document.getElementById('jiaHeads').textContent = '0';
@@ -456,6 +502,10 @@
       updateStats();
       document.getElementById('jiaProbability').textContent = '-';
     };
+
+    // 初始化埋点
+    trackSessionStart();
+    registerTrackLeaveHandler();
   </script>
 </body>
 </html>

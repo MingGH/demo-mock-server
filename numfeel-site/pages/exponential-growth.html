@@ -482,6 +482,38 @@
 
 
   <script>
+    // ════════ 行为埋点（NFTrack，见 components/track.js） ════════
+    // 事件清单（各事件回答什么问题）：
+    //  - session_start(trackOnce)：页面加载，标记会话开始
+    //  - fold_action：对折一次（回答：用户对折了几次）
+    //  - auto_fold：快速对折到目标（回答：用户是否用快捷自动对折）
+    //  - milestone：达到里程碑（trackOnce per type，回答：用户是否亲眼见到指数爆炸的各个阶段）
+    //  - reset_action：重置
+    //  - session_hidden / session_end：切后台 / 离页
+    function nfTrack(name, props, opts) {
+      try {
+        if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+          window.NFTrack.track(name, props, opts);
+        }
+      } catch (e) {}
+    }
+    function registerTrackLeave() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') {
+          nfTrack('session_hidden', { reason: 'hidden', folds: foldCount }, { force: true });
+        }
+      });
+      window.addEventListener('pagehide', function () {
+        nfTrack('session_end', { reason: 'leave', folds: foldCount }, { force: true });
+      });
+    }
+    try {
+      if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+        window.NFTrack.trackOnce('session_start', {});
+      }
+    } catch (e) {}
+    registerTrackLeave();
+
     // 常量
     const PAPER_THICKNESS = 0.1; // 毫米
     const EARTH_DIAMETER = 12742 * 1000 * 1000; // 毫米
@@ -771,11 +803,23 @@
     function fold() {
       if (foldCount >= 100) return; // 防止数字溢出
       foldCount++;
+      nfTrack('fold_action', { count: foldCount });
+      trackExponentialMilestones(foldCount);
       updateDisplay();
+    }
+
+    function trackExponentialMilestones(f) {
+      try {
+        if (!window.NFTrack || typeof window.NFTrack.trackOnce !== 'function') return;
+        if (f === 37) window.NFTrack.trackOnce('milestone', { type: 'earth', folds: f });
+        if (f === 42) window.NFTrack.trackOnce('milestone', { type: 'moon', folds: f });
+        if (f === 51) window.NFTrack.trackOnce('milestone', { type: 'sun', folds: f });
+      } catch (e) {}
     }
     
     function autoFold(target) {
       const targetFolds = Math.min(target, 100);
+      nfTrack('auto_fold', { target: targetFolds });
       const interval = setInterval(() => {
         if (foldCount >= targetFolds) {
           clearInterval(interval);
@@ -787,6 +831,7 @@
     
     function reset() {
       foldCount = 0;
+      nfTrack('reset_action', {});
       updateDisplay();
     }
     

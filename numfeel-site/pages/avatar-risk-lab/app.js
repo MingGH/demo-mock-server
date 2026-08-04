@@ -4,6 +4,33 @@ var API = 'https://numfeel-api.996.ninja/avatar-risk';
 var currentToken = null;
 var currentAvatarUrl = null;
 
+// ══════════════════════════════════════════════════════════
+// 行为埋点（NFTrack，见 components/track.js）
+// 事件清单：
+//   session_start      → 会话开始（trackOnce）
+//   scenario_select    → 切换攻击场景 { scenario }（回答哪个场景最常被尝试）
+//   new_session        → 新建 token 会话
+//   svg_xss_load       → 用 <object> 加载 SVG（回答是否有人触发 XSS 演示）
+//   svg_xss_triggered  → SVG 内脚本 postMessage 触发成功
+//   session_end        → 离页（pagehide, force）
+// ══════════════════════════════════════════════════════════
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+var trackSessionStarted = false;
+function trackSessionStart() {
+  if (trackSessionStarted) return;
+  trackSessionStarted = true;
+  nfTrack('session_start', {});
+}
+window.addEventListener('pagehide', function () {
+  nfTrack('session_end', { reason: 'leave' }, { force: true });
+});
+
 // 场景定义：与后端 ScenarioState 字段对齐
 // era: 'alive' = 现在还很猛, 'half-dead' = 浏览器已经防住一半, 'mitigated' = 主流浏览器已经拦死
 var SCENARIOS = [
@@ -82,6 +109,7 @@ var SCENARIOS = [
 // ========== 初始化 ==========
 
 function init() {
+  trackSessionStart();
   renderScenarios();
   bindButtons();
   bindSvgXssMessageListener();
@@ -182,6 +210,7 @@ function setScenarioUI(activeKey) {
 // ========== Session 操作 ==========
 
 function createSession() {
+  nfTrack('new_session', {});
   fetch(API + '/session', { method: 'POST' })
     .then(function(r) { return r.json(); })
     .then(function(res) {
@@ -211,6 +240,7 @@ function createSession() {
  */
 function selectScenario(activeKey) {
   if (!currentToken) return;
+  nfTrack('scenario_select', { scenario: activeKey || 'none' });
   // 先乐观更新 UI
   setScenarioUI(activeKey);
 
@@ -376,6 +406,7 @@ function updateSvgXssVisibility(show) {
  */
 function loadSvgViaObject() {
   if (!currentAvatarUrl) return;
+  nfTrack('svg_xss_load', {});
   var mount = document.getElementById('svgObjectMount');
   if (!mount) return;
   mount.innerHTML = '';
@@ -397,6 +428,8 @@ function bindSvgXssMessageListener() {
   window.addEventListener('message', function(event) {
     var data = event.data;
     if (!data || data.type !== 'avatar-risk-svg-xss') return;
+
+    nfTrack('svg_xss_triggered', {});
 
     // 防止重复注入
     if (document.getElementById('svgXssBanner')) return;

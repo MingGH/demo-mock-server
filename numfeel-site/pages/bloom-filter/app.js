@@ -20,6 +20,33 @@
   const playFillEl = document.getElementById('playFill');
   const playLogEl = document.getElementById('playLog');
 
+  // ══════════════════════════════════════════════════════════
+  // 行为埋点（NFTrack，见 components/track.js）
+  // 事件清单：
+  //   session_start     → 会话开始（trackOnce）
+  //   play_add / play_query / play_reset → 手动 playground 的插入/查询/重置
+  //   challenge_add / challenge_batch / challenge_reset → 误判挑战的插入/批量/重置
+  //   run_experiment    → 参数调优实验室跑实验
+  //   session_end       → 离页（pagehide, force）
+  // ══════════════════════════════════════════════════════════
+  function nfTrack(name, props, opts) {
+    try {
+      if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+        window.NFTrack.track(name, props, opts);
+      }
+    } catch (e) {}
+  }
+  var trackSessionStarted = false;
+  function trackSessionStart() {
+    if (trackSessionStarted) return;
+    trackSessionStarted = true;
+    nfTrack('session_start', {});
+  }
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+  trackSessionStart();
+
   function initPlayground() {
     let bitsHtml = '';
     let indexHtml = '';
@@ -63,6 +90,7 @@
   playAddBtn.addEventListener('click', () => {
     const val = playInput.value.trim();
     if (!val) return;
+    nfTrack('play_add', {});
     const positions = playFilter.getPositions(val);
     playFilter.add(val);
     playInserted.add(val);
@@ -76,6 +104,7 @@
   playQueryBtn.addEventListener('click', () => {
     const val = playInput.value.trim();
     if (!val) return;
+    nfTrack('play_query', {});
     const positions = playFilter.getPositions(val);
     const result = playFilter.mightContain(val);
     const reallyExists = playInserted.has(val);
@@ -92,6 +121,7 @@
   });
 
   playResetBtn.addEventListener('click', () => {
+    nfTrack('play_reset', {});
     playFilter.reset(); playInserted.clear(); updatePlayUI(); playLogEl.innerHTML = '';
     addPlayLog('<span style="color:#666;">已重置</span>');
   });
@@ -171,6 +201,7 @@
   challengeAddBtn.addEventListener('click', () => {
     const val = challengeInput.value.trim();
     if (!val) return;
+    nfTrack('challenge_add', {});
     challengeInsertAndTest(val);
     challengeInput.value = '';
     challengeInput.focus();
@@ -181,14 +212,17 @@
   });
 
   challengeBatch10.addEventListener('click', () => {
+    nfTrack('challenge_batch', { n: 10 });
     for (let i = 0; i < 10; i++) challengeInsertAndTest('word_' + randomString(6));
   });
 
   challengeBatch50.addEventListener('click', () => {
+    nfTrack('challenge_batch', { n: 50 });
     for (let i = 0; i < 50; i++) challengeInsertAndTest('word_' + randomString(6));
   });
 
   challengeReset.addEventListener('click', () => {
+    nfTrack('challenge_reset', {});
     challengeFilter = new BloomFilter(CHALLENGE_M, CHALLENGE_K);
     challengeInserted = new Set();
     challengeTotalFP = 0;
@@ -252,6 +286,7 @@
   runExperimentBtn.addEventListener('click', runExperiment);
 
   function runExperiment() {
+    nfTrack('run_experiment', {});
     const n = parseInt(sliderN.value);
     const m = parseInt(sliderM.value);
     const k = parseInt(sliderK.value);

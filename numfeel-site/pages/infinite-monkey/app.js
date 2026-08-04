@@ -30,6 +30,66 @@ let submitted = false;        // 本轮是否已上报（防重复）
 let speed = 2000;             // 每秒尝试次数（每次尝试 = targetLen 个字符）
 let charsPerTick = 1;         // 每帧生成的尝试次数
 
+// ===== 行为埋点（通用埋点 SDK，见 components/track.js） =====
+// 事件清单：
+//   session_start  (trackOnce) 记录一次会话及初始目标长度，回答「多少人体验、目标难度分布」
+//   target_change  用户切换预设/自定义目标，回答「用户倾向选多难的目标」
+//   run_action     用户开始/暂停运行，回答「运行/暂停交互频率」
+//   sim_success    模拟打出目标，回答「成功所需尝试次数与字符数」
+//   sim_abandon    中途放弃（未成功），回答「放弃时已尝试多少」
+//   session_end    (force) 真正离页 pagehide，回答「单次会话最终状态」
+// 仅低频收尾事件镜像到 umami。
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+}
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {
+    // 埋点绝不能影响主流程
+  }
+}
+
+/** 同名事件整个会话只记一次（对应 SDK 的 trackOnce）。 */
+function nfTrackOnce(name, props) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+      window.NFTrack.trackOnce(name, props);
+    }
+  } catch (e) {
+    // 埋点绝不能影响主流程
+  }
+}
+
+function trackSessionEnd(reason) {
+  nfTrack('session_end', {
+    reason: reason,
+    targetLen: targetLen,
+    attempts: totalAttempts,
+    chars: totalChars,
+    success: success
+  }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') {
+      nfTrack('session_hidden', {
+        reason: 'hidden',
+        targetLen: targetLen,
+        attempts: totalAttempts,
+        chars: totalChars,
+        success: success
+      }, { force: true });
+    }
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 // DOM 缓存
 let cellsEl, tapeEl, tapeFillEl;
 let statsAttempts, statsChars, statsExpected, statsTime, statsMatch;
@@ -61,6 +121,8 @@ function init() {
   renderTarget();
   loadGlobalStats();
   setInterval(loadGlobalStats, 5000);
+  nfTrackOnce('session_start', { targetLen: targetLen, alphabetSize: alphabetSize });
+  registerTrackLeaveHandler();
 }
 
 function bindEvents() {
@@ -76,6 +138,7 @@ function bindEvents() {
       targetLen = clean.length;
       renderTarget();
       resetStats();
+      nfTrack('target_change', { source: 'custom', targetLen: targetLen });
     }
   });
   $('runBtn').addEventListener('click', toggleRun);
@@ -101,6 +164,7 @@ function selectPreset(idx) {
   renderTarget();
   successBanner.style.display = 'none';
   updateExpectedDisplay();
+  nfTrack('target_change', { source: 'preset', targetLen: targetLen });
 }
 
 // ===== 渲染目标 =====
@@ -117,6 +181,7 @@ function renderTarget() {
 
 // ===== 开始/暂停 =====
 function toggleRun() {
+  nfTrack('run_action', { action: running ? 'pause' : 'run' });
   if (running) {
     pause();
   } else {
@@ -152,6 +217,11 @@ function pause() {
 function submitAbandon() {
   if (submitted || totalAttempts === 0) return;
   submitted = true;
+  nfTrack('sim_abandon', {
+    targetLen: targetLen,
+    attempts: totalAttempts,
+    chars: totalChars
+  });
   submitStats(); // success 此时为 false
 }
 
@@ -298,6 +368,12 @@ function onSuccess() {
   // 上报后端
   submitted = true;
   submitStats();
+  nfTrack('sim_success', {
+    targetLen: targetLen,
+    attempts: totalAttempts,
+    chars: totalChars,
+    elapsedSec: Math.round((performance.now() - startTime) / 1000)
+  });
 }
 
 // ===== 统计更新 =====

@@ -355,6 +355,33 @@
 <script>
 let curveChart = null, regretChart = null;
 
+// ========== 行为埋点（NFTrack，见 components/track.js） ==========
+// 事件清单：
+//   session_start    (trackOnce) 页面加载
+//   reduction_calc   快速计算，回答「用户最常算哪种满减门槛」
+//   reduction_curve  折扣率曲线，回答「用户是否深挖盈亏平衡点」
+//   reduction_tiers  多档满减对比
+//   reduction_regret 后悔概率模拟
+//   session_end      (force) 真正离页 pagehide，reason=leave
+// 埋点不影响功能：NFTrack 不存在时静默跳过。
+function nfTrack(name, props, opts) {
+  try {
+    if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+      window.NFTrack.track(name, props, opts);
+    }
+  } catch (e) {}
+}
+function registerTrackLeaveHandler() {
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+}
+if (typeof window !== 'undefined') {
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  nfTrack('session_start', {});
+  registerTrackLeaveHandler();
+}
+
 // === Card 1: 快速计算 ===
 function applyPreset(threshold, discount, btn) {
   document.getElementById('threshold').value = threshold;
@@ -407,6 +434,15 @@ function calculate() {
   } else {
     insightEl.innerHTML = `<strong>凑单不划算。</strong>你为了省 ${r.saved} 元，需要多花 <strong>${r.wasted} 元</strong> 凑单，净亏 <strong>${Math.abs(r.netSaving)} 元</strong>。名义折扣率是 ${r.nominalDiscount}%，但你的真实折扣率是 <strong>${r.realDiscount}%</strong>（负数意味着你反而多花了钱）。<br><br>建议：直接按原价 ${r.originalPrice} 元购买，反而比凑单省 ${Math.abs(r.netSaving)} 元。`;
   }
+
+  // 埋点：记录快速计算参数（仅数值，无用户文本）
+  nfTrack('reduction_calc', {
+    price: Math.round(price),
+    threshold: Math.round(threshold),
+    discount: Math.round(discount),
+    needPadding: r.needPadding,
+    worthIt: r.worthIt
+  });
 }
 
 // === Card 2: 折扣率曲线 ===
@@ -490,6 +526,9 @@ function drawCurve() {
     `原价在 ¥${breakeven} 到 ¥${threshold} 之间时，凑单才真正划算。<br>` +
     `原价超过 ¥${threshold} 时，不需要凑单，直接享受满减。<br><br>` +
     `<strong>记住这个公式：</strong>划算线 = 门槛 − 减免金额 = ${threshold} − ${discount} = <strong>¥${breakeven}</strong>`;
+
+  // 埋点：记录折扣率曲线参数（仅数值）
+  nfTrack('reduction_curve', { threshold: Math.round(threshold), discount: Math.round(discount) });
 }
 
 // === Card 3: 多档满减 ===
@@ -542,6 +581,9 @@ function calcTiers() {
     (bestNet >= 0
       ? `这个档位${bestA.needPadding ? '只需凑 ¥' + bestA.paddingAmount + '，' : '无需凑单，'}净省 <strong>¥${bestNet}</strong>，是最划算的选择。`
       : `所有档位凑单都不划算，建议直接按原价 ¥${price} 购买。这个档位亏得最少（净亏 ¥${Math.abs(bestNet)}）。`);
+
+  // 埋点：记录多档满减对比（仅数值）
+  nfTrack('reduction_tiers', { price: Math.round(price), tierCount: tiers.length });
 }
 
 // === Card 4: 后悔概率 ===
@@ -617,6 +659,9 @@ function runRegret() {
     `<strong>后悔高峰在前7天。</strong>大部分后悔发生在收到货的第1-3天——拆开包装的那一刻，你就知道这东西是不是真的需要。<br><br>` +
     `消费心理学研究表明，冲动消费的后悔率约为 <strong>41%</strong>，而凑单消费的后悔率更高，因为购买动机不是「我需要」而是「凑个单」。<br><br>` +
     `<strong>30秒冷静法则：</strong>凑单前问自己——「如果没有满减，我会花 ¥${amount} 买这个东西吗？」如果答案是否，那就别凑了。`;
+
+  // 埋点：记录后悔概率模拟（仅数值）
+  nfTrack('reduction_regret', { amount: Math.round(amount), regretRate: sim.regretRate });
 }
 
 // 页面加载后自动计算一次

@@ -270,6 +270,54 @@
     let stickers = [];
     let stickerIdCounter = 0;
 
+    // ============ 行为埋点（通用埋点 SDK，见 components/track.js） ============
+    // 事件清单：
+    // - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+    // - image_upload:  上传头像，回答"多少用户进入编辑器"
+    // - sticker_add:   添加贴图 {count}，回答"贴图使用频率、叠加数量"
+    // - sticker_delete: 删除贴图，回答"增减操作"
+    // - download:      下载成品 {stickers}，回答"转化率"
+    // - reset:         重新上传，回答"用户是否反复重做"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    if (typeof window !== 'undefined') {
+      window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+    }
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try {
+        if (window.NFTrack && typeof window.NFTrack.track === 'function') {
+          window.NFTrack.track(name, props, opts);
+        }
+      } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+
     hatImages.forEach((src, index) => {
       const item = document.createElement('div');
       item.className = 'hat-item';
@@ -294,6 +342,8 @@
         const img = new Image();
         img.onload = () => {
           userImage = img;
+          trackSessionStart();
+          nfTrack('image_upload', {});
           uploadArea.style.display = 'none';
           editor.classList.add('active');
           requestAnimationFrame(() => { initCanvas(); });
@@ -326,6 +376,7 @@
 
     function addSticker(src) {
       const id = stickerIdCounter++;
+      nfTrack('sticker_add', { count: stickers.length + 1 });
       const sticker = document.createElement('div');
       sticker.className = 'sticker';
       sticker.dataset.id = id;
@@ -371,6 +422,7 @@
         e.stopPropagation();
         sticker.remove();
         stickers = stickers.filter(s => s.id !== data.id);
+        nfTrack('sticker_delete', { remaining: stickers.length });
       };
 
       sticker.onpointerdown = (e) => {
@@ -438,6 +490,7 @@
     }
 
     document.getElementById('resetBtn').onclick = () => {
+      nfTrack('reset', {});
       stickerLayer.innerHTML = '';
       stickers = [];
       editor.classList.remove('active');
@@ -446,6 +499,7 @@
     };
 
     document.getElementById('downloadBtn').onclick = async () => {
+      nfTrack('download', { stickers: stickers.length });
       const exportCanvas = document.createElement('canvas');
       const exportSize = 800;
       exportCanvas.width = exportSize;
@@ -497,6 +551,10 @@
         s.element.style.height = s.size + 'px';
       });
     };
+
+    // 初始化埋点
+    trackSessionStart();
+    registerTrackLeaveHandler();
   </script>
 </body>
 </html>

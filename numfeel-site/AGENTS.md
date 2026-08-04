@@ -139,6 +139,9 @@ NFTrack.trackOnce('session_start', { mode: 'standard' });          // 整个会�
   开头的注释，那些就是从"要回答的问题"倒推出的事件设计）。
 - 埋点调用必须是安全的：`NFTrack` 未加载、上报失败都不能抛异常或阻塞页面，
   SDK 内部已经做了 try/catch 兜底，业务代码调用时不需要再包一层。
+- **`visibilitychange → hidden` 不等于用户离开**：切到别的标签页 / App / 锁屏都会触发，
+  切后台**不要**当作会话结束（否则回来再按会重开一局、清掉峰值/里程碑）。真正离页用
+  `pagehide` 兜底。这是所有 demo 的通用坑，新 demo 的收尾事件一律用 `pagehide` 发。
 
 ## Git 提交规范
 

@@ -5,6 +5,50 @@
   var $ = function (id) { return document.getElementById(id); };
   var hasGsap = function () { return typeof window.gsap !== 'undefined'; };
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+  // - source:        切换熵源 {source}，回答"熵源偏好"
+  // - preset:        切换游戏预设 {preset}，回答"预设偏好"
+  // - roll:          摇号 {preset, source}，回答"摇号次数与来源"
+  // - copy:          复制结果，回答"多少人分享"
+  // - resample:      再采样 {source}，回答"体检采样次数"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+  trackSessionStart();
+  registerTrackLeaveHandler();
+
   var currentPreset = 'ssq';
   var currentSource = QR.SOURCE_QUANTUM;
   var lastResult = null;       // 最近一次摇号结果，用于复制
@@ -38,6 +82,7 @@
 
   function selectSource(src) {
     currentSource = src;
+    nfTrack('source', { source: src });
     var chips = $('sourcePick').children;
     for (var i = 0; i < chips.length; i++) {
       chips[i].classList.toggle('active', chips[i].getAttribute('data-source') === src);
@@ -48,6 +93,7 @@
   // ── 玩法切换 ──
   function selectPreset(preset) {
     currentPreset = preset;
+    nfTrack('preset', { preset: preset });
     var cards = $('presetRow').children;
     for (var i = 0; i < cards.length; i++) {
       cards[i].classList.toggle('active', cards[i].getAttribute('data-preset') === preset);
@@ -124,6 +170,7 @@
   // ── 摇号主流程 ──
   function roll() {
     var btn = $('rollBtn');
+    nfTrack('roll', { preset: currentPreset, source: currentSource });
     btn.disabled = true;
     $('drawStatus').textContent = '正在从熵源取真随机字节…';
     $('ballRow').innerHTML = '';
@@ -261,6 +308,7 @@
   // ── 复制 ──
   function copyResult() {
     if (!lastResult) return;
+    nfTrack('copy', {});
     var text;
     var srcLabel = lastEntropy ? QR.SOURCE_LABELS[lastEntropy.source] : '';
     if (lastResult.type === 'ssq') text = QR.formatSsq(lastResult.value);
@@ -297,6 +345,7 @@
   // ── 体检面板 ──
   function resample() {
     var btn = $('resampleBtn');
+    nfTrack('resample', { source: currentSource });
     btn.disabled = true;
     btn.innerHTML = '<i class="ti ti-loader"></i> 采集中…';
     QR.fetchBytes(4096, currentSource).then(function (entropy) {

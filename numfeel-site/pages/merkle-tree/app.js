@@ -1,5 +1,50 @@
 // ========== 默克尔树 Demo 交互逻辑 ==========
 
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - add_preset:    添加预设数据 {leaves}，回答"叶子规模"
+// - add_custom:    添加自定义数据 {leaves}，回答"自定义输入次数"（不上报内容）
+// - reset:         重置，回答"多少人重置重试"
+// - build:         构建树 {leaves}，回答"构建树的叶子数"
+// - tamper:        篡改演示 {leaves}，回答"多少人看篡改演示"
+// - proof:         生成 Proof {leaves, verified}，回答"验证结果"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 const { sha256, buildMerkleTree, getMerkleProof, verifyMerkleProof, getAffectedPath, shortHash } = MerkleEngine;
 
 let leaves = [];
@@ -16,6 +61,7 @@ function addPreset(content) {
     alert('该数据块已添加');
     return;
   }
+  nfTrack('add_preset', { leaves: leaves.length });
   leaves.push(content);
   renderLeafList();
   updateBuildBtn();
@@ -35,6 +81,7 @@ function addCustom() {
   }
   leaves.push(val);
   input.value = '';
+  nfTrack('add_custom', { leaves: leaves.length });
   renderLeafList();
   updateBuildBtn();
 }
@@ -75,6 +122,7 @@ function resetAll() {
   leaves = [];
   currentTree = null;
   originalTree = null;
+  nfTrack('reset', {});
   renderLeafList();
   updateBuildBtn();
   document.getElementById('treeViz').style.display = 'none';
@@ -88,6 +136,7 @@ function resetAll() {
 // ── 构建树 ──
 async function buildTree() {
   if (leaves.length < 2) return;
+  nfTrack('build', { leaves: leaves.length });
 
   currentTree = await buildMerkleTree(leaves);
   originalTree = await buildMerkleTree(leaves);
@@ -245,6 +294,7 @@ function drawLine(ctx, from, to, highlightPath, tree, level, childIdx) {
 // ── 篡改 ──
 async function tamperLeaf() {
   const idx = parseInt(document.getElementById('tamperTarget').value);
+  nfTrack('tamper', { leaves: leaves.length });
   const newContent = document.getElementById('tamperInput').value.trim();
   if (!newContent) {
     alert('请输入篡改后的内容');
@@ -290,6 +340,7 @@ function getTotalNodes(tree) {
 // ── Merkle Proof ──
 async function showProof() {
   const idx = parseInt(document.getElementById('proofTarget').value);
+  nfTrack('proof', { leaves: leaves.length });
   const proof = getMerkleProof(currentTree, idx);
 
   document.getElementById('proofResult').style.display = 'block';

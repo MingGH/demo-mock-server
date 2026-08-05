@@ -355,6 +355,50 @@
   </div><!-- end container -->
 
 <script>
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - luck_sim:      你的队最慢 {n}，回答"队列数量分布"
+// - switch_sim:    换队悖论 {trials, n, len}，回答"换队模拟规模"
+// - compare_sim:   多队列vs蛇形 {n, cust}，回答"对比模拟参数"
+// - mm1:           M/M/1 模型 {lambda, mu}，回答"利用率参数分布"（仅用户滑杆触发，初始化不埋点）
+// - factor:        心理因素切换 {key}，回答"哪个心理因素最受关注"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 let switchChart = null;
 let compareChart = null;
 let mm1Chart = null;
@@ -372,6 +416,7 @@ function updateLuckParam() {
 
 function runLuckSim() {
   const n = parseInt(document.getElementById('luck-n-slider').value);
+  nfTrack('luck_sim', { n: n });
   const result = QueueTheoryLogic.simulateQueueLuck(5000, n);
   document.getElementById('luck-results').innerHTML =
     `<div class="result-item green"><div class="label">排到最快队列</div><div class="value">${(result.fastestProb*100).toFixed(1)}%</div></div>` +
@@ -386,6 +431,7 @@ function runLuckSim() {
 function runSwitchSim(trials) {
   const n = parseInt(document.getElementById('switch-n-slider').value);
   const len = parseInt(document.getElementById('switch-len-slider').value);
+  nfTrack('switch_sim', { trials: trials, n: n, len: len });
   const r = QueueTheoryLogic.simulateSwitchParadox(trials, n, len);
 
   document.getElementById('switch-results').innerHTML =
@@ -428,6 +474,7 @@ function runSwitchSim(trials) {
 function runCompareSim() {
   const n = parseInt(document.getElementById('compare-n-slider').value);
   const cust = parseInt(document.getElementById('compare-cust-slider').value);
+  nfTrack('compare_sim', { n: n, cust: cust });
   const multi = QueueTheoryLogic.simulateMultiQueue(n, cust, 30);
   const single = QueueTheoryLogic.simulateSingleQueue(n, cust, 30);
 
@@ -499,6 +546,7 @@ function runCompareSim() {
 function updateMM1() {
   const lambda = parseInt(document.getElementById('mm1-lambda-slider').value);
   const mu = parseInt(document.getElementById('mm1-mu-slider').value);
+  if (updateMM1.userInitiated) nfTrack('mm1', { lambda: lambda, mu: mu });
   document.getElementById('mm1-lambda-val').textContent = lambda;
   document.getElementById('mm1-mu-val').textContent = mu;
 
@@ -617,6 +665,7 @@ function initPsychFactors() {
 
 function toggleFactor(el, key) {
   el.classList.toggle('active');
+  nfTrack('factor', { key: key });
   const check = el.querySelector('input');
   check.checked = !check.checked;
   const icon = el.querySelector('.ti-check');
@@ -661,6 +710,7 @@ function updatePsych() {
 // ========== 初始化 ==========
 updateLuckParam();
 updateMM1();
+updateMM1.userInitiated = true; // 之后用户滑杆触发才埋点
 initPsychFactors();
 </script>
 </body>

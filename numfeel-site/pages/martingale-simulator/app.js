@@ -1,4 +1,51 @@
 // ========== 全局状态 ==========
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - game_start:    开始游戏 {strategy, bankroll}，回答"策略与本金分布"
+// - bet:           单次下注 {rounds, money}，回答"实际下注次数"
+// - auto_play:     自动下注 {n}，回答"自动局数分布"
+// - game_over:     游戏结束 {status, rounds}，回答"破产/爆台/赢庄结果"
+// - mc:            蒙特卡洛 {bankruptRate}，回答"破产率分布"
+// - compare:       策略对比，回答"多少人看对比"
+// - sensitivity:   敏感性分析，回答"多少人看敏感度"
+// - reset:         重置，回答"多少人重置重试"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+var trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 var state = null;
 var moneyChart = null;
 var mcChart = null;
@@ -35,6 +82,7 @@ function getSettings() {
 function startGame() {
   var params = getSettings();
   state = createInitialState(params);
+  nfTrack('game_start', { strategy: params.strategy, bankroll: params.playerMoney });
 
   document.getElementById('setupPanel').style.display = 'none';
   document.querySelectorAll('.game-area').forEach(function(el) {
@@ -52,6 +100,7 @@ function doBet() {
     showGameOver('player_bankrupt');
     return;
   }
+  nfTrack('bet', { rounds: state.totalRounds, money: Math.round(state.playerMoney) });
 
   var result = playRound(state);
   state = result.state;
@@ -91,6 +140,7 @@ function doBet() {
 }
 
 function autoPlayRounds(n) {
+  nfTrack('auto_play', { n: n });
   if (!state || isAutoPlaying) return;
   var btn = document.getElementById('betBtn');
   btn.disabled = true;
@@ -137,6 +187,7 @@ function autoPlayRounds(n) {
 function resetGame() {
   autoStop = true;
   isAutoPlaying = false;
+  nfTrack('reset', {});
   state = null;
 
   document.getElementById('setupPanel').style.display = 'block';
@@ -300,6 +351,7 @@ function runMonteCarlo() {
     maxRounds: 500,
     strategy: params.strategy
   });
+  nfTrack('mc', { strategy: params.strategy, bankruptRate: Math.round(sim.bankruptRate * 100) });
 
   document.getElementById('mcBankruptRate').textContent = formatPercent(sim.bankruptRate);
   document.getElementById('mcBeatDealer').textContent = formatPercent(sim.beatDealerRate);
@@ -357,6 +409,7 @@ function drawMCChart(results, initialMoney) {
 
 function runComparison() {
   var params = getSettings();
+  nfTrack('compare', {});
   var comparison = runStrategyComparison({
     playerMoney: params.playerMoney,
     dealerMoney: params.dealerMoney,
@@ -428,6 +481,7 @@ function runComparison() {
 
 function runSensitivity() {
   var params = getSettings();
+  nfTrack('sensitivity', {});
   var data = runSensitivityAnalysis({
     playerMoney: params.playerMoney,
     dealerMoney: params.dealerMoney,
@@ -510,6 +564,7 @@ function switchSimTab(name) {
 
 function showGameOver(status) {
   var modal = document.getElementById('gameOverModal');
+  nfTrack('game_over', { status: status, rounds: state ? state.totalRounds : 0 });
   var icon = document.getElementById('modalIcon');
   var title = document.getElementById('modalTitle');
   var msg = document.getElementById('modalMsg');

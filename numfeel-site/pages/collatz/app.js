@@ -1,5 +1,48 @@
 // ========== Collatz 猜想 — 页面交互逻辑 ==========
 
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - single:        单数运行 {n, steps}，回答"输入与步数分布"
+// - animated:      动画演示 {n, steps}，回答"多少人看动画"
+// - famous:        经典数字 {n, steps}，回答"哪个经典数最受关注"
+// - batch:         批量散点 {maxN}，回答"批量范围分布"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 let singleChart = null;
 let batchChart = null;
 let distChart = null;
@@ -21,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 确保 Chart.js 加载后再渲染图表
   ensureChartJS(() => {
     runBatch();
+    runBatch.userInitiated = true; // 之后用户切换范围才埋点
     renderDistribution();
   });
 });
@@ -38,6 +82,7 @@ function runSingle() {
   const steps = seq.length - 1;
   const maxVal = Math.max(...seq);
   const ratio = (maxVal / n).toFixed(1);
+  nfTrack('single', { n: n, steps: steps });
 
   // 显示统计
   document.getElementById('singleStats').style.display = 'flex';
@@ -64,6 +109,7 @@ function runAnimated() {
   const steps = seq.length - 1;
   const maxVal = Math.max(...seq);
   const ratio = (maxVal / n).toFixed(1);
+  nfTrack('animated', { n: n, steps: steps });
 
   document.getElementById('singleStats').style.display = 'flex';
   document.getElementById('statSteps').textContent = steps;
@@ -243,6 +289,7 @@ function renderFamousTable() {
 
 function loadFamous(n) {
   document.getElementById('inputN').value = n;
+  nfTrack('famous', { n: n });
   runSingle();
   document.querySelector('.section').scrollIntoView({ behavior: 'smooth' });
 }
@@ -250,6 +297,7 @@ function loadFamous(n) {
 // ── 批量散点图 ──
 function runBatch() {
   const maxN = parseInt(document.getElementById('rangeSelect').value);
+  if (runBatch.userInitiated) nfTrack('batch', { maxN: maxN });
 
   requestAnimationFrame(() => {
     const data = batchSteps(maxN);

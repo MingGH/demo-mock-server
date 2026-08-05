@@ -1,4 +1,48 @@
 // ========== 游戏状态 ==========
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - new_game:      开始新游戏 {preset}，回答"预设偏置"
+// - move:          玩家取子 {preset, difficulty}，回答"对局参数"
+// - game_end:      游戏结束 {playerWins, rounds, difficulty}，回答"胜负与难度分布"
+// - hint:          使用提示，回答"多少人求助"
+// - submit:        提交战绩 {playerWins, difficulty}，回答"参与排行"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 let piles = [];
 let isPlayerTurn = true;
 let gameActive = false;
@@ -11,6 +55,7 @@ let hintVisible = false;
 // ========== 初始化 ==========
 function startNewGame() {
   const preset = document.getElementById('presetSelect').value;
+  if (startNewGame.userInitiated) nfTrack('new_game', { preset: preset });
   piles = generatePiles(preset);
   isPlayerTurn = true;
   gameActive = true;
@@ -121,6 +166,7 @@ function updateTakeInfo() {
 // ========== 确认取走 ==========
 function confirmTake() {
   if (!gameActive || !isPlayerTurn || selectedStones.length === 0) return;
+  nfTrack('move', { preset: document.getElementById('presetSelect').value, difficulty: document.getElementById('difficultySelect').value });
 
   const take = selectedStones.length;
   const pile = selectedPile;
@@ -216,6 +262,7 @@ function endGame(playerWins) {
   stats.total++;
   if (playerWins) stats.wins++;
   else stats.losses++;
+  nfTrack('game_end', { playerWins: playerWins ? 1 : 0, rounds: moveHistory.length, difficulty: document.getElementById('difficultySelect').value });
 
   // 提交到后端统计
   submitGameResult(playerWins);
@@ -313,6 +360,7 @@ function updateBinaryPanel() {
 // ========== 提示 ==========
 function toggleHint() {
   hintVisible = !hintVisible;
+  nfTrack('hint', {});
   const el = document.getElementById('strategyHint');
 
   if (!hintVisible || !gameActive) {
@@ -371,6 +419,7 @@ function submitGameResult(playerWins) {
   const difficulty = document.getElementById('difficultySelect').value;
   const preset = document.getElementById('presetSelect').value;
   const rounds = moveHistory.length;
+  nfTrack('submit', { playerWins: playerWins ? 1 : 0, difficulty: difficulty });
 
   fetch(NIM_API + '/submit', {
     method: 'POST',
@@ -424,4 +473,5 @@ function renderGlobalStats(data) {
 
 // ========== 启动 ==========
 startNewGame();
+startNewGame.userInitiated = true; // 之后用户点击开始/换预设才埋点
 loadGlobalStats();

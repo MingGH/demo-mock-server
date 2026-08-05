@@ -260,6 +260,48 @@
 </div><!-- end container -->
 
 <script>
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - two_contents:  两条内容对比 {boost, alpha, rounds, ratio}，回答"参数使用分布与放大倍数"
+// - distribution:  注意力分布 {alpha}，回答"分布模拟参数"
+// - alpha_compare: 强度对比，回答"多少人看对比实验"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 var twoChart = null;
 var distChart = null;
 var compareChart = null;
@@ -292,6 +334,7 @@ function runTwoContents() {
 
   setTimeout(function() {
     var res = simulateTwoContentsAvg({ boostA: boost, boostB: 0, alpha: alpha, rounds: rounds, trials: 300 });
+    nfTrack('two_contents', { boost: boost, alpha: Math.round(alpha * 100), rounds: rounds, ratio: Math.round(res.finalRatio) });
 
     document.getElementById('likes-a').textContent = res.avgA[rounds].toFixed(0);
     document.getElementById('likes-b').textContent = res.avgB[rounds].toFixed(0);
@@ -342,6 +385,7 @@ function runDistribution() {
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> 模拟中...';
 
   var alpha = parseInt(document.getElementById('dist-alpha-slider').value) / 100;
+  nfTrack('distribution', { alpha: Math.round(alpha * 100) });
 
   setTimeout(function() {
     var res = simulateMatthewEffect({ contentCount: 100, totalLikes: 20000, initialBoost: 0, alpha: alpha, rounds: 200 });
@@ -402,6 +446,7 @@ function runDistribution() {
 function runAlphaCompare() {
   var btn = document.getElementById('run-compare-btn');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> 模拟中...';
+  nfTrack('alpha_compare', {});
 
   setTimeout(function() {
     var alphas = [0, 0.3, 0.6, 0.9];

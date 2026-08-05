@@ -450,6 +450,50 @@
 <script>
 // ========== 核心算法（可独立测试） ==========
 
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - scenario:      选择场景 {scenario}，回答"哪个消费场景最受关注"
+// - sim_single:    单次财富模拟 {prize, level}，回答"模拟参数分布"
+// - sim_3scenes:   三种人生对比 {prize}，回答"多少人看对比"
+// - monte_carlo:   蒙特卡洛模拟 {prize, years}，回答"模拟深度"
+// - safe_line:     安全线计算 {prize, ret}，回答"安全支出计算次数"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 /**
  * 模拟单个中奖者的财富变化
  * @param {number} prize - 中奖金额（万元）
@@ -562,6 +606,7 @@ function updateInflationLabel() {
 
 function selectScenario(type) {
   document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
+  nfTrack('scenario', { scenario: type });
   event.currentTarget.classList.add('active');
   if (type === 'rational') {
     document.getElementById('inflationLevel').value = 1;
@@ -582,6 +627,7 @@ function runSingleSim() {
   const returnRate = (parseFloat(document.getElementById('returnRate').value) || 4) / 100;
   const level = document.getElementById('inflationLevel').value;
   const mult = INFLATION_LEVELS[level].mult;
+  nfTrack('sim_single', { prize: prize, level: level });
 
   const result = simulateWealth(prize, baseExp, mult, returnRate, 120); // 10年
 
@@ -601,6 +647,7 @@ function runSingleSim() {
 function runThreeScenarios() {
   const prize = parseFloat(document.getElementById('prizeMoney').value) || 1000;
   const baseExp = parseFloat(document.getElementById('baseExpense').value) || 1;
+  nfTrack('sim_3scenes', { prize: prize });
 
   const scenarios = [
     { name: '理性人（×2，回报5%）', mult: 2, ret: 0.05, color: '#4ade80' },
@@ -664,6 +711,7 @@ function drawWealthChart(datasets) {
 function runMonteCarlo() {
   const prize = parseFloat(document.getElementById('mcPrize').value) || 1000;
   const years = parseInt(document.getElementById('mcYears').value) || 10;
+  nfTrack('monte_carlo', { prize: prize, years: years });
   const months = years * 12;
   const N = 1000;
 
@@ -783,6 +831,7 @@ function calcSafeLine() {
   const prize = parseFloat(document.getElementById('safePrize').value) || 1000;
   const ret = (parseFloat(document.getElementById('safeReturn').value) || 5) / 100;
   const result = calcSafeWithdrawal(prize, ret);
+  nfTrack('safe_line', { prize: prize, ret: ret });
 
   document.getElementById('safeMonthly').textContent = result.monthlyWithdrawal.toFixed(1) + '万';
   document.getElementById('safeYearly').textContent = result.yearlyWithdrawal.toFixed(0) + '万';

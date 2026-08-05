@@ -7,6 +7,48 @@
 
   var API_BASE = 'https://numfeel-api.996.ninja/pwned';
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+  // - check:         查询密码 {len, pwned}，回答"检查次数与命中率"
+  // - preset:        用预设密码查询 {preset}，回答"哪个预设最受关注"
+  // - pwned_result:  命中结果 {count}，回答"泄露次数分布"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+  trackSessionStart();
+  registerTrackLeaveHandler();
+
   var pwdInput = document.getElementById('pwdInput');
   var togglePwd = document.getElementById('togglePwd');
   var resultBox = document.getElementById('resultBox');
@@ -37,6 +79,7 @@
                      '<div class="pn">' + p.note + '</div>';
     card.addEventListener('click', function () {
       pwdInput.value = p.value;
+      nfTrack('preset', { preset: p.label });
       runCheck(p.value);
     });
     presetRow.appendChild(card);
@@ -56,6 +99,7 @@
   function runCheck(password) {
     if (!password) return;
     var seq = ++requestSeq;
+    nfTrack('check', { len: password.length });
 
     // 本地先算哈希、切前缀（步骤 ①②）
     var hash = sha1Hex(password);
@@ -109,6 +153,7 @@
 
   function renderResult(count) {
     resultBox.style.display = 'block';
+    nfTrack('pwned_result', { count: count });
     if (count > 0) {
       resultBox.className = 'result-box pwned';
       resultVerdict.innerHTML = '<i class="ti ti-alert-octagon"></i> 已泄露';

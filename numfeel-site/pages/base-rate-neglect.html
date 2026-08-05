@@ -397,6 +397,50 @@
   <div class="toast" id="toast">链接已复制到剪贴板</div>
 
   <script>
+    // ========== 行为埋点（通用埋点 SDK，见 components/track.js）==========
+    // 事件清单：
+    // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+    // - quiz:          直觉测试作答 {answer}，回答"用户直觉命中率"
+    // - vis:           可视化调参 {prevalence, sensitivity, specificity}，回答"参数使用分布"（仅用户滑杆触发，初始化不埋点）
+    // - monte_carlo:   蒙特卡洛模拟，回答"多少人做模拟验证"
+    // - scenario:      生活场景 {scenario}，回答"哪个场景最受关注"
+    // - copy:          复制分享，回答"多少人分享"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+    trackSessionStart();
+    registerTrackLeaveHandler();
+
     // ========== 核心计算函数（可独立测试） ==========
     function calcBayes(prevalence, sensitivity, specificity) {
       const truePositive = prevalence * sensitivity;
@@ -433,6 +477,7 @@
 
     function submitQuiz() {
       if (selectedAnswer === null) return;
+      nfTrack('quiz', { answer: selectedAnswer });
       const options = document.querySelectorAll('.quiz-option');
       options.forEach(o => {
         o.style.pointerEvents = 'none';
@@ -467,6 +512,9 @@
       const prevalence = parseInt(document.getElementById('prevalenceSlider').value) / 1000;
       const sensitivity = parseInt(document.getElementById('sensitivitySlider').value) / 100;
       const specificity = parseInt(document.getElementById('specificitySlider').value) / 100;
+      if (updateVisualization.userInitiated) {
+        nfTrack('vis', { prevalence: Math.round(prevalence * 1000), sensitivity: Math.round(sensitivity * 100), specificity: Math.round(specificity * 100) });
+      }
 
       document.getElementById('prevalenceValue').textContent = document.getElementById('prevalenceSlider').value;
       document.getElementById('prevalencePercent').textContent = (prevalence * 100).toFixed(1) + '%';
@@ -525,6 +573,7 @@
       const prevalence = parseInt(document.getElementById('prevalenceSlider').value) / 1000;
       const sensitivity = parseInt(document.getElementById('sensitivitySlider').value) / 100;
       const specificity = parseInt(document.getElementById('specificitySlider').value) / 100;
+      nfTrack('monte_carlo', {});
 
       const theoretical = calcBayes(prevalence, sensitivity, specificity);
       const sim = simulatePopulation(10000, prevalence, sensitivity, specificity);
@@ -619,6 +668,7 @@
 
     function loadScenario(key) {
       const s = scenarios[key];
+      nfTrack('scenario', { scenario: key });
       const b = calcBayes(s.prevalence, s.sensitivity, s.specificity);
 
       document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
@@ -685,6 +735,7 @@
 
     // ========== 复制链接 ==========
     function copyShareLink() {
+      nfTrack('copy', {});
       navigator.clipboard.writeText('https://numfeel.996.ninja/pages/base-rate-neglect.html').then(() => {
         const toast = document.getElementById('toast');
         toast.classList.add('show');
@@ -694,7 +745,8 @@
 
     // ========== 初始化 ==========
     document.addEventListener('DOMContentLoaded', function() {
-      updateVisualization();
+      updateVisualization(); // 初始化，不埋点
+      updateVisualization.userInitiated = true; // 之后用户滑杆触发才埋点
       initPPVCurve();
     });
   </script>

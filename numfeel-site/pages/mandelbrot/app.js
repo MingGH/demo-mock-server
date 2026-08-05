@@ -1,5 +1,50 @@
 // ========== 曼德勃罗集交互控制 ==========
 
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - preset:        选择预设视野 {preset}，回答"哪个区域最受关注"
+// - color:         切换配色 {scheme}，回答"配色偏好"
+// - reset:         重置视野，回答"多少人重置"
+// - download:      下载图片 {zoom}，回答"多少人保存图像"
+// - highres:       高清渲染 {zoom}，回答"多少人用高清"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 说明：render() 在缩放/平移时高频触发，不做埋点，只记显式意图事件。
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 // ── 状态 ──
 let centerX = -0.5;
 let centerY = 0;
@@ -52,6 +97,7 @@ function setupPresets() {
       centerX = p.x;
       centerY = p.y;
       zoom = p.zoom;
+      nfTrack('preset', { preset: p.name });
       document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       render();
@@ -75,6 +121,7 @@ function setupControls() {
     const btn = e.target.closest('.color-btn');
     if (!btn) return;
     colorScheme = btn.dataset.scheme;
+    nfTrack('color', { scheme: colorScheme });
     document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     render();
@@ -84,6 +131,7 @@ function setupControls() {
   document.getElementById('resetBtn').onclick = () => {
     centerX = -0.5; centerY = 0; zoom = 1;
     maxIter = 200;
+    nfTrack('reset', {});
     document.getElementById('iterSlider').value = 200;
     document.getElementById('iterVal').textContent = 200;
     document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
@@ -450,6 +498,7 @@ function formatNumber(n) {
 // ── 下载图片 ──
 function downloadImage() {
   const link = document.createElement('a');
+  nfTrack('download', { zoom: Math.round(zoom) });
   link.download = `mandelbrot_${centerX.toFixed(4)}_${centerY.toFixed(4)}_${zoom.toFixed(0)}x.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
@@ -458,6 +507,7 @@ function downloadImage() {
 // ── 高清渲染（2x 当前分辨率） ──
 function renderHighRes() {
   if (isRendering) return;
+  nfTrack('highres', { zoom: Math.round(zoom) });
   const btn = document.getElementById('highResBtn');
   btn.disabled = true;
   btn.innerHTML = '<i class="ti ti-loader"></i> 渲染中…';

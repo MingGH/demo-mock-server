@@ -50,6 +50,7 @@ function setupUpload() {
 
 function handleFile(file) {
   if (!file.type.startsWith('image/')) return;
+  nfTrack('upload', { source: 'file' });
   const reader = new FileReader();
   reader.onload = (e) => loadImage(e.target.result);
   reader.readAsDataURL(file);
@@ -101,6 +102,7 @@ function loadImage(src) {
 
 // ── 加载默认示例图 ──
 function loadDefaultImage() {
+  nfTrack('upload', { source: 'default' });
   loadImage('sample.jpg');
 }
 
@@ -179,6 +181,7 @@ function setupControls() {
     currentAlgo = btn.dataset.algo;
     document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    nfTrack('algo_change', { algo: currentAlgo });
     processDither();
   });
 
@@ -188,7 +191,10 @@ function setupControls() {
     threshold = parseInt(thresholdSlider.value);
     document.getElementById('thresholdVal').textContent = threshold;
   };
-  thresholdSlider.onchange = () => processDither();
+  thresholdSlider.onchange = () => {
+    nfTrack('threshold_change', { threshold: parseInt(thresholdSlider.value) });
+    processDither();
+  };
 
   // 换图
   document.getElementById('reuploadBtn').addEventListener('click', () => {
@@ -197,6 +203,7 @@ function setupControls() {
 
   // 下载
   document.getElementById('downloadBtn').addEventListener('click', () => {
+    nfTrack('download', { algo: currentAlgo });
     const link = document.createElement('a');
     link.download = `dithered_${currentAlgo}.png`;
     link.href = ditherCanvas.toDataURL('image/png');
@@ -222,6 +229,7 @@ let animOutput = null;
 
 function startAnimation() {
   if (!grayData) return;
+  nfTrack('animate_start', {});
 
   const animSection = document.getElementById('animSection');
   animSection.style.display = 'block';
@@ -323,6 +331,18 @@ function resumeAnimation() {
   const animCanvas = document.getElementById('animCanvas');
   runAnimationFrame(animCanvas.width, animCanvas.height);
 }
+
+// ── 行为埋点（NFTrack，见 components/track.js）──
+// 事件：session_start / upload（图片来源）/ algo_change / threshold_change / download / animate_start / session_end
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+(function () {
+  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+})();
 
 // ── 启动 ──
 init();

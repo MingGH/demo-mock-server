@@ -202,6 +202,49 @@
   <script src="pi-birthday-logic.js"></script>
   <script src="../data/pi-1m.js"></script>
   <script>
+    // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+    // 事件清单：
+    // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+    // - search:        搜索生日 {found, len}，回答"搜索次数与是否找到"（不上报具体生日，隐私红线）
+    // - freq:          数字频率分析 {count}，回答"分析规模"
+    // - custom:        自定义序列搜索 {found, len}，回答"自定义搜索深度"（不上报序列内容）
+    // - copy:          复制分享文案，回答"多少人分享"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+    trackSessionStart();
+    registerTrackLeaveHandler();
+
     // === 全局状态 ===
     let piDigits = (typeof PI_1M !== 'undefined') ? PI_1M : PI_FIRST_1000;
     let piLoaded = (typeof PI_1M !== 'undefined');
@@ -266,6 +309,7 @@
 
       document.getElementById('searchResults').style.display = 'block';
       document.getElementById('searchResults').innerHTML = html;
+      nfTrack('search', { found: bestResult && bestResult.pos > 0 ? 1 : 0, len: sequences[0].sequence.length });
 
       // 显示概率分析
       showProbabilityAnalysis(sequences);
@@ -378,6 +422,7 @@
 
     function analyzeFrequency(count) {
       const digits = piDigits.slice(0, Math.min(count, piDigits.length));
+      nfTrack('freq', { count: count });
       const freq = new Array(10).fill(0);
       for (const ch of digits) freq[parseInt(ch)]++;
       const pcts = freq.map(f => (f / digits.length) * 100);
@@ -419,6 +464,7 @@
         return;
       }
       const pos = searchInPi(piDigits, seq);
+      nfTrack('custom', { found: pos > 0 ? 1 : 0, len: seq.length });
       const resultEl = document.getElementById('customResult');
       const monkeyEl = document.getElementById('monkeyStats');
       resultEl.style.display = 'block';
@@ -468,6 +514,7 @@
 
     function copyShareText() {
       const text = document.getElementById('shareContent').innerText;
+      nfTrack('copy', {});
       navigator.clipboard.writeText(text).then(() => {
         const btn = document.querySelector('#shareBox button');
         btn.innerHTML = '<i class="ti ti-check"></i> 已复制';

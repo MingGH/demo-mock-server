@@ -635,6 +635,51 @@
 <div class="toast" id="toast">已复制到剪贴板！</div>
 
 <script>
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - strategy:      选择策略 {pct}，回答"哪种下注比例最受关注"
+// - sim_single:    单次模拟 {p, betPct}，回答"参数使用分布"
+// - compare:       三策略对比 {p, kelly}，回答"多少人看对比"
+// - mass_sim:      批量千人模拟 {p}，回答"多少人做批量验证"
+// - reset:         重置，回答"多少人重置重试"
+// - copy:          复制分享，回答"多少人分享"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 // 全局变量
 let money = 10000;
 let initialMoney = 10000;
@@ -735,6 +780,7 @@ function updateKellyDisplay() {
 // 选择策略
 function selectStrategy(pct) {
   document.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('active'));
+  nfTrack('strategy', { pct: pct });
   document.querySelector(`[data-pct="${pct}"]`)?.classList.add('active');
   document.getElementById('betPct').value = pct;
   updateBetPctDisplay();
@@ -828,6 +874,7 @@ function updateChart() {
 async function runSingleSim() {
   const p = parseFloat(document.getElementById('winProb').value) / 100;
   const betPct = parseFloat(document.getElementById('betPct').value) / 100;
+  nfTrack('sim_single', { p: p * 100, betPct: betPct * 100 });
   
   // 统计
   StatsAPI.trackUser();
@@ -862,6 +909,7 @@ async function runSingleSim() {
 async function runComparison() {
   const p = parseFloat(document.getElementById('winProb').value) / 100;
   const kelly = calcKelly();
+  nfTrack('compare', { p: p * 100, kelly: Math.round(kelly * 1000) });
   
   // 统计
   StatsAPI.trackUser();
@@ -947,6 +995,7 @@ async function runComparison() {
 async function runMassSimulation() {
   const p = parseFloat(document.getElementById('winProb').value) / 100;
   const initial = parseFloat(document.getElementById('initialMoney').value);
+  nfTrack('mass_sim', { p: p * 100 });
   
   // 统计
   StatsAPI.trackUser();
@@ -1067,6 +1116,7 @@ function drawDistributionChart(results2, results10) {
 // 重置
 function resetSim() {
   initialMoney = parseFloat(document.getElementById('initialMoney').value) || 10000;
+  if (resetSim.userInitiated) nfTrack('reset', {});
   money = initialMoney;
   roundCount = 0;
   winCount = 0;
@@ -1081,6 +1131,7 @@ function resetSim() {
 // 复制分享
 function copyShareText() {
   const kelly = calcKelly();
+  nfTrack('copy', {});
   const text = `【凯利公式计算器】
 51%胜率、1倍赔率的游戏，最优下注比例是多少？
 
@@ -1104,6 +1155,7 @@ document.getElementById('odds').addEventListener('change', updateKellyDisplay);
 
 // 初始化
 resetSim();
+resetSim.userInitiated = true;
 updateGlobalStats();
 </script>
 

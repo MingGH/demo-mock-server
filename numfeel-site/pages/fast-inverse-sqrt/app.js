@@ -1,5 +1,47 @@
 // ========== 平方根倒数速算法 - 页面交互逻辑 ==========
 
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - play:          播放分步动画 {step}，回答"多少人会看完整演示"
+// - step:          手动切换步骤 {step}，回答"分步讲解的浏览深度"
+// - preset_x:      预设 x 值 {x}，回答"常用输入分布"
+// - iterate_toggle: 精度扫描开关 {iter, on}，回答"牛顿迭代的对比兴趣"
+// - const_eval:    评估自定义常数 {hex}，回答"自定义常数探索"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+var trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 // ── 状态 ──
 var currentX = 2;
 var currentStep = 0;
@@ -30,6 +72,8 @@ document.addEventListener('DOMContentLoaded', function() {
   attachEvents();
   updateX(2, true);
   evalCustomConstant();
+  trackSessionStart();
+  registerTrackLeaveHandler();
   var defaultChip = document.querySelector('.chip[data-x="2"]');
   if (defaultChip) defaultChip.classList.add('active');
   ensureChartJS(function() {
@@ -74,6 +118,7 @@ function attachEvents() {
     chip.addEventListener('click', function() {
       var x = parseFloat(chip.dataset.x);
       setActiveChip(chip);
+      nfTrack('preset_x', { x: x });
       updateX(x, true);
     });
   });
@@ -96,6 +141,7 @@ function attachEvents() {
       var iter = parseInt(btn.dataset.iter);
       activeIters[iter] = !activeIters[iter];
       btn.classList.toggle('active');
+      nfTrack('iterate_toggle', { iter: iter, on: activeIters[iter] ? 1 : 0 });
       updateAccuracyChart();
     });
   });
@@ -226,6 +272,7 @@ function updateBitDisplay(binary, animate) {
 // ── 跳转到指定步骤 ──
 function goToStep(step, instant) {
   currentStep = step;
+  nfTrack('step', { step: step });
   var data = stepData[step];
   if (!data) return;
 
@@ -278,6 +325,7 @@ function togglePlay() {
 
 function startPlay() {
   isPlaying = true;
+  nfTrack('play', { action: 'start' });
   var btn = document.getElementById('playBtn');
   btn.innerHTML = '<i class="ti ti-player-pause"></i> 暂停';
 
@@ -503,6 +551,7 @@ function renderConstScanChart() {
 function evalCustomConstant() {
   var input = document.getElementById('constInput');
   var hexStr = input.value.trim().replace(/^0x/i, '');
+  nfTrack('const_eval', { hexLen: hexStr.length });
   var constant = parseInt(hexStr, 16);
   if (isNaN(constant)) {
     showConstResult(null, '无效的十六进制值');

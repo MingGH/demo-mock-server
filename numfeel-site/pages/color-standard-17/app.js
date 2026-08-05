@@ -8,6 +8,47 @@
   var L = window.ColorStandard17;
   if (!L) return;
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+  // - pair_answer:   色块对测试作答 {answer, correct}，回答"答对率与偏好"
+  // - pair_finish:   完成色块对测试 {score}，回答"得分分布"
+  // - gray_confirm:  确认灰色 {hue, sat, age}，回答"灰色偏差与年龄分布"
+  // - scene_switch:  切换灰色场景 {scene}，回答"哪个场景最受关注"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+
   var $ = function (id) { return document.getElementById(id); };
 
   // ─────────────────────────────────────────────────────────
@@ -77,6 +118,7 @@
     var p = L.COLOR_PAIRS[state.pairIndex];
     var correct = userAnswer === p.answer;
     state.answers.push(userAnswer);
+    nfTrack('pair_answer', { answer: userAnswer, correct: correct ? 1 : 0 });
 
     var card = $('pairCard');
     if (card) {
@@ -93,6 +135,7 @@
   function finishPairs() {
     pairButtons.classList.add('hidden');
     state.scoreResult = L.calculateScore(state.answers);
+    nfTrack('pair_finish', { correct: state.scoreResult.correct, total: state.scoreResult.total, percent: state.scoreResult.percent });
 
     // 「标准观察者」理论分数：deltaE 1.0~1.5 的题答对率 ~50%，1.5+ 全对，0 全对
     var stdCorrect = 0;
@@ -180,6 +223,7 @@
   function onSceneClick(e) {
     var sceneId = e.currentTarget.getAttribute('data-scene');
     state.currentScene = sceneId;
+    nfTrack('scene_switch', { scene: sceneId });
     var scene = L.GRAY_SCENES.filter(function (s) { return s.id === sceneId; })[0];
     grayStage.style.background = scene.background;
     sceneHint.textContent = scene.hint;
@@ -234,6 +278,7 @@
     state.age = age;
     state.grayBias = L.calculateGrayBias(h, s);
     state.grayConfirmed = true;
+    nfTrack('gray_confirm', { hue: h, sat: s, age: age });
     renderGrayResult();
     confirmGrayBtn.innerHTML = '<i class="ti ti-refresh"></i> 重新调整';
     tryRenderReport();
@@ -648,6 +693,8 @@
     updateGrayBox();
     renderTimeline();
     setupScrollTrigger();
+    trackSessionStart();
+    registerTrackLeaveHandler();
   }
 
   if (document.readyState === 'loading') {

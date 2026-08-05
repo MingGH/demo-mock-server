@@ -171,6 +171,52 @@
   var RED_CHART = null, BLUE_CHART = null, OVERLAP_CHART = null;
   var CURRENT_BALL = 17;
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+  // - chi_run:       执行卡方检验 {ys, ye}，回答"多少人会跑频率检验"
+  // - runs_run:      执行游程检验 {ball}，回答"所选号码分布"
+  // - preset:        预设选号 {kind}，回答"哪种选号方式最常用"
+  // - ball_pick:     手动选号 {ball}，回答"偏好的号码"
+  // - overlap_run:   执行重叠分析，回答"多少人深入相邻期分析"
+  // - all_run:       生成综合报告，回答"多少人看完整份检验"
+  // - copy:          复制结论，回答"多少人分享结论"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+  trackSessionStart();
+  registerTrackLeaveHandler();
+
   // ── 工具函数 ──────────────────────────────
   function $(id){ return document.getElementById(id); }
   function el(tag, opts){
@@ -335,6 +381,7 @@
         for (var k = 0; k < arr.length; k++) arr[k].classList.remove('active');
         this.classList.add('active');
         CURRENT_BALL = parseInt(this.dataset.ball, 10);
+        nfTrack('ball_pick', { ball: CURRENT_BALL });
         if (DATA) drawTimelineFor(CURRENT_BALL);
       });
       picker.appendChild(b);
@@ -346,6 +393,7 @@
     chip.addEventListener('click', function(){
       if (!DATA) return;
       var kind = this.dataset.preset;
+      nfTrack('preset', { kind: kind });
       var counts = S.countRedFrequencies(DATA);
       var ball;
       if (kind === 'top' || kind === 'bot'){
@@ -399,6 +447,7 @@
     if (!DATA) return;
     var ys = parseInt($('yearStart').value, 10);
     var ye = parseInt($('yearEnd').value, 10);
+    nfTrack('chi_run', { ys: ys, ye: ye });
     var filtered = filterByYear(DATA, ys, ye);
     var red = S.redChiSquare(filtered);
     var blue = S.blueChiSquare(filtered);
@@ -427,6 +476,7 @@
   $('runRunsBtn').addEventListener('click', function(){
     if (!DATA) return;
     var ball = CURRENT_BALL;
+    nfTrack('runs_run', { ball: ball });
     var seq = S.generateBinarySequence(DATA, ball, 'red');
     var r = S.runsTest(seq);
     $('runsResult').classList.add('show');
@@ -454,6 +504,7 @@
   // ── 相邻期重叠按钮 ──
   $('runOverlapBtn').addEventListener('click', function(){
     if (!DATA) return;
+    nfTrack('overlap_run', {});
     var r = S.adjacentOverlap(DATA);
     $('overlapResult').classList.add('show');
     $('overlapChartWrap').style.display = 'block';
@@ -502,6 +553,7 @@
   // ── 综合报告按钮 ──
   $('runAllBtn').addEventListener('click', function(){
     if (!DATA) return;
+    nfTrack('all_run', {});
     var red = S.redChiSquare(DATA);
     var blue = S.blueChiSquare(DATA);
     var runs = S.runsTestBatch(DATA);
@@ -560,6 +612,7 @@
   // ── 复制结论 ──
   $('copyBtn').addEventListener('click', function(){
     if (!DATA) return;
+    nfTrack('copy', {});
     var red = S.redChiSquare(DATA);
     var blue = S.blueChiSquare(DATA);
     var runs = S.runsTestBatch(DATA);

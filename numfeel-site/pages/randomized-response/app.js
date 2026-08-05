@@ -4,6 +4,49 @@
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var PROD_URL = 'https://numfeel.996.ninja/pages/randomized-response/';
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+  // - private_start: 开始私密作答流程，回答"多少人真正动手玩"
+  // - die_roll:      掷骰子 {mechanism}，回答"本地 vs 实体骰子的选择"
+  // - answer:        提交答案 {response}，回答"是/否 分布"
+  // - batch:         调查逐批收集 {scenario, sampleSize}，回答"调查推进深度"
+  // - scenario:      切换场景 {scenario}，回答"哪个场景最受关注"
+  // - reset_survey:  重置调查，回答"多少人会重置重跑"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+
   // ── 全局状态 ──
   var state = {
     scenario: 'cheating',
@@ -223,6 +266,7 @@
     if ((face === 1 && answer !== 'yes') || (face === 2 && answer !== 'no')) return;
 
     state.private.response = answer;
+    nfTrack('answer', { response: answer });
     if (face === 1) state.private.mechanism = 'forced-yes';
     else if (face === 2) state.private.mechanism = 'forced-no';
     else if (state.private.mechanism !== 'private-device') state.private.mechanism = 'truthful';
@@ -266,6 +310,7 @@
   }
 
   privateEls.startBtn.addEventListener('click', function() {
+    nfTrack('private_start', {});
     privateEls.section.style.display = 'block';
     resetPrivate();
     if (!reduceMotion && window.gsap) {
@@ -275,8 +320,9 @@
   });
 
   privateEls.toStep2Btn.addEventListener('click', function() { showStep(2); });
-  privateEls.rollDieBtn.addEventListener('click', rollLocalDie);
+  privateEls.rollDieBtn.addEventListener('click', function() { nfTrack('die_roll', { mechanism: 'local' }); rollLocalDie(); });
   privateEls.usedPhysicalDieBtn.addEventListener('click', function() {
+    nfTrack('die_roll', { mechanism: 'physical' });
     privateFlowId++;
     if (privateTimeline) {
       privateTimeline.kill();
@@ -361,6 +407,7 @@
 
     state.survey.yesCount += batch.yesCount;
     state.survey.sampleSize += batchSize;
+    nfTrack('batch', { scenario: state.scenario, sampleSize: state.survey.sampleSize });
     state.survey.batches.push({
       sampleSize: state.survey.sampleSize,
       yesCount: state.survey.yesCount,
@@ -574,6 +621,7 @@
     var card = e.target.closest('.scenario-card');
     if (!card) return;
     state.scenario = card.getAttribute('data-scenario');
+    nfTrack('scenario', { scenario: state.scenario });
     state.surveySeed = null;
     var cards = surveyEls.scenarioGrid.querySelectorAll('.scenario-card');
     for (var i = 0; i < cards.length; i++) cards[i].classList.remove('active');
@@ -592,6 +640,7 @@
   surveyEls.nextBatchBtn.addEventListener('click', addBatch);
   surveyEls.resetSurveyBtn.addEventListener('click', function() {
     // 新 seed，不修改场景默认 seed
+    nfTrack('reset_survey', {});
     state.surveySeed = Math.floor(secureRandom() * 100000) + 1;
     initSurvey();
     surveyEls.batchDots.innerHTML = '';
@@ -825,5 +874,7 @@
   updateCompareModule();
   updateTuningModule();
   updateResultPreview();
+  trackSessionStart();
+  registerTrackLeaveHandler();
 
 })();

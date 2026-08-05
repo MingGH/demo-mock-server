@@ -450,6 +450,51 @@
   <div class="toast" id="toast">链接已复制到剪贴板</div>
 
   <script>
+    // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+    // 事件清单：
+    // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+    // - bus_sim:       等待时间模拟 {mean, cv}，回答"参数使用分布"
+    // - friend_sim:    友谊网络模拟 {network, avgFriends}，回答"网络规模分布"
+    // - streak:        硬币连抛模拟 {n}，回答"单次抛掷参数"
+    // - streak_batch:  批量抛掷 {n}，回答"多少人做批量验证"
+    // - memory_sim:    峰终定律模拟，回答"多少人看记忆偏差"
+    // - life_sim:      平行人生模拟 {years, events}，回答"模拟深度"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+    trackSessionStart();
+    registerTrackLeaveHandler();
+
     // ========== 核心算法（可独立测试） ==========
 
     // 等待时间悖论：生成Gamma分布的发车间隔
@@ -654,6 +699,7 @@
     function runBusSim() {
       const mean = parseInt(document.getElementById('busIntervalSlider').value);
       const cv = parseInt(document.getElementById('busCVSlider').value) / 100;
+      nfTrack('bus_sim', { mean: mean, cv: cv });
       const intervals = generateIntervals(500, mean, cv);
       const waits = simulateBusWait(intervals, 10000);
       const avgWait = waits.reduce((a, b) => a + b, 0) / waits.length;
@@ -714,6 +760,7 @@
     function runFriendshipSim() {
       const n = parseInt(document.getElementById('networkSizeSlider').value);
       const avgF = parseInt(document.getElementById('avgFriendsSlider').value);
+      nfTrack('friend_sim', { network: n, avgFriends: avgF });
       const { adj, degree } = generateNetwork(n, avgF);
       const result = calcFriendshipParadox(adj, degree);
 
@@ -786,6 +833,7 @@
     let streakChart = null;
     function runStreakSim() {
       const n = parseInt(document.getElementById('coinCountSlider').value);
+      nfTrack('streak', { n: n });
       const flips = generateCoinFlips(n);
       const { maxHead, maxTail } = analyzeStreaks(flips);
 
@@ -805,6 +853,7 @@
 
     function runStreakBatch() {
       const n = parseInt(document.getElementById('coinCountSlider').value);
+      nfTrack('streak_batch', { n: n });
       const maxHeads = [];
       for (let i = 0; i < 1000; i++) {
         const flips = generateCoinFlips(n);
@@ -855,6 +904,7 @@
     let memoryChart = null;
     function runMemorySim() {
       const events = simulateWeekEvents();
+      nfTrack('memory_sim', {});
       const result = calcPeakEnd(events);
 
       document.getElementById('memoryChartContainer').style.display = 'block';
@@ -919,6 +969,7 @@
     function runLifeSim() {
       const years = parseInt(document.getElementById('lifeYearsSlider').value);
       const eventsPerYear = parseInt(document.getElementById('lifeEventsSlider').value);
+      nfTrack('life_sim', { years: years, events: eventsPerYear });
       const lives = simulateParallelLives(100, years, eventsPerYear);
 
       document.getElementById('lifeChartContainer').style.display = 'block';

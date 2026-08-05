@@ -564,6 +564,49 @@ if (typeof module !== 'undefined' && module.exports) {
 
 // ── UI 逻辑 ──
 (function() {
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+  // - design_start:  开始设计 {gridSize, timeLimit}，回答"选择的难度与时间"
+  // - design_end:    设计结束 {wallCount}，回答"实际画墙数"
+  // - solve:         AI 解题 {gridSize, detourRatio, level}，回答"筑梦师等级分布"
+  // - retry:         再来一次，回答"多少人重试"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+  trackSessionStart();
+  registerTrackLeaveHandler();
+
   const canvas = document.getElementById('mazeCanvas');
   const ctx = canvas.getContext('2d');
   const gridSizeSelect = document.getElementById('gridSize');
@@ -829,6 +872,7 @@ if (typeof module !== 'undefined' && module.exports) {
     solveBtn.disabled = true;
     startBtn.disabled = true;
     startBtn.innerHTML = '<i class="ti ti-clock"></i> 设计中...';
+    nfTrack('design_start', { gridSize: gridSize, timeLimit: parseInt(timeLimitSelect.value) });
 
     const totalTime = parseInt(timeLimitSelect.value);
     timeLeft = totalTime;
@@ -861,6 +905,7 @@ if (typeof module !== 'undefined' && module.exports) {
     clearTimers();
     isDesigning = false;
     isDrawing = false;
+    nfTrack('design_end', { wallCount: calcMazeStats(grid, gridSize).wallCount });
     timerText.textContent = '0:00';
     timerFill.style.width = '0%';
     solveBtn.disabled = false;
@@ -924,6 +969,7 @@ if (typeof module !== 'undefined' && module.exports) {
     const minPath = (gridSize - 1) * 2 + 1;
     const detourRatio = calcDetourRatio(pathLen, gridSize);
     const level = calcDreamLevel(detourRatio);
+    nfTrack('solve', { gridSize: gridSize, detourRatio: parseFloat(detourRatio.toFixed(2)), level: level });
 
     // 星级
     let starsHtml = '';
@@ -1022,6 +1068,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
   // 再来一次
   retryBtn.addEventListener('click', function() {
+    nfTrack('retry', {});
     init();
     document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
   });

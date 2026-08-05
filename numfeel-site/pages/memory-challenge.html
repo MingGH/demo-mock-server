@@ -456,6 +456,49 @@
   </div>
 
   <script>
+    // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+    // 事件清单：
+    // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+    // - start:         开始挑战，回答"多少人真正动手玩"
+    // - level_check:   每关提交结果 {n, accuracy}，回答"各难度准确率"
+    // - finish:        完成挑战 {capacity, levels}，回答"记忆容量分布"
+    // - submit_score:  提交排行榜 {capacity}，回答"多少人参与排行"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+    trackSessionStart();
+    registerTrackLeaveHandler();
+
     const LEVELS = [3, 4, 5, 6, 7, 8, 9, 10, 12, 15];
     const PALETTE = [
       '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
@@ -508,6 +551,7 @@
         this.history = [];
         this.hasSubmitted = false;
         this.finalResult = null;
+        nfTrack('start', {});
         this.showView('game');
         this.loadLevel();
       }
@@ -677,6 +721,7 @@
           n: this.originalOrder.length,
           accuracy: accuracy * 100
         });
+        nfTrack('level_check', { n: this.originalOrder.length, accuracy: Math.round(accuracy * 100) });
 
         this.dom.stageText.textContent = `准确率: ${Math.round(accuracy * 100)}%`;
         
@@ -762,6 +807,7 @@
           cacheKB: parseFloat(cacheKB),
           avgAccuracy: Number(avgAccuracy.toFixed(2))
         };
+        nfTrack('finish', { capacity: capacity, levels: this.history.length });
         this.dom.leaderboardStatus.textContent = '输入昵称后可提交成绩到全球榜';
         this.dom.submitScoreBtn.disabled = false;
       }
@@ -775,6 +821,7 @@
           this.dom.leaderboardStatus.textContent = '请先输入昵称';
           return;
         }
+        nfTrack('submit_score', { capacity: this.finalResult.capacity });
 
         this.dom.submitScoreBtn.disabled = true;
         this.dom.leaderboardStatus.textContent = '提交中...';

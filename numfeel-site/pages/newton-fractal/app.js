@@ -4,6 +4,51 @@
 (function () {
 'use strict';
 
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - point:         单点追踪 {equation, root, iterations}，回答"根分布与迭代次数"
+// - equation:      切换方程 {equation}，回答"方程偏好"
+// - color:         切换配色 {scheme}，回答"配色偏好"
+// - reset:         重置视野，回答"多少人重置"
+// - download:      下载图片 {equation}，回答"多少人保存"
+// - sensitivity:   敏感性实验 {rootA, rootB}，回答"多少人探索敏感性"
+// 说明：renderFractal() 在缩放/平移时高频触发，不做埋点，只记显式意图事件。
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+var trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 // ── 全局状态 ──
 const state = {
   // 模块2：全局染色
@@ -303,6 +348,7 @@ function runSinglePoint(zr, zi) {
   // 隐藏"点击画布选起点"提示
   const hint = document.getElementById('trackerHint');
   if (hint) hint.classList.add('hidden');
+  nfTrack('point', { equation: state.equation });
 
   tracker.currentZr = zr;
   tracker.currentZi = zi;
@@ -414,6 +460,7 @@ function setupFractalControls() {
     document.querySelectorAll('.equation-btn').forEach(function (b) { b.classList.remove('active'); });
     btn.classList.add('active');
     state.equation = btn.dataset.eq;
+    nfTrack('equation', { equation: state.equation });
     // 切换方程时重置视口到该方程的默认中心
     const meta = EQ_META[state.equation];
     state.centerX = meta.center[0];
@@ -430,6 +477,7 @@ function setupFractalControls() {
     document.querySelectorAll('.color-btn').forEach(function (b) { b.classList.remove('active'); });
     btn.classList.add('active');
     state.colorScheme = btn.dataset.scheme;
+    nfTrack('color', { scheme: state.colorScheme });
     renderFractal();
   });
 
@@ -443,6 +491,7 @@ function setupFractalControls() {
 
   // 重置
   document.getElementById('resetBtn').onclick = function () {
+    nfTrack('reset', {});
     const meta = EQ_META[state.equation];
     state.centerX = meta.center[0];
     state.centerY = meta.center[1];
@@ -756,6 +805,7 @@ function updateFractalStats(elapsed, totalPixels, converged, unconverged, totalI
 
 function downloadFractalImage() {
   const link = document.createElement('a');
+  nfTrack('download', { equation: state.equation });
   link.download = 'newton-fractal_' + EQ_META[state.equation].label.replace(/\s/g, '') +
                   '_' + state.zoom.toFixed(0) + 'x.png';
   link.href = fractal.canvas.toDataURL('image/png');
@@ -973,6 +1023,7 @@ function setupSensitivityClick() {
 function runSensitivityExperiment(zrA, ziA) {
   const hint = document.getElementById('sensitivityHint');
   if (hint) hint.classList.add('hidden');
+  nfTrack('sensitivity', { equation: state.equation });
 
   // B 距 A 0.001，沿实部正方向偏移
   const zrB = zrA + 0.001;

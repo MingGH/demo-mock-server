@@ -1,4 +1,48 @@
 // ========== 游戏状态 ==========
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - new_game:      开始游戏 {scenarios}，回答"多少局"
+// - reveal:        多看数据 {revealed}，回答"信息获取深度"
+// - guess:         提交猜测 {round, revealed, score}，回答"每轮成绩与信息深度"
+// - game_end:      游戏结束 {totalScore, rounds, wins}，回答"总分与胜局"
+// - submit:        提交排行榜 {totalScore}，回答"参与排行"（不上报昵称）
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 let currentRound = 0;
 let totalScore = 0;
 let roundHistory = [];
@@ -20,6 +64,7 @@ function initGame() {
   totalScore = 0;
   roundHistory = [];
   shuffledScenarios = shuffleArray(SCENARIOS);
+  if (initGame.userInitiated) nfTrack('new_game', { scenarios: shuffledScenarios.length });
 
   document.getElementById('totalRounds').textContent = shuffledScenarios.length;
   document.getElementById('gameSection').style.display = '';
@@ -75,6 +120,7 @@ function revealNext() {
   if (revealedCount >= MAX_REVEAL) return;
   revealedCount++;
   revealPenalty += 5;
+  nfTrack('reveal', { revealed: revealedCount });
   renderDataPoints();
   updateClueChart();
   if (revealedCount >= MAX_REVEAL) {
@@ -209,6 +255,7 @@ function submitGuess() {
   const s = currentScenario;
   const revealed = allSamples.slice(0, revealedCount);
   const mleAvg = sampleMean(revealed);
+  nfTrack('guess', { round: currentRound + 1, revealed: revealedCount });
 
   // 只按均值误差评分，误差在1个std内满分，线性衰减
   const scoreByAvg = (guess, trueAvg, trueStd) => {
@@ -333,6 +380,7 @@ function nextRound() {
 function showFinalResults() {
   document.getElementById('gameSection').style.display = 'none';
   document.getElementById('finalSection').style.display = '';
+  nfTrack('game_end', { totalScore: totalScore, rounds: roundHistory.length });
 
   const avgScore = Math.round(totalScore / roundHistory.length);
   const wins = roundHistory.filter(r => Math.abs(r.guessAvg - r.trueAvg) < Math.abs(r.mleAvg - r.trueAvg)).length;
@@ -416,6 +464,7 @@ let myRank = null;
 function submitScore() {
   const name = document.getElementById('playerName').value.trim();
   if (!name) { showSubmitResult('请输入名字', false); return; }
+  nfTrack('submit', { totalScore: totalScore });
 
   const last = roundHistory[roundHistory.length - 1];
   const avgScore = Math.round(totalScore / roundHistory.length);
@@ -526,4 +575,5 @@ function loadGlobalLeaderboard() {
 
 // 启动
 initGame();
+initGame.userInitiated = true; // 之后用户重玩才埋点 new_game
 loadGlobalLeaderboard();

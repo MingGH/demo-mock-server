@@ -6,6 +6,51 @@
 
   var PE = window.PenneyEngine;
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+  // - add_coin:      选择序列 {seq}，回答"玩家序列构建"
+  // - confirm:       确认对决 {seq}，回答"对决序列分布"
+  // - flip:          抛币 {coins}，回答"实际抛币进程"
+  // - round_end:     单局结果 {winner, coins}，回答"胜负分布"
+  // - sim:           蒙特卡洛模拟 {seqA, seqB}，回答"多少人做模拟验证"
+  // - optimal:       使用最优对策 {seqA}，回答"多少人用最优策略"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+  trackSessionStart();
+  registerTrackLeaveHandler();
+
   // ── 游戏状态 ──
   var state = {
     playerSeq: '',
@@ -30,6 +75,7 @@
   window.addCoin = function(c) {
     if (state.playerSeq.length >= 3) return;
     state.playerSeq += c;
+    nfTrack('add_coin', { seq: state.playerSeq });
     renderSelection();
   };
 
@@ -46,6 +92,7 @@
 
   window.confirmSelection = function() {
     if (state.playerSeq.length !== 3) return;
+    nfTrack('confirm', { seq: state.playerSeq });
     startBattle();
   };
 
@@ -118,6 +165,12 @@
   }
 
   // ── 抛硬币 ──
+  // 手动"抛一次"按钮；自动/快速走 flipOne() 不埋点（高频，避免刷爆事件上限）
+  window.flipManual = function() {
+    nfTrack('flip', { coins: state.coins.length });
+    flipOne();
+  };
+
   window.flipOne = function() {
     if (state.roundOver) return;
     var coin = Math.random() < 0.5 ? 'H' : 'T';
@@ -207,6 +260,7 @@
     if (!winner) return;
 
     state.roundOver = true;
+    nfTrack('round_end', { winner: winner, coins: state.coins.length });
     if (state.autoInterval) {
       clearInterval(state.autoInterval);
       state.autoInterval = null;
@@ -290,6 +344,7 @@
   window.runSimulation = function() {
     var seqA = document.getElementById('simSeqA').value;
     var seqB = document.getElementById('simSeqB').value;
+    nfTrack('sim', { seqA: seqA, seqB: seqB });
     if (seqA === seqB) {
       alert('两个序列不能相同');
       return;
@@ -313,6 +368,7 @@
 
   window.useOptimalB = function() {
     var seqA = document.getElementById('simSeqA').value;
+    nfTrack('optimal', { seqA: seqA });
     var optimal = PE.optimalCounter(seqA);
     document.getElementById('simSeqB').value = optimal;
   };

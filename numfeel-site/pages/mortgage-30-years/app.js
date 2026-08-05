@@ -1,5 +1,47 @@
 // ========== 30年房贷 — 前端交互逻辑 ==========
 
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - calculate:     计算房贷 {principal, years, rate}，回答"贷款参数分布"
+// - prepay:        提前还款 {year, mode}，回答"提前还款方式"
+// - timeline_tab:  切换时间线 {tab}，回答"图表/人生时间线偏好"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+var trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 var currentResult = null;
 var charts = {};
 
@@ -8,6 +50,7 @@ function calculate() {
   var years = parseInt(document.getElementById('inputYears').value) || 30;
   var rate = parseFloat(document.getElementById('inputRate').value) || 3.5;
   var income = parseFloat(document.getElementById('inputIncome').value) || 15000;
+  if (calculate.userInitiated) nfTrack('calculate', { principal: principal, years: years, rate: rate });
 
   // 参数校验
   if (principal < 1 || principal > 2000) { alert('贷款金额请输入1-2000万'); return; }
@@ -160,6 +203,7 @@ function renderTimelineChart(principal, rate, years) {
 }
 
 function switchTimelineTab(tab) {
+  nfTrack('timeline_tab', { tab: tab });
   document.querySelectorAll('.tabs .tab').forEach(function(t) { t.classList.remove('active'); });
   document.querySelector('.tab[data-tab="' + tab + '"]').classList.add('active');
   document.getElementById('timelineChart').style.display = tab === 'chart' ? '' : 'none';
@@ -214,6 +258,7 @@ function calcPrepay() {
   var prepayYear = parseInt(document.getElementById('prepayYear').value) || 5;
   var prepayAmount = parseFloat(document.getElementById('prepayAmount').value) || 20;
   var mode = document.getElementById('prepayMode').value;
+  nfTrack('prepay', { year: prepayYear, mode: mode });
 
   if (prepayYear >= currentResult.years) { alert('提前还款年份不能超过贷款年限'); return; }
 
@@ -358,4 +403,5 @@ function getEventForYear(year) {
 // 页面加载后自动计算一次默认值
 document.addEventListener('DOMContentLoaded', function() {
   calculate();
+  calculate.userInitiated = true; // 之后用户点击计算才埋点
 });

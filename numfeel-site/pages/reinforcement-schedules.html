@@ -339,6 +339,49 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - play:          开始/暂停模拟，回答"多少人跑模拟"
+// - extinction:    消退实验，回答"多少人看消退对比"
+// - reset:         重置，回答"多少人重置重试"
+// - toggle:        切换时间表 {schedule}，回答"哪个时间表最受关注"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 // ── 配置 ──────────────────────────────────────────────────
 const SCHEDULES = [
   {
@@ -459,6 +502,7 @@ function renderCards() {
 
 const activeSchedules = new Set(SCHEDULES.map(s => s.id));
 function toggleSchedule(id) {
+  nfTrack('toggle', { schedule: id });
   if (activeSchedules.has(id)) {
     if (activeSchedules.size === 1) return;
     activeSchedules.delete(id);
@@ -639,11 +683,13 @@ function startSim() {
     // 暂停
     clearInterval(tickInterval);
     running = false;
+    nfTrack('play', { action: 'pause' });
     document.getElementById('btnStart').innerHTML = '<i class="ti ti-player-play"></i> 继续';
     return;
   }
 
   running = true;
+  nfTrack('play', { action: 'start' });
   document.getElementById('btnStart').innerHTML = '<i class="ti ti-player-pause"></i> 暂停';
 
   const msPerTick = Math.max(10, 200 / speed);
@@ -653,6 +699,7 @@ function startSim() {
 function startExtinction() {
   if (!running) startSim();
   extinctionMode = true;
+  nfTrack('extinction', {});
   extinctionStartTick = totalTicks;
   // 重置各 state 的消退概率，让它从当前值开始衰减
   SCHEDULES.forEach(s => { simStates[s.id].extinctionProb = null; });
@@ -665,6 +712,7 @@ function resetSim() {
   clearInterval(tickInterval);
   running = false;
   extinctionMode = false;
+  nfTrack('reset', {});
   totalTicks = 0;
   document.getElementById('btnStart').innerHTML = '<i class="ti ti-player-play"></i> 开始模拟';
   document.getElementById('btnExtinction').disabled = false;

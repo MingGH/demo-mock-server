@@ -315,6 +315,49 @@
 </div><!-- end container -->
 
 <script>
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - flip:          亲手抛硬币 {count, dev}，回答"选择的样本规模与偏差"
+// - convergence:   收敛图 {n, paths}，回答"收敛模拟参数"
+// - dist:          频率分布 {n}，回答"分布样本规模"
+// - anecdote:      身边N人计算 {n, p}，回答"参数使用分布"（仅用户滑杆触发，初始化不埋点）
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 // ===== Card 1: 亲手抛硬币 =====
 let flipCount = 10;
 let flipHeads = 0, flipTails = 0;
@@ -420,6 +463,7 @@ function runFlips() {
 function showFlipInsight() {
   var pct = flipHeads / flipCount;
   var dev = Math.abs(pct - 0.5);
+  nfTrack('flip', { count: flipCount, dev: Math.round(dev * 100) });
   var el = document.getElementById('flip-insight');
   el.classList.remove('hidden');
   var verdict = dev > 0.1
@@ -434,6 +478,7 @@ var convChart = null;
 function runConvergence() {
   var n = parseInt(document.getElementById('conv-n').value);
   var numPaths = parseInt(document.getElementById('conv-paths').value);
+  nfTrack('convergence', { n: n, paths: numPaths });
   var btn = document.getElementById('conv-btn');
   btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> 生成中...';
 
@@ -514,6 +559,7 @@ function setDistN(n) {
 
 function runDistribution() {
   var trials = 1000;
+  if (runDistribution.userInitiated) nfTrack('dist', { n: distN });
   var paths = simulateMultiplePaths(trials, distN);
   var dist = getFreqDistAtStep(paths, distN);
   var outlier10 = calcOutlierRate(paths, distN, 0.5, 0.1);
@@ -568,6 +614,7 @@ function runDistribution() {
 function updateAnecdote(nVal, pVal) {
   var n = nVal ? parseInt(nVal) : parseInt(document.getElementById('anecdote-n').value);
   var p = pVal ? parseInt(pVal) / 100 : parseInt(document.getElementById('anecdote-p').value) / 100;
+  if (updateAnecdote.userInitiated) nfTrack('anecdote', { n: n, p: Math.round(p * 100) });
   document.getElementById('anecdote-n').value = n;
   document.getElementById('anecdote-p').value = Math.round(p * 100);
   document.getElementById('anecdote-n-val').textContent = n;
@@ -615,7 +662,9 @@ function binomCoeff(n, k) {
 
 // ===== 初始化 =====
 runDistribution();
+runDistribution.userInitiated = true; // 之后用户切换样本规模才埋点
 updateAnecdote(10, 50);
+updateAnecdote.userInitiated = true; // 之后用户滑杆触发才埋点
 </script>
 </body>
 </html>

@@ -328,6 +328,8 @@
 </div>
 
 <script>
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
   const mazeSelect = document.getElementById('mazeSelect');
   const dirSelect = document.getElementById('dirSelect');
   const maxStepsInput = document.getElementById('maxStepsInput');
@@ -580,17 +582,47 @@
   runSingle();
   runBatch();
 
-  // ── 行为埋点（NFTrack，见 components/track.js）──
-  // 事件：session_start / run_single / run_batch / toggle_shortest / replay / session_end
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+  // - run_single:    单次迷宫求解 {maze, dir, success}，回答"哪些迷宫/朝向会误导右手法"
+  // - run_batch:     批量试验 {trials, successRate}，回答"右手法成功率与散布"
+  // - toggle_shortest: 开关最短路覆盖 {show}，回答"多少人会打开对照线"
+  // - replay:        回放入口，回答"对路径回放感兴趣的用户比例"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  let trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
   function nfTrack(name, props, opts) {
     try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
   }
-  (function () {
-    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
-    window.addEventListener('pagehide', function () {
-      nfTrack('session_end', { reason: 'leave' }, { force: true });
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
     });
-  })();
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+
+  trackSessionStart();
+  registerTrackLeaveHandler();
 </script>
 </body>
 </html>

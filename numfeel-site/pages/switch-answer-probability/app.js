@@ -9,6 +9,49 @@
   var LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
   // ─────────────────────────────────────────────────────────
+  // 行为埋点（通用埋点 SDK，见 components/track.js）
+  // 事件清单：
+  // - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+  // - quiz_start:    开始 10 轮亲自答题，回答"有多少人真正动手玩"
+  // - decision:      每轮换/不换的决策 {strategy, won}，回答"换门倾向与胜率"
+  // - run_sim:       万次蒙特卡洛 {N, K}，回答"多少人会跑批量模拟"
+  // - flow_mode:     概率流动讲解切换 {mode}，回答"三种机制讲解的观看热度"
+  // - calc:          计算器求解 {N, K}，回答"自定义参数的需求"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+
+  // ─────────────────────────────────────────────────────────
   // 模块一：亲自答题 状态机
   // ─────────────────────────────────────────────────────────
   var TOTAL_ROUNDS = 10;
@@ -44,6 +87,7 @@
     quiz.stayWins = 0; quiz.stayTotal = 0;
     quiz.switchWins = 0; quiz.switchTotal = 0;
     if (el.quizSummary) el.quizSummary.hidden = true;
+    nfTrack('quiz_start', {});
     nextRound();
   }
 
@@ -170,6 +214,7 @@
     el.nextRoundBtn.textContent = quiz.round >= TOTAL_ROUNDS ? '看 10 轮总结' : '下一题';
     // 上报本轮决策到全网统计
     reportToServer(switchChoice ? 'switch' : 'stay', won);
+    nfTrack('decision', { strategy: switchChoice ? 'switch' : 'stay', won: won ? 1 : 0 });
   }
 
   function finishQuiz() {
@@ -342,6 +387,7 @@
     var btn = document.getElementById('runSimBtn');
     btn.disabled = true;
     resetSimData();
+    nfTrack('run_sim', { N: simState.N, K: simState.K });
 
     var chunk = 80;            // 每帧增加的次数（10000/80 = 125 个采样点）
     var total = SIM_TOTAL;
@@ -548,6 +594,7 @@
       t.classList.toggle('active', t.getAttribute('data-flow') === mode);
     });
     playFlow();
+    nfTrack('flow_mode', { mode: mode });
   }
 
   // ─────────────────────────────────────────────────────────
@@ -815,7 +862,10 @@
     document.getElementById('flowReplayBtn').addEventListener('click', playFlow);
 
     // 模块四 计算器
-    document.getElementById('calcBtn').addEventListener('click', runCalc);
+    document.getElementById('calcBtn').addEventListener('click', function () {
+      nfTrack('calc', { N: parseInt(document.getElementById('calcN').value, 10), K: parseInt(document.getElementById('calcK').value, 10) });
+      runCalc();
+    });
     document.getElementById('calcN').addEventListener('input', runCalc);
     document.getElementById('calcK').addEventListener('input', runCalc);
   }
@@ -823,6 +873,8 @@
   function init() {
     cacheEls();
     bindEvents();
+    trackSessionStart();
+    registerTrackLeaveHandler();
     // 模块一不自动开始，等用户点 Hero 或首次点选项时触发
     // 模块二
     rebuildKSeg();

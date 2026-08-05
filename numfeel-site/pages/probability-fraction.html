@@ -492,6 +492,49 @@
   </div>
 
   <script>
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+
+    // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+    // 事件清单：
+    // - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+    // - sim_single:    单次模拟 {trials}，回答"单跑 vs 批次的规模"
+    // - sim_batch:     百轮批次对比 {trials}，回答"多少人做批量验证"
+    // - sim_custom:    自定义分数 {n, d, trials}，回答"自定义参数的探索需求"
+    // - jar_pick:      手动抽罐 {jar}，回答"小样本下两种罐子的选择倾向"
+    // - jar_auto:      自动抽罐 {times}，回答"自动批量抽取的使用频率"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+
     let lotteryChart, customChart;
 
     // ========== 初始化 ==========
@@ -575,6 +618,7 @@
 
     function runLotterySimulation() {
       const trials = parseInt(document.getElementById('lotteryTrials').value);
+      nfTrack('sim_single', { trials: trials });
       const wA = simulateLottery(1, 100, trials);
       const wB = simulateLottery(6, 600, trials);
 
@@ -599,6 +643,7 @@
 
     function runLotteryBatch() {
       const trials = parseInt(document.getElementById('lotteryTrials').value);
+      nfTrack('sim_batch', { trials: trials });
       const rounds = 100;
       const diffsA = [];
       const diffsB = [];
@@ -658,6 +703,8 @@
       const dB = parseInt(document.getElementById('denB').value);
       const trials = parseInt(document.getElementById('customTrials').value);
 
+      nfTrack('sim_custom', { n: nA, d: dA, trials: trials });
+
       const probA = nA / dA;
       const probB = nB / dB;
 
@@ -712,6 +759,7 @@
 
     function pickFromJar(jar) {
       const prob = 0.1; // 都是10%
+      nfTrack('jar_pick', { jar: jar });
       const won = Math.random() < prob;
       jarStats[jar].picks++;
       if (won) jarStats[jar].wins++;
@@ -734,6 +782,7 @@
 
     function autoPickJar(times) {
       jarStats = { small: { picks: 0, wins: 0 }, big: { picks: 0, wins: 0 } };
+      nfTrack('jar_auto', { times: times });
       for (let i = 0; i < times; i++) {
         const wonSmall = Math.random() < 0.1;
         const wonBig = Math.random() < 0.1;
@@ -767,6 +816,8 @@
 
     // ========== 初始化 ==========
     window.onload = function() {
+      trackSessionStart();
+      registerTrackLeaveHandler();
       initCharts();
       initJars();
     };

@@ -380,6 +380,46 @@
 </div>
 
 <script>
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+// - sim_start:     开始解题 {n, k, strategy, submitCount}，回答"不同策略的使用热度与最终提交次数"
+// - sim_reset:     重置，回答"多少人会重置重跑"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 // 全局状态
 let state = {
   n: 100,           // 题目数量
@@ -645,6 +685,7 @@ async function startSimulation() {
   updateDisplay();
   
   const strategy = document.getElementById('strategy').value;
+  nfTrack('sim_start', { n: state.n, k: state.k, strategy: strategy });
   
   if (strategy === 'binary') {
     await binaryStrategy();
@@ -662,6 +703,7 @@ function resetSimulation() {
   state.submitCount = 0;
   state.knownAnswers = [];
   state.currentAnswers = [];
+  nfTrack('sim_reset', {});
   
   document.getElementById('startBtn').disabled = false;
   document.getElementById('submitCount').textContent = '0';
@@ -676,6 +718,8 @@ function resetSimulation() {
 }
 
 // 初始化
+trackSessionStart();
+registerTrackLeaveHandler();
 initGrid();
 </script>
 

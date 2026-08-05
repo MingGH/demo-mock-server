@@ -226,6 +226,48 @@
   </div>
 
   <script>
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+
+    // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+    // 事件清单：
+    // - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+    // - pvp_attack:    手动单次攻击，回答"手动体验次数"
+    // - pvp_batch:     批量模拟 {n}，回答"批量模拟规模分布"
+    // - pvp_reset:     重置统计，回答"多少人会清空重来"
+    // - kill_sim:      击杀期望模拟 {hp}，回答"不同血量下的求解需求"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+
     let totalRounds = 0, aWins = 0, bWins = 0, draws = 0;
     let killChart = null;
     
@@ -234,6 +276,7 @@
     
     function singleAttack() {
       const a = rollA(), b = rollB();
+      nfTrack('pvp_attack', {});
       document.getElementById('attackA').textContent = a;
       document.getElementById('attackB').textContent = b;
       
@@ -256,6 +299,7 @@
     }
     
     function multiAttack(n) {
+      nfTrack('pvp_batch', { n: n });
       for (let i = 0; i < n; i++) {
         const a = rollA(), b = rollB();
         totalRounds++;
@@ -279,6 +323,7 @@
     
     function resetStats() {
       totalRounds = aWins = bWins = draws = 0;
+      nfTrack('pvp_reset', {});
       document.getElementById('totalRounds').textContent = '0';
       document.getElementById('aWins').textContent = '0';
       document.getElementById('bWins').textContent = '0';
@@ -291,6 +336,7 @@
     function simulateKill() {
       const hp = parseInt(document.getElementById('monsterHp').value) || 20;
       const trials = 1000;
+      nfTrack('kill_sim', { hp: hp, trials: trials });
       
       let killsA = [], killsB = [];
       
@@ -348,6 +394,10 @@
         }
       });
     }
+
+    // 初始化
+    trackSessionStart();
+    registerTrackLeaveHandler();
   </script>
 
   <style>

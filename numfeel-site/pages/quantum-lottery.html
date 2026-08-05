@@ -459,6 +459,47 @@
   </div>
 
   <script>
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+
+    // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+    // 事件清单：
+    // - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+    // - draw:          量子摇号一注 {success}，回答"摇号成功率"
+    // - draw_batch:    连摇 N 注 {count}，回答"批量摇号的规模分布"
+    // - clear:         清空历史，回答"多少人会清空重来"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+
     const API_BASE = 'https://numfeel-api.996.ninja';
     
     let history = [];
@@ -486,6 +527,7 @@
         if (redData.status !== 200 || blueData.status !== 200) {
           throw new Error('获取量子随机数失败');
         }
+        nfTrack('draw', { success: 1 });
         
         const redBalls = redData.data.sort((a, b) => a - b);
         const blueBalls = blueData.data.sort((a, b) => a - b);
@@ -515,6 +557,7 @@
         
       } catch (error) {
         console.error(error);
+        nfTrack('draw', { success: 0 });
         alert('获取量子随机数失败，请稍后重试');
       } finally {
         btn.disabled = false;
@@ -551,6 +594,7 @@
     }
     
     async function generateMultiple(count) {
+      nfTrack('draw_batch', { count: count });
       for (let i = 0; i < count; i++) {
         await generateLottery();
         if (i < count - 1) await sleep(500);
@@ -625,6 +669,7 @@
     
     function clearHistory() {
       history = [];
+      nfTrack('clear', {});
       for (let i = 1; i <= 35; i++) redFreq[i] = 0;
       for (let i = 1; i <= 12; i++) blueFreq[i] = 0;
       
@@ -726,6 +771,10 @@
       await originalGenerate();
       loadAvailable();
     };
+
+    // 初始化
+    trackSessionStart();
+    registerTrackLeaveHandler();
   </script>
 </body>
 </html>

@@ -88,17 +88,31 @@
     ensureScript('data-track-script', {
       src: prefix + 'components/track.js'
     });
-    ensureScript('data-ads-script', {
-      async: true,
-      src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3694254708490002',
-      crossOrigin: 'anonymous'
-    });
+    // 广告脚本改用 async 加载，且推迟到 window load 之后再注入，避免与首屏关键资源抢带宽、阻塞渲染。
+    scheduleAdsScript();
     ensureScript('data-iconify-script', {
       defer: true,
       src: 'https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js'
     });
     ensureLink('data-tabler-css', 'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css');
     ensureLink('data-header-theme', prefix + 'components/header.css');
+  }
+
+  function scheduleAdsScript() {
+    // 推迟到页面完全加载后再注入广告脚本，保证首屏渲染不受广告下载/执行影响。
+    // 动态注入的 <script> 天然是 async，不会阻塞解析与渲染。
+    var loadAds = function() {
+      ensureScript('data-ads-script', {
+        async: true,
+        src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3694254708490002',
+        crossOrigin: 'anonymous'
+      });
+    };
+    if (document.readyState === 'complete') {
+      loadAds();
+    } else {
+      window.addEventListener('load', loadAds, { once: true });
+    }
   }
 
   function boot() {

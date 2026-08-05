@@ -351,6 +351,50 @@
 </div><!-- end container -->
 
 <script>
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - live_strategy: 切换亲手玩法策略 {strategy}，回答"哪种策略最受关注"
+// - auto_play:     自动播放切换 {on}，回答"多少人用自动播放"
+// - monte_carlo:   蒙特卡洛模拟 {trials, steps}，回答"模拟规模分布"
+// - custom:        自定义模式 {patternLen}，回答"自定义组合探索"（不上报具体模式内容）
+// - state_analysis: 状态分布分析，回答"多少人深挖悖论本质"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 // ========== 亲手玩一局 ==========
 let liveStrategy = 'A';
 let liveCapital = 0;
@@ -362,6 +406,7 @@ let liveParams = getParams();
 function setLiveStrategy(s) {
   liveReset();
   liveStrategy = s;
+  nfTrack('live_strategy', { strategy: s });
   const labels = { A: '只玩 A', B: '只玩 B', AABB: 'AABB', ABB: 'ABB', RANDOM: '随机' };
   document.querySelectorAll('#live-strategy-tabs .tab-btn').forEach(btn => {
     const match = Object.entries(labels).find(([k, v]) => btn.textContent.trim().includes(v));
@@ -398,9 +443,11 @@ function liveAutoToggle() {
   if (liveAutoInterval) {
     clearInterval(liveAutoInterval);
     liveAutoInterval = null;
+    nfTrack('auto_play', { on: 0 });
     btn.innerHTML = '<i class="ti ti-player-play"></i> 自动播放';
   } else {
     liveAutoInterval = setInterval(liveNext, liveSpeed);
+    nfTrack('auto_play', { on: 1 });
     btn.innerHTML = '<i class="ti ti-player-pause"></i> 暂停';
   }
 }
@@ -431,6 +478,7 @@ let mcChart = null;
 function runMonteCarlo() {
   const trials = parseInt(document.getElementById('mc-trials').value);
   const steps = parseInt(document.getElementById('mc-steps').value);
+  nfTrack('monte_carlo', { trials: trials, steps: steps });
   const btn = document.getElementById('mc-run-btn');
   btn.disabled = true;
   btn.innerHTML = '<i class="ti ti-loader"></i> 模拟中...';
@@ -493,6 +541,7 @@ function runCustomPattern() {
   var pattern = document.getElementById('custom-pattern').value.toUpperCase().replace(/[^AB]/g, '');
   if (!pattern) pattern = 'AB';
   document.getElementById('custom-pattern').value = pattern;
+  nfTrack('custom', { patternLen: pattern.length });
 
   var result = simulateMonteCarlo(2000, 500, pattern);
   document.getElementById('custom-result').classList.remove('hidden');
@@ -529,6 +578,7 @@ function runCustomPattern() {
 // ========== 状态分布分析 ==========
 function runStateAnalysis() {
   var trials = 5000, steps = 500;
+  nfTrack('state_analysis', {});
   var bBadCount = 0, bTotal = 0, aabbBadCount = 0, aabbTotal = 0;
   var params = getParams();
 

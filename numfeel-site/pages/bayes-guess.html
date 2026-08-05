@@ -378,6 +378,51 @@
 </div><!-- end container -->
 
 <script>
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - new_game:      新游戏 {N, lie}，回答"游戏参数分布"
+// - guess:         提交猜测（未命中）{steps}，回答"尝试次数"；命中由 win 事件上报
+// - win:           猜中 {steps, lies}，回答"实际步数与谎言次数"
+// - ai_single:     AI 单局 {N, lie, steps}，回答"AI 单局步数"
+// - ai_batch:      AI 批量 {N, lie}，回答"多少人看批量分布"
+// - compare:       谎言率对比 {N}，回答"多少人做对比实验"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 // ========== 游戏状态 ==========
 var game = null;
 var entropyHistory = [];
@@ -391,6 +436,7 @@ function startNewGame() {
   var N = parseInt(document.getElementById('range-slider').value);
   var lie = parseInt(document.getElementById('lie-slider').value) / 100;
   game = createGame(N, lie);
+  nfTrack('new_game', { N: N, lie: lie });
   entropyHistory = [];
   maxEntropy = Math.log2(N);
 
@@ -462,6 +508,7 @@ function submitGuess() {
   if (result.won) {
     onWin();
   } else {
+    nfTrack('guess', { steps: stepNum });
     input.value = '';
     input.focus();
     document.getElementById('game-status').textContent =
@@ -475,6 +522,7 @@ function onWin() {
   for (var i = 0; i < game.history.length; i++) {
     if (!game.history[i].truthful) lies++;
   }
+  nfTrack('win', { steps: steps, lies: lies });
   document.getElementById('guess-input').disabled = true;
   document.getElementById('guess-btn').disabled = true;
   document.getElementById('game-status').textContent =
@@ -560,6 +608,7 @@ function runAIGame() {
   var N = parseInt(document.getElementById('range-slider').value);
   var lie = parseInt(document.getElementById('lie-slider').value) / 100;
   var aiGame = createGame(N, lie);
+  nfTrack('ai_single', { N: N, lie: lie });
 
   document.getElementById('ai-result').classList.remove('hidden');
   document.getElementById('ai-batch-result').classList.add('hidden');
@@ -593,6 +642,7 @@ function runAIGame() {
 function runAIAuto() {
   var N = parseInt(document.getElementById('range-slider').value);
   var lie = parseInt(document.getElementById('lie-slider').value) / 100;
+  nfTrack('ai_batch', { N: N, lie: lie });
   var btn = document.getElementById('ai-auto-btn');
   btn.disabled = true;
   btn.innerHTML = '<i class="ti ti-loader"></i> 模拟中...';
@@ -641,6 +691,7 @@ function runAIAuto() {
 // ========== 谎言率对比 ==========
 function runLieComparison() {
   var N = parseInt(document.getElementById('range-slider').value);
+  nfTrack('compare', { N: N });
   var btn = document.getElementById('compare-btn');
   btn.disabled = true;
   btn.innerHTML = '<i class="ti ti-loader"></i> 实验中...';

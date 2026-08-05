@@ -1,4 +1,49 @@
 // ========== DOM 绑定 + 互动逻辑（依赖 engine.js） ==========
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - quiz_choose:   直觉测试作答 {correct}，回答"用户直觉命中率"
+// - quiz_finish:   完成测试 {score}，回答"得分分布"
+// - upgrade:       升级选择 {choice, cr, cd}，回答"暴击率/暴伤选择倾向"
+// - chip:          预设面板选择 {cr, cd}，回答"常用配比"
+// - boss_win:      Boss 击杀 {side, hits}，回答"两种配比的击杀刀数"
+// - dist:          分布模拟 {n}，回答"多少人看分布对比"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+var trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 var BASE = 100;
 var D_CR = 0.05;
 var D_CD = 0.10;
@@ -80,6 +125,7 @@ function renderQuiz() {
 function quizChoose(choice) {
   var q = QUIZ[state.quizIdx];
   var correct = choice === q.correct;
+  nfTrack('quiz_choose', { correct: correct ? 1 : 0 });
   if (correct) state.quizScore++;
   state.quizAnswers.push({ q: q.title, pick: choice, correct: correct, why: q.why });
 
@@ -103,6 +149,7 @@ function showQuizResult() {
   $('quizCard').style.display = 'none';
   $('quizResult').style.display = 'block';
   var s = state.quizScore;
+  nfTrack('quiz_finish', { score: s });
   var t;
   if (s === 3) t = '满分！直觉很准，去第 2 关验算。';
   else if (s === 2) t = '不错，有一题踩中新手常错的地方。';
@@ -189,6 +236,7 @@ function doUpgrade(choice) {
   state.cr = next.cr;
   state.cd = next.cd;
   state.upgrades++;
+  nfTrack('upgrade', { choice: choice, cr: Math.round(state.cr * 100), cd: Math.round(state.cd * 100) });
   $('crInput').value = Math.round(state.cr * 100);
   $('cdInput').value = Math.round(state.cd * 100);
   $('upgradeCount').textContent = state.upgrades;
@@ -224,6 +272,7 @@ onEach(document.querySelectorAll('.chip'), 'click', function(e) {
   state.cr = parseInt(btn.getAttribute('data-cr'), 10) / 100;
   state.cd = parseInt(btn.getAttribute('data-cd'), 10) / 100;
   state.upgrades = 0;
+  nfTrack('chip', { cr: Math.round(state.cr * 100), cd: Math.round(state.cd * 100) });
   $('crInput').value = Math.round(state.cr * 100);
   $('cdInput').value = Math.round(state.cd * 100);
   $('upgradeCount').textContent = 0;
@@ -276,6 +325,7 @@ function attack(side) {
 function finishBoss(side) {
   var s = state[side];
   s.done = true;
+  nfTrack('boss_win', { side: side, hits: s.hits });
   var prefix = side === 'bossA' ? 'bossA' : 'bossB';
   var tag = side === 'bossA' ? '高暴击率' : '高暴伤';
   var note = s.cr > 0.4 ? '节奏稳、波动小' : '波动大、赌爆头';
@@ -316,6 +366,7 @@ var distChartB = null;
 
 function refreshDistributions() {
   var n = parseInt($('simCount').value, 10) || 10000;
+  nfTrack('dist', { n: n });
   var sampA = simulateHits(BASE, 0.5, 1.0, n);
   var sampB = simulateHits(BASE, 0.25, 2.0, n);
 

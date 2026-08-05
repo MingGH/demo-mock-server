@@ -9,6 +9,49 @@
 
   var RS = window.RSCore;
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+  // - scene:         切换场景 {scene, nParity}，回答"哪个纠错场景最受关注"
+  // - encode:        编码数据 {n, k, parity}，回答"实际编码次数"
+  // - damage:        点击制造损坏 {count}，回答"损坏规模分布"
+  // - random_damage: 随机打烂 {count}，回答"随机体验的使用频率"
+  // - recover:       尝试恢复 {damaged, parity, success}，回答"恢复成功率与越限尝试"
+  // - clear_damage:  清除损坏，回答"多少人会清空重试"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+
   // ── 场景预设 ──
   var SCENES = {
     qrcode: { nParity: 6, label: '二维码 H 级', desc: '约 30% 可恢复' },
@@ -53,6 +96,7 @@
         card.classList.add('active');
         state.scene = card.dataset.scene;
         state.nParity = SCENES[state.scene].nParity;
+        nfTrack('scene', { scene: state.scene, nParity: state.nParity });
         // 切换场景后重新编码
         if (state.hasEncoded) {
           doEncode();
@@ -77,6 +121,7 @@
     state.damaged = {};
     state.hasEncoded = true;
     state.hasRecovered = false;
+    nfTrack('encode', { n: state.codeword.length, k: state.dataSymbols.length, parity: state.nParity });
 
     renderCodeword('codewordVis', false);
     renderCodeword('damageVis', true);
@@ -183,6 +228,7 @@
 
     renderCodeword('damageVis', true);
     renderCodeword('recoverVis', false);
+    nfTrack('damage', { count: Object.keys(state.damaged).length });
     updateDamageStatus();
   }
 
@@ -229,6 +275,7 @@
     }
 
     var result = RS.rsEraseDecode(damagedCodeword, erasurePos, state.nParity);
+    nfTrack('recover', { damaged: erasurePos.length, parity: state.nParity, success: result.success ? 1 : 0 });
     var resultEl = $('recoverResult');
     var recoverVis = $('recoverVis');
 
@@ -310,6 +357,7 @@
   function clearDamage() {
     state.damaged = {};
     state.hasRecovered = false;
+    nfTrack('clear_damage', {});
     renderCodeword('damageVis', true);
     renderCodeword('recoverVis', false);
     updateDamageStatus();
@@ -339,6 +387,7 @@
     for (var k = 0; k < count; k++) {
       state.damaged[indices[k]] = true;
     }
+    nfTrack('random_damage', { count: count });
 
     renderCodeword('damageVis', true);
     renderCodeword('recoverVis', false);
@@ -451,6 +500,8 @@
     // 自动编码一次
     doEncode();
     initThresholdChart();
+    trackSessionStart();
+    registerTrackLeaveHandler();
   }
 
   if (document.readyState === 'loading') {

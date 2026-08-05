@@ -353,6 +353,48 @@
   // ============= 配置 =============
   var API_BASE = 'https://numfeel-api.996.ninja';
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+  // - write:         单次写入 {success}，回答"实际写入行为"
+  // - scenario:      切换场景 {idx}，回答"哪个访问量场景最受关注"
+  // - burst:         并发压测 {concurrency, wal}，回答"压测强度与 WAL 使用"
+  // - compare:       WAL vs DELETE 对比 {concurrency}，回答"对比实验的使用频率"
+  // - reset:         清空数据库，回答"多少人会清空重来"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+
   // ============= 状态 =============
   var walEnabled = false;
   var latencyHistory = [];
@@ -376,6 +418,8 @@
     // 初始化延迟历史条
     for (var i = 0; i < 30; i++) latencyHistory.push(0);
     renderLatencyBar();
+    trackSessionStart();
+    registerTrackLeaveHandler();
   });
 
   // ============= API 调用 =============
@@ -393,6 +437,7 @@
       btn.disabled = false;
       if (res.status === 200) {
         var d = res.data;
+        nfTrack('write', { success: d.success ? 1 : 0 });
         showWriteFeedback(d.success, d.latencyMs);
         if (d.success) {
           latencyHistory.push(d.latencyMs);
@@ -444,6 +489,7 @@
   function doReset() {
     if (!confirm('确定要清空数据库？所有压测数据将丢失。')) return;
     apiCall('POST', '/sqlite-lab/reset').then(function() {
+      nfTrack('reset', {});
       latencyHistory = [];
       for (var i = 0; i < 30; i++) latencyHistory.push(0);
       renderLatencyBar();
@@ -460,6 +506,7 @@
     var sc = scenarios[idx];
     document.getElementById('concurrency-slider').value = sc.concurrency;
     updateConcurrencyLabel();
+    nfTrack('scenario', { idx: idx });
 
     var insightEl = document.getElementById('insight-scenario');
     document.getElementById('insight-scenario-text').textContent = sc.desc;
@@ -487,6 +534,7 @@
         btn.disabled = false;
         btn.innerHTML = '<i class="ti ti-rocket"></i> 开始压测';
         if (res.status === 200) {
+          nfTrack('burst', { concurrency: concurrency, wal: walEnabled ? 1 : 0 });
           renderBurstResult(res.data);
           refreshStats();
         }
@@ -587,6 +635,7 @@
             btn.disabled = false;
             btn.innerHTML = '<i class="ti ti-arrows-exchange"></i> 运行对比';
             if (res1.status === 200 && res2.status === 200) {
+              nfTrack('compare', { concurrency: concurrency });
               renderCompareResult(res1.data, res2.data);
               refreshStats();
             }

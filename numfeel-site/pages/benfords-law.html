@@ -200,6 +200,46 @@
 </style>
 
 <script>
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - dataset:       选择预设数据集 {dataset}，回答"哪个数据集最受关注"
+// - custom:        粘贴自定义数据检测 {n}，回答"多少人会检测自己的数据"
+// - compare:       生成造假对比，回答"多少人看对比演示"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
 let datasetChart = null;
 let customChart = null;
 let realChart = null;
@@ -288,6 +328,7 @@ function selectDataset(id) {
   document.querySelectorAll('.ds-btn').forEach(b => b.classList.toggle('active', b.dataset.id === id));
   const ds = DATASETS.find(d => d.id === id);
   const data = ds.gen();
+  nfTrack('dataset', { dataset: id });
   showAnalysis(data, 'datasetResults', 'datasetChart', 'datasetVerdict', ds.name);
 }
 
@@ -375,11 +416,13 @@ function analyzeCustomData() {
     return;
   }
   showAnalysis(numbers, 'customResults', 'customChart', 'customVerdict', '你的数据');
+  nfTrack('custom', { n: numbers.length });
 }
 
 function runFakeComparison() {
   const realData = BenfordsLawLogic.generateBenfordData(1000);
   const fakeData = BenfordsLawLogic.generateFakeData(1000);
+  nfTrack('compare', { count: 1 });
 
   // 真实数据
   const r = BenfordsLawLogic.extractFirstDigits(realData);
@@ -445,6 +488,8 @@ function renderCompareChart(canvasId, freq, label, color) {
 }
 
 init();
+trackSessionStart();
+registerTrackLeaveHandler();
 </script>
 </body>
 </html>

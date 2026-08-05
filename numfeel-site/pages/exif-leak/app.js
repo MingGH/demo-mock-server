@@ -10,9 +10,55 @@
   let currentFileName = '';
   let currentFileType = '';
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+  // - tab:           切换 Tab {tab}，回答"检测 vs 批量清除的使用比例"
+  // - upload:        上传图片检测 {type, gps, hasExif}，回答"真实照片的泄露情况"
+  // - analyze:       解析结果 {gps, hasExif}，回答"实际看图泄露情况"
+  // - strip:         一键清除元数据 {type}，回答"多少人会清理"
+  // - batch_strip:   批量清除 {n}，回答"批量清理规模"
+  // - reset:         重置，回答"多少人会重置重试"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+  trackSessionStart();
+  registerTrackLeaveHandler();
+
   // ── Tab 切换 ──
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      nfTrack('tab', { tab: btn.dataset.tab });
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
@@ -57,6 +103,7 @@
     }
     currentFileName = file.name;
     currentFileType = file.type || guessType(file.name);
+    nfTrack('upload', { type: currentFileType });
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -76,6 +123,7 @@
   async function analyzeExif(buffer) {
     try {
       const result = await ExifParser.parse(buffer);
+      nfTrack('analyze', { gps: result.gps ? 1 : 0, hasExif: result.hasExif ? 1 : 0 });
       renderResult(result);
       $('#resultArea').classList.add('show');
       uploadZone.style.display = 'none';
@@ -254,6 +302,7 @@
     if (!currentBuffer) return;
     const isJpeg = currentFileType.includes('jpeg') || currentFileType.includes('jpg');
     if (!isJpeg) return;
+    nfTrack('strip', { type: currentFileType });
 
     const cleaned = ExifParser.stripExif(currentBuffer);
     const blob = new Blob([cleaned], { type: 'image/jpeg' });
@@ -268,6 +317,7 @@
 
   // ── 重置 ──
   $('#resetBtn').addEventListener('click', () => {
+    nfTrack('reset', {});
     currentBuffer = null;
     currentFileName = '';
     currentFileType = '';
@@ -304,6 +354,7 @@
   async function handleBatchFiles(fileList) {
     const files = Array.from(fileList).filter(f => ExifParser.isSupported(f));
     if (files.length === 0) { alert('没有支持的图片文件'); return; }
+    nfTrack('batch_strip', { n: files.length });
 
     cleanedFiles = [];
     stripUploadZone.style.display = 'none';

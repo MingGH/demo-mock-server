@@ -376,7 +376,7 @@
         <button class="preset" data-reaction="80" data-motor="10" data-jitter="5">超能力设定</button>
       </div>
       <div class="btn-row">
-        <button class="btn" onclick="runSimulation()"><i class="ti ti-player-play"></i> 跑 60 轮模拟</button>
+        <button class="btn" onclick="runManualSimulation()"><i class="ti ti-player-play"></i> 跑 60 轮模拟</button>
         <button class="btn btn-secondary" onclick="resetToDefault()"><i class="ti ti-refresh"></i> 恢复默认</button>
       </div>
     </div>
@@ -395,6 +395,50 @@
   </div>
 
   <script>
+    // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+    // 事件清单：
+    // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+    // - reaction_done: 完成5轮反应测试 {avg, best}，回答"用户反应速度分布"
+    // - sim_run:       跑60轮模拟 {prediction, reaction, motor, jitter}，回答"参数使用分布"
+    // - preset:        选取预设参数 {preset}，回答"哪个设定最受关注"
+    // - foresight:     预知挑战开局 {prediction}，回答"多少人玩挑战"
+    // - foresight_done: 挑战结束 {wins, total}，回答"改写成功率"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+    trackSessionStart();
+    registerTrackLeaveHandler();
+
     let marginChart;
     let reactionSummary = null;
     const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
@@ -541,6 +585,13 @@
       renderChart(result);
     }
 
+    // 显式"跑60轮模拟"按钮触发；区别于滑块/初始化自动调用的 runSimulation()
+    function runManualSimulation() {
+      const c = getConfig();
+      nfTrack('sim_run', { prediction: c.predictionMs, reaction: c.reactionMs, motor: c.motorMs, jitter: c.jitterMs });
+      runSimulation();
+    }
+
     function normalizeEventTimestamp(event) {
       const ts = Number(event && event.timeStamp);
       if (!Number.isFinite(ts)) return performance.now();
@@ -598,6 +649,7 @@
       reactionState.waiting = false;
       reactionState.ready = false;
       reactionSummary = Predict100msLogic.summarizeReactionTest(reactionState.times, 100);
+      nfTrack('reaction_done', { avg: Math.round(reactionSummary.averageMs), best: Math.round(reactionSummary.bestMs) });
       const ratio = reactionSummary.ratioToTarget;
       const tag = ratio <= 1 ? '已进入100ms窗口' : `约为100ms的${ratio.toFixed(2)}倍`;
       document.getElementById('reactionStatus').textContent =
@@ -718,6 +770,7 @@
       foresightGame.windowOpen = false;
       foresightGame.resolved = true;
       setShieldEnabled(false);
+      nfTrack('foresight_done', { wins: foresightGame.wins, total: foresightGame.total });
       const successRate = foresightGame.total > 0 ? (foresightGame.wins / foresightGame.total * 100) : 0;
       const avgRt = foresightGame.history.length > 0
         ? foresightGame.history.reduce((s, x) => s + x.rt, 0) / foresightGame.history.length
@@ -801,6 +854,7 @@
     function startForesightGame() {
       clearForesightTimers();
       foresightGame.running = true;
+      nfTrack('foresight', { prediction: foresightGame.predictionMs });
       foresightGame.round = 0;
       foresightGame.wins = 0;
       foresightGame.loses = 0;
@@ -840,6 +894,7 @@
       document.getElementById('presetGroup').addEventListener('click', (e) => {
         const btn = e.target.closest('.preset');
         if (!btn) return;
+        nfTrack('preset', { reaction: Number(btn.dataset.reaction) });
         document.getElementById('reactionMs').value = btn.dataset.reaction;
         document.getElementById('motorMs').value = btn.dataset.motor;
         document.getElementById('jitterMs').value = btn.dataset.jitter;

@@ -411,6 +411,48 @@
   </div>
 
   <script>
+    // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+    // 事件清单：
+    // - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+    // - sim:           单次模拟 {winRate, ratio, betSize, trades, ruin}，回答"参数使用分布"
+    // - sim_batch:     千次分布模拟 {winRate, ratio, betSize, trades}，回答"多少人做批量验证"
+    // - psych_sim:     心理因素模拟 {discipline, emotion}，回答"心理参数分布"
+    // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+    // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+    window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+    let trackSessionActive = false;
+
+    /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+    function nfTrack(name, props, opts) {
+      try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+    }
+
+    function trackSessionStart() {
+      if (trackSessionActive) return;
+      trackSessionActive = true;
+      nfTrack('session_start', {});
+    }
+
+    function trackSessionEnd(reason) {
+      if (!trackSessionActive) return;
+      trackSessionActive = false;
+      nfTrack('session_end', { reason: reason }, { force: true });
+    }
+
+    function trackSessionHidden() {
+      if (!trackSessionActive) return;
+      nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+    }
+
+    function registerTrackLeaveHandler() {
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') trackSessionHidden();
+      });
+      window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+    }
+    trackSessionStart();
+    registerTrackLeaveHandler();
+
     let equityChart, psychologyChart;
 
     // 初始化图表
@@ -524,6 +566,7 @@
       const q = 1 - winRate;
       const ruinProb = q > winRate * ratio ? 100 : (Math.pow(q / (winRate * ratio), capital / 10) * 100);
       document.getElementById('ruinProb').textContent = Math.min(ruinProb, 100).toFixed(1) + '%';
+      nfTrack('sim', { winRate: winRate * 100, ratio: ratio, betSize: betSize * 100, trades: trades, ruin: Math.round(Math.min(ruinProb, 100)) });
 
       // 生成洞察
       let insight = '';
@@ -551,6 +594,7 @@
       const ratio = parseFloat(document.getElementById('profitLossRatio').value);
       const betSize = parseFloat(document.getElementById('betSize').value) / 100;
       const trades = parseInt(document.getElementById('trades').value);
+      nfTrack('sim_batch', { winRate: winRate * 100, ratio: ratio, betSize: betSize * 100, trades: trades });
 
       const results = [];
       let totalWins = 0;
@@ -675,6 +719,7 @@
     function runPsychologySimulation() {
       const discipline = parseFloat(document.getElementById('discipline').value) / 100;
       const emotion = parseFloat(document.getElementById('emotion').value) / 100;
+      nfTrack('psych_sim', { discipline: discipline * 100, emotion: emotion * 100 });
 
       // 理性策略：固定仓位，严格止损
       let rationalCapital = 100;

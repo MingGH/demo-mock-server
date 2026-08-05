@@ -552,6 +552,48 @@
 </div>
 
 <script>
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 页面加载初始化（布尔守卫，每次加载记一次），回答"有多少页面访问"
+// - sim_play:      玩 N 局 {n, rake, bankrupt}，回答"模拟局数与破产规模"
+// - play_to_end:   玩到结束，回答"多少人看完整进程"
+// - reset:         重置，回答"多少人重置重试"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
+  });
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+trackSessionStart();
+registerTrackLeaveHandler();
+
 // 100人模拟 - 每个人独立和庄家对赌
 let people = [];
 let roundCount = 0;
@@ -632,10 +674,14 @@ function playRounds(n) {
   renderPeople();
   updateStats();
   updateChart();
+  // bankrupt = 真正破产 + 不能继续赌（与 updateStats 口径一致）
+  const bankrupt = people.filter(p => p.money <= 0 || p.money < bet).length;
+  nfTrack('sim_play', { n: n, rake: rake, bankrupt: bankrupt });
 }
 
 function playUntilEnd() {
   const bet = parseInt(document.getElementById('betAmount').value) || 100;
+  nfTrack('play_to_end', {});
   const interval = setInterval(() => {
     const alive = people.filter(p => p.money >= bet);
     if (alive.length === 0) {
@@ -718,6 +764,7 @@ function updateChart() {
 }
 
 function resetSim() {
+  nfTrack('reset', {});
   initPeople();
 }
 

@@ -11,6 +11,7 @@ const {
   stampTruncated,
   bytesToSessionId,
   isValidEventName,
+  shouldImmediateFlush,
   parseNonNegInt,
   parseOnceList,
   serializeOnceMap,
@@ -213,6 +214,15 @@ console.log('\n\ud83d\udeae pruneOnceMap: 超长 once 列表裁剪');
   assert(Object.keys(map).length === 200, '超过 200 条时裁剪到 200');
   assert(map['k4'] === undefined, '丢弃最旧的超限项');
   assert(map['k204'] === true, '保留最新的 200 条');
+}
+
+// ========== shouldImmediateFlush ==========
+console.log('\n\ud83d\ude85 shouldImmediateFlush: 收尾事件需立即发送');
+{
+  assert(shouldImmediateFlush('session_end') === true, 'session_end 应立即 flush');
+  assert(shouldImmediateFlush('session_start') === false, 'session_start 不立即 flush');
+  assert(shouldImmediateFlush('press') === false, '普通事件不立即 flush');
+  assert(shouldImmediateFlush('') === false, '空事件名不立即 flush');
 }
 console.log(`总计: ${passed + failed} 测试, \u2705 ${passed} 通过, \u274c ${failed} 失败`);
 if (failed > 0) process.exit(1);

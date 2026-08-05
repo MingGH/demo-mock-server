@@ -109,6 +109,7 @@
     var enabling = idx === -1;
     if (enabling) activeDefenses.push(id);
     else activeDefenses.splice(idx, 1);
+    nfTrack('defense_toggle', { defense: id, enabled: enabling ? 1 : 0 });
 
     // 首次开关移除呼吸引导
     if (firstToggle) {
@@ -279,6 +280,7 @@
         } catch (err) { /* 静默 */ }
         showToast('已检测到截图键，剪贴板已清空');
         logAction('检测到 PrintScreen 键');
+        nfTrack('attempt', { type: 'printscreen' });
       }
     }
     // F12 + Ctrl+Shift+I
@@ -286,6 +288,7 @@
       if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i'))) {
         e.preventDefault();
         logAction('F12 / Ctrl+Shift+I 已拦截');
+        nfTrack('attempt', { type: 'f12' });
       }
     }
   }
@@ -293,6 +296,7 @@
     if (activeDefenses.indexOf('block-f12-menu') > -1) {
       e.preventDefault();
       logAction('右键菜单已拦截');
+      nfTrack('attempt', { type: 'contextmenu' });
     }
   }
   function onCopy(e) {
@@ -313,6 +317,7 @@
       } catch (err) { /* 静默 */ }
       logAction('检测到复制操作，已清空剪贴板');
       showToast('该区域禁止复制');
+      nfTrack('attempt', { type: 'copy' });
       return;
     }
 
@@ -343,6 +348,18 @@
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('contextmenu', onContextMenu);
   document.addEventListener('copy', onCopy);
+
+  // ── 行为埋点（NFTrack，见 components/track.js）──
+  // 事件：session_start / defense_toggle / attempt / run_battle / session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
   document.addEventListener('selectstart', onSelectStart);
 
   /* ── DevTools 检测（尺寸差） ── */
@@ -418,6 +435,7 @@
     }
 
     var result = simulateBattle(defenses, method);
+    nfTrack('run_battle', { method: method, defenses: defenses.length });
     renderBattleResult(method, defenses, result);
   };
 

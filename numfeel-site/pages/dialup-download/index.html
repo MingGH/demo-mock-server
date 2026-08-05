@@ -370,6 +370,7 @@
     card.addEventListener('click', () => {
       document.querySelectorAll('.isp-card').forEach(c => c.classList.remove('active'));
       card.classList.add('active');
+      nfTrack('isp_select', { isp: card.dataset.isp });
     });
   });
 
@@ -380,6 +381,7 @@
   function startDial() {
     $('dialBtn').disabled = true;
     $('hangupBtn').disabled = false;
+    nfTrack('dial', {});
     updateDialStatus('dialing', '正在拨号...');
     showAudioViz(true);
     playDialupSound();
@@ -411,6 +413,7 @@
     $('hangupBtn').disabled = true;
     state.redials++;
     if ($('statRedials')) $('statRedials').textContent = state.redials;
+    nfTrack('connect_result', { ok: 0 });
   }
 
   function connectSuccess() {
@@ -420,6 +423,7 @@
     const speed = Math.floor(ACTUAL_MIN_BPS + Math.random() * (ACTUAL_MAX_BPS - ACTUAL_MIN_BPS));
     updateDialStatus('connected', '已连接！速度：' + (speed / 1000).toFixed(1) + ' Kbps');
     state.currentSpeed = speed / 8; // 转为 Bytes/s
+    nfTrack('connect_result', { ok: 1, speed: Math.round(speed / 8) });
 
     // 短暂延迟后进入阶段二
     setTimeout(() => {
@@ -430,6 +434,7 @@
   }
 
   function hangup() {
+    nfTrack('hangup', {});
     clearTimeout(state.connectTimer);
     stopDialupSound();
     showAudioViz(false);
@@ -583,6 +588,7 @@
 
     $('dlFileName').textContent = state.fileName;
     $('dlTotalSize').textContent = formatSize(state.fileSize);
+    nfTrack('download_start', { name: state.fileName.slice(0, 30), size: state.fileSize });
     switchPhase(3);
     addLog('info', '开始下载「' + state.fileName + '」，文件大小：' + formatSize(state.fileSize));
     addLog('info', '当前连接速度：' + formatSpeed(state.currentSpeed));
@@ -674,6 +680,7 @@
   function reconnect() {
     const speed = Math.floor(ACTUAL_MIN_BPS + Math.random() * (ACTUAL_MAX_BPS - ACTUAL_MIN_BPS));
     state.currentSpeed = speed / 8;
+    nfTrack('reconnect', { disconnects: state.disconnects });
     state.connected = true;
     state.downloading = true;
     addLog('success', '重新连接成功！速度：' + (speed / 1000).toFixed(1) + ' Kbps');
@@ -683,6 +690,11 @@
   function downloadComplete() {
     state.downloading = false;
     clearInterval(state.tickTimer);
+    nfTrack('download_complete', {
+      elapsedSec: Math.round(state.elapsedMs / 1000),
+      disconnects: state.disconnects,
+      billCent: Math.round(state.phoneBillYuan * 100)
+    });
     addLog('success', '下载完成！');
     showCompletionSummary();
     switchPhase(4);
@@ -805,6 +817,18 @@
     while (v === 0) v = Math.random();
     return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
   }
+
+  // ── 行为埋点（NFTrack，见 components/track.js）──
+  // 事件：session_start / isp_select / dial / connect_result / download_start / download_complete / reconnect / hangup / session_end
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+  (function () {
+    try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+    window.addEventListener('pagehide', function () {
+      nfTrack('session_end', { reason: 'leave' }, { force: true });
+    });
+  })();
 
   // ── 导出供测试 ──
   if (typeof window !== 'undefined') {

@@ -356,7 +356,20 @@ async function collectAndDisplay() {
     '这就是为什么你换了 IP、清了 Cookie，注册的新号还是会被封：<strong>你的设备本身就是你的身份证</strong>。平台不需要知道你是谁，只需要知道「这台设备之前注册过」。';
 
   loadStats();
+  nfTrack('collect', { entropyBits: Math.round(totalEntropy), recognized: sameCount > 1 ? 1 : 0 });
 }
+
+// ── 行为埋点（NFTrack，见 components/track.js）──
+// 事件：session_start / consent（同意/拒绝）/ collect（采集指纹）/ session_end
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+(function () {
+  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+})();
 
 async function loadStats() {
   try {
@@ -375,6 +388,7 @@ async function loadStats() {
 }
 
 document.getElementById('btnConsent').addEventListener('click', function() {
+  nfTrack('consent', { choice: 'accept' });
   localStorage.setItem('fp_consent', '1');
   document.getElementById('privacyModal').style.display = 'none';
   document.getElementById('mainContent').style.display = 'block';
@@ -382,6 +396,7 @@ document.getElementById('btnConsent').addEventListener('click', function() {
 });
 
 document.getElementById('btnDecline').addEventListener('click', function() {
+  nfTrack('consent', { choice: 'decline' });
   document.getElementById('privacyModal').style.display = 'none';
   document.getElementById('declinedMsg').style.display = 'block';
 });

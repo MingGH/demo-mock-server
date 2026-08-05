@@ -95,6 +95,7 @@ function startCrackHero() {
 // ========== 模式切换 ==========
 function switchMode(mode) {
   currentMode = mode;
+  nfTrack('mode_switch', { mode: mode });
   document.querySelectorAll('#modeTabs .mode-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.mode === mode);
   });
@@ -106,6 +107,7 @@ function switchMode(mode) {
 
 function switchEncryptType(type) {
   currentEncryptType = type;
+  nfTrack('encrypt_type', { type: type });
   document.querySelectorAll('#encryptTypeTabs .mode-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.type === type);
   });
@@ -141,6 +143,7 @@ function crackCaesar() {
 
   // 最佳结果
   document.getElementById('caesarOutput').value = caesarDecrypt(input, results[0].shift);
+  nfTrack('crack_caesar', { letters: letterCount });
 
   // 频率图
   showFreqBars('caesarFreqBars', letterFrequency(input));
@@ -192,6 +195,7 @@ function vigenereStep1() {
 
   // 标记步骤 1 为激活
   document.getElementById('vStepItem1').classList.add('active');
+  nfTrack('crack_vigenere', { step: 1 });
 
   const icResults = icKeyLengthEstimate(input, 15);
   renderICTable(icResults);
@@ -219,6 +223,7 @@ function vigenereStep2() {
 
   const key = crackVigenereWithLength(input, vState.keyLength);
   vState.key = key;
+  nfTrack('crack_vigenere', { step: 2, keyLen: vState.keyLength });
 
   document.getElementById('vKeyLength').textContent = vState.keyLength;
   document.getElementById('vKeyResult').textContent = key;
@@ -249,6 +254,7 @@ function vigenereStep3() {
   document.getElementById('vStep3Btn').disabled = true;
   document.getElementById('vStepItem3').classList.remove('active');
   document.getElementById('vStepItem3').classList.add('done');
+  nfTrack('crack_vigenere', { step: 3 });
 }
 
 function renderICTable(results) {
@@ -300,11 +306,13 @@ function doEncrypt() {
     result = vigenereEncrypt(input, key);
   }
   document.getElementById('encryptOutput').value = result;
+  nfTrack('encrypt', { type: currentEncryptType });
 }
 
 function sendToCrack() {
   const cipher = document.getElementById('encryptOutput').value;
   if (!cipher) return;
+  nfTrack('send_to_crack', { type: currentEncryptType });
 
   if (currentEncryptType === 'caesar') {
     switchMode('caesar');
@@ -341,4 +349,16 @@ function escHtml(s) {
 }
 
 // ========== 启动 ==========
+// ── 行为埋点（NFTrack，见 components/track.js）──
+// 事件：session_start / mode_switch / encrypt_type / crack_caesar / crack_vigenere / encrypt / send_to_crack / session_end
+function nfTrack(name, props, opts) {
+  try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+}
+(function () {
+  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
+  window.addEventListener('pagehide', function () {
+    nfTrack('session_end', { reason: 'leave' }, { force: true });
+  });
+})();
+
 init();

@@ -9,13 +9,15 @@
     check();
   });
 
-  var SCENE_W = 240;
-  var SCENE_H = 160;
-  var LOOP_FRAMES = 100;
+  var SCENE_W = 960;
+  var SCENE_H = 540;
+  var LOOP_FRAMES = 120;
 
   var DOM = {};
+  var images = { background: null, character: null, foreground: null };
+  var imagesLoaded = false;
+
   var state = {
-    scene: null,
     frame: 0,
     playing: true,
     speed: 1,
@@ -23,6 +25,37 @@
     layers: { background: true, character: true, foreground: true },
     cost: { duration: 30, fps: 24, movingLayers: 2, staticLayers: 2 }
   };
+
+  function loadImages() {
+    var srcs = {
+      background: 'images/background.png',
+      character: 'images/character.png',
+      foreground: 'images/foreground.png'
+    };
+    var keys = Object.keys(srcs);
+    var loaded = 0;
+    return new Promise(function (resolve) {
+      keys.forEach(function (key) {
+        var img = new Image();
+        img.onload = function () {
+          images[key] = img;
+          loaded++;
+          if (loaded === keys.length) {
+            imagesLoaded = true;
+            resolve();
+          }
+        };
+        img.onerror = function () {
+          loaded++;
+          if (loaded === keys.length) {
+            imagesLoaded = true;
+            resolve();
+          }
+        };
+        img.src = srcs[key];
+      });
+    });
+  }
 
   function cacheDOM() {
     DOM.heroSection = document.getElementById('heroSection');
@@ -60,20 +93,15 @@
 
   function init() {
     cacheDOM();
-    buildScene();
-    bindEvents();
-    updateCost();
-    initCostUI();
-    animateHero();
-    requestAnimationFrame(loop);
-  }
-
-  function buildScene() {
-    state.scene = {
-      background: FractalCel.buildBackground(SCENE_W, SCENE_H),
-      character: FractalCel.buildCharacterSprite(),
-      foreground: FractalCel.buildForeground(SCENE_W, SCENE_H)
-    };
+    DOM.sceneCanvas.width = SCENE_W;
+    DOM.sceneCanvas.height = SCENE_H;
+    loadImages().then(function () {
+      bindEvents();
+      updateCost();
+      initCostUI();
+      animateHero();
+      requestAnimationFrame(loop);
+    });
   }
 
   function loop() {
@@ -85,33 +113,67 @@
   }
 
   function renderFrame() {
-    var scene = state.scene;
-    var pos = FractalCel.characterPositionAt(
-      state.frame, LOOP_FRAMES, SCENE_W, SCENE_H,
-      scene.character.width, scene.character.height
-    );
+    if (!imagesLoaded) return;
 
-    var bg = state.layers.background ? scene.background : null;
-    if (state.layers.background && state.mode === 'full') {
-      var flicker = Math.round((Math.random() * 14) - 7);
-      bg = FractalCel.applyFlicker(scene.background, flicker);
+    var canvas = DOM.sceneCanvas;
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, SCENE_W, SCENE_H);
+
+    // Background layer
+    if (state.layers.background && images.background) {
+      if (state.mode === 'full') {
+        // Full redraw mode: simulate flicker by slightly shifting brightness
+        var flicker = (Math.random() * 0.06) - 0.03;
+        ctx.save();
+        ctx.filter = 'brightness(' + (1 + flicker) + ')';
+        ctx.drawImage(images.background, 0, 0, SCENE_W, SCENE_H);
+        ctx.restore();
+      } else {
+        ctx.drawImage(images.background, 0, 0, SCENE_W, SCENE_H);
+      }
     }
-    var ch = state.layers.character ? scene.character : null;
-    var fg = state.layers.foreground ? scene.foreground : null;
 
-    var out = FractalCel.composite(SCENE_W, SCENE_H, bg, ch, fg, pos.x, pos.y);
-    putPixels(out);
+    // Character layer (animated position)
+    if (state.layers.character && images.character) {
+      var charW = 160;
+      var charH = 160;
+      var pos = getCharacterPosition(state.frame);
+
+      if (state.mode === 'full') {
+        var cf = (Math.random() * 0.04) - 0.02;
+        ctx.save();
+        ctx.filter = 'brightness(' + (1 + cf) + ')';
+        ctx.drawImage(images.character, pos.x, pos.y, charW, charH);
+        ctx.restore();
+      } else {
+        ctx.drawImage(images.character, pos.x, pos.y, charW, charH);
+      }
+    }
+
+    // Foreground layer
+    if (state.layers.foreground && images.foreground) {
+      if (state.mode === 'full') {
+        var ff = (Math.random() * 0.06) - 0.03;
+        ctx.save();
+        ctx.filter = 'brightness(' + (1 + ff) + ')';
+        ctx.drawImage(images.foreground, 0, 0, SCENE_W, SCENE_H);
+        ctx.restore();
+      } else {
+        ctx.drawImage(images.foreground, 0, 0, SCENE_W, SCENE_H);
+      }
+    }
+
     updateRedrawBadge();
   }
 
-  function putPixels(buf) {
-    var canvas = DOM.sceneCanvas;
-    canvas.width = SCENE_W;
-    canvas.height = SCENE_H;
-    var ctx = canvas.getContext('2d');
-    var imageData = ctx.createImageData(SCENE_W, SCENE_H);
-    imageData.data.set(buf);
-    ctx.putImageData(imageData, 0, 0);
+  function getCharacterPosition(frame) {
+    var t = LOOP_FRAMES > 1 ? frame / (LOOP_FRAMES - 1) : 0;
+    // Move from left to right across the scene
+    var x = Math.round(t * (SCENE_W - 180) + 10);
+    // Gentle bounce
+    var bounce = Math.abs(Math.sin(frame * 0.12)) * 30;
+    var y = Math.round(SCENE_H * 0.55 - bounce);
+    return { x: x, y: y };
   }
 
   function updateRedrawBadge() {
@@ -122,14 +184,14 @@
 
     var redrawn;
     if (state.mode === 'full') {
-      redrawn = total; // 整帧重画：所有显示的图层都要重画
+      redrawn = total;
     } else {
-      redrawn = state.layers.character ? 1 : 0; // 赛璐珞：只有角色在动
+      redrawn = state.layers.character ? 1 : 0;
     }
 
     DOM.redrawBadge.textContent = state.mode === 'full'
-      ? '整帧重画：本帧重画 ' + redrawn + ' 层'
-      : '赛璐珞：本帧只重画 ' + redrawn + ' 层（其余复用）';
+      ? '\u6574\u5e27\u91cd\u753b\uff1a\u672c\u5e27\u91cd\u753b ' + redrawn + ' \u5c42'
+      : '\u8d5b\u7490\u73de\uff1a\u672c\u5e27\u53ea\u91cd\u753b ' + redrawn + ' \u5c42\uff08\u5176\u4f59\u590d\u7528\uff09';
   }
 
   function bindEvents() {
@@ -147,14 +209,14 @@
     DOM.playBtn.addEventListener('click', function () {
       state.playing = !state.playing;
       DOM.playBtn.innerHTML = state.playing
-        ? '<i class="ti ti-player-pause"></i> 暂停'
-        : '<i class="ti ti-player-play"></i> 播放';
+        ? '<i class="ti ti-player-pause"></i> \u6682\u505c'
+        : '<i class="ti ti-player-play"></i> \u64ad\u653e';
     });
 
     DOM.resetBtn.addEventListener('click', function () {
       state.frame = 0;
       state.playing = true;
-      DOM.playBtn.innerHTML = '<i class="ti ti-player-pause"></i> 暂停';
+      DOM.playBtn.innerHTML = '<i class="ti ti-player-pause"></i> \u6682\u505c';
     });
 
     DOM.speedSlider.addEventListener('input', function () {
@@ -175,8 +237,8 @@
         state.mode = btn.getAttribute('data-mode');
         DOM.modeBtns.forEach(function (b) { b.classList.toggle('active', b === btn); });
         DOM.modeHint.textContent = state.mode === 'cel'
-          ? '赛璐珞：背景/前景只画一次，本帧只重画角色。'
-          : '整帧重画：每一帧连背景都要重新画，背景会闪烁。';
+          ? '\u8d5b\u7490\u73de\uff1a\u80cc\u666f/\u524d\u666f\u53ea\u753b\u4e00\u6b21\uff0c\u672c\u5e27\u53ea\u91cd\u753b\u89d2\u8272\u3002'
+          : '\u6574\u5e27\u91cd\u753b\uff1a\u6bcf\u4e00\u5e27\u8fde\u80cc\u666f\u90fd\u8981\u91cd\u65b0\u753b\uff0c\u80cc\u666f\u4f1a\u95ea\u70c1\u3002';
       });
     });
 
@@ -192,12 +254,12 @@
     });
     DOM.movSlider.addEventListener('input', function () {
       state.cost.movingLayers = parseInt(DOM.movSlider.value);
-      DOM.movVal.textContent = state.cost.movingLayers + ' 层';
+      DOM.movVal.textContent = state.cost.movingLayers + ' \u5c42';
       updateCost();
     });
     DOM.staticSlider.addEventListener('input', function () {
       state.cost.staticLayers = parseInt(DOM.staticSlider.value);
-      DOM.staticVal.textContent = state.cost.staticLayers + ' 层';
+      DOM.staticVal.textContent = state.cost.staticLayers + ' \u5c42';
       updateCost();
     });
 
@@ -226,15 +288,15 @@
     DOM.fpsSlider.value = state.cost.fps;
     DOM.fpsVal.textContent = state.cost.fps + ' fps';
     DOM.movSlider.value = state.cost.movingLayers;
-    DOM.movVal.textContent = state.cost.movingLayers + ' 层';
+    DOM.movVal.textContent = state.cost.movingLayers + ' \u5c42';
     DOM.staticSlider.value = state.cost.staticLayers;
-    DOM.staticVal.textContent = state.cost.staticLayers + ' 层';
+    DOM.staticVal.textContent = state.cost.staticLayers + ' \u5c42';
   }
 
   function formatDuration(sec) {
-    if (sec >= 3600) return Math.round(sec / 60) + ' 分钟';
-    if (sec >= 60) return (sec / 60).toFixed(1) + ' 分钟';
-    return sec + ' 秒';
+    if (sec >= 3600) return Math.round(sec / 60) + ' \u5206\u949f';
+    if (sec >= 60) return (sec / 60).toFixed(1) + ' \u5206\u949f';
+    return sec + ' \u79d2';
   }
 
   function initCostUI() {
@@ -247,9 +309,9 @@
       frames, state.cost.movingLayers, state.cost.staticLayers
     );
 
-    DOM.statFrames.textContent = formatNumber(info.frames) + ' 帧';
-    DOM.statCel.textContent = formatNumber(info.celSheets) + ' 张';
-    DOM.statFull.textContent = formatNumber(info.fullRedrawSheets) + ' 张';
+    DOM.statFrames.textContent = formatNumber(info.frames) + ' \u5e27';
+    DOM.statCel.textContent = formatNumber(info.celSheets) + ' \u5f20';
+    DOM.statFull.textContent = formatNumber(info.fullRedrawSheets) + ' \u5f20';
     DOM.statRatio.textContent = info.savingsRatio.toFixed(1) + '\u00D7';
 
     var max = Math.max(info.fullRedrawSheets, 1);

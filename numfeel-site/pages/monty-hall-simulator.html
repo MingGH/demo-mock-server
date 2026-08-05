@@ -475,6 +475,8 @@
 </div>
 
 <script>
+// 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
 // 游戏状态
 let gameState = {
   carPosition: 0,
@@ -659,17 +661,46 @@ function runSimulation() {
     `不换胜率: <span class="highlight">${stayRate}%</span>`;
 }
 
-// ── 行为埋点（NFTrack，见 components/track.js）──
-// 事件：session_start / door_pick / decision / run_sim / session_end
+// ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+// 事件清单：
+// - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+// - door_pick:     首轮选门 {door}，回答"开场选门分布是否均匀"
+// - decision:      换门 vs 不换 {switch, won}，回答"玩家是否倾向换门、换门胜率"
+// - run_sim:       批量模拟 {trials, switchWinPct}，回答"批量验证的规模与结论"
+// - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+let trackSessionActive = false;
+
+/** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
 function nfTrack(name, props, opts) {
   try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
 }
-(function () {
-  try { if (window.NFTrack) window.NFTrack.trackOnce('session_start', {}); } catch (e) {}
-  window.addEventListener('pagehide', function () {
-    nfTrack('session_end', { reason: 'leave' }, { force: true });
+
+function trackSessionStart() {
+  if (trackSessionActive) return;
+  trackSessionActive = true;
+  nfTrack('session_start', {});
+}
+
+function trackSessionEnd(reason) {
+  if (!trackSessionActive) return;
+  trackSessionActive = false;
+  nfTrack('session_end', { reason: reason }, { force: true });
+}
+
+function trackSessionHidden() {
+  if (!trackSessionActive) return;
+  nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+}
+
+function registerTrackLeaveHandler() {
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') trackSessionHidden();
   });
-})();
+  window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+}
+
+trackSessionStart();
+registerTrackLeaveHandler();
 
 // 初始化游戏
 initGame();

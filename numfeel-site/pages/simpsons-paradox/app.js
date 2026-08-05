@@ -7,6 +7,45 @@
   var phases = ['phase-intro', 'phase-reveal', 'phase-why', 'phase-monte-carlo'];
   var mcChartInstance = null;
 
+  // ── 行为埋点（通用埋点 SDK，见 components/track.js）──
+  // 事件清单：
+  // - session_start: 首次进入页面初始化（trackOnce），回答"有多少独立访问"
+  // - phase_nav:     进入哪个步骤 {phase}，回答"三步讲解的流失率/到达率"
+  // - run_mc:        蒙特卡洛模拟 {trials}，回答"多少人会跑模拟验证"
+  // - session_end:   pagehide 离开时的收尾（force:true，镜像到 umami），回答"真实离开频次"
+  // 只镜像低频收尾事件 session_end 到 umami；高频事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+  var trackSessionActive = false;
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden' }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
+
   // ── 阶段切换 ──
   window.goToPhase = function (id) {
     phases.forEach(function (p) {
@@ -22,6 +61,7 @@
     if (id === 'phase-intro') renderIntro();
     if (id === 'phase-reveal') renderReveal();
     if (id === 'phase-why') renderWhy();
+    nfTrack('phase_nav', { phase: id });
   };
 
   // ── Step 0: 引入 ──
@@ -192,6 +232,7 @@
     btn.innerHTML = '<i class="ti ti-loader-2"></i> 模拟中...';
 
     var trials = parseInt(trialSlider.value) || 1000;
+    nfTrack('run_mc', { trials: trials });
 
     setTimeout(function () {
       var result = monteCarloParadox(trials, 6);
@@ -266,6 +307,8 @@
   }
 
   // ── 初始化 ──
+  trackSessionStart();
+  registerTrackLeaveHandler();
   renderIntro();
 
 })();

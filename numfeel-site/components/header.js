@@ -88,6 +88,10 @@
     ensureScript('data-track-script', {
       src: prefix + 'components/track.js'
     });
+    // 知乎配套文章反链：读取 data/zhihu-links.json，有配置就在页面顶部展示反链卡片，无则静默不显示。
+    ensureScript('data-zhihu-link-script', {
+      src: prefix + 'components/zhihu-link.js'
+    });
     // 广告脚本改用 async 加载，且推迟到 window load 之后再注入，避免与首屏关键资源抢带宽、阻塞渲染。
     scheduleAdsScript();
     ensureScript('data-iconify-script', {

@@ -143,6 +143,33 @@ NFTrack.trackOnce('session_start', { mode: 'standard' });          // 整个会�
   切后台**不要**当作会话结束（否则回来再按会重开一局、清掉峰值/里程碑）。真正离页用
   `pagehide` 兜底。这是所有 demo 的通用坑，新 demo 的收尾事件一律用 `pagehide` 发。
 
+## 如何给 demo 挂知乎配套文章反链
+
+从 SEO / 知乎流量进 demo 页的访客，需要能一键跳回对应的知乎深度文，形成
+「demo 体验 → 知乎长文 → 更多 demo」的流量飞轮。机制是**配置驱动 + 全局注入**，
+**不需要改动任何 demo 页面**：
+
+- `components/header.js` 已全局注入 `components/zhihu-link.js`，所有页面自动具备该能力。
+- 只需编辑 `data/zhihu-links.json`，以 **demo slug** 为 key，值为单篇对象或对象数组（一对多）：
+
+  ```json
+  {
+    "benfords-law": { "url": "https://zhuanlan.zhihu.com/p/xxx", "title": "本福特定律：数字也会说谎" },
+    "monty-hall-simulator": [
+      { "url": "https://zhuanlan.zhihu.com/p/yyy", "title": "三门问题解开篇" },
+      { "url": "https://zhuanlan.zhihu.com/p/zzz" }
+    ]
+  }
+  ```
+
+  数组会按顺序渲染多张反链卡片（都能点开不同的知乎文章）。
+
+- slug 推导规则与 NFTrack 一致：`/pages/benfords-law.html` → `benfords-law`，
+  `/pages/sample-inference/` → `sample-inference`。
+- **有配置就展示**页面顶部反链卡片；**无配置 / 加载失败就静默不渲染**，绝不影响页面。
+- key 以 `_` 开头（如 `_sample`）视为说明条目，不会渲染。
+- 反链卡片渲染失败会被 try/catch 兜底，不影响 demo 主体功能。
+
 ## Git 提交规范
 
 - 使用 **Conventional Commits**：`feat: 新增xxx演示页面` / `fix: 修复xxx` / `chore: 更新首页卡片数据`。`docs:` 前缀仅用于项目文档（README 等）。

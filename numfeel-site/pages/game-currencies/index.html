@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="为什么游戏要设置多种货币？亲手把单一货币的经济调崩，再给它加上钻石、限定代币，实时看留存、通胀、氪金占比三条曲线如何被救活。">
+  <title>为什么游戏要设多种货币？亲手调崩它 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="currency-rack">
+      <div class="rack-slot"><img src="images/currency-gold.png" alt="金币"><span class="rack-name">金币</span></div>
+      <div class="rack-slot"><img src="images/currency-diamond.png" alt="钻石"><span class="rack-name">钻石</span></div>
+      <div class="rack-slot"><img src="images/currency-arena.png" alt="竞技场代币"><span class="rack-name">竞技场代币</span></div>
+    </div>
+    <h1><i class="ti ti-coins"></i> 为什么游戏要设多种货币？</h1>
+    <p>先别读原理。先亲手把「单一货币」的经济调崩，再给它加上钻石、加个限定代币，看它是怎么被救活的。</p>
+  </div>
+
+  <!-- ── 第一关：亲手调崩单一货币 ── -->
+  <div class="section" id="breakSection">
+    <h2><i class="ti ti-bomb"></i> 第一关：把单一货币经济调崩</h2>
+    <p class="section-desc">只有一种「金币」，全靠肝，玩家无限刷。拖一下「刷怪掉钱」，看看会发生什么。</p>
+
+    <div class="control-group">
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-sword"></i> 刷一个怪掉多少钱</span>
+        <input type="range" id="sliderGrind" min="1" max="20" step="1" value="5">
+        <span class="control-val" id="valGrind">5</span>
+      </div>
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-gift"></i> 一件稀有装备定价</span>
+        <input type="range" id="sliderPrice" min="100" max="3000" step="50" value="800">
+        <span class="control-val" id="valPrice">800</span>
+      </div>
+    </div>
+
+    <div class="gauge-wrap">
+      <div class="gauge" id="singleGauge">
+        <div class="gauge-ring" id="singleGaugeRing"></div>
+        <div class="gauge-center">
+          <div class="gauge-num" id="singleHealth">—</div>
+          <div class="gauge-label">经济健康分</div>
+        </div>
+      </div>
+      <div class="gauge-side">
+        <div class="gauge-verdict" id="singleVerdict">—</div>
+        <p class="gauge-hint" id="singleHint">拖上面的滑块，看看多少分</p>
+      </div>
+    </div>
+
+    <div class="insight-box red" id="singleBoom" style="display:none;">
+      <h3><i class="ti ti-alert-triangle"></i> 崩了！</h3>
+      <p id="singleBoomText"></p>
+    </div>
+
+    <div style="text-align:center;margin-top:22px;">
+      <button class="btn btn-primary" onclick="toSecond()">
+        <i class="ti ti-arrow-right"></i> 加一种货币，救活它
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 第二关：对比模拟器 ── -->
+  <div class="section" id="compareSection" style="display:none;">
+    <h2><i class="ti ti-adjustments-horizontal"></i> 第二关：不同货币设计对比</h2>
+    <p class="section-desc">切换预设，或自己调节货币数量与参数，看三条曲线和经济健康分怎么变。</p>
+
+    <!-- 预设场景 -->
+    <div class="preset-row">
+      <span class="preset-label">快速切换：</span>
+      <button class="preset-btn active" id="presetSingle" onclick="applyPreset('single')"><img src="images/currency-gold.png" class="preset-icon" alt="">1 种货币（崩）</button>
+      <button class="preset-btn" id="presetTwo" onclick="applyPreset('two')"><img src="images/currency-gold.png" class="preset-icon" alt=""><img src="images/currency-diamond.png" class="preset-icon" alt="">2 种：金币+钻石</button>
+      <button class="preset-btn" id="presetThree" onclick="applyPreset('three')"><img src="images/currency-gold.png" class="preset-icon" alt=""><img src="images/currency-diamond.png" class="preset-icon" alt=""><img src="images/currency-arena.png" class="preset-icon" alt="">3 种：+竞技场代币</button>
+    </div>
+
+    <div class="control-group">
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-stack-2"></i> 货币种类</span>
+        <input type="range" id="sliderCount" min="1" max="3" step="1" value="1">
+        <span class="control-val" id="valCount">1</span>
+      </div>
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-sword"></i> 软货币产出（肝）</span>
+        <input type="range" id="sliderGrind2" min="1" max="20" step="1" value="5">
+        <span class="control-val" id="valGrind2">5</span>
+      </div>
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-gift"></i> 硬货币产出（氪）</span>
+        <input type="range" id="sliderPay" min="1" max="10" step="0.5" value="4">
+        <span class="control-val" id="valPay">4</span>
+      </div>
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-users"></i> 氪金玩家占比</span>
+        <input type="range" id="sliderPayShare" min="5" max="60" step="1" value="30">
+        <span class="control-val" id="valPayShare">30%</span>
+      </div>
+      <div class="control-row">
+        <span class="control-label"><i class="ti ti-gift"></i> 稀有装备定价</span>
+        <input type="range" id="sliderPrice2" min="100" max="3000" step="50" value="800">
+        <span class="control-val" id="valPrice2">800</span>
+      </div>
+    </div>
+
+    <!-- 健康分 + 三分项 -->
+    <div class="gauge-layout">
+      <div class="gauge">
+        <div class="gauge-ring" id="healthRing"></div>
+        <div class="gauge-center">
+          <div class="gauge-num" id="healthNum">—</div>
+          <div class="gauge-label">经济健康分</div>
+        </div>
+      </div>
+      <div class="subscores">
+        <div class="subscore">
+          <span class="subscore-label">留存</span>
+          <div class="subscore-bar"><div class="subscore-fill gold" id="barRetain"></div></div>
+          <span class="subscore-val" id="valRetain">—</span>
+        </div>
+        <div class="subscore">
+          <span class="subscore-label">通胀控制</span>
+          <div class="subscore-bar"><div class="subscore-fill green" id="barInflation"></div></div>
+          <span class="subscore-val" id="valInflation">—</span>
+        </div>
+        <div class="subscore">
+          <span class="subscore-label">氪金健康度</span>
+          <div class="subscore-bar"><div class="subscore-fill blue" id="barMono"></div></div>
+          <span class="subscore-val" id="valMono">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gauge-verdict big" id="verdictLive">—</div>
+
+    <!-- 图表 -->
+    <div class="chart-grid">
+      <div class="chart-wrap">
+        <h3><i class="ti ti-chart-line"></i> 通胀指数（货币贬值）</h3>
+        <canvas id="inflationChart"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <h3><i class="ti ti-users-group"></i> 留存率（长期目标感）</h3>
+        <canvas id="retentionChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <h3><i class="ti ti-coin"></i> 人均持有量（软货币无限增发）</h3>
+      <canvas id="supplyChart"></canvas>
+    </div>
+
+    <!-- 体检报告 -->
+    <div class="report-card" id="reportCard">
+      <h3><i class="ti ti-clipboard-check"></i> 当前经济体检报告</h3>
+      <ul id="reportList"></ul>
+    </div>
+  </div>
+
+  <!-- ── 原理 ── -->
+  <div class="section" id="theorySection" style="display:none;">
+    <h2><i class="ti ti-blocks"></i> 为什么游戏要设多种货币</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>隔离「氪金」和「肝」</h4>
+        <p>软货币（金币）靠肝、可无限获得；硬货币（钻石）靠氪、稀缺保值。分开后，氪金玩家不会用海量金币直接买空一切，免费玩家的「肝」依旧有意义。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>控制通胀节奏</h4>
+        <p>单一货币会无限增发、越存越不值钱（你刚才亲手调崩了它）。多种货币让每个阶段都有「不够花」的那一种，玩家始终有目标。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>用货币「锁住」玩法</h4>
+        <p>竞技场代币、工会贡献只在特定玩法产出。想要它，就得去玩那个模式，防止玩家只玩最划算的部分。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">04</div>
+        <h4>沉没成本与付费转化</h4>
+        <p>硬货币稀缺，玩家攒很久、舍不得浪费，更愿意小额充值补差额（「差一点就能换到了」）。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">05</div>
+        <h4>心理上的「花钱不心疼」</h4>
+        <p>金币像零钱、钻石像大钞。用钻石买顶级装备时，玩家不会直观换算成人民币，消费决策更爽快。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 一句话结论</h3>
+      <p>多种货币，本质是把「时间、金钱、行为」拆成几本互不干扰的账：一本防通胀、一本做保值、一本引导玩法。少了任何一本，经济都会失衡。</p>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin:26px 0;">
+    <button class="btn btn-primary" id="btnTheory" onclick="toTheory()" style="display:none;">
+      <i class="ti ti-blocks"></i> 看原理总结
+    </button>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

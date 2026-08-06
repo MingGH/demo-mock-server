@@ -215,6 +215,9 @@ function createPage(opts) {
   // setTimeout 换成可排空的队列，让异步编码/解码在测试里跑完
   var timerQueue = [];
   var loadHandlers = [];
+  var pagehideHandlers = [];
+  var trackedEvents = [];
+  var oncedEvents = {};
 
   var sandbox = {
     document: documentStub,
@@ -240,8 +243,20 @@ function createPage(opts) {
     },
     addEventListener: function (type, fn) {
       if (type === 'load') loadHandlers.push(fn);
+      if (type === 'pagehide') pagehideHandlers.push(fn);
     },
-    scrollTo: function () {}
+    scrollTo: function () {},
+    // 桩 NFTrack：只记录调用，验证埋点在正确的流程节点触发
+    NFTrack: {
+      track: function (name, props, opts) {
+        trackedEvents.push({ name: name, props: props || {}, opts: opts || {} });
+      },
+      trackOnce: function (name, props) {
+        if (oncedEvents[name]) return;
+        oncedEvents[name] = true;
+        trackedEvents.push({ name: name, props: props || {}, opts: { once: true } });
+      }
+    }
   };
 
   if (opts.withGsap) {
@@ -279,7 +294,16 @@ function createPage(opts) {
     el: function (id) { return documentStub.getElementById(id); },
     clickPreset: function (name) { presetGrid.clickPreset(name); },
     fireLoad: function () { loadHandlers.forEach(function (fn) { fn(); }); },
+    firePagehide: function () { pagehideHandlers.forEach(function (fn) { fn(); }); },
     loadHandlerCount: function () { return loadHandlers.length; },
+    events: function () { return trackedEvents; },
+    eventNames: function () { return trackedEvents.map(function (e) { return e.name; }); },
+    findEvent: function (name) {
+      for (var i = 0; i < trackedEvents.length; i++) {
+        if (trackedEvents[i].name === name) return trackedEvents[i];
+      }
+      return null;
+    },
     drain: drain
   };
 }
@@ -431,7 +455,69 @@ async function main() {
   check(el('uploadZone').style.display === 'block', '上传区重新出现');
 
   // -------------------------------------------------------------------------
-  console.log('\n=== Smoke 8: GSAP CDN 拉不到时页面仍然可用（回归）===');
+  console.log('\n=== Smoke 8: 埋点在正确的流程节点触发 ===');
+  console.log('  事件序列：' + page.eventNames().join(' → '));
+
+  var names = page.eventNames();
+  check(names[0] === 'session_start', '首个事件是 session_start');
+  check(names.indexOf('image_select') > 0, '选图触发 image_select');
+  check(names.indexOf('encode') > names.indexOf('image_select'), 'encode 在 image_select 之后');
+  check(names.indexOf('decode_start') > names.indexOf('encode'), 'decode_start 在 encode 之后');
+  check(names.indexOf('decode') > names.indexOf('decode_start'), 'decode 在 decode_start 之后（可算完成率）');
+  check(names.indexOf('param_tuned') !== -1, '动过滑块，触发 param_tuned');
+  check(names.filter(function (n) { return n === 'param_tuned'; }).length === 1,
+    'param_tuned 整个会话只记一次');
+  check(names.indexOf('reset') !== -1, '换图触发 reset');
+
+  var sel = page.findEvent('image_select');
+  console.log('  image_select props: ' + JSON.stringify(sel.props));
+  check(sel.props.source === 'preset' && sel.props.preset === 'portrait',
+    'image_select 记录了图片来源与预设图名');
+
+  var enc = page.findEvent('encode');
+  console.log('  encode props: ' + JSON.stringify(enc.props));
+  check(enc.props.rangeSize === 8 && enc.props.stride === 4, 'encode 记录了实际参数');
+  check(enc.props.pool === 841 && enc.props.blocks === 256, 'encode 记录了域块池与块数');
+  check(typeof enc.props.ms === 'number' && enc.props.ms >= 0, 'encode 记录了耗时');
+  check(enc.props.collagePsnr > 0, 'encode 记录了拼贴 PSNR');
+
+  var dec = page.findEvent('decode');
+  console.log('  decode props: ' + JSON.stringify(dec.props));
+  check(dec.props.scale === 1 && dec.props.iterations === 16, 'decode 记录了倍率与迭代数');
+  check(dec.props.collagePsnr > 0 && dec.props.realPsnr > 0,
+    'decode 同时带两个 PSNR，落差可在单条记录内算出');
+  check(dec.props.collagePsnr >= dec.props.realPsnr,
+    '上报的拼贴 PSNR 不低于解码 PSNR（与页面展示一致）');
+
+  // props 只允许 number / boolean / 短字符串，且不得含用户输入
+  var badProps = [];
+  page.events().forEach(function (e) {
+    Object.keys(e.props).forEach(function (k) {
+      var t = typeof e.props[k];
+      if (t !== 'number' && t !== 'boolean' && !(t === 'string' && e.props[k].length <= 64)) {
+        badProps.push(e.name + '.' + k + ' (' + t + ')');
+      }
+    });
+    if (Object.keys(e.props).length > 20) badProps.push(e.name + ' 超过 20 个 key');
+  });
+  check(badProps.length === 0,
+    'props 全部符合 number/boolean/短字符串 约束' + (badProps.length ? '：' + badProps.join(', ') : ''));
+
+  // 2x 解码不应上报 realPsnr（没有同分辨率原图可比）
+  var decodes = page.events().filter(function (e) { return e.name === 'decode'; });
+  var dec2x = decodes.filter(function (e) { return e.props.scale === 2; })[0];
+  check(dec2x && typeof dec2x.props.realPsnr === 'undefined',
+    '2x 解码不上报 realPsnr，与页面「无参考」的口径一致');
+
+  console.log('\n=== Smoke 9: 离页收尾事件 ===');
+  page.firePagehide();
+  var endEvent = page.findEvent('session_end');
+  console.log('  session_end props: ' + JSON.stringify(endEvent && endEvent.props));
+  check(endEvent !== null, 'pagehide 触发 session_end');
+  check(endEvent.opts.force === true, 'session_end 带 force，绕过会话事件上限');
+  check(typeof endEvent.props.stage === 'string', 'session_end 带 stage，可定位流失点');
+
+  console.log('\n=== Smoke 10: GSAP CDN 拉不到时页面仍然可用（回归）===');
   // 步骤的 display 切换写在 gsapReady 回调里，动画库拿不到就会卡在第 1 步
   var offline = createPage({ withGsap: false });
   check(typeof offline.sandbox.gsap === 'undefined', '沙箱里没有 gsap，模拟 CDN 不可达');

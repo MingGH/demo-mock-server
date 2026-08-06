@@ -1,15 +1,55 @@
 (function () {
   'use strict';
 
+  // GSAP 只负责入场动画。但各步骤的 display 切换也写在 gsapReady 回调里，
+  // 所以一旦 CDN 拉不到（被墙/被拦/离线），Promise 永远不 resolve，
+  // 页面就会卡在第 1 步再也走不下去。这里做两件事：
+  // 1) 轮询设上限，不再无限期占用定时器
+  // 2) 超时后回退到一个空动画 shim，动画没了但功能照常
+  var GSAP_WAIT_MS = 2000;
+  var GSAP_POLL_MS = 50;
+  var gsapShim = {
+    fromTo: function (target, from, to) {
+      // 无动画时直接落到终态，避免元素停在 opacity:0
+      if (target && target.style) {
+        target.style.opacity = '1';
+        target.style.transform = 'none';
+      }
+      return null;
+    },
+    to: function (target) {
+      if (target && target.style) target.style.opacity = '1';
+      return null;
+    },
+    set: function (target, props) {
+      if (target && target.style && props && typeof props.opacity !== 'undefined') {
+        target.style.opacity = String(props.opacity);
+      }
+      return null;
+    }
+  };
+
   var gsapReady = typeof gsap !== 'undefined' ? Promise.resolve(gsap) : new Promise(function (resolve) {
+    var waited = 0;
     var check = function () {
-      if (typeof gsap !== 'undefined') resolve(gsap);
-      else setTimeout(check, 50);
+      if (typeof gsap !== 'undefined') return resolve(gsap);
+      waited += GSAP_POLL_MS;
+      if (waited >= GSAP_WAIT_MS) return resolve(gsapShim);
+      setTimeout(check, GSAP_POLL_MS);
     };
     check();
   });
 
-  var ENCODE_SIZE = 64;
+  var ENCODE_SIZE = 128;
+  // 只开放能整除 ENCODE_SIZE 的块大小，否则边缘会出现没有分形码负责的区域
+  var RANGE_SIZE_OPTIONS = [4, 8, 16];
+  var STRIDE_OPTIONS = [2, 4, 8];
+  var STRIDE_LABELS = ['高', '中', '低'];
+  // 迭代次数只在这里定义，按钮文字和进度标签都从它生成，避免文案和实际跑的轮数脱节
+  var DECODE_ITERATIONS = 16;
+  var ITERATION_DELAY = 300;
+  var COLLAGE_ARROW_COUNT = 40;
+
   var DOM = {};
   var state = {
     originalImage: null,
@@ -19,13 +59,39 @@
     fractalCode: null,
     encodeResult: null,
     decodedData: null,
+    decodedWidth: 0,
+    decodedHeight: 0,
+    decodedScale: 1,
     isEncoding: false,
     isDecoding: false
   };
 
+  function currentRangeSize() {
+    return RANGE_SIZE_OPTIONS[parseInt(DOM.rangeSizeSlider.value, 10)];
+  }
+
+  function currentStride() {
+    return STRIDE_OPTIONS[parseInt(DOM.strideSlider.value, 10)];
+  }
+
+  /**
+   * 两张同尺寸灰度图之间的 PSNR
+   */
+  function computePSNR(a, b) {
+    var mse = 0;
+    for (var i = 0; i < a.length; i++) {
+      var d = a[i] - b[i];
+      mse += d * d;
+    }
+    mse /= a.length;
+    return mse > 0 ? 10 * Math.log10(255 * 255 / mse) : Infinity;
+  }
+
+  function formatPSNR(value) {
+    return isFinite(value) ? value.toFixed(1) + ' dB' : '∞';
+  }
+
   function cacheDOM() {
-    DOM.heroSection = document.getElementById('heroSection');
-    DOM.heroBtn = document.getElementById('heroBtn');
     DOM.step1 = document.getElementById('step1');
     DOM.step2 = document.getElementById('step2');
     DOM.step3 = document.getElementById('step3');
@@ -33,6 +99,9 @@
     DOM.fileInput = document.getElementById('fileInput');
     DOM.useSampleBtn = document.getElementById('useSampleBtn');
     DOM.usePortraitBtn = document.getElementById('usePortraitBtn');
+    DOM.presetGrid = document.querySelector('.preset-grid');
+    DOM.aiPresets = document.querySelector('.ai-presets');
+    DOM.sampleRow = document.getElementById('sampleRow');
     DOM.encodeBtn = document.getElementById('encodeBtn');
     DOM.encodeProgress = document.getElementById('encodeProgress');
     DOM.encodeProgressFill = document.getElementById('encodeProgressFill');
@@ -53,6 +122,12 @@
     DOM.statRatio = document.getElementById('statRatio');
     DOM.statBlocks = document.getElementById('statBlocks');
     DOM.statPSNR = document.getElementById('statPSNR');
+    DOM.statRealPSNR = document.getElementById('statRealPSNR');
+    DOM.psnrNote = document.getElementById('psnrNote');
+    DOM.collagePreviewNote = document.getElementById('collagePreviewNote');
+    DOM.decodeBtnLabel = document.getElementById('decodeBtnLabel');
+    DOM.bitIndex = document.getElementById('bitIndex');
+    DOM.legendArrowCount = document.getElementById('legendArrowCount');
     DOM.rangeSizeSlider = document.getElementById('rangeSizeSlider');
     DOM.rangeSizeVal = document.getElementById('rangeSizeVal');
     DOM.strideSlider = document.getElementById('strideSlider');
@@ -64,8 +139,32 @@
 
   function init() {
     cacheDOM();
+    syncIterationLabels();
+    syncParamLabels();
     bindEvents();
-    animateHero();
+    revealStep1();
+  }
+
+  // 所有出现迭代次数的文案统一从 DECODE_ITERATIONS 生成
+  function syncIterationLabels() {
+    DOM.decodeBtnLabel.textContent = '解码（' + DECODE_ITERATIONS + ' 次迭代）';
+    DOM.decodeIterLabel.textContent = '迭代 0 / ' + DECODE_ITERATIONS;
+  }
+
+  function syncParamLabels() {
+    var rangeSize = currentRangeSize();
+    DOM.rangeSizeVal.textContent = rangeSize + '\u00D7' + rangeSize;
+    DOM.strideVal.textContent = STRIDE_LABELS[parseInt(DOM.strideSlider.value, 10)];
+    updateBitBudget(rangeSize, currentStride());
+  }
+
+  // 预告本组参数下每块要花多少 bit，让「压缩比」这个数字有据可查
+  function updateBitBudget(rangeSize, stride) {
+    var domainSize = rangeSize * 2;
+    var span = Math.floor((ENCODE_SIZE - domainSize) / stride) + 1;
+    var poolSize = span > 0 ? span * span : 0;
+    var budget = FractalCompression.estimateCompressedBytes(1, poolSize);
+    DOM.bitIndex.textContent = budget.indexBits;
   }
 
   function renderToCanvas(gray, w, h, canvas) {
@@ -76,17 +175,13 @@
     ctx.putImageData(imageData, 0, 0);
   }
 
-  function animateHero() {
-    gsapReady.then(function () {
-      gsap.fromTo(DOM.heroBtn, { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: 'back.out(1.7)' });
+  function revealStep1() {
+    gsapReady.then(function (gsap) {
+      gsap.fromTo(DOM.step1, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
     });
   }
 
   function bindEvents() {
-    DOM.heroBtn.addEventListener('click', function () {
-      transitionToStep1();
-    });
-
     DOM.uploadZone.addEventListener('click', function () {
       DOM.fileInput.click();
     });
@@ -113,14 +208,15 @@
       loadPortraitImage();
     });
 
-    DOM.rangeSizeSlider.addEventListener('input', function () {
-      var val = parseInt(DOM.rangeSizeSlider.value);
-      DOM.rangeSizeVal.textContent = val + '\u00D7' + val;
-    });
-    DOM.strideSlider.addEventListener('input', function () {
-      var val = ['高', '中', '低'][parseInt(DOM.strideSlider.value)];
-      DOM.strideVal.textContent = val;
-    });
+    if (DOM.presetGrid) {
+      DOM.presetGrid.addEventListener('click', function (e) {
+        var card = e.target.closest ? e.target.closest('.preset-card') : null;
+        if (card) loadPresetImage('images/' + card.getAttribute('data-preset') + '.jpg');
+      });
+    }
+
+    DOM.rangeSizeSlider.addEventListener('input', syncParamLabels);
+    DOM.strideSlider.addEventListener('input', syncParamLabels);
 
     DOM.encodeBtn.addEventListener('click', function () {
       startEncoding();
@@ -134,16 +230,6 @@
     });
     DOM.reencodeBtn.addEventListener('click', function () {
       resetToStep1();
-    });
-  }
-
-  function transitionToStep1() {
-    gsapReady.then(function (gsap) {
-      gsap.to(DOM.heroSection, { opacity: 0, y: -30, duration: 0.4, ease: 'power2.out', onComplete: function () {
-        DOM.heroSection.style.display = 'none';
-        DOM.step1.style.display = 'block';
-        gsap.fromTo(DOM.step1, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' });
-      }});
     });
   }
 
@@ -180,6 +266,10 @@
     processImageData(imageData);
   }
 
+  function loadPresetImage(src) {
+    loadImageToCanvas(src);
+  }
+
   function loadImageToCanvas(src) {
     var img = new Image();
     img.crossOrigin = 'anonymous';
@@ -203,11 +293,41 @@
     state.fractalCode = null;
     state.encodeResult = null;
     state.decodedData = null;
+    state.decodedWidth = 0;
+    state.decodedHeight = 0;
+    state.decodedScale = 1;
 
+    // 图片与它的变换固定在同一处展示，选图后这里先显示原图
     renderToCanvas(state.grayData, state.imgWidth, state.imgHeight, DOM.originalCanvas);
+    prepareDecodeArea();
 
-    DOM.step1.style.display = 'none';
+    DOM.uploadZone.style.display = 'none';
+    DOM.aiPresets.style.display = 'none';
+    DOM.sampleRow.style.display = 'none';
+    DOM.statsRow.style.display = 'none';
+    DOM.psnrNote.style.display = 'none';
+    DOM.collageSection.style.display = 'none';
+
     transitionToStep2();
+    transitionToStep3();
+  }
+
+  // 在解码区显示原图，并把解码画布置于等待状态（编码完成后才启用解码控制）
+  function prepareDecodeArea() {
+    DOM.decodeControls.style.display = 'none';
+    DOM.decodeProgress.style.display = 'none';
+    DOM.collagePreviewNote.style.display = 'none';
+    DOM.decodeLabel.textContent = '待编码';
+    var canvas = DOM.decodeCanvas;
+    canvas.width = state.imgWidth;
+    canvas.height = state.imgHeight;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#555';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('先点上一步的「开始编码」', canvas.width / 2, canvas.height / 2);
   }
 
   function startEncoding() {
@@ -219,17 +339,18 @@
     DOM.encodeProgressFill.style.width = '0%';
     DOM.encodeProgressText.textContent = '正在构建域块池...';
 
-    var rangeSize = parseInt(DOM.rangeSizeSlider.value);
-    var strideOptions = [2, 4, 8];
-    var stride = strideOptions[parseInt(DOM.strideSlider.value)];
+    var rangeSize = currentRangeSize();
+    var stride = currentStride();
     var domainSize = rangeSize * 2;
 
     var gray = state.grayData;
     var w = state.imgWidth;
     var h = state.imgHeight;
 
-    var cols = Math.floor(w / rangeSize);
-    var rows = Math.floor(h / rangeSize);
+    // 与 engine 用同一套网格推算，ceil 保证边缘也被覆盖
+    var grid = FractalCompression.gridSize(w, h, rangeSize);
+    var cols = grid.cols;
+    var rows = grid.rows;
     var totalBlocks = cols * rows;
 
     setTimeout(function () {
@@ -257,7 +378,7 @@
         if (currentBlock < totalBlocks) {
           setTimeout(processChunk, 0);
         } else {
-          finishEncoding(code, rangeSize, w, h);
+          finishEncoding(code, rangeSize, w, h, domainPool.length);
         }
       }
 
@@ -265,9 +386,11 @@
     }, 50);
   }
 
-  function finishEncoding(code, rangeSize, w, h) {
+  function finishEncoding(code, rangeSize, w, h, domainPoolSize) {
     var originalBytes = w * h;
-    var compressedBytes = code.length * 12;
+    // 按位记账：域块索引 ceil(log2(池大小)) bit + 变换 3 bit + 缩放 5 bit + 偏移 7 bit
+    var budget = FractalCompression.estimateCompressedBytes(code.length, domainPoolSize);
+    var compressedBytes = budget.totalBytes;
     var ratio = compressedBytes > 0 ? (originalBytes / compressedBytes) : 0;
     var totalMSE = 0;
     for (var i = 0; i < code.length; i++) {
@@ -284,6 +407,9 @@
         numBlocks: code.length,
         originalSize: originalBytes,
         compressedSize: compressedBytes,
+        bitsPerBlock: budget.bitsPerBlock,
+        indexBits: budget.indexBits,
+        domainPoolSize: domainPoolSize,
         compressionRatio: ratio.toFixed(1),
         psnr: psnr,
         imageWidth: w,
@@ -302,6 +428,9 @@
       transitionToStep3();
       showStats();
       showDecodeReady();
+      // 拼贴方框图只依赖分形码，编码完就能画，不用等解码
+      DOM.collageSection.style.display = 'block';
+      drawCollage();
     }, 300);
   }
 
@@ -311,26 +440,41 @@
     DOM.statCompSize.textContent = stats.compressedSize + ' B';
     DOM.statRatio.textContent = stats.compressionRatio + ':1';
     DOM.statBlocks.textContent = stats.numBlocks + ' 块';
-    DOM.statPSNR.textContent = stats.psnr.toFixed(1) + ' dB';
+    DOM.statPSNR.textContent = formatPSNR(stats.psnr);
+    // 解码 PSNR 要等真的迭代出结果才有值，编码阶段先留空，不用拼贴误差冒充
+    DOM.statRealPSNR.textContent = '待解码';
+    DOM.statRealPSNR.removeAttribute('title');
     DOM.statsRow.style.display = 'flex';
+    DOM.psnrNote.style.display = 'block';
+    DOM.bitIndex.textContent = stats.indexBits;
   }
 
   function showDecodeReady() {
     DOM.decodeControls.style.display = 'block';
-    DOM.decodeLabel.textContent = '等待解码';
+    DOM.decodeProgress.style.display = 'block';
     DOM.decodeBarFill.style.width = '0%';
-    DOM.decodeIterLabel.textContent = '迭代 0 / 12';
+    DOM.decodeIterLabel.textContent = '迭代 0 / ' + DECODE_ITERATIONS;
+    renderCollagePreview();
+  }
 
-    var canvas = DOM.decodeCanvas;
-    canvas.width = state.imgWidth;
-    canvas.height = state.imgHeight;
-    var ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#555';
-    ctx.font = '14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('点击「解码」看噪音变图片', canvas.width / 2, canvas.height / 2);
+  /**
+   * 编码的可见产物：拼贴图。
+   *
+   * 编码本身只产出一串数字，屏幕上什么都不会变，很容易让人以为按钮没反应。
+   * 但这串数字定义了一个变换 F，把它作用在原图上一次，得到的就是
+   * 「编码器认为这张图可以怎么拼出来」——即拼贴定理里的 F(x)。
+   * 它和原图的差距正好等于统计条里那个「拼贴 PSNR」，
+   * 所以这张图既是编码有结果的证据，也让两个 PSNR 指标变得可看可比。
+   */
+  function renderCollagePreview() {
+    var collage = FractalCompression.decodeOneIteration(
+      state.grayData, state.fractalCode,
+      state.imgWidth, state.imgHeight,
+      state.encodeResult.rangeSize
+    );
+    renderToCanvas(collage, state.imgWidth, state.imgHeight, DOM.decodeCanvas);
+    DOM.decodeLabel.textContent = '拼贴图（编码结果）';
+    DOM.collagePreviewNote.style.display = 'block';
   }
 
   function startDecoding(scaleFactor) {
@@ -346,10 +490,12 @@
 
     var scaledCode;
     if (scaleFactor > 1) {
+      // rx/ry 是块索引（0~cols-1），2x 时图像与 rangeSize 同时翻倍、网格数量不变，
+      // 因此 rx/ry 保持不变；只有域块像素坐标 dx/dy 需要按比例放大。
       scaledCode = code.map(function (entry) {
         return {
-          rx: entry.rx * scaleFactor,
-          ry: entry.ry * scaleFactor,
+          rx: entry.rx,
+          ry: entry.ry,
           dx: entry.dx * scaleFactor,
           dy: entry.dy * scaleFactor,
           transform: entry.transform,
@@ -362,26 +508,30 @@
     }
 
     var scaledRangeSize = rangeSize * scaleFactor;
-    var totalIterations = 12;
+    var totalIterations = DECODE_ITERATIONS;
     var currentIter = 0;
 
-    var current = new Float32Array(outW * outH);
-    for (var i = 0; i < current.length; i++) {
-      current[i] = Math.random() * 255;
-    }
+    // 从纯随机噪音起步：PIFS 的不动点与初值无关，这是本页最想让人亲眼看到的一点
+    var current = FractalCompression.createNoiseImage(outW, outH);
+    DOM.collagePreviewNote.style.display = 'none';
 
     renderToCanvas(current, outW, outH, DOM.decodeCanvas);
-    DOM.decodeLabel.textContent = scaleFactor > 1 ? '2x 分辨率解码中...' : '解码中...';
+    DOM.decodeLabel.textContent = scaleFactor > 1 ? '2x 分辨率解码中（第 0 步：随机噪音）' : '解码中（第 0 步：随机噪音）';
+    DOM.decodeBarFill.style.width = '0%';
+    DOM.decodeIterLabel.textContent = '迭代 0 / ' + totalIterations;
 
     function runIteration() {
       if (currentIter >= totalIterations) {
         state.decodedData = current;
+        state.decodedWidth = outW;
+        state.decodedHeight = outH;
+        state.decodedScale = scaleFactor;
         state.isDecoding = false;
         DOM.decodeBtn.disabled = false;
         DOM.decodeHighResBtn.disabled = false;
         DOM.decodeLabel.textContent = scaleFactor > 1 ? '2x 分辨率解码结果' : '解码结果';
-        DOM.decodeIterLabel.textContent = '迭代完成!';
-        DOM.collageSection.style.display = 'block';
+        DOM.decodeIterLabel.textContent = '迭代完成，已收敛到不动点';
+        showRealPSNR(scaleFactor, current);
         drawCollage();
         return;
       }
@@ -398,17 +548,32 @@
         gsap.fromTo(DOM.decodeCanvas, { scale: 1.005 }, { scale: 1, duration: 0.15, ease: 'power1.out' });
       });
 
-      setTimeout(runIteration, 350);
+      setTimeout(runIteration, ITERATION_DELAY);
     }
 
     setTimeout(runIteration, 100);
   }
 
+  /**
+   * 真实解码 PSNR：拿收敛结果和原图直接比，而不是复用编码时的拼贴误差。
+   * 2x 输出没有同分辨率的原图可比，这种情况不编造数字。
+   */
+  function showRealPSNR(scaleFactor, decoded) {
+    if (scaleFactor !== 1) {
+      DOM.statRealPSNR.textContent = '2x 无参考';
+      DOM.statRealPSNR.setAttribute('title', '2x 解码输出没有对应分辨率的原图，无法计算 PSNR。切回 1x 解码可以看到真实值。');
+      return;
+    }
+    DOM.statRealPSNR.removeAttribute('title');
+    DOM.statRealPSNR.textContent = formatPSNR(computePSNR(state.grayData, decoded));
+  }
+
   function drawCollage() {
     if (!state.fractalCode || !state.encodeResult) return;
     var canvas = DOM.collageCanvas;
-    var w = state.imgWidth;
-    var h = state.imgHeight;
+    // 用实际解码输出尺寸（2x 时为原图两倍），保证拼贴图不会截取左上 1/4
+    var w = state.decodedWidth || state.imgWidth;
+    var h = state.decodedHeight || state.imgHeight;
     canvas.width = w;
     canvas.height = h;
     var ctx = canvas.getContext('2d');
@@ -421,47 +586,65 @@
 
     var rangeSize = state.encodeResult.rangeSize;
     var code = state.fractalCode;
-    var hues = [];
-    for (var i = 0; i < code.length; i++) {
-      hues.push((i / code.length) * 360);
+    // 网格/箭头坐标基于原图（128）绘制，画布可能已是 2x，按比例放大
+    var scale = state.imgWidth > 0 ? w / state.imgWidth : 1;
+
+    // 用块 RMSE 的分位数做归一化，避免个别极差的块把整张图压成一个颜色
+    var rmseList = code.map(function (e) { return Math.sqrt(e.mse || 0); }).sort(function (a, b) { return a - b; });
+    var lo = rmseList[Math.floor(rmseList.length * 0.1)] || 0;
+    var hi = rmseList[Math.floor(rmseList.length * 0.9)] || (lo + 1);
+    var span = hi > lo ? hi - lo : 1;
+
+    // 绿(120°)=匹配好 → 金(50°) → 红(0°)=匹配差
+    function qualityColor(mse, alpha) {
+      var t = Math.max(0, Math.min(1, (Math.sqrt(mse || 0) - lo) / span));
+      var hue = 120 - t * 120;
+      return 'hsla(' + hue.toFixed(0) + ', 70%, 55%, ' + alpha + ')';
     }
 
-    ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
     ctx.lineWidth = 1;
     for (var j = 0; j < code.length; j++) {
       var entry = code[j];
-      var px = entry.rx * rangeSize;
-      var py = entry.ry * rangeSize;
-      ctx.strokeRect(px, py, rangeSize, rangeSize);
+      var px = entry.rx * rangeSize * scale;
+      var py = entry.ry * rangeSize * scale;
+      ctx.strokeStyle = qualityColor(entry.mse, 0.85);
+      ctx.strokeRect(px, py, rangeSize * scale, rangeSize * scale);
     }
 
-    var arrowColors = ['#ff6b6b', '#81c784', '#90caf9', '#ce93d8', '#ffd700', '#ff8a65', '#4dd0e1', '#aed581'];
+    // 均匀抽样而不是取前 N 个，否则箭头全挤在图像顶部几行
+    var arrowCount = Math.min(code.length, COLLAGE_ARROW_COUNT);
+    var step = code.length / arrowCount;
     ctx.lineWidth = 1.5;
-    for (var k = 0; k < Math.min(code.length, 40); k++) {
-      var e = code[k];
-      var sx = e.rx * rangeSize + rangeSize / 2;
-      var sy = e.ry * rangeSize + rangeSize / 2;
-      var ex = e.dx + rangeSize / 2;
-      var ey = e.dy + rangeSize / 2;
-      var color = arrowColors[k % arrowColors.length];
-      ctx.strokeStyle = color;
-      ctx.globalAlpha = 0.4;
+    for (var k = 0; k < arrowCount; k++) {
+      var e = code[Math.floor(k * step)];
+      var sx = (e.rx * rangeSize + rangeSize / 2) * scale;
+      var sy = (e.ry * rangeSize + rangeSize / 2) * scale;
+      var ex = (e.dx + rangeSize) * scale;
+      var ey = (e.dy + rangeSize) * scale;
+      ctx.strokeStyle = qualityColor(e.mse, 0.55);
       ctx.beginPath();
       ctx.moveTo(sx, sy);
       ctx.lineTo(ex, ey);
       ctx.stroke();
-      ctx.globalAlpha = 1;
+      // 箭头末端画个小圆点标出域块中心，方向一目了然
+      ctx.fillStyle = qualityColor(e.mse, 0.9);
+      ctx.beginPath();
+      ctx.arc(ex, ey, 2, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    ctx.fillStyle = 'rgba(255,215,0,0.8)';
-    ctx.font = '11px sans-serif';
-    ctx.fillText('每个区块 -> 借用的域块位置（箭头）', 6, 14);
+    if (DOM.legendArrowCount) {
+      DOM.legendArrowCount.textContent = arrowCount + ' / ' + code.length;
+    }
   }
 
   function resetToStep1() {
     state.fractalCode = null;
     state.encodeResult = null;
     state.decodedData = null;
+    state.decodedWidth = 0;
+    state.decodedHeight = 0;
+    state.decodedScale = 1;
     state.isEncoding = false;
     state.isDecoding = false;
 
@@ -470,9 +653,17 @@
     DOM.collageSection.style.display = 'none';
     DOM.encodeProgress.style.display = 'none';
     DOM.encodeBtn.disabled = false;
+    DOM.decodeBtn.disabled = false;
+    DOM.decodeHighResBtn.disabled = false;
     DOM.decodeControls.style.display = 'none';
     DOM.statsRow.style.display = 'none';
+    DOM.psnrNote.style.display = 'none';
+    DOM.collagePreviewNote.style.display = 'none';
+    syncIterationLabels();
     DOM.step1.style.display = 'block';
+    DOM.uploadZone.style.display = 'block';
+    DOM.aiPresets.style.display = 'block';
+    DOM.sampleRow.style.display = 'flex';
     DOM.encodeProgressFill.style.width = '0%';
     DOM.decodeBarFill.style.width = '0%';
 

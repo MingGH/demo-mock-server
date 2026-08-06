@@ -45,9 +45,6 @@ public class WealthButtonService {
     /** challenge 有效窗口：5 分钟。 */
     static final long CHALLENGE_WINDOW_MS = 5 * 60 * 1000L;
 
-    /** 紧凑历史最大长度，避免超长 payload。 */
-    private static final int MAX_ROUND_HISTORY_LENGTH = 2000;
-
     /** 允许的最长连胜数；达到该阈值视为作弊。 */
     static final int MAX_WIN_STREAK = 17;
 
@@ -270,9 +267,6 @@ public class WealthButtonService {
         }
         if (roundHistory == null || roundHistory.isEmpty()) {
             throw new IllegalArgumentException("roundHistory required");
-        }
-        if (roundHistory.length() > MAX_ROUND_HISTORY_LENGTH) {
-            throw new IllegalArgumentException("roundHistory too long");
         }
 
         double wealth = initialWealth;

@@ -63,8 +63,78 @@
     decodedHeight: 0,
     decodedScale: 1,
     isEncoding: false,
-    isDecoding: false
+    isDecoding: false,
+    imageSource: '',
+    imagePreset: '',
+    paramTuned: false,
+    encodeStartedAt: 0,
+    decodeStartedAt: 0
   };
+
+  // ── 埋点 ────────────────────────────────────────────────────────────────
+  // 事件设计（从「要回答什么问题」倒推，而非把能拿到的字段都塞进去）：
+  // - session_start:  打开页面，漏斗起点
+  // - image_select:   选好图 {source, preset}，回答「用户拿什么图来试」
+  //                   「四张预设图哪张最受欢迎」「多少人愿意上传自己的图」
+  // - param_tuned:    首次动参数滑块 {rangeSize, stride}（整个会话只记一次），
+  //                   回答「多少人肯动参数」「第一次动是往更好调还是往更快调」
+  // - encode:         编码完成 {rangeSize, stride, pool, blocks, ms, ratio, collagePsnr}，
+  //                   回答「真机编码耗时分布」（文章里的耗时只是我单机实测）
+  //                   「用户实际落在哪个参数组合上」
+  // - decode_start:   点下解码 {scale}，与 decode 配对可算「解码完成率」——
+  //                   解码要跑 16 帧约 5 秒，中途离开的人值得单独看
+  // - decode:         解码收敛 {scale, iterations, ms, collagePsnr, realPsnr}，
+  //                   回答「真实图片上拼贴 PSNR 与解码 PSNR 的落差分布」
+  //                   （这是文章核心论点，但我只在内置示例图上验过）
+  // - reset:          点「换一张图」，回答「重复实验率」，衡量粘性
+  // - session_hidden: 切后台（不等于离开，见 AGENTS.md 的通用坑）
+  // - session_end:    pagehide 真实离页 {reason, stage}，回答「在哪一步流失」
+  // 漏斗：session_start → image_select → encode → decode_start → decode
+  // 只镜像低频收尾事件到 umami；encode / decode 这类过程事件一律不镜像。
+  window.NF_TRACK_UMAMI_MIRROR = ['session_end'];
+
+  var trackSessionActive = false;
+  // 记录用户走到了哪一步，离页时随 session_end 一起上报，用来定位流失点
+  var trackStage = 'landing';
+
+  /** 安全调用 NFTrack；SDK 未加载、被拦截或抛错都不应影响页面。 */
+  function nfTrack(name, props, opts) {
+    try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
+  }
+
+  function nfTrackOnce(name, props) {
+    try { if (window.NFTrack) window.NFTrack.trackOnce(name, props); } catch (e) {}
+  }
+
+  /** PSNR / 压缩比保留一位小数，避免上报一长串浮点尾数 */
+  function round1(value) {
+    return isFinite(value) ? Math.round(value * 10) / 10 : -1;
+  }
+
+  function trackSessionStart() {
+    if (trackSessionActive) return;
+    trackSessionActive = true;
+    nfTrack('session_start', {});
+  }
+
+  function trackSessionEnd(reason) {
+    if (!trackSessionActive) return;
+    trackSessionActive = false;
+    nfTrack('session_end', { reason: reason, stage: trackStage }, { force: true });
+  }
+
+  function trackSessionHidden() {
+    if (!trackSessionActive) return;
+    nfTrack('session_hidden', { reason: 'hidden', stage: trackStage }, { force: true });
+  }
+
+  function registerTrackLeaveHandler() {
+    // 切后台 / 锁屏都会触发 hidden，不能当作会话结束；真实离页用 pagehide 兜底
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') trackSessionHidden();
+    });
+    window.addEventListener('pagehide', function () { trackSessionEnd('leave'); });
+  }
 
   function currentRangeSize() {
     return RANGE_SIZE_OPTIONS[parseInt(DOM.rangeSizeSlider.value, 10)];
@@ -143,6 +213,10 @@
     syncParamLabels();
     bindEvents();
     revealStep1();
+    // 放在 init 里而非脚本解析时：track.js 由 header.js 动态注入，
+    // 到 window load 才能保证 NFTrack 已就绪
+    trackSessionStart();
+    registerTrackLeaveHandler();
   }
 
   // 所有出现迭代次数的文案统一从 DECODE_ITERATIONS 生成
@@ -156,6 +230,16 @@
     DOM.rangeSizeVal.textContent = rangeSize + '\u00D7' + rangeSize;
     DOM.strideVal.textContent = STRIDE_LABELS[parseInt(DOM.strideSlider.value, 10)];
     updateBitBudget(rangeSize, currentStride());
+  }
+
+  /** 首次动参数滑块时记一次，带上当时的取值 */
+  function trackParamTuned() {
+    if (state.paramTuned) return;
+    state.paramTuned = true;
+    nfTrackOnce('param_tuned', {
+      rangeSize: currentRangeSize(),
+      stride: currentStride()
+    });
   }
 
   // 预告本组参数下每块要花多少 bit，让「压缩比」这个数字有据可查
@@ -215,8 +299,14 @@
       });
     }
 
-    DOM.rangeSizeSlider.addEventListener('input', syncParamLabels);
-    DOM.strideSlider.addEventListener('input', syncParamLabels);
+    DOM.rangeSizeSlider.addEventListener('input', function () {
+      syncParamLabels();
+      trackParamTuned();
+    });
+    DOM.strideSlider.addEventListener('input', function () {
+      syncParamLabels();
+      trackParamTuned();
+    });
 
     DOM.encodeBtn.addEventListener('click', function () {
       startEncoding();
@@ -249,6 +339,9 @@
 
   function handleFile(file) {
     if (!file.type.startsWith('image/')) return;
+    // 只记「来源是上传」这个事实；文件名、尺寸等任何用户数据一律不上报
+    state.imageSource = 'upload';
+    state.imagePreset = '';
     var reader = new FileReader();
     reader.onload = function (e) {
       loadImageToCanvas(e.target.result);
@@ -257,16 +350,24 @@
   }
 
   function loadSampleImage() {
+    state.imageSource = 'sample';
+    state.imagePreset = '';
     var imageData = FractalCompression.generateSampleImage(ENCODE_SIZE, ENCODE_SIZE);
     processImageData(imageData);
   }
 
   function loadPortraitImage() {
+    state.imageSource = 'portrait';
+    state.imagePreset = '';
     var imageData = FractalCompression.generatePortraitImage(ENCODE_SIZE, ENCODE_SIZE);
     processImageData(imageData);
   }
 
   function loadPresetImage(src) {
+    state.imageSource = 'preset';
+    // 预设图名取自固定的四张内置图（portrait/mountain/city/fractal），非用户输入
+    var match = /([a-z0-9-]+)\.jpg$/i.exec(src || '');
+    state.imagePreset = match ? match[1].toLowerCase() : '';
     loadImageToCanvas(src);
   }
 
@@ -310,6 +411,12 @@
 
     transitionToStep2();
     transitionToStep3();
+
+    trackStage = 'image_selected';
+    nfTrack('image_select', {
+      source: state.imageSource || 'unknown',
+      preset: state.imagePreset || 'none'
+    });
   }
 
   // 在解码区显示原图，并把解码画布置于等待状态（编码完成后才启用解码控制）
@@ -333,6 +440,7 @@
   function startEncoding() {
     if (state.isEncoding || !state.grayData) return;
     state.isEncoding = true;
+    state.encodeStartedAt = Date.now();
     DOM.encodeBtn.disabled = true;
 
     DOM.encodeProgress.style.display = 'block';
@@ -431,6 +539,18 @@
       // 拼贴方框图只依赖分形码，编码完就能画，不用等解码
       DOM.collageSection.style.display = 'block';
       drawCollage();
+
+      trackStage = 'encoded';
+      var stats = state.encodeResult.stats;
+      nfTrack('encode', {
+        rangeSize: rangeSize,
+        stride: currentStride(),
+        pool: domainPoolSize,
+        blocks: stats.numBlocks,
+        ms: Date.now() - state.encodeStartedAt,
+        ratio: round1(parseFloat(stats.compressionRatio)),
+        collagePsnr: round1(stats.psnr)
+      });
     }, 300);
   }
 
@@ -480,8 +600,13 @@
   function startDecoding(scaleFactor) {
     if (state.isDecoding || !state.fractalCode) return;
     state.isDecoding = true;
+    state.decodeStartedAt = Date.now();
     DOM.decodeBtn.disabled = true;
     DOM.decodeHighResBtn.disabled = true;
+
+    // 解码要跑 16 帧约 5 秒，与 decode 事件配对可算完成率
+    trackStage = 'decoding';
+    nfTrack('decode_start', { scale: scaleFactor });
 
     var code = state.fractalCode;
     var rangeSize = state.encodeResult.rangeSize;
@@ -533,6 +658,7 @@
         DOM.decodeIterLabel.textContent = '迭代完成，已收敛到不动点';
         showRealPSNR(scaleFactor, current);
         drawCollage();
+        trackDecodeDone(scaleFactor, current, totalIterations);
         return;
       }
 
@@ -552,6 +678,25 @@
     }
 
     setTimeout(runIteration, 100);
+  }
+
+  /**
+   * 解码收敛后上报。同时带上拼贴 PSNR 与解码 PSNR，
+   * 让「两者落差」这个核心指标能在单条记录里直接算出来，
+   * 不用在 SQL 里跨事件 join。2x 没有同分辨率原图可比，realPsnr 留空。
+   */
+  function trackDecodeDone(scaleFactor, decoded, iterations) {
+    trackStage = 'decoded';
+    var props = {
+      scale: scaleFactor,
+      iterations: iterations,
+      ms: Date.now() - state.decodeStartedAt,
+      collagePsnr: round1(state.encodeResult.stats.psnr)
+    };
+    if (scaleFactor === 1) {
+      props.realPsnr = round1(computePSNR(state.grayData, decoded));
+    }
+    nfTrack('decode', props);
   }
 
   /**
@@ -639,6 +784,10 @@
   }
 
   function resetToStep1() {
+    // 回到第 1 步说明用户想再试一轮，用来衡量粘性
+    nfTrack('reset', { from: trackStage });
+    trackStage = 'landing';
+
     state.fractalCode = null;
     state.encodeResult = null;
     state.decodedData = null;

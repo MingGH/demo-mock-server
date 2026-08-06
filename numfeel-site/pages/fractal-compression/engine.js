@@ -4,10 +4,50 @@
   var FractalCompression = {};
 
   var DEFAULT_RANGE_SIZE = 8;
-  var DEFAULT_DOMAIN_SIZE = 16;
   var DEFAULT_STRIDE = 4;
-  var DEFAULT_ITERATIONS = 12;
+  var DEFAULT_ITERATIONS = 16;
   var TRANSFORM_COUNT = 8;
+
+  // 每个分形码除域块索引外还要存：变换 3 bit（8 种等距变换）、
+  // scale 5 bit（32 级量化）、offset 7 bit（0-255 量化到 128 级）
+  var BITS_TRANSFORM = 3;
+  var BITS_SCALE = 5;
+  var BITS_OFFSET = 7;
+
+  FractalCompression.DEFAULT_ITERATIONS = DEFAULT_ITERATIONS;
+  FractalCompression.BITS_TRANSFORM = BITS_TRANSFORM;
+  FractalCompression.BITS_SCALE = BITS_SCALE;
+  FractalCompression.BITS_OFFSET = BITS_OFFSET;
+
+  /**
+   * 按位估算分形码体积：域块索引用 ceil(log2(池大小)) bit，
+   * 加上变换/scale/offset 的量化位数。比"每块固定 12 字节"更接近真实编码开销。
+   * @param {number} numBlocks - 范围块数量
+   * @param {number} domainPoolSize - 域块池大小
+   * @returns {object} { bitsPerBlock, totalBits, totalBytes, indexBits }
+   */
+  FractalCompression.estimateCompressedBytes = function (numBlocks, domainPoolSize) {
+    var indexBits = domainPoolSize > 1 ? Math.ceil(Math.log2(domainPoolSize)) : 0;
+    var bitsPerBlock = indexBits + BITS_TRANSFORM + BITS_SCALE + BITS_OFFSET;
+    var totalBits = bitsPerBlock * numBlocks;
+    return {
+      indexBits: indexBits,
+      bitsPerBlock: bitsPerBlock,
+      totalBits: totalBits,
+      totalBytes: Math.ceil(totalBits / 8)
+    };
+  };
+
+  /**
+   * 范围块网格尺寸：用 ceil 保证图像边缘也被覆盖，
+   * 否则宽高不能被 rangeSize 整除时右侧/底部会留下永不被写入的黑边。
+   */
+  FractalCompression.gridSize = function (w, h, rangeSize) {
+    return {
+      cols: Math.ceil(w / rangeSize),
+      rows: Math.ceil(h / rangeSize)
+    };
+  };
 
   /**
    * 将 RGBA ImageData 转为灰度 Float32Array
@@ -148,7 +188,11 @@
     if (varD > 0.0001) {
       scale = covRD / varD;
     }
-    scale = Math.max(0, Math.min(1, scale));
+    // 收缩映射：|scale| < 1 才能保证 Banach 不动点收敛。
+    // 严格小于 1 留出安全余量，避免量化/边界效应让有效 |s| 略微超 1 引起迭代发散。
+    var MAX_SCALE = 0.95;
+    if (scale > MAX_SCALE) scale = MAX_SCALE;
+    else if (scale < -MAX_SCALE) scale = -MAX_SCALE;
     var offset = meanR - scale * meanD;
 
     var mse = 0;
@@ -159,6 +203,22 @@
     mse /= N;
 
     return { scale: scale, offset: offset, mse: mse };
+  }
+
+  /**
+   * 域块池为空时的退化方案：用块均值做常量近似。
+   * mse 取块方差（常量近似的真实误差），不能留 Infinity 否则整体统计被污染。
+   */
+  function constantFallback(rangeBlock) {
+    var n = rangeBlock.length;
+    var sum = 0, sumSq = 0;
+    for (var i = 0; i < n; i++) {
+      sum += rangeBlock[i];
+      sumSq += rangeBlock[i] * rangeBlock[i];
+    }
+    var mean = sum / n;
+    var variance = Math.max(0, sumSq / n - mean * mean);
+    return { offset: mean, mse: variance };
   }
 
   /**
@@ -197,11 +257,13 @@
   FractalCompression.encode = function (gray, w, h, options, onProgress) {
     options = options || {};
     var rangeSize = options.rangeSize || DEFAULT_RANGE_SIZE;
-    var domainSize = options.domainSize || DEFAULT_DOMAIN_SIZE;
+    // 域块必须是范围块的 2 倍：解码端也按 2 倍取块再下采样，两边必须对称
+    var domainSize = options.domainSize || rangeSize * 2;
     var stride = options.stride || DEFAULT_STRIDE;
 
-    var cols = Math.floor(w / rangeSize);
-    var rows = Math.floor(h / rangeSize);
+    var grid = FractalCompression.gridSize(w, h, rangeSize);
+    var cols = grid.cols;
+    var rows = grid.rows;
     var totalBlocks = cols * rows;
 
     var domainPool = buildDomainPool(gray, w, h, rangeSize, domainSize, stride);
@@ -219,16 +281,16 @@
         var best = matchBlock(rangeBlock, domainPool, rangeSize);
 
         if (best.domainIdx < 0) {
-          var mean = 0;
-          for (var m = 0; m < rangeBlock.length; m++) mean += rangeBlock[m];
-          mean /= rangeBlock.length;
+          var fallback = constantFallback(rangeBlock);
           code.push({
             rx: rx, ry: ry,
-            dx: px, dy: py,
+            dx: 0, dy: 0,
             transform: 0,
             scale: 0,
-            offset: mean
+            offset: fallback.offset,
+            mse: fallback.mse
           });
+          totalMSE += fallback.mse;
         } else {
           code.push({
             rx: rx, ry: ry,
@@ -236,11 +298,12 @@
             dy: domainPool[best.domainIdx].y,
             transform: best.transform,
             scale: best.scale,
-            offset: best.offset
+            offset: best.offset,
+            mse: best.mse
           });
+          totalMSE += best.mse;
         }
 
-        totalMSE += best.mse;
         blockIdx++;
 
         if (onProgress) {
@@ -253,7 +316,8 @@
     var psnr = avgMSE > 0 ? 10 * Math.log10(255 * 255 / avgMSE) : Infinity;
 
     var originalBytes = w * h;
-    var compressedBytes = code.length * 12;
+    var budget = FractalCompression.estimateCompressedBytes(code.length, domainPool.length);
+    var compressedBytes = budget.totalBytes;
 
     return {
       code: code,
@@ -265,6 +329,8 @@
         psnr: psnr,
         originalSize: originalBytes,
         compressedSize: compressedBytes,
+        bitsPerBlock: budget.bitsPerBlock,
+        indexBits: budget.indexBits,
         compressionRatio: compressedBytes > 0 ? (originalBytes / compressedBytes).toFixed(1) : '0',
         imageWidth: w,
         imageHeight: h
@@ -282,45 +348,15 @@
    * @param {function} onIteration - 每次迭代后回调
    * @returns {Float32Array} 解码后的灰度数据
    */
-  FractalCompression.decode = function (code, w, h, rangeSize, iterations, onIteration) {
-    var current = new Float32Array(w * h);
-    for (var i = 0; i < current.length; i++) {
-      current[i] = Math.random() * 255;
-    }
-
-    var cols = Math.floor(w / rangeSize);
-    var rows = Math.floor(h / rangeSize);
-
-    var codeMap = {};
-    for (var c = 0; c < code.length; c++) {
-      var key = code[c].ry + '_' + code[c].rx;
-      codeMap[key] = code[c];
-    }
+  FractalCompression.decode = function (code, w, h, rangeSize, iterations, onIteration, initial) {
+    // PIFS 的不动点与初始图像无关，所以从纯随机噪音开始——这正是分形解码
+    // 最反直觉也最值得演示的性质：一堆雪花点会迭代成原图。
+    var current = initial instanceof Float32Array
+      ? new Float32Array(initial)
+      : FractalCompression.createNoiseImage(w, h);
 
     for (var iter = 0; iter < iterations; iter++) {
-      var next = new Float32Array(w * h);
-
-      for (var ry = 0; ry < rows; ry++) {
-        for (var rx = 0; rx < cols; rx++) {
-          var key2 = ry + '_' + rx;
-          var entry = codeMap[key2];
-          if (!entry) continue;
-
-          var domainBlock = extractBlock(current, w, h, entry.dx, entry.dy, rangeSize);
-          var transformed = applyTransform(domainBlock, rangeSize, entry.transform);
-
-          var px = rx * rangeSize;
-          var py = ry * rangeSize;
-          for (var by = 0; by < rangeSize; by++) {
-            for (var bx = 0; bx < rangeSize; bx++) {
-              var val = transformed[by * rangeSize + bx] * entry.scale + entry.offset;
-              next[(py + by) * w + (px + bx)] = Math.max(0, Math.min(255, val));
-            }
-          }
-        }
-      }
-
-      current = next;
+      current = FractalCompression.decodeOneIteration(current, code, w, h, rangeSize);
 
       if (onIteration) {
         onIteration(iter + 1, iterations, new Float32Array(current));
@@ -328,6 +364,35 @@
     }
 
     return current;
+  };
+
+  /**
+   * 生成随机噪音初始图像
+   * @param {number} w
+   * @param {number} h
+   * @param {function} [rng] - 可选随机源，便于测试复现
+   */
+  FractalCompression.createNoiseImage = function (w, h, rng) {
+    var rand = typeof rng === 'function' ? rng : Math.random;
+    var out = new Float32Array(w * h);
+    for (var i = 0; i < out.length; i++) {
+      out[i] = rand() * 255;
+    }
+    return out;
+  };
+
+  /**
+   * 确定性伪随机源（mulberry32），测试里替代 Math.random 以便复现
+   */
+  FractalCompression.createSeededRandom = function (seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
   };
 
   /**
@@ -412,10 +477,24 @@
   };
 
   /**
+   * 块变换（公开接口）：8 种等距变换是最容易写错又最难从画面上看出来的部分，
+   * 暴露出来单独测试。
+   */
+  FractalCompression.applyTransform = function (block, size, transform) {
+    return applyTransform(block, size, transform);
+  };
+
+  FractalCompression.TRANSFORM_COUNT = TRANSFORM_COUNT;
+
+  /**
    * 构建域块池（公开接口）
    */
   FractalCompression.buildDomainPool = function (gray, w, h, rangeSize, domainSize, stride) {
-    return buildDomainPool(gray, w, h, rangeSize, domainSize, stride);
+    return buildDomainPool(
+      gray, w, h, rangeSize,
+      domainSize || rangeSize * 2,
+      stride || DEFAULT_STRIDE
+    );
   };
 
   /**
@@ -427,16 +506,14 @@
     var rangeBlock = extractBlock(gray, w, h, px, py, rangeSize);
     var best = matchBlock(rangeBlock, domainPool, rangeSize);
     if (best.domainIdx < 0) {
-      var mean = 0;
-      for (var i = 0; i < rangeBlock.length; i++) mean += rangeBlock[i];
-      mean /= rangeBlock.length;
+      var fallback = constantFallback(rangeBlock);
       return {
         rx: rx, ry: ry,
-        dx: px, dy: py,
+        dx: 0, dy: 0,
         transform: 0,
         scale: 0,
-        offset: mean,
-        mse: 0
+        offset: fallback.offset,
+        mse: fallback.mse
       };
     }
     return {
@@ -451,41 +528,29 @@
   };
 
   /**
-   * 解码一次迭代
-   * @param {Float32Array} current - 当前图像数据
-   * @param {Array} code - 分形码
-   * @param {number} w - 输出宽度
-   * @param {number} h - 输出高度
-   * @param {number} rangeSize - 范围块大小
-   * @returns {Float32Array} 下一次迭代的图像数据
+   * 单次解码迭代：按 PIFS 收缩映射算子 F(current) -> next
+   * 关键：解码时也必须先提取 2*rangeSize 域块并下采样，与编码端一致
    */
   FractalCompression.decodeOneIteration = function (current, code, w, h, rangeSize) {
     var next = new Float32Array(w * h);
-    var cols = Math.floor(w / rangeSize);
-    var rows = Math.floor(h / rangeSize);
+    var domainSize = rangeSize * 2;
 
-    var codeMap = {};
+    // 直接遍历分形码而不是遍历网格：码里已经带了 rx/ry，
+    // 避免网格推算方式与编码端不一致时漏写块（漏写块会留下黑格）
     for (var c = 0; c < code.length; c++) {
-      var key = code[c].ry + '_' + code[c].rx;
-      codeMap[key] = code[c];
-    }
+      var entry = code[c];
+      var domainBlock = downsampleBlock(current, w, h, entry.dx, entry.dy, domainSize, rangeSize);
+      var transformed = applyTransform(domainBlock, rangeSize, entry.transform);
 
-    for (var ry = 0; ry < rows; ry++) {
-      for (var rx = 0; rx < cols; rx++) {
-        var key2 = ry + '_' + rx;
-        var entry = codeMap[key2];
-        if (!entry) continue;
-
-        var domainBlock = extractBlock(current, w, h, entry.dx, entry.dy, rangeSize);
-        var transformed = applyTransform(domainBlock, rangeSize, entry.transform);
-
-        var px = rx * rangeSize;
-        var py = ry * rangeSize;
-        for (var by = 0; by < rangeSize; by++) {
-          for (var bx = 0; bx < rangeSize; bx++) {
-            var val = transformed[by * rangeSize + bx] * entry.scale + entry.offset;
-            next[(py + by) * w + (px + bx)] = Math.max(0, Math.min(255, val));
-          }
+      var px = entry.rx * rangeSize;
+      var py = entry.ry * rangeSize;
+      // 边缘块可能超出画布（网格按 ceil 取），写入时裁掉越界部分
+      var maxBy = Math.min(rangeSize, h - py);
+      var maxBx = Math.min(rangeSize, w - px);
+      for (var by = 0; by < maxBy; by++) {
+        for (var bx = 0; bx < maxBx; bx++) {
+          var val = transformed[by * rangeSize + bx] * entry.scale + entry.offset;
+          next[(py + by) * w + (px + bx)] = Math.max(0, Math.min(255, val));
         }
       }
     }
@@ -493,9 +558,33 @@
     return next;
   };
 
+  /**
+   * 统计分形码对画布的覆盖率，用于验证不会留下未写入的黑边
+   * @returns {number} 0-1
+   */
+  FractalCompression.coverage = function (code, w, h, rangeSize) {
+    var mask = new Uint8Array(w * h);
+    for (var c = 0; c < code.length; c++) {
+      var px = code[c].rx * rangeSize;
+      var py = code[c].ry * rangeSize;
+      var maxBy = Math.min(rangeSize, h - py);
+      var maxBx = Math.min(rangeSize, w - px);
+      for (var by = 0; by < maxBy; by++) {
+        for (var bx = 0; bx < maxBx; bx++) {
+          mask[(py + by) * w + (px + bx)] = 1;
+        }
+      }
+    }
+    var covered = 0;
+    for (var i = 0; i < mask.length; i++) covered += mask[i];
+    return covered / mask.length;
+  };
+
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = FractalCompression;
   }
 
-  window.FractalCompression = FractalCompression;
+  if (typeof window !== 'undefined') {
+    window.FractalCompression = FractalCompression;
+  }
 })();

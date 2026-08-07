@@ -95,6 +95,8 @@ public class RateLimitWebFilter implements WebFilter {
         // 通用埋点批量上报：30/min/IP（每批最多100条事件，上限约3000事件/min/IP）。
         // 路径不以 /submit 或 /leaderboard 结尾，不会被下面的通用写接口规则命中，需单独声明。
         rules.add(new Rule(isPost("/events/collect"), RateLimitWebFilter::routeKey, 30, 60));
+        // 知乎创作分析：3/min/IP（拉取全量数据耗时较长，且知乎 API 本身有配额限制）
+        rules.add(new Rule(isPost("/zhihu/analyze"), RateLimitWebFilter::routeKey, 3, 60));
         // 其余写接口：10/min
         rules.add(new Rule(RateLimitWebFilter::isWriteThrottled, RateLimitWebFilter::routeKey, 10, 60));
     }

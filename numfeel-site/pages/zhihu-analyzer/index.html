@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="连接知乎开放平台，一键拉取你的全部创作内容，生成多维度创作分析报告：时间轴、词云、互动趋势、内容分布。数据仅经你的浏览器与后端透传，不落库不对第三方泄露。">
+  <title>知乎创作分析报告 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <!-- ====== 模块 0：Hero — 输入 Secret ====== -->
+  <div class="section hero-section" id="heroSection">
+    <div class="hero-visual">
+      <img src="images/hero.webp" alt="知乎创作分析" class="hero-img" loading="eager">
+    </div>
+    <div class="hero-main">
+    <div class="hero-header">
+      <h1><i class="ti ti-chart-bar"></i> 知乎创作分析报告</h1>
+      <p class="hero-subtitle">连接你的知乎账号，一键生成多维度创作分析。数据仅经浏览器与后端透传，<span class="hl-gold">不落库、不记录、不泄露</span>。</p>
+    </div>
+
+    <div class="secret-card">
+      <div class="secret-card-header">
+        <i class="ti ti-key"></i> 输入知乎 Access Secret
+      </div>
+      <p class="secret-card-desc">
+        前往 <a href="https://developer.zhihu.com/profile" target="_blank" rel="noopener">developer.zhihu.com/profile <i class="ti ti-external-link"></i></a> 登录并生成 Access Secret，粘贴到下方。
+      </p>
+      <div class="input-row">
+        <input type="password" id="secretInput" placeholder="粘贴你的 Access Secret..." autocomplete="off">
+        <button class="btn-primary" id="analyzeBtn">
+          <i class="ti ti-player-play"></i> 开始分析
+        </button>
+      </div>
+      <div class="security-notice">
+        <div class="security-notice-icon"><i class="ti ti-shield-check"></i></div>
+        <div class="security-notice-body">
+          <strong>安全承诺</strong>
+          <p>Secret 仅用于本次请求透传至知乎 API，后端不存日志、不入库、不缓存。分析完成后，<span class="hl-gold">建议你立即前往知乎开放平台删除该 Secret</span>。</p>
+          <p>本项目 <a href="https://github.com/..." target="_blank" rel="noopener">完全开源</a>，可自行审查后端代码。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- ====== 加载状态 ====== -->
+  <div class="section" id="loadingSection" style="display:none;">
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loadingText">正在拉取你的知乎内容...</div>
+      <div class="loading-progress" id="loadingProgress"></div>
+    </div>
+  </div>
+
+  <!-- ====== 错误状态 ====== -->
+  <div class="section" id="errorSection" style="display:none;">
+    <div class="error-container">
+      <i class="ti ti-alert-circle" style="font-size:48px;color:#ff6b6b;"></i>
+      <h3>分析失败</h3>
+      <p id="errorText"></p>
+      <button class="btn-secondary" id="retryBtn"><i class="ti ti-refresh"></i> 返回重试</button>
+    </div>
+  </div>
+
+  <!-- ====== 分析结果区 ====== -->
+  <div id="resultArea" style="display:none;">
+
+    <!-- ====== 模块 1：总览看板 ====== -->
+    <div class="section overview-section">
+      <div class="overview-banner">
+        <img src="images/stats.webp" alt="创作统计数据" class="overview-banner-img" loading="lazy">
+      </div>
+      <div class="eyebrow"><i class="ti ti-dashboard"></i> 创作总览</div>
+      <h2 class="section-title">你的知乎创作生涯，<span class="hl-gold">用数字说话</span></h2>
+      <div class="big-numbers" id="bigNumbers">
+        <div class="big-number-card">
+          <div class="bn-value" id="bnTotal">0</div>
+          <div class="bn-label">累计创作</div>
+        </div>
+        <div class="big-number-card">
+          <div class="bn-value" id="bnSpan">0</div>
+          <div class="bn-label">创作跨度（天）</div>
+        </div>
+        <div class="big-number-card">
+          <div class="bn-value" id="bnLikes">0</div>
+          <div class="bn-label">累计获赞</div>
+        </div>
+        <div class="big-number-card">
+          <div class="bn-value" id="bnComments">0</div>
+          <div class="bn-label">累计评论</div>
+        </div>
+        <div class="big-number-card">
+          <div class="bn-value" id="bnFavorites">0</div>
+          <div class="bn-label">累计收藏</div>
+        </div>
+        <div class="big-number-card">
+          <div class="bn-value" id="bnAvgLikes">0</div>
+          <div class="bn-label">篇均获赞</div>
+        </div>
+      </div>
+      <div class="insight-quote" id="insightQuote">
+        <i class="ti ti-quote"></i>
+        <span id="insightText">正在计算...</span>
+      </div>
+    </div>
+
+    <!-- ====== 模块 2：时间轴 ====== -->
+    <div class="section timeline-section">
+      <div class="eyebrow"><i class="ti ti-timeline"></i> 创作时间轴</div>
+      <h2 class="section-title">你的每一次创作，<span class="hl-gold">都在这条时间线上</span></h2>
+      <p class="section-desc">每个点代表一篇内容，颜色区分类型，大小映射互动热度。滚动页面，时间线将逐一展开。</p>
+      <div class="timeline-decoration">
+        <img src="images/timeline.webp" alt="时间轴装饰" class="timeline-deco-img" loading="lazy">
+      </div>
+
+      <div class="timeline-legend">
+        <span class="tl-legend-item"><span class="tl-dot" style="background:#ffd700;"></span> 文章</span>
+        <span class="tl-legend-item"><span class="tl-dot" style="background:#90caf9;"></span> 回答</span>
+        <span class="tl-legend-item"><span class="tl-dot" style="background:#81c784;"></span> 视频</span>
+        <span class="tl-legend-item"><span class="tl-dot" style="background:#ce93d8;"></span> 想法</span>
+        <span class="tl-legend-item"><span class="tl-dot" style="background:#ff8a65;"></span> 问题</span>
+      </div>
+
+      <div class="timeline-container" id="timelineContainer">
+        <div class="timeline-axis" id="timelineAxis"></div>
+        <div class="timeline-dots" id="timelineDots"></div>
+      </div>
+
+      <div class="timeline-tooltip" id="timelineTooltip" style="display:none;">
+        <div class="tt-type" id="ttType"></div>
+        <div class="tt-title" id="ttTitle"></div>
+        <div class="tt-stats" id="ttStats"></div>
+        <div class="tt-date" id="ttDate"></div>
+      </div>
+    </div>
+
+    <!-- ====== 模块 3：发布热力图 ====== -->
+    <div class="section">
+      <div class="eyebrow"><i class="ti ti-heatmap"></i> 发布节奏</div>
+      <h2 class="section-title">你的创作<span class="hl-gold">活跃地图</span></h2>
+      <p class="section-desc">热力图展示每月发布密度，色块越亮代表产出越多。右侧是年度趋势折线。</p>
+      <div class="heatmap-layout">
+        <div class="heatmap-chart">
+          <canvas id="heatmapChart"></canvas>
+        </div>
+        <div class="heatmap-yearly">
+          <canvas id="yearlyTrendChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 模块 4：内容类型分布 ====== -->
+    <div class="section">
+      <div class="eyebrow"><i class="ti ti-chart-pie"></i> 内容结构</div>
+      <h2 class="section-title">你的<span class="hl-gold">内容资产配置</span></h2>
+      <p class="section-desc">看看你的创作精力主要投向了哪些内容类型，以及各类型的互动效率如何。</p>
+      <div class="type-layout">
+        <div class="type-chart">
+          <canvas id="typeDonutChart"></canvas>
+        </div>
+        <div class="type-efficiency">
+          <h3><i class="ti ti-lightning-bolt"></i> 各类型互动效率</h3>
+          <div class="efficiency-bars" id="efficiencyBars"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 模块 5：互动分析 ====== -->
+    <div class="section">
+      <div class="eyebrow"><i class="ti ti-chart-histogram"></i> 互动分布</div>
+      <h2 class="section-title">你的内容<span class="hl-gold">获得了多少关注</span></h2>
+      <p class="section-desc">点赞、评论、收藏的分布直方图，看看你的内容互动集中在哪个区间。标记了中位数和P90分位。</p>
+      <div class="histogram-layout">
+        <div class="histogram-chart">
+          <canvas id="likesHistogram"></canvas>
+        </div>
+        <div class="histogram-chart">
+          <canvas id="commentsHistogram"></canvas>
+        </div>
+        <div class="histogram-chart">
+          <canvas id="favoritesHistogram"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 模块 6：词云 ====== -->
+    <div class="section">
+      <div class="eyebrow"><i class="ti ti-cloud"></i> 话题词云</div>
+      <h2 class="section-title">你的创作<span class="hl-gold">高频关键词</span></h2>
+      <p class="section-desc">从标题和摘要中提取高频词汇，字号越大出现频率越高。一眼看出你最关注的话题领域。</p>
+      <div class="wordcloud-container">
+        <div class="wordcloud-bg"><img src="images/wordcloud-bg.webp" alt="" class="wordcloud-bg-img" loading="lazy"></div>
+        <canvas id="wordCloudCanvas" width="900" height="500"></canvas>
+      </div>
+    </div>
+
+    <!-- ====== 模块 7：年度对比 ====== -->
+    <div class="section">
+      <div class="eyebrow"><i class="ti ti-calendar-stats"></i> 年度对比</div>
+      <h2 class="section-title">你的<span class="hl-gold">年度成绩单</span></h2>
+      <p class="section-desc">逐年对比产出与互动，看看你的创作生涯如何演变。</p>
+      <div class="yearly-table-wrap">
+        <table class="yearly-table" id="yearlyTable">
+          <thead>
+            <tr>
+              <th>年份</th>
+              <th>内容数</th>
+              <th>点赞</th>
+              <th>评论</th>
+              <th>收藏</th>
+              <th>篇均点赞</th>
+            </tr>
+          </thead>
+          <tbody id="yearlyTableBody"></tbody>
+        </table>
+      </div>
+      <div class="yearly-chart">
+        <canvas id="yearlyBarChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ====== 模块 8：Top 榜单 ====== -->
+    <div class="section">
+      <div class="eyebrow"><i class="ti ti-trophy"></i> 代表作</div>
+      <h2 class="section-title">你的<span class="hl-gold">Top 10</span> 作品</h2>
+      <div class="top-tabs">
+        <button class="top-tab active" data-tab="likes">点赞最多</button>
+        <button class="top-tab" data-tab="comments">评论最多</button>
+        <button class="top-tab" data-tab="favorites">收藏最多</button>
+      </div>
+      <div class="top-list" id="topList"></div>
+    </div>
+
+    <!-- ====== 模块 9：发布时钟 ====== -->
+    <div class="section">
+      <div class="eyebrow"><i class="ti ti-clock-24"></i> 发布时钟</div>
+      <h2 class="section-title">你是<span class="hl-gold">深夜党</span>还是<span class="hl-gold">工作日战士</span>？</h2>
+      <p class="section-desc">按小时和星期分布，揭示你的创作作息规律。</p>
+      <div class="clock-layout">
+        <div class="clock-chart">
+          <canvas id="hourRadarChart"></canvas>
+        </div>
+        <div class="clock-chart">
+          <canvas id="weekdayChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== 模块 10：长尾价值 ====== -->
+    <div class="section">
+      <div class="eyebrow"><i class="ti ti-trending-up"></i> 互动趋势</div>
+      <h2 class="section-title">你的创作<span class="hl-gold">互动趋势</span></h2>
+      <p class="section-desc">按时间展示每条内容的互动量散点图，移动平均线揭示趋势是上升还是下降。</p>
+      <div class="trend-chart">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ====== 模块 11：复制结果 ====== -->
+    <div class="section">
+      <h2><i class="ti ti-copy"></i> 复制分析摘要</h2>
+      <p class="section-desc">一键复制当前分析结果摘要，方便分享或存档。</p>
+      <div class="copy-area">
+        <button class="btn-primary" id="copySummaryBtn"><i class="ti ti-copy"></i> 复制摘要</button>
+        <span class="copy-feedback" id="copyFeedback"></span>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

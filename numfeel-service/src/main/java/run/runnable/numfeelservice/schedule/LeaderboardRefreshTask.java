@@ -24,9 +24,9 @@ public class LeaderboardRefreshTask {
     }
 
     /**
-     * 启动后延迟 10 秒首次预热，之后每半小时执行一次。
+     * 启动后延迟 10 秒首次预热，之后每10分钟
      */
-    @Scheduled(initialDelay = 10_000L, fixedRate = 1_800_000L)
+    @Scheduled(initialDelay = 10_000L, fixedRate = 1000 * 60 * 10)
     public void refresh() {
         leaderboardService.getLeaderboard()
                 .subscribe(

@@ -145,8 +145,7 @@ NFTrack.trackOnce('session_start', { mode: 'standard' });          // 整个会�
 
 ## 如何给 demo 挂知乎配套文章反链
 
-从 SEO / 知乎流量进 demo 页的访客，需要能一键跳回对应的知乎深度文，形成
-「demo 体验 → 知乎长文 → 更多 demo」的流量飞轮。机制是**配置驱动 + 全局注入**，
+从 SEO / 知乎流量进 demo 页的访客，需要能一键跳回对应的知乎深度文。机制是**配置驱动 + 全局注入**，
 **不需要改动任何 demo 页面**：
 
 - `components/header.js` 已全局注入 `components/zhihu-link.js`，所有页面自动具备该能力。

@@ -145,7 +145,9 @@
     var chi = E.chiSquare(hist);
     var sum = E.chiSummary(chi);
 
-    var pct = hist.map(function (c) { return (c / n * 100); });
+    // 用实际取到的位数做分母，避免切片被截断（如数据不足）时占比虚低
+    var actual = slice.length || 1;
+    var pct = hist.map(function (c) { return (c / actual * 100); });
     var labels = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
     if (!window.loadChartJS) return;
@@ -168,7 +170,7 @@
       });
     });
 
-    $('cMeta').innerHTML = '取前 ' + E.formatBig(n) + ' 位 · χ² = <span class="hl">' + chi.toFixed(2) + '</span> · <span class="' + sum.cls + '">' + sum.label + '</span>';
+    $('cMeta').innerHTML = '取前 ' + E.formatBig(actual) + ' 位 · χ² = <span class="hl">' + chi.toFixed(2) + '</span> · <span class="' + sum.cls + '">' + sum.label + '</span>';
   }
 
   // ── 模块 D：成本 ──
@@ -206,8 +208,10 @@
 
   // ── 初始化 ──
   function boot() {
-    if (typeof window.PI_1M === 'string' && window.PI_1M.length) {
-      piDigits = window.PI_1M;
+    // 注意：data/pi-1m.js 里是 const PI_1M，顶层 const 不会挂到 window 上，
+    // 必须用裸引用 typeof PI_1M 判断（typeof 对未声明变量也安全）。
+    if (typeof PI_1M === 'string' && PI_1M.length) {
+      piDigits = PI_1M;
       piReady = true;
       $('piStatus').textContent = '已就绪 · ' + E.formatBig(piDigits.length) + ' 位';
     } else {

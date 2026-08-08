@@ -1,13 +1,12 @@
 package run.runnable.numfeelservice.service;
 
 import run.runnable.numfeelservice.controller.dto.UtilityResponses.WordCloudEntryResponse;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.huaban.analysis.jieba.JiebaSegmenter;
 import com.huaban.analysis.jieba.SegToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -28,16 +27,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 /**
- * 词云业务逻辑层：数据下载、分词、统计、缓存（迁移自 Vert.x 版，Json 换成 Jackson）。
+ * 词云业务逻辑层：数据下载、分词、统计、缓存。
  * <p>
- * 所有方法均为同步阻塞，调用方需在 boundedElastic 调度器上执行。
+ * 通过 @Cacheable 缓存结果 1 小时，内部阻塞 I/O 在 boundedElastic 调度器执行。
  */
 @Service
 public class WordCloudService {
@@ -47,7 +45,6 @@ public class WordCloudService {
     private static final String DATA_URL = "https://fileshare.runnable.run/HuChenFeng/HuChenFeng.zip";
     private static final String LOCAL_ZIP = "data/HuChenFeng.zip";
     private static final String DATA_DIR = "data/HuChenFeng";
-    private static final String CACHE_KEY = "word_cloud_data";
 
     private static final Set<String> STOP_WORDS = Set.of(
             "户晨风","感谢","不是","现在","一下","可以","知道","然后","xxxx","问题","为什么","可能","觉得","这样","这种",
@@ -68,41 +65,31 @@ public class WordCloudService {
     public record WordCloudData(List<WordCloudEntryResponse> top300, Map<String, Integer> fullCounts) {
     }
 
-    private final Cache<String, WordCloudData> cache = Caffeine.newBuilder()
-            .expireAfterWrite(1, TimeUnit.HOURS)
-            .maximumSize(1)
-            .build();
-
     @EventListener(ApplicationReadyEvent.class)
     public void initOnStartup() {
-        // 下载/解压/分词均为阻塞 I/O，放到 boundedElastic 调度器执行，避免阻塞事件循环。
         Mono.fromRunnable(() -> {
                     try {
                         initData();
                     } catch (Exception e) {
                         log.warn("Word cloud data init failed: {}", e.getMessage());
                     }
-                    warmUp();
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                .subscribe();
+                .then(getOrLoad())
+                .subscribe(
+                        data -> log.info("Word cloud cache warmup completed, top300 size={}", data.top300().size()),
+                        err -> log.warn("Word cloud warmup failed: {}", err.getMessage())
+                );
     }
 
-    public void warmUp() {
-        log.info("Warming up word cloud cache...");
-        cache.get(CACHE_KEY, k -> {
-            try {
-                return generate();
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        });
-        log.info("Word cloud cache warmup completed");
-    }
-
-    /** 优先从缓存读取词云数据，缓存未命中时重新生成。 */
-    public WordCloudData getOrLoad() throws IOException {
-        return cache.get(CACHE_KEY, key -> loadWordCloudData());
+    /**
+     * 获取词云数据。结果通过 @Cacheable 缓存 1 小时。
+     * 内部阻塞 I/O 在 boundedElastic 调度器执行。
+     */
+    @Cacheable(cacheNames = "wordCloud", sync = true)
+    public Mono<WordCloudData> getOrLoad() {
+        return Mono.fromCallable(this::generate)
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
     /** 首次启动时按需下载并解压原始语料。 */
@@ -154,15 +141,6 @@ public class WordCloudService {
         return new WordCloudData(result, wordCounts);
     }
 
-    /** 将受检异常转换为缓存加载器可接受的运行时异常。 */
-    private WordCloudData loadWordCloudData() {
-        try {
-            return generate();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
     /** 判断本地语料目录是否已经存在可用数据。 */
     private boolean hasExistingData(Path dataPath) throws IOException {
         if (!Files.exists(dataPath) || !Files.isDirectory(dataPath)) {
@@ -201,7 +179,7 @@ public class WordCloudService {
         }
     }
 
-    /** 提取“户晨风”说话内容，去掉说话人前缀与空白。 */
+    /** 提取"户晨风"说话内容，去掉说话人前缀与空白。 */
     private String extractSpeakerContent(String line) {
         String content = line.trim();
         if (content.isEmpty()) {

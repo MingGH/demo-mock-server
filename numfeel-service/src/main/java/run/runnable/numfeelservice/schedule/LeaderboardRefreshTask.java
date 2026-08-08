@@ -23,10 +23,7 @@ public class LeaderboardRefreshTask {
         this.leaderboardService = leaderboardService;
     }
 
-    /**
-     * 启动后延迟 10 秒首次预热，之后每10分钟
-     */
-    @Scheduled(initialDelay = 10_000L, fixedRate = 1000 * 60 * 10)
+    @Scheduled(initialDelay = 1000 * 3, fixedRate = 1000 * 60 * 10)
     public void refresh() {
         leaderboardService.getLeaderboard()
                 .subscribe(

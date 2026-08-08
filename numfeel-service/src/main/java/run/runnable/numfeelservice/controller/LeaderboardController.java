@@ -1,13 +1,18 @@
 package run.runnable.numfeelservice.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
+import run.runnable.numfeelservice.controller.dto.LeaderboardResponses.LeaderboardResponse;
 import run.runnable.numfeelservice.service.LeaderboardService;
 import run.runnable.numfeelservice.web.ApiResponse;
 import tools.jackson.databind.JsonNode;
+
+import java.util.List;
 
 /**
  * Demo 热门排行榜接口。
@@ -17,6 +22,8 @@ import tools.jackson.databind.JsonNode;
  */
 @RestController
 public class LeaderboardController {
+
+    private static final Logger log = LoggerFactory.getLogger(LeaderboardController.class);
 
     private final LeaderboardService leaderboardService;
 
@@ -32,6 +39,12 @@ public class LeaderboardController {
     @GetMapping(value = "/leaderboard", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<JsonNode>> getLeaderboard() {
         return leaderboardService.getLeaderboard()
-                .map(ApiResponse::ok);
+                .map(ApiResponse::ok)
+                // 空数据兜底放在缓存边界之外：失败不写缓存，仅本次请求返回空榜
+                .onErrorResume(err -> {
+                    log.warn("Leaderboard fetch failed: {}", err.getMessage());
+                    return Mono.just(ApiResponse.ok(
+                            new LeaderboardResponse(List.of(), List.of(), List.of(), List.of(), 0L)));
+                });
     }
 }

@@ -13,8 +13,7 @@ import tools.jackson.databind.JsonNode;
  * Demo 热门排行榜接口。
  * <p>
  * {@code GET /leaderboard} 返回近 24 小时 / 近 7 天 / 近 30 天 / 历史总榜四个口径的热门 demo 列表。
- * 数据由 {@link LeaderboardService} 每小时定时刷新内存快照，本接口仅读取快照，
- * 永不阻塞、永不抛错。
+ * 数据由 {@link LeaderboardService} 通过 @AsyncCacheable 缓存 1 小时，配合定时任务预热。
  */
 @RestController
 public class LeaderboardController {
@@ -26,12 +25,13 @@ public class LeaderboardController {
     }
 
     /**
-     * 获取热门排行榜快照。
+     * 获取热门排行榜。
      *
      * @return 统一包裹的排行榜数据 {@code {"status":200,"data":{...}}}
      */
     @GetMapping(value = "/leaderboard", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<JsonNode>> getLeaderboard() {
-        return Mono.just(ApiResponse.ok(leaderboardService.getLeaderboard()));
+        return leaderboardService.getLeaderboard()
+                .map(ApiResponse::ok);
     }
 }

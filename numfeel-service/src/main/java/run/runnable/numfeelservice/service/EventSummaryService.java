@@ -1,13 +1,11 @@
 package run.runnable.numfeelservice.service;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.cache.annotation.Cacheable;
 import run.runnable.numfeelservice.controller.dto.EventResponses.EventSummaryResponse;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -15,18 +13,13 @@ import java.util.Map;
  * 通用行为埋点 — 聚合摘要查询业务逻辑（只读）。
  * <p>
  * 只暴露聚合统计，不提供任何返回原始事件行的接口。查询全部走裸 SQL 聚合，
- * 不做 select 全量再内存过滤。结果按 demo 缓存 60 秒，减少高频访问对数据库的压力。
+ * 不做 select 全量再内存过滤。结果通过 @Cacheable 按 demo 缓存 60 秒，
+ * 减少高频访问对数据库的压力。
  */
 @Service
 public class EventSummaryService {
 
     private final DatabaseClient databaseClient;
-
-    /** 按 demo slug 缓存摘要结果，60 秒 TTL。 */
-    private final Cache<String, EventSummaryResponse> summaryCache = Caffeine.newBuilder()
-            .expireAfterWrite(Duration.ofSeconds(60))
-            .maximumSize(1000)
-            .build();
 
     public EventSummaryService(DatabaseClient databaseClient) {
         this.databaseClient = databaseClient;
@@ -38,12 +31,8 @@ public class EventSummaryService {
      * @param demo demo slug
      * @return 聚合摘要
      */
+    @Cacheable(cacheNames = "eventSummary", sync = true)
     public Mono<EventSummaryResponse> summary(String demo) {
-        EventSummaryResponse cached = summaryCache.getIfPresent(demo);
-        if (cached != null) {
-            return Mono.just(cached);
-        }
-
         Mono<long[]> countsMono = databaseClient.sql(
                         "SELECT COUNT(*) AS events, COUNT(DISTINCT session_id) AS sessions " +
                                 "FROM demo_events WHERE demo_slug = ?")
@@ -71,8 +60,7 @@ public class EventSummaryService {
                 });
 
         return Mono.zip(countsMono, byEventMono)
-                .map(tuple -> new EventSummaryResponse(tuple.getT1()[1], tuple.getT1()[0], tuple.getT2()))
-                .doOnNext(resp -> summaryCache.put(demo, resp));
+                .map(tuple -> new EventSummaryResponse(tuple.getT1()[1], tuple.getT1()[0], tuple.getT2()));
     }
 
     private Number number(Object value) {

@@ -6,8 +6,8 @@ import run.runnable.numfeelservice.web.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +31,7 @@ class WordCloudControllerTest {
     }
 
     @Test
-    void wordCloud_without_search_returns_top300() throws IOException {
+    void wordCloud_without_search_returns_top300() {
         List<WordCloudEntryResponse> top300 = List.of(
                 new WordCloudEntryResponse("经济", 150),
                 new WordCloudEntryResponse("市场", 120),
@@ -39,7 +39,7 @@ class WordCloudControllerTest {
         );
         Map<String, Integer> fullCounts = Map.of("经济", 150, "市场", 120, "政策", 100);
         WordCloudService.WordCloudData data = new WordCloudService.WordCloudData(top300, fullCounts);
-        when(mockService.getOrLoad()).thenReturn(data);
+        when(mockService.getOrLoad()).thenReturn(Mono.just(data));
 
         client.get().uri("/word-cloud")
                 .exchange()
@@ -51,14 +51,14 @@ class WordCloudControllerTest {
     }
 
     @Test
-    void wordCloud_with_search_returns_search_result() throws IOException {
+    void wordCloud_with_search_returns_search_result() {
         List<WordCloudEntryResponse> top300 = List.of(
                 new WordCloudEntryResponse("经济", 150),
                 new WordCloudEntryResponse("市场", 120)
         );
         Map<String, Integer> fullCounts = Map.of("经济", 150, "市场", 120);
         WordCloudService.WordCloudData data = new WordCloudService.WordCloudData(top300, fullCounts);
-        when(mockService.getOrLoad()).thenReturn(data);
+        when(mockService.getOrLoad()).thenReturn(Mono.just(data));
 
         client.get().uri("/word-cloud?search=经济")
                 .exchange()
@@ -70,13 +70,13 @@ class WordCloudControllerTest {
     }
 
     @Test
-    void wordCloud_search_not_in_top300() throws IOException {
+    void wordCloud_search_not_in_top300() {
         List<WordCloudEntryResponse> top300 = List.of(
                 new WordCloudEntryResponse("经济", 150)
         );
         Map<String, Integer> fullCounts = Map.of("经济", 150, "罕见词", 3);
         WordCloudService.WordCloudData data = new WordCloudService.WordCloudData(top300, fullCounts);
-        when(mockService.getOrLoad()).thenReturn(data);
+        when(mockService.getOrLoad()).thenReturn(Mono.just(data));
 
         client.get().uri("/word-cloud?search=罕见词")
                 .exchange()
@@ -88,8 +88,8 @@ class WordCloudControllerTest {
     }
 
     @Test
-    void wordCloud_service_failure_returns_500() throws IOException {
-        when(mockService.getOrLoad()).thenThrow(new RuntimeException("Data load failed"));
+    void wordCloud_service_failure_returns_500() {
+        when(mockService.getOrLoad()).thenReturn(Mono.error(new RuntimeException("Data load failed")));
 
         client.get().uri("/word-cloud")
                 .exchange()

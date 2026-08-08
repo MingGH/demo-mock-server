@@ -1,22 +1,15 @@
 package run.runnable.numfeelservice.controller;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import run.runnable.numfeelservice.service.PwnedService;
 import run.runnable.numfeelservice.web.ApiResponse;
 import tools.jackson.databind.JsonNode;
-
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 密码泄露自查代理：转发 Have I Been Pwned 的 Pwned Passwords range 接口。
@@ -31,28 +24,10 @@ import java.util.concurrent.TimeUnit;
 @RequestMapping("/pwned")
 public class PwnedController {
 
-    private static final Logger log = LoggerFactory.getLogger(PwnedController.class);
+    private final PwnedService pwnedService;
 
-    /** HIBP Pwned Passwords range 接口基址。 */
-    private static final String HIBP_RANGE_URL = "https://api.pwnedpasswords.com/range/";
-
-    /** 缓存同一前缀的 range 结果，降低对上游的请求量（前缀空间仅 16^5）。 */
-    private final Cache<String, String> rangeCache = Caffeine.newBuilder()
-            .expireAfterWrite(6, TimeUnit.HOURS)
-            .maximumSize(20_000)
-            .build();
-
-    private final WebClient webClient;
-
-    /**
-     * 构造器注入 WebClient.Builder，构建带超时、限制内存的客户端。
-     *
-     * @param webClientBuilder Spring 注入的 WebClient 构造器
-     */
-    public PwnedController(WebClient.Builder webClientBuilder) {
-        this.webClient = webClientBuilder
-                .codecs(c -> c.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
-                .build();
+    public PwnedController(PwnedService pwnedService) {
+        this.pwnedService = pwnedService;
     }
 
     /**
@@ -68,31 +43,13 @@ public class PwnedController {
         }
         String key = prefix.toUpperCase();
 
-        String cached = rangeCache.getIfPresent(key);
-        if (cached != null) {
-            return Mono.just(ApiResponse.ok(new RangeResult(key, cached)));
-        }
-
-        return webClient.get()
-                .uri(HIBP_RANGE_URL + key)
-                .header("User-Agent", "numfeel-pwned-check/1.0")
-                .header("Add-Padding", "true")
-                .retrieve()
-                .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(10))
-                .doOnNext(body -> rangeCache.put(key, body))
+        return pwnedService.fetchRange(key)
                 .map(body -> ApiResponse.ok(new RangeResult(key, body)))
-                .onErrorResume(err -> {
-                    log.warn("查询 HIBP range 失败 prefix={}: {}", key, err.getMessage());
-                    return Mono.just(ApiResponse.error(502, "上游泄露库查询暂不可用"));
-                });
+                .onErrorResume(err -> Mono.just(ApiResponse.error(502, "上游泄露库查询暂不可用")));
     }
 
     /**
      * 校验前缀是否为 5 位十六进制。
-     *
-     * @param prefix 待校验前缀
-     * @return 合法返回 true
      */
     boolean isValidPrefix(String prefix) {
         return prefix != null && prefix.matches("(?i)[0-9a-f]{5}");

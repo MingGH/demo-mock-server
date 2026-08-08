@@ -74,15 +74,13 @@ public class LeaderboardService {
                 || password == null || password.isBlank()) {
             return Mono.just(new LeaderboardResponse(List.of(), List.of(), List.of(), List.of(), 0L));
         }
+
         return login()
                 .flatMap(this::fetchAllRanges)
                 .doOnNext(resp -> log.info("Leaderboard fetched: 24h={}, 7d={}, 30d={}, all={}",
                         resp.last24Hours().size(), resp.last7Days().size(),
                         resp.last30Days().size(), resp.allTime().size()))
-                .onErrorResume(err -> {
-                    log.warn("Leaderboard fetch failed: {}", err.getMessage());
-                    return Mono.just(new LeaderboardResponse(List.of(), List.of(), List.of(), List.of(), 0L));
-                });
+                .retry(3);
     }
 
     /** 登录 Umami 换取临时 token。 */

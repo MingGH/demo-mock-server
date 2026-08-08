@@ -807,7 +807,7 @@ async function submitToLeaderboard() {
 }
 
 function loadLeaderboard() {
-  fetch(`${API_BASE}/wealth-button/leaderboard?limit=10`)
+  fetch(`${API_BASE}/wealth-button/leaderboard?limit=100`)
     .then(r => r.json())
     .then(json => {
       if (json.status === 200 && json.data) {

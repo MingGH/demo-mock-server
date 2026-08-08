@@ -276,7 +276,7 @@
           </span>\
           <span class="logo-text">\
             <span class="logo-title">数字直觉</span>\
-            <span class="logo-subtitle">别信模板，先上手</span>\
+            <span class="logo-subtitle">上手点点，你就明白</span>\
           </span>\
         </a>\
         <nav>' + navHtml + '</nav>\
@@ -441,11 +441,7 @@
 
     var side = document.createElement('section');
     side.className = 'home-side';
-    side.innerHTML = '\
-      <div class="home-note-stack">\
-        <div class="home-note">别问有没有捷径。<br>先拖一下滑块。</div>\
-        <div class="home-note">最好的页面，<br>通常最先打脸。</div>\
-      </div>';
+    side.innerHTML = '';
     side.appendChild(search);
     side.appendChild(filters);
 

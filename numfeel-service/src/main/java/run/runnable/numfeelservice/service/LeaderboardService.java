@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -21,10 +21,12 @@ import java.util.Map;
 /**
  * Demo 热门排行榜服务。
  * <p>
- * 每小时定时登录 Umami 统计后台，拉取近 24 小时 / 近 7 天 / 近 30 天 / 历史总榜四个口径的
+ * 登录 Umami 统计后台，拉取近 24 小时 / 近 7 天 / 近 30 天 / 历史总榜四个口径的
  * 页面浏览量（{@code type=path}），清洗（剔除首页、广告变体、合并重复子路径、
- * 仅保留 {@code /pages/} 下的真实 demo）后构建内存快照。前端始终读取最新快照，
- * 因此无缓存空窗；若某次拉取失败，则保留上一次成功的快照（降级返回旧数据）。
+ * 仅保留 {@code /pages/} 下的真实 demo）后返回结果。
+ * <p>
+ * 通过 {@link Cacheable} 注解 + CaffeineCacheManager(asyncMode) 实现 1 小时异步缓存，
+ * 配合 {@code LeaderboardRefreshTask} 定时预热确保前端无冷缓存。
  */
 @Service
 public class LeaderboardService {
@@ -44,10 +46,6 @@ public class LeaderboardService {
     private final String username;
     private final String password;
 
-    /** 当前对外提供的排行榜快照（volatile 保证可见性）。 */
-    private volatile LeaderboardResponse snapshot =
-            new LeaderboardResponse(List.of(), List.of(), List.of(), List.of(), 0L);
-
     public LeaderboardService(@Qualifier("umamiWebClient") WebClient umamiWebClient,
                               @Value("${umami.website-id:}") String websiteId,
                               @Value("${umami.username:}") String username,
@@ -65,36 +63,24 @@ public class LeaderboardService {
     }
 
     /**
-     * 返回当前排行榜快照（永不阻塞，永不抛错）。
+     * 获取排行榜数据。结果通过 @AsyncCacheable 自动缓存 1 小时。
      *
      * @return 四个口径的榜单及数据更新时间
      */
-    public LeaderboardResponse getLeaderboard() {
-        return snapshot;
-    }
-
-    /**
-     * 定时刷新排行榜快照：每小时执行一次，启动后延迟 10 秒首次执行。
-     */
-    @Scheduled(initialDelay = 10_000L, fixedRate = 3_600_000L)
-    public void refresh() {
+    @Cacheable(cacheNames = "leaderboard", sync = true)
+    public Mono<LeaderboardResponse> getLeaderboard() {
         if (websiteId == null || websiteId.isBlank()
                 || username == null || username.isBlank()
                 || password == null || password.isBlank()) {
-            return;
+            return Mono.just(new LeaderboardResponse(List.of(), List.of(), List.of(), List.of(), 0L));
         }
-        login()
+
+        return login()
                 .flatMap(this::fetchAllRanges)
-                .subscribe(
-                        fresh -> {
-                            snapshot = fresh;
-                            log.info("Leaderboard snapshot refreshed: 24h={}, 7d={}, 30d={}, all={}",
-                                    fresh.last24Hours().size(), fresh.last7Days().size(),
-                                    fresh.last30Days().size(), fresh.allTime().size());
-                        },
-                        err -> log.warn("Leaderboard refresh failed, keeping previous snapshot: {}",
-                                err.getMessage())
-                );
+                .doOnNext(resp -> log.info("Leaderboard fetched: 24h={}, 7d={}, 30d={}, all={}",
+                        resp.last24Hours().size(), resp.last7Days().size(),
+                        resp.last30Days().size(), resp.allTime().size()))
+                .retry(3);
     }
 
     /** 登录 Umami 换取临时 token。 */
@@ -143,18 +129,7 @@ public class LeaderboardService {
     }
 
     /**
-     * 清洗 Umami 返回的原始 path 指标：
-     * <ul>
-     *   <li>仅保留 {@code /pages/} 下的真实 demo（排除首页 {@code /}、其他根路径）；</li>
-     *   <li>去除 {@code #} 之后的片段（如 {@code #google_vignette} 广告变体）；</li>
-     *   <li>归一化为前端 demos.json 的匹配 key（去前导 {@code /}、去尾部 {@code /}、
-     *       去 {@code .html} 后缀并转小写）；</li>
-     *   <li>合并归一化后相同的路径浏览量；</li>
-     *   <li>按浏览量降序，取前 {@link #TOP_LIMIT} 条。</li>
-     * </ul>
-     *
-     * @param raw Umami 返回的 JSON 数组，每项形如 {@code {"x":"/pages/xxx","y":123}}
-     * @return 清洗后的榜单条目列表
+     * 清洗 Umami 返回的原始 path 指标。
      */
     static List<LeaderboardEntry> cleanse(JsonNode raw) {
         Map<String, Long> merged = new LinkedHashMap<>();
@@ -177,16 +152,12 @@ public class LeaderboardService {
 
     /**
      * 归一化单个路径。非 {@code /pages/} 下的路径返回 null（被剔除）。
-     *
-     * @param path 原始路径
-     * @return 归一化后的 path key（如 {@code pages/xxx}），不合格返回 null
      */
     static String normalizePath(String path) {
         if (path == null || path.isBlank()) {
             return null;
         }
         path = path.trim();
-        // 去掉 query / hash 片段
         int hashIdx = path.indexOf('#');
         if (hashIdx != -1) {
             path = path.substring(0, hashIdx);
@@ -195,11 +166,9 @@ public class LeaderboardService {
         if (queryIdx != -1) {
             path = path.substring(0, queryIdx);
         }
-        // 仅保留 /pages/ 下且路径段非空的真实 demo
         if (!path.startsWith("/pages/") || path.length() <= "/pages/".length()) {
             return null;
         }
-        // 去前导斜杠，与 demos.json / 前端 normalizeKey 的匹配规则对齐
         path = path.substring(1);
         if (path.endsWith(".html")) {
             path = path.substring(0, path.length() - 5);

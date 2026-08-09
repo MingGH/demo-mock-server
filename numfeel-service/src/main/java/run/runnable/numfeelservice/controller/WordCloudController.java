@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 /**
  * 词云 HTTP 处理器。
@@ -34,8 +33,7 @@ public class WordCloudController {
 
     @GetMapping(value = "/word-cloud", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<JsonNode>> wordCloud(@ModelAttribute WordCloudQuery query) {
-        return Mono.fromCallable(service::getOrLoad)
-                .subscribeOn(Schedulers.boundedElastic())
+        return service.getOrLoad()
                 .map(data -> respond(data, query == null ? null : query.search()))
                 .onErrorResume(err -> {
                     log.error("Failed to load word cloud data", err);

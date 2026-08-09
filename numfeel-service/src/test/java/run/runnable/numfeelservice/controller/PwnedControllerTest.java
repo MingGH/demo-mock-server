@@ -5,13 +5,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import run.runnable.numfeelservice.service.PwnedService;
 import tools.jackson.databind.JsonNode;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class PwnedControllerTest {
 
-    private final PwnedController controller = new PwnedController(WebClient.builder());
+    private final PwnedService pwnedService = new PwnedService(WebClient.builder());
+    private final PwnedController controller = new PwnedController(pwnedService);
 
     @Test
     void isValidPrefix_acceptsFiveHexChars() {

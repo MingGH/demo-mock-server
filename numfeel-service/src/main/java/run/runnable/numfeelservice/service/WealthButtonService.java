@@ -179,7 +179,7 @@ public class WealthButtonService {
 
     /** 查询排行榜 top N（按用户名去重）。 */
     public Mono<WealthButtonLeaderboardResponse> getLeaderboard(int limit) {
-        int safeLimit = ServiceSupport.clampLimit(limit, 1, 10);
+        int safeLimit = ServiceSupport.clampLimit(limit, 1, 100);
         return ServiceSupport.selectAll(template, WealthButtonLeaderboardEntry.class)
                 .map(rows -> buildLeaderboardResponse(rows, safeLimit));
     }

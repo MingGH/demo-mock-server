@@ -1,9 +1,6 @@
 /**
  * ZhihuLink — 在 demo 页面顶部注入「知乎配套文章」反向链接。
  *
- * 目标：从 SEO / 知乎流量进入 demo 页的访客，能一键跳转回对应的知乎深度文，
- * 形成「demo 体验 → 知乎长文 → 更多 demo」的流量飞轮。
- *
  * 配置：编辑 `data/zhihu-links.json`，以 demo slug 为 key、知乎文章为 value：
  *   {
  *     "benfords-law": { "url": "https://zhuanlan.zhihu.com/p/xxx", "title": "本福特定律：数字也会说谎" }
@@ -42,11 +39,16 @@
     var slug = null;
     var slashIdx = rest.indexOf('/');
     if (slashIdx !== -1) {
+      // /pages/<slug>/ or /pages/<slug>/index.html
       slug = rest.slice(0, slashIdx);
     } else {
       var match = /^([^/]+)\.html$/.exec(rest);
       if (match) {
+        // /pages/<slug>.html
         slug = match[1];
+      } else {
+        // /pages/<slug> (clean URL without .html or trailing slash)
+        slug = rest;
       }
     }
     if (!slug) {

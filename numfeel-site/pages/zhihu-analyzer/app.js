@@ -47,6 +47,7 @@
     if (e.key === 'Enter') startAnalysis();
   });
   initWordFilterUI();
+  bindShare();
 
   function setMastDate() {
     var now = new Date();
@@ -1240,6 +1241,94 @@
         fb.textContent = '已进剪报柜';
         setTimeout(function () { fb.textContent = ''; }, 2000);
       }).catch(function () { fb.textContent = '复制失败，手动选一下'; });
+    });
+  }
+
+  // ====== 分享长图 ======
+  function bindShare() {
+    var btn = $('shareBtn');
+    if (!btn) return;
+    btn.addEventListener('click', generateShareImage);
+    $('shareCloseBtn').addEventListener('click', closeShareModal);
+    var modal = $('shareModal');
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeShareModal();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !modal.hidden) closeShareModal();
+    });
+  }
+
+  function openShareModal() {
+    var modal = $('shareModal');
+    var stage = $('shareStage');
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    var oldImg = stage.querySelector('img.share-img');
+    if (oldImg) oldImg.remove();
+    $('shareLoading').hidden = false;
+    var saveBtn = $('shareSaveBtn');
+    saveBtn.hidden = true;
+    saveBtn.onclick = null;
+    $('shareHint').textContent = '';
+    if (window.iconify) window.iconify.scan(modal);
+  }
+
+  function closeShareModal() {
+    $('shareModal').hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  function generateShareImage() {
+    var report = $('report');
+    var btn = $('shareBtn');
+    if (!report) return;
+    if (!window.html2canvas) {
+      openShareModal();
+      $('shareHint').textContent = '长图模块没加载成功，刷新再试';
+      return;
+    }
+    btn.disabled = true;
+    openShareModal();
+    html2canvas(report, {
+      useCORS: true,
+      scale: 1,
+      backgroundColor: '#faf9f3',
+      logging: false,
+      onclone: function (doc) {
+        // 跨域头像换占位，避免 canvas 被污染导致导不出图
+        doc.querySelectorAll('#followGrid img.follow-avatar').forEach(function (img) {
+          var ph = doc.createElement('span');
+          ph.className = 'follow-avatar follow-avatar-ph';
+          ph.textContent = (img.alt || '知')[0];
+          img.parentNode.replaceChild(ph, img);
+        });
+      }
+    }).then(function (canvas) {
+      var url = canvas.toDataURL('image/jpeg', 0.95);
+      $('shareLoading').hidden = true;
+      var img = document.createElement('img');
+      img.className = 'share-img';
+      img.src = url;
+      $('shareStage').appendChild(img);
+      var saveBtn = $('shareSaveBtn');
+      saveBtn.hidden = false;
+      saveBtn.onclick = function () {
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = '数字直觉-知乎创作报-' + Date.now() + '.jpg';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        $('shareHint').textContent = '已开始下载，注意查收';
+      };
+      $('shareHint').textContent = '长按图片也能保存';
+      btn.disabled = false;
+    }).catch(function (err) {
+      $('shareLoading').hidden = true;
+      $('shareHint').textContent = '长图没印出来：' + (err && err.message ? err.message : '未知错误');
+      console.error('[share]', err);
+      btn.disabled = false;
     });
   }
 

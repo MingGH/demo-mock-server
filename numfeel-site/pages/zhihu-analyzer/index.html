@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
 </head>
@@ -306,6 +307,7 @@
         <p class="lede-para">这串数字不是你的全部，但它真实记录了你公开发声的轨迹。往后再写，记得多给自己留个赞。</p>
         <div class="closing-actions">
           <button class="btn-ink" id="copySummaryBtn"><span class="iconify" data-icon="ph:copy"></span> 复制本期摘要</button>
+          <button class="btn-ink" id="shareBtn"><span class="iconify" data-icon="ph:image-square"></span> 生成分享图</button>
           <span class="copy-feedback" id="copyFeedback"></span>
         </div>
       </section>
@@ -318,6 +320,30 @@
     <p>数字直觉 · 知乎创作数据报 · 数据来自知乎开放平台，仅作展示</p>
     <p><a href="https://github.com/MingGH/demo-mock-server" target="_blank" rel="noopener">开源项目</a> · <a href="../../">返回首页</a></p>
   </footer>
+
+  <!-- 分享长图弹窗 -->
+  <div class="share-modal" id="shareModal" hidden>
+    <div class="share-modal-card">
+      <div class="share-modal-head">
+        <h3 class="share-modal-title">整期报纸已印好</h3>
+        <button class="share-close" id="shareCloseBtn" type="button" aria-label="关闭">
+          <span class="iconify" data-icon="ph:x"></span>
+        </button>
+      </div>
+      <div class="share-modal-stage" id="shareStage">
+        <div class="share-loading" id="shareLoading">
+          <span class="iconify share-spin" data-icon="ph:printer"></span>
+          <span id="shareLoadingText">正在把整期报纸印成长图…</span>
+        </div>
+      </div>
+      <div class="share-modal-actions">
+        <button class="btn-ink" id="shareSaveBtn" hidden>
+          <span class="iconify" data-icon="ph:download-simple"></span> 保存图片
+        </button>
+        <span class="share-hint" id="shareHint"></span>
+      </div>
+    </div>
+  </div>
 
   <script src="engine.js"></script>
   <script src="app.js"></script>

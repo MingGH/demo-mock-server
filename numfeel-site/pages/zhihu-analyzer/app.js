@@ -456,7 +456,7 @@
     $('rhDeck').innerHTML =
       '从 <span class="serif-bold">' + E.formatDate(stats.firstCreated) + '</span> 到 <span class="serif-bold">' +
       E.formatDate(stats.lastCreated) + '</span>，一共 <span class="serif-bold">' + E.formatNumber(stats.total) +
-      '</span> 篇内容、<span class="serif-bold">' + E.formatNumber(stats.totalLikes) + '</span> 次点赞。我们把它排成头版。';
+      '</span> 篇内容、<span class="serif-bold">' + E.formatNumber(stats.totalLikes) + '</span> 次点赞。<span class="keep-line">我们把它排成头版。</span>';
   }
 
   // ====== 关键数字（GSAP 数字滚动） ======

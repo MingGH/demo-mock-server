@@ -1,5 +1,6 @@
 package run.runnable.numfeelservice.web;
 
+import run.runnable.numfeelservice.controller.dto.ZhihuAnalyzeResponses.CacheInfo;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.JsonNodeFactory;
@@ -27,6 +28,26 @@ public final class ApiResponse {
         ObjectNode body = NF.objectNode();
         body.put("status", 200);
         body.set("data", data == null ? NF.nullNode() : MAPPER.valueToTree(data));
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
+    }
+
+    /**
+     * 带缓存元信息的成功响应：
+     * {@code {"status":200,"data":<data>,"cache":{...}}}。
+     * 用于支持前端展示「数据来自缓存 · 剩 X 分钟刷新」。
+     */
+    public static ResponseEntity<JsonNode> okWithCache(Object data, CacheInfo cache) {
+        ObjectNode body = NF.objectNode();
+        body.put("status", 200);
+        body.set("data", data == null ? NF.nullNode() : MAPPER.valueToTree(data));
+        ObjectNode cacheNode = NF.objectNode();
+        cacheNode.put("cached", cache.cached());
+        cacheNode.put("cachedAt", cache.cachedAt());
+        cacheNode.put("expiresAt", cache.expiresAt());
+        cacheNode.put("ttlSeconds", cache.ttlSeconds());
+        body.set("cache", cacheNode);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body);

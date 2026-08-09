@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: numfeel-service
+  r2dbc:
+    url: r2dbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DB:demomockserver}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:}
+    pool:
+      initial-size: 1
+      max-size: 5
+      max-idle-time: 30m
+  sql:
+    init:
+      mode: never
+
+server:
+  port: 8080
+
+# 上游统计 API (api.996.ninja) token，通过环境变量注入
+ninja:
+  api:
+    token: ${NINJA_API_TOKEN:}
+    base-url: https://api.996.ninja
+
+# random.org 大气噪声熵源（无需 API key，公开接口）
+randomorg:
+  base-url: ${RANDOMORG_BASE_URL:https://www.random.org}
+
+# Cloudflare Turnstile 密钥（切勿硬编码到代码中）
+turnstile:
+  secret-key: ${TURNSTILE_SECRET_KEY:}
+
+# Umami 统计分析（demo 排行榜）；凭据通过环境变量注入，切勿硬编码
+umami:
+  base-url: ${UMAMI_BASE_URL:https://umami.runnable.run}
+  website-id: ${UMAMI_WEBSITE_ID:60f1c767-3f2a-4be2-ad53-f9e4e1372785}
+  username: ${UMAMI_USERNAME:}
+  password: ${UMAMI_PASSWORD:}
+
+# 通用行为埋点（demo_events）
+numfeel:
+  events:
+    enabled: ${NUMFEEL_EVENTS_ENABLED:true}
+    salt: ${NUMFEEL_EVENTS_SALT:numfeel-events-default-salt-please-override}
+
+logging:
+  level:
+    root: INFO
+    io.netty: WARN
+    io.r2dbc: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

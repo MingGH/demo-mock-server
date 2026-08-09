@@ -112,6 +112,8 @@ var ZhihuEngine = (function () {
 
   /**
    * 按固定区间生成直方图分桶数据。
+   * 数据呈幂律分布时（max/min ≥ 50），自动改为对数桶，
+   * 让 1-9 / 10-99 / 100-999 / 1,000+ 这种「数量级边界」可见。
    * @param {number[]} values - 原始值数组
    * @param {number} maxBuckets - 最大桶数
    * @returns {{labels: string[], data: number[], median: number, p90: number}}
@@ -121,36 +123,98 @@ var ZhihuEngine = (function () {
     if (!values || values.length === 0) {
       return { labels: [], data: [], median: 0, p90: 0 };
     }
-    var maxVal = Math.max.apply(null, values);
     var minVal = Math.min.apply(null, values);
+    var maxVal = Math.max.apply(null, values);
     if (maxVal === minVal) {
       return {
-        labels: [String(maxVal)],
+        labels: [formatBucketNum(maxVal)],
         data: [values.length],
+        buckets: [values.slice()],
         median: maxVal,
         p90: maxVal
       };
     }
+    // 幂律数据：max ≥ 50 × min 时切对数桶
+    if (maxVal / Math.max(1, minVal) >= 50) {
+      return logBuckets(values, minVal, maxVal, maxBuckets);
+    }
+    return linearBuckets(values, minVal, maxVal, maxBuckets);
+  }
+
+  function linearBuckets(values, minVal, maxVal, maxBuckets) {
     var bucketSize = Math.max(1, Math.ceil((maxVal - minVal) / maxBuckets));
     var buckets = [];
+    var bucketValues = [];
     var bucketLabels = [];
     for (var i = 0; i < maxBuckets; i++) {
       var low = minVal + i * bucketSize;
       var high = low + bucketSize - 1;
       if (i === maxBuckets - 1) high = maxVal;
-      bucketLabels.push(low === high ? String(low) : low + '-' + high);
+      bucketLabels.push(formatRange(low, high));
       buckets.push(0);
+      bucketValues.push([]);
     }
     for (var j = 0; j < values.length; j++) {
       var idx = Math.min(maxBuckets - 1, Math.floor((values[j] - minVal) / bucketSize));
       buckets[idx]++;
+      bucketValues[idx].push(values[j]);
     }
     return {
       labels: bucketLabels,
       data: buckets,
+      buckets: bucketValues,
       median: median(values),
       p90: percentile90(values)
     };
+  }
+
+  function logBuckets(values, minVal, maxVal, maxBuckets) {
+    var lo = Math.floor(Math.log10(Math.max(1, minVal)));
+    var hi = Math.ceil(Math.log10(Math.max(1, maxVal)));
+    var decades = Math.max(1, hi - lo);
+    // 每个 decade 1 桶；若总桶数 > maxBuckets，则合并相邻 decade
+    var step = Math.max(1, Math.ceil(decades / Math.max(1, maxBuckets - 1)));
+    var buckets = [];
+    var bucketValues = [];
+    var bucketLabels = [];
+    for (var p = lo; p < hi; p += step) {
+      var low = Math.pow(10, p);
+      var high = Math.pow(10, Math.min(hi, p + step)) - 1;
+      if (p + step >= hi) high = maxVal;
+      bucketLabels.push(formatRange(low, high));
+      buckets.push(0);
+      bucketValues.push([]);
+    }
+    for (var i = 0; i < values.length; i++) {
+      var v = Math.max(1, values[i]);
+      var pIdx = Math.floor(Math.log10(v));
+      var idx = Math.min(buckets.length - 1, Math.floor((pIdx - lo) / step));
+      buckets[idx]++;
+      bucketValues[idx].push(values[i]);
+    }
+    return {
+      labels: bucketLabels,
+      data: buckets,
+      buckets: bucketValues,
+      median: median(values),
+      p90: percentile90(values)
+    };
+  }
+
+  function formatRange(low, high) {
+    if (low === high) return formatBucketNum(low);
+    // 跨万级用「1万+」简写
+    if (low >= 10000) return formatBucketNum(low) + '+';
+    if (high >= 10000 && low < 10000) {
+      return formatBucketNum(low) + '-' + Math.round(high / 1000) + 'k';
+    }
+    return formatBucketNum(low) + '-' + formatBucketNum(high);
+  }
+
+  function formatBucketNum(n) {
+    n = Math.round(n);
+    if (n >= 10000) return (n / 10000).toFixed(n % 10000 === 0 ? 0 : 1) + '\u4e07';
+    return n.toLocaleString('en-US');
   }
 
   /**

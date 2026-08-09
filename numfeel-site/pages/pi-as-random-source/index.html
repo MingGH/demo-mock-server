@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="π 的小数部分能当随机源吗？掷一把 π 色子、当密钥被秒破、看分布收敛、拉远切片看成本爆炸——四步拆穿「确定却看似随机」的真相。">
+  <title>π 能当随机源吗 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-math-pi"></i> π 能当随机源吗</h1>
+    <p>π 的小数位无限不循环、「看起来」很随机。但它能当真随机源吗？下面不靠嘴说，用四步亲手拆穿——<strong>每一步都点一下</strong>。</p>
+    <p style="margin-top: 8px; font-size: 0.85rem;"><i class="ti ti-database"></i> π 数据（前 100 万位）：<span id="piStatus" style="color: #ffd700;">加载中...</span></p>
+  </div>
+
+  <!-- ══════════ Hero ══════════ -->
+  <section class="hero">
+    <div class="hero-art">
+      <img src="../../images/pi-as-random-source/hero.png" alt="抛起的骰子表面浮现圆周率符号，周围数字尘埃漂浮" loading="eager">
+    </div>
+    <div class="hero-copy">
+      <p class="hero-lead">先说结论：π 的小数位是<strong>确定的、公开的</strong>——它不是随机源，更像一张无限长的表。下面四步，让「确定却看似随机」这个反直觉点自己说话。</p>
+      <p class="hero-hint">四关连玩下来，你就知道它为什么不能当真随机源。</p>
+      <button class="btn btn-primary btn-lg" id="heroBtn"><i class="ti ti-dice-5"></i> 掷一把 π 色子</button>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 A：可复现性 ══════════ -->
+  <section class="section" id="sectionA">
+    <div class="round-head">
+      <span class="tag tag-fun">动手玩</span>
+      <h2><i class="ti ti-dice-5"></i> 第一关：掷一把 π 色子</h2>
+    </div>
+    <p class="section-desc">左边是 <b>π 取段</b>，右边是<b>量子真随机</b>（ANU 真空涨落）。连点「再掷一次」，观察两边谁在变、谁纹丝不动。</p>
+
+    <div class="duel">
+      <div class="duel-col">
+        <div class="src-label pi"><i class="ti ti-math-pi"></i> π 取段</div>
+        <div class="stream" id="piStream">· · ·</div>
+        <div class="stream-note" id="piStreamNote"></div>
+      </div>
+      <div class="duel-vs">VS</div>
+      <div class="duel-col">
+        <div class="src-label quantum"><i class="ti ti-atom"></i> 量子真随机</div>
+        <div class="stream" id="qStream">· · ·</div>
+        <div class="stream-note" id="qStreamNote"></div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-primary btn-lg" id="rollBtn"><i class="ti ti-bolt"></i> 再掷一次</button>
+      <button class="btn btn-secondary" id="resetStartBtn"><i class="ti ti-refresh"></i> 换段起点</button>
+    </div>
+
+    <div class="insight-box red" id="piAlwaysSame" style="opacity:0;">
+      <h3><i class="ti ti-alert-triangle"></i> 一票否决</h3>
+      <p>π 那一路永远一样——它只是<strong>回放同一段录音</strong>，不是随机。真随机源的定义是「拥有全部信息也无法预测下一次」；π 恰恰相反，<strong>任何人、任何机器、任何时刻，都能算出同一个答案</strong>。</p>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 B：公开可预测 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-fun">动手玩</span>
+      <h2><i class="ti ti-user-shield"></i> 第二关：当密钥，被秒破</h2>
+    </div>
+    <p class="section-desc">你扮演 A，用 π 第 <b><span id="bStartShow">?</span></b> 位开始取 20 位当「密钥」。拖动起点，或点「黑客复原」——看 B 怎么原样猜到它。</p>
+
+    <div class="module">
+      <label class="range-row">
+        <span>起点 N</span>
+        <input type="range" id="bStart" min="1" max="999980" value="314150" step="1">
+        <span class="range-val" id="bStartVal">314150</span>
+      </label>
+
+      <div class="key-duel">
+        <div class="key-col">
+          <div class="key-label">A 的密钥（π 第 N 位起）</div>
+          <div class="key" id="keyA">······</div>
+        </div>
+        <div class="key-col">
+          <div class="key-label">B 复原的密钥（击败你）</div>
+          <div class="key" id="keyB">······</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn btn-primary" id="hackBtn"><i class="ti ti-bug"></i> 黑客复原</button>
+    </div>
+
+    <div class="insight-box blue" id="hackInsight" style="opacity:0;">
+      <h3><i class="ti ti-user-shield"></i> 为什么会被秒破</h3>
+      <p>π 的小数位对所有人<strong>公开可见</strong>。别人只要知道你用的哪一段（起点 N），就能精确复现你的「随机数」。这直接废掉了随机源最核心的用途——<b>密码学安全</b>：密钥、nonce、token 全都可预测。</p>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 C：正规数猜想 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-easy">看分布</span>
+      <h2><i class="ti ti-chart-bar"></i> 第三关：分布长什么样</h2>
+    </div>
+    <p class="section-desc">拉远取到的位数，看 π 的 0~9 频次怎么收敛。数据越看越「完美」，但顶部这个徽章请你盯住。</p>
+
+    <div class="badge-row">
+      <span class="src-label pend"><i class="ti ti-question-mark"></i> 正规性：未证明</span>
+    </div>
+
+    <label class="range-row">
+      <span>取前</span>
+      <input type="range" id="cCount" min="3" max="6" value="4" step="1">
+      <span class="range-val" id="cCountVal">1 万</span>
+    </label>
+
+    <div class="chart-wrap">
+      <canvas id="normChart"></canvas>
+    </div>
+    <div class="chart-meta" id="cMeta"></div>
+
+    <div class="insight-box" id="cInsight">
+      <h3><i class="ti ti-math-pi"></i> 正规数猜想</h3>
+      <p>π 是否「正规」（每个数字出现频率相等）至今是<strong>未证明的猜想</strong>。前 100 万位的分布确实非常接近 10%，数学上却没有保证——<b>看起来像随机，不等于就是随机</b>。</p>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 D：成本爆炸 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-medium">务实落点</span>
+      <h2><i class="ti ti-gauge"></i> 第四关：取远位的代价</h2>
+    </div>
+    <p class="section-desc">要用第 N 位之后的 k 位，π 得先算到第 N+k 位。十进制没有 BBP 那种 O(n) 捷径——把起点拉远，看代价怎么爆表。</p>
+
+    <label class="range-row">
+      <span>起点 N</span>
+      <input type="range" id="dStart" min="1" max="999900" value="5000" step="1">
+      <span class="range-val" id="dStartVal">5000</span>
+    </label>
+    <label class="range-row">
+      <span>取 k 位</span>
+      <input type="range" id="dLen" min="1" max="100" value="20" step="1">
+      <span class="range-val" id="dLenVal">20</span>
+    </label>
+
+    <div class="cost-metric">
+      <span class="cost-label">需要计算到第</span>
+      <span class="cost-number" id="dNeeded">—</span>
+      <span class="cost-label">位</span>
+    </div>
+    <div class="cost-bar">
+      <div class="cost-fill" id="dFill"></div>
+    </div>
+    <div class="cost-scale"><span>轻松</span><span>吃力</span><span>宇宙级</span></div>
+
+    <div class="insight-box orange" id="dInsight">
+      <h3><i class="ti ti-gauge"></i> 为什么不现实</h3>
+      <p>起点 N 到百万级时，取一段随机数要先把 π 算到百万位以上——计算量随 N 爆炸。取远位的捷径 BBP 只对<strong>十六进制</strong>有效，十进制没有这等好事。所以现实里没人用 π 当随机源。</p>
+    </div>
+  </section>
+
+  <!-- ══════════ 收尾 ══════════ -->
+  <section class="section" style="text-align:center;">
+    <div class="insight-box green">
+      <h3><i class="ti ti-bulb"></i> 一句话结论</h3>
+      <p>π 不是随机源——它是一张<strong>确定的、公开的、无限长的表</strong>。不是「宇宙自己也没算好」，而是「人类算得出、结果固定」。它最多是个特定的<strong>伪随机源</strong>，前提是你不介意它的可复现性。</p>
+    </div>
+    <button class="btn btn-secondary" id="copyBtn"><i class="ti ti-copy"></i> 复制结论分享</button>
+  </section>
+
+  <button class="top-btn" id="topBtn"><i class="ti ti-arrow-up"></i></button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../../data/pi-1m.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

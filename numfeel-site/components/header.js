@@ -276,7 +276,7 @@
           </span>\
           <span class="logo-text">\
             <span class="logo-title">数字直觉</span>\
-            <span class="logo-subtitle">别信模板，先上手</span>\
+            <span class="logo-subtitle">上手点点，你就明白</span>\
           </span>\
         </a>\
         <nav>' + navHtml + '</nav>\
@@ -303,19 +303,19 @@
         <div class="share-options">\
           <button class="share-option" type="button" onclick="window.shareTo(\'weibo\')">\
             <span class="icon"><iconify-icon icon="ri:weibo-fill"></iconify-icon></span>\
-            <span class="label">微博<small>丢到公屏</small></span>\
+            <span class="label">微博</span>\
           </button>\
           <button class="share-option" type="button" onclick="window.shareTo(\'twitter\')">\
             <span class="icon"><iconify-icon icon="ri:twitter-x-fill"></iconify-icon></span>\
-            <span class="label">X<small>丢给海外</small></span>\
+            <span class="label">X</span>\
           </button>\
           <button class="share-option" type="button" onclick="window.shareTo(\'linkedin\')">\
             <span class="icon"><iconify-icon icon="ri:linkedin-fill"></iconify-icon></span>\
-            <span class="label">LinkedIn<small>发给同事</small></span>\
+            <span class="label">LinkedIn</span>\
           </button>\
           <button class="share-option" type="button" onclick="window.shareTo(\'qrcode\')">\
             <span class="icon"><iconify-icon icon="ph:qr-code"></iconify-icon></span>\
-            <span class="label">二维码<small>手机扫一下</small></span>\
+            <span class="label">二维码</span>\
           </button>\
         </div>\
         <div class="share-url-box">\
@@ -441,11 +441,7 @@
 
     var side = document.createElement('section');
     side.className = 'home-side';
-    side.innerHTML = '\
-      <div class="home-note-stack">\
-        <div class="home-note">别问有没有捷径。<br>先拖一下滑块。</div>\
-        <div class="home-note">最好的页面，<br>通常最先打脸。</div>\
-      </div>';
+    side.innerHTML = '';
     side.appendChild(search);
     side.appendChild(filters);
 
@@ -459,10 +455,106 @@
       gallery.appendChild(footer);
     }
 
+    // 精选：从后端 /leaderboard（umami 流量）取历史总榜前 3，插在 home-side 与 home-gallery 之间
+    var featured = document.createElement('section');
+    featured.className = 'home-featured';
+    featured.id = 'homeFeatured';
+    featured.innerHTML = '<div class="featured-loading">精选加载中…</div>';
+
     wrapper.appendChild(lead);
     wrapper.appendChild(side);
+    wrapper.appendChild(featured);
     wrapper.appendChild(gallery);
+
+    loadFeatured();
     enrichHomeSections();
+  }
+
+  // ── 首页精选（从 umami 流量榜单取前 3） ──────────────────────────────
+
+  var FEATURED_TOP = 3;
+  var FEATURED_API = 'https://numfeel-api.996.ninja/leaderboard';
+
+  /**
+   * 归一化 demo 路径为匹配 key（与排行榜页 logic.js 保持一致）。
+   * @param {string} path 原始路径
+   * @returns {string} 归一化 key
+   */
+  function featuredNormalizeKey(path) {
+    if (!path) return '';
+    var p = String(path).trim();
+    var h = p.indexOf('#'); if (h !== -1) p = p.slice(0, h);
+    var q = p.indexOf('?'); if (q !== -1) p = p.slice(0, q);
+    if (p.charAt(0) === '/') p = p.slice(1);
+    if (p.slice(-5) === '.html') p = p.slice(0, -5);
+    if (p.slice(-1) === '/') p = p.slice(0, -1);
+    return p.toLowerCase();
+  }
+
+  /**
+   * 把 demos.json 扁平化为 归一化key → demo 元信息 的映射。
+   * @param {Object} demosJson demos.json 解析结果
+   * @returns {Object} 映射表
+   */
+  function featuredDemoIndex(demosJson) {
+    var index = {};
+    if (!demosJson || !Array.isArray(demosJson.categories)) return index;
+    demosJson.categories.forEach(function(cat) {
+      (cat.demos || []).forEach(function(demo) {
+        var key = featuredNormalizeKey(demo.href);
+        if (key) {
+          index[key] = { title: demo.title, icon: demo.icon, href: demo.href, desc: demo.desc };
+        }
+      });
+    });
+    return index;
+  }
+
+  /**
+   * 拉取首页精选：并发读取 demos.json 与后端 /leaderboard，
+   * 取历史总榜前 3 并渲染成卡片。任何一步失败都静默隐藏精选区，不影响页面。
+   */
+  function loadFeatured() {
+    var el = document.getElementById('homeFeatured');
+    if (!el) return;
+    Promise.all([
+      fetch(prefix + 'data/demos.json').then(function(r) { return r.json(); }),
+      fetch(FEATURED_API).then(function(r) { return r.json(); })
+    ]).then(function(res) {
+      var demos = res[0];
+      var body = res[1];
+      if (!body || body.status !== 200 || !body.data) throw new Error('bad leaderboard response');
+      var index = featuredDemoIndex(demos);
+      var entries = (body.data.allTime || []).slice(0, FEATURED_TOP);
+      var cards = [];
+      entries.forEach(function(entry) {
+        var meta = index[featuredNormalizeKey(entry.path)];
+        if (meta) cards.push(meta);
+      });
+      renderFeatured(cards);
+    }).catch(function() {
+      if (el) el.classList.add('featured-empty');
+    });
+  }
+
+  /**
+   * 渲染精选卡片（复用 .category-title / .category-cards / .card，与其它卡片一致）。
+   * @param {Array<{title:string, icon:string, href:string, desc:string}>} cards 匹配到的精选卡片
+   */
+  function renderFeatured(cards) {
+    var el = document.getElementById('homeFeatured');
+    if (!el) return;
+    if (!cards.length) { el.classList.add('featured-empty'); return; }
+    var html = '<div class="category-title"><i class="ti ti-star"></i>精选<span class="count">' + cards.length + '</span></div>';
+    html += '<div class="category-cards">';
+    cards.forEach(function(m) {
+      html += '<a href="' + m.href + '" class="card" data-category="featured">' +
+        '<div class="card-icon"><i class="ti ' + m.icon + '"></i></div>' +
+        '<h2>' + m.title + '</h2>' +
+        '<p>' + m.desc + '</p></a>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
   }
 
   function enhanceDetailPage() {

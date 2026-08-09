@@ -1,0 +1,172 @@
+/* 深色科技风，与站点其它 demo 保持一致：背景渐变 + 卡片 + 金色标题。 */
+:root {
+  --gold: #ffd700;
+  --blue: #90caf9;
+  --green: #81c784;
+  --red: #ff6b6b;
+  --orange: #ffb74d;
+  --purple: #ce93d8;
+  --gray: #888;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #e8e8e8;
+  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 55%, #0f3460 100%);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container { max-width: 860px; margin: 0 auto; padding: 24px 16px 80px; }
+
+h1, h2, h3, h4 { margin-top: 0; }
+h1 { color: var(--gold); font-size: 1.9rem; }
+.header p { color: #bbb; line-height: 1.7; }
+
+.section {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 22px 20px;
+  margin: 22px 0;
+  backdrop-filter: blur(4px);
+}
+
+.round-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.round-head h2 { font-size: 1.25rem; color: #fff; margin: 0; }
+.tag {
+  font-size: 0.72rem; padding: 3px 9px; border-radius: 999px; white-space: nowrap; font-weight: 600;
+}
+.tag-fun { background: rgba(206, 147, 216, 0.18); color: var(--purple); }
+.tag-easy { background: rgba(129, 199, 132, 0.16); color: var(--green); }
+.tag-medium { background: rgba(255, 183, 77, 0.16); color: var(--orange); }
+
+.section-desc { color: var(--gray); font-size: 0.9rem; margin: 8px 0 18px; line-height: 1.7; }
+.section-desc b { color: #e8e8e8; }
+
+/* ── Hero ── */
+.hero {
+  display: flex; gap: 22px; align-items: center; flex-wrap: wrap;
+  background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px; padding: 20px; margin: 22px 0;
+}
+.hero-art { flex: 1 1 260px; }
+.hero-art img { width: 100%; border-radius: 14px; display: block; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+.hero-copy { flex: 1 1 280px; }
+.hero-lead { color: #e8e8e8; line-height: 1.8; font-size: 1rem; }
+.hero-lead strong { color: var(--gold); }
+.hero-hint { color: var(--gray); font-size: 0.88rem; margin: 10px 0 16px; }
+@media (max-width: 620px) { .hero { text-align: center; } .hero-copy .btn { width: 100%; } }
+
+/* ── 模块 A：对决 / 流 ── */
+.duel { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; }
+.duel-col {
+  flex: 1 1 260px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px; padding: 14px;
+}
+.duel-vs { align-self: center; font-weight: 800; color: var(--gold); font-size: 1.1rem; }
+.src-label {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700;
+  padding: 4px 10px; border-radius: 8px; margin-bottom: 10px;
+}
+.src-label.pi { background: rgba(255, 215, 0, 0.14); color: var(--gold); }
+.src-label.quantum { background: rgba(0, 212, 255, 0.14); color: #00d4ff; }
+.src-label.pend { background: rgba(255, 183, 77, 0.14); color: var(--orange); }
+
+.stream {
+  font-family: "Courier New", monospace; font-size: 1.05rem; letter-spacing: 2px;
+  word-break: break-all; line-height: 1.6; min-height: 3.2em; color: #fff;
+}
+.stream-note { font-size: 0.78rem; color: var(--gray); margin-top: 8px; }
+
+/* ── 按钮 ── */
+.btn {
+  border: none; cursor: pointer; border-radius: 12px; font-weight: 700;
+  padding: 12px 18px; font-size: 0.95rem; color: #0f172a; transition: transform .12s ease, filter .12s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.6; cursor: wait; }
+.btn-primary { background: var(--gold); }
+.btn-secondary { background: rgba(255, 255, 255, 0.12); color: #e8e8e8; }
+.btn-lg { font-size: 1.05rem; padding: 14px 22px; }
+.btn:hover { filter: brightness(1.08); }
+
+.action-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+
+/* ── 提示框 ── */
+.insight-box {
+  border-radius: 12px; padding: 14px 16px; margin-top: 18px; font-size: 0.9rem; line-height: 1.7;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.insight-box h3 { font-size: 0.98rem; margin-bottom: 6px; }
+.insight-box p { margin: 4px 0; }
+.insight-box b { color: #fff; }
+.insight-box.red { border-left: 4px solid var(--red); color: #ffd9d9; }
+.insight-box.blue { border-left: 4px solid var(--blue); color: #dcebff; }
+.insight-box.orange { border-left: 4px solid var(--orange); }
+.insight-box.green { border-left: 4px solid var(--green); color: #e2f5e4; }
+
+/* ── 滑块 ── */
+.module { margin: 14px 0; }
+.range-row {
+  display: flex; align-items: center; gap: 12px; margin: 14px 0; font-size: 0.9rem; color: #bbb; flex-wrap: wrap;
+}
+.range-row span:first-child { min-width: 64px; }
+.range-row input[type="range"] { flex: 1 1 200px; accent-color: var(--gold); }
+.range-val {
+  font-family: "Courier New", monospace; color: var(--gold); font-weight: 700; min-width: 64px; text-align: right;
+}
+
+/* ── 模块 B：密钥 ── */
+.key-duel { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+.key-col { flex: 1 1 280px; background: rgba(0, 0, 0, 0.3); border-radius: 12px; padding: 12px; }
+.key-label { font-size: 0.8rem; color: var(--gray); margin-bottom: 8px; }
+.key {
+  font-family: "Courier New", monospace; font-size: 1.5rem; letter-spacing: 3px; color: #fff;
+  word-break: break-all; line-height: 1.5;
+}
+.key-duel .key-col:last-child .key { color: var(--red); }
+
+/* ── 模块 C：分布 ── */
+.badge-row { margin: 14px 0 6px; }
+.chart-wrap { position: relative; height: 300px; margin: 10px 0; }
+.chart-meta { font-size: 0.85rem; color: var(--gray); margin-top: 8px; }
+.hl { color: var(--gold); font-weight: 700; }
+.green { color: var(--green); }
+.blue { color: var(--blue); }
+.orange { color: var(--orange); }
+.red { color: var(--red); }
+
+/* ── 模块 D：成本 ── */
+.cost-metric { display: flex; align-items: baseline; gap: 8px; justify-content: center; margin: 18px 0 12px; }
+.cost-label { color: var(--gray); font-size: 0.9rem; }
+.cost-number {
+  font-family: "Courier New", monospace; font-size: 2.2rem; font-weight: 800; color: var(--gold); line-height: 1;
+}
+.cost-bar { height: 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.cost-fill { height: 100%; width: 0%; border-radius: 999px; transition: width .2s ease, background .3s ease; }
+.cost-scale { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--gray); margin-top: 6px; }
+
+/* ── 返回顶部 / toast ── */
+.top-btn {
+  position: fixed; right: 18px; bottom: 18px; width: 46px; height: 46px; border-radius: 50%;
+  border: none; background: rgba(255, 215, 0, 0.9); color: #0f172a; font-size: 1.2rem; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); z-index: 50;
+}
+.toast {
+  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+  background: rgba(0, 0, 0, 0.85); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: 0.88rem;
+  opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; z-index: 100;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── 移动端 ── */
+@media (max-width: 620px) {
+  .duel-vs { display: none; }
+  .cost-number { font-size: 1.7rem; }
+  .key { font-size: 1.2rem; letter-spacing: 2px; }
+  h1 { font-size: 1.5rem; }
+}

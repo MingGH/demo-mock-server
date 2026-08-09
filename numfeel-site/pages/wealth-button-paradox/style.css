@@ -731,6 +731,10 @@ body {
   padding: 8px 6px;
   border-bottom: 1px solid rgba(255,255,255,0.06);
   font-size: 0.75rem;
+  position: sticky;
+  top: 0;
+  background: #1a1a2e;
+  z-index: 1;
 }
 .lb-table tbody tr {
   border-bottom: 1px solid rgba(255,255,255,0.04);
@@ -784,6 +788,37 @@ body {
 .lb-detail-btn:hover {
   background: rgba(144, 202, 249, 0.16);
   border-color: rgba(144, 202, 249, 0.55);
+}
+
+/* 排行榜表格滚动容器 */
+#lbWealthTable,
+#lbReturnTable,
+#lbPressTable {
+  max-height: 480px;
+  overflow-y: auto;
+  border-radius: 8px;
+}
+#lbWealthTable::-webkit-scrollbar,
+#lbReturnTable::-webkit-scrollbar,
+#lbPressTable::-webkit-scrollbar {
+  width: 6px;
+}
+#lbWealthTable::-webkit-scrollbar-track,
+#lbReturnTable::-webkit-scrollbar-track,
+#lbPressTable::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.02);
+  border-radius: 3px;
+}
+#lbWealthTable::-webkit-scrollbar-thumb,
+#lbReturnTable::-webkit-scrollbar-thumb,
+#lbPressTable::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+  border-radius: 3px;
+}
+#lbWealthTable::-webkit-scrollbar-thumb:hover,
+#lbReturnTable::-webkit-scrollbar-thumb:hover,
+#lbPressTable::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
 }
 
 /* 排行榜提交弹窗 */

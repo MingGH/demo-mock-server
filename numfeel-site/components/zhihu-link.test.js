@@ -27,6 +27,7 @@ assertEqual(link.deriveSlug('/pages/benfords-law.html'), 'benfords-law', '单文
 assertEqual(link.deriveSlug('/pages/sample-inference/index.html'), 'sample-inference', '目录 index.html 推导 slug');
 assertEqual(link.deriveSlug('/pages/sample-inference/'), 'sample-inference', '目录结尾推导 slug');
 assertEqual(link.deriveSlug('/pages/Coin-Flip.html'), 'coin-flip', 'slug 统一转小写');
+assertEqual(link.deriveSlug('/pages/drug-relapse-dice'), 'drug-relapse-dice', 'clean URL 无 .html 无尾斜杠推导 slug');
 assertEqual(link.deriveSlug('index.html'), null, '首页无 slug');
 assertEqual(link.deriveSlug('/'), null, '根路径无 slug');
 assertEqual(link.deriveSlug('/pages/foo.bar.html'), null, '非法文件名无 slug');

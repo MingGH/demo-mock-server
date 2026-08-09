@@ -1295,7 +1295,14 @@
       scale: 1,
       backgroundColor: '#faf9f3',
       logging: false,
+      // 固定按桌面宽度排版，移动端也能印出清晰的整版报纸
+      windowWidth: 1040,
       onclone: function (doc) {
+        var rep = doc.getElementById('report');
+        if (rep) {
+          rep.style.width = '1040px';
+          rep.style.maxWidth = '1040px';
+        }
         // 跨域头像换占位，避免 canvas 被污染导致导不出图
         doc.querySelectorAll('#followGrid img.follow-avatar').forEach(function (img) {
           var ph = doc.createElement('span');
@@ -1305,24 +1312,20 @@
         });
       }
     }).then(function (canvas) {
-      var url = canvas.toDataURL('image/jpeg', 0.95);
+      var stage = $('shareStage');
       $('shareLoading').hidden = true;
       var img = document.createElement('img');
       img.className = 'share-img';
-      img.src = url;
-      $('shareStage').appendChild(img);
+      img.src = canvas.toDataURL('image/jpeg', 0.95);
+      stage.appendChild(img);
       var saveBtn = $('shareSaveBtn');
       saveBtn.hidden = false;
-      saveBtn.onclick = function () {
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = '数字直觉-知乎创作报-' + Date.now() + '.jpg';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        $('shareHint').textContent = '已开始下载，注意查收';
-      };
-      $('shareHint').textContent = '长按图片也能保存';
+      saveBtn.onclick = function () { saveShareCanvas(canvas); };
+      if (isMobileUA()) {
+        $('shareHint').textContent = '点保存，走系统分享面板存进相册';
+      } else {
+        $('shareHint').textContent = '长按图片也能保存';
+      }
       btn.disabled = false;
     }).catch(function (err) {
       $('shareLoading').hidden = true;
@@ -1330,6 +1333,50 @@
       console.error('[share]', err);
       btn.disabled = false;
     });
+  }
+
+  function isMobileUA() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  }
+
+  // 保存长图：移动端走系统分享面板（可存相册），桌面回退为直接下载
+  function saveShareCanvas(canvas) {
+    var hint = $('shareHint');
+    if (isMobileUA() && navigator.canShare) {
+      canvas.toBlob(function (blob) {
+        if (!blob) {
+          fallbackDownloadShare(canvas);
+          return;
+        }
+        var file = new File([blob], '数字直觉-知乎创作报.jpg', { type: 'image/jpeg' });
+        if (navigator.canShare({ files: [file] })) {
+          navigator.share({
+            title: '我的知乎创作报纸',
+            text: '我把十年的知乎创作印成了报纸',
+            files: [file]
+          }).then(function () {
+            if (hint) hint.textContent = '已分享，记得选「存储图像」入相册';
+          }).catch(function (err) {
+            if (err && err.name !== 'AbortError') fallbackDownloadShare(canvas);
+          });
+        } else {
+          fallbackDownloadShare(canvas);
+        }
+      }, 'image/jpeg', 0.95);
+    } else {
+      fallbackDownloadShare(canvas);
+    }
+  }
+
+  function fallbackDownloadShare(canvas) {
+    var a = document.createElement('a');
+    a.href = canvas.toDataURL('image/jpeg', 0.95);
+    a.download = '数字直觉-知乎创作报-' + Date.now() + '.jpg';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    var hint = $('shareHint');
+    if (hint) hint.textContent = '已开始下载，注意查收';
   }
 
   // ====== GSAP 滚动叙事 ======

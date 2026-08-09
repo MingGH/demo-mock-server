@@ -1302,7 +1302,12 @@
         if (rep) {
           rep.style.width = '1040px';
           rep.style.maxWidth = '1040px';
+          // 长图左右留白，像报纸版心，别让内容贴边
+          rep.style.padding = '0 28px';
         }
+        // 缓存徽标是交互控件，不出现在长图里
+        var badge = doc.getElementById('cacheBadge');
+        if (badge) badge.style.display = 'none';
         // 跨域头像换占位，避免 canvas 被污染导致导不出图
         doc.querySelectorAll('#followGrid img.follow-avatar').forEach(function (img) {
           var ph = doc.createElement('span');

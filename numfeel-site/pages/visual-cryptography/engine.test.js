@@ -94,9 +94,9 @@ console.log('\n[splitShares 尺寸]');
   for (var i = 0; i < 16; i++) binary[i] = i % 2 === 0 ? 0 : 255;
   var result = splitShares(binary, 4, 4);
   assert(result.width === 8, '宽度翻倍: 4 -> 8');
-  assert(result.height === 4, '高度不变: 4');
-  assert(result.share1.length === 32, 'share1 长度 = 8*4 = 32');
-  assert(result.share2.length === 32, 'share2 长度 = 8*4 = 32');
+  assert(result.height === 8, '高度翻倍: 4 -> 8（保持长宽比）');
+  assert(result.share1.length === 64, 'share1 长度 = 8*8 = 64');
+  assert(result.share2.length === 64, 'share2 长度 = 8*8 = 64');
 })();
 
 // ── 测试 6: splitShares 输出只有 0 和 255 ──
@@ -155,24 +155,28 @@ console.log('\n[overlayShares 还原]');
   var result = splitShares(binary, size, size);
   var overlaid = overlayShares(result.share1, result.share2, result.width, result.height);
 
-  // 还原后的图是 2x 宽度，每 2 个子像素对应 1 个原图像素
-  // 白像素 -> [0,255] 或 [255,0] 叠加 -> [0,255] (50% gray)
-  // 黑像素 -> [0,255]+[255,0] 叠加 -> [0,0] (全黑)
+  // 还原后的图是 2x2 放大的，每 2×2 子像素对应 1 个原图像素
+  // 白像素 -> 模式相同 -> 2 黑 2 白 (50% 灰)
+  // 黑像素 -> 模式互补 -> 4 子像素全黑 (100% 黑)
   var correct = true;
-  for (var i = 0; i < size * size; i++) {
-    var x = (i % size) * 2;
-    var y = ((i / size) | 0) * result.width;
-    var idx = y + x;
-    if (binary[i] === 0) {
-      // 黑像素叠加后两个子像素都应为黑
-      if (overlaid[idx] !== 0 || overlaid[idx + 1] !== 0) { correct = false; break; }
-    } else {
-      // 白像素叠加后一个黑一个白
-      if (!(overlaid[idx] === 0 && overlaid[idx + 1] === 255) &&
-          !(overlaid[idx] === 255 && overlaid[idx + 1] === 0)) { correct = false; break; }
+  for (var y = 0; y < size; y++) {
+    for (var x = 0; x < size; x++) {
+      var idx = y * result.width * 2 + x * 2;
+      var block = [
+        overlaid[idx], overlaid[idx + 1],
+        overlaid[idx + result.width], overlaid[idx + result.width + 1]
+      ];
+      var blackCount = 0;
+      for (var k = 0; k < 4; k++) if (block[k] === 0) blackCount++;
+      if (binary[y * size + x] === 0) {
+        if (blackCount !== 4) { correct = false; break; }
+      } else {
+        if (blackCount !== 2) { correct = false; break; }
+      }
     }
+    if (!correct) break;
   }
-  assert(correct, '叠加后正确还原原图黑白模式');
+  assert(correct, '叠加后每个像素 2×2 块正确还原（黑=4黑, 白=2黑2白）');
 })();
 
 // ── 测试 10: overlayShares 叠加后黑色区域比白色区域更黑 ──

@@ -100,6 +100,12 @@
           <canvas id="share2Canvas"></canvas>
         </div>
       </div>
+      <div class="download-row">
+        <button class="btn btn-secondary" id="downloadBtn">
+          <i class="ti ti-download"></i> 下载两张噪声图
+        </button>
+        <span class="download-hint">打印出来剪开，或存到手机里叠着看，试试真正的物理解密。</span>
+      </div>
     </div>
   </section>
 
@@ -107,12 +113,16 @@
   <section class="section" id="step3" style="display:none;">
     <div class="step-label">步骤 3 / 3</div>
     <h2><i class="ti ti-layers-intersect"></i> 拖拽叠加</h2>
-    <p class="step-hint">拖动噪声图 B 叠到噪声图 A 上方。完全对齐时，原图就会显现出来。</p>
+    <p class="step-hint">把噪声图 B 拖进黄色虚线框。越靠近，原图越清晰，松手即可完成对齐。</p>
 
     <div class="overlay-stage-wrap">
       <div class="overlay-stage" id="overlayStage">
         <canvas id="resultCanvas"></canvas>
         <canvas id="dragCanvas"></canvas>
+        <div class="target-guide" id="targetGuide">
+          <span class="target-label">把 B 拖进这个框</span>
+        </div>
+        <div class="dist-hint" id="distHint" style="display:none;"></div>
       </div>
       <div class="align-indicator" id="alignIndicator" style="display:none;">
         <i class="ti ti-check"></i> 已对齐！原图显现
@@ -135,8 +145,8 @@
     <div class="principle-grid">
       <div class="principle-card">
         <div class="num">01</div>
-        <h4>每个像素变两个</h4>
-        <p>把原图每个像素扩展为 2 个子像素。白像素拆成相同模式，黑像素拆成互补模式。</p>
+        <h4>每个像素变四个</h4>
+        <p>把原图每个像素扩展为 2×2 的子像素块。白像素拆成相同模式，黑像素拆成互补模式。</p>
       </div>
       <div class="principle-card">
         <div class="num">02</div>

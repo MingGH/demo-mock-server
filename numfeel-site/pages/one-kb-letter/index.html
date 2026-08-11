@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="如果你只能传送一次 1KB 的数据到三年前的自己面前，你会传什么？挑一张信纸，写一封 1KB 的信，看看三年前的你会信几分。">
+  <title>一KB传书：给三年前的自己寄封信 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ══════════ 第一幕：写信台 ══════════ -->
+  <section class="section" id="actDesk">
+    <h2 class="sec-title"><span class="sec-no">01</span> 挑一张信纸</h2>
+    <p class="sec-hint">三种信纸，装的东西不一样。挑一张，就再也换不了。</p>
+
+    <div class="paper-grid" id="paperGrid">
+      <button class="paper-card" data-type="text">
+        <i class="ti ti-notes"></i>
+        <span class="paper-name">一封短信</span>
+        <span class="paper-desc">悔恨、告白、忠告——说人话</span>
+      </button>
+      <button class="paper-card" data-type="code">
+        <i class="ti ti-binary"></i>
+        <span class="paper-name">一串代码</span>
+        <span class="paper-desc">一小段能自己跑的程序</span>
+      </button>
+      <button class="paper-card" data-type="numbers">
+        <i class="ti ti-numbers"></i>
+        <span class="paper-name">一串数字</span>
+        <span class="paper-desc">彩票、股价、私钥——未来长这样</span>
+      </button>
+    </div>
+
+    <div class="desk-row" id="deskRow">
+      <div class="write-col">
+        <h2 class="sec-title"><span class="sec-no">02</span> 写下要传的话</h2>
+        <p class="sec-hint" id="writeHint"></p>
+        <textarea id="letterInput" rows="5" placeholder=""></textarea>
+        <div class="desk-actions">
+          <button class="btn-ghost" id="sampleBtn">
+            <i class="ti ti-dice"></i> 扔一张示例
+          </button>
+        </div>
+      </div>
+
+      <div class="meter-col" id="meterCol">
+        <div class="meter-head">
+          <span class="meter-label">已占用</span>
+          <span class="meter-bytes" id="meterBytes">0 <small>/ 1024 字节</small></span>
+        </div>
+        <div class="byte-cells" id="byteCells"></div>
+        <div class="meter-track">
+          <div class="meter-fill" id="meterFill"></div>
+        </div>
+        <div class="meter-status" id="meterStatus">还有 1024 字节可以写</div>
+      </div>
+    </div>
+
+    <button class="btn-primary btn-send" id="sendBtn" disabled>
+      <i class="ti ti-rocket"></i> 塞进信封，发射
+    </button>
+  </section>
+
+  <!-- ══════════ 第三幕：传输中 ══════════ -->
+  <section class="section hidden" id="actTransit">
+    <div class="transit-box">
+      <div class="transit-head">
+        <i class="ti ti-radio"></i> 链路握手成功 · 信道 1KB/s
+      </div>
+      <div class="telegram" id="telegramReplay"></div>
+      <div class="transit-progress">
+        <div class="transit-fill" id="transitFill"></div>
+      </div>
+      <div class="transit-log" id="transitLog">正在编码……</div>
+      <div class="transit-glitch" id="transitGlitch"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 第四幕：命运结算 ══════════ -->
+  <section class="section hidden" id="actVerdict">
+    <h2 class="sec-title"><span class="sec-no">03</span> 三年前的你，收到了</h2>
+
+    <div class="verdict-layout">
+      <div class="letter-received" id="letterReceived"></div>
+
+      <div class="gauge-row">
+        <div class="gauge" id="gaugeCredit">
+          <div class="gauge-ring">
+            <svg viewBox="0 0 120 120">
+              <circle class="ring-bg" cx="60" cy="60" r="52"/>
+              <circle class="ring-fg" id="ringCredit" cx="60" cy="60" r="52"/>
+            </svg>
+            <span class="gauge-num" id="creditNum">0</span>
+          </div>
+          <div class="gauge-label">可信度 · 他信几分</div>
+        </div>
+        <div class="gauge" id="gaugeChange">
+          <div class="gauge-ring">
+            <svg viewBox="0 0 120 120">
+              <circle class="ring-bg" cx="60" cy="60" r="52"/>
+              <circle class="ring-fg" id="ringChange" cx="60" cy="60" r="52"/>
+            </svg>
+            <span class="gauge-num" id="changeNum">0</span>
+          </div>
+          <div class="gauge-label">命运改变值</div>
+        </div>
+      </div>
+
+      <div class="grade-badge" id="gradeBadge"></div>
+
+      <ul class="analysis-list" id="analysisList"></ul>
+
+      <div class="verdict-line" id="verdictLine"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 第五幕：容量科普 ══════════ -->
+  <section class="section" id="actCapacity">
+    <h2 class="sec-title"><span class="sec-no">04</span> 1KB 到底装得下什么</h2>
+    <p class="sec-hint">装得下未来，装不下后悔。</p>
+
+    <div class="capacity-grid" id="capacityGrid"></div>
+
+    <div class="closing" id="closing">
+      <div class="closing-quote">
+        「1KB 装得下的从来不是未来，<br>是三年前的你，肯不肯信。」
+      </div>
+      <button class="btn-ghost" id="backTopBtn">
+        <i class="ti ti-arrow-up"></i> 回顶部，再写一封
+      </button>
+    </div>
+  </section>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

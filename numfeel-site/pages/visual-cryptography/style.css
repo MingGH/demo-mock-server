@@ -130,6 +130,13 @@ input[type="range"]::-moz-range-thumb {
   font-size: 0.75rem; color: #ffd700; z-index: 2; pointer-events: none;
 }
 
+/* ── 下载区域 ── */
+.download-row {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 16px;
+}
+.download-hint { color: #888; font-size: 0.82rem; }
+
 /* ── Overlay stage ── */
 .overlay-stage-wrap { text-align: center; margin: 20px 0; }
 .overlay-stage {
@@ -143,9 +150,35 @@ input[type="range"]::-moz-range-thumb {
 #resultCanvas { position: relative; z-index: 1; }
 #dragCanvas {
   position: absolute; top: 0; left: 0; z-index: 2;
-  cursor: grab; opacity: 0.85;
+  cursor: grab;
 }
-#dragCanvas.dragging { cursor: grabbing; opacity: 1; }
+#dragCanvas.dragging { cursor: grabbing; }
+
+/* ── 目标引导框 ── */
+.target-guide {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  border: 2px dashed rgba(255,215,0,0.55);
+  border-radius: 12px; z-index: 3; pointer-events: none;
+  animation: guidePulse 2s ease-in-out infinite;
+}
+.target-label {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(26,26,46,0.92); color: #ffd700; font-size: 0.8rem;
+  padding: 4px 14px; border-radius: 20px; white-space: nowrap;
+  border: 1px solid rgba(255,215,0,0.35);
+}
+@keyframes guidePulse {
+  0%, 100% { border-color: rgba(255,215,0,0.35); }
+  50% { border-color: rgba(255,215,0,0.85); }
+}
+
+/* ── 拖动距离提示 ── */
+.dist-hint {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(26,26,46,0.92); color: #90caf9; font-size: 0.8rem;
+  padding: 4px 14px; border-radius: 20px; white-space: nowrap;
+  border: 1px solid rgba(144,202,249,0.3); z-index: 4; pointer-events: none;
+}
 
 .align-indicator {
   display: inline-flex; align-items: center; gap: 8px;

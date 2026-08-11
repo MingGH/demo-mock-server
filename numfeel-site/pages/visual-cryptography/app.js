@@ -8,8 +8,7 @@
   'use strict';
 
   var WORK_SIZE = 256;
-  var SHARE_W = WORK_SIZE * 2;
-  var SHARE_H = WORK_SIZE;
+  var SNAP_PX = 28; // 磁吸对齐半径（画布像素）
 
   var currentImage = null;
   var binaryData = null;
@@ -43,7 +42,8 @@
       'heroBtn', 'uploadArea', 'fileInput', 'thresholdSlider', 'thresholdVal',
       'splitBtn', 'canvasArea', 'originalCanvas', 'share1Canvas', 'share2Canvas',
       'step2', 'step3', 'overlayStage', 'resultCanvas', 'dragCanvas',
-      'autoAlignBtn', 'resetAlignBtn', 'alignIndicator'
+      'autoAlignBtn', 'resetAlignBtn', 'alignIndicator', 'targetGuide', 'distHint',
+      'downloadBtn'
     ];
     for (var i = 0; i < ids.length; i++) {
       el[ids[i]] = document.getElementById(ids[i]);
@@ -90,6 +90,7 @@
     el.splitBtn.addEventListener('click', doSplit);
     el.autoAlignBtn.addEventListener('click', autoAlign);
     el.resetAlignBtn.addEventListener('click', resetAlign);
+    el.downloadBtn.addEventListener('click', downloadShares);
   }
 
   function loadDefaultImage() {
@@ -190,6 +191,44 @@
     ctx.putImageData(imageData, 0, 0);
   }
 
+  /**
+   * 渲染可拖动的胶片层：黑像素不透明，白像素完全透明。
+   * 模拟真实透明胶片叠放，白像素不挡光，叠加区域直接显示解密结果。
+   */
+  function renderDragLayerToCanvas(share, width, height, canvas) {
+    canvas.width = width;
+    canvas.height = height;
+    var ctx = canvas.getContext('2d');
+    var imageData = ctx.createImageData(width, height);
+    for (var i = 0; i < share.length; i++) {
+      var v = share[i];
+      imageData.data[i * 4] = 0;
+      imageData.data[i * 4 + 1] = 0;
+      imageData.data[i * 4 + 2] = 0;
+      imageData.data[i * 4 + 3] = (v === 0) ? 255 : 0;
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  function downloadShares() {
+    if (!shares) return;
+    nfTrack('download_shares', {});
+    saveCanvasAsPng(el.share1Canvas, 'noise-A.png');
+    // 错开触发，避免浏览器拦截第二个下载
+    setTimeout(function () {
+      saveCanvasAsPng(el.share2Canvas, 'noise-B.png');
+    }, 350);
+  }
+
+  function saveCanvasAsPng(canvas, filename) {
+    var link = document.createElement('a');
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   function setupOverlayStage() {
     var w = shares.width;
     var h = shares.height;
@@ -199,12 +238,14 @@
     el.dragCanvas.width = w;
     el.dragCanvas.height = h;
 
-    renderShareToCanvas(shares.share2, w, h, el.dragCanvas);
+    renderDragLayerToCanvas(shares.share2, w, h, el.dragCanvas);
 
     dragX = Math.round(w * 0.5);
     dragY = 0;
     isAligned = false;
     el.alignIndicator.style.display = 'none';
+    el.targetGuide.style.display = 'block';
+    el.distHint.style.display = 'none';
 
     updateOverlay();
     setupDrag();
@@ -217,6 +258,7 @@
       listeners: {
         start: function () {
           el.dragCanvas.classList.add('dragging');
+          el.distHint.style.display = 'block';
           if (gsapAnimating) {
             if (gsapAnimState) gsap.killTweensOf(gsapAnimState);
             gsapAnimState = null;
@@ -231,9 +273,22 @@
           dragX += event.dx * scaleX;
           dragY += event.dy * scaleY;
           updateOverlay();
+
+          var dist = Math.sqrt(dragX * dragX + dragY * dragY);
+          el.distHint.textContent = '还差 ' + Math.round(dist) + 'px';
+          if (dist < SNAP_PX) {
+            el.distHint.textContent = '松手即可对齐';
+          }
+          // 拖离对齐位置时取消对齐状态
+          if (isAligned && dist > SNAP_PX) {
+            isAligned = false;
+            el.alignIndicator.style.display = 'none';
+            el.targetGuide.style.display = 'block';
+          }
         },
         end: function () {
           el.dragCanvas.classList.remove('dragging');
+          el.distHint.style.display = 'none';
           checkAlignment();
         }
       }
@@ -266,24 +321,32 @@
   }
 
   function checkAlignment() {
-    var tolerance = 3;
-    if (Math.abs(dragX) < tolerance && Math.abs(dragY) < tolerance) {
+    var dist = Math.sqrt(dragX * dragX + dragY * dragY);
+    if (dist < SNAP_PX) {
       if (!isAligned) {
+        // 磁吸：吸附到精确对齐位置
+        dragX = 0;
+        dragY = 0;
+        updateOverlay();
         isAligned = true;
         el.alignIndicator.style.display = 'inline-flex';
+        el.targetGuide.style.display = 'none';
         nfTrack('align_complete', { auto: false });
       }
     } else {
       isAligned = false;
       el.alignIndicator.style.display = 'none';
+      el.targetGuide.style.display = 'block';
     }
   }
 
   function autoAlign() {
     if (!shares) return;
     if (gsapAnimating) return;
+    if (!window.gsap) return;
     gsapAnimating = true;
     nfTrack('align_complete', { auto: true });
+    el.targetGuide.style.display = 'none';
 
     gsapAnimState = { x: dragX, y: dragY };
     window.gsap.to(gsapAnimState, {
@@ -309,6 +372,8 @@
     dragY = 0;
     isAligned = false;
     el.alignIndicator.style.display = 'none';
+    el.targetGuide.style.display = 'block';
+    el.distHint.style.display = 'none';
     updateOverlay();
   }
 

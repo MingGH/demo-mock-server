@@ -66,11 +66,11 @@ function binarize(imageData, threshold) {
 
 /**
  * (2,2) 视觉密码学拆分：将二值图拆成两张 share
- * 每个像素扩展为 2 个子像素（水平方向），输出宽度翻倍
+ * 每个像素扩展为 2×2 子像素块，输出宽高均翻倍，保持原图长宽比
  *
  * 原理：
- * - 白像素（255）：两张 share 给相同模式 -> 叠加后 50% 灰
- * - 黑像素（0）：两张 share 给互补模式 -> 叠加后 100% 黑
+ * - 白像素（255）：两张 share 用相同模式 -> 叠加后 50% 灰
+ * - 黑像素（0）：两张 share 用互补模式 -> 叠加后 100% 黑
  *
  * @param {Uint8Array} binaryData - 二值图数据 (0=黑, 255=白)
  * @param {number} width
@@ -79,37 +79,34 @@ function binarize(imageData, threshold) {
  */
 function splitShares(binaryData, width, height) {
   var expW = width * 2;
-  var share1 = new Uint8Array(expW * height);
-  var share2 = new Uint8Array(expW * height);
+  var expH = height * 2;
+  var share1 = new Uint8Array(expW * expH);
+  var share2 = new Uint8Array(expW * expH);
 
-  for (var i = 0; i < width * height; i++) {
-    var isBlack = binaryData[i] === 0;
-    var rand = Math.random() < 0.5;
+  // 两个 2×2 模式（0=黑, 255=白），按行优先排列：
+  // patternA = [0 255; 255 0]（对角黑）
+  // patternB = [255 0; 0 255]（对角白，与 A 互补）
+  var patternA = [0, 255, 255, 0];
+  var patternB = [255, 0, 0, 255];
 
-    var x = i % width;
-    var y = (i / width) | 0;
-    var baseIdx = y * expW + x * 2;
+  for (var y = 0; y < height; y++) {
+    for (var x = 0; x < width; x++) {
+      var isBlack = binaryData[y * width + x] === 0;
+      var rand = Math.random() < 0.5;
+      var p1 = rand ? patternA : patternB;
+      var p2 = rand ? patternB : patternA;
+      if (!isBlack) p2 = p1; // 白像素：两张 share 相同模式
 
-    if (isBlack) {
-      if (rand) {
-        share1[baseIdx] = 0;     share1[baseIdx + 1] = 255;
-        share2[baseIdx] = 255;   share2[baseIdx + 1] = 0;
-      } else {
-        share1[baseIdx] = 255;   share1[baseIdx + 1] = 0;
-        share2[baseIdx] = 0;     share2[baseIdx + 1] = 255;
-      }
-    } else {
-      if (rand) {
-        share1[baseIdx] = 0;     share1[baseIdx + 1] = 255;
-        share2[baseIdx] = 0;     share2[baseIdx + 1] = 255;
-      } else {
-        share1[baseIdx] = 255;   share1[baseIdx + 1] = 0;
-        share2[baseIdx] = 255;   share2[baseIdx + 1] = 0;
+      var baseIdx = (y * 2) * expW + (x * 2);
+      for (var k = 0; k < 4; k++) {
+        var subIdx = baseIdx + (k % 2) + ((k / 2) | 0) * expW;
+        share1[subIdx] = p1[k];
+        share2[subIdx] = p2[k];
       }
     }
   }
 
-  return { share1: share1, share2: share2, width: expW, height: height };
+  return { share1: share1, share2: share2, width: expW, height: expH };
 }
 
 /**

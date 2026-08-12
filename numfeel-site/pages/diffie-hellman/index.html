@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Diffie-Hellman 密钥交换交互演示：Alice 和 Bob 当着所有人的面商量出一个只有他们知道的共享密钥。从颜色混合到模幂运算，三步看懂 HTTPS 的第一步。">
+  <title>当着所有人的面，把秘密告诉 TA | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="engine.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-lock-cog"></i> 当着所有人的面，把秘密告诉 TA</h1>
+    <p>Alice 和 Bob 要共享一个只有他俩知道的密钥，但只能通过一条 Eve 能全程旁听的公开信道。三步看完 <strong>Diffie-Hellman</strong> 如何做到。</p>
+  </div>
+
+  <!-- ══════════ Stage 1：颜色直观版 ══════════ -->
+  <div class="section">
+    <div class="stage-tag stage-1">第 1 步 · 颜色混合</div>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 公开约定一个基准色（金色）。两人各选一个秘密色，混合后公开发送——但"混合"不可逆，谁也分离不出对方的秘密色。</p>
+
+    <div class="color-stage">
+      <div class="person">
+        <div class="person-name">Alice</div>
+        <div class="color-swatch" id="aliceSecret" style="background:#dc2828"></div>
+        <select id="aliceColor" onchange="window.onSecretChange()">
+          <option value="red" selected>红</option>
+          <option value="green">绿</option>
+          <option value="blue">蓝</option>
+          <option value="purple">紫</option>
+          <option value="orange">橙</option>
+          <option value="cyan">青</option>
+        </select>
+        <div class="swatch-label">秘密色</div>
+      </div>
+
+      <div class="person">
+        <div class="person-name">Bob</div>
+        <div class="color-swatch" id="bobSecret" style="background:#28b446"></div>
+        <select id="bobColor" onchange="window.onSecretChange()">
+          <option value="green" selected>绿</option>
+          <option value="red">红</option>
+          <option value="blue">蓝</option>
+          <option value="purple">紫</option>
+          <option value="orange">橙</option>
+          <option value="cyan">青</option>
+        </select>
+        <div class="swatch-label">秘密色</div>
+      </div>
+
+      <div class="channel">
+        <div class="channel-title"><i class="ti ti-broadcast"></i> 公开信道（Eve 能看见一切）</div>
+        <div class="channel-swatches">
+          <div class="swatch-pair">
+            <span>Alice 发出</span>
+            <div class="color-swatch" id="alicePublic" style="background:#ffd700"></div>
+          </div>
+          <div class="swatch-pair">
+            <span>Bob 发出</span>
+            <div class="color-swatch" id="bobPublic" style="background:#ffd700"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="eve-box">
+        <div class="eve-title"><i class="ti ti-eye-off"></i> Eve 的视角</div>
+        <div class="eve-content" id="eveMessage">只看到两个混合色——少了谁的秘密色都还原不出最终色。</div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" id="colorStepBtn" onclick="window.colorStep()"><i class="ti ti-arrow-right"></i> 下一步：生成共享色</button>
+    </div>
+    <div class="shared-box" id="sharedBox" style="display:none">
+      <div class="shared-title"><i class="ti ti-key"></i> 双方各自算出的共享色</div>
+      <div class="shared-swatches">
+        <div class="swatch-pair">
+          <span>Alice 算得</span>
+          <div class="color-swatch" id="aliceShared" style="background:#ffd700"></div>
+        </div>
+        <div class="swatch-pair">
+          <span>Bob 算得</span>
+          <div class="color-swatch" id="bobShared" style="background:#ffd700"></div>
+        </div>
+      </div>
+      <div class="shared-note" id="sharedNote">颜色完全相同——这就是共享密钥。Eve 全程旁听却算不出来。</div>
+    </div>
+  </div>
+
+  <!-- ══════════ Stage 2：数学版 ══════════ -->
+  <div class="section">
+    <div class="stage-tag stage-2">第 2 步 · 数学版（模幂运算）</div>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 颜色混合对应的数学是 <code>g^秘密数 mod p</code>。公开 p 和 g，双方各自保密一个数，算出的 A / B 公开交换，最终共享密钥双方一致。</p>
+
+    <div class="math-stage">
+      <div class="param-grid">
+        <div class="param-card">
+          <div class="param-label">公开素数 p</div>
+          <div class="param-value" id="pValue">23</div>
+          <input type="range" id="pSlider" min="7" max="97" step="2" value="23" oninput="window.onMathChange()">
+          <div class="param-prime" id="primeHint">✓ 素数</div>
+        </div>
+        <div class="param-card">
+          <div class="param-label">公开底数 g</div>
+          <div class="param-value" id="gValue">5</div>
+          <input type="range" id="gSlider" min="2" max="20" value="5" oninput="window.onMathChange()">
+        </div>
+        <div class="param-card">
+          <div class="param-label">Alice 秘密数 a</div>
+          <div class="param-value" id="aValue">6</div>
+          <input type="range" id="aSlider" min="1" max="40" value="6" oninput="window.onMathChange()">
+        </div>
+        <div class="param-card">
+          <div class="param-label">Bob 秘密数 b</div>
+          <div class="param-value" id="bValue">15</div>
+          <input type="range" id="bSlider" min="1" max="40" value="15" oninput="window.onMathChange()">
+        </div>
+      </div>
+
+      <div class="dh-flow">
+        <div class="flow-box">
+          <div class="flow-title">Alice 算出发送</div>
+          <div class="flow-formula" id="aliceFormula">A = 5<sup>6</sup> mod 23 = 8</div>
+        </div>
+        <div class="flow-arrow"><i class="ti ti-arrow-right"></i></div>
+        <div class="flow-box">
+          <div class="flow-title">Bob 算出发送</div>
+          <div class="flow-formula" id="bobFormula">B = 5<sup>15</sup> mod 23 = 19</div>
+        </div>
+        <div class="flow-arrow"><i class="ti ti-arrow-right"></i></div>
+        <div class="flow-box flow-key">
+          <div class="flow-title">共享密钥</div>
+          <div class="flow-formula" id="sharedFormula">g<sup>a·b</sup> mod p = 2</div>
+        </div>
+      </div>
+
+      <div class="eve-box">
+        <div class="eve-title"><i class="ti ti-eye-off"></i> Eve 只看到这些（点击尝试破解）</div>
+        <div class="eve-content" id="eveSees">p=23, g=5, A=8, B=19</div>
+        <button class="btn-ghost" onclick="window.tryCrack()"><i class="ti ti-bug"></i> 尝试从 A 反推 a</button>
+        <div class="crack-result" id="crackResult"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ Stage 3：判断题 ══════════ -->
+  <div class="section">
+    <div class="stage-tag stage-3">第 3 步 · 原理自测</div>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 5 道判断题，测你是否真的看懂了。</p>
+
+    <div class="quiz-list" id="quizList">
+      <!-- JS 渲染 -->
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" id="quizSubmitBtn" onclick="window.submitQuiz()"><i class="ti ti-flag-checkered"></i> 提交答卷</button>
+    </div>
+  </div>
+
+  <!-- ══════════ 结果区 ══════════ -->
+  <div class="section result-section" id="resultSection" style="display:none">
+    <div class="stage-tag stage-3">结果</div>
+    <div class="result-banner" id="resultBanner"></div>
+
+    <div class="result-grid">
+      <div class="metric-card">
+        <div class="metric-label">你的得分</div>
+        <div class="metric-value" id="scoreDisplay">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">随机猜期望</div>
+        <div class="metric-value" id="guessDisplay">2.0</div>
+      </div>
+    </div>
+
+    <div class="section-title"><i class="ti ti-chart-bar"></i> 你 vs 随机猜测</div>
+    <div class="chart-wrap"><canvas id="compareChart"></canvas></div>
+
+    <div class="explain-list" id="explainList">
+      <!-- JS 渲染：逐题解析 -->
+    </div>
+
+    <button class="btn-restart" onclick="window.restartDemo()"><i class="ti ti-refresh"></i> 重新体验</button>
+  </div>
+
+</div>
+</body>
+</html>

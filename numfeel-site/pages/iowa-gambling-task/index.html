@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="爱荷华赌博任务交互演示：四副牌，有的让你越抽越亏。抽完 100 手，看看你的直觉能不能识破纸面高收益背后的陷阱。Bechara & Damasio 1994 经典认知实验在线体验。">
+  <title>爱荷华赌博任务：你的直觉能识破坏牌堆吗 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="engine.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-cards"></i> 爱荷华赌博任务</h1>
+    <p>四副牌，每张都有收益，偶尔让你赔钱。有的牌堆会越抽越亏——抽完 <strong>100 手</strong>，看你的直觉多久能识破。</p>
+  </div>
+
+  <!-- ── 状态栏 ── -->
+  <div class="section status-bar">
+    <div class="metric-card">
+      <div class="metric-label">资金</div>
+      <div class="metric-value" id="moneyDisplay">$2000</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">进度</div>
+      <div class="metric-value" id="progressDisplay">0 / 100</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">净分数</div>
+      <div class="metric-value" id="netScoreDisplay">0</div>
+      <div class="metric-unit">好堆次数 − 坏堆次数</div>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+  <!-- ── 牌桌 ── -->
+  <div class="section">
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 从四副牌中选一张翻面。每张牌先给你一笔收益，偶尔会赔钱。试试看哪副牌值得一直抽。</p>
+    <div class="deck-table" id="deckTable">
+      <div class="deck-card" id="deckA" data-deck="A" onclick="window.handlePick('A')">
+        <div class="deck-face">
+          <div class="deck-emoji"><i class="ti ti-cards"></i></div>
+          <div class="deck-label">牌堆 A</div>
+        </div>
+        <div class="deck-stats">
+          <span class="deck-picks">0 次</span>
+          <span class="deck-net">±0</span>
+        </div>
+      </div>
+      <div class="deck-card" id="deckB" data-deck="B" onclick="window.handlePick('B')">
+        <div class="deck-face">
+          <div class="deck-emoji"><i class="ti ti-cards"></i></div>
+          <div class="deck-label">牌堆 B</div>
+        </div>
+        <div class="deck-stats">
+          <span class="deck-picks">0 次</span>
+          <span class="deck-net">±0</span>
+        </div>
+      </div>
+      <div class="deck-card" id="deckC" data-deck="C" onclick="window.handlePick('C')">
+        <div class="deck-face">
+          <div class="deck-emoji"><i class="ti ti-cards"></i></div>
+          <div class="deck-label">牌堆 C</div>
+        </div>
+        <div class="deck-stats">
+          <span class="deck-picks">0 次</span>
+          <span class="deck-net">±0</span>
+        </div>
+      </div>
+      <div class="deck-card" id="deckD" data-deck="D" onclick="window.handlePick('D')">
+        <div class="deck-face">
+          <div class="deck-emoji"><i class="ti ti-cards"></i></div>
+          <div class="deck-label">牌堆 D</div>
+        </div>
+        <div class="deck-stats">
+          <span class="deck-picks">0 次</span>
+          <span class="deck-net">±0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 最近一次翻牌反馈 -->
+    <div class="last-pick" id="lastPick">
+      <div class="last-pick-empty">点一张牌开始</div>
+    </div>
+  </div>
+
+  <!-- ── 实时学习曲线 ── -->
+  <div class="section">
+    <div class="section-title"><i class="ti ti-chart-line"></i> 学习曲线：每 20 手的净分数</div>
+    <p class="section-hint">净分数 &gt; 0 说明你在抽好堆（C/D），&lt; 0 说明还在被坏堆（A/B）的纸面收益诱惑。健康受试者通常在 40-60 手后转正。</p>
+    <div class="chart-wrap"><canvas id="learnChart"></canvas></div>
+  </div>
+
+  <!-- ── 结果区（游戏结束展示） ── -->
+  <div class="section result-section" id="resultSection" style="display:none">
+    <div class="section-title"><i class="ti ti-flag-checkered"></i> 实验结束</div>
+    <div class="result-banner" id="resultBanner"></div>
+
+    <div class="result-grid">
+      <div class="metric-card">
+        <div class="metric-label">最终资金</div>
+        <div class="metric-value" id="finalMoney">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">净分数</div>
+        <div class="metric-value" id="finalNetScore">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">好堆占比</div>
+        <div class="metric-value" id="goodDeckRate">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">结果判定</div>
+        <div class="metric-value" id="resultGrade">-</div>
+      </div>
+    </div>
+
+    <div class="section-title"><i class="ti ti-users-group"></i> 你和全站、论文数据的对比</div>
+    <div class="chart-wrap"><canvas id="compareChart"></canvas></div>
+    <p class="section-hint" id="compareNote"></p>
+    <p class="section-hint">来源：Bechara A., Damasio A. R., Damasio H., &amp; Anderson S. W. (1994). <em>Insensitivity to future consequences following damage to human prefrontal cortex</em>. Cognition, 50(1-3), 7-15.</p>
+
+    <button class="btn-restart" onclick="window.restartGame()"><i class="ti ti-refresh"></i> 再来一局</button>
+  </div>
+
+</div>
+</body>
+</html>

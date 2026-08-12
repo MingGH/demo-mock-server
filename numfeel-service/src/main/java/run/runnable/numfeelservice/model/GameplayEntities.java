@@ -334,4 +334,19 @@ public final class GameplayEntities {
             @Column("created_at") long createdAt
     ) {
     }
+
+    /** 爱荷华赌博任务 — 完整牌局结果表映射。 */
+    @Table("iowa_gambling_results")
+    public record IowaGamblingResult(
+            @Id Long id,
+            @Column("session_id") String sessionId,
+            @Column("total_rounds") int totalRounds,
+            @Column("final_money") int finalMoney,
+            @Column("net_score") int netScore,
+            boolean bankrupt,
+            @Column("deck_picks") String deckPicks,
+            @Column("block_scores") String blockScores,
+            @Column("created_at") long createdAt
+    ) {
+    }
 }

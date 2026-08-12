@@ -1,0 +1,322 @@
+/* 爱荷华赌博任务 — 深色科技风 */
+
+body {
+  margin: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh;
+  color: #ddd;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+}
+
+/* ── 头部 ── */
+.header h1 {
+  font-size: 28px;
+  background: linear-gradient(90deg, #ffd700, #fff3b0, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 3s linear infinite;
+  margin-bottom: 6px;
+}
+
+@keyframes shimmer {
+  to { background-position: 200% center; }
+}
+
+.header p {
+  color: #aaa;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 0;
+}
+
+.header strong {
+  color: #ffd700;
+}
+
+/* ── 区块 ── */
+.section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 18px;
+  margin-top: 16px;
+}
+
+.section-title {
+  font-size: 16px;
+  color: #ffd700;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.section-hint {
+  color: #888;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 4px 0 12px;
+}
+
+/* ── 状态栏 ── */
+.status-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 14px;
+}
+
+.metric-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffd700;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-unit {
+  font-size: 11px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.money-pop {
+  color: #fff !important;
+}
+
+/* ── 进度条 ── */
+.progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ffd700, #ff8c00);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* ── 牌桌 ── */
+.deck-table {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.deck-card {
+  aspect-ratio: 3 / 4;
+  background: linear-gradient(145deg, #232a4d, #1a1f3a);
+  border: 2px solid rgba(255, 215, 0, 0.35);
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 120px;
+}
+
+.deck-stats {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.deck-picks {
+  color: #888;
+}
+
+.deck-net {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.deck-net.good {
+  color: #81c784;
+}
+
+.deck-net.bad {
+  color: #ff6b6b;
+}
+
+.deck-card:hover {
+  transform: translateY(-4px);
+  border-color: #ffd700;
+  box-shadow: 0 8px 24px rgba(255, 215, 0, 0.15);
+}
+
+.deck-card:active,
+.deck-card.picked {
+  transform: scale(0.94);
+  border-color: #ff8c00;
+  box-shadow: 0 0 20px rgba(255, 140, 0, 0.35);
+}
+
+.deck-face {
+  text-align: center;
+  pointer-events: none;
+}
+
+.deck-emoji {
+  font-size: 34px;
+  color: #ffd700;
+  margin-bottom: 8px;
+}
+
+.deck-label {
+  color: #ccc;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 移动端：2x2 网格 */
+@media (max-width: 560px) {
+  .deck-table {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .status-bar {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+}
+
+/* ── 最近一次翻牌 ── */
+.last-pick {
+  margin-top: 16px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 16px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  transition: background 0.3s ease;
+}
+
+.last-pick.flash {
+  background: rgba(255, 215, 0, 0.08);
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+.last-pick-empty {
+  color: #666;
+  font-size: 14px;
+}
+
+.pick-deck {
+  color: #fff;
+  font-weight: 600;
+}
+
+.pick-net {
+  font-size: 14px;
+}
+
+.gain {
+  color: #81c784;
+  font-weight: 700;
+}
+
+.loss {
+  color: #ff6b6b;
+  font-weight: 700;
+}
+
+/* ── 图表 ── */
+.chart-wrap {
+  position: relative;
+  height: 220px;
+  margin-top: 6px;
+}
+
+/* ── 结果区 ── */
+.result-section {
+  border-color: rgba(255, 215, 0, 0.35);
+}
+
+.result-banner {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #ddd;
+  margin-bottom: 14px;
+}
+
+.result-banner strong {
+  color: #ffd700;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 560px) {
+  .result-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.btn-restart {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a2e;
+  background: linear-gradient(90deg, #ffd700, #ffb700);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-restart:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(255, 215, 0, 0.3);
+}
+
+/* ── 减少动效 ── */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -651,4 +651,24 @@ public final class GameplayResponses {
             List<DailyTrend> recentTrend
     ) {
     }
+
+    /**
+     * 爱荷华赌博任务 全局统计响应。
+     *
+     * @param totalSessions 记录的总牌局数
+     * @param avgNetScore 平均净分数
+     * @param avgFinalMoney 平均最终资金
+     * @param bankruptRate 破产率（0~1）
+     * @param avgDeckPicks 四堆平均选牌次数 [A,B,C,D]
+     * @param avgBlockScores 每 20 手平均净分数（长度 1~5，与已有数据对齐）
+     */
+    public record IowaGamblingStatsResponse(
+            long totalSessions,
+            double avgNetScore,
+            double avgFinalMoney,
+            double bankruptRate,
+            List<Double> avgDeckPicks,
+            List<Double> avgBlockScores
+    ) {
+    }
 }

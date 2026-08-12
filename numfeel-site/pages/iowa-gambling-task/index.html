@@ -31,68 +31,104 @@
       <div class="metric-label">进度</div>
       <div class="metric-value" id="progressDisplay">0 / 100</div>
     </div>
-    <div class="metric-card">
-      <div class="metric-label">净分数</div>
-      <div class="metric-value" id="netScoreDisplay">0</div>
-      <div class="metric-unit">好堆次数 − 坏堆次数</div>
-    </div>
   </div>
   <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+  <!-- ── 规则说明 ── -->
+  <div class="section rules-section">
+    <div class="section-title"><i class="ti ti-help-square-rounded"></i> 怎么玩</div>
+    <ul class="rule-list">
+      <li><i class="ti ti-coin rule-ico"></i><span>每张牌翻开都有固定收益：<strong class="gain">+100</strong> 或 <strong class="gain">+50</strong></span></li>
+      <li><i class="ti ti-alert-triangle rule-ico"></i><span>部分牌是<strong>惩罚卡</strong>，翻到会额外扣钱，罚金位置每局随机、无法预判</span></li>
+      <li><i class="ti ti-scale rule-ico"></i><span>有的牌堆越抽越亏，有的越抽越赚——只能靠体感试出来</span></li>
+      <li><i class="ti ti-flag-checkered rule-ico"></i><span>抽满 <strong>100 手</strong>，看最终资金能剩多少</span></li>
+    </ul>
+  </div>
 
   <!-- ── 牌桌 ── -->
   <div class="section">
     <p class="section-hint"><i class="ti ti-info-circle"></i> 从四副牌中选一张翻面。每张牌先给你一笔收益，偶尔会赔钱。试试看哪副牌值得一直抽。</p>
-    <div class="deck-table" id="deckTable">
-      <div class="deck-card" id="deckA" data-deck="A" onclick="window.handlePick('A')">
-        <div class="deck-face">
-          <div class="deck-emoji"><i class="ti ti-cards"></i></div>
-          <div class="deck-label">牌堆 A</div>
-        </div>
-        <div class="deck-stats">
-          <span class="deck-picks">0 次</span>
-          <span class="deck-net">±0</span>
-        </div>
-      </div>
-      <div class="deck-card" id="deckB" data-deck="B" onclick="window.handlePick('B')">
-        <div class="deck-face">
-          <div class="deck-emoji"><i class="ti ti-cards"></i></div>
-          <div class="deck-label">牌堆 B</div>
-        </div>
-        <div class="deck-stats">
-          <span class="deck-picks">0 次</span>
-          <span class="deck-net">±0</span>
-        </div>
-      </div>
-      <div class="deck-card" id="deckC" data-deck="C" onclick="window.handlePick('C')">
-        <div class="deck-face">
-          <div class="deck-emoji"><i class="ti ti-cards"></i></div>
-          <div class="deck-label">牌堆 C</div>
-        </div>
-        <div class="deck-stats">
-          <span class="deck-picks">0 次</span>
-          <span class="deck-net">±0</span>
-        </div>
-      </div>
-      <div class="deck-card" id="deckD" data-deck="D" onclick="window.handlePick('D')">
-        <div class="deck-face">
-          <div class="deck-emoji"><i class="ti ti-cards"></i></div>
-          <div class="deck-label">牌堆 D</div>
-        </div>
-        <div class="deck-stats">
-          <span class="deck-picks">0 次</span>
-          <span class="deck-net">±0</span>
-        </div>
-      </div>
+
+    <!-- 卡背选择 -->
+    <div class="cardback-picker" id="cardbackPicker">
+      <span class="cardback-label"><i class="ti ti-palette"></i> 牌背花纹</span>
+      <button class="cardback-opt active" data-cb="1" title="黑金欧式"><img src="images/cardback-1.jpg" alt="黑金欧式"></button>
+      <button class="cardback-opt" data-cb="2" title="蓝紫星空"><img src="images/cardback-2.jpg" alt="蓝紫星空"></button>
+      <button class="cardback-opt" data-cb="3" title="酒红巴洛克"><img src="images/cardback-3.jpg" alt="酒红巴洛克"></button>
+      <button class="cardback-opt" data-cb="4" title="古典美人"><img src="images/cardback-4.jpg" alt="古典美人"></button>
+      <button class="cardback-opt" data-cb="5" title="时尚丽人"><img src="images/cardback-5.jpg" alt="时尚丽人"></button>
+      <button class="cardback-opt" data-cb="6" title="西装型男"><img src="images/cardback-6.jpg" alt="西装型男"></button>
+      <button class="cardback-opt" data-cb="7" title="硬汉熟男"><img src="images/cardback-7.jpg" alt="硬汉熟男"></button>
+      <button class="cardback-opt" data-cb="8" title="原神幻想"><img src="images/cardback-8.jpg" alt="原神幻想"></button>
+      <button class="cardback-opt" data-cb="9" title="忍者龙剑传"><img src="images/cardback-9.jpg" alt="忍者龙剑传"></button>
     </div>
 
-    <!-- 最近一次翻牌反馈 -->
-    <div class="last-pick" id="lastPick">
-      <div class="last-pick-empty">点一张牌开始</div>
+    <div class="deck-table" id="deckTable" data-cardback="1">
+      <div class="deck-col">
+        <div class="deck-card" id="deckA" data-deck="A" onclick="window.handlePick('A')">
+          <div class="deck-inner">
+            <div class="deck-back">
+              <div class="deck-label">牌堆 A</div>
+            </div>
+            <div class="deck-front">
+              <div class="pick-result"></div>
+            </div>
+          </div>
+        </div>
+        <div class="deck-stats">
+          <span class="deck-picks">0 次</span>
+          </div>
+      </div>
+      <div class="deck-col">
+        <div class="deck-card" id="deckB" data-deck="B" onclick="window.handlePick('B')">
+          <div class="deck-inner">
+            <div class="deck-back">
+              <div class="deck-label">牌堆 B</div>
+            </div>
+            <div class="deck-front">
+              <div class="pick-result"></div>
+            </div>
+          </div>
+        </div>
+        <div class="deck-stats">
+          <span class="deck-picks">0 次</span>
+          </div>
+      </div>
+      <div class="deck-col">
+        <div class="deck-card" id="deckC" data-deck="C" onclick="window.handlePick('C')">
+          <div class="deck-inner">
+            <div class="deck-back">
+              <div class="deck-label">牌堆 C</div>
+            </div>
+            <div class="deck-front">
+              <div class="pick-result"></div>
+            </div>
+          </div>
+        </div>
+        <div class="deck-stats">
+          <span class="deck-picks">0 次</span>
+          </div>
+      </div>
+      <div class="deck-col">
+        <div class="deck-card" id="deckD" data-deck="D" onclick="window.handlePick('D')">
+          <div class="deck-inner">
+            <div class="deck-back">
+              <div class="deck-label">牌堆 D</div>
+            </div>
+            <div class="deck-front">
+              <div class="pick-result"></div>
+            </div>
+          </div>
+        </div>
+        <div class="deck-stats">
+          <span class="deck-picks">0 次</span>
+          </div>
+      </div>
     </div>
   </div>
 
   <!-- ── 实时学习曲线 ── -->
-  <div class="section">
+  <div class="section" id="learnSection" style="display:none">
     <div class="section-title"><i class="ti ti-chart-line"></i> 学习曲线：每 20 手的净分数</div>
     <p class="section-hint">净分数 &gt; 0 说明你在抽好堆（C/D），&lt; 0 说明还在被坏堆（A/B）的纸面收益诱惑。健康受试者通常在 40-60 手后转正。</p>
     <div class="chart-wrap"><canvas id="learnChart"></canvas></div>

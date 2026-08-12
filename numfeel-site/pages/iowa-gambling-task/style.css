@@ -64,10 +64,48 @@ body {
   margin: 4px 0 12px;
 }
 
+/* ── 规则说明 ── */
+.rules-section {
+  border-color: rgba(144, 202, 249, 0.25);
+}
+
+.rule-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rule-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #ccc;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.rule-list li strong {
+  color: #ffd700;
+}
+
+.rule-list li strong.gain {
+  color: #81c784;
+}
+
+.rule-ico {
+  color: #90caf9;
+  font-size: 17px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
 /* ── 状态栏 ── */
 .status-bar {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   padding: 14px;
 }
@@ -120,6 +158,56 @@ body {
   transition: width 0.3s ease;
 }
 
+/* ── 卡背选择器 ── */
+.cardback-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.cardback-label {
+  color: #888;
+  font-size: 13px;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.cardback-opt {
+  width: 34px;
+  height: 47px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  background: transparent;
+  transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cardback-opt img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cardback-opt:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 215, 0, 0.5);
+}
+
+.cardback-opt.active {
+  border-color: #ffd700;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
+  transform: scale(1.06);
+}
+
 /* ── 牌桌 ── */
 .deck-table {
   display: grid;
@@ -128,20 +216,172 @@ body {
   margin-top: 6px;
 }
 
-.deck-card {
-  aspect-ratio: 3 / 4;
-  background: linear-gradient(145deg, #232a4d, #1a1f3a);
-  border: 2px solid rgba(255, 215, 0, 0.35);
-  border-radius: 12px;
-  cursor: pointer;
+.deck-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.2s ease;
+}
+
+.deck-card {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  perspective: 800px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  min-height: 120px;
+  position: relative;
+}
+
+.deck-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.3s ease;
+}
+
+.deck-card:hover {
+  transform: translateY(-4px);
+}
+
+.deck-card:active,
+.deck-card.picked {
+  transform: scale(0.94);
+}
+
+.deck-back,
+.deck-front {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 215, 0, 0.35);
+  overflow: hidden;
+}
+
+/* 卡背：花纹图 + 居中牌堆名 */
+.deck-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.deck-table[data-cardback="1"] .deck-back {
+  background-image: url('images/cardback-1.jpg');
+}
+
+.deck-table[data-cardback="2"] .deck-back {
+  background-image: url('images/cardback-2.jpg');
+}
+
+.deck-table[data-cardback="3"] .deck-back {
+  background-image: url('images/cardback-3.jpg');
+}
+
+.deck-table[data-cardback="4"] .deck-back {
+  background-image: url('images/cardback-4.jpg');
+}
+
+.deck-table[data-cardback="5"] .deck-back {
+  background-image: url('images/cardback-5.jpg');
+}
+
+.deck-table[data-cardback="6"] .deck-back {
+  background-image: url('images/cardback-6.jpg');
+}
+
+.deck-table[data-cardback="7"] .deck-back {
+  background-image: url('images/cardback-7.jpg');
+}
+
+.deck-table[data-cardback="8"] .deck-back {
+  background-image: url('images/cardback-8.jpg');
+}
+
+.deck-table[data-cardback="9"] .deck-back {
+  background-image: url('images/cardback-9.jpg');
+}
+
+.deck-back::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+}
+
+.deck-label {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+}
+
+/* 卡面：本次抽牌结果 */
+.deck-front {
+  transform: rotateY(180deg);
+  background: linear-gradient(145deg, #232a4d, #1a1f3a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.pick-result {
+  text-align: center;
+  padding: 8px;
+  width: 100%;
+}
+
+.pick-deck {
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.pick-line,
+.pick-net-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 10px;
+  font-size: 15px;
+}
+
+.pick-net-line {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.pick-tag {
+  color: #666;
+  font-size: 12px;
+}
+
+.gain {
+  color: #81c784;
+  font-weight: 700;
+}
+
+.loss {
+  color: #ff6b6b;
+  font-weight: 700;
+}
+
+.no-loss {
+  color: #888;
 }
 
 .deck-stats {
@@ -158,102 +398,16 @@ body {
   color: #888;
 }
 
-.deck-net {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.deck-net.good {
-  color: #81c784;
-}
-
-.deck-net.bad {
-  color: #ff6b6b;
-}
-
-.deck-card:hover {
-  transform: translateY(-4px);
-  border-color: #ffd700;
-  box-shadow: 0 8px 24px rgba(255, 215, 0, 0.15);
-}
-
-.deck-card:active,
-.deck-card.picked {
-  transform: scale(0.94);
-  border-color: #ff8c00;
-  box-shadow: 0 0 20px rgba(255, 140, 0, 0.35);
-}
-
-.deck-face {
-  text-align: center;
-  pointer-events: none;
-}
-
-.deck-emoji {
-  font-size: 34px;
-  color: #ffd700;
-  margin-bottom: 8px;
-}
-
-.deck-label {
-  color: #ccc;
-  font-size: 15px;
-  font-weight: 600;
-}
-
 /* 移动端：2x2 网格 */
 @media (max-width: 560px) {
   .deck-table {
     grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
   .status-bar {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
-}
-
-/* ── 最近一次翻牌 ── */
-.last-pick {
-  margin-top: 16px;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-size: 16px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px dashed rgba(255, 255, 255, 0.15);
-  transition: background 0.3s ease;
-}
-
-.last-pick.flash {
-  background: rgba(255, 215, 0, 0.08);
-  border-color: rgba(255, 215, 0, 0.4);
-}
-
-.last-pick-empty {
-  color: #666;
-  font-size: 14px;
-}
-
-.pick-deck {
-  color: #fff;
-  font-weight: 600;
-}
-
-.pick-net {
-  font-size: 14px;
-}
-
-.gain {
-  color: #81c784;
-  font-weight: 700;
-}
-
-.loss {
-  color: #ff6b6b;
-  font-weight: 700;
 }
 
 /* ── 图表 ── */

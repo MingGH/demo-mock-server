@@ -57,8 +57,49 @@ registerTrackLeaveHandler();
 // ── 初始化：直接开玩，无首屏 ──
 function init() {
   game = window.createGame ? window.createGame() : createGame();
+  initCardback();
   initLearnChart();
   updateStatus();
+}
+
+// ── 卡背选择（持久化到 localStorage） ──
+var CARDBACK_KEY = 'igt-cardback-v1';
+function initCardback() {
+  var table = document.getElementById('deckTable');
+  if (!table || typeof table.setAttribute !== 'function' || typeof document.querySelectorAll !== 'function') {
+    return; // 测试桩等无完整 DOM 环境静默跳过
+  }
+  var saved = 1;
+  try {
+    var v = parseInt(localStorage.getItem(CARDBACK_KEY), 10);
+    if (v >= 1 && v <= 9) saved = v;
+  } catch (e) { /* 静默 */ }
+  applyCardback(saved);
+  var opts = document.querySelectorAll('.cardback-opt');
+  for (var i = 0; i < opts.length; i++) {
+    opts[i].addEventListener('click', (function (opt) {
+      return function () {
+        var n = parseInt(opt.getAttribute('data-cb'), 10);
+        applyCardback(n);
+        try { localStorage.setItem(CARDBACK_KEY, String(n)); } catch (e) { /* 静默 */ }
+      };
+    })(opts[i]));
+  }
+}
+function applyCardback(n) {
+  var table = document.getElementById('deckTable');
+  if (table) {
+    table.setAttribute('data-cardback', String(n));
+  }
+  var opts = document.querySelectorAll('.cardback-opt');
+  for (var i = 0; i < opts.length; i++) {
+    var active = parseInt(opts[i].getAttribute('data-cb'), 10) === n;
+    if (active) {
+      opts[i].classList.add('active');
+    } else {
+      opts[i].classList.remove('active');
+    }
+  }
 }
 
 function getGame() {
@@ -69,6 +110,8 @@ function getGame() {
 }
 
 // ── 选牌 ──
+var faceUpDeck = null; // 当前正面展示结果的牌堆
+
 function handlePick(deck) {
   if (picking) return;
   var g = getGame();
@@ -77,32 +120,52 @@ function handlePick(deck) {
   picking = true;
   var cardEl = document.getElementById('deck' + deck);
   cardEl.classList.add('picked');
-  flipCard(cardEl, function () {
-    var result = g.drawCard(deck);
-    showLastPick(result);
-    updateStatus();
-    animateMoney(result);
-    cardEl.classList.remove('picked');
 
-    if (result.over) {
+  // 上一个正面牌堆翻回去
+  if (faceUpDeck && faceUpDeck !== deck) {
+    flipBack(document.getElementById('deck' + faceUpDeck));
+  }
+
+  // 同一牌堆连点：牌已正面，直接刷新结果，不再等待翻牌动画
+  if (faceUpDeck === deck) {
+    var r = g.drawCard(deck);
+    showLastPick(r, cardEl);
+    updateStatus();
+    animateMoney(r);
+    cardEl.classList.remove('picked');
+    picking = false;
+    if (r.over) {
       setTimeout(finishGame, 600);
-    } else {
-      picking = false;
+    }
+    return;
+  }
+
+  flipToFront(cardEl, function () {
+    faceUpDeck = deck;
+    var r = g.drawCard(deck);
+    showLastPick(r, cardEl);
+    updateStatus();
+    animateMoney(r);
+    cardEl.classList.remove('picked');
+    picking = false;
+    if (r.over) {
+      setTimeout(finishGame, 600);
     }
   });
 }
 
-// ── 翻牌微动画（GSAP，降级为即时回调） ──
-function flipCard(cardEl, done) {
-  if (window.gsap && cardEl) {
-    gsap.to(cardEl, {
+// ── 翻到正面（GSAP，降级为即时回调） ──
+function flipToFront(cardEl, done) {
+  var inner = cardEl.querySelector('.deck-inner');
+  if (window.gsap && typeof window.gsap.to === 'function' && inner) {
+    gsap.to(inner, {
       rotateY: 90,
-      duration: 0.12,
+      duration: 0.1,
       ease: 'power1.in',
       onComplete: function () {
-        gsap.to(cardEl, {
-          rotateY: 0,
-          duration: 0.15,
+        gsap.to(inner, {
+          rotateY: 180,
+          duration: 0.12,
           ease: 'power1.out',
           onComplete: done
         });
@@ -113,19 +176,35 @@ function flipCard(cardEl, done) {
   }
 }
 
-// ── 最近一次翻牌反馈 ──
-function showLastPick(r) {
-  var el = document.getElementById('lastPick');
-  var gainHtml = r.gain > 0 ? '<span class="gain">+' + r.gain + '</span>' : '';
-  var lossHtml = r.loss > 0 ? '<span class="loss">-' + r.loss + '</span>' : '';
+// ── 翻回背面 ──
+function flipBack(cardEl) {
+  var inner = cardEl.querySelector('.deck-inner');
+  if (window.gsap && typeof window.gsap.to === 'function' && inner) {
+    gsap.to(inner, {
+      rotateY: 0,
+      duration: 0.15,
+      ease: 'power1.out'
+    });
+  }
+}
+
+// ── 把本次结果渲染到卡片正面 ──
+function showLastPick(r, cardEl) {
+  cardEl = cardEl || document.getElementById('deck' + r.deck);
+  var resultBox = cardEl.querySelector('.pick-result');
+  if (!resultBox) return;
+  var gainHtml = '<span class="gain">+' + r.gain + '</span>';
+  var lossHtml = r.loss > 0
+    ? '<span class="loss">-' + r.loss + '</span>'
+    : '<span class="no-loss">无损失</span>';
   var netHtml = r.net >= 0
     ? '<span class="gain">+' + r.net + '</span>'
     : '<span class="loss">' + r.net + '</span>';
-  el.innerHTML = '<span class="pick-deck">牌堆 ' + r.deck + '</span> ' +
-    gainHtml + (lossHtml ? ' ' + lossHtml : '') +
-    '<span class="pick-net">净 ' + netHtml + '</span>';
-  el.classList.add('flash');
-  setTimeout(function () { el.classList.remove('flash'); }, 400);
+  resultBox.innerHTML =
+    '<div class="pick-deck">牌堆 ' + r.deck + '</div>' +
+    '<div class="pick-line"><span class="pick-tag">收益</span>' + gainHtml + '</div>' +
+    '<div class="pick-line"><span class="pick-tag">损失</span>' + lossHtml + '</div>' +
+    '<div class="pick-net-line"><span class="pick-tag">净变化</span>' + netHtml + '</div>';
 }
 
 // ── 资金跳动动画 ──
@@ -145,26 +224,21 @@ function updateStatus() {
   var s = getGame().getState();
   document.getElementById('moneyDisplay').textContent = '$' + s.money.toLocaleString();
   document.getElementById('progressDisplay').textContent = s.trial + ' / ' + s.totalRounds;
-  document.getElementById('netScoreDisplay').textContent = s.netScore;
   document.getElementById('progressFill').style.width = (s.trial / s.totalRounds * 100) + '%';
   updateDeckStats();
   updateLearnChart();
 }
 
-// ── 每堆选牌次数与累计净收益（学习可视化核心） ──
+// ── 每堆选牌次数（只显示次数，隐藏累计净收益避免泄露牌堆好坏） ──
 function updateDeckStats() {
   var s = getGame().getState();
   ['A', 'B', 'C', 'D'].forEach(function (deck) {
-    var card = document.getElementById('deck' + deck);
-    if (!card) return;
-    var picksEl = card.querySelector('.deck-picks');
-    var netEl = card.querySelector('.deck-net');
-    if (!picksEl || !netEl) return;
+    var col = document.getElementById('deck' + deck).parentElement;
+    if (!col) return;
+    var picksEl = col.querySelector('.deck-picks');
+    if (!picksEl) return;
     var count = s.deckCounts[deck];
-    var net = s.deckNet[deck];
     picksEl.textContent = count + ' 次';
-    netEl.textContent = (net >= 0 ? '+' : '') + net;
-    netEl.className = 'deck-net ' + (net >= 0 ? 'good' : 'bad');
   });
 }
 
@@ -266,6 +340,15 @@ function finishGame() {
   document.getElementById('resultGrade').style.color = gradeColor;
 
   document.getElementById('resultSection').style.display = 'block';
+
+  // 游戏结束才展示学习曲线（测试中隐藏，避免泄露牌堆好坏）
+  var learnSection = document.getElementById('learnSection');
+  if (learnSection) {
+    learnSection.style.display = 'block';
+    if (learnChart) {
+      setTimeout(function () { learnChart.resize(); }, 50);
+    }
+  }
 
   renderCompareChart(s);
   submitResult(s);
@@ -384,8 +467,23 @@ function getSessionId() {
 function restartGame() {
   game = window.createGame ? window.createGame() : createGame();
   picking = false;
+  faceUpDeck = null;
   document.getElementById('resultSection').style.display = 'none';
-  document.getElementById('lastPick').innerHTML = '<div class="last-pick-empty">点一张牌开始</div>';
+  var learnSection = document.getElementById('learnSection');
+  if (learnSection) {
+    learnSection.style.display = 'none';
+  }
+  // 清空所有卡片正面并翻回背面
+  ['A', 'B', 'C', 'D'].forEach(function (deck) {
+    var el = document.getElementById('deck' + deck);
+    var resultBox = el && el.querySelector('.pick-result');
+    if (resultBox) {
+      resultBox.innerHTML = '';
+    }
+    if (el) {
+      flipBack(el);
+    }
+  });
   if (window.__IOWA_STATS__) {
     delete window.__IOWA_STATS__;
   }

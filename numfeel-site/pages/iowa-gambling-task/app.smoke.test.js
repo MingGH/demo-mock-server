@@ -146,8 +146,8 @@ setTimeout(function () {
   // 1. 初始状态
   check(getEl('moneyDisplay').textContent === '$2,000', '开局资金 $2,000');
   check(getEl('progressDisplay').textContent === '0 / 100', '开局进度 0/100');
-  check(getEl('netScoreDisplay').textContent === '0', '开局净分数 0');
   check(getEl('resultSection').style.display === 'none', '开局结果区隐藏');
+  check(getEl('learnSection').style.display === 'none', '开局学习曲线隐藏（防泄露牌堆好坏）');
 
   // 2. 连续抽坏堆 A → 破产
   var r;
@@ -157,6 +157,7 @@ setTimeout(function () {
   }
   check(r.bankrupt === true, '抽 A 堆最终破产');
   check(getEl('resultSection').style.display === 'block', '破产后结果区显示');
+  check(getEl('learnSection').style.display === 'block', '结束后学习曲线展示');
   check(getEl('resultGrade').textContent === '破产了', '破产判定文案正确');
   check(getEl('finalNetScore').textContent === String(-r.trial), '净分数由引擎填充（=-手数）');
   check(getEl('finalMoney').textContent.indexOf('$') === 0, '最终资金已填充');
@@ -166,6 +167,7 @@ setTimeout(function () {
   check(getEl('moneyDisplay').textContent === '$2,000', '重开后资金复位');
   check(getEl('progressDisplay').textContent === '0 / 100', '重开后进度复位');
   check(getEl('resultSection').style.display === 'none', '重开后结果区隐藏');
+  check(getEl('learnSection').style.display === 'none', '重开后学习曲线重新隐藏');
 
   // 4. 全好堆 100 手 → 正常结束
   for (var j = 0; j < 100; j++) {

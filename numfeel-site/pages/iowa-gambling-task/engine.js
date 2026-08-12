@@ -5,13 +5,15 @@
  *  - 起始资金 $2000，共 100 次选择
  *  - 牌堆 A/B 每张收益 +$100，长期期望每 10 张 -$250（坏堆）
  *  - 牌堆 C/D 每张收益 +$50，长期期望每 10 张 +$250（好堆）
- *  - 损失按确定性循环序列发生（按选择次数取模），保证可复现、可测试
+ *  - 每局开局洗牌：各牌堆每 10 张的损失位置随机打乱，保证同一牌堆
+ *    单张结果不可预测、每局模式不同，玩家只能靠体感学习而非背模式
  *
  * 纯逻辑模块：不操作 DOM，可在 Node 中直接 require 测试。
+ * 可通过 options.random 注入随机源，便于测试复现。
  */
 
-/** 每 10 张一个周期的损失序列（0 = 该张无损失），每 10 张总和即净期望来源 */
-var DECK_LOSS_CYCLE = {
+/** 每 10 张一轮的损失池（含 0 = 该张无损失），开局洗牌后按选择次数取模 */
+var DECK_LOSS_POOL = {
   A: [150, 0, 300, 0, 200, 0, 250, 0, 350, 0],
   B: [0, 0, 0, 0, 0, 0, 0, 0, 0, 1250],
   C: [50, 0, 25, 0, 75, 0, 50, 0, 50, 0],
@@ -34,11 +36,29 @@ var TOTAL_ROUNDS = 100;
 var BLOCK_SIZE = 20;
 
 /**
+ * Fisher-Yates 洗牌（使用注入的随机源）。
+ * @param {Array} arr 原数组
+ * @param {Function} rand 返回 [0,1) 的随机函数
+ * @returns {Array} 新洗牌数组
+ */
+function shuffle(arr, rand) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(rand() * (i + 1));
+    var t = a[i];
+    a[i] = a[j];
+    a[j] = t;
+  }
+  return a;
+}
+
+/**
  * 创建一局爱荷华赌博任务。
  * @param {Object} [options] 可选配置
  * @param {number} [options.startMoney=2000] 起始资金
  * @param {number} [options.totalRounds=100] 总手数
  * @param {number} [options.blockSize=20] 学习曲线分块大小
+ * @param {Function} [options.random=Math.random] 随机源
  * @returns {Object} 游戏状态机
  */
 function createGame(options) {
@@ -46,6 +66,7 @@ function createGame(options) {
   var startMoney = opt.startMoney !== undefined ? opt.startMoney : START_MONEY;
   var totalRounds = opt.totalRounds !== undefined ? opt.totalRounds : TOTAL_ROUNDS;
   var blockSize = opt.blockSize !== undefined ? opt.blockSize : BLOCK_SIZE;
+  var rand = typeof opt.random === 'function' ? opt.random : Math.random;
 
   var money = startMoney;
   var trial = 0;
@@ -57,10 +78,20 @@ function createGame(options) {
   var history = [];
   /** 每堆累计净收益 */
   var deckNet = { A: 0, B: 0, C: 0, D: 0 };
+  /** 各堆当前轮的洗牌后损失序列（抽满一轮后重新洗牌） */
+  var cycles = {};
 
-  /** 从确定性损失序列取当前手的损失值 */
+  /** 取某堆当前轮的损失序列，若无则开局洗牌生成 */
+  function cycleFor(deck) {
+    if (!cycles[deck]) {
+      cycles[deck] = shuffle(DECK_LOSS_POOL[deck], rand);
+    }
+    return cycles[deck];
+  }
+
+  /** 从确定性洗牌序列取当前手的损失值 */
   function lossFor(deck) {
-    var cycle = DECK_LOSS_CYCLE[deck];
+    var cycle = cycleFor(deck);
     var idx = deckCounts[deck] % cycle.length;
     return cycle[idx];
   }
@@ -85,6 +116,11 @@ function createGame(options) {
     deckCounts[deck] += 1;
     deckNet[deck] += net;
     history.push({ deck: deck, gain: gain, loss: loss, net: net, money: money });
+
+    // 抽满 10 张后重新洗牌下一轮
+    if (deckCounts[deck] % 10 === 0) {
+      cycles[deck] = shuffle(DECK_LOSS_POOL[deck], rand);
+    }
 
     if (money < 0) {
       over = true;
@@ -187,7 +223,7 @@ function createGame(options) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     createGame: createGame,
-    DECK_LOSS_CYCLE: DECK_LOSS_CYCLE,
+    DECK_LOSS_POOL: DECK_LOSS_POOL,
     DECK_GAIN: DECK_GAIN,
     DECK_NET_PER_TEN: DECK_NET_PER_TEN,
     START_MONEY: START_MONEY,

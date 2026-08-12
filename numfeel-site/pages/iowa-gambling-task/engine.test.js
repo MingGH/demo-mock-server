@@ -48,9 +48,9 @@ function testDrawResult() {
   var g = engine.createGame();
   var r = g.drawCard('C');
   assertEq(r.gain, 50, 'C 堆每张收益 50');
-  assertEq(r.loss, 50, 'C 堆第 1 张损失 50');
-  assertEq(r.net, 0, 'C 堆第 1 张净收益 0');
-  assertEq(r.money, 2000, '起始资金 2000 不变');
+  assertTrue(r.loss >= 0, 'C 堆损失为非负');
+  assertEq(r.net, 50 - r.loss, '净收益 = 收益 - 损失');
+  assertEq(r.money, 2000 + r.net, '资金按净收益累加');
   assertEq(r.trial, 1, '第 1 手');
   assertEq(r.over, false, '未结束');
 }
@@ -99,30 +99,49 @@ function testBlockScores() {
   assertEq(blocks[1], 20, '第二块全 C = +20');
 }
 
-// ── 7. 固定规则可复现：同一堆同一手损失相同 ──
+// ── 7. 洗牌随机：每局损失顺序不同，但 10 张总损失不变 ──
+function testShuffleRandomness() {
+  // 两次不同随机源的 10 手损失序列应大概率不同
+  var r1 = makeRand(1);
+  var r2 = makeRand(2);
+  var losses1 = [], losses2 = [];
+  var g1 = engine.createGame({ random: r1 });
+  var g2 = engine.createGame({ random: r2 });
+  for (var i = 0; i < 10; i++) {
+    losses1.push(g1.drawCard('A').loss);
+    losses2.push(g2.drawCard('A').loss);
+  }
+  var different = false;
+  for (var j = 0; j < 10; j++) {
+    if (losses1[j] !== losses2[j]) { different = true; break; }
+  }
+  assertTrue(different, '不同随机源下损失顺序不同（洗牌生效）');
+  assertEq(sum(losses1), sum(losses2), '10 张总损失不变（期望一致）');
+}
+
+// ── 8. 同随机源可复现 ──
 function testDeterministic() {
-  var g1 = engine.createGame();
-  var g2 = engine.createGame();
+  var g1 = engine.createGame({ random: makeRand(42) });
+  var g2 = engine.createGame({ random: makeRand(42) });
   for (var i = 0; i < 12; i++) {
     var r1 = g1.drawCard('B');
     var r2 = g2.drawCard('B');
-    assertEq(r1.loss, r2.loss, 'B 堆第 ' + (i + 1) + ' 手损失可复现');
+    assertEq(r1.loss, r2.loss, '同随机源下 B 堆第 ' + (i + 1) + ' 手损失可复现');
   }
 }
 
-// ── 8. 边界：资金为正且未满 100 手不结束；A 堆损失序列正确 ──
+// ── 9. 边界：资金为正且未满 100 手不结束 ──
 function testMoneyZeroNotBankrupt() {
-  var g = engine.createGame();
-  // A 堆前 2 手：+100，第 2 手无损失（周期 [150,0,300,0,...]）
+  var g = engine.createGame({ random: makeRand(7) });
+  // A 堆前 2 手：+100/张，损失从洗牌序列取
   var r1 = g.drawCard('A');
   var r2 = g.drawCard('A');
-  assertEq(r1.loss, 150, 'A 堆第 1 手损失 150');
-  assertEq(r2.loss, 0, 'A 堆第 2 手无损失');
-  assertEq(r2.money, 2000 + 100 + 100 - 150, 'A 堆抽 2 手后资金=2050');
+  assertEq(r2.money, 2000 + (100 - r1.loss) + (100 - r2.loss), 'A 堆抽 2 手后资金正确累加');
+  assertTrue(r2.money > 0, '仅抽 2 手资金为正');
   assertEq(g.getState().over, false, '资金为正且未满 100 手不结束');
 }
 
-// ── 9. 抽牌已结束仍调用应抛错 ──
+// ── 10. 抽牌已结束仍调用应抛错 ──
 function testDrawAfterOverThrows() {
   var g = engine.createGame();
   for (var i = 0; i < 100; i++) g.drawCard(i % 2 === 0 ? 'C' : 'D');
@@ -135,7 +154,7 @@ function testDrawAfterOverThrows() {
   assertTrue(threw, '游戏结束后抽牌抛错');
 }
 
-// ── 10. 非法牌堆抛错 ──
+// ── 11. 非法牌堆抛错 ──
 function testInvalidDeckThrows() {
   var g = engine.createGame();
   var threw = false;
@@ -147,12 +166,26 @@ function testInvalidDeckThrows() {
   assertTrue(threw, '非法牌堆抛错');
 }
 
+// ── 工具：确定性随机源（简单 LCG） ──
+function makeRand(seed) {
+  var s = seed;
+  return function () {
+    s = (s * 1103515245 + 12345) % 2147483648;
+    return s / 2147483648;
+  };
+}
+
+function sum(arr) {
+  return arr.reduce(function (a, b) { return a + b; }, 0);
+}
+
 testDeckExpectation();
 testDrawResult();
 testGameEndsAfter100();
 testBankrupt();
 testNetScore();
 testBlockScores();
+testShuffleRandomness();
 testDeterministic();
 testMoneyZeroNotBankrupt();
 testDrawAfterOverThrows();

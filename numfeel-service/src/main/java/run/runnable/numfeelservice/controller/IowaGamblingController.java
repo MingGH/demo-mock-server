@@ -145,7 +145,7 @@ public class IowaGamblingController {
             throw ApiException.badRequest("challengeId/powHash/powNonce are required");
         }
         if (request.cfTurnstileToken() == null || request.cfTurnstileToken().isBlank()) {
-            throw ApiException.badRequest("cfTurnstileToken is required");
+            throw ApiException.badRequest("人机验证未通过，请先完成验证再提交");
         }
 
         return service.submitLeaderboard(

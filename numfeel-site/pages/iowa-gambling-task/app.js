@@ -581,20 +581,63 @@ function closeLeaderboardSubmit() {
   resetTurnstile();
 }
 
+var turnstileReady = false; // Turnstile 是否已完成人机验证
+
 function renderTurnstile() {
   var container = document.getElementById('turnstileWidget');
   if (!container) return;
   resetTurnstile();
+  turnstileReady = false;
+  var statusEl = document.getElementById('lbSubmitStatus');
+  // api.js 尚未加载完成（async defer）：延迟重试渲染，而不是静默跳过
   if (typeof turnstile === 'undefined') {
     container.innerHTML = '';
+    if (statusEl) {
+      statusEl.textContent = '正在加载人机验证组件…';
+      statusEl.className = 'lb-status loading';
+    }
+    setTimeout(function () {
+      var modal = document.getElementById('lbModal');
+      if (modal && modal.style.display === 'flex') {
+        renderTurnstile();
+      }
+    }, 1500);
     return;
   }
   container.innerHTML = '';
-  turnstileId = turnstile.render(container, {
-    sitekey: TURNSTILE_SITE_KEY,
-    action: 'iowa-gambling-submit',
-    theme: 'auto'
-  });
+  try {
+    turnstileId = turnstile.render(container, {
+      sitekey: TURNSTILE_SITE_KEY,
+      action: 'iowa-gambling-submit',
+      theme: 'auto',
+      callback: function () {
+        turnstileReady = true;
+        if (statusEl) {
+          statusEl.textContent = '人机验证通过，可以提交了';
+          statusEl.className = 'lb-status success';
+        }
+      },
+      'expired-callback': function () {
+        turnstileReady = false;
+        if (statusEl) {
+          statusEl.textContent = '验证已过期，请重新勾选';
+          statusEl.className = 'lb-status error';
+        }
+      },
+      'error-callback': function () {
+        turnstileReady = false;
+        if (statusEl) {
+          statusEl.textContent = '人机验证加载失败，请刷新页面重试';
+          statusEl.className = 'lb-status error';
+        }
+      }
+    });
+  } catch (e) {
+    if (statusEl) {
+      statusEl.textContent = '人机验证加载失败，请刷新页面重试';
+      statusEl.className = 'lb-status error';
+    }
+  }
 }
 
 function resetTurnstile() {
@@ -602,6 +645,7 @@ function resetTurnstile() {
     try { turnstile.reset(turnstileId); } catch (e) { /* 静默 */ }
     turnstileId = null;
   }
+  turnstileReady = false;
 }
 
 function getTurnstileToken() {
@@ -664,6 +708,16 @@ async function submitToLeaderboard() {
   }
   var deckPicks = JSON.stringify([s.deckCounts.A, s.deckCounts.B, s.deckCounts.C, s.deckCounts.D]);
 
+  // 人机验证必须已完成，否则后端会拒绝（cfTurnstileToken is required）
+  var turnstileToken = getTurnstileToken();
+  if (!turnstileToken) {
+    statusEl.textContent = turnstileReady
+      ? '人机验证已过期，请重新勾选后再提交'
+      : '请先完成人机验证（点验证框勾选），再点击提交';
+    statusEl.className = 'lb-status error';
+    return;
+  }
+
   submitBtn.disabled = true;
   statusEl.textContent = '正在申请挑战…';
   statusEl.className = 'lb-status loading';
@@ -693,7 +747,7 @@ async function submitToLeaderboard() {
       challengeId: challenge.challengeId,
       powHash: pow.hash,
       powNonce: pow.nonce,
-      cfTurnstileToken: getTurnstileToken() || ''
+      cfTurnstileToken: turnstileToken
     };
 
     var res = await fetch(API_BASE + '/iowa-gambling/leaderboard/submit-v2', {

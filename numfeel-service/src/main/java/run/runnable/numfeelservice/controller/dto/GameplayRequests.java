@@ -441,4 +441,26 @@ public final class GameplayRequests {
             Integer eliminated
     ) {
     }
+
+    /**
+     * 爱荷华赌博任务 提交参数。
+     *
+     * @param sessionId 客户端生成的会话 ID
+     * @param totalRounds 实际完成手数（1~100，破产时小于 100）
+     * @param finalMoney 结束时的资金
+     * @param netScore 净分数 (C+D选数)-(A+B选数)
+     * @param bankrupt 是否破产结束
+     * @param deckPicks 四堆选牌次数 JSON 数组字符串，如 [25,25,25,25]
+     * @param blockScores 每 20 手净分数 JSON 数组字符串，如 [2,-4,6,10,8]
+     */
+    public record IowaGamblingSubmitRequest(
+            String sessionId,
+            Integer totalRounds,
+            Integer finalMoney,
+            Integer netScore,
+            Boolean bankrupt,
+            String deckPicks,
+            String blockScores
+    ) {
+    }
 }

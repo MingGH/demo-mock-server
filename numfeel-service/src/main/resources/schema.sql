@@ -455,3 +455,19 @@ CREATE TABLE IF NOT EXISTS demo_events (
     INDEX idx_session (session_id, seq),
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 爱荷华赌博任务（Iowa Gambling Task）结果记录
+-- 记录完整 100 手牌局结果，用于结果页对比全站均值与论文数据
+CREATE TABLE IF NOT EXISTS iowa_gambling_results (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_id   VARCHAR(36) NOT NULL COMMENT '客户端生成的会话 ID',
+    total_rounds SMALLINT    NOT NULL COMMENT '实际完成手数（破产则 < 100）',
+    final_money  INT         NOT NULL COMMENT '结束时的资金',
+    net_score    SMALLINT    NOT NULL COMMENT '净分数 (C+D选数)-(A+B选数)',
+    bankrupt     TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '是否破产结束',
+    deck_picks   VARCHAR(64) NOT NULL COMMENT '四堆选牌次数 JSON，如 [25,25,25,25]',
+    block_scores VARCHAR(128) NOT NULL COMMENT '每20手净分数 JSON，如 [2,-4,6,10,8]',
+    created_at   BIGINT      NOT NULL,
+    INDEX idx_iowa_created (created_at),
+    INDEX idx_iowa_net (net_score)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

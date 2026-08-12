@@ -471,3 +471,22 @@ CREATE TABLE IF NOT EXISTS iowa_gambling_results (
     INDEX idx_iowa_created (created_at),
     INDEX idx_iowa_net (net_score)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 爱荷华赌博任务 — 识破陷阱排行榜
+-- 玩家提交用户名上榜；后端通过 PoW + Turnstile 人机验证 + 提交冷却防刷榜
+CREATE TABLE IF NOT EXISTS iowa_gambling_leaderboard (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username     VARCHAR(50) NOT NULL COMMENT '用户名（知乎ID或昵称）',
+    net_score    SMALLINT    NOT NULL COMMENT '净分数 (C+D选数)-(A+B选数)',
+    final_money  INT         NOT NULL COMMENT '结束时的资金',
+    bankrupt     TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '是否破产结束',
+    total_rounds SMALLINT    NOT NULL COMMENT '实际完成手数',
+    deck_picks   VARCHAR(64) NOT NULL COMMENT '四堆选牌次数 JSON，如 [25,25,25,25]',
+    pow_hash     VARCHAR(64) NOT NULL COMMENT 'SHA-256 PoW 哈希',
+    pow_nonce    VARCHAR(32) NOT NULL COMMENT 'PoW nonce',
+    created_at   BIGINT      NOT NULL,
+    INDEX idx_iowa_lb_net (net_score DESC),
+    INDEX idx_iowa_lb_username (username),
+    INDEX idx_iowa_lb_pow (pow_hash),
+    INDEX idx_iowa_lb_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

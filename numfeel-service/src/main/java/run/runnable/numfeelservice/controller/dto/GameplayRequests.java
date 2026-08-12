@@ -463,4 +463,32 @@ public final class GameplayRequests {
             String blockScores
     ) {
     }
+
+    /**
+     * 爱荷华赌博任务 排行榜提交参数（防刷榜：PoW + Turnstile 人机验证）。
+     *
+     * @param username 用户名（知乎ID或昵称，最多 50 字符）
+     * @param netScore 净分数 (C+D选数)-(A+B选数)
+     * @param finalMoney 结束时的资金
+     * @param bankrupt 是否破产结束
+     * @param totalRounds 实际完成手数
+     * @param deckPicks 四堆选牌次数 JSON 数组字符串，如 [25,25,25,25]
+     * @param challengeId 一次性 PoW challenge ID
+     * @param powHash SHA-256 PoW 哈希
+     * @param powNonce PoW nonce
+     * @param cfTurnstileToken Cloudflare Turnstile 人机验证 token
+     */
+    public record IowaGamblingLeaderboardSubmitRequest(
+            String username,
+            Integer netScore,
+            Integer finalMoney,
+            Boolean bankrupt,
+            Integer totalRounds,
+            String deckPicks,
+            String challengeId,
+            String powHash,
+            String powNonce,
+            String cfTurnstileToken
+    ) {
+    }
 }

@@ -2,13 +2,16 @@ package run.runnable.numfeelservice.controller;
 
 import tools.jackson.databind.JsonNode;
 import run.runnable.numfeelservice.controller.dto.CommonResponses.SubmitAckResponse;
+import run.runnable.numfeelservice.controller.dto.GameplayRequests.IowaGamblingLeaderboardSubmitRequest;
 import run.runnable.numfeelservice.controller.dto.GameplayRequests.IowaGamblingSubmitRequest;
 import run.runnable.numfeelservice.service.IowaGamblingService;
 import run.runnable.numfeelservice.web.ApiException;
 import run.runnable.numfeelservice.web.ApiResponse;
+import run.runnable.numfeelservice.web.ClientIp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,15 +22,19 @@ import reactor.core.publisher.Mono;
 
 /**
  * 爱荷华赌博任务 HTTP 处理器。
- * POST /iowa-gambling/submit      — 提交完整牌局结果
- * GET  /iowa-gambling/stats       — 查询全站统计
- * GET  /iowa-gambling/leaderboard — 查询净分数排行榜
+ * POST /iowa-gambling/submit           — 提交完整牌局结果
+ * GET  /iowa-gambling/stats            — 查询全站统计
+ * GET  /iowa-gambling/leaderboard/challenge — 获取排行榜提交 PoW challenge
+ * POST /iowa-gambling/leaderboard/submit-v2 — 提交排行榜成绩（防刷榜）
+ * GET  /iowa-gambling/leaderboard      — 查询净分数排行榜
  */
 @RestController
 @RequestMapping("/iowa-gambling")
 public class IowaGamblingController {
 
     private static final Logger log = LoggerFactory.getLogger(IowaGamblingController.class);
+
+    private static final int MAX_USERNAME_LENGTH = 50;
 
     private final IowaGamblingService service;
 
@@ -96,5 +103,78 @@ public class IowaGamblingController {
                     log.error("iowa-gambling leaderboard error", err);
                     return Mono.just(ApiResponse.error(500, "Internal error"));
                 });
+    }
+
+    /**
+     * 获取排行榜提交的一次性 PoW challenge。
+     */
+    @GetMapping("/leaderboard/challenge")
+    public Mono<ResponseEntity<JsonNode>> leaderboardChallenge() {
+        return service.createLeaderboardChallenge()
+                .map(ApiResponse::ok)
+                .onErrorResume(err -> {
+                    log.error("iowa-gambling leaderboard challenge error", err);
+                    return Mono.just(ApiResponse.error(500, "Internal error"));
+                });
+    }
+
+    /**
+     * 提交排行榜成绩（v2，防刷榜：Turnstile 人机验证 + PoW 工作量证明 + 提交冷却）。
+     */
+    @PostMapping("/leaderboard/submit-v2")
+    public Mono<ResponseEntity<JsonNode>> submitLeaderboardV2(
+            @RequestBody(required = false) IowaGamblingLeaderboardSubmitRequest request,
+            ServerHttpRequest httpRequest) {
+        if (request == null) {
+            throw ApiException.badRequest("Invalid JSON");
+        }
+        String remoteIp = ClientIp.resolve(httpRequest);
+        String username = normalizeUsername(request.username());
+        if (username == null || username.isBlank()) {
+            throw ApiException.badRequest("username is required");
+        }
+        if (username.length() > MAX_USERNAME_LENGTH) {
+            throw ApiException.badRequest("username too long (max " + MAX_USERNAME_LENGTH + ")");
+        }
+        if (request.netScore() == null || request.finalMoney() == null
+                || request.totalRounds() == null || request.bankrupt() == null
+                || request.deckPicks() == null) {
+            throw ApiException.badRequest("Missing required fields");
+        }
+        if (request.challengeId() == null || request.powHash() == null || request.powNonce() == null) {
+            throw ApiException.badRequest("challengeId/powHash/powNonce are required");
+        }
+        if (request.cfTurnstileToken() == null || request.cfTurnstileToken().isBlank()) {
+            throw ApiException.badRequest("cfTurnstileToken is required");
+        }
+
+        return service.submitLeaderboard(
+                        username,
+                        request.netScore(),
+                        request.finalMoney(),
+                        request.bankrupt(),
+                        request.totalRounds(),
+                        request.deckPicks(),
+                        request.challengeId(),
+                        request.powHash(),
+                        request.powNonce(),
+                        request.cfTurnstileToken(),
+                        remoteIp)
+                .map(ApiResponse::ok)
+                .onErrorResume(IllegalArgumentException.class, err ->
+                        Mono.just(ApiResponse.error(400, err.getMessage())))
+                .onErrorResume(err -> {
+                    log.error("iowa-gambling leaderboard submit-v2 error", err);
+                    return Mono.just(ApiResponse.error(500, "Internal error"));
+                });
+    }
+
+    private String normalizeUsername(String username) {
+        if (username == null) {
+            return null;
+        }
+        return username
+                .replaceAll("[\\p{Cntrl}<>]", "")
+                .trim();
     }
 }

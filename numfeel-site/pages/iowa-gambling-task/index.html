@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="爱荷华赌博任务交互演示：四副牌，有的让你越抽越亏。抽完 100 手，看看你的直觉能不能识破纸面高收益背后的陷阱。Bechara & Damasio 1994 经典认知实验在线体验。">
   <title>爱荷华赌博任务：你的直觉能识破坏牌堆吗 | 数字直觉</title>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
   <link rel="stylesheet" href="style.css">
@@ -127,9 +128,16 @@
     </div>
   </div>
 
-  <!-- ── 实时学习曲线 ── -->
+  <!-- ── 实时资金曲线（开始游玩即可见） ── -->
+  <div class="section">
+    <div class="section-title"><i class="ti ti-chart-line"></i> 实时资金曲线</div>
+    <p class="section-hint">每抽一张记录一次资金。看看曲线是往上爬，还是被惩罚卡砸下来。</p>
+    <div class="chart-wrap"><canvas id="moneyChart"></canvas></div>
+  </div>
+
+  <!-- ── 实时学习曲线（游戏结束展示，防泄露牌堆好坏） ── -->
   <div class="section" id="learnSection" style="display:none">
-    <div class="section-title"><i class="ti ti-chart-line"></i> 学习曲线：每 20 手的净分数</div>
+    <div class="section-title"><i class="ti ti-chart-arcs"></i> 学习曲线：每 20 手的净分数</div>
     <p class="section-hint">净分数 &gt; 0 说明你在抽好堆（C/D），&lt; 0 说明还在被坏堆（A/B）的纸面收益诱惑。健康受试者通常在 40-60 手后转正。</p>
     <div class="chart-wrap"><canvas id="learnChart"></canvas></div>
   </div>
@@ -158,20 +166,54 @@
       </div>
     </div>
 
-    <div class="section-title"><i class="ti ti-trophy"></i> 识破陷阱排行榜</div>
-    <p class="section-hint">按净分数排名的全站玩家榜单。净分数 = 好堆（C/D）选数 − 坏堆（A/B）选数，越高说明越早识破陷阱。</p>
-    <div class="leaderboard" id="leaderboardBox">
-      <div class="leaderboard-empty">榜单加载中…</div>
-    </div>
-
     <div class="section-title"><i class="ti ti-users-group"></i> 你和全站、论文数据的对比</div>
     <div class="chart-wrap"><canvas id="compareChart"></canvas></div>
     <p class="section-hint" id="compareNote"></p>
     <p class="section-hint">来源：Bechara A., Damasio A. R., Damasio H., &amp; Anderson S. W. (1994). <em>Insensitivity to future consequences following damage to human prefrontal cortex</em>. Cognition, 50(1-3), 7-15.</p>
 
     <button class="btn-restart" onclick="window.restartGame()"><i class="ti ti-refresh"></i> 再来一局</button>
+    <button class="btn-restart ghost" onclick="window.showLeaderboardSubmit()"><i class="ti ti-trophy"></i> 去排行榜提交成绩</button>
+  </div>
+
+  <!-- ── 排行榜（页面底部，常驻可见） ── -->
+  <div class="section leaderboard-section">
+    <div class="section-title"><i class="ti ti-trophy"></i> 识破陷阱排行榜</div>
+    <p class="section-hint">按净分数排名的全站玩家榜单。净分数 = 好堆（C/D）选数 − 坏堆（A/B）选数，越高说明越早识破陷阱。抽完一局就能提交成绩上榜。</p>
+    <div class="lb-toolbar">
+      <span class="lb-total" id="lbTotalText">共 0 位上榜</span>
+      <button class="lb-submit-btn" onclick="window.showLeaderboardSubmit()"><i class="ti ti-upload"></i> 提交成绩</button>
+    </div>
+    <div class="leaderboard" id="leaderboardBox">
+      <div class="leaderboard-empty">榜单加载中…</div>
+    </div>
   </div>
 
 </div>
+
+<!-- ── 排行榜提交弹窗 ── -->
+<div class="modal-backdrop" id="lbModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title"><i class="ti ti-trophy"></i> 提交成绩</div>
+    <div class="lb-form">
+      <div class="lb-form-row">
+        <label>用户名（知乎ID或昵称，最多 50 字符）</label>
+        <input type="text" id="lbUsername" maxlength="50" placeholder="输入你的用户名" autocomplete="off">
+      </div>
+      <div class="lb-form-preview">
+        <div class="lb-preview-item"><span class="lb-preview-label">净分数</span><span class="lb-preview-val" id="lbPreviewNet">-</span></div>
+        <div class="lb-preview-item"><span class="lb-preview-label">最终资金</span><span class="lb-preview-val" id="lbPreviewMoney">-</span></div>
+        <div class="lb-preview-item"><span class="lb-preview-label">手数</span><span class="lb-preview-val" id="lbPreviewRounds">-</span></div>
+      </div>
+      <div id="lbSubmitStatus" class="lb-status"></div>
+      <div id="turnstileWidget" style="display:flex;justify-content:center;margin-bottom:12px;"></div>
+      <div class="lb-form-actions">
+        <button class="modal-btn ghost" onclick="window.closeLeaderboardSubmit()">取消</button>
+        <button class="modal-btn primary" id="lbSubmitConfirm" onclick="window.submitToLeaderboard()">提交</button>
+      </div>
+      <p class="lb-disclaimer">提交需完成工作量证明（约 1-3 秒）与人机验证，防止刷榜。</p>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

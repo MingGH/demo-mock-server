@@ -349,4 +349,20 @@ public final class GameplayEntities {
             @Column("created_at") long createdAt
     ) {
     }
+
+    /** 爱荷华赌博任务 — 识破陷阱排行榜记录（玩家提交上榜，防刷榜）。 */
+    @Table("iowa_gambling_leaderboard")
+    public record IowaGamblingLeaderboardRecord(
+            @Id Long id,
+            String username,
+            @Column("net_score") int netScore,
+            @Column("final_money") int finalMoney,
+            boolean bankrupt,
+            @Column("total_rounds") int totalRounds,
+            @Column("deck_picks") String deckPicks,
+            @Column("pow_hash") String powHash,
+            @Column("pow_nonce") String powNonce,
+            @Column("created_at") long createdAt
+    ) {
+    }
 }

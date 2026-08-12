@@ -7,6 +7,8 @@
 var game = null;
 var learnChart = null;
 var compareChart = null;
+var moneyChart = null;
+var moneySeries = [2000]; // 实时资金曲线：从起始资金开始，每抽一手追加
 var picking = false;
 
 /* 后端 */
@@ -59,7 +61,9 @@ function init() {
   game = window.createGame ? window.createGame() : createGame();
   initCardback();
   initLearnChart();
+  initMoneyChart();
   updateStatus();
+  fetchLeaderboard();
 }
 
 // ── 卡背选择（持久化到 localStorage） ──
@@ -119,6 +123,10 @@ function handlePick(deck) {
 
   picking = true;
   var cardEl = document.getElementById('deck' + deck);
+  if (!cardEl) {
+    picking = false;
+    return;
+  }
   cardEl.classList.add('picked');
 
   // 上一个正面牌堆翻回去
@@ -128,28 +136,36 @@ function handlePick(deck) {
 
   // 同一牌堆连点：牌已正面，直接刷新结果，不再等待翻牌动画
   if (faceUpDeck === deck) {
-    var r = g.drawCard(deck);
-    showLastPick(r, cardEl);
-    updateStatus();
-    animateMoney(r);
-    cardEl.classList.remove('picked');
-    picking = false;
-    if (r.over) {
-      setTimeout(finishGame, 600);
+    try {
+      var r = g.drawCard(deck);
+      moneySeries.push(r.money);
+      showLastPick(r, cardEl);
+      updateStatus();
+      animateMoney(r);
+      if (r.over) {
+        setTimeout(finishGame, 600);
+      }
+    } finally {
+      cardEl.classList.remove('picked');
+      picking = false;
     }
     return;
   }
 
   flipToFront(cardEl, function () {
-    faceUpDeck = deck;
-    var r = g.drawCard(deck);
-    showLastPick(r, cardEl);
-    updateStatus();
-    animateMoney(r);
-    cardEl.classList.remove('picked');
-    picking = false;
-    if (r.over) {
-      setTimeout(finishGame, 600);
+    try {
+      faceUpDeck = deck;
+      var r = g.drawCard(deck);
+      moneySeries.push(r.money);
+      showLastPick(r, cardEl);
+      updateStatus();
+      animateMoney(r);
+      if (r.over) {
+        setTimeout(finishGame, 600);
+      }
+    } finally {
+      cardEl.classList.remove('picked');
+      picking = false;
     }
   });
 }
@@ -227,6 +243,7 @@ function updateStatus() {
   document.getElementById('progressFill').style.width = (s.trial / s.totalRounds * 100) + '%';
   updateDeckStats();
   updateLearnChart();
+  updateMoneyChart();
 }
 
 // ── 每堆选牌次数（只显示次数，隐藏累计净收益避免泄露牌堆好坏） ──
@@ -302,6 +319,59 @@ function updateLearnChart() {
   learnChart.data.datasets[0].data = blocks;
   learnChart.data.datasets[1].data = blocks.map(function () { return 0; });
   learnChart.update();
+}
+
+// ── 实时资金曲线（开局即可见，每抽一手追加一个点） ──
+function initMoneyChart() {
+  var ctx = document.getElementById('moneyChart');
+  if (!ctx) return;
+  moneyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        label: '资金',
+        data: [],
+        borderColor: '#ffd700',
+        backgroundColor: 'rgba(255,215,0,0.12)',
+        fill: true,
+        tension: 0.25,
+        pointRadius: 2,
+        pointBackgroundColor: '#ffd700'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#aaa' } }
+      },
+      scales: {
+        x: {
+          title: { display: true, text: '手数', color: '#888' },
+          ticks: { color: '#888' },
+          grid: { color: 'rgba(255,255,255,0.06)' }
+        },
+        y: {
+          title: { display: true, text: '资金', color: '#888' },
+          ticks: { color: '#888' },
+          grid: { color: 'rgba(255,255,255,0.06)' }
+        }
+      }
+    }
+  });
+  moneySeries = [getGame().getState().startMoney || 2000];
+}
+
+function updateMoneyChart() {
+  if (!moneyChart) return;
+  var labels = [];
+  for (var i = 0; i < moneySeries.length; i++) {
+    labels.push(i);
+  }
+  moneyChart.data.labels = labels;
+  moneyChart.data.datasets[0].data = moneySeries.slice();
+  moneyChart.update('none');
 }
 
 // ── 游戏结束 ──
@@ -449,13 +519,17 @@ function fetchLeaderboard() {
 function renderLeaderboard(lb) {
   var box = document.getElementById('leaderboardBox');
   if (!box) return;
-  var leaders = (lb.leaders || []).filter(function (e) { return !e.bankrupt; });
+  var leaders = lb.leaders || [];
+  var total = lb.total || 0;
+  var totalEl = document.getElementById('lbTotalText');
+  if (totalEl) {
+    totalEl.textContent = '共 ' + total + ' 位上榜';
+  }
   if (!leaders.length) {
     box.innerHTML = '<div class="leaderboard-empty">还没有人上榜，快来当第一。</div>';
     return;
   }
-  var total = lb.total || 0;
-  var html = '<div class="lb-row lb-head"><span>名次</span><span>净分数</span><span>最终资金</span><span>手数</span></div>';
+  var html = '<div class="lb-row lb-head"><span>名次</span><span>用户名</span><span>净分数</span><span>最终资金</span><span>手数</span></div>';
   for (var i = 0; i < leaders.length; i++) {
     var e = leaders[i];
     var medal = e.rank === 1 ? '<i class="ti ti-medal gold"></i>'
@@ -464,13 +538,197 @@ function renderLeaderboard(lb) {
           : '<span class="lb-rank">' + e.rank + '</span>';
     html += '<div class="lb-row">' +
       '<span class="lb-rank-cell">' + medal + '</span>' +
+      '<span class="lb-name">' + escapeHtml(e.username) + '</span>' +
       '<span class="lb-score">' + (e.netScore >= 0 ? '+' : '') + e.netScore + '</span>' +
       '<span>$' + e.finalMoney.toLocaleString() + '</span>' +
       '<span>' + e.totalRounds + '</span>' +
       '</div>';
   }
-  html += '<div class="leaderboard-total">全站共 ' + total + ' 局已提交</div>';
   box.innerHTML = html;
+}
+
+// ── 排行榜提交（防刷榜：PoW 工作量证明 + Turnstile 人机验证） ──
+var TURNSTILE_SITE_KEY = '0x4AAAAAADsMioJW-WyC3Fwm';
+var turnstileId = null;
+
+function showLeaderboardSubmit() {
+  var g = getGame();
+  var s = g.getState();
+  if (s.trial === 0) {
+    var statusEl = document.getElementById('lbSubmitStatus');
+    if (statusEl) {
+      statusEl.textContent = '还没开始玩，至少抽一张再提交';
+      statusEl.className = 'lb-status error';
+    }
+    var modal = document.getElementById('lbModal');
+    if (modal) modal.style.display = 'flex';
+    return;
+  }
+  document.getElementById('lbPreviewNet').textContent = (s.netScore >= 0 ? '+' : '') + s.netScore;
+  document.getElementById('lbPreviewMoney').textContent = '$' + s.money.toLocaleString();
+  document.getElementById('lbPreviewRounds').textContent = s.trial;
+  var statusEl = document.getElementById('lbSubmitStatus');
+  if (statusEl) { statusEl.textContent = ''; statusEl.className = 'lb-status'; }
+  var input = document.getElementById('lbUsername');
+  if (input) input.focus();
+  renderTurnstile();
+  document.getElementById('lbModal').style.display = 'flex';
+}
+
+function closeLeaderboardSubmit() {
+  var modal = document.getElementById('lbModal');
+  if (modal) modal.style.display = 'none';
+  resetTurnstile();
+}
+
+function renderTurnstile() {
+  var container = document.getElementById('turnstileWidget');
+  if (!container) return;
+  resetTurnstile();
+  if (typeof turnstile === 'undefined') {
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = '';
+  turnstileId = turnstile.render(container, {
+    sitekey: TURNSTILE_SITE_KEY,
+    action: 'iowa-gambling-submit',
+    theme: 'auto'
+  });
+}
+
+function resetTurnstile() {
+  if (turnstileId !== null && typeof turnstile !== 'undefined') {
+    try { turnstile.reset(turnstileId); } catch (e) { /* 静默 */ }
+    turnstileId = null;
+  }
+}
+
+function getTurnstileToken() {
+  if (typeof turnstile === 'undefined' || turnstileId === null) return null;
+  try {
+    return turnstile.getResponse(turnstileId) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function sha256(message) {
+  var msgBuffer = new TextEncoder().encode(message);
+  var hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  var hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+function buildChallengePayload(challengeId, username, netScore, finalMoney, totalRounds, deckPicks) {
+  return challengeId + '|' + username + '|' + netScore + '|' + finalMoney
+    + '|' + totalRounds + '|' + deckPicks;
+}
+
+async function computePoW(payload, difficulty) {
+  difficulty = difficulty || 4;
+  var zeroPrefix = new Array(difficulty + 1).join('0');
+  var nonce = 0;
+  while (true) {
+    var hash = await sha256(payload + nonce);
+    if (hash.substring(0, difficulty) === zeroPrefix) {
+      return { hash: hash, nonce: String(nonce) };
+    }
+    nonce++;
+    if (nonce % 1000 === 0) {
+      await new Promise(function (resolve) { setTimeout(resolve, 0); });
+    }
+  }
+}
+
+async function submitToLeaderboard() {
+  var usernameInput = document.getElementById('lbUsername');
+  var statusEl = document.getElementById('lbSubmitStatus');
+  var submitBtn = document.getElementById('lbSubmitConfirm');
+  var username = usernameInput ? usernameInput.value.trim() : '';
+  if (!username) {
+    statusEl.textContent = '请输入用户名';
+    statusEl.className = 'lb-status error';
+    return;
+  }
+  if (username.length > 50) {
+    statusEl.textContent = '用户名最多 50 个字符';
+    statusEl.className = 'lb-status error';
+    return;
+  }
+  var s = getGame().getState();
+  if (s.trial === 0) {
+    statusEl.textContent = '还没开始玩，至少抽一张再提交';
+    statusEl.className = 'lb-status error';
+    return;
+  }
+  var deckPicks = JSON.stringify([s.deckCounts.A, s.deckCounts.B, s.deckCounts.C, s.deckCounts.D]);
+
+  submitBtn.disabled = true;
+  statusEl.textContent = '正在申请挑战…';
+  statusEl.className = 'lb-status loading';
+
+  try {
+    var challengeRes = await fetch(API_BASE + '/iowa-gambling/leaderboard/challenge');
+    var challengeJson = await challengeRes.json();
+    if (challengeJson.status !== 200 || !challengeJson.data) {
+      statusEl.textContent = challengeJson.message || '获取挑战失败';
+      statusEl.className = 'lb-status error';
+      return;
+    }
+    var challenge = challengeJson.data;
+    var payload = buildChallengePayload(
+      challenge.challengeId, username, s.netScore, s.money, s.trial, deckPicks);
+    statusEl.textContent = '正在计算工作量证明…';
+    var pow = await computePoW(payload, challenge.difficulty || 4);
+    statusEl.textContent = '正在提交…';
+
+    var body = {
+      username: username,
+      netScore: s.netScore,
+      finalMoney: s.money,
+      bankrupt: s.bankrupt,
+      totalRounds: s.trial,
+      deckPicks: deckPicks,
+      challengeId: challenge.challengeId,
+      powHash: pow.hash,
+      powNonce: pow.nonce,
+      cfTurnstileToken: getTurnstileToken() || ''
+    };
+
+    var res = await fetch(API_BASE + '/iowa-gambling/leaderboard/submit-v2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    var json = await res.json();
+    if (json.status === 200 && json.data) {
+      var msg = '提交成功！你的最佳成绩排第 ' + json.data.rank + ' 名（共 ' + json.data.total + ' 人）';
+      statusEl.textContent = msg;
+      statusEl.className = 'lb-status success';
+      nfTrack('leaderboard_submit', {
+        netScore: s.netScore,
+        finalMoney: s.money,
+        rounds: s.trial
+      });
+      fetchLeaderboard();
+      setTimeout(closeLeaderboardSubmit, 2500);
+    } else {
+      statusEl.textContent = json.message || '提交失败';
+      statusEl.className = 'lb-status error';
+    }
+  } catch (e) {
+    statusEl.textContent = '网络错误，请重试';
+    statusEl.className = 'lb-status error';
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 // ── 拉取全站统计 ──
@@ -509,6 +767,7 @@ function restartGame() {
   game = window.createGame ? window.createGame() : createGame();
   picking = false;
   faceUpDeck = null;
+  moneySeries = [game.getState().startMoney || 2000];
   document.getElementById('resultSection').style.display = 'none';
   var learnSection = document.getElementById('learnSection');
   if (learnSection) {
@@ -536,6 +795,9 @@ function restartGame() {
 // ── 暴露给 HTML onclick ──
 window.handlePick = handlePick;
 window.restartGame = restartGame;
+window.showLeaderboardSubmit = showLeaderboardSubmit;
+window.closeLeaderboardSubmit = closeLeaderboardSubmit;
+window.submitToLeaderboard = submitToLeaderboard;
 
 // ── 测试钩子（仅用于无浏览器冒烟测试，生产环境无副作用） ──
 window.__igt = {

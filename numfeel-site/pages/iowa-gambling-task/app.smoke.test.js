@@ -183,6 +183,13 @@ setTimeout(function () {
   // 5. 学习曲线数据
   check(JSON.stringify(s.blockScores) === '[20,20,20,20,20]', '学习曲线 5 块各 +20');
 
+  // 6. 排行榜常驻可见（页面加载即拉取，不依赖游戏结束）
+  check(getEl('lbTotalText').textContent.indexOf('共') === 0, '排行榜总人数已渲染');
+  check(getEl('leaderboardBox').innerHTML.indexOf('还没有人上榜') >= 0, '空榜单文案展示');
+
+  // 7. 实时资金曲线开局即可用（资金历史从起始资金开始累积）
+  check(igt.getGame().getState().startMoney === 2000, '资金曲线起点 = 起始资金');
+
   console.log('\n==============================');
   console.log('smoke passed: ' + passed + '  failed: ' + failed);
   process.exit(failed > 0 ? 1 : 0);

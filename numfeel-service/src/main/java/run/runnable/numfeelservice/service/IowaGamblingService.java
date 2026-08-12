@@ -1,16 +1,22 @@
 package run.runnable.numfeelservice.service;
 
+import io.r2dbc.spi.Row;
+import io.r2dbc.spi.RowMetadata;
+import run.runnable.numfeelservice.controller.dto.GameplayResponses.IowaGamblingLeaderboardEntry;
+import run.runnable.numfeelservice.controller.dto.GameplayResponses.IowaGamblingLeaderboardResponse;
 import run.runnable.numfeelservice.controller.dto.GameplayResponses.IowaGamblingStatsResponse;
 import run.runnable.numfeelservice.model.GameplayEntities.IowaGamblingResult;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 /**
  * 爱荷华赌博任务 — 业务逻辑层。
@@ -23,9 +29,11 @@ public class IowaGamblingService {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final R2dbcEntityTemplate template;
+    private final DatabaseClient databaseClient;
 
-    public IowaGamblingService(R2dbcEntityTemplate template) {
+    public IowaGamblingService(R2dbcEntityTemplate template, DatabaseClient databaseClient) {
         this.template = template;
+        this.databaseClient = databaseClient;
     }
 
     /**
@@ -125,5 +133,39 @@ public class IowaGamblingService {
             }
             return fallback;
         }
+    }
+
+    /**
+     * 查询净分数排行榜（按净分数降序，取前 10）。
+     * <p>
+     * 用原生 SQL 直接取 TOP N，避免全量加载后在内存中排序。
+     *
+     * @param limit 返回条数（1~50，超出自动收敛）
+     * @return 排行榜响应，含榜单与总提交数
+     */
+    public Mono<IowaGamblingLeaderboardResponse> leaderboard(int limit) {
+        int safeLimit = ServiceSupport.clampLimit(limit, 1, 50);
+        BiFunction<Row, RowMetadata, IowaGamblingLeaderboardEntry> mapper = (row, meta) ->
+                new IowaGamblingLeaderboardEntry(
+                        row.get("rank", Integer.class),
+                        row.get("net_score", Integer.class),
+                        row.get("final_money", Integer.class),
+                        row.get("bankrupt", Boolean.class),
+                        row.get("total_rounds", Integer.class),
+                        row.get("created_at", Long.class)
+                );
+        Mono<List<IowaGamblingLeaderboardEntry>> leaders = databaseClient.sql(
+                        "SELECT id, net_score, final_money, bankrupt, total_rounds, created_at, " +
+                                "ROW_NUMBER() OVER (ORDER BY net_score DESC, final_money DESC, id ASC) AS rank " +
+                                "FROM iowa_gambling_results ORDER BY net_score DESC, final_money DESC, id ASC LIMIT ?")
+                .bind(0, safeLimit)
+                .map(mapper)
+                .all()
+                .collectList();
+        Mono<Long> total = databaseClient.sql("SELECT COUNT(*) AS cnt FROM iowa_gambling_results")
+                .map((row, meta) -> row.get("cnt", Long.class))
+                .one()
+                .defaultIfEmpty(0L);
+        return Mono.zip(leaders, total, IowaGamblingLeaderboardResponse::new);
     }
 }

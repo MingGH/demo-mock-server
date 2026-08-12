@@ -13,13 +13,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 /**
  * 爱荷华赌博任务 HTTP 处理器。
- * POST /iowa-gambling/submit — 提交完整牌局结果
- * GET  /iowa-gambling/stats  — 查询全站统计
+ * POST /iowa-gambling/submit      — 提交完整牌局结果
+ * GET  /iowa-gambling/stats       — 查询全站统计
+ * GET  /iowa-gambling/leaderboard — 查询净分数排行榜
  */
 @RestController
 @RequestMapping("/iowa-gambling")
@@ -81,6 +83,17 @@ public class IowaGamblingController {
                 .map(ApiResponse::ok)
                 .onErrorResume(err -> {
                     log.error("iowa-gambling stats error", err);
+                    return Mono.just(ApiResponse.error(500, "Internal error"));
+                });
+    }
+
+    @GetMapping("/leaderboard")
+    public Mono<ResponseEntity<JsonNode>> leaderboard(
+            @RequestParam(defaultValue = "10") int limit) {
+        return service.leaderboard(limit)
+                .map(ApiResponse::ok)
+                .onErrorResume(err -> {
+                    log.error("iowa-gambling leaderboard error", err);
                     return Mono.just(ApiResponse.error(500, "Internal error"));
                 });
     }

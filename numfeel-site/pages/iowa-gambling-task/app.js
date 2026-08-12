@@ -352,6 +352,7 @@ function finishGame() {
 
   renderCompareChart(s);
   submitResult(s);
+  fetchLeaderboard();
 
   document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -427,9 +428,49 @@ function submitResult(s) {
     .then(function (data) {
       if (data && data.status === 200) {
         fetchStats();
+        fetchLeaderboard();
       }
     })
     .catch(function () { /* 网络失败静默，不影响页面 */ });
+}
+
+// ── 拉取净分数排行榜 ──
+function fetchLeaderboard() {
+  fetch(API_BASE + '/iowa-gambling/leaderboard?limit=10')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data && data.status === 200 && data.data) {
+        renderLeaderboard(data.data);
+      }
+    })
+    .catch(function () { /* 静默 */ });
+}
+
+function renderLeaderboard(lb) {
+  var box = document.getElementById('leaderboardBox');
+  if (!box) return;
+  var leaders = (lb.leaders || []).filter(function (e) { return !e.bankrupt; });
+  if (!leaders.length) {
+    box.innerHTML = '<div class="leaderboard-empty">还没有人上榜，快来当第一。</div>';
+    return;
+  }
+  var total = lb.total || 0;
+  var html = '<div class="lb-row lb-head"><span>名次</span><span>净分数</span><span>最终资金</span><span>手数</span></div>';
+  for (var i = 0; i < leaders.length; i++) {
+    var e = leaders[i];
+    var medal = e.rank === 1 ? '<i class="ti ti-medal gold"></i>'
+      : e.rank === 2 ? '<i class="ti ti-medal silver"></i>'
+        : e.rank === 3 ? '<i class="ti ti-medal bronze"></i>'
+          : '<span class="lb-rank">' + e.rank + '</span>';
+    html += '<div class="lb-row">' +
+      '<span class="lb-rank-cell">' + medal + '</span>' +
+      '<span class="lb-score">' + (e.netScore >= 0 ? '+' : '') + e.netScore + '</span>' +
+      '<span>$' + e.finalMoney.toLocaleString() + '</span>' +
+      '<span>' + e.totalRounds + '</span>' +
+      '</div>';
+  }
+  html += '<div class="leaderboard-total">全站共 ' + total + ' 局已提交</div>';
+  box.innerHTML = html;
 }
 
 // ── 拉取全站统计 ──

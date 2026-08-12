@@ -676,6 +676,7 @@ public final class GameplayResponses {
      * 爱荷华赌博任务 排行榜条目。
      *
      * @param rank 名次
+     * @param username 用户名
      * @param netScore 净分数
      * @param finalMoney 最终资金
      * @param bankrupt 是否破产
@@ -684,6 +685,7 @@ public final class GameplayResponses {
      */
     public record IowaGamblingLeaderboardEntry(
             int rank,
+            String username,
             int netScore,
             int finalMoney,
             boolean bankrupt,
@@ -696,10 +698,36 @@ public final class GameplayResponses {
      * 爱荷华赌博任务 排行榜响应。
      *
      * @param leaders 榜单列表
-     * @param total 总提交数
+     * @param total 上榜总人数（按用户名去重）
      */
     public record IowaGamblingLeaderboardResponse(
             List<IowaGamblingLeaderboardEntry> leaders,
+            long total
+    ) {
+    }
+
+    /**
+     * 爱荷华赌博任务 排行榜 PoW challenge。
+     *
+     * @param challengeId 一次性 challenge ID
+     * @param expiresAt 过期时间（毫秒）
+     * @param difficulty PoW 难度（哈希前缀十六进制 0 的数量）
+     */
+    public record IowaGamblingLeaderboardChallengeResponse(
+            String challengeId,
+            long expiresAt,
+            int difficulty
+    ) {
+    }
+
+    /**
+     * 爱荷华赌博任务 排行榜提交结果。
+     *
+     * @param rank 当前用户名最佳成绩在榜单中的名次
+     * @param total 上榜总人数
+     */
+    public record IowaGamblingLeaderboardSubmitResponse(
+            int rank,
             long total
     ) {
     }

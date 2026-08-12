@@ -239,7 +239,8 @@ body {
   inset: 0;
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
-  transition: transform 0.3s ease;
+  /* 翻转动画由 GSAP 控制；CSS transition 会与 GSAP 逐帧写入冲突（iOS 上尤其明显） */
+  transition: none;
 }
 
 .deck-card:hover {
@@ -452,6 +453,44 @@ body {
 }
 
 /* ── 排行榜 ── */
+.leaderboard-section {
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.lb-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.lb-total {
+  color: #888;
+  font-size: 13px;
+}
+
+.lb-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+  background: linear-gradient(90deg, #ffd700, #ffb700);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.lb-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(255, 215, 0, 0.3);
+}
+
 .leaderboard {
   margin-bottom: 18px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -469,7 +508,7 @@ body {
 
 .lb-row {
   display: grid;
-  grid-template-columns: 56px 1fr 1fr 1fr;
+  grid-template-columns: 56px 1.4fr 0.8fr 1fr 0.6fr;
   align-items: center;
   padding: 9px 14px;
   font-size: 13px;
@@ -501,6 +540,14 @@ body {
   font-weight: 400;
 }
 
+.lb-name {
+  color: #ddd;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 6px;
+}
+
 .lb-score {
   color: #ffd700;
   font-weight: 700;
@@ -530,11 +577,172 @@ body {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* ── 排行榜提交弹窗 ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  padding: 16px;
+}
+
+.modal-backdrop.show {
+  display: flex;
+}
+
+.modal-box {
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: linear-gradient(160deg, #232a4d, #171c36);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+.modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffd700;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lb-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.lb-form-row label {
+  color: #888;
+  font-size: 12px;
+}
+
+.lb-form-row input {
+  padding: 10px 12px;
+  font-size: 15px;
+  color: #ddd;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  outline: none;
+}
+
+.lb-form-row input:focus {
+  border-color: rgba(255, 215, 0, 0.6);
+}
+
+.lb-form-preview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.lb-preview-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+}
+
+.lb-preview-label {
+  display: block;
+  color: #888;
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.lb-preview-val {
+  color: #ffd700;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-status {
+  min-height: 20px;
+  font-size: 13px;
+  margin-bottom: 8px;
+  text-align: center;
+  color: #888;
+}
+
+.lb-status.error {
+  color: #ff6b6b;
+}
+
+.lb-status.success {
+  color: #81c784;
+}
+
+.lb-status.loading {
+  color: #90caf9;
+}
+
+.lb-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.modal-btn {
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.modal-btn.ghost {
+  color: #aaa;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.modal-btn.primary {
+  color: #1a1a2e;
+  background: linear-gradient(90deg, #ffd700, #ffb700);
+}
+
+.modal-btn:hover {
+  transform: translateY(-2px);
+}
+
+.modal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.lb-disclaimer {
+  color: #666;
+  font-size: 11px;
+  margin-top: 12px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ── 结果区按钮 ── */
 .btn-restart {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   margin-top: 16px;
+  margin-right: 10px;
   padding: 12px 28px;
   font-size: 15px;
   font-weight: 600;
@@ -549,6 +757,17 @@ body {
 .btn-restart:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(255, 215, 0, 0.3);
+}
+
+.btn-restart.ghost {
+  color: #ddd;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: none;
+}
+
+.btn-restart.ghost:hover {
+  border-color: rgba(255, 215, 0, 0.4);
 }
 
 /* ── 减少动效 ── */

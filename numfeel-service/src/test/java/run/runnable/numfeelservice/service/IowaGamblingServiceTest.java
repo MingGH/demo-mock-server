@@ -9,12 +9,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.r2dbc.core.ReactiveInsertOperation;
 import org.springframework.data.r2dbc.core.ReactiveSelectOperation;
+import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.r2dbc.core.RowsFetchSpec;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -26,11 +29,14 @@ class IowaGamblingServiceTest {
     @Mock
     private R2dbcEntityTemplate template;
 
+    @Mock
+    private DatabaseClient databaseClient;
+
     private IowaGamblingService service;
 
     @BeforeEach
     void setUp() {
-        service = new IowaGamblingService(template);
+        service = new IowaGamblingService(template, databaseClient);
     }
 
     private static IowaGamblingResult toResult(long id, int totalRounds, int finalMoney, int netScore,
@@ -161,5 +167,29 @@ class IowaGamblingServiceTest {
     void parseJsonArrayShouldHandleMalformedJson() {
         List<Integer> result = IowaGamblingService.parseJsonArray("not-json", 4);
         assertEquals(List.of(0, 0, 0, 0), result);
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void leaderboardShouldReturnEmptyWhenNoData() {
+        DatabaseClient.GenericExecuteSpec spec = mock(DatabaseClient.GenericExecuteSpec.class);
+        DatabaseClient.GenericExecuteSpec bound = mock(DatabaseClient.GenericExecuteSpec.class);
+        RowsFetchSpec rowsSpec = mock(RowsFetchSpec.class);
+        RowsFetchSpec countSpec = mock(RowsFetchSpec.class);
+
+        when(databaseClient.sql(anyString())).thenReturn(spec);
+        when(spec.bind(anyInt(), any())).thenReturn(bound);
+        // select 语句走 bound.map(...)；count 语句（无 bind）走 spec.map(...)
+        when(bound.map(any(BiFunction.class))).thenReturn(rowsSpec);
+        when(spec.map(any(BiFunction.class))).thenReturn(countSpec);
+        when(rowsSpec.all()).thenReturn(Flux.empty());
+        when(countSpec.one()).thenReturn(Mono.just(0L));
+
+        StepVerifier.create(service.leaderboard(10))
+                .assertNext(resp -> {
+                    assertEquals(0, resp.total());
+                    assertTrue(resp.leaders().isEmpty());
+                })
+                .verifyComplete();
     }
 }

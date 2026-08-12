@@ -671,4 +671,36 @@ public final class GameplayResponses {
             List<Double> avgBlockScores
     ) {
     }
+
+    /**
+     * 爱荷华赌博任务 排行榜条目。
+     *
+     * @param rank 名次
+     * @param netScore 净分数
+     * @param finalMoney 最终资金
+     * @param bankrupt 是否破产
+     * @param totalRounds 完成手数
+     * @param createdAt 提交时间（毫秒）
+     */
+    public record IowaGamblingLeaderboardEntry(
+            int rank,
+            int netScore,
+            int finalMoney,
+            boolean bankrupt,
+            int totalRounds,
+            long createdAt
+    ) {
+    }
+
+    /**
+     * 爱荷华赌博任务 排行榜响应。
+     *
+     * @param leaders 榜单列表
+     * @param total 总提交数
+     */
+    public record IowaGamblingLeaderboardResponse(
+            List<IowaGamblingLeaderboardEntry> leaders,
+            long total
+    ) {
+    }
 }

@@ -226,6 +226,7 @@ body {
   width: 100%;
   aspect-ratio: 3 / 4;
   perspective: 800px;
+  -webkit-perspective: 800px;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   user-select: none;
@@ -237,6 +238,7 @@ body {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
   transition: transform 0.3s ease;
 }
 
@@ -268,6 +270,7 @@ body {
   background-size: cover;
   background-position: center;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transform: rotateY(0deg);
 }
 
 .deck-table[data-cardback="1"] .deck-back {
@@ -317,6 +320,8 @@ body {
 .deck-label {
   position: relative;
   z-index: 1;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
   color: #fff;
   font-size: 18px;
   font-weight: 800;
@@ -444,6 +449,85 @@ body {
   .result-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+/* ── 排行榜 ── */
+.leaderboard {
+  margin-bottom: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.leaderboard-empty {
+  padding: 16px;
+  text-align: center;
+  color: #888;
+  font-size: 13px;
+}
+
+.lb-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 1fr 1fr;
+  align-items: center;
+  padding: 9px 14px;
+  font-size: 13px;
+  color: #ccc;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-variant-numeric: tabular-nums;
+}
+
+.lb-row:last-of-type {
+  border-bottom: none;
+}
+
+.lb-row.lb-head {
+  color: #666;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 7px 14px;
+}
+
+.lb-rank-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.lb-rank {
+  color: #888;
+  font-weight: 400;
+}
+
+.lb-score {
+  color: #ffd700;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.ti-medal.gold {
+  color: #ffd700;
+  font-size: 18px;
+}
+
+.ti-medal.silver {
+  color: #c0c0c0;
+  font-size: 18px;
+}
+
+.ti-medal.bronze {
+  color: #cd7f32;
+  font-size: 18px;
+}
+
+.leaderboard-total {
+  padding: 8px 14px;
+  text-align: right;
+  color: #555;
+  font-size: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .btn-restart {

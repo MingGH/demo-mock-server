@@ -753,4 +753,20 @@ public final class GameplayResponses {
             long lastSeenAt
     ) {
     }
+
+    /**
+     * 信任博弈 统计响应。
+     *
+     * @param totalSessions 全站记录数
+     * @param avgInvest 平均投资额（0-10）
+     * @param avgReturn 平均返还额（0-30）
+     * @param investDistribution 投资额 0-10 的分布计数（长度 11）
+     */
+    public record TrustGameStatsResponse(
+            long totalSessions,
+            double avgInvest,
+            double avgReturn,
+            List<Long> investDistribution
+    ) {
+    }
 }

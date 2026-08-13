@@ -739,8 +739,9 @@ public final class GameplayResponses {
      * @param avgTotalMs 全站平均整句耗时
      * @param avgHoldMs 全站平均按压时长
      * @param avgIntervalMs 全站平均键间间隔
-     * @param nearestDistance 该 session 与全站其他样本的最小距离（-1 表示样本不足）
+     * @param nearestDistance 该 session 与全站其他 session 样本的最小距离（-1 表示样本不足）
      * @param sampleCount 该 session 已提交的样本数
+     * @param lastSeenAt 若识别出该用户此前来过（最近邻居距离 ≤ 识别阈值），为其上次提交的毫秒时间戳；否则 -1
      */
     public record KeystrokeStatsResponse(
             long totalSamples,
@@ -748,7 +749,8 @@ public final class GameplayResponses {
             double avgHoldMs,
             double avgIntervalMs,
             double nearestDistance,
-            long sampleCount
+            long sampleCount,
+            long lastSeenAt
     ) {
     }
 }

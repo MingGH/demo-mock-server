@@ -37,9 +37,9 @@ class KeystrokeServiceTest {
     }
 
     private static KeystrokeProfile toProfile(long id, String sessionId, int sampleIndex,
-                                              String hold, String intervals, int totalMs, int err) {
+                                              String hold, String intervals, int totalMs, int err, long createdAt) {
         return new KeystrokeProfile(id, sessionId, sampleIndex, "abc123",
-                hold, intervals, totalMs, err, System.currentTimeMillis());
+                hold, intervals, totalMs, err, createdAt);
     }
 
     @Test
@@ -78,9 +78,9 @@ class KeystrokeServiceTest {
     @Test
     void aggregateStatsShouldReturnAggregatedData() {
         List<KeystrokeProfile> rows = List.of(
-                toProfile(1L, "s-a", 0, "[100,100,100]", "[200,200]", 9000, 0),
-                toProfile(2L, "s-a", 1, "[100,100,100]", "[200,200]", 9000, 0),
-                toProfile(3L, "s-b", 0, "[60,60,60]", "[120,120]", 5000, 2)
+                toProfile(1L, "s-a", 0, "[100,100,100]", "[200,200]", 9000, 0, 1_000_000L),
+                toProfile(2L, "s-a", 1, "[100,100,100]", "[200,200]", 9000, 0, 1_100_000L),
+                toProfile(3L, "s-b", 0, "[60,60,60]", "[120,120]", 5000, 2, 2_000_000L)
         );
         KeystrokeStatsResponse resp =
                 KeystrokeService.aggregateStats(rows, 3, 7666.7, "s-a");
@@ -92,6 +92,22 @@ class KeystrokeServiceTest {
         // s-a 与 s-b：hold 差 40（归一化 /200 → 0.2），interval 差 80（/500 → 0.16）
         // 0.6*0.2 + 0.4*0.16 = 0.184 → 0.2
         assertEquals(0.2, resp.nearestDistance(), 0.01);
+        // 距离 0.2 ≤ 识别阈值 0.5 → 判定同一人此前来过，回告 s-b 最近提交时间
+        assertEquals(2_000_000L, resp.lastSeenAt());
+    }
+
+    @Test
+    void aggregateStatsShouldNotIdentifyWhenDistanceTooLarge() {
+        List<KeystrokeProfile> rows = List.of(
+                toProfile(1L, "s-a", 0, "[100,100,100]", "[200,200]", 9000, 0, 1_000_000L),
+                toProfile(2L, "s-a", 1, "[100,100,100]", "[200,200]", 9000, 0, 1_100_000L),
+                toProfile(3L, "s-b", 0, "[600,600,600]", "[200,200]", 9000, 0, 2_000_000L)
+        );
+        KeystrokeStatsResponse resp =
+                KeystrokeService.aggregateStats(rows, 3, 9000, "s-a");
+        // hold 差 500（/200 → 2.5）→ 0.6*2.5 = 1.5 > 0.5 → 不识别
+        assertEquals(1.5, resp.nearestDistance(), 0.01);
+        assertEquals(-1, resp.lastSeenAt());
     }
 
     @Test
@@ -104,17 +120,19 @@ class KeystrokeServiceTest {
         assertEquals(0.0, resp.avgIntervalMs());
         assertEquals(-1, resp.nearestDistance());
         assertEquals(0, resp.sampleCount());
+        assertEquals(-1, resp.lastSeenAt());
     }
 
     @Test
     void aggregateStatsShouldReturnNearestMinusOneWhenNoOthers() {
         List<KeystrokeProfile> rows = List.of(
-                toProfile(1L, "s-a", 0, "[100]", "[200]", 1000, 0)
+                toProfile(1L, "s-a", 0, "[100]", "[200]", 1000, 0, 1_000_000L)
         );
         KeystrokeStatsResponse resp =
                 KeystrokeService.aggregateStats(rows, 1, 1000, "s-a");
         assertEquals(1, resp.sampleCount());
         assertEquals(-1, resp.nearestDistance());
+        assertEquals(-1, resp.lastSeenAt());
     }
 
     @Test

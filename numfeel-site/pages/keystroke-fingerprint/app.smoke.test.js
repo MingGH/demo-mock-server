@@ -95,7 +95,7 @@ var sandbox = {
   JSON: JSON,
   fetch: function () {
     return Promise.resolve({
-      json: function () { return Promise.resolve({ status: 200, data: { totalSamples: 10, avgTotalMs: 8000, avgHoldMs: 100, avgIntervalMs: 200, nearestDistance: 0.8, sampleCount: 2 } }); }
+      json: function () { return Promise.resolve({ status: 200, data: { totalSamples: 10, avgTotalMs: 8000, avgHoldMs: 100, avgIntervalMs: 200, nearestDistance: 0.8, sampleCount: 2, lastSeenAt: -1 } }); }
     });
   },
   document: {
@@ -189,6 +189,7 @@ setTimeout(function () {
     check(getEl('resultSection').style.display === 'block', '结果区已显示');
     check(getEl('resSamples').textContent === '10', '全站样本数已填充');
     check(getEl('resNearest').textContent === '0.8', '最近邻居距离已填充');
+    check(getEl('uniqueContent')._html.indexOf('识别结果') === -1, '未匹配时不显示识别结果');
 
     // 4. 重开
     sandbox.restartDemo();

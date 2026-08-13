@@ -513,4 +513,22 @@ public final class GameplayRequests {
             Integer errorCount
     ) {
     }
+
+    /**
+     * 信任博弈 提交参数。
+     *
+     * @param sessionId 客户端生成的会话 ID
+     * @param investAmount 投资额（0-10）
+     * @param returnAmount 被委托人时返还额（0-30）
+     * @param totalEarned 两阶段总收益
+     * @param roleOrder 角色顺序 0=先投后返 1=先返后投
+     */
+    public record TrustGameSubmitRequest(
+            String sessionId,
+            Integer investAmount,
+            Integer returnAmount,
+            Integer totalEarned,
+            Integer roleOrder
+    ) {
+    }
 }

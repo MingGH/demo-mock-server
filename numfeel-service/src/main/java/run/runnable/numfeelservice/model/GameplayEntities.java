@@ -380,4 +380,17 @@ public final class GameplayEntities {
             @Column("created_at") long createdAt
     ) {
     }
+
+    /** 信任博弈 — 结果表映射。 */
+    @Table("trust_game_results")
+    public record TrustGameResult(
+            @Id Long id,
+            @Column("session_id") String sessionId,
+            @Column("invest_amount") int investAmount,
+            @Column("return_amount") int returnAmount,
+            @Column("total_earned") int totalEarned,
+            @Column("role_order") int roleOrder,
+            @Column("created_at") long createdAt
+    ) {
+    }
 }

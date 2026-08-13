@@ -55,6 +55,10 @@ public class TrustGameController {
         if (request.roleOrder() < 0 || request.roleOrder() > 1) {
             throw ApiException.badRequest("Invalid roleOrder");
         }
+        // 两阶段收益合计 = 10 + 2*投资 + AI返还 - 返还额，投资 0-10 时上限 60（投满 10 且 AI 全返还、自己 0 返还）
+        if (request.totalEarned() < 0 || request.totalEarned() > 60) {
+            throw ApiException.badRequest("Invalid totalEarned");
+        }
 
         return service.submit(
                         request.sessionId(),

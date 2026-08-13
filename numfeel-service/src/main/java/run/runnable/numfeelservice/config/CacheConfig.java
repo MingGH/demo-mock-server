@@ -61,6 +61,13 @@ public class CacheConfig {
                         .expireAfterWrite(60, TimeUnit.SECONDS)
                         .buildAsync());
 
+        // 信任博弈统计：1 条、60 秒（无参数聚合，键固定；提交时主动失效）
+        cacheManager.registerCustomCache("trustGameStats",
+                Caffeine.newBuilder()
+                        .maximumSize(1)
+                        .expireAfterWrite(60, TimeUnit.SECONDS)
+                        .buildAsync());
+
         // HIBP range 查询：20000 条、6 小时
         cacheManager.registerCustomCache("pwnedRange",
                 Caffeine.newBuilder()

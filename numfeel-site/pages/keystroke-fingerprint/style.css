@@ -1,0 +1,308 @@
+/* 键盘输入节奏识别 — 深色科技风 */
+
+body {
+  margin: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh;
+  color: #ddd;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+}
+
+/* ── 头部 ── */
+.header h1 {
+  font-size: 26px;
+  background: linear-gradient(90deg, #ffd700, #fff3b0, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 3s linear infinite;
+  margin-bottom: 6px;
+}
+
+@keyframes shimmer {
+  to { background-position: 200% center; }
+}
+
+.header p {
+  color: #aaa;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 0;
+}
+
+.header strong {
+  color: #ffd700;
+}
+
+/* ── 区块 ── */
+.section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 18px;
+  margin-top: 16px;
+}
+
+.section-title {
+  font-size: 16px;
+  color: #ffd700;
+  font-weight: 600;
+  margin: 14px 0 8px;
+}
+
+.section-hint {
+  color: #888;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 4px 0 12px;
+}
+
+.stage-tag {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+}
+
+.stage-1 { background: rgba(129, 199, 132, 0.15); color: #81c784; }
+.stage-2 { background: rgba(144, 202, 249, 0.15); color: #90caf9; }
+.stage-3 { background: rgba(206, 147, 216, 0.15); color: #ce93d8; }
+
+/* ── 打字区 ── */
+.target-text {
+  font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 17px;
+  color: #90caf9;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(144, 202, 249, 0.2);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  line-height: 1.7;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+.type-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  color: #eee;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.type-input:focus {
+  border-color: #ffd700;
+  box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.12);
+}
+
+.type-input:disabled {
+  opacity: 0.5;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.typing-status {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  color: #aaa;
+  font-size: 13px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.status-item strong {
+  color: #ffd700;
+  font-variant-numeric: tabular-nums;
+}
+
+.error-count {
+  color: #ff6b6b;
+}
+
+/* ── 按钮 ── */
+.btn-row {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a2e;
+  background: linear-gradient(90deg, #ffd700, #ffb700);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(255, 215, 0, 0.3);
+}
+
+.btn-wide {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ── 稳定性卡片 ── */
+.stability-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.stability-grade {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.stability-detail {
+  color: #aaa;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ── 图表 ── */
+.chart-wrap {
+  position: relative;
+  height: 200px;
+  margin-bottom: 8px;
+}
+
+/* ── 独特性框 ── */
+.unique-box {
+  margin-top: 14px;
+  background: rgba(129, 199, 132, 0.06);
+  border: 1px solid rgba(129, 199, 132, 0.3);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.unique-title {
+  color: #81c784;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.unique-content {
+  color: #aaa;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.unique-content strong {
+  color: #ffd700;
+}
+
+/* ── 结果区 ── */
+.result-section {
+  border-color: rgba(255, 215, 0, 0.35);
+}
+
+.result-banner {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #ddd;
+  margin-bottom: 8px;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 14px 0;
+}
+
+@media (max-width: 640px) {
+  .result-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.metric-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffd700;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-restart {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a2e;
+  background: linear-gradient(90deg, #ffd700, #ffb700);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-restart:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(255, 215, 0, 0.3);
+}
+
+/* ── 移动端 ── */
+@media (max-width: 640px) {
+  .header h1 {
+    font-size: 21px;
+  }
+  .target-text {
+    font-size: 15px;
+  }
+}
+
+/* ── 减少动效 ── */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

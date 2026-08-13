@@ -491,4 +491,26 @@ public final class GameplayRequests {
             String cfTurnstileToken
     ) {
     }
+
+    /**
+     * 键盘输入节奏识别 提交参数。
+     *
+     * @param sessionId 客户端生成的会话 ID
+     * @param sampleIndex 第几次样本（0=第一遍，1=第二遍）
+     * @param textHash 打字文本的标识（MD5 前 16 位）
+     * @param holdTimes 每键按压时长 JSON 数组字符串，如 [80,90,75]
+     * @param intervals 键间间隔 JSON 数组字符串，如 [120,95]
+     * @param totalMs 整句总耗时 ms
+     * @param errorCount 打错字符数
+     */
+    public record KeystrokeSubmitRequest(
+            String sessionId,
+            Integer sampleIndex,
+            String textHash,
+            String holdTimes,
+            String intervals,
+            Integer totalMs,
+            Integer errorCount
+    ) {
+    }
 }

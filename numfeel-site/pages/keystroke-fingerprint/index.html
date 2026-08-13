@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="键盘输入节奏识别演示：每按一下键盘，你留下一个独一无二的节奏指纹。打两遍同样的句子，看看你的按压时长和键间间隔有多稳定，再和全站其他人比一比你的节奏有多独特。">
+  <title>你的打字节奏，就是你的指纹 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="engine.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-keyboard"></i> 你的打字节奏，就是你的指纹</h1>
+    <p>每一次按键的<strong>按压时长</strong>和<strong>键间间隔</strong>，构成一个独一无二的节奏指纹——识别准确率 90%+。打两遍同一句话，看看你的指纹有多稳定。</p>
+  </div>
+
+  <!-- ══════════ 打字区 ══════════ -->
+  <div class="section">
+    <div class="stage-tag stage-1" id="stageTag">第 1 遍 · 自然打字</div>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 按你的正常速度把下面这句话打一遍。不用刻意快或慢，<strong>键盘输入法切换到英文</strong>。</p>
+
+    <div class="target-text" id="targetText">the quick brown fox jumps over the lazy dog</div>
+    <input type="text" id="typeInput" class="type-input" autocomplete="off" autocorrect="off" spellcheck="false"
+           placeholder="在这里打字…" disabled
+           onkeydown="window.onKeyDown(event)"
+           onkeyup="window.onKeyUp(event)"
+           oninput="window.onInput()">
+
+    <div class="typing-status" id="typingStatus">
+      <span class="status-item">进度 <strong id="progressText">0 / 43</strong></span>
+      <span class="status-item">错误 <strong id="errorText" class="error-count">0</strong></span>
+      <span class="status-item">耗时 <strong id="timerText">0.0s</strong></span>
+    </div>
+  </div>
+
+  <!-- ══════════ 节奏对比 ══════════ -->
+  <div class="section" id="analysisSection" style="display:none">
+    <div class="stage-tag stage-2">节奏对比</div>
+
+    <div class="stability-card" id="stabilityCard">
+      <div class="stability-grade" id="stabilityGrade">-</div>
+      <div class="stability-detail" id="stabilityDetail"></div>
+    </div>
+
+    <div class="section-title"><i class="ti ti-chart-bar"></i> 每键按压时长对比（第 1 遍 vs 第 2 遍）</div>
+    <div class="chart-wrap"><canvas id="holdChart"></canvas></div>
+
+    <div class="section-title"><i class="ti ti-chart-bar"></i> 键间间隔对比</div>
+    <div class="chart-wrap"><canvas id="intervalChart"></canvas></div>
+
+    <div class="btn-row">
+      <button class="btn-primary" id="submitBtn" onclick="window.submitAndCompare()"><i class="ti ti-arrow-right"></i> 和全站比一比我的指纹</button>
+    </div>
+
+    <div class="unique-box" id="uniqueBox" style="display:none">
+      <div class="unique-title"><i class="ti ti-fingerprint"></i> 你的指纹独特性</div>
+      <div class="unique-content" id="uniqueContent"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ 结果区 ══════════ -->
+  <div class="section result-section" id="resultSection" style="display:none">
+    <div class="stage-tag stage-3">结论</div>
+    <div class="result-banner" id="resultBanner"></div>
+    <p class="section-hint">研究背景：keystroke dynamics 通过按压时长（hold time）和键间间隔（inter-key interval）识别用户，商业产品识别准确率可达 90% 以上。你的节奏就是你的生物特征。</p>
+
+    <div class="result-grid">
+      <div class="metric-card">
+        <div class="metric-label">你的节奏稳定度</div>
+        <div class="metric-value" id="resStability">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">全站样本数</div>
+        <div class="metric-value" id="resSamples">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">全站平均耗时</div>
+        <div class="metric-value" id="resAvgTime">-</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">你的最近邻居距离</div>
+        <div class="metric-value" id="resNearest">-</div>
+      </div>
+    </div>
+
+    <button class="btn-restart" onclick="window.restartDemo()"><i class="ti ti-refresh"></i> 再测一遍</button>
+  </div>
+
+</div>
+</body>
+</html>

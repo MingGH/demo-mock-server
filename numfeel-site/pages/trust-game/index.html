@@ -53,15 +53,15 @@
   <!-- ══════════ Stage 2：被委托人 ══════════ -->
   <div class="section" id="trusteeSection" style="display:none">
     <div class="stage-tag stage-2">第 2 步 · 你是被委托人</div>
-    <p class="section-hint"><i class="ti ti-info-circle"></i> 现在角色反转：有人投资了你 <strong id="receivedAmount">¥15</strong>，你收到 3 倍即 <strong id="receivedTripled">¥45</strong>。你会返还多少给投资者？</p>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 现在角色反转：有人投资了你 <strong id="receivedAmount">¥5</strong>，你收到 3 倍即 <strong id="receivedTripled">¥15</strong>。你会返还多少给投资者？</p>
 
     <div class="invest-control">
       <div class="invest-display">
         <span class="invest-label">返还金额</span>
         <span class="invest-value" id="returnValue">¥0</span>
       </div>
-      <input type="range" id="returnSlider" min="0" max="30" step="1" value="0" oninput="window.onReturnChange()">
-      <div class="invest-hint" id="returnHint">你保留 ¥45</div>
+      <input type="range" id="returnSlider" min="0" max="15" step="1" value="0" oninput="window.onReturnChange()">
+      <div class="invest-hint" id="returnHint">你保留 ¥15</div>
     </div>
 
     <div class="btn-row">
@@ -71,6 +71,7 @@
 
   <!-- ══════════ 结果分析 ══════════ -->
   <div class="section" id="resultSection" style="display:none">
+    <div class="throttle-hint" id="throttleHint" style="display:none">提交太频繁了，请稍后再试</div>
     <div class="stage-tag stage-3">你的信任画像</div>
     <div class="profile-card" id="profileCard">
       <div class="profile-label" id="profileLabel">-</div>

@@ -115,12 +115,12 @@ function confirmReturn() {
   document.getElementById('resultSection').style.display = 'block';
   document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  submitResult(totalEarned);
-  fetchStats();
+  // 提交成功后再拉统计，确保本次记录计入全站均值（submit 后端会失效 stats 缓存）
+  submitResult(totalEarned, fetchStats);
 }
 
 // ── 提交 ──
-function submitResult(totalEarned) {
+function submitResult(totalEarned, done) {
   var payload = {
     sessionId: getSessionId(),
     investAmount: invest,
@@ -133,8 +133,28 @@ function submitResult(totalEarned) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   })
-    .then(function (r) { return r.json(); })
-    .catch(function () { /* 静默 */ });
+    .then(function (r) {
+      if (r.status === 429) {
+        showThrottleHint();
+        return;
+      }
+      return r.json();
+    })
+    .then(function () {
+      if (typeof done === 'function') done();
+    })
+    .catch(function () {
+      if (typeof done === 'function') done();
+    });
+}
+
+function showThrottleHint() {
+  var el = document.getElementById('throttleHint');
+  if (!el) return;
+  el.style.display = 'block';
+  setTimeout(function () {
+    el.style.display = 'none';
+  }, 3000);
 }
 
 function fetchStats() {

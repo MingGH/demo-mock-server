@@ -1,5 +1,6 @@
 package run.runnable.numfeelservice.service;
 
+import run.runnable.numfeelservice.controller.dto.GameplayResponses.KeystrokeStatsResponse;
 import run.runnable.numfeelservice.model.GameplayEntities.KeystrokeProfile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,8 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.r2dbc.core.ReactiveInsertOperation;
-import org.springframework.data.r2dbc.core.ReactiveSelectOperation;
-import reactor.core.publisher.Flux;
+import org.springframework.r2dbc.core.DatabaseClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -26,11 +26,14 @@ class KeystrokeServiceTest {
     @Mock
     private R2dbcEntityTemplate template;
 
+    @Mock
+    private DatabaseClient db;
+
     private KeystrokeService service;
 
     @BeforeEach
     void setUp() {
-        service = new KeystrokeService(template);
+        service = new KeystrokeService(template, db);
     }
 
     private static KeystrokeProfile toProfile(long id, String sessionId, int sampleIndex,
@@ -73,69 +76,45 @@ class KeystrokeServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void statsShouldReturnAggregatedData() {
+    void aggregateStatsShouldReturnAggregatedData() {
         List<KeystrokeProfile> rows = List.of(
                 toProfile(1L, "s-a", 0, "[100,100,100]", "[200,200]", 9000, 0),
                 toProfile(2L, "s-a", 1, "[100,100,100]", "[200,200]", 9000, 0),
                 toProfile(3L, "s-b", 0, "[60,60,60]", "[120,120]", 5000, 2)
         );
-        ReactiveSelectOperation.ReactiveSelect<KeystrokeProfile> selectMock =
-                mock(ReactiveSelectOperation.ReactiveSelect.class);
-        when(template.select(KeystrokeProfile.class)).thenReturn(selectMock);
-        when(selectMock.all()).thenReturn(Flux.fromIterable(rows));
-
-        StepVerifier.create(service.stats("s-a"))
-                .assertNext(resp -> {
-                    assertEquals(3, resp.totalSamples());
-                    assertEquals(7666.7, resp.avgTotalMs(), 0.1);
-                    assertEquals(86.7, resp.avgHoldMs(), 0.1);
-                    assertEquals(173.3, resp.avgIntervalMs(), 0.1);
-                    assertEquals(2, resp.sampleCount());
-                    // s-a 的样本与 s-b 距离：hold 差 40，interval 差 80
-                    // 0.6*40 + 0.4*80 = 24 + 32 = 56
-                    assertEquals(56.0, resp.nearestDistance(), 0.1);
-                })
-                .verifyComplete();
+        KeystrokeStatsResponse resp =
+                KeystrokeService.aggregateStats(rows, 3, 7666.7, "s-a");
+        assertEquals(3, resp.totalSamples());
+        assertEquals(7666.7, resp.avgTotalMs(), 0.1);
+        assertEquals(86.7, resp.avgHoldMs(), 0.1);
+        assertEquals(173.3, resp.avgIntervalMs(), 0.1);
+        assertEquals(2, resp.sampleCount());
+        // s-a 与 s-b：hold 差 40（归一化 /200 → 0.2），interval 差 80（/500 → 0.16）
+        // 0.6*0.2 + 0.4*0.16 = 0.184 → 0.2
+        assertEquals(0.2, resp.nearestDistance(), 0.01);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void statsShouldHandleEmptyData() {
-        ReactiveSelectOperation.ReactiveSelect<KeystrokeProfile> selectMock =
-                mock(ReactiveSelectOperation.ReactiveSelect.class);
-        when(template.select(KeystrokeProfile.class)).thenReturn(selectMock);
-        when(selectMock.all()).thenReturn(Flux.fromIterable(Collections.emptyList()));
-
-        StepVerifier.create(service.stats("s-a"))
-                .assertNext(resp -> {
-                    assertEquals(0, resp.totalSamples());
-                    assertEquals(0.0, resp.avgTotalMs());
-                    assertEquals(0.0, resp.avgHoldMs());
-                    assertEquals(0.0, resp.avgIntervalMs());
-                    assertEquals(-1, resp.nearestDistance());
-                    assertEquals(0, resp.sampleCount());
-                })
-                .verifyComplete();
+    void aggregateStatsShouldHandleEmptyData() {
+        KeystrokeStatsResponse resp =
+                KeystrokeService.aggregateStats(Collections.emptyList(), 0, 0, "s-a");
+        assertEquals(0, resp.totalSamples());
+        assertEquals(0.0, resp.avgTotalMs());
+        assertEquals(0.0, resp.avgHoldMs());
+        assertEquals(0.0, resp.avgIntervalMs());
+        assertEquals(-1, resp.nearestDistance());
+        assertEquals(0, resp.sampleCount());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void statsShouldReturnNearestMinusOneWhenNoOthers() {
+    void aggregateStatsShouldReturnNearestMinusOneWhenNoOthers() {
         List<KeystrokeProfile> rows = List.of(
                 toProfile(1L, "s-a", 0, "[100]", "[200]", 1000, 0)
         );
-        ReactiveSelectOperation.ReactiveSelect<KeystrokeProfile> selectMock =
-                mock(ReactiveSelectOperation.ReactiveSelect.class);
-        when(template.select(KeystrokeProfile.class)).thenReturn(selectMock);
-        when(selectMock.all()).thenReturn(Flux.fromIterable(rows));
-
-        StepVerifier.create(service.stats("s-a"))
-                .assertNext(resp -> {
-                    assertEquals(1, resp.sampleCount());
-                    assertEquals(-1, resp.nearestDistance());
-                })
-                .verifyComplete();
+        KeystrokeStatsResponse resp =
+                KeystrokeService.aggregateStats(rows, 1, 1000, "s-a");
+        assertEquals(1, resp.sampleCount());
+        assertEquals(-1, resp.nearestDistance());
     }
 
     @Test

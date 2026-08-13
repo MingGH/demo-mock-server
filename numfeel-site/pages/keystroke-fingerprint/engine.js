@@ -32,6 +32,7 @@ function extractFeatures(events) {
   var holdTimes = [];
   var intervals = [];
   var lastUp = null;
+  var firstDown = null; // 首个合法事件的 down，避免 events[0] 非法时 totalMs 变 NaN
   var validKeys = 0;
 
   for (var i = 0; i < events.length; i++) {
@@ -39,6 +40,7 @@ function extractFeatures(events) {
     if (!ev || ev.down === undefined || ev.up === undefined || ev.down > ev.up) {
       continue;
     }
+    if (firstDown === null) firstDown = ev.down;
     holdTimes.push(ev.up - ev.down);
     if (lastUp !== null) {
       intervals.push(ev.down - lastUp);
@@ -49,7 +51,7 @@ function extractFeatures(events) {
   return {
     holdTimes: holdTimes,
     intervals: intervals,
-    totalMs: lastUp !== null ? lastUp - events[0].down : 0,
+    totalMs: lastUp !== null ? lastUp - firstDown : 0,
     validKeys: validKeys
   };
 }

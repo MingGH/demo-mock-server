@@ -68,6 +68,18 @@ function testExtractInvalid() {
   assertEq(JSON.stringify(f.holdTimes), '[80,80]', '按压时长只含合法项');
 }
 
+// ── 2.5 特征提取：首事件非法时 totalMs 不产生 NaN ──
+function testExtractFirstInvalid() {
+  var events = [
+    { key: 'x', down: 2000, up: 1000 },   // 首事件非法（down > up）
+    { key: 'a', down: 1000, up: 1080 },
+    { key: 'b', down: 1120, up: 1200 }
+  ];
+  var f = engine.extractFeatures(events);
+  assertTrue(!isNaN(f.totalMs), '首事件非法时 totalMs 不为 NaN');
+  assertEq(f.totalMs, 200, '总耗时按首末合法事件计算');
+}
+
 // ── 3. 距离计算：完全相同 → 0 ──
 function testDistanceIdentical() {
   var f1 = engine.extractFeatures([
@@ -162,6 +174,7 @@ function testTargetText() {
 
 testExtractBasic();
 testExtractInvalid();
+testExtractFirstInvalid();
 testDistanceIdentical();
 testDistanceMonotonic();
 testDistanceSymmetric();

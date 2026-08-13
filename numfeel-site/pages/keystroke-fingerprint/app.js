@@ -10,6 +10,9 @@ var currentSample = 0;   // 当前是第几遍（0/1）
 var typing = false;
 var keyDownMap = {};     // key -> down 时间戳（未抬起）
 var rawEvents = [];      // 当前遍的完成事件序列
+var pendingFinish = false;     // 长度达标后等待末键 keyup 落地
+var pendingFinishTimer = null; // 无 keyup 场景（粘贴等）的兜底定时器
+var submitting = false;        // 提交锁，防止重复点击重复入库
 var holdChart = null;
 var intervalChart = null;
 
@@ -57,6 +60,8 @@ function startTyping() {
   typing = true;
   keyDownMap = {};
   rawEvents = [];
+  pendingFinish = false;
+  if (pendingFinishTimer) { clearTimeout(pendingFinishTimer); pendingFinishTimer = null; }
   document.getElementById('typeInput').value = '';
   updateProgress('', 0);
   updateError(0);
@@ -93,6 +98,12 @@ function onKeyUp(e) {
   if (down === undefined) return;
   delete keyDownMap[key];
   rawEvents.push({ key: key, down: down, up: Date.now() });
+  // 长度已达标 → 末键 keyup 已落地，补齐最后一键的按压数据再结束本遍
+  if (pendingFinish) {
+    pendingFinish = false;
+    if (pendingFinishTimer) { clearTimeout(pendingFinishTimer); pendingFinishTimer = null; }
+    finishTyping();
+  }
 }
 
 // ── 输入变化：校验进度与错误 ──
@@ -113,9 +124,19 @@ function onInput() {
   updateProgress(typed, matched);
   updateError(errors);
 
-  // 输入长度达到目标 → 完成（打错也完成，错误已实时统计）
+  // 输入长度达到目标 → 等末键 keyup 落地再完成（打错也完成，错误已实时统计）
+  // input 事件先于末键 keyup 触发，立即 finishTyping 会丢掉最后一键的按压数据；
+  // 粘贴等无 keyup 的场景用定时兜底，避免永远等不到 keyup。
   if (typed.length >= target.length) {
-    finishTyping();
+    pendingFinish = true;
+    if (pendingFinishTimer) { clearTimeout(pendingFinishTimer); pendingFinishTimer = null; }
+    pendingFinishTimer = setTimeout(function () {
+      if (pendingFinish) {
+        pendingFinish = false;
+        pendingFinishTimer = null;
+        finishTyping();
+      }
+    }, 200);
   }
 }
 
@@ -132,6 +153,8 @@ function updateError(n) {
 function finishTyping() {
   if (!typing) return;
   typing = false;
+  pendingFinish = false;
+  if (pendingFinishTimer) { clearTimeout(pendingFinishTimer); pendingFinishTimer = null; }
   if (timerInterval) clearInterval(timerInterval);
 
   var features = extractFeatures(rawEvents);
@@ -267,8 +290,18 @@ function chartOptions(yTitle) {
 
 // ── 提交两遍样本 + 拉全站对比 ──
 function submitAndCompare() {
+  if (submitting) return; // 提交锁，防止重复点击重复入库
+  submitting = true;
+  hideRateHint();
+  var submitBtn = document.getElementById('submitBtn');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('btn-disabled'); }
+
   nfTrack('compare_done', { samples: samples.length });
-  if (samples.length === 0) return;
+  if (samples.length === 0) {
+    submitting = false;
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('btn-disabled'); }
+    return;
+  }
   var sessionId = getSessionId();
   var total = samples.length;
   var done = 0;
@@ -288,7 +321,11 @@ function submitAndCompare() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        // 写接口有 IP 限流，429 时提示稍后再试（AGENTS 规范）
+        if (r.status === 429) showRateHint();
+        return r.json();
+      })
       .then(function () { checkDone(); })
       .catch(function () { checkDone(); });
   });
@@ -296,9 +333,20 @@ function submitAndCompare() {
   function checkDone() {
     done++;
     if (done >= total) {
+      submitting = false;
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('btn-disabled'); }
       fetchStats(sessionId);
     }
   }
+}
+
+function showRateHint() {
+  var el = document.getElementById('rateHint');
+  if (el) el.style.display = 'block';
+}
+function hideRateHint() {
+  var el = document.getElementById('rateHint');
+  if (el) el.style.display = 'none';
 }
 
 function fetchStats(sessionId) {
@@ -326,8 +374,12 @@ function renderUnique(stats) {
   if (stats.nearestDistance >= 0) {
     html += '<br>你的指纹与全站最接近的样本距离 <strong>' + stats.nearestDistance +
       '</strong>（距离越大越独特）。';
+  } else if (stats.sampleCount === 0) {
+    html += '<br>全站已有样本，先提交你的两遍打字，就能看到独特性对比。';
   } else {
-    html += '<br>你的样本已提交，下次再来就能看到独特性对比。';
+    // 有自己样本但没有其他访客的样本：会话隔离导致，需要提示用户怎么触发对比
+    html += '<br>你的 <strong>' + stats.sampleCount + '</strong> 份样本已入库，独特性对比还缺其他访客的样本。' +
+      '同一会话反复重测、刷新都算你自己；换个标签页/浏览器再打一遍即可看到对比。';
   }
   content.innerHTML = html;
 
@@ -369,6 +421,12 @@ function restartDemo() {
   rawEvents = [];
   keyDownMap = {};
   typing = false;
+  pendingFinish = false;
+  if (pendingFinishTimer) { clearTimeout(pendingFinishTimer); pendingFinishTimer = null; }
+  submitting = false;
+  hideRateHint();
+  var submitBtn = document.getElementById('submitBtn');
+  if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('btn-disabled'); }
   if (timerInterval) clearInterval(timerInterval);
   document.getElementById('analysisSection').style.display = 'none';
   document.getElementById('uniqueBox').style.display = 'none';

@@ -54,6 +54,13 @@ public class CacheConfig {
                         .expireAfterWrite(60, TimeUnit.SECONDS)
                         .buildAsync());
 
+        // 键盘节奏统计：200 条、60 秒（最近邻居距离需全量特征比对，缓存避免每次请求重算）
+        cacheManager.registerCustomCache("keystrokeStats",
+                Caffeine.newBuilder()
+                        .maximumSize(200)
+                        .expireAfterWrite(60, TimeUnit.SECONDS)
+                        .buildAsync());
+
         // HIBP range 查询：20000 条、6 小时
         cacheManager.registerCustomCache("pwnedRange",
                 Caffeine.newBuilder()

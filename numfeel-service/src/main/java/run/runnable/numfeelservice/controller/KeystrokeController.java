@@ -48,13 +48,13 @@ public class KeystrokeController {
         if (request.sessionId().length() > 36 || request.sessionId().length() < 1) {
             throw ApiException.badRequest("Invalid sessionId");
         }
-        if (request.sampleIndex() < 0 || request.sampleIndex() > 2) {
+        if (request.sampleIndex() < 0 || request.sampleIndex() > 1) {
             throw ApiException.badRequest("Invalid sampleIndex");
         }
         if (request.totalMs() < 0 || request.totalMs() > 600000) {
             throw ApiException.badRequest("Invalid totalMs");
         }
-        if (request.errorCount() < 0 || request.errorCount() > 1000) {
+        if (request.errorCount() < 0 || request.errorCount() > 127) {
             throw ApiException.badRequest("Invalid errorCount");
         }
         if (request.holdTimes().length() > 1024 || request.intervals().length() > 1024

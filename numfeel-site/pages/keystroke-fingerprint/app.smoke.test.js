@@ -189,7 +189,7 @@ setTimeout(function () {
     check(getEl('resultSection').style.display === 'block', '结果区已显示');
     check(getEl('resSamples').textContent === '10', '全站样本数已填充');
     check(getEl('resNearest').textContent === '0.8', '最近邻居距离已填充');
-    check(getEl('uniqueContent')._html.indexOf('识别结果') === -1, '未匹配时不显示识别结果');
+    check(getEl('recogBanner').style.display === 'none', '未匹配时隐藏识别横幅');
 
     // 4. 重开
     sandbox.restartDemo();

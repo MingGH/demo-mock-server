@@ -62,17 +62,20 @@ function startTyping() {
   rawEvents = [];
   pendingFinish = false;
   if (pendingFinishTimer) { clearTimeout(pendingFinishTimer); pendingFinishTimer = null; }
+  timerStart = 0;
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   document.getElementById('typeInput').value = '';
+  document.getElementById('timerText').textContent = '0.0s';
   updateProgress('', 0);
   updateError(0);
-  startTimer();
 }
 
 // ── 计时 ──
 var timerStart = 0;
 var timerInterval = null;
 function startTimer() {
-  timerStart = Date.now();
+  // 只在第一个有效按键按下时才起表，避免页面加载后未打字就开始计时
+  if (timerStart === 0) timerStart = Date.now();
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(function () {
     var sec = ((Date.now() - timerStart) / 1000).toFixed(1);
@@ -87,6 +90,7 @@ function onKeyDown(e) {
   if (key.length !== 1) return; // 只记单字符（含空格）
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (keyDownMap[key] !== undefined) return; // 重复 down 忽略
+  if (timerStart === 0) startTimer(); // 第一个字符按下才开始计时
   keyDownMap[key] = Date.now();
 }
 
@@ -186,7 +190,7 @@ function finishTyping() {
   samples.push({
     features: features,
     errorCount: errorCount,
-    totalMs: Date.now() - timerStart,
+    totalMs: timerStart > 0 ? Date.now() - timerStart : 0,
     textHash: hashText(TARGET_TEXT)
   });
   nfTrack('typing_done', { sample: currentSample, errors: errorCount });
@@ -386,11 +390,17 @@ function renderUnique(stats) {
   var html = '全站共 <strong>' + stats.totalSamples + '</strong> 份打字样本，平均整句耗时 <strong>' +
     (stats.avgTotalMs / 1000).toFixed(1) + 's</strong>，平均按压时长 <strong>' + Math.round(stats.avgHoldMs) +
     'ms</strong>，平均键间间隔 <strong>' + Math.round(stats.avgIntervalMs) + 'ms</strong>。';
+  var banner = document.getElementById('recogBanner');
   if (stats.lastSeenAt >= 0) {
-    // 后端判定：最近邻居距离 ≤ 识别阈值，节奏指纹匹配到历史会话 → 识别出此前来过
-    html += '<br><strong>识别结果：</strong>你的节奏指纹匹配上了历史样本——你大约在 <strong>' +
-      timeAgo(stats.lastSeenAt) + '</strong> 来过一次（匹配距离 ' + stats.nearestDistance + '）。';
-  } else if (stats.nearestDistance >= 0) {
+    // 后端判定：最近邻居距离 ≤ 识别阈值，节奏指纹匹配到历史会话 → 大字提醒此前来过
+    banner.innerHTML = '<i class="ti ti-eye"></i><strong>我认出你了。</strong>你大约在 <strong>' +
+      timeAgo(stats.lastSeenAt) + '</strong> 来过一次（匹配距离 ' + stats.nearestDistance + '）。' +
+      '<br><span>你没登录、没留 Cookie，只是照常打字，我就从全站样本里认出了你的节奏——这就是键盘指纹。</span>';
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+  if (stats.nearestDistance >= 0) {
     html += '<br>你的指纹与全站最接近的样本距离 <strong>' + stats.nearestDistance +
       '</strong>（距离越大越独特）。';
   } else if (stats.sampleCount === 0) {
@@ -450,6 +460,8 @@ function restartDemo() {
   document.getElementById('analysisSection').style.display = 'none';
   document.getElementById('uniqueBox').style.display = 'none';
   document.getElementById('resultSection').style.display = 'none';
+  var recogBanner = document.getElementById('recogBanner');
+  if (recogBanner) recogBanner.style.display = 'none';
   document.getElementById('stageTag').textContent = '第 1 遍 · 自然打字';
   var retryBtn = document.getElementById('retryBtn');
   if (retryBtn) retryBtn.remove();

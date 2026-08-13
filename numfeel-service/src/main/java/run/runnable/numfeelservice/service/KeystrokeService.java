@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -29,9 +31,15 @@ public class KeystrokeService {
     private static final Logger log = LoggerFactory.getLogger(KeystrokeService.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /** 最近邻居计算需要的最小列投影。 */
+    /**
+     * 身份识别阈值：某 session 与历史其他 session 的最小归一化距离 ≤ 此值，判定为同一人此前来过。
+     * 与前端 STABLE_THRESHOLD（0.5）对齐——同一人两遍打字的距离通常低于该值。
+     */
+    private static final double IDENTIFY_THRESHOLD = 0.5;
+
+    /** 最近邻居计算需要的最小列投影（含 created_at 用于识别时回告上次来访时间）。 */
     private static final String PROJECTION_SQL =
-            "SELECT session_id, hold_times, intervals FROM keystroke_profiles";
+            "SELECT session_id, hold_times, intervals, created_at FROM keystroke_profiles";
     /** 全站聚合：样本总数 + 平均整句耗时。 */
     private static final String AGG_SQL =
             "SELECT COUNT(*) AS total, COALESCE(AVG(total_ms), 0) AS avg_total FROM keystroke_profiles";
@@ -81,7 +89,8 @@ public class KeystrokeService {
                         null,
                         (String) row.get("hold_times"),
                         (String) row.get("intervals"),
-                        0, 0, 0))
+                        0, 0,
+                        number(row.get("created_at")).longValue()))
                 .all()
                 .collectList();
         Mono<long[]> aggMono = db.sql(AGG_SQL)
@@ -97,7 +106,7 @@ public class KeystrokeService {
     /**
      * 由全站样本行聚合出统计响应（可独立单元测试的纯逻辑）。
      *
-     * @param rows      全站样本（仅需 session_id / hold_times / intervals）
+     * @param rows      全站样本（仅需 session_id / hold_times / intervals / created_at）
      * @param total     SQL 聚合出的样本总数
      * @param avgTotal  SQL 聚合出的平均整句耗时 ms
      * @param sessionId 当前会话 ID
@@ -114,53 +123,83 @@ public class KeystrokeService {
 
         long myCount = 0;
         double nearest = -1;
+        long lastSeenAt = -1;
         if (sessionId != null && !sessionId.isBlank()) {
             List<KeystrokeProfile> mine = rows.stream()
                     .filter(r -> sessionId.equals(r.sessionId()))
                     .collect(Collectors.toList());
             myCount = mine.size();
-            nearest = computeNearestDistance(mine, rows);
+            if (!mine.isEmpty()) {
+                MatchResult match = findBestMatch(mine, rows);
+                nearest = match.distance();
+                if (match.distance() >= 0 && match.distance() <= IDENTIFY_THRESHOLD) {
+                    lastSeenAt = match.lastSeenAt();
+                }
+            }
         }
-        return new KeystrokeStatsResponse(total, avgTotal, avgHold, avgInterval, nearest, myCount);
+        return new KeystrokeStatsResponse(total, avgTotal, avgHold, avgInterval, nearest, myCount, lastSeenAt);
     }
 
     /**
-     * 计算自己样本与全站其他 session 样本的最小特征距离。
+     * 在所有其他 session 中找出与当前 session 特征距离最小的那个，并回告其最近一次提交时间。
+     * 距离按「session 分组后取组内最小」再跨 session 取最小，与全量逐对最小等价。
      *
-     * @param mine 该 session 的样本
+     * @param mine 当前 session 的样本
      * @param all  全站样本（含自己，会排除同 session）
-     * @return 最小距离；无法计算（自己或他人样本不足）时返回 -1
+     * @return 最小距离（无法计算时为 -1）与对应 session 的最近提交时间戳
      */
-    private static double computeNearestDistance(List<KeystrokeProfile> mine, List<KeystrokeProfile> all) {
-        if (mine.isEmpty()) {
-            return -1;
+    private static MatchResult findBestMatch(List<KeystrokeProfile> mine, List<KeystrokeProfile> all) {
+        Map<String, List<KeystrokeProfile>> othersBySession = new HashMap<>();
+        for (KeystrokeProfile p : all) {
+            if (!mine.get(0).sessionId().equals(p.sessionId())) {
+                othersBySession.computeIfAbsent(p.sessionId(), k -> new ArrayList<>()).add(p);
+            }
         }
-        List<KeystrokeProfile> others = all.stream()
-                .filter(r -> !mine.get(0).sessionId().equals(r.sessionId()))
-                .collect(Collectors.toList());
-        if (others.isEmpty()) {
-            return -1;
+        if (othersBySession.isEmpty()) {
+            return new MatchResult(-1, -1);
         }
         double min = Double.MAX_VALUE;
-        for (KeystrokeProfile m : mine) {
-            List<Integer> mh = parseList(m.holdTimes());
-            List<Integer> mi = parseList(m.intervals());
-            if (mh.isEmpty() || mi.isEmpty()) {
+        long lastSeenAt = -1;
+        for (List<KeystrokeProfile> others : othersBySession.values()) {
+            double d = minDistanceBetween(mine, others);
+            if (d < min) {
+                min = d;
+                lastSeenAt = others.stream().mapToLong(KeystrokeProfile::createdAt).max().orElse(-1);
+            }
+        }
+        return new MatchResult(min == Double.MAX_VALUE ? -1 : min, lastSeenAt);
+    }
+
+    /**
+     * 两组样本（分属两个 session）之间的最小加权距离。
+     *
+     * @return 最小距离；任一组样本都无法计算特征时返回 -1
+     */
+    private static double minDistanceBetween(List<KeystrokeProfile> a, List<KeystrokeProfile> b) {
+        double min = Double.MAX_VALUE;
+        for (KeystrokeProfile x : a) {
+            List<Integer> xh = parseList(x.holdTimes());
+            List<Integer> xi = parseList(x.intervals());
+            if (xh.isEmpty() || xi.isEmpty()) {
                 continue;
             }
-            for (KeystrokeProfile o : others) {
-                List<Integer> oh = parseList(o.holdTimes());
-                List<Integer> oi = parseList(o.intervals());
-                if (oh.isEmpty() || oi.isEmpty()) {
+            for (KeystrokeProfile y : b) {
+                List<Integer> yh = parseList(y.holdTimes());
+                List<Integer> yi = parseList(y.intervals());
+                if (yh.isEmpty() || yi.isEmpty()) {
                     continue;
                 }
-                double d = weightedDistance(mh, mi, oh, oi);
+                double d = weightedDistance(xh, xi, yh, yi);
                 if (d < min) {
                     min = d;
                 }
             }
         }
         return min == Double.MAX_VALUE ? -1 : min;
+    }
+
+    /** 匹配结果：到最近 session 的距离及其最近提交时间戳。 */
+    private record MatchResult(double distance, long lastSeenAt) {
     }
 
     /**

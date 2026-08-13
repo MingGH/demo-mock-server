@@ -360,6 +360,21 @@ function fetchStats(sessionId) {
     .catch(function () { /* 静默 */ });
 }
 
+/** 把毫秒时间戳转成"X 分钟前 / X 小时前 / 昨天"的人类可读描述。 */
+function timeAgo(ts) {
+  if (!ts || ts <= 0) return '';
+  var diff = Date.now() - ts;
+  if (diff < 0) diff = 0;
+  var min = Math.floor(diff / 60000);
+  if (min < 1) return '刚刚';
+  if (min < 60) return min + ' 分钟前';
+  var hours = Math.floor(min / 60);
+  if (hours < 24) return hours + ' 小时前';
+  var days = Math.floor(hours / 24);
+  if (days === 1) return '昨天';
+  return days + ' 天前';
+}
+
 function renderUnique(stats) {
   var box = document.getElementById('uniqueBox');
   box.style.display = 'block';
@@ -371,7 +386,11 @@ function renderUnique(stats) {
   var html = '全站共 <strong>' + stats.totalSamples + '</strong> 份打字样本，平均整句耗时 <strong>' +
     (stats.avgTotalMs / 1000).toFixed(1) + 's</strong>，平均按压时长 <strong>' + Math.round(stats.avgHoldMs) +
     'ms</strong>，平均键间间隔 <strong>' + Math.round(stats.avgIntervalMs) + 'ms</strong>。';
-  if (stats.nearestDistance >= 0) {
+  if (stats.lastSeenAt >= 0) {
+    // 后端判定：最近邻居距离 ≤ 识别阈值，节奏指纹匹配到历史会话 → 识别出此前来过
+    html += '<br><strong>识别结果：</strong>你的节奏指纹匹配上了历史样本——你大约在 <strong>' +
+      timeAgo(stats.lastSeenAt) + '</strong> 来过一次（匹配距离 ' + stats.nearestDistance + '）。';
+  } else if (stats.nearestDistance >= 0) {
     html += '<br>你的指纹与全站最接近的样本距离 <strong>' + stats.nearestDistance +
       '</strong>（距离越大越独特）。';
   } else if (stats.sampleCount === 0) {

@@ -731,4 +731,24 @@ public final class GameplayResponses {
             long total
     ) {
     }
+
+    /**
+     * 键盘输入节奏识别 统计响应。
+     *
+     * @param totalSamples 全站样本总数
+     * @param avgTotalMs 全站平均整句耗时
+     * @param avgHoldMs 全站平均按压时长
+     * @param avgIntervalMs 全站平均键间间隔
+     * @param nearestDistance 该 session 与全站其他样本的最小距离（-1 表示样本不足）
+     * @param sampleCount 该 session 已提交的样本数
+     */
+    public record KeystrokeStatsResponse(
+            long totalSamples,
+            double avgTotalMs,
+            double avgHoldMs,
+            double avgIntervalMs,
+            double nearestDistance,
+            long sampleCount
+    ) {
+    }
 }

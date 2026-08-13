@@ -365,4 +365,19 @@ public final class GameplayEntities {
             @Column("created_at") long createdAt
     ) {
     }
+
+    /** 键盘输入节奏识别 — 打字样本表映射。 */
+    @Table("keystroke_profiles")
+    public record KeystrokeProfile(
+            @Id Long id,
+            @Column("session_id") String sessionId,
+            @Column("sample_index") int sampleIndex,
+            @Column("text_hash") String textHash,
+            @Column("hold_times") String holdTimes,
+            @Column("intervals") String intervals,
+            @Column("total_ms") int totalMs,
+            @Column("error_count") int errorCount,
+            @Column("created_at") long createdAt
+    ) {
+    }
 }

@@ -490,3 +490,19 @@ CREATE TABLE IF NOT EXISTS iowa_gambling_leaderboard (
     INDEX idx_iowa_lb_pow (pow_hash),
     INDEX idx_iowa_lb_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 键盘输入节奏识别（keystroke dynamics）打字样本
+-- 记录每次打字样本的按压时长与键间间隔特征，用于全站节奏独特性统计
+CREATE TABLE IF NOT EXISTS keystroke_profiles (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_id  VARCHAR(36)   NOT NULL COMMENT '客户端会话 ID',
+    sample_index TINYINT      NOT NULL COMMENT '第几次样本（0=第一遍, 1=第二遍）',
+    text_hash   VARCHAR(32)   NOT NULL COMMENT '打字文本的标识（MD5 前 16 位）',
+    hold_times  VARCHAR(1024) NOT NULL COMMENT '每键按压时长 ms JSON，如 [80,90,75,...]',
+    intervals   VARCHAR(1024) NOT NULL COMMENT '键间间隔 ms JSON，如 [120,95,...]',
+    total_ms    INT           NOT NULL COMMENT '整句总耗时 ms',
+    error_count TINYINT       NOT NULL COMMENT '打错字符数',
+    created_at  BIGINT        NOT NULL,
+    INDEX idx_kp_created (created_at),
+    INDEX idx_kp_session (session_id, sample_index)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

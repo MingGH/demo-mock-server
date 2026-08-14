@@ -68,7 +68,7 @@ function confirmInvest() {
   resultEl.innerHTML =
     '你投资 <strong>¥' + invest + '</strong>，伙伴收到 <strong>¥' + (invest * MULTIPLIER) +
     '</strong>，返还了你 <strong>¥' + investReturned + '</strong>。<br>你最终剩 <strong>¥' +
-    investorGain + '</strong>（' + (investorGain >= 10 ? '赚了' : '亏了') + '）。';
+    investorGain + '</strong>（' + (investorGain >= INITIAL_ENDOWMENT ? '赚了' : '亏了') + '）。';
   document.getElementById('investResultSection').style.display = 'block';
   document.getElementById('investResultSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 

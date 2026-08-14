@@ -74,18 +74,29 @@ function testValidation() {
   assertEq(engine.isValidReturn(5000, -1), false, '返-1非法');
 }
 
-// ── 4. AI 返还可复现且范围合法 ──
+// ── 4. AI 返还：复刻论文参数（可复现、均值≈30%、含极端档） ──
 function testAiReturn() {
   var r1 = engine.aiReturn(7000);
   var r2 = engine.aiReturn(7000);
   assertEq(r1, r2, 'AI 返还同投资额可复现');
-  assertTrue(r1 >= 0 && r1 <= 21000, 'AI 返还范围 0-21000');
   assertEq(engine.aiReturn(0), 0, '投资0返还0');
-  // 遍历 0-10000 全部合法
-  for (var i = 0; i <= 10000; i += 1000) {
+  var hasBankrupt = false;   // 血本无归（返还 0）
+  var hasFullReturn = false; // 全还（返还 3 倍投资）
+  var rateSum = 0;
+  var rateCount = 0;
+  // 遍历 0-10000：范围合法 + 平均返还率对齐论文 30%
+  for (var i = 100; i <= 10000; i += 100) {
     var r = engine.aiReturn(i);
     assertTrue(r >= 0 && r <= 3 * i, '投资' + i + ' 返还合法 (' + r + ')');
+    if (r === 0) hasBankrupt = true;
+    if (r === 3 * i) hasFullReturn = true;
+    rateSum += r / (3 * i);
+    rateCount++;
   }
+  assertTrue(hasBankrupt, '存在血本无归（返还0）的投资档');
+  assertTrue(hasFullReturn, '存在全还（返还3倍）的投资档');
+  var avgRate = rateSum / rateCount;
+  assertTrue(avgRate > 0.25 && avgRate < 0.35, '平均返还率≈30% (实际 ' + avgRate.toFixed(3) + ')');
 }
 
 // ── 5. 画像四象限 ──

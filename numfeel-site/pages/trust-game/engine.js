@@ -59,17 +59,29 @@ function isValidReturn(invest, returned) {
 }
 
 /**
- * AI 伙伴的返还模型（模拟被委托人）。
- * 依据论文数据：被委托人平均返还约 30% 的收到金额。
- * 用投资额做确定性扰动（伪随机但可复现），返还比例约 20%-40% 波动。
+ * AI 伙伴的返还模型（模拟被委托人）。复刻实验数据（确定性可复现）：
+ *  - 约 15% 一毛不还（Brulhart 复现：约 20% 第二玩家返还 0）
+ *  - 约 5% 近乎全还（Berg 1995 存在极端慷慨样本）
+ *  - 其余 80%：返还率与投资额正相关（Berg: reciprocity），全样本平均返还率约 30%，
+ *    对齐 Berg 1995 原实验（平均返还 4.66 / 收到 15.48）
  * @param {number} invest 投资额（0-10000）
  * @returns {number} AI 返还额（0 - 3*invest 的整数）
  */
 function aiReturn(invest) {
   if (invest === 0) return 0;
   var received = MULTIPLIER * invest;
-  // 返还比例在 20% ~ 40% 之间随投资额确定性波动（可复现）
-  var pct = 0.2 + ((invest * 7919) % 21) / 100;
+  // 确定性"人设"哈希（0-96），随投资额均匀分布、可复现
+  var role = (invest * 31) % 97;
+  if (role < 15) {
+    return 0;                    // 一毛不还：血本无归
+  }
+  if (role >= 92) {
+    return received;             // 近乎全还：投 5000 以上玩家收益翻倍
+  }
+  // 返还率随投资额线性上升（0.25 → 0.375），叠加 ±0.05 确定性个体差异
+  var base = 0.25 + 0.125 * (invest / 10000);
+  var noise = (((invest * 7919) % 21) - 10) / 200;
+  var pct = Math.max(0.15, Math.min(0.45, base + noise));
   var ret = Math.round(received * pct);
   if (ret < 0) ret = 0;
   if (ret > received) ret = received;

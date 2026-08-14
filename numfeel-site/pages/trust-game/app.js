@@ -182,7 +182,7 @@ function renderDistChart(stats) {
   if (!ctx || !stats.investDistribution || stats.investDistribution.length === 0) return;
   if (distChart) distChart.destroy();
   var labels = [];
-  for (var i = 0; i < stats.investDistribution.length; i++) labels.push('¥' + i);
+  for (var i = 0; i < stats.investDistribution.length; i++) labels.push('¥' + (i * 1000));
   distChart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -229,7 +229,7 @@ function renderCompareChart(stats) {
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        y: { beginAtZero: true, max: 10, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.06)' } },
+        y: { beginAtZero: true, max: 10000, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.06)' } },
         x: { ticks: { color: '#aaa' }, grid: { display: false } }
       }
     }
@@ -261,7 +261,7 @@ function restartDemo() {
   document.getElementById('investResultSection').style.display = 'none';
   document.getElementById('trusteeSection').style.display = 'none';
   document.getElementById('resultSection').style.display = 'none';
-  document.getElementById('investSlider').value = 5;
+  document.getElementById('investSlider').value = 5000;
   document.getElementById('returnSlider').value = 0;
   onInvestChange();
   window.scrollTo({ top: 0, behavior: 'smooth' });

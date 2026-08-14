@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="信任博弈交互演示：你有 10 元可以投资给陌生人，对方收到 3 倍后决定返还多少。亲身体验 Berg 1995 的经典实验——理性人说一毛不投，但真实的人都会投。">
+  <meta name="description" content="信任博弈交互演示：你有 10000 元可以投资给陌生人，对方收到 3 倍后决定返还多少。亲身体验 Berg 1995 的经典实验——理性人说一毛不投，但真实的人都会投。">
   <title>你会把多少钱交给陌生人 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
@@ -17,7 +17,7 @@
 
   <div class="header">
     <h1><i class="ti ti-hand-grab"></i> 你会把多少钱交给陌生人</h1>
-    <p>你有 <strong>10 元</strong>，可以投资任意金额给一个陌生伙伴。TA 会收到 <strong>3 倍</strong>，然后决定返还多少给你。理性人应该一毛不投——但真实的人都会投。</p>
+    <p>你有 <strong>10000 元</strong>，可以投资任意金额给一个陌生伙伴。TA 会收到 <strong>3 倍</strong>，然后决定返还多少给你。理性人应该一毛不投——但真实的人都会投。</p>
   </div>
 
   <!-- ══════════ Stage 1：投资者 ══════════ -->
@@ -27,16 +27,16 @@
 
     <div class="endowment-box">
       <div class="endowment-label">你的资金</div>
-      <div class="endowment-value">¥10</div>
+      <div class="endowment-value">¥10000</div>
     </div>
 
     <div class="invest-control">
       <div class="invest-display">
         <span class="invest-label">投资金额</span>
-        <span class="invest-value" id="investValue">¥5</span>
+        <span class="invest-value" id="investValue">¥5000</span>
       </div>
-      <input type="range" id="investSlider" min="0" max="10" step="1" value="5" oninput="window.onInvestChange()">
-      <div class="invest-hint" id="investHint">对方将收到 ¥15</div>
+      <input type="range" id="investSlider" min="0" max="10000" step="100" value="5000" oninput="window.onInvestChange()">
+      <div class="invest-hint" id="investHint">对方将收到 ¥15000</div>
     </div>
 
     <div class="btn-row">
@@ -53,15 +53,15 @@
   <!-- ══════════ Stage 2：被委托人 ══════════ -->
   <div class="section" id="trusteeSection" style="display:none">
     <div class="stage-tag stage-2">第 2 步 · 你是被委托人</div>
-    <p class="section-hint"><i class="ti ti-info-circle"></i> 现在角色反转：有人投资了你 <strong id="receivedAmount">¥5</strong>，你收到 3 倍即 <strong id="receivedTripled">¥15</strong>。你会返还多少给投资者？</p>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 现在角色反转：有人投资了你 <strong id="receivedAmount">¥5000</strong>，你收到 3 倍即 <strong id="receivedTripled">¥15000</strong>。你会返还多少给投资者？</p>
 
     <div class="invest-control">
       <div class="invest-display">
         <span class="invest-label">返还金额</span>
         <span class="invest-value" id="returnValue">¥0</span>
       </div>
-      <input type="range" id="returnSlider" min="0" max="15" step="1" value="0" oninput="window.onReturnChange()">
-      <div class="invest-hint" id="returnHint">你保留 ¥15</div>
+      <input type="range" id="returnSlider" min="0" max="15000" step="1" value="0" oninput="window.onReturnChange()">
+      <div class="invest-hint" id="returnHint">你保留 ¥15000</div>
     </div>
 
     <div class="btn-row">
@@ -96,7 +96,7 @@
     <div class="chart-wrap"><canvas id="compareChart"></canvas></div>
     <p class="section-hint" id="compareNote"></p>
 
-    <p class="section-hint">研究背景：Berg, Dickhaut &amp; McCabe (1995) 信任博弈经典实验——平均投资 5.16/10，平均返还 4.66。理性人预期一毛不投，但信任与合作是社会运转的底层机制。</p>
+    <p class="section-hint">研究背景：Berg, Dickhaut &amp; McCabe (1995) 信任博弈经典实验——平均投资 5160/10000，平均返还 4660。理性人预期一毛不投，但信任与合作是社会运转的底层机制。</p>
 
     <button class="btn-restart" onclick="window.restartDemo()"><i class="ti ti-refresh"></i> 再玩一次</button>
   </div>

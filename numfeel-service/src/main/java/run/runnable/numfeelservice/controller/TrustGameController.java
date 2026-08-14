@@ -46,17 +46,17 @@ public class TrustGameController {
         if (request.sessionId().length() > 36 || request.sessionId().length() < 1) {
             throw ApiException.badRequest("Invalid sessionId");
         }
-        if (request.investAmount() < 0 || request.investAmount() > 10) {
+        if (request.investAmount() < 0 || request.investAmount() > 10000) {
             throw ApiException.badRequest("Invalid investAmount");
         }
-        if (request.returnAmount() < 0 || request.returnAmount() > 30) {
+        if (request.returnAmount() < 0 || request.returnAmount() > 30000) {
             throw ApiException.badRequest("Invalid returnAmount");
         }
         if (request.roleOrder() < 0 || request.roleOrder() > 1) {
             throw ApiException.badRequest("Invalid roleOrder");
         }
-        // 两阶段收益合计 = 10 + 2*投资 + AI返还 - 返还额，投资 0-10 时上限 60（投满 10 且 AI 全返还、自己 0 返还）
-        if (request.totalEarned() < 0 || request.totalEarned() > 60) {
+        // 两阶段收益合计 = 10000 + 2*投资 + AI返还 - 返还额，投资 0-10000 时上限 60000（投满且 AI 全返还、自己 0 返还）
+        if (request.totalEarned() < 0 || request.totalEarned() > 60000) {
             throw ApiException.badRequest("Invalid totalEarned");
         }
 

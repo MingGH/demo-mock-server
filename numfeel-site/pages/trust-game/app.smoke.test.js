@@ -73,7 +73,7 @@ var elements = {};
 function getEl(id) {
   if (!elements[id]) {
     elements[id] = makeElement(id);
-    if (id === 'investSlider') elements[id].value = '5';
+    if (id === 'investSlider') elements[id].value = '5000';
     if (id === 'returnSlider') elements[id].value = '0';
   }
   return elements[id];
@@ -139,8 +139,8 @@ vm.runInContext(fs.readFileSync(path.join(DIR, 'app.js'), 'utf-8'), sandbox);
 setTimeout(function () {
   var tg = sandbox.__tg;
 
-  // 1. 初始投资 = 5
-  check(tg.getInvest() === 5, '默认投资额 5');
+  // 1. 初始投资 = 5000
+  check(tg.getInvest() === 5000, '默认投资额 5000');
 
   // 2. 确认投资 → AI 返还 → 进入 Stage 2
   tg.confirmInvest();
@@ -160,7 +160,7 @@ setTimeout(function () {
   check(!tg.isInvestConfirmed(), '重开后投资状态复位');
   check(!tg.isReturnConfirmed(), '重开后返还状态复位');
   check(getEl('resultSection').style.display === 'none', '重开后结果区隐藏');
-  check(tg.getInvest() === 5, '重开后投资额复位 5');
+  check(tg.getInvest() === 5000, '重开后投资额复位 5000');
 
   console.log('\n==============================');
   console.log('smoke passed: ' + passed + '  failed: ' + failed);

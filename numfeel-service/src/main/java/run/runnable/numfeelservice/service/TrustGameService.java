@@ -27,9 +27,10 @@ public class TrustGameService {
             "SELECT COUNT(*) AS total, COALESCE(AVG(invest_amount), 0) AS avg_invest, " +
                     "COALESCE(AVG(return_amount), 0) AS avg_return FROM trust_game_results";
 
-    /** 投资额 0-10 分组计数，用于分布图。 */
+    /** 投资额按 1000 元/桶分组计数（0-10000 → 桶 0-10），用于分布图。 */
     private static final String DIST_SQL =
-            "SELECT invest_amount, COUNT(*) AS cnt FROM trust_game_results GROUP BY invest_amount";
+            "SELECT FLOOR(invest_amount / 1000) AS bucket, COUNT(*) AS cnt " +
+                    "FROM trust_game_results GROUP BY bucket";
 
     private final R2dbcEntityTemplate template;
     private final DatabaseClient db;
@@ -59,7 +60,7 @@ public class TrustGameService {
     }
 
     /**
-     * 查询全站统计：记录数、平均投资额、平均返还额、投资额 0-10 分布（固定长度 11）。
+     * 查询全站统计：记录数、平均投资额、平均返还额、投资额按 1000 元分桶的分布（桶 0-10，固定长度 11）。
      *
      * @return 聚合统计响应
      */
@@ -74,7 +75,7 @@ public class TrustGameService {
                 .defaultIfEmpty(new double[]{0, 0, 0});
         Mono<List<long[]>> distMono = db.sql(DIST_SQL)
                 .map((row, metadata) -> new long[]{
-                        number(row.get("invest_amount")).longValue(),
+                        number(row.get("bucket")).longValue(),
                         number(row.get("cnt")).longValue()})
                 .all()
                 .collectList();
@@ -88,12 +89,12 @@ public class TrustGameService {
 
     /**
      * 由 SQL 聚合结果组装统计响应（可独立单元测试的纯逻辑）。
-     * 投资额分布固定输出 0-10 共 11 项，缺失档位补 0。
+     * 投资额分布固定输出桶 0-10（每 1000 元一档）共 11 项，缺失档位补 0。
      *
      * @param total      记录总数
      * @param avgInvest  平均投资额
      * @param avgReturn  平均返还额
-     * @param distRows   分组计数行（每行 {@code [invest_amount, cnt]}）
+     * @param distRows   分组计数行（每行 {@code [bucket, cnt]}）
      * @return 聚合统计响应
      */
     static TrustGameStatsResponse aggregateStats(long total, double avgInvest,

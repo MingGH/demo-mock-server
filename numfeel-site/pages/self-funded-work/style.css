@@ -1,0 +1,312 @@
+/* self-funded-work 样式层
+ * 纽约时报财经版数据图形页：纸质底、衬线、细线分隔、墨黑 + 一抹深红。
+ */
+
+:root {
+  --paper: #f6f2e8;
+  --ink: #17130f;
+  --ink-2: #2b2620;
+  --muted: #6c6557;
+  --line: #17130f;
+  --line-soft: #cfc7b4;
+  --accent: #a51c30;
+  --accent-soft: rgba(165, 28, 48, 0.07);
+  --serif: "Noto Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+  --display: "Playfair Display", "Noto Serif SC", Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--paper);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  font-family: var(--serif);
+  line-height: 1.95;
+  background:
+    radial-gradient(circle at 18% 6%, rgba(165, 28, 48, 0.035), transparent 30%),
+    radial-gradient(circle at 86% 24%, rgba(23, 19, 15, 0.03), transparent 28%),
+    var(--paper);
+  overflow-x: hidden;
+}
+
+/* 纸张颗粒：盖在最上层，制造印刷质感 */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.article {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 30px 24px 90px;
+}
+
+/* ── 报头 ─────────────────────────────────────────── */
+.masthead-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.masthead-section {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.masthead-rule {
+  margin: 14px 0 0;
+  border: 0;
+  border-top: 3px double var(--line);
+}
+
+/* ── 标题区 ───────────────────────────────────────── */
+.headline-block {
+  margin-top: 30px;
+}
+
+.headline {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(30px, 5.6vw, 46px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.standfirst {
+  margin: 20px 0 0;
+  max-width: 34rem;
+  font-size: 16px;
+  line-height: 1.85;
+  color: var(--ink-2);
+  padding-left: 16px;
+  border-left: 3px solid var(--accent);
+}
+
+/* ── 数据模块 ─────────────────────────────────────── */
+.modules {
+  margin-top: 46px;
+}
+
+.module {
+  margin: 0 0 56px;
+  padding-top: 26px;
+  border-top: 2px solid var(--line);
+}
+
+.module-head {
+  margin-bottom: 14px;
+}
+
+.module-kicker {
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: var(--accent);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.stat {
+  font-family: var(--display);
+}
+
+.stat-num {
+  display: block;
+  font-size: clamp(44px, 9vw, 68px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.stat-unit {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.stat-cap {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--serif);
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.stat-pair {
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.stat-sep {
+  align-self: center;
+  font-family: var(--display);
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--muted);
+}
+
+.module-line {
+  margin: 18px 0 0;
+  max-width: 36rem;
+  font-size: 16px;
+  line-height: 1.9;
+  color: var(--ink-2);
+}
+
+.chart-canvas {
+  position: relative;
+  height: 250px;
+  margin-top: 18px;
+}
+
+.chart-canvas.horizontal {
+  height: 190px;
+}
+
+.src {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.src a,
+.sources a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── 收口 ─────────────────────────────────────────── */
+.closing {
+  margin: 60px 0;
+  padding: 26px 0 26px 26px;
+  border-left: 4px solid var(--accent);
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.closing p {
+  margin: 0;
+}
+
+.closing .closing-strong {
+  margin-top: 12px;
+  color: var(--accent);
+}
+
+/* ── 来源 ─────────────────────────────────────────── */
+.sources {
+  margin-top: 60px;
+  padding-top: 22px;
+  border-top: 3px double var(--line);
+}
+
+.sources h3 {
+  margin: 0 0 14px;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.sources ol {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 2;
+  color: var(--muted);
+}
+
+.sources li {
+  margin-bottom: 6px;
+}
+
+.sources .footnote {
+  margin-top: 16px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+
+/* ── 响应式 ───────────────────────────────────────── */
+@media (max-width: 720px) {
+  .article {
+    padding: 22px 18px 70px;
+  }
+
+  .headline {
+    font-size: clamp(28px, 8.4vw, 38px);
+  }
+
+  .stat-pair {
+    gap: 14px;
+  }
+
+  .stat-num {
+    font-size: clamp(40px, 12vw, 54px);
+  }
+
+  .closing {
+    font-size: 21px;
+  }
+}
+
+@media (max-width: 480px) {
+  .module {
+    margin-bottom: 44px;
+    padding-top: 20px;
+  }
+
+  .module-line {
+    font-size: 15px;
+  }
+
+  .stat-num {
+    font-size: 42px;
+  }
+
+  .stat-sep {
+    font-size: 24px;
+  }
+
+  .chart-canvas {
+    height: 210px;
+  }
+
+  .chart-canvas.horizontal {
+    height: 180px;
+  }
+}

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="一份关于程序员「自费上班」的调查：AI 的 Coding Plan 算不算生产资料？成本为什么从公司账上跑到了员工账上？">
+  <title>一份关于程序员「自费上班」的调查 | 深度调查</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Noto+Serif+SC:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<article class="article">
+
+  <!-- 报头 -->
+  <header class="masthead">
+    <div class="masthead-top">
+      <span>2026 年 8 月 15 日 · 星期五</span>
+      <span class="masthead-section">职场 · 深度调查</span>
+    </div>
+    <hr class="masthead-rule">
+  </header>
+
+  <!-- 标题 -->
+  <div class="headline-block">
+    <h1 class="headline">一份关于程序员<br>「自费上班」的调查</h1>
+    <p class="standfirst">程序员为完成工作，每月自费买 token。这笔账，越算越凉。</p>
+  </div>
+
+  <!-- 数据模块 -->
+  <div class="modules">
+
+    <section class="module reveal">
+      <div class="module-head">
+        <span class="module-kicker">账单</span>
+        <div class="stat">
+          <span class="stat-num">¥507</span>
+          <span class="stat-unit">/ 月</span>
+        </div>
+        <p class="module-line">四个 AI 工具叠一起，一个重度用户每月的固定支出。加上按量计费的 API，轻松破千。</p>
+      </div>
+      <div class="chart-canvas"><canvas id="billChart"></canvas></div>
+      <p class="src">数据来源：<a href="https://devtoolsreview.com/pricing/ai-coding-tools-pricing-comparison/" target="_blank" rel="noopener">AI 编程工具定价对比</a></p>
+    </section>
+
+    <section class="module reveal">
+      <div class="module-head">
+        <span class="module-kicker">谁在掏钱</span>
+        <div class="stat-pair">
+          <div class="stat">
+            <span class="stat-num">90%</span>
+            <span class="stat-cap">员工用个人工具</span>
+          </div>
+          <span class="stat-sep">/</span>
+          <div class="stat">
+            <span class="stat-num">40%</span>
+            <span class="stat-cap">公司买了订阅</span>
+          </div>
+        </div>
+        <p class="module-line">员工在用自己的账号，干公司的活。公司装没看见。</p>
+      </div>
+      <div class="chart-canvas"><canvas id="nandaChart"></canvas></div>
+      <p class="src">数据来源：<a href="https://finance.sina.com.cn/tech/roll/2026-01-15/doc-inhhmamr6170348.shtml" target="_blank" rel="noopener">MIT NANDA 2025（36氪 / 新浪科技）</a>、<a href="https://www.firecat-web.com/daily-news/11852" target="_blank" rel="noopener">微软 / 领英调查</a></p>
+    </section>
+
+    <section class="module reveal">
+      <div class="module-head">
+        <span class="module-kicker">用与信</span>
+        <div class="stat-pair">
+          <div class="stat">
+            <span class="stat-num">84%</span>
+            <span class="stat-cap">用</span>
+          </div>
+          <span class="stat-sep">/</span>
+          <div class="stat">
+            <span class="stat-num">29%</span>
+            <span class="stat-cap">信</span>
+          </div>
+        </div>
+        <p class="module-line">用得越多，信得越少。可活儿一点没少。</p>
+      </div>
+      <div class="chart-canvas"><canvas id="stackChart"></canvas></div>
+      <p class="src">数据来源：<a href="https://survey.stackoverflow.co/2025/ai/" target="_blank" rel="noopener">Stack Overflow 2025 开发者调查</a></p>
+    </section>
+
+    <section class="module reveal">
+      <div class="module-head">
+        <span class="module-kicker">分水岭</span>
+        <div class="stat-pair">
+          <div class="stat">
+            <span class="stat-num">38%</span>
+            <span class="stat-cap">免费用户</span>
+          </div>
+          <span class="stat-sep">→</span>
+          <div class="stat">
+            <span class="stat-num">76%</span>
+            <span class="stat-cap">公司买单</span>
+          </div>
+        </div>
+        <p class="module-line">公司掏钱那一刻，AI 才真正进生产流。剩下的人，自己垫。</p>
+      </div>
+      <div class="chart-canvas horizontal"><canvas id="epochaiChart"></canvas></div>
+      <p class="src">数据来源：<a href="https://m.36kr.com/p/3784242432728064" target="_blank" rel="noopener">Epoch AI + Ipsos（36氪）</a></p>
+    </section>
+
+  </div>
+
+  <!-- 收口 -->
+  <div class="closing reveal">
+    <p>效率进了公司的利润表。</p>
+    <p>成本进了员工的账单。</p>
+    <p class="closing-strong">这套账，总得有人先算清楚。</p>
+  </div>
+
+  <!-- 来源汇总 -->
+  <footer class="sources reveal">
+    <h3>数据来源</h3>
+    <ol>
+      <li><a href="https://devtoolsreview.com/pricing/ai-coding-tools-pricing-comparison/" target="_blank" rel="noopener">AI 编程工具定价对比</a></li>
+      <li><a href="https://finance.sina.com.cn/tech/roll/2026-01-15/doc-inhhmamr6170348.shtml" target="_blank" rel="noopener">MIT NANDA 2025 报告（36氪 / 新浪科技）</a></li>
+      <li><a href="https://www.firecat-web.com/daily-news/11852" target="_blank" rel="noopener">微软 / 领英调查（钛媒体）</a></li>
+      <li><a href="https://m.36kr.com/p/3784242432728064" target="_blank" rel="noopener">Epoch AI + Ipsos 调研（36氪）</a></li>
+      <li><a href="https://survey.stackoverflow.co/2025/ai/" target="_blank" rel="noopener">Stack Overflow 2025 开发者调查</a></li>
+    </ol>
+    <p class="footnote">订阅价随汇率与定价波动，为参考值。图中占比数据均来自上述公开调查。</p>
+  </footer>
+
+</article>
+</body>
+</html>

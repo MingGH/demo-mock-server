@@ -506,21 +506,3 @@ CREATE TABLE IF NOT EXISTS keystroke_profiles (
     INDEX idx_kp_created (created_at),
     INDEX idx_kp_session (session_id, sample_index)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 信任博弈（Trust Game）结果记录
--- 记录玩家两阶段（投资 + 被委托返还）的决策，用于全站信任/互惠度统计
-CREATE TABLE IF NOT EXISTS trust_game_results (
-    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
-    session_id    VARCHAR(36) NOT NULL COMMENT '客户端会话 ID',
-    invest_amount INT         NOT NULL COMMENT '投资额 0-10000',
-    return_amount INT         NOT NULL COMMENT '被委托人时返还额（0-30000）',
-    total_earned  INT         NOT NULL COMMENT '两阶段总收益',
-    role_order    TINYINT     NOT NULL COMMENT '角色顺序 0=先投后返 1=先返后投',
-    created_at    BIGINT      NOT NULL,
-    INDEX idx_tg_created (created_at),
-    INDEX idx_tg_invest (invest_amount)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
--- 存量库升级（2026-08 资金从 10 改为 10000 后需扩列）：
--- ALTER TABLE trust_game_results MODIFY invest_amount INT NOT NULL,
---                                MODIFY return_amount INT NOT NULL,
---                                MODIFY total_earned INT NOT NULL;

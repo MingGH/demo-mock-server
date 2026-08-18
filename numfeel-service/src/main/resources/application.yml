@@ -46,7 +46,7 @@ numfeel:
 # multipart/form-data 上传演示
   upload:
     dir: ${NUMFEEL_UPLOAD_DIR:${java.io.tmpdir}/numfeel-upload}
-    max-file-bytes: ${NUMFEEL_UPLOAD_MAX_FILE:10485760}        # 单文件 10MB
+    max-file-bytes: ${NUMFEEL_UPLOAD_MAX_FILE:5242880}        # 单文件 5MB
     max-hourly-bytes: ${NUMFEEL_UPLOAD_MAX_HOURLY:1073741824}  # 每小时/IP 1GB
     expiration-ms: ${NUMFEEL_UPLOAD_TTL_MS:300000}             # 5 分钟后删除
 

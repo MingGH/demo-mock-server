@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit;
  * <ul>
  *   <li>一次请求可携带多个文件 + 多个普通表单字段，按 boundary 逐个解包</li>
  *   <li>文件流式写入磁盘（{@link FilePart#transferTo(Path)}），不整块读进内存</li>
- *   <li>单个文件上限 {@code maxFileBytes}（默认 10MB），超限返回 400</li>
+ *   <li>单个文件上限 {@code maxFileBytes}（默认 5MB），超限返回 400</li>
  *   <li>每个 IP 每小时上传总量上限 {@code maxHourlyBytes}（默认 1GB，Buck4j 计数），超限返回 429</li>
  *   <li>落盘的临时文件在 {@code expirationMs}（默认 5 分钟）后由后台调度任务自动删除</li>
  * </ul>
@@ -83,7 +83,7 @@ public class MultipartUploadService {
      */
     public MultipartUploadService(
             @Value("${numfeel.upload.dir:${java.io.tmpdir}/numfeel-upload}") String root,
-            @Value("${numfeel.upload.max-file-bytes:10485760}") long maxFileBytes,
+            @Value("${numfeel.upload.max-file-bytes:5242880}") long maxFileBytes,
             @Value("${numfeel.upload.max-hourly-bytes:1073741824}") long maxHourlyBytes,
             @Value("${numfeel.upload.expiration-ms:300000}") long expirationMs) {
         this.maxFileBytes = maxFileBytes;

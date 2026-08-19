@@ -34,6 +34,19 @@ public final class ApiResponse {
     }
 
     /**
+     * 类型化成功响应：返回 {@link ApiEnvelope}{@code <T>}（{@code {"status":200,"data":<T>}}），
+     * 由 Spring 序列化业务 DTO，而不是手工组装 JsonNode。
+     *
+     * @param data 业务 DTO
+     * @param <T>  业务 DTO 类型
+     */
+    public static <T> ResponseEntity<ApiEnvelope<T>> okDto(T data) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiEnvelope.ok(data));
+    }
+
+    /**
      * 带缓存元信息的成功响应：
      * {@code {"status":200,"data":<data>,"cache":{...}}}。
      * 用于支持前端展示「数据来自缓存 · 剩 X 分钟刷新」。

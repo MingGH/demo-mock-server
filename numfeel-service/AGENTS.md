@@ -24,6 +24,19 @@
 - `ApiResponse.error(status, message)` → `{"status":<status>,"message":"<msg>"}`，HTTP 状态码与 status 一致。
 - 不得自行构造 `ResponseEntity` + 自定义 JSON；统一使用 `ApiResponse`。
 
+### 类型化 DTO（新代码必选，禁止 JsonNode）
+
+- **新写的 Controller 一律返回类型化 DTO，禁止返回 `ResponseEntity<JsonNode>` / `Mono<ResponseEntity<JsonNode>>`。**
+  历史接口用 JsonNode 是早期遗留，新代码不要照抄。
+- 成功返回用 `ApiEnvelope<T>`（`web` 包）配合 `ApiResponse.okDto(data)`：
+  `public Mono<ResponseEntity<ApiEnvelope<YourResponse>>> xxx() { return service.xxx().map(ApiResponse::okDto); }`
+  —— 由 Spring 直接序列化业务 DTO，保留 `{"status":200,"data":<T>}` 契约，不手搭 JSON。
+- 业务 DTO（`controller.dto` 下的 record）字段全部写 Javadoc；可空字段加
+  `@JsonInclude(JsonInclude.Include.NON_NULL)`（Jackson 注解用 `com.fasterxml.jackson.annotation.*`）。
+- 错误路径不手动 `onErrorResume` 拼 JSON：让异常自然抛出，交给 `GlobalExceptionHandler`
+  （已覆盖 `ApiException` / 输入异常 / `ResponseStatusException` / 兜底 500）。需要业务级日志时才在
+  Service 里记录，Controller 保持薄层。
+
 ## 限流与缓存
 
 - **Bucket4j** 实现 IP 级别限流。规则统一在 `RateLimitWebFilter` 中定义，不得在 Controller 中内联限流逻辑。

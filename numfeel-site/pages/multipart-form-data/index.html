@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="直接把文件塞进 body 不行吗？现场把裸 body 和 multipart 都编出来：boundary 切开、每个 part 各自带文件名和 Content-Type，再真上传看后端怎么解；用真 Spring Boot 解析验证一次往返不...">
+
+  <title>为什么传文件要用 multipart/form-data | 数字直觉</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <h1>为什么传文件要用 multipart/form-data？</h1>
+      <p>直接把文件塞进 body 不行吗？在现场把两者都编出来，一眼看懂 multipart 到底在干嘛</p>
+    </div>
+
+    <!-- 操作区 -->
+    <div class="card upload-card">
+      <div class="card-label"><i class="ti ti-upload"></i> 第一步：选一组示例数据</div>
+      <p class="demo-note">不再让你挑本地文件——选一组内置示例，点「真上传」把它真实发给后端解析。示例内容固定、很小，怎么点都不会卡。</p>
+      <div class="presets">
+        <button class="preset-btn active" data-kind="one" type="button">1 个文件 + 1 个字段</button>
+        <button class="preset-btn" data-kind="two" type="button">2 个文件 + 1 个字段</button>
+        <button class="preset-btn" data-kind="none" type="button">纯字段（无文件）</button>
+      </div>
+      <div class="control-row gap">
+        <button class="btn primary" id="btn-upload" type="button">
+          <i class="ti ti-send"></i> 真上传示例文件看它怎么解
+        </button>
+      </div>
+      <div class="limit-hint" id="limit-hint">
+        <i class="ti ti-info-circle"></i>
+        上传的是内置示例文件（内容固定、很小）；落地 5 分钟后自动删除。每 IP 每小时限 1GB。
+      </div>
+    </div>
+
+    <!-- 双通道对比 -->
+    <div class="panels">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-label raw-mode"><i class="ti ti-file-broken"></i> 裸 body（application/octet-stream）</span>
+          <span class="stat-val" id="raw-bytes">-</span>
+        </div>
+        <div class="raw-content" id="raw-body">选一组示例，看裸 body 有多「裸」</div>
+        <div class="panel-note" id="raw-note"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-label multi-mode"><i class="ti ti-box"></i> multipart/form-data（打包）</span>
+          <span class="stat-val" id="mp-bytes">-</span>
+        </div>
+        <div class="raw-content multi" id="mp-body">这里会逐字节上色：<span class="tok-boundary">boundary</span> · <span class="tok-header">头</span> · <span class="tok-payload">负载</span></div>
+        <div class="panel-note" id="mp-note"></div>
+      </div>
+    </div>
+
+    <!-- 解码验证 + 服务端解析 -->
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-label"><i class="ti ti-rotate-2"></i> 第二步：照着 boundary 解回去（本地往返）</div>
+        <div id="decode-result" class="decode-list">选一组示例后，这里展示把同一个 body 解回结构是否无损</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label"><i class="ti ti-server-2"></i> 第三步：真服务器按 boundary 解包</div>
+        <div id="server-result" class="decode-list">点「真上传到服务器」，看后端逐 part 解出每个字段名 / 文件名 / Content-Type / 字节数</div>
+      </div>
+    </div>
+
+    <!-- 洞察 -->
+    <div class="insight-bar" id="insight-bar">
+      打包的关键，不是省带宽，是「给 body 装上结构的边界」。
+    </div>
+
+    <div class="footnote">
+      <p>所有字节数都来自你本地把文件打包后的实际结果；限流与过期规则由后端真实执行。</p>
+      <p>知乎精选追问的回应：服务器要收到的「所有 part」才拼文件、不能断点续传——都是上层框架/应用的问题，跟 multipart 本身体质无关，见文章。</p>
+    </div>
+
+  </div><!-- /container -->
+
+  <script src="../../components/header.js" defer></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

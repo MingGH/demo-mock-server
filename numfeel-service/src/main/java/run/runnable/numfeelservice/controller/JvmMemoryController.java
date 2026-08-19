@@ -2,8 +2,6 @@ package run.runnable.numfeelservice.controller;
 
 import run.runnable.numfeelservice.service.JvmMemoryService;
 import run.runnable.numfeelservice.web.ApiEnvelope;
-import run.runnable.numfeelservice.web.ApiResponse;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,8 +34,8 @@ public class JvmMemoryController {
      * @return {@code {"status":200,"data":<JvmMemorySnapshot>}}；出错时由全局异常处理器返回
      */
     @GetMapping
-    public Mono<ResponseEntity<ApiEnvelope<JvmMemorySnapshot>>> snapshot() {
+    public Mono<ApiEnvelope<JvmMemorySnapshot>> snapshot() {
         return service.snapshot()
-                .map(ApiResponse::okDto);
+                .map(ApiEnvelope::ok);
     }
 }

@@ -28,9 +28,11 @@
 
 - **新写的 Controller 一律返回类型化 DTO，禁止返回 `ResponseEntity<JsonNode>` / `Mono<ResponseEntity<JsonNode>>`。**
   历史接口用 JsonNode 是早期遗留，新代码不要照抄。
-- 成功返回用 `ApiEnvelope<T>`（`web` 包）配合 `ApiResponse.okDto(data)`：
-  `public Mono<ResponseEntity<ApiEnvelope<YourResponse>>> xxx() { return service.xxx().map(ApiResponse::okDto); }`
+- 成功返回用 `ApiEnvelope<T>`（`web` 包）配合 `ApiEnvelope::ok`：
+  `public Mono<ApiEnvelope<YourResponse>> xxx() { return service.xxx().map(ApiEnvelope::ok); }`
   —— 由 Spring 直接序列化业务 DTO，保留 `{"status":200,"data":<T>}` 契约，不手搭 JSON。
+  成功路径不需要显式控制 HTTP 状态码/头（成功恒为 200 + application/json，错误走
+  `GlobalExceptionHandler`），因此**不要**再包一层 `Mono<ResponseEntity<ApiEnvelope<T>>>`。
 - 业务 DTO（`controller.dto` 下的 record）字段全部写 Javadoc；可空字段加
   `@JsonInclude(JsonInclude.Include.NON_NULL)`（Jackson 注解用 `com.fasterxml.jackson.annotation.*`）。
 - 错误路径不手动 `onErrorResume` 拼 JSON：让异常自然抛出，交给 `GlobalExceptionHandler`

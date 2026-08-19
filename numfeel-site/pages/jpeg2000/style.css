@@ -1,10 +1,12 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   min-height: 100vh; color: #e8e8e8; line-height: 1.6;
 }
 .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+canvas { touch-action: manipulation; }
+.upload-area, .btn { touch-action: manipulation; }
 
 /* ── Header ── */
 .header { text-align: center; padding: 40px 20px 30px; margin-bottom: 30px; }
@@ -62,7 +64,62 @@ body {
 }
 .zoom-compare h3 { color: #ffd700; font-size: 0.95rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .zoom-hint-text { text-align: center; color: #666; font-size: 0.8rem; margin-top: 8px; }
-.zoom-compare .canvas-pair { grid-template-columns: 1fr 1fr; }
+.zoom-compare .canvas-pair { grid-template-columns: repeat(3, 1fr); }
+.zoom-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.zoom-head h3 { margin-bottom: 0; }
+
+/* ── Canvas captions (下方算法说明) ── */
+.canvas-caption {
+  background: rgba(0,0,0,0.55); padding: 6px 10px; font-size: 0.72rem; color: #a0a0a0;
+  border-top: 1px solid rgba(255,255,255,0.08); line-height: 1.5;
+}
+.canvas-caption .tag { font-weight: 700; }
+.canvas-caption .tag-j2k { color: #81c784; }
+.canvas-caption .tag-jpeg { color: #ff6b6b; }
+
+/* ── Marker (点击对比的选中区域) ── */
+.marker {
+  position: absolute; border: 2px solid #ffd700; box-shadow: 0 0 0 1px rgba(0,0,0,0.8);
+  pointer-events: none; z-index: 3; border-radius: 2px;
+}
+
+/* ── Codec loader ── */
+.codec-loader {
+  display: none; text-align: center; padding: 40px 20px; border-radius: 16px;
+  background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px;
+}
+.codec-loader p { color: #a0a0a0; font-size: 0.9rem; margin-top: 14px; }
+.loader-spinner {
+  width: 40px; height: 40px; margin: 0 auto; border-radius: 50%;
+  border: 3px solid rgba(255,215,0,0.2); border-top-color: #ffd700;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Winner line ── */
+.winner-line { margin-top: 12px; text-align: center; font-size: 0.9rem; font-weight: 700; }
+
+/* ── Reverse check ── */
+.reverse-box {
+  margin-top: 20px; padding: 18px; border-radius: 12px;
+  background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.07);
+}
+.reverse-box h3 { color: #ffd700; font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.reverse-result {
+  margin-top: 14px; padding: 14px 16px; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(76,175,80,0.12), rgba(0,200,0,0.04));
+  border-left: 4px solid #4CAF50; color: #d0f0d0; font-size: 0.92rem; line-height: 1.8;
+}
+.reverse-result .hl { color: #ffd700; font-size: 1.15rem; }
+
+/* ── Progressive PSNR box ── */
+.anim-psnr-box {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+  padding: 8px 18px; border-radius: 10px;
+}
+.anim-psnr-box .lbl { font-size: 0.7rem; color: #666; }
+.anim-psnr-box .val { font-size: 1.2rem; font-weight: 700; color: #ffd700; }
 
 /* ── Controls ── */
 .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
@@ -182,6 +239,13 @@ input[type="range"]::-moz-range-thumb {
   .header h1 { font-size: 1.5rem; }
   .section { padding: 16px; }
   .canvas-pair { grid-template-columns: 1fr; }
+  /* 三张对比图竖排时限制显示高度，避免页面过长；object-fit 保持比例不拉伸（放大图 .small 不受影响） */
+  .canvas-pair > .canvas-box:not(.small) > canvas {
+    max-height: 42vh;
+    object-fit: contain;
+    width: 100%;
+  }
+  .anim-canvas-wrap canvas { max-height: 46vh; object-fit: contain; width: 100%; }
   .controls { grid-template-columns: 1fr; }
   .band-grid { grid-template-columns: repeat(2, 1fr); }
   .metric-row { grid-template-columns: 1fr; }
@@ -189,4 +253,13 @@ input[type="range"]::-moz-range-thumb {
   .principle-grid { grid-template-columns: 1fr; }
   .upload-area { padding: 40px 16px; }
   .anim-controls { flex-direction: column; align-items: stretch; }
+  .zoom-compare .canvas-pair { grid-template-columns: 1fr; }
+  .zoom-head { flex-direction: column; align-items: flex-start; }
+  /* 移动端更大的触摸目标 */
+  input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; }
+  input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; }
+  .btn-sm { padding: 10px 16px; }
+  .btn-row { gap: 8px; }
+  .reverse-box { padding: 14px; }
+  .zoom-compare { padding: 12px; }
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="JPEG2000 交互演示：DWT 小波子带分解、量化、渐进多分辨率。同压缩比对比 JPEG 的方块效应与 JPEG2000 的平滑，亲手验证它「更好」，再追问为什么它却输了。">
+  <meta name="description" content="JPEG2000 真实编解码演示：用 OpenJPEG 把图片压成真正的 JPEG2000，与同体积的真实 JPEG 对比画质、方块效应与渐进式加载，再追问它为何输给了市场。">
   <title>JPEG2000：更好，为什么却输了 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
@@ -14,12 +14,13 @@
 
   <div class="header">
     <h1><i class="ti ti-stack-2"></i> JPEG2000：更好，为什么却输了</h1>
-    <p>它压缩比更高、没有方块效应、支持无损和渐进式加载——技术指标几乎全面碾压 JPEG。上传一张图，亲手验证它有多好，再看它为何被市场抛弃。</p>
+    <p>这次不靠模拟：用 <strong>OpenJPEG</strong> 把你的图片真正编码成 JPEG2000（9/7 小波 + EBCOT），再和同体积的<strong>真实 JPEG</strong>（8×8 DCT）对比。压缩比更高、没有方块效应、支持渐进式加载……技术指标几乎全面碾压，却输给了市场——亲手验证后，再看它输在哪。</p>
   </div>
 
-  <!-- ── 主交互区：JPEG vs JPEG2000 ── -->
+  <!-- ── 主交互区：真实 JPEG vs JPEG2000 ── -->
   <div class="section">
-    <h2><i class="ti ti-photo"></i> 实时对比：同压缩比下谁更干净</h2>
+    <h2><i class="ti ti-photo"></i> 真实对比：同体积下谁更干净</h2>
+    <p class="section-hint">同一张图，一个用真实 JPEG 编码器压，一个用真实 JPEG2000 编码器压，两者体积被精确匹配到相同（同压缩比），再比画质。点击任意一张对比图，可放大对比同一区域。</p>
 
     <div class="upload-area" id="uploadArea">
       <div class="upload-content">
@@ -30,33 +31,59 @@
       <input type="file" id="fileInput" accept="image/*" hidden>
     </div>
 
+    <div class="codec-loader" id="codecLoader">
+      <div class="loader-spinner"></div>
+      <p id="codecLoaderText">正在加载真实 JPEG2000 编解码器（OpenJPEG · WebAssembly）…</p>
+      <button class="btn btn-secondary btn-sm" id="codecRetryBtn" style="display:none;"><i class="ti ti-refresh"></i> 重新加载</button>
+    </div>
+
     <div class="canvas-area" id="canvasArea" style="display:none;">
       <div class="canvas-pair">
-        <div class="canvas-box">
+        <div class="canvas-box" id="boxOriginal">
           <div class="canvas-label">原图（灰度）</div>
           <canvas id="originalCanvas"></canvas>
+          <div class="marker" id="markerOriginal" hidden></div>
+          <div class="canvas-caption">未压缩 · 转为灰度以公平比较</div>
         </div>
-        <div class="canvas-box">
-          <div class="canvas-label">JPEG2000（DWT）</div>
+        <div class="canvas-box" id="boxJ2k">
+          <div class="canvas-label">JPEG2000</div>
           <canvas id="j2kCanvas"></canvas>
+          <div class="marker" id="markerJ2k" hidden></div>
+          <div class="canvas-caption">真实 JPEG2000 · 整图小波变换（9/7）+ EBCOT 熵编码，无分块</div>
         </div>
-        <div class="canvas-box">
-          <div class="canvas-label" id="jpegLabel">JPEG（分块 DCT）</div>
+        <div class="canvas-box" id="boxJpeg">
+          <div class="canvas-label">JPEG</div>
           <canvas id="jpegCanvas"></canvas>
+          <div class="marker" id="markerJpeg" hidden></div>
+          <div class="canvas-caption">真实 JPEG · 8×8 分块 DCT，压缩后块边界出现马赛克</div>
         </div>
       </div>
 
+      <p class="zoom-hint-text"><i class="ti ti-click"></i> 点击上方任意一张图，放大对比同一区域的三种结果（点击后再点「收起」）</p>
+
       <div class="zoom-compare" id="zoomCompare" style="display:none;">
-        <h3><i class="ti ti-zoom-in"></i> 局部放大（4×）</h3>
+        <div class="zoom-head">
+          <h3><i class="ti ti-zoom-in"></i> 局部放大（4×）</h3>
+          <button class="btn btn-secondary btn-sm" id="zoomCloseBtn"><i class="ti ti-x"></i> 收起</button>
+        </div>
         <div class="canvas-pair">
           <div class="canvas-box small">
-            <canvas id="zoomJ2k"></canvas>
+            <div class="canvas-label">原图</div>
+            <canvas id="zoomOriginal"></canvas>
+            <div class="canvas-caption">原图（参考）</div>
           </div>
           <div class="canvas-box small">
+            <div class="canvas-label">JPEG2000</div>
+            <canvas id="zoomJ2k"></canvas>
+            <div class="canvas-caption">小波无分块 · 边界平滑</div>
+          </div>
+          <div class="canvas-box small">
+            <div class="canvas-label">JPEG</div>
             <canvas id="zoomJpeg"></canvas>
+            <div class="canvas-caption">8×8 分块 · 马赛克明显</div>
           </div>
         </div>
-        <p class="zoom-hint-text">在上方两张图上点击任意位置，放大对比同一区域</p>
+        <p class="zoom-hint-text" id="zoomCoord">点击图片选择对比区域</p>
       </div>
 
       <div class="controls">
@@ -64,57 +91,67 @@
           <h3><i class="ti ti-settings"></i> 压缩强度</h3>
           <div class="slider-group">
             <div class="slider-label">
-              <span>量化步长（越大压缩越狠）</span>
-              <span class="val" id="quantVal">30</span>
+              <span>目标压缩比（体积/原图，越大压得越狠）</span>
+              <span class="val" id="ratioVal">12:1</span>
             </div>
-            <input type="range" id="quantSlider" min="1" max="300" value="30">
+            <input type="range" id="ratioSlider" min="2" max="40" value="12" step="1">
           </div>
           <div class="slider-group">
             <div class="slider-label">
-              <span>小波分解层数</span>
-              <span class="val" id="levelsVal">2</span>
+              <span>小波分解层数（JPEG2000）</span>
+              <span class="val" id="decompVal">3</span>
             </div>
-            <input type="range" id="levelsSlider" min="1" max="4" value="2" step="1">
+            <input type="range" id="decompSlider" min="1" max="5" value="3" step="1">
           </div>
           <div class="btn-row">
             <button class="btn btn-primary btn-sm" id="reuploadBtn"><i class="ti ti-upload"></i> 换一张</button>
-            <button class="btn btn-secondary btn-sm" id="downloadBtn"><i class="ti ti-download"></i> 下载 JPEG2000</button>
+            <button class="btn btn-secondary btn-sm" id="downloadBtn"><i class="ti ti-download"></i> 下载真实 .jp2</button>
           </div>
         </div>
 
         <div class="control-group">
-          <h3><i class="ti ti-adjustments"></i> 对比指标</h3>
+          <h3><i class="ti ti-adjustments"></i> 对比指标（同体积）</h3>
           <div class="metric-row">
             <div class="metric-card" id="metricJ2k">
-              <div class="metric-name">JPEG2000</div>
+              <div class="metric-name">JPEG2000（真实）</div>
               <div class="metric-value" id="mJ2kPsnr">—</div>
               <div class="metric-label">PSNR (dB)</div>
-              <div class="metric-value" id="mJ2kRatio">—</div>
-              <div class="metric-label">压缩比</div>
+              <div class="metric-value" id="mJ2kSize">—</div>
+              <div class="metric-label">体积 / 实际压缩比</div>
             </div>
             <div class="metric-card" id="metricJpeg">
-              <div class="metric-name">JPEG（模拟）</div>
+              <div class="metric-name">JPEG（真实）</div>
               <div class="metric-value" id="mJpegPsnr">—</div>
               <div class="metric-label">PSNR (dB)</div>
-              <div class="metric-value" id="mJpegBlock">8×8</div>
-              <div class="metric-label">分块大小</div>
+              <div class="metric-value" id="mJpegSize">—</div>
+              <div class="metric-label">体积 / 实际压缩比</div>
             </div>
           </div>
+          <div class="winner-line" id="winnerLine">—</div>
         </div>
       </div>
 
       <div class="stats-row">
         <div class="stat-item"><span class="val" id="statSize">—</span><span class="lbl">图片尺寸</span></div>
         <div class="stat-item"><span class="val" id="statTime">—</span><span class="lbl">处理耗时</span></div>
-        <div class="stat-item"><span class="val" id="statWinner">—</span><span class="lbl">PSNR 胜者</span></div>
+        <div class="stat-item"><span class="val" id="statWinner">—</span><span class="lbl">同体积 PSNR 胜者</span></div>
+      </div>
+
+      <div class="reverse-box" id="reverseBox">
+        <h3><i class="ti ti-scale"></i> 反向验证：同样画质，谁更省体积</h3>
+        <p class="section-hint">把 JPEG2000 压到与上方 JPEG 相同的画质（PSNR 相同），看它需要多少体积。</p>
+        <button class="btn btn-primary btn-sm" id="reverseBtn"><i class="ti ti-flask"></i> 同画质比体积</button>
+        <div class="reverse-result" id="reverseResult" style="display:none;">
+          <p id="reverseResultText"></p>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ── 子带分解可视化 ── -->
+  <!-- ── 子带分解可视化（原理示意） ── -->
   <div class="section" id="bandSection" style="display:none;">
-    <h2><i class="ti ti-layout-grid"></i> 小波子带分解（DWT）</h2>
-    <p class="section-hint">一次小波变换把图像拆成四个频带：LL 保留整体轮廓，LH/HL/HH 分别保留水平、垂直、对角细节。这就是 JPEG2000 没有方块效应的秘密。</p>
+    <h2><i class="ti ti-layout-grid"></i> 小波子带分解（DWT · 原理示意）</h2>
+    <p class="section-hint">下面是教学用 <strong>Haar</strong> 小波示意 DWT 的子带结构（真实 JPEG2000 用 9/7 或 5/3 小波，分解出的频带结构相同）。一次变换把图像拆成四个频带：LL 保留整体轮廓，LH/HL/HH 分别保留水平、垂直、对角细节——因为小波作用在整张图上、不切块，所以压缩时不会产生 JPEG 那种方块效应。</p>
     <div class="band-grid" id="bandGrid">
       <div class="band-cell">
         <div class="band-name">LL 低频（轮廓）</div>
@@ -133,15 +170,12 @@
         <canvas id="bandHH"></canvas>
       </div>
     </div>
-    <div class="btn-row" style="margin-top:16px;">
-      <button class="btn btn-secondary btn-sm" id="animateBtn"><i class="ti ti-player-play"></i> 逐层渐进重建动画</button>
-    </div>
   </div>
 
-  <!-- ── 渐进动画 ── -->
+  <!-- ── 真实渐进式加载 ── -->
   <div class="section" id="animSection" style="display:none;">
-    <h2><i class="ti ti-player-play"></i> 渐进式重建：一个文件，先模糊后清晰</h2>
-    <p class="section-hint">JPEG2000 的多分辨率特性——解码器只需要码流的前一段就能先得到缩略图，数据越多越清晰。拖动进度条模拟网络逐步收到数据。</p>
+    <h2><i class="ti ti-player-play"></i> 真实渐进式加载：一个文件，先模糊后清晰</h2>
+    <p class="section-hint">同一个 <strong>.jp2 文件里的真实码流</strong>包含 6 个质量层。解码器只需读码流的前段就能先得到低画质版本，收到的层越多画质越高——下面是实时解码这个真实码流的第 k 层（每层的 PSNR 都是真实算出来的）。</p>
     <div class="anim-canvas-wrap">
       <canvas id="animCanvas"></canvas>
     </div>
@@ -150,15 +184,20 @@
       <button class="btn btn-secondary btn-sm" id="animPauseBtn"><i class="ti ti-player-pause"></i> 暂停</button>
       <div class="slider-group" style="flex:1; margin:0;">
         <div class="slider-label">
-          <span>接收进度（%）</span>
-          <span class="val" id="animProgressVal">0</span>
+          <span>已解码质量层</span>
+          <span class="val"><span id="animLayerVal">1</span> / <span id="animLayerTotal">6</span></span>
         </div>
-        <input type="range" id="animProgressSlider" min="0" max="100" value="0">
+        <input type="range" id="animLayerSlider" min="1" max="6" value="1" step="1">
+      </div>
+      <div class="anim-psnr-box">
+        <span class="lbl">当前 PSNR</span>
+        <span class="val" id="animPsnr">—</span>
       </div>
     </div>
     <div class="anim-progress">
       <div class="anim-progress-fill" id="animProgress"></div>
     </div>
+    <p class="zoom-hint-text" style="margin-top:10px;">码流前段 ≈ 低层（低画质），层数越靠后需要的码流字节越多。越接近第 6 层，越接近完整文件。</p>
   </div>
 
   <!-- ── 原理解释 ── -->
@@ -169,17 +208,17 @@
       <div class="principle-card">
         <div class="num">01</div>
         <h4>JPEG 的罪：8×8 分块</h4>
-        <p>JPEG 把图像切成 8×8 的小块，每块独立做 DCT 变换。块与块之间各自为政，压缩狠了，块边界就露出明暗差——就是那个难看的「马赛克」方块。</p>
+        <p>JPEG 把图像切成 8×8 的小块，每块独立做 DCT 变换。块与块之间各自为政，压缩狠了，块边界就露出明暗差——就是你在上面放大图里看到的马赛克方块。</p>
       </div>
       <div class="principle-card">
         <div class="num">02</div>
         <h4>JPEG2000 的解：整图小波变换</h4>
-        <p>DWT 对整张图做全局变换，不切块。图像的能量被重排到四个频带里，压缩时只是「粗化」某些频带，不会有块的边界，所以没有方块效应。</p>
+        <p>DWT 对整张图做全局变换，不切块。图像能量被重排到四个频带里，压缩时只是「粗化」某些频带，没有块的边界，所以没有方块效应。</p>
       </div>
       <div class="principle-card">
         <div class="num">03</div>
-        <h4>多分辨率是白送的</h4>
-        <p>小波分解天然产生一个「缩小的 LL」子带。于是同一个文件里既装着全图，也装着半分辨率和 ¼ 分辨率的版本——渐进式加载、缩放看细节都不用重新下载。</p>
+        <h4>渐进式是白送的</h4>
+        <p>码流可以组织成多个质量层 / 多分辨率层。同一个文件，解码器读前段得低画质、读越多越清晰——上面的渐进演示就是真实码流的层解码。</p>
       </div>
     </div>
 
@@ -189,25 +228,26 @@
     </div>
   </div>
 
-  <!-- ── 核心代码 ── -->
+  <!-- ── 技术实现 ── -->
   <div class="section">
-    <h2><i class="ti ti-code"></i> 核心代码（教学版 Haar 小波）</h2>
+    <h2><i class="ti ti-code"></i> 技术实现：真实编解码，不是模拟</h2>
     <div class="code-block">
-      <pre><code>// 一维 Haar 小波：把数组拆成低频(平均)+高频(差异)
-function haar1d(arr) {
-  var n = arr.length, half = n >> 1, out = new Float32Array(n);
-  for (var i = 0; i &lt; half; i++) {
-    out[i]      = (arr[2*i] + arr[2*i+1]) / 2;  // 低频
-    out[i+half] = (arr[2*i] - arr[2*i+1]) / 2;  // 高频
-  }
-  return out;
-}
+      <pre><code>// 真实 JPEG2000 编码：OpenJPEG（编译成 WebAssembly，浏览器内运行）
+// 内部使用 9/7 小波（有损）+ EBCOT 熵编码，输出真实 J2K 码流
+encoder.getDecodedBuffer({ width, height, componentCount, bitsPerSample, isSigned }).set(pixels);
+encoder.setDecompositions(3);        // 小波分解层数
+encoder.setQuality(false, 1);        // 有损编码
+encoder.setCompressionRatio(0, 12);  // 目标压缩比 12:1
+encoder.encode();                    // 输出真实 J2K 码流
 
-// 二维 DWT = 先对每行做 1D，再对每列做 1D
-// 结果自然分成 LL / LH / HL / HH 四个频带</code></pre>
+// 真实 JPEG 编码：直接用浏览器原生 encoder（canvas.toBlob 的 image/jpeg）
+canvas.toBlob(cb, 'image/jpeg', quality);  // 8×8 DCT + 色度下采样
+
+// 渐进式：一个码流 6 个质量层，逐层真实解码
+decoder.decodeSubResolution(0, layer);     // layer = 1..6</code></pre>
     </div>
     <p style="color:#a0a0a0; margin-top:12px; font-size:0.88rem;">
-      真实 JPEG2000 用更复杂的 9/7 或 5/3 小波 + EBCOT 熵编码，这里是保留其灵魂的教学等价物——用最简单的 Haar 小波，让你「看见」DWT 的核心思想。
+      上面的压缩对比、体积、PSNR、渐进层都是真实编解码结果：JPEG 用浏览器原生编码器，JPEG2000 用 OpenJPEG（WASM）。唯一「示意」的部分是上方小波子带分解图——真实编码器不暴露中间系数，所以用 Haar 小波展示相同的频带结构。
     </p>
   </div>
 
@@ -228,7 +268,7 @@ function haar1d(arr) {
       <div class="principle-card">
         <div class="num"><i class="ti ti-satellite"></i></div>
         <h4>卫星遥感 / 档案扫描</h4>
-        <p>超大图像需要渐进式加载和快速缩放，正是 JPEG2000 多分辨率特性的主场。</p>
+        <p>超大图像需要渐进式加载和快速缩放，正是 JPEG2000 渐进/多分辨率特性的主场。</p>
       </div>
       <div class="principle-card">
         <div class="num"><i class="ti ti-device-desktop"></i></div>
@@ -240,7 +280,9 @@ function haar1d(arr) {
 
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@cornerstonejs/codec-openjpeg@1.3.2/dist/openjpegwasm.js"></script>
 <script src="engine.js"></script>
+<script src="codec.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

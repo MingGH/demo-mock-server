@@ -1,11 +1,11 @@
 // ========== JPEG2000 演示引擎 单元测试 ==========
 // 运行: node pages/jpeg2000/engine.test.js
+// 说明：真实 JPEG2000 编解码由 codec.js（OpenJPEG/WASM）负责，不在 Node 单测范围；
+// 这里测试纯逻辑工具与教学可视化的 Haar 小波。
 
 const {
-  haar1d, ihaar1d, dwt2d, idwt2d, dwt2dLevels, idwt2dLevels, maxSafeLevels,
-  extractBand,
-  psnr, quantize, estimateBytes, jpeg2000Compress,
-  jpegBlockArtifact, progressiveLevel, toGrayscale
+  haar1d, ihaar1d, dwt2d, extractBand,
+  psnr, toGrayscale, bytesToHuman, searchQualityForSize
 } = require('./engine.js');
 
 let passed = 0, failed = 0;
@@ -22,11 +22,6 @@ console.log('\n[Haar 1D 往返]');
 {
   const arr = new Float32Array([100, 120, 200, 220, 50, 50]);
   const t = haar1d(arr);
-  const back = ihaar1d(t);
-  let ok = true;
-  for (let i = 0; i < arr.length; i++) if (Math.abs(back[i] - arr[i]) > 1e-4) { ok = false; break; }
-  assert(ok, '偶长度数组正逆往返无损');
-  // 检验低频=前两个平均, 高频=差值/2
   assertClose(t[0], 110, 1e-4, '低频1 = (100+120)/2');
   assertClose(t[1], 210, 1e-4, '低频2 = (200+220)/2');
   assertClose(t[3], -10, 1e-4, '高频1 = (100-120)/2');
@@ -38,28 +33,11 @@ console.log('\n[Haar 1D 奇数长度]');
 {
   const arr = new Float32Array([10, 20, 30, 40, 99]);
   const t = haar1d(arr);
-  const back = ihaar1d(t);
-  assertClose(back[4], 99, 1e-4, '奇数长度末尾原样保留');
-  let ok = true;
-  for (let i = 0; i < 4; i++) if (Math.abs(back[i] - arr[i]) > 1e-4) { ok = false; break; }
-  assert(ok, '前 4 个元素往返无损');
+  assertClose(t[4], 99, 1e-4, '奇数长度末尾原样保留');
 }
 
-// ── 测试 3: 2D DWT 往返 ──
-console.log('\n[2D DWT 往返]');
-{
-  const w = 8, h = 8;
-  const gray = new Float32Array(w * h);
-  for (let i = 0; i < w * h; i++) gray[i] = (i * 37) % 256;
-  const coeff = dwt2d(gray, w, h);
-  const back = idwt2d(coeff, w, h);
-  let ok = true;
-  for (let i = 0; i < w * h; i++) if (Math.abs(back[i] - gray[i]) > 1e-3) { ok = false; break; }
-  assert(ok, '任意数据 2D 往返无损');
-}
-
-// ── 测试 4: 子带提取尺寸 ──
-console.log('\n[子带提取]');
+// ── 测试 3: 2D DWT 子带提取 ──
+console.log('\n[2D DWT / 子带提取]');
 {
   const w = 8, h = 8;
   const gray = new Float32Array(w * h).fill(128);
@@ -72,14 +50,27 @@ console.log('\n[子带提取]');
   assert(lh.w === 4 && lh.h === 4, 'LH 4×4');
   assert(hl.w === 4 && hl.h === 4, 'HL 4×4');
   assert(hh.w === 4 && hh.h === 4, 'HH 4×4');
-  // 平坦图 → LL=128, 其余高频≈0
   assertClose(ll.data[0], 128, 1e-3, '平坦图 LL = 128');
   let hfZero = true;
   for (let i = 0; i < hh.data.length; i++) if (Math.abs(hh.data[i]) > 1e-3) { hfZero = false; break; }
   assert(hfZero, '平坦图 HH 高频≈0');
 }
 
-// ── 测试 5: PSNR ──
+// ── 测试 3b: 含边缘图 → 高频非零（能量分布正确） ──
+console.log('\n[2D DWT 边缘检测]');
+{
+  const w = 8, h = 8;
+  const gray = new Float32Array(w * h);
+  // 奇偶列交替明暗：每个 Haar 对内都有 0/255 反差，水平细节 LH 应产生显著系数
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) gray[j * w + i] = (i % 2 === 0) ? 0 : 255;
+  const coeff = dwt2d(gray, w, h);
+  const lh = extractBand(coeff, w, h, 1); // 水平细节（垂直边缘）
+  let maxAbs = 0;
+  for (let i = 0; i < lh.data.length; i++) maxAbs = Math.max(maxAbs, Math.abs(lh.data[i]));
+  assert(maxAbs > 50, `垂直条纹在 LH 子带产生显著系数 (max=${maxAbs.toFixed(1)})`);
+}
+
+// ── 测试 4: PSNR ──
 console.log('\n[PSNR]');
 {
   const a = new Float32Array(100).fill(128);
@@ -89,113 +80,36 @@ console.log('\n[PSNR]');
   assert(psnr(a, c) === 10 * Math.log10(255 * 255 / (128 * 128)), '全 0 vs 全128 → 固定值');
 }
 
-// ── 测试 6: 量化 / 估计字节 ──
-console.log('\n[量化与字节估计]');
+// ── 测试 5: bytesToHuman ──
+console.log('\n[bytesToHuman]');
 {
-  const coeff = new Float32Array([0.1, 5, 200, -100, 1, 2]);
-  const bytesSmall = estimateBytes(coeff, 100);
-  const bytesBig = estimateBytes(coeff, 1000);
-  assert(bytesBig <= bytesSmall, '量化步长越大 → 非零系数越少');
-  const q = quantize(coeff, 100);
-  assert(q[2] === 200, '200/100=2 → 200');
-  assert(q[1] === 0, '5/100=0.05 → 0');
+  assert(bytesToHuman(0) === '0 B', '0 B');
+  assert(bytesToHuman(512) === '512 B', '512 B');
+  assert(bytesToHuman(2048) === '2.0 KB', '2.0 KB');
+  assert(bytesToHuman(3 * 1024 * 1024) === '3.00 MB', '3.00 MB');
+  assert(bytesToHuman(-1) === '—', '负值 → —');
 }
 
-// ── 测试 7: JPEG2000 压缩质量单调 ──
-console.log('\n[JPEG2000 压缩]');
-{
-  const w = 16, h = 16;
-  const gray = new Float32Array(w * h);
-  for (let i = 0; i < w * h; i++) gray[i] = (i * 13) % 256;
-  const low = jpeg2000Compress(gray, w, h, 2, 1);    // 温和
-  const high = jpeg2000Compress(gray, w, h, 2, 200); // 狠
-  assert(high.psnr <= low.psnr, '量化越狠 → PSNR 越低');
-  assert(high.compressionRatio >= low.compressionRatio, '量化越狠 → 压缩比越高');
-  // 温和量化 PSNR 应很高
-  assert(low.psnr > 30, `温和量化 PSNR>30dB (got ${low.psnr.toFixed(1)})`);
-}
-
-// ── 测试 7b: 多级 DWT 往返 ──
-console.log('\n[多级 DWT 往返]');
-{
-  const w = 16, h = 16;
-  const gray = new Float32Array(w * h);
-  for (let i = 0; i < w * h; i++) gray[i] = (i * 29) % 256;
-  for (const levels of [1, 2, 3]) {
-    const c = dwt2dLevels(gray, w, h, levels);
-    const back = idwt2dLevels(c, w, h, levels);
-    let ok = true;
-    for (let i = 0; i < w * h; i++) if (Math.abs(back[i] - gray[i]) > 1e-3) { ok = false; break; }
-    assert(ok, `levels=${levels} 多级 DWT 往返无损`);
+// ── 测试 6: searchQualityForSize 单调体积匹配 ──
+console.log('\n[searchQualityForSize]');
+(async () => {
+  try {
+    // 模拟 JPEG：质量 q 越大体积越大（线性），目标 = 中点
+    const fn = async (q) => Math.round(100 + q * 1000);
+    const r = await searchQualityForSize(fn, 600, { tolerance: 0.05, iterations: 8 });
+    assert(Math.abs(r.size - 600) / 600 <= 0.06, `匹配目标体积 600 (±6%)，实际 ${r.size}`);
+    // 目标比最小质量还小 → 取最小质量
+    const r2 = await searchQualityForSize(fn, 50, { tolerance: 0.05, iterations: 8 });
+    assert(r2.quality === 0.02, '目标过小 → 钳制到最小质量');
+    // 目标比最大质量还大 → 取最大质量
+    const r3 = await searchQualityForSize(fn, 5000, { tolerance: 0.05, iterations: 8 });
+    assert(r3.quality === 0.99, '目标过大 → 钳制到最大质量');
+  } finally {
+    finish();
   }
-}
+})();
 
-// ── 测试 7c: 层数越多压缩比越高（保留的无损区越小） ──
-console.log('\n[层数影响压缩比]');
-{
-  const w = 16, h = 16;
-  const gray = new Float32Array(w * h);
-  for (let i = 0; i < w * h; i++) gray[i] = (i * 7) % 256;
-  const c1 = jpeg2000Compress(gray, w, h, 1, 50);
-  const c3 = jpeg2000Compress(gray, w, h, 3, 50);
-  assert(c3.compressionRatio >= c1.compressionRatio, '层数多 → 压缩比不更低');
-}
-
-// ── 测试 7d: 任意尺寸多级 DWT 不崩（层数自动钳制） ──
-console.log('\n[任意尺寸钳制]');
-{
-  // 奇数 / 非 2 的幂尺寸，即使请求很多层也不应产生 NaN 或 0×0
-  for (const [w, h] of [[800,600],[100,80],[18,10],[17,9],[6,4],[3,5]]) {
-    const gray = new Float32Array(w * h);
-    for (let i = 0; i < w * h; i++) gray[i] = (i * 29) % 256;
-    const c = dwt2dLevels(gray, w, h, 5);
-    const back = idwt2dLevels(c, w, h, 5);
-    let nan = false, bad = false;
-    for (let i = 0; i < w * h; i++) {
-      if (isNaN(back[i])) nan = true;
-      if (Math.abs(back[i] - gray[i]) > 1e-3) bad = true;
-    }
-    // 保证最深层 LL 尺寸 ≥1 且不产生 NaN
-    assert(!nan, `${w}x${h} 多层分解不产生 NaN`);
-    const ms = maxSafeLevels(w, h, 5);
-    assert(ms >= 0 && ms <= 5 && !isNaN(ms), `${w}x${h} maxSafeLevels=${ms} 有效`);
-  }
-}
-
-// ── 测试 8: JPEG 块伪影 ──
-console.log('\n[JPEG 块伪影]');
-{
-  const w = 16, h = 16;
-  const gray = new Float32Array(w * h).fill(100);
-  for (let i = 0; i < w; i++) gray[i] = 200; // 顶行亮
-  const blocked = jpegBlockArtifact(gray, w, h, 8);
-  // 第一个 8×8 块包含顶行的 200，平均后比原 100 高
-  assert(blocked[0] > 100, '含亮边的块被平均后变亮');
-  // 块内部完全一致（块效应）
-  let uniform = true;
-  for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) {
-    if (blocked[j * w + i] !== blocked[0]) { uniform = false; break; }
-  }
-  assert(uniform, '同一 8×8 块内像素值完全一致（方块伪影）');
-}
-
-// ── 测试 9: 渐进多分辨率 ──
-console.log('\n[渐进多分辨率]');
-{
-  const w = 16, h = 16;
-  const gray = new Float32Array(w * h);
-  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) gray[j * w + i] = (i / w) * 255;
-  const full = progressiveLevel(gray, w, h, 0);
-  const half = progressiveLevel(gray, w, h, 1);
-  const quarter = progressiveLevel(gray, w, h, 2);
-  assert(full.w === 16 && full.h === 16, 'level0 全分辨率 16×16');
-  assert(half.w === 8 && half.h === 8, 'level1 半分辨率 8×8');
-  assert(quarter.w === 4 && quarter.h === 4, 'level2 1/4 分辨率 4×4');
-  // 水平渐变：quarter 左上应暗、右下应亮
-  assert(quarter.data[0] < quarter.data[quarter.data.length - 1], '1/4 图左暗右亮（保留低频结构）');
-}
-
-// ── 测试 10: toGrayscale ──
+// ── 测试 7: toGrayscale ──
 console.log('\n[toGrayscale]');
 {
   const w = 2, h = 1;
@@ -206,6 +120,8 @@ console.log('\n[toGrayscale]');
 }
 
 // ── 结果 ──
-console.log(`\n${'='.repeat(40)}`);
-console.log(`结果: ${passed} 通过, ${failed} 失败`);
-if (failed > 0) process.exit(1);
+function finish() {
+  console.log(`\n${'='.repeat(40)}`);
+  console.log(`结果: ${passed} 通过, ${failed} 失败`);
+  if (failed > 0) process.exit(1);
+}

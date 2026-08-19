@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="把你正在访问的这个 Spring Boot 服务的内存现场拆给你看：堆、Metaspace、Code Cache、线程栈各占多少，以及它跟裸 JDK 的差距到底有多大。">
+  <title>JVM 内存解剖：你的服务内存去哪了 | 数字直觉</title>
+  <meta property="og:title" content="JVM 内存解剖：你的服务内存去哪了">
+  <meta property="og:description" content="实时读取本服务自身的内存分布，看「环境税」到底有多少。">
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js 环形图（CDN 引入，不依赖构建工具） -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-cpu"></i> JVM 内存解剖：你的服务内存去哪了</h1>
+    <p>「Java 就是吃内存」——先别急着站队。这个页面读取的是<strong>正在运行的真实服务</strong>的内存现场，把每一份占用都标给你看。</p>
+    <span class="live-tag"><span class="dot"></span>实时采集 · 每 8 秒自动刷新</span>
+  </div>
+
+  <!-- ── 模块一：首屏指标 ── -->
+  <div class="section">
+    <h2><i class="ti ti-activity"></i> 现场：这份服务此刻的身家</h2>
+    <p class="section-desc">以下数据来自后端 <code>/jvm-memory</code> 接口实测，不是估算。</p>
+
+    <div class="env-line"><i class="ti ti-brand-java"></i> 运行环境：<span id="jvmVersion">—</span> · GC：<span id="gcNames">—</span></div>
+
+    <div class="metrics" id="metricGrid">
+      <div class="metric"><div class="label">进程常驻内存 RSS</div><div class="value" id="mRss">—</div><div class="hint">整机视角</div></div>
+      <div class="metric"><div class="label">堆 已用 / 上限</div><div class="value" id="mHeap">—</div><div class="hint">业务对象住这儿</div></div>
+      <div class="metric"><div class="label">存活线程</div><div class="value" id="mThreads">—</div><div class="hint">每条背约 1MB 栈</div></div>
+      <div class="metric"><div class="label">已加载类</div><div class="value" id="mClasses">—</div><div class="hint">Metaspace 的来源</div></div>
+    </div>
+    <div class="container-gauge" id="gaugeWrap">
+      <div class="gauge-top"><span id="gaugeLabel">容器内存占用</span><span id="gaugeText">—</span></div>
+      <div class="gauge-track"><div class="gauge-fill" id="gaugeFill" style="width:0%"></div></div>
+      <div class="gauge-warn" id="gaugeWarn" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ── 模块二：环境税账本 ── -->
+  <div class="section">
+    <h2><i class="ti ti-books"></i> 账本：每一份内存去了哪</h2>
+    <p class="section-desc">服务启动到现在的稳态分布。绿色之外的彩色块，大部分属于「环境」而非你的业务代码。</p>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="refreshNow()"><i class="ti ti-refresh"></i> 立即刷新</button>
+      <span class="empty-hint" id="lastUpdated"></span>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-box"><canvas id="donutChart"></canvas></div>
+      <div class="chart-legend" id="legendList"></div>
+    </div>
+
+    <div class="tax-note" id="taxNote"></div>
+  </div>
+
+  <!-- ── 模块三：为什么 Spring Boot 天生就胖 ── -->
+  <div class="section">
+    <h2><i class="ti ti-zoom-in"></i> 拆解：这笔「环境税」都花在哪了</h2>
+    <p class="section-desc">Java 从出厂就把「内存换安全与效率」写进了设计说明书。</p>
+    <div class="grid-2">
+      <div class="cell">
+        <h3><i class="ti ti-brand-java"></i> 一个对象 = <span class="num">16 字节</span></h3>
+        <p><code>new Object()</code> 在堆里就占 16 字节；装箱成 <code>Integer</code> 也是 16 字节。没心疼这些字节，所以你不用操心 C++ 里的 use-after-free。</p>
+      </div>
+      <div class="cell">
+        <h3><i class="ti ti-vip"></i> Metaspace = 类的户口本</h3>
+        <p>开始加载类元数据的地方。Spring 一启动就要解析几百上千个类，Metaspace 跟着涨——这是框架的成本。</p>
+      </div>
+      <div class="cell">
+        <h3><i class="ti ti-bolt"></i> Code Cache = 即时编译缓存</h3>
+        <p>JIT 把热点字节码编成机器码存在这里，换的是峰值性能。跑得越热，这里越大。</p>
+      </div>
+      <div class="cell">
+        <h3><i class="ti ti-loader-2"></i> 线程栈 = 人多的代价</h3>
+        <p>每条线程默认背约 1MB 栈。Spring Boot 默认线程池动辄几百线程，虚拟线程（JDK 21）能把这笔砍掉大半。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 模块四：跟裸 JDK 比 ── -->
+  <div class="section">
+    <h2><i class="ti ti-scale"></i> 对照：Spring Boot vs 裸 JDK</h2>
+    <p class="section-desc">用<strong>真实可跑</strong>的裸 JDK 单文件 HTTP 服务做基准（<code>com.sun.net.httpserver</code>，零依赖，<code>-Xmx64m</code>，启动后约 40–50MB）。</p>
+
+    <table class="compare">
+      <thead>
+        <tr><th>实现</th><th>常驻内存（RSS）</th><th>说明</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>裸 JDK MiniServer（-Xmx64m）</td><td class="mem">≈ 45 MB</td><td>JDK 11+ 单文件直接跑，百来行代码</td></tr>
+        <tr><td>本页面背后的 Spring Boot 服务</td><td class="mem" id="srvRss">—</td><td>会话、监控、鉴权、连接池全家桶</td></tr>
+      </tbody>
+    </table>
+    <div class="tax-note" id="contrastNote"></div>
+  </div>
+
+  <!-- ── 模块五：结论 ── -->
+  <div class="section">
+    <h2><i class="ti ti-deal"></i> 所以 Java 真吃内存吗</h2>
+    <p class="section-desc">现象是真的，但锅要甩对地方。</p>
+    <div class="grid-2">
+      <div class="cell">
+        <h3 style="color:#81c784"><i class="ti ti-check"></i> 能省</h3>
+        <p>Java Card 几 KB、KVM「千字节虚拟机」跑功能机；裸 JDK 写了也能压到几十 MB。低内存 Java 一直存在。</p>
+      </div>
+      <div class="cell">
+        <h3 style="color:#ff6b6b"><i class="ti ti-alert-triangle"></i> 不是你那个 Spring</h3>
+        <p>服务端没人用裸 JDK——为了省几百 MB 去手动装配事务、鉴权、连接池？没人愿意。这笔省不下来的，叫「环境税」。</p>
+      </div>
+      <div class="cell">
+        <h3 style="color:#90caf9"><i class="ti ti-trending-up"></i> 都在退环境税</h3>
+        <p>虚拟线程、ZGC、GraalVM native image、Quarkus、Spring Boot 3 官方支持——官方越发力，越说明问题真实存在，解法也一直都有。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">内存读数来自此服务自身，本页面不撒谎不预估。想自己验证裸 JDK 那份？拿同一段 <code>MiniServer.java</code> 跑一跑，用 <code>ps -o rss</code> 自己量。</div>
+
+  <div class="error-box" id="errorBox"></div>
+</div>
+
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="JPEG2000 交互演示：DWT 小波子带分解、量化、渐进多分辨率。同压缩比对比 JPEG 的方块效应与 JPEG2000 的平滑，亲手验证它「更好」，再追问为什么它却输了。">
+  <title>JPEG2000：更好，为什么却输了 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-stack-2"></i> JPEG2000：更好，为什么却输了</h1>
+    <p>它压缩比更高、没有方块效应、支持无损和渐进式加载——技术指标几乎全面碾压 JPEG。上传一张图，亲手验证它有多好，再看它为何被市场抛弃。</p>
+  </div>
+
+  <!-- ── 主交互区：JPEG vs JPEG2000 ── -->
+  <div class="section">
+    <h2><i class="ti ti-photo"></i> 实时对比：同压缩比下谁更干净</h2>
+
+    <div class="upload-area" id="uploadArea">
+      <div class="upload-content">
+        <i class="ti ti-cloud-upload" style="font-size: 2.5rem; color: #ffd700;"></i>
+        <p>拖入图片或点击上传</p>
+        <span class="upload-hint">支持 JPG / PNG / WebP</span>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+
+    <div class="canvas-area" id="canvasArea" style="display:none;">
+      <div class="canvas-pair">
+        <div class="canvas-box">
+          <div class="canvas-label">原图（灰度）</div>
+          <canvas id="originalCanvas"></canvas>
+        </div>
+        <div class="canvas-box">
+          <div class="canvas-label">JPEG2000（DWT）</div>
+          <canvas id="j2kCanvas"></canvas>
+        </div>
+        <div class="canvas-box">
+          <div class="canvas-label" id="jpegLabel">JPEG（分块 DCT）</div>
+          <canvas id="jpegCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="zoom-compare" id="zoomCompare" style="display:none;">
+        <h3><i class="ti ti-zoom-in"></i> 局部放大（4×）</h3>
+        <div class="canvas-pair">
+          <div class="canvas-box small">
+            <canvas id="zoomJ2k"></canvas>
+          </div>
+          <div class="canvas-box small">
+            <canvas id="zoomJpeg"></canvas>
+          </div>
+        </div>
+        <p class="zoom-hint-text">在上方两张图上点击任意位置，放大对比同一区域</p>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <h3><i class="ti ti-settings"></i> 压缩强度</h3>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>量化步长（越大压缩越狠）</span>
+              <span class="val" id="quantVal">30</span>
+            </div>
+            <input type="range" id="quantSlider" min="1" max="300" value="30">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>小波分解层数</span>
+              <span class="val" id="levelsVal">2</span>
+            </div>
+            <input type="range" id="levelsSlider" min="1" max="4" value="2" step="1">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary btn-sm" id="reuploadBtn"><i class="ti ti-upload"></i> 换一张</button>
+            <button class="btn btn-secondary btn-sm" id="downloadBtn"><i class="ti ti-download"></i> 下载 JPEG2000</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3><i class="ti ti-adjustments"></i> 对比指标</h3>
+          <div class="metric-row">
+            <div class="metric-card" id="metricJ2k">
+              <div class="metric-name">JPEG2000</div>
+              <div class="metric-value" id="mJ2kPsnr">—</div>
+              <div class="metric-label">PSNR (dB)</div>
+              <div class="metric-value" id="mJ2kRatio">—</div>
+              <div class="metric-label">压缩比</div>
+            </div>
+            <div class="metric-card" id="metricJpeg">
+              <div class="metric-name">JPEG（模拟）</div>
+              <div class="metric-value" id="mJpegPsnr">—</div>
+              <div class="metric-label">PSNR (dB)</div>
+              <div class="metric-value" id="mJpegBlock">8×8</div>
+              <div class="metric-label">分块大小</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-item"><span class="val" id="statSize">—</span><span class="lbl">图片尺寸</span></div>
+        <div class="stat-item"><span class="val" id="statTime">—</span><span class="lbl">处理耗时</span></div>
+        <div class="stat-item"><span class="val" id="statWinner">—</span><span class="lbl">PSNR 胜者</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 子带分解可视化 ── -->
+  <div class="section" id="bandSection" style="display:none;">
+    <h2><i class="ti ti-layout-grid"></i> 小波子带分解（DWT）</h2>
+    <p class="section-hint">一次小波变换把图像拆成四个频带：LL 保留整体轮廓，LH/HL/HH 分别保留水平、垂直、对角细节。这就是 JPEG2000 没有方块效应的秘密。</p>
+    <div class="band-grid" id="bandGrid">
+      <div class="band-cell">
+        <div class="band-name">LL 低频（轮廓）</div>
+        <canvas id="bandLL"></canvas>
+      </div>
+      <div class="band-cell">
+        <div class="band-name">LH 水平细节</div>
+        <canvas id="bandLH"></canvas>
+      </div>
+      <div class="band-cell">
+        <div class="band-name">HL 垂直细节</div>
+        <canvas id="bandHL"></canvas>
+      </div>
+      <div class="band-cell">
+        <div class="band-name">HH 对角细节</div>
+        <canvas id="bandHH"></canvas>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-secondary btn-sm" id="animateBtn"><i class="ti ti-player-play"></i> 逐层渐进重建动画</button>
+    </div>
+  </div>
+
+  <!-- ── 渐进动画 ── -->
+  <div class="section" id="animSection" style="display:none;">
+    <h2><i class="ti ti-player-play"></i> 渐进式重建：一个文件，先模糊后清晰</h2>
+    <p class="section-hint">JPEG2000 的多分辨率特性——解码器只需要码流的前一段就能先得到缩略图，数据越多越清晰。拖动进度条模拟网络逐步收到数据。</p>
+    <div class="anim-canvas-wrap">
+      <canvas id="animCanvas"></canvas>
+    </div>
+    <div class="anim-controls">
+      <button class="btn btn-primary btn-sm" id="animPlayBtn"><i class="ti ti-player-play"></i> 播放</button>
+      <button class="btn btn-secondary btn-sm" id="animPauseBtn"><i class="ti ti-player-pause"></i> 暂停</button>
+      <div class="slider-group" style="flex:1; margin:0;">
+        <div class="slider-label">
+          <span>接收进度（%）</span>
+          <span class="val" id="animProgressVal">0</span>
+        </div>
+        <input type="range" id="animProgressSlider" min="0" max="100" value="0">
+      </div>
+    </div>
+    <div class="anim-progress">
+      <div class="anim-progress-fill" id="animProgress"></div>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 它为什么没有方块效应</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>JPEG 的罪：8×8 分块</h4>
+        <p>JPEG 把图像切成 8×8 的小块，每块独立做 DCT 变换。块与块之间各自为政，压缩狠了，块边界就露出明暗差——就是那个难看的「马赛克」方块。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>JPEG2000 的解：整图小波变换</h4>
+        <p>DWT 对整张图做全局变换，不切块。图像的能量被重排到四个频带里，压缩时只是「粗化」某些频带，不会有块的边界，所以没有方块效应。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>多分辨率是白送的</h4>
+        <p>小波分解天然产生一个「缩小的 LL」子带。于是同一个文件里既装着全图，也装着半分辨率和 ¼ 分辨率的版本——渐进式加载、缩放看细节都不用重新下载。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 那它到底输在哪</h3>
+      <p>技术全面占优，却输给了市场：核心算法被商业机构注册了大量专利，授权费用劝退了浏览器和操作系统；DWT 计算量是 DCT 的 10~20 倍，编码更慢；最致命的是——JPEG 已经无处不在，没有「硬伤」，没人愿意为一个「更好一点点」的东西重建整个生态。技术最先进 ≠ 技术能赢。</p>
+    </div>
+  </div>
+
+  <!-- ── 核心代码 ── -->
+  <div class="section">
+    <h2><i class="ti ti-code"></i> 核心代码（教学版 Haar 小波）</h2>
+    <div class="code-block">
+      <pre><code>// 一维 Haar 小波：把数组拆成低频(平均)+高频(差异)
+function haar1d(arr) {
+  var n = arr.length, half = n >> 1, out = new Float32Array(n);
+  for (var i = 0; i &lt; half; i++) {
+    out[i]      = (arr[2*i] + arr[2*i+1]) / 2;  // 低频
+    out[i+half] = (arr[2*i] - arr[2*i+1]) / 2;  // 高频
+  }
+  return out;
+}
+
+// 二维 DWT = 先对每行做 1D，再对每列做 1D
+// 结果自然分成 LL / LH / HL / HH 四个频带</code></pre>
+    </div>
+    <p style="color:#a0a0a0; margin-top:12px; font-size:0.88rem;">
+      真实 JPEG2000 用更复杂的 9/7 或 5/3 小波 + EBCOT 熵编码，这里是保留其灵魂的教学等价物——用最简单的 Haar 小波，让你「看见」DWT 的核心思想。
+    </p>
+  </div>
+
+  <!-- ── 应用场景 ── -->
+  <div class="section">
+    <h2><i class="ti ti-history"></i> 它没死，只是换了个地方活着</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-movie"></i></div>
+        <h4>数字影院（DCI）</h4>
+        <p>好莱坞数字放映的标准格式，4K/8K 母版用 JPEG2000 编码。这里没有兼容性包袱，画质和帧率优先。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-stethoscope"></i></div>
+        <h4>医学影像（DICOM）</h4>
+        <p>CT、MRI 影像要求无损存档 + 任意缩放看细节。JPEG2000 的无损能力和多分辨率正好对口。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-satellite"></i></div>
+        <h4>卫星遥感 / 档案扫描</h4>
+        <p>超大图像需要渐进式加载和快速缩放，正是 JPEG2000 多分辨率特性的主场。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-device-desktop"></i></div>
+        <h4>互联网？几乎绝迹</h4>
+        <p>浏览器默认不支持、没有生态、编码慢。它输掉的，恰恰是它最该赢的战场。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

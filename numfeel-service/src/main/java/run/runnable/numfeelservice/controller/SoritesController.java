@@ -1,14 +1,11 @@
 package run.runnable.numfeelservice.controller;
 
-import tools.jackson.databind.JsonNode;
 import run.runnable.numfeelservice.controller.dto.CommonResponses.SubmitAckResponse;
 import run.runnable.numfeelservice.controller.dto.GameplayRequests.SoritesSubmitRequest;
+import run.runnable.numfeelservice.controller.dto.GameplayResponses.SoritesStatsResponse;
 import run.runnable.numfeelservice.service.SoritesService;
+import run.runnable.numfeelservice.web.ApiEnvelope;
 import run.runnable.numfeelservice.web.ApiException;
-import run.runnable.numfeelservice.web.ApiResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,8 +23,6 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/sorites")
 public class SoritesController {
 
-    private static final Logger log = LoggerFactory.getLogger(SoritesController.class);
-
     private final SoritesService service;
 
     public SoritesController(SoritesService service) {
@@ -35,7 +30,7 @@ public class SoritesController {
     }
 
     @PostMapping("/submit")
-    public Mono<ResponseEntity<JsonNode>> submit(@RequestBody(required = false) SoritesSubmitRequest request) {
+    public Mono<ApiEnvelope<SubmitAckResponse>> submit(@RequestBody(required = false) SoritesSubmitRequest request) {
         if (request == null) {
             throw ApiException.badRequest("Invalid JSON");
         }
@@ -58,20 +53,12 @@ public class SoritesController {
         }
 
         return service.submit(sandBoundary, sandSharpness, baldBoundary, colorBoundary)
-                .then(Mono.fromSupplier(() -> ApiResponse.ok(new SubmitAckResponse(true))))
-                .onErrorResume(err -> {
-                    log.error("sorites submit error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
+                .then(Mono.fromSupplier(() -> ApiEnvelope.ok(new SubmitAckResponse(true))));
     }
 
     @GetMapping("/stats")
-    public Mono<ResponseEntity<JsonNode>> stats() {
+    public Mono<ApiEnvelope<SoritesStatsResponse>> stats() {
         return service.stats()
-                .map(ApiResponse::ok)
-                .onErrorResume(err -> {
-                    log.error("sorites stats error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
+                .map(ApiEnvelope::ok);
     }
 }

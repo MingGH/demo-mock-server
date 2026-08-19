@@ -1,16 +1,14 @@
 package run.runnable.numfeelservice.controller;
 
-import tools.jackson.databind.JsonNode;
 import run.runnable.numfeelservice.service.P2pSpyService;
-import run.runnable.numfeelservice.web.ApiResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
+import run.runnable.numfeelservice.web.ApiEnvelope;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 /**
  * P2P 隐私透视镜 HTTP 处理器。
@@ -21,8 +19,6 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/p2p")
 public class P2pSpyController {
-
-    private static final Logger log = LoggerFactory.getLogger(P2pSpyController.class);
 
     private final P2pSpyService service;
 
@@ -37,14 +33,10 @@ public class P2pSpyController {
      * @return 包含 peer 地理分布和监控日志的完整结果
      */
     @GetMapping("/peers")
-    public Mono<ResponseEntity<JsonNode>> peers(
+    public Mono<ApiEnvelope<P2pSpyService.PeerDiscoveryResult>> peers(
             @RequestParam(value = "index", defaultValue = "0") int index) {
         return service.getPeers(index)
-                .map(ApiResponse::ok)
-                .onErrorResume(err -> {
-                    log.error("P2P peers error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
+                .map(ApiEnvelope::ok);
     }
 
     /**
@@ -53,12 +45,8 @@ public class P2pSpyController {
      * @return torrent 元数据列表
      */
     @GetMapping("/torrents")
-    public Mono<ResponseEntity<JsonNode>> torrents() {
+    public Mono<ApiEnvelope<List<P2pSpyService.TorrentSummary>>> torrents() {
         return service.listTorrents()
-                .map(ApiResponse::ok)
-                .onErrorResume(err -> {
-                    log.error("P2P torrents error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
+                .map(ApiEnvelope::ok);
     }
 }

@@ -1,15 +1,13 @@
 package run.runnable.numfeelservice.controller;
 
-import tools.jackson.databind.JsonNode;
 import run.runnable.numfeelservice.controller.dto.TrackingResponses.MemoryHistoryItemResponse;
 import run.runnable.numfeelservice.controller.dto.TrackingRequests.MemoryHistoryItem;
 import run.runnable.numfeelservice.controller.dto.TrackingRequests.MemoryLeaderboardGetQuery;
 import run.runnable.numfeelservice.controller.dto.TrackingRequests.MemoryLeaderboardPostRequest;
 import run.runnable.numfeelservice.controller.dto.TrackingResponses.MemoryLeaderboardEntryResponse;
 import run.runnable.numfeelservice.controller.dto.TrackingResponses.MemoryLeaderboardListResponse;
+import run.runnable.numfeelservice.web.ApiEnvelope;
 import run.runnable.numfeelservice.web.ApiException;
-import run.runnable.numfeelservice.web.ApiResponse;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,7 +38,7 @@ public class MemoryLeaderboardController {
     private final List<MemoryLeaderboardEntryResponse> records = new CopyOnWriteArrayList<>();
 
     @GetMapping
-    public ResponseEntity<JsonNode> get(@ModelAttribute MemoryLeaderboardGetQuery query) {
+    public ApiEnvelope<MemoryLeaderboardListResponse> get(@ModelAttribute MemoryLeaderboardGetQuery query) {
         int lim = parseInt(query == null ? null : query.limit(), 20);
         lim = Math.max(1, Math.min(lim, 50));
 
@@ -54,11 +52,11 @@ public class MemoryLeaderboardController {
             top.add(withRank(item, i + 1));
         }
 
-        return ApiResponse.ok(new MemoryLeaderboardListResponse(records.size(), top));
+        return ApiEnvelope.ok(new MemoryLeaderboardListResponse(records.size(), top));
     }
 
     @PostMapping
-    public ResponseEntity<JsonNode> post(@RequestBody(required = false) MemoryLeaderboardPostRequest request) {
+    public ApiEnvelope<MemoryLeaderboardEntryResponse> post(@RequestBody(required = false) MemoryLeaderboardPostRequest request) {
         if (request == null) {
             throw ApiException.badRequest("Invalid JSON body");
         }
@@ -107,7 +105,7 @@ public class MemoryLeaderboardController {
         records.add(record);
         trimRecords();
 
-        return ApiResponse.ok(record);
+        return ApiEnvelope.ok(record);
     }
 
     private void trimRecords() {

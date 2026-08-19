@@ -1,14 +1,11 @@
 package run.runnable.numfeelservice.controller;
 
-import tools.jackson.databind.JsonNode;
 import run.runnable.numfeelservice.controller.dto.CommonResponses.SubmitAckResponse;
 import run.runnable.numfeelservice.controller.dto.GameplayRequests.BarnumSubmitRequest;
+import run.runnable.numfeelservice.controller.dto.GameplayResponses.BarnumStatsResponse;
 import run.runnable.numfeelservice.service.BarnumStatsService;
+import run.runnable.numfeelservice.web.ApiEnvelope;
 import run.runnable.numfeelservice.web.ApiException;
-import run.runnable.numfeelservice.web.ApiResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,8 +22,6 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/barnum-test")
 public class BarnumStatsController {
 
-    private static final Logger log = LoggerFactory.getLogger(BarnumStatsController.class);
-
     private final BarnumStatsService service;
 
     public BarnumStatsController(BarnumStatsService service) {
@@ -34,7 +29,7 @@ public class BarnumStatsController {
     }
 
     @PostMapping("/submit")
-    public Mono<ResponseEntity<JsonNode>> submit(@RequestBody(required = false) BarnumSubmitRequest request) {
+    public Mono<ApiEnvelope<SubmitAckResponse>> submit(@RequestBody(required = false) BarnumSubmitRequest request) {
         if (request == null) {
             throw ApiException.badRequest("Invalid JSON");
         }
@@ -57,20 +52,12 @@ public class BarnumStatsController {
         }
 
         return service.submit(userGroup, ratings[0], ratings[1], ratings[2], ratings[3], ratings[4])
-                .then(Mono.fromSupplier(() -> ApiResponse.ok(new SubmitAckResponse(true))))
-                .onErrorResume(err -> {
-                    log.error("barnum submit error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
+                .then(Mono.fromSupplier(() -> ApiEnvelope.ok(new SubmitAckResponse(true))));
     }
 
     @GetMapping("/stats")
-    public Mono<ResponseEntity<JsonNode>> stats() {
+    public Mono<ApiEnvelope<BarnumStatsResponse>> stats() {
         return service.stats()
-                .map(ApiResponse::ok)
-                .onErrorResume(err -> {
-                    log.error("barnum stats error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
+                .map(ApiEnvelope::ok);
     }
 }

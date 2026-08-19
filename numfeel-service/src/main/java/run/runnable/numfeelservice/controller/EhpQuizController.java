@@ -1,13 +1,10 @@
 package run.runnable.numfeelservice.controller;
 
-import tools.jackson.databind.JsonNode;
 import run.runnable.numfeelservice.controller.dto.GameplayRequests.EhpQuizSubmitRequest;
+import run.runnable.numfeelservice.controller.dto.GameplayResponses.EhpQuizStatsResponse;
 import run.runnable.numfeelservice.service.EhpQuizService;
+import run.runnable.numfeelservice.web.ApiEnvelope;
 import run.runnable.numfeelservice.web.ApiException;
-import run.runnable.numfeelservice.web.ApiResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,8 +21,6 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/ehp-quiz")
 public class EhpQuizController {
 
-    private static final Logger log = LoggerFactory.getLogger(EhpQuizController.class);
-
     private final EhpQuizService service;
 
     public EhpQuizController(EhpQuizService service) {
@@ -33,7 +28,7 @@ public class EhpQuizController {
     }
 
     @PostMapping("/submit")
-    public Mono<ResponseEntity<JsonNode>> submit(
+    public Mono<ApiEnvelope<EhpQuizStatsResponse>> submit(
             @RequestBody(required = false) EhpQuizSubmitRequest request) {
         if (request == null) {
             throw ApiException.badRequest("Invalid JSON");
@@ -54,20 +49,12 @@ public class EhpQuizController {
         boolean q5 = Boolean.TRUE.equals(request.q5Correct());
 
         return service.submit(total, correct, q1, q2, q3, q4, q5)
-                .map(ApiResponse::ok)
-                .onErrorResume(err -> {
-                    log.error("ehp-quiz submit error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
+                .map(ApiEnvelope::ok);
     }
 
     @GetMapping("/stats")
-    public Mono<ResponseEntity<JsonNode>> stats() {
+    public Mono<ApiEnvelope<EhpQuizStatsResponse>> stats() {
         return service.stats()
-                .map(ApiResponse::ok)
-                .onErrorResume(err -> {
-                    log.error("ehp-quiz stats error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
+                .map(ApiEnvelope::ok);
     }
 }

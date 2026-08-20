@@ -22,10 +22,32 @@
     <h2><i class="ti ti-photo"></i> 真实对比：同体积下谁更干净</h2>
     <p class="section-hint">同一张图，一个用真实 JPEG 编码器压，一个用真实 JPEG2000 编码器压，两者体积被精确匹配到相同（同压缩比），再比画质。点击任意一张对比图，可放大对比同一区域。</p>
 
+    <div class="presets-row">
+      <span class="presets-label"><i class="ti ti-photo-scan"></i> 先挑一张试试</span>
+      <div class="preset-list" id="presetList">
+        <button class="preset-card" data-src="portrait.jpg" data-name="人像">
+          <img src="portrait.jpg" alt="人像" loading="lazy">
+          <span class="preset-name">人像</span>
+        </button>
+        <button class="preset-card" data-src="landscape.jpg" data-name="风景">
+          <img src="landscape.jpg" alt="风景" loading="lazy">
+          <span class="preset-name">风景</span>
+        </button>
+        <button class="preset-card" data-src="citynight.jpg" data-name="夜景">
+          <img src="citynight.jpg" alt="夜景" loading="lazy">
+          <span class="preset-name">夜景</span>
+        </button>
+        <button class="preset-card" data-src="textchart.jpg" data-name="插画">
+          <img src="textchart.jpg" alt="插画" loading="lazy">
+          <span class="preset-name">插画</span>
+        </button>
+      </div>
+    </div>
+
     <div class="upload-area" id="uploadArea">
       <div class="upload-content">
         <i class="ti ti-cloud-upload" style="font-size: 2.5rem; color: #ffd700;"></i>
-        <p>拖入图片或点击上传</p>
+        <p>或者上传你自己的图</p>
         <span class="upload-hint">支持 JPG / PNG / WebP</span>
       </div>
       <input type="file" id="fileInput" accept="image/*" hidden>
@@ -105,7 +127,12 @@
           </div>
           <div class="btn-row">
             <button class="btn btn-primary btn-sm" id="reuploadBtn"><i class="ti ti-upload"></i> 换一张</button>
-            <button class="btn btn-secondary btn-sm" id="downloadBtn"><i class="ti ti-download"></i> 下载真实 .jp2</button>
+            <div class="download-group">
+              <span class="download-label"><i class="ti ti-download"></i> 下载：</span>
+              <button class="btn btn-secondary btn-sm" id="downloadPngBtn"><i class="ti ti-file-type-png"></i> 原始 PNG</button>
+              <button class="btn btn-secondary btn-sm" id="downloadBtn"><i class="ti ti-file"></i> 真实 .jp2</button>
+              <button class="btn btn-secondary btn-sm" id="downloadJpegBtn"><i class="ti ti-file-type-jpg"></i> 真实 .jpg</button>
+            </div>
           </div>
         </div>
 

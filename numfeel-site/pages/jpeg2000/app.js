@@ -33,9 +33,24 @@ const zoomCompare = $('zoomCompare');
 
 function init() {
   setupUpload();
+  setupPresets();
   setupControls();
   setupZoom();
   bootCodec();
+}
+
+// ── 预设缩略图 ──
+function setupPresets() {
+  const cards = document.querySelectorAll('.preset-card');
+  cards.forEach((card) => {
+    card.addEventListener('click', () => {
+      const src = card.getAttribute('data-src');
+      nfTrack('preset_select', { name: card.getAttribute('data-name') });
+      cards.forEach((c) => c.classList.remove('active'));
+      card.classList.add('active');
+      loadImage(src);
+    });
+  });
 }
 
 function bootCodec() {
@@ -77,6 +92,7 @@ function setupUpload() {
 function handleFile(file) {
   if (!file.type.startsWith('image/')) return;
   nfTrack('upload', { source: 'file' });
+  document.querySelectorAll('.preset-card').forEach((c) => c.classList.remove('active'));
   const reader = new FileReader();
   reader.onload = (e) => loadImage(e.target.result);
   reader.readAsDataURL(file);
@@ -84,7 +100,10 @@ function handleFile(file) {
 
 function loadDefaultImage() {
   nfTrack('upload', { source: 'default' });
-  loadImage('sample.jpg');
+  // 默认选中第一个预设缩略图（人像）
+  const first = document.querySelector('.preset-card');
+  if (first) first.classList.add('active');
+  loadImage('portrait.jpg');
 }
 
 function loadImage(src) {
@@ -152,7 +171,7 @@ async function processAll() {
     // JPEG：真实编码，二分质量使体积精确匹配 JPEG2000 的实际体积（保证同体积对比）
     const jpeg = await encodeJpegToSize(grayU8, imgWidth, imgHeight, resJ2k.size);
     if (token !== processToken) return; // 已被更新的请求取代
-    resJpeg = { quality: jpeg.quality, size: jpeg.size, recon: jpeg.gray, psnr: psnr(grayF32, jpeg.gray) };
+    resJpeg = { quality: jpeg.quality, size: jpeg.size, recon: jpeg.gray, psnr: psnr(grayF32, jpeg.gray), bytes: jpeg.bytes };
 
     renderGrayscale(grayF32, imgWidth, imgHeight, $('originalCanvas'));
     renderGrayscale(resJ2k.recon, imgWidth, imgHeight, $('j2kCanvas'));
@@ -230,7 +249,7 @@ function jpegEncode(gray, w, h, q) {
     }
     ctx.putImageData(id, 0, 0);
     c.toBlob((blob) => {
-      if (!blob) { resolve({ size: 0, gray: new Float32Array(w * h) }); return; }
+      if (!blob) { resolve({ size: 0, gray: new Float32Array(w * h), bytes: new Uint8Array(0) }); return; }
       const url = URL.createObjectURL(blob);
       const img = new Image();
       img.onload = () => {
@@ -240,9 +259,16 @@ function jpegEncode(gray, w, h, q) {
         ctx2.drawImage(img, 0, 0, w, h);
         const out = toGrayscale(ctx2.getImageData(0, 0, w, h));
         URL.revokeObjectURL(url);
-        resolve({ size: blob.size, gray: out });
+        blob.arrayBuffer().then((ab) => {
+          resolve({ size: blob.size, gray: out, bytes: new Uint8Array(ab) });
+        });
       };
-      img.onerror = () => { URL.revokeObjectURL(url); resolve({ size: blob.size, gray: new Float32Array(w * h) }); };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        blob.arrayBuffer().then((ab) => {
+          resolve({ size: blob.size, gray: new Float32Array(w * h), bytes: new Uint8Array(ab) });
+        });
+      };
       img.src = url;
     }, 'image/jpeg', q);
   });
@@ -255,7 +281,32 @@ async function encodeJpegToSize(gray, w, h, targetSize) {
     { tolerance: 0.08, iterations: 7 }
   );
   const full = await jpegEncode(gray, w, h, r.quality);
-  return { quality: r.quality, size: full.size, gray: full.gray };
+  return { quality: r.quality, size: full.size, gray: full.gray, bytes: full.bytes };
+}
+
+// ── 灰度 → PNG 字节（用于下载原始图） ──
+function grayToPngBlob(gray, w, h) {
+  return new Promise((resolve) => {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    const id = ctx.createImageData(w, h);
+    const d = id.data;
+    for (let i = 0; i < w * h; i++) {
+      const v = Math.max(0, Math.min(255, Math.round(gray[i])));
+      d[i * 4] = v; d[i * 4 + 1] = v; d[i * 4 + 2] = v; d[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(id, 0, 0);
+    c.toBlob((blob) => resolve(blob), 'image/png');
+  });
+}
+
+function saveBlob(blob, filename) {
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
 // ── 渲染工具 ──
@@ -379,16 +430,27 @@ function setupControls() {
   decompSlider.onchange = () => { nfTrack('decomp_change', { decomp: parseInt(decompSlider.value) }); processAll(); };
 
   $('reuploadBtn').addEventListener('click', () => fileInput.click());
+
   $('downloadBtn').addEventListener('click', () => {
     if (!resJ2k) return;
     nfTrack('download', { type: 'jp2', size: resJ2k.size });
     const jp2 = wrapJP2(resJ2k.bytes, imgWidth, imgHeight);
     const blob = new Blob([jp2], { type: 'image/jp2' });
-    const link = document.createElement('a');
-    link.download = 'jpeg2000_demo.jp2';
-    link.href = URL.createObjectURL(blob);
-    link.click();
-    URL.revokeObjectURL(link.href);
+    saveBlob(blob, 'jpeg2000_demo.jp2');
+  });
+
+  $('downloadJpegBtn').addEventListener('click', () => {
+    if (!resJpeg || !resJpeg.bytes) return;
+    nfTrack('download', { type: 'jpg', size: resJpeg.size });
+    const blob = new Blob([resJpeg.bytes], { type: 'image/jpeg' });
+    saveBlob(blob, 'jpeg2000_demo.jpg');
+  });
+
+  $('downloadPngBtn').addEventListener('click', async () => {
+    if (!grayU8) return;
+    nfTrack('download', { type: 'png' });
+    const blob = await grayToPngBlob(grayU8, imgWidth, imgHeight);
+    if (blob) saveBlob(blob, 'jpeg2000_original.png');
   });
 
   $('animPlayBtn').addEventListener('click', resumeAnimation);

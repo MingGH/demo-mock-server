@@ -85,5 +85,91 @@ public final class MemoryResponses {
             double threadStackMbEstimate,
             List<GcRecord> gc
     ) {
+        /** 起一个 Builder，避免 23 参位置构造的误读风险。 */
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        /** {@link JvmMemorySnapshot} 的流式构造器，字段名一一对应。 */
+        public static final class Builder {
+            private String javaVersion;
+            private int availableProcessors;
+            private long pid;
+            private long uptimeMs;
+            private double cpuProcessLoad;
+            private Double rssMb;
+            private Double containerMemoryLimitMb;
+            private double heapUsedMb;
+            private double heapCommittedMb;
+            private double heapMaxMb;
+            private double heapUsedPercent;
+            private double nonHeapUsedMb;
+            private double nonHeapCommittedMb;
+            private Double metaspaceUsedMb;
+            private Double metaspaceMaxMb;
+            private Double codeCacheUsedMb;
+            private int loadedClasses;
+            private int liveThreads;
+            private int peakThreads;
+            private long totalStartedThreads;
+            private int daemonThreads;
+            private double threadStackMbEstimate;
+            private List<GcRecord> gc;
+
+            private Builder() {
+            }
+
+            public Builder javaVersion(String v) { this.javaVersion = v; return this; }
+            public Builder availableProcessors(int v) { this.availableProcessors = v; return this; }
+            public Builder pid(long v) { this.pid = v; return this; }
+            public Builder uptimeMs(long v) { this.uptimeMs = v; return this; }
+            public Builder cpuProcessLoad(double v) { this.cpuProcessLoad = v; return this; }
+            public Builder rssMb(Double v) { this.rssMb = v; return this; }
+            public Builder containerMemoryLimitMb(Double v) { this.containerMemoryLimitMb = v; return this; }
+            public Builder heapUsedMb(double v) { this.heapUsedMb = v; return this; }
+            public Builder heapCommittedMb(double v) { this.heapCommittedMb = v; return this; }
+            public Builder heapMaxMb(double v) { this.heapMaxMb = v; return this; }
+            public Builder heapUsedPercent(double v) { this.heapUsedPercent = v; return this; }
+            public Builder nonHeapUsedMb(double v) { this.nonHeapUsedMb = v; return this; }
+            public Builder nonHeapCommittedMb(double v) { this.nonHeapCommittedMb = v; return this; }
+            public Builder metaspaceUsedMb(Double v) { this.metaspaceUsedMb = v; return this; }
+            public Builder metaspaceMaxMb(Double v) { this.metaspaceMaxMb = v; return this; }
+            public Builder codeCacheUsedMb(Double v) { this.codeCacheUsedMb = v; return this; }
+            public Builder loadedClasses(int v) { this.loadedClasses = v; return this; }
+            public Builder liveThreads(int v) { this.liveThreads = v; return this; }
+            public Builder peakThreads(int v) { this.peakThreads = v; return this; }
+            public Builder totalStartedThreads(long v) { this.totalStartedThreads = v; return this; }
+            public Builder daemonThreads(int v) { this.daemonThreads = v; return this; }
+            public Builder threadStackMbEstimate(double v) { this.threadStackMbEstimate = v; return this; }
+            public Builder gc(List<GcRecord> v) { this.gc = v; return this; }
+
+            public JvmMemorySnapshot build() {
+                return new JvmMemorySnapshot(
+                        javaVersion,
+                        availableProcessors,
+                        pid,
+                        uptimeMs,
+                        cpuProcessLoad,
+                        rssMb,
+                        containerMemoryLimitMb,
+                        heapUsedMb,
+                        heapCommittedMb,
+                        heapMaxMb,
+                        heapUsedPercent,
+                        nonHeapUsedMb,
+                        nonHeapCommittedMb,
+                        metaspaceUsedMb,
+                        metaspaceMaxMb,
+                        codeCacheUsedMb,
+                        loadedClasses,
+                        liveThreads,
+                        peakThreads,
+                        totalStartedThreads,
+                        daemonThreads,
+                        threadStackMbEstimate,
+                        gc
+                );
+            }
+        }
     }
 }

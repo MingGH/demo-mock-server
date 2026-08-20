@@ -71,31 +71,31 @@ public class JvmMemoryService {
 
         long pid = ProcessHandle.current().pid();
 
-        return new JvmMemorySnapshot(
-                System.getProperty("java.version") + " · " + rt.getVmName(),
-                os.getAvailableProcessors(),
-                pid,
-                rt.getUptime(),
-                round2(cpuLoad),
-                readRssMb(),
-                readContainerMemoryLimitMb(),
-                round2(mb(heap.getUsed())),
-                round2(mb(heap.getCommitted())),
-                round2(mb(heap.getMax())),
-                heapUsedPct,
-                round2(mb(nonHeap.getUsed())),
-                round2(mb(nonHeap.getCommitted())),
-                metaspaceUsed == null ? null : round2(mb(metaspaceUsed)),
-                metaspaceMax == null ? null : round2(mb(metaspaceMax)),
-                codeCacheUsed == null ? null : round2(mb(codeCacheUsed)),
-                classes.getLoadedClassCount(),
-                thread.getThreadCount(),
-                thread.getPeakThreadCount(),
-                thread.getTotalStartedThreadCount(),
-                thread.getDaemonThreadCount(),
-                thread.getThreadCount(),
-                gcRecords
-        );
+        return JvmMemorySnapshot.builder()
+                .javaVersion(System.getProperty("java.version") + " · " + rt.getVmName())
+                .availableProcessors(os.getAvailableProcessors())
+                .pid(pid)
+                .uptimeMs(rt.getUptime())
+                .cpuProcessLoad(round2(cpuLoad))
+                .rssMb(readRssMb())
+                .containerMemoryLimitMb(readContainerMemoryLimitMb())
+                .heapUsedMb(round2(mb(heap.getUsed())))
+                .heapCommittedMb(round2(mb(heap.getCommitted())))
+                .heapMaxMb(round2(mb(heap.getMax())))
+                .heapUsedPercent(heapUsedPct)
+                .nonHeapUsedMb(round2(mb(nonHeap.getUsed())))
+                .nonHeapCommittedMb(round2(mb(nonHeap.getCommitted())))
+                .metaspaceUsedMb(metaspaceUsed == null ? null : round2(mb(metaspaceUsed)))
+                .metaspaceMaxMb(metaspaceMax == null ? null : round2(mb(metaspaceMax)))
+                .codeCacheUsedMb(codeCacheUsed == null ? null : round2(mb(codeCacheUsed)))
+                .loadedClasses(classes.getLoadedClassCount())
+                .liveThreads(thread.getThreadCount())
+                .peakThreads(thread.getPeakThreadCount())
+                .totalStartedThreads(thread.getTotalStartedThreadCount())
+                .daemonThreads(thread.getDaemonThreadCount())
+                .threadStackMbEstimate(thread.getThreadCount())
+                .gc(gcRecords)
+                .build();
     }
 
     /** 读取进程常驻内存 RSS（Linux 的 /proc/self/status），其他平台返回 null。 */

@@ -64,12 +64,11 @@ function showQuestion() {
   document.getElementById('optionAText').textContent = q.options[0].text;
   document.getElementById('optionBText').textContent = q.options[1].text;
 
-  hideEl('revealBox');
   hideEl('nextRow');
 
   var opts = document.querySelectorAll('.option-btn');
   for (var i = 0; i < opts.length; i++) {
-    opts[i].classList.remove('correct', 'wrong', 'dimmed', 'disabled');
+    opts[i].classList.remove('selected', 'dimmed', 'disabled');
   }
 }
 
@@ -82,34 +81,19 @@ function choose(choice) {
 
   nfTrack('cf_choice', { q: q.id, choice: choice === 'A' ? 0 : 1, correct: correct });
 
+  // 答题过程中不揭示对错（避免心理防线），只高亮选中项
   var optionA = document.getElementById('optionA');
   var optionB = document.getElementById('optionB');
-  if (choice === 'A') {
-    optionA.classList.add(correct ? 'correct' : 'wrong');
-    optionB.classList.add('dimmed');
-  } else {
-    optionB.classList.add(correct ? 'correct' : 'wrong');
-    optionA.classList.add('dimmed');
-  }
-  optionA.classList.add('disabled');
-  optionB.classList.add('disabled');
-
-  var revealBox = document.getElementById('revealBox');
-  var title = document.getElementById('revealTitle');
-  if (correct) {
-    title.innerHTML = '<i class="ti ti-circle-check"></i> 答对了：你避开了合取谬误';
-    title.className = 'reveal-title reveal-ok';
-  } else {
-    title.innerHTML = '<i class="ti ti-alert-triangle"></i> 踩中了合取谬误（论文里 85% 的人也一样）';
-    title.className = 'reveal-title reveal-bad';
-  }
-  document.getElementById('revealText').textContent = q.explanation;
-
-  revealBox.classList.remove('hidden');
-  showEl('nextRow');
+  var sel = choice === 'A' ? optionA : optionB;
+  var other = choice === 'A' ? optionB : optionA;
+  sel.classList.add('selected');
+  other.classList.add('dimmed');
+  sel.classList.add('disabled');
+  other.classList.add('disabled');
 
   var isLast = currentIndex >= QUESTIONS.length - 1;
   document.getElementById('nextBtnLabel').textContent = isLast ? '查看结果' : '下一题';
+  showEl('nextRow');
 }
 
 function nextQuestion() {
@@ -135,8 +119,37 @@ function finishTest() {
   document.getElementById('verdictTitle').textContent = verdict.title;
   document.getElementById('verdictText').textContent = verdict.text;
 
+  renderReview();
+
   window.scrollTo(0, 0);
   submitResult(result);
+}
+
+/** 结果页统一揭示：逐题列出用户选择、正确答案与解释。 */
+function renderReview() {
+  var review = buildReview(answers);
+  var box = document.getElementById('reviewList');
+  box.innerHTML = '';
+  for (var i = 0; i < review.length; i++) {
+    var r = review[i];
+    var item = document.createElement('div');
+    item.className = 'review-item ' + (r.correct ? 'review-ok' : 'review-bad');
+    var icon = r.correct ? 'ti-circle-check' : 'ti-alert-triangle';
+    var flag = r.correct ? '答对了，避开了合取谬误' : '踩中了合取谬误';
+    var correctPart = r.correct
+        ? ''
+        : '；正确答案是 <strong>' + r.correctKey + '：' + r.correctText + '</strong>';
+    item.innerHTML =
+        '<div class="review-head">' +
+          '<span class="review-icon"><i class="ti ' + icon + '"></i></span>' +
+          '<span class="review-q">第 ' + r.id + ' 题</span>' +
+          '<span class="review-flag">' + flag + '</span>' +
+        '</div>' +
+        '<div class="review-choice">你选了 <strong>' + r.choice + '：' + r.choiceText + '</strong>' +
+          correctPart + '</div>' +
+        '<div class="review-explain">' + r.explanation + '</div>';
+    box.appendChild(item);
+  }
 }
 
 function loadStats() {

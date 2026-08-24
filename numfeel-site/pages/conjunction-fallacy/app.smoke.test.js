@@ -30,12 +30,17 @@ function makeElement(id) {
     id: id,
     _text: '',
     _html: '',
+    _children: [],
     style: { display: 'none' },
     classList: {
       _set: {},
       add: function (c) { this._set[c] = true; },
       remove: function (c) { delete this._set[c]; },
       contains: function (c) { return !!this._set[c]; }
+    },
+    appendChild: function (child) {
+      this._children.push(child);
+      if (child && child._html) this._html += child._html;
     },
     addEventListener: function () {},
     querySelectorAll: function () { return []; },
@@ -90,7 +95,7 @@ var sandbox = {
     },
     getElementById: getEl,
     querySelectorAll: function () {
-      return [makeElement('opt'), makeElement('opt')];
+      return [getEl('optionA'), getEl('optionB')];
     },
     createElement: function () { return makeElement('created'); }
   },
@@ -130,6 +135,7 @@ sandbox.QUESTIONS = engineModule.exports.QUESTIONS;
 sandbox.isCorrect = engineModule.exports.isCorrect;
 sandbox.computeResult = engineModule.exports.computeResult;
 sandbox.getVerdict = engineModule.exports.getVerdict;
+sandbox.buildReview = engineModule.exports.buildReview;
 
 vm.runInContext(fs.readFileSync(path.join(DIR, 'app.js'), 'utf-8'), sandbox);
 
@@ -143,23 +149,21 @@ setTimeout(function () {
   check(getEl('currentNum').textContent === '1', '题号显示 1');
   check(sandbox._tracked.some(function (t) { return t.name === 'session_start'; }), 'session_start 已埋点');
 
-  // 2. 选 B（合取项）→ 揭示踩坑
+  // 2. 选 B（合取项）→ 只高亮选中项，答题中不揭示对错
   sandbox.choose('B');
-  check(getEl('revealBox').classList.contains('hidden') === false, '选择后揭示区显示');
-  check(getEl('revealTitle').innerHTML.indexOf('踩中') >= 0, '选 B 揭示"踩中合取谬误"');
-  check(getEl('revealText').textContent.length > 10, '解释文案已填充');
-  check(getEl('optionB').classList.contains('wrong'), '选中的 B 标记 wrong');
+  check(getEl('optionB').classList.contains('selected'), '选中的 B 标记 selected');
   check(getEl('optionA').classList.contains('dimmed'), '未选中的 A 变暗');
   check(getEl('nextRow').classList.contains('hidden') === false, '出现"下一题"按钮');
+  check(getEl('revealTitle').innerHTML === '', '答题中不揭示对错（避免心理防线）');
   check(sandbox._tracked.some(function (t) {
     return t.name === 'cf_choice' && t.props.q === 1 && t.props.choice === 1 && t.props.correct === false;
   }), 'cf_choice 埋点含题号/选项/对错');
 
-  // 2b. 揭示后再点另一选项 → 被拦截，不重复埋点、不覆盖答案
+  // 2b. 选择后再点另一选项 → 被拦截，不重复埋点、不覆盖答案
   var choiceCountBefore = sandbox._tracked.filter(function (t) { return t.name === 'cf_choice'; }).length;
   sandbox.choose('A');
   var choiceCountAfter = sandbox._tracked.filter(function (t) { return t.name === 'cf_choice'; }).length;
-  check(choiceCountAfter === choiceCountBefore, '揭示后重复点选被拦截（cf_choice 不重复记录）');
+  check(choiceCountAfter === choiceCountBefore, '选择后重复点选被拦截（cf_choice 不重复记录）');
 
   // 3. 循环答完 10 题
   for (var i = 1; i < 10; i++) {
@@ -183,12 +187,17 @@ setTimeout(function () {
   check(fetched.some(function (f) { return f.url.indexOf('/submit') >= 0; }), '已完成提交 /submit');
   check(getEl('distChart') !== null, '统计图表容器存在');
 
+  // 4b. 结果页逐题回顾：全部答完后统一揭示
+  check(getEl('reviewList').innerHTML.indexOf('review-head') >= 0, '逐题回顾已渲染');
+  check(getEl('reviewList').innerHTML.indexOf('第 1 题') >= 0, '回顾包含第 1 题');
+  check(getEl('reviewList').innerHTML.indexOf('踩中了合取谬误') >= 0, '回顾包含"踩中了合取谬误"标记');
+
   // 5. 重新测试 → 复位到第一题
   sandbox.resetTest();
   check(getEl('resultSection').classList.contains('hidden'), '重开后结果区隐藏');
   check(getEl('quizSection').classList.contains('hidden') === false, '重开后答题区显示');
   check(getEl('currentNum').textContent === '1', '重开后回到第 1 题');
-  check(getEl('revealBox').classList.contains('hidden'), '重开后揭示区隐藏');
+  check(getEl('optionA').classList.contains('selected') === false, '重开后选项选中态复位');
 
   console.log('\n==============================');
   console.log('smoke passed: ' + passed + '  failed: ' + failed);

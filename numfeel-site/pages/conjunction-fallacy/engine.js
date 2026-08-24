@@ -173,12 +173,50 @@ function getVerdict(correct) {
   };
 }
 
+/**
+ * 根据完整作答生成逐题回顾数据（结果页统一揭示用）。
+ * 答题过程中不揭示对错，全部答完后一次性回顾。
+ *
+ * @param {Array<string>} choices 10 个选项 key 的数组，choices[i] 对应第 i+1 题
+ * @returns {Array<{id: number, choice: string, choiceText: string, correct: boolean, correctKey: string, correctText: string, explanation: string}>}
+ *          每题回顾：题号、用户所选、所选文本、对错、正确答案 key 与文本、解释
+ */
+function buildReview(choices) {
+  var review = [];
+  for (var i = 0; i < QUESTIONS.length; i++) {
+    var q = QUESTIONS[i];
+    var c = choices[i] || '';
+    var correct = isCorrect(q.id, c);
+    var choiceText = '';
+    var correctKey = '';
+    var correctText = '';
+    for (var j = 0; j < q.options.length; j++) {
+      if (q.options[j].key === c) choiceText = q.options[j].text;
+      if (q.options[j].isSingle) {
+        correctKey = q.options[j].key;
+        correctText = q.options[j].text;
+      }
+    }
+    review.push({
+      id: q.id,
+      choice: c,
+      choiceText: choiceText,
+      correct: correct,
+      correctKey: correctKey,
+      correctText: correctText,
+      explanation: q.explanation
+    });
+  }
+  return review;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     QUESTIONS: QUESTIONS,
     PAPER_CONJUNCTION_RATE: PAPER_CONJUNCTION_RATE,
     isCorrect: isCorrect,
     computeResult: computeResult,
-    getVerdict: getVerdict
+    getVerdict: getVerdict,
+    buildReview: buildReview
   };
 }

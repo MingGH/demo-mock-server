@@ -8,7 +8,8 @@ const {
   PAPER_CONJUNCTION_RATE,
   isCorrect,
   computeResult,
-  getVerdict
+  getVerdict,
+  buildReview
 } = require('./engine.js');
 
 let passed = 0;
@@ -109,6 +110,35 @@ console.log('\n测试4: getVerdict 画像');
 // ── 测试 5: 论文常模常量 ────────────────────────────────────────────
 console.log('\n测试5: 论文常模常量');
 assert(PAPER_CONJUNCTION_RATE === 85, '论文常模为 85%');
+
+// ── 测试 6: buildReview 逐题回顾 ────────────────────────────────────
+console.log('\n测试6: buildReview 逐题回顾');
+{
+  const allSingle = new Array(10).fill('A');
+  const review = buildReview(allSingle);
+  assert(review.length === 10, '回顾恰好 10 条');
+  assert(review.every(r => r.correct === true), '全选 A 逐题都判对');
+  assert(review[0].id === 1 && review[9].id === 10, '题号从 1 到 10');
+  assert(review[0].choice === 'A' && review[0].choiceText.length > 0, '记录用户所选与文本');
+  assert(review[0].correctKey === 'A' && review[0].correctText.length > 0, '正确答案 key 与文本');
+  assert(review[0].explanation.length > 10, '每题带解释');
+}
+{
+  const allConjunction = new Array(10).fill('B');
+  const review = buildReview(allConjunction);
+  assert(review.every(r => r.correct === false), '全选 B 逐题都判错');
+  assert(review[0].correctKey === 'A', '错误题仍给出正确答案 key');
+}
+{
+  const mixed = ['A', 'B', 'A', 'B', 'A', 'B', 'A', 'B', 'A', 'B'];
+  const review = buildReview(mixed);
+  assert(review[0].correct === true && review[1].correct === false, '交替作答逐题对错正确');
+}
+{
+  const short = buildReview(['A', 'B']);
+  assert(short.length === 10, '长度不足时仍生成 10 条回顾');
+  assert(short[2].correct === false && short[2].choice === '', '缺失题按答错、无选择处理');
+}
 
 // ── 汇总 ────────────────────────────────────────────────────────────
 console.log(`\n${passed} 通过, ${failed} 失败`);

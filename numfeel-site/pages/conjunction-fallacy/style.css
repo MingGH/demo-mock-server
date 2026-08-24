@@ -169,6 +169,17 @@ body {
 
 .option-btn.disabled { cursor: default; }
 
+.option-btn.selected {
+  border-color: #90caf9;
+  background: rgba(144, 202, 249, 0.12);
+}
+
+.option-btn.selected .option-key {
+  background: #90caf9;
+  color: #0f1e3a;
+  border-color: #90caf9;
+}
+
 /* ── 揭示区 ── */
 
 .reveal-box {
@@ -204,6 +215,56 @@ body {
   color: #ccc;
   font-size: 0.92rem;
   line-height: 1.7;
+}
+
+/* ── 逐题回顾 ── */
+
+.review-item {
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.review-ok { border-left: 3px solid #81c784; }
+.review-bad { border-left: 3px solid #ff6b6b; }
+
+.review-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.review-icon { font-size: 1.05rem; }
+.review-ok .review-icon { color: #81c784; }
+.review-bad .review-icon { color: #ff6b6b; }
+
+.review-q {
+  font-weight: bold;
+  color: #f0f0f0;
+}
+
+.review-flag {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #ccc;
+}
+
+.review-choice {
+  color: #ccc;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+
+.review-choice strong { color: #f0f0f0; }
+
+.review-explain {
+  color: #888;
+  font-size: 0.85rem;
+  line-height: 1.6;
 }
 
 .next-row {

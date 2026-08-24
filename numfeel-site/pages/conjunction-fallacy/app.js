@@ -128,7 +128,6 @@ function finishTest() {
 
   nfTrack('cf_finish', { correct: result.correct, total: result.total });
 
-  submitResult(result);
   hideEl('quizSection');
   showEl('resultSection');
 

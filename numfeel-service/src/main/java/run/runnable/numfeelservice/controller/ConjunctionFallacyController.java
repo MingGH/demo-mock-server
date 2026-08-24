@@ -1,13 +1,10 @@
 package run.runnable.numfeelservice.controller;
 
-import tools.jackson.databind.JsonNode;
 import run.runnable.numfeelservice.controller.dto.GameplayRequests.ConjunctionFallacySubmitRequest;
+import run.runnable.numfeelservice.controller.dto.GameplayResponses.ConjunctionFallacyStatsResponse;
 import run.runnable.numfeelservice.service.ConjunctionFallacyService;
+import run.runnable.numfeelservice.web.ApiEnvelope;
 import run.runnable.numfeelservice.web.ApiException;
-import run.runnable.numfeelservice.web.ApiResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,8 +21,6 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/conjunction-fallacy")
 public class ConjunctionFallacyController {
 
-    private static final Logger log = LoggerFactory.getLogger(ConjunctionFallacyController.class);
-
     private final ConjunctionFallacyService service;
 
     public ConjunctionFallacyController(ConjunctionFallacyService service) {
@@ -33,7 +28,7 @@ public class ConjunctionFallacyController {
     }
 
     @PostMapping("/submit")
-    public Mono<ResponseEntity<JsonNode>> submit(
+    public Mono<ApiEnvelope<ConjunctionFallacyStatsResponse>> submit(
             @RequestBody(required = false) ConjunctionFallacySubmitRequest request) {
         if (request == null) {
             throw ApiException.badRequest("Invalid JSON");
@@ -57,20 +52,12 @@ public class ConjunctionFallacyController {
         }
 
         return service.submit(sessionId, total, correct, answers)
-                .map(ApiResponse::ok)
-                .onErrorResume(err -> {
-                    log.error("conjunction-fallacy submit error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
+                .map(ApiEnvelope::ok);
     }
 
     @GetMapping("/stats")
-    public Mono<ResponseEntity<JsonNode>> stats() {
+    public Mono<ApiEnvelope<ConjunctionFallacyStatsResponse>> stats() {
         return service.stats()
-                .map(ApiResponse::ok)
-                .onErrorResume(err -> {
-                    log.error("conjunction-fallacy stats error", err);
-                    return Mono.just(ApiResponse.error(500, "Internal error"));
-                });
+                .map(ApiEnvelope::ok);
     }
 }

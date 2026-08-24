@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="合取谬误测试：Linda 更可能是「银行出纳员」还是「银行出纳员并且是女权主义者」？10 道琳达式题目，测你是不是论文里那 85% 的人。">
+  <title>合取谬误测试：Linda 更可能是谁 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-sitemap"></i> 合取谬误测试：Linda 更可能是谁？</h1>
+    <p>「Linda 是银行出纳员」和「Linda 是银行出纳员并且是女权主义者」，哪个更可能？凭直觉选，10 题见分晓。</p>
+  </div>
+
+  <!-- 答题区 -->
+  <div class="section" id="quizSection">
+    <div class="hint-line">
+      <i class="ti ti-bulb"></i> 每题没有"正确做法"，凭第一直觉选一个更像真的
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <div class="round-header">
+      <span class="round-label">第 <strong id="currentNum">1</strong> / <strong id="totalNum">10</strong> 题</span>
+    </div>
+
+    <div class="scenario-card" id="scenarioCard">
+      <div class="scenario-text" id="scenarioText"></div>
+    </div>
+
+    <div class="options-area" id="optionsArea">
+      <button class="option-btn" id="optionA" onclick="choose('A')">
+        <span class="option-key">A</span>
+        <span class="option-text" id="optionAText"></span>
+      </button>
+      <button class="option-btn" id="optionB" onclick="choose('B')">
+        <span class="option-key">B</span>
+        <span class="option-text" id="optionBText"></span>
+      </button>
+    </div>
+
+    <div class="reveal-box hidden" id="revealBox">
+      <div class="reveal-title" id="revealTitle"></div>
+      <div class="venn-wrap">
+        <svg viewBox="0 0 320 200" class="venn-svg" id="vennSvg" aria-hidden="true">
+          <defs>
+            <linearGradient id="vennGradA" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#90caf9" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#90caf9" stop-opacity="0.12"/>
+            </linearGradient>
+            <linearGradient id="vennGradB" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ff6b6b" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#ff6b6b" stop-opacity="0.2"/>
+            </linearGradient>
+          </defs>
+          <ellipse cx="160" cy="100" rx="140" ry="85" fill="url(#vennGradA)" stroke="#90caf9" stroke-width="2"/>
+          <ellipse cx="160" cy="100" rx="70" ry="45" fill="url(#vennGradB)" stroke="#ff6b6b" stroke-width="2"/>
+          <text x="160" y="38" text-anchor="middle" class="venn-label" fill="#90caf9" font-size="15">A 单项</text>
+          <text x="160" y="150" text-anchor="middle" class="venn-label" fill="#ff6b6b" font-size="15">B ⊂ A</text>
+          <text x="160" y="182" text-anchor="middle" fill="#888" font-size="11">合取项是单项的子集，概率不可能更大</text>
+        </svg>
+      </div>
+      <div class="reveal-text" id="revealText"></div>
+    </div>
+
+    <div class="next-row hidden" id="nextRow">
+      <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()">
+        <i class="ti ti-arrow-right"></i> <span id="nextBtnLabel">下一题</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 结果区 -->
+  <div class="section hidden" id="resultSection">
+    <h2><i class="ti ti-chart-bar"></i> 你的测试结果</h2>
+
+    <div class="score-card">
+      <div class="score-number" id="scoreNumber">0/10</div>
+      <div class="score-verdict-title" id="verdictTitle"></div>
+      <div class="score-verdict-text" id="verdictText"></div>
+    </div>
+
+    <div class="reveal-box" id="paperBox">
+      <h3 style="color:#ffd700; margin-bottom:10px;"><i class="ti ti-books"></i> 论文对照</h3>
+      <p id="paperText">
+        1983 年，Tversky 与 Kahneman 用琳达问题做实验：<strong style="color:#ffd700;">约 85%</strong> 的受试者（包括许多统计学博士）选择了"更不可能"的合取项。你现在知道了这个坑，就再也不会掉进去了。
+      </p>
+    </div>
+
+    <div class="aggregate-section">
+      <h3><i class="ti ti-users"></i> 全站每题选择分布</h3>
+      <div class="paper-line">虚线 = 论文常模 85%</div>
+      <canvas id="distChart" height="420"></canvas>
+      <p class="agg-note">数据来自所有完成测试的用户（实时累计，来自 numfeel 全站）。</p>
+    </div>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <button class="btn btn-secondary" onclick="resetTest()">
+        <i class="ti ti-refresh"></i> 重新测试
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

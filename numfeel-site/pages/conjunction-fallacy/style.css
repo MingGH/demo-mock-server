@@ -1,0 +1,312 @@
+body {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh;
+  color: #e0e0e0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  color: #ffd700;
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.25);
+}
+
+.header h1 .ti {
+  font-size: 1.6rem;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.header p {
+  color: #a0a0a0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.section {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.section h2 {
+  color: #ffd700;
+  font-size: 1.15rem;
+  margin: 0 0 16px;
+}
+
+.hidden { display: none !important; }
+
+/* ── 答题区 ── */
+
+.hint-line {
+  color: #90caf9;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+}
+
+.progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ffd700, #f5a623);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.round-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.round-label {
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.round-label strong { color: #ffd700; }
+
+.scenario-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 16px;
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+}
+
+.scenario-text {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #f0f0f0;
+}
+
+.options-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  min-height: 56px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  color: #f0f0f0;
+  font-size: 1rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.option-btn:hover {
+  border-color: #90caf9;
+  background: rgba(144, 202, 249, 0.08);
+}
+
+.option-key {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #90caf9;
+}
+
+.option-btn.correct {
+  border-color: #81c784;
+  background: rgba(129, 199, 132, 0.15);
+}
+
+.option-btn.correct .option-key { background: #81c784; color: #0f2f14; border-color: #81c784; }
+
+.option-btn.wrong {
+  border-color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.15);
+}
+
+.option-btn.wrong .option-key { background: #ff6b6b; color: #3a0a0a; border-color: #ff6b6b; }
+
+.option-btn.dimmed { opacity: 0.45; }
+
+.option-btn.disabled { cursor: default; }
+
+/* ── 揭示区 ── */
+
+.reveal-box {
+  margin-top: 16px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.reveal-title {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.reveal-ok { color: #81c784; }
+.reveal-bad { color: #ff6b6b; }
+
+.venn-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.venn-svg {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+}
+
+.reveal-text {
+  color: #ccc;
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
+.next-row {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── 结果区 ── */
+
+.score-card {
+  text-align: center;
+  padding: 24px 16px;
+  background: rgba(255, 215, 0, 0.05);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.score-number {
+  font-size: 2.6rem;
+  font-weight: bold;
+  color: #ffd700;
+  margin-bottom: 10px;
+}
+
+.score-verdict-title {
+  font-size: 1.15rem;
+  color: #90caf9;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.score-verdict-text {
+  color: #ccc;
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
+.aggregate-section {
+  margin-top: 18px;
+}
+
+.aggregate-section h3 {
+  color: #ffd700;
+  font-size: 1.05rem;
+  margin: 0 0 6px;
+}
+
+.paper-line {
+  color: #ffd700;
+  font-size: 0.8rem;
+  margin-bottom: 10px;
+}
+
+#distChart {
+  max-height: 420px;
+}
+
+.agg-note {
+  color: #888;
+  font-size: 0.8rem;
+  margin-top: 10px;
+}
+
+/* ── 按钮 ── */
+
+.btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #ffd700, #f5a623);
+  color: #1a1a2e;
+  font-weight: bold;
+}
+
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(255, 215, 0, 0.3); }
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ccc;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* ── 移动端 ── */
+
+@media (max-width: 480px) {
+  .container { padding: 16px 12px 48px; }
+  .header h1 { font-size: 1.25rem; }
+  .scenario-text { font-size: 0.95rem; }
+  .option-btn { padding: 14px; font-size: 0.95rem; }
+  .score-number { font-size: 2.2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+  .progress-fill { transition: none; }
+}

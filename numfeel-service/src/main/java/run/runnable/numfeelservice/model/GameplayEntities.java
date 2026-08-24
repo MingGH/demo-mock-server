@@ -335,6 +335,18 @@ public final class GameplayEntities {
     ) {
     }
 
+    /** 合取谬误测试结果表映射。 */
+    @Table("conjunction_fallacy_results")
+    public record ConjunctionFallacyResult(
+            @Id Long id,
+            @Column("session_id") String sessionId,
+            @Column("total_questions") int totalQuestions,
+            @Column("correct_count") int correctCount,
+            String answers,
+            @Column("created_at") long createdAt
+    ) {
+    }
+
     /** 爱荷华赌博任务 — 完整牌局结果表映射。 */
     @Table("iowa_gambling_results")
     public record IowaGamblingResult(

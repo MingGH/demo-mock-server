@@ -653,6 +653,44 @@ public final class GameplayResponses {
     }
 
     /**
+     * 合取谬误测试 — 单题统计。
+     *
+     * @param questionId 题目 ID（1~10）
+     * @param total 该题作答总次数
+     * @param singleCount 选单项 A 的次数
+     * @param conjunctionCount 选合取项 B 的次数
+     * @param conjunctionRate 选合取项占比（0~100，论文对照指标，经典约 85%）
+     * @param correctRate 该题正确率（0~100，等于选单项占比）
+     */
+    public record ConjunctionFallacyQuestionRate(
+            int questionId,
+            long total,
+            long singleCount,
+            long conjunctionCount,
+            double conjunctionRate,
+            double correctRate
+    ) {
+    }
+
+    /**
+     * 合取谬误测试全局统计响应。
+     *
+     * @param totalSessions 总参与人数
+     * @param avgCorrect 平均答对数
+     * @param allCorrectRate 全对率（0~100）
+     * @param avgConjunctionRate 全站平均选合取项占比（0~100）
+     * @param perQuestion 每题统计列表
+     */
+    public record ConjunctionFallacyStatsResponse(
+            long totalSessions,
+            double avgCorrect,
+            double allCorrectRate,
+            double avgConjunctionRate,
+            List<ConjunctionFallacyQuestionRate> perQuestion
+    ) {
+    }
+
+    /**
      * 爱荷华赌博任务 全局统计响应。
      *
      * @param totalSessions 记录的总牌局数

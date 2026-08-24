@@ -443,6 +443,22 @@ public final class GameplayRequests {
     }
 
     /**
+     * 合取谬误测试提交参数。
+     *
+     * @param sessionId 客户端生成的会话 ID
+     * @param totalQuestions 题目总数（固定 10）
+     * @param correctCount 答对题数（选单项 A 即答对）
+     * @param answers 每题选择 JSON 数组字符串，如 [0,1,0]，0=单项 A，1=合取项 B
+     */
+    public record ConjunctionFallacySubmitRequest(
+            String sessionId,
+            Integer totalQuestions,
+            Integer correctCount,
+            String answers
+    ) {
+    }
+
+    /**
      * 爱荷华赌博任务 提交参数。
      *
      * @param sessionId 客户端生成的会话 ID

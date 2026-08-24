@@ -456,6 +456,18 @@ CREATE TABLE IF NOT EXISTS demo_events (
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 合取谬误（Conjunction Fallacy）测试结果
+-- 记录 10 道"琳达式"题目的作答，用于结果页对比全站各题选择分布与论文常模（~85% 选中合取项）
+CREATE TABLE IF NOT EXISTS conjunction_fallacy_results (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_id      VARCHAR(36) NOT NULL COMMENT '客户端生成的会话 ID',
+    total_questions TINYINT     NOT NULL COMMENT '题目总数（固定 10）',
+    correct_count   TINYINT     NOT NULL COMMENT '答对题数（选单项 A 即答对）',
+    answers         VARCHAR(24) NOT NULL COMMENT '每题选择 JSON 数组 [0,1,...]，0=单项 A，1=合取项 B',
+    created_at      BIGINT      NOT NULL,
+    INDEX idx_cf_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 爱荷华赌博任务（Iowa Gambling Task）结果记录
 -- 记录完整 100 手牌局结果，用于结果页对比全站均值与论文数据
 CREATE TABLE IF NOT EXISTS iowa_gambling_results (

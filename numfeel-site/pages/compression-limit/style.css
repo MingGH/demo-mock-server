@@ -1,0 +1,697 @@
+/* ── 压缩极限 Demo 样式 ── */
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.header h1 {
+  font-size: 1.8rem;
+  color: #ffd700;
+  margin-bottom: 12px;
+}
+
+.header p {
+  color: #aaa;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ── 终端风 ASCII 横幅 ── */
+
+.ascii-banner {
+  display: inline-block;
+  text-align: left;
+  background: #0a0e14;
+  border: 1px solid #1e2a3a;
+  border-radius: 10px;
+  padding: 14px 20px;
+  margin-top: 22px;
+  color: #81c784;
+  font-family: "SF Mono", "Fira Code", Menlo, Consolas, "Courier New", monospace;
+  font-size: 0.78rem;
+  line-height: 1.75;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.ascii-banner .ab-cmd { color: #81c784; }
+.ascii-banner .ab-ok { color: #81c784; }
+.ascii-banner .ab-bad { color: #ff6b6b; }
+.ascii-banner .ab-dim { color: #6b7f95; }
+.ascii-banner .ab-gold { color: #ffd700; }
+
+.section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 32px;
+}
+
+.section h2 {
+  color: #e0e0e0;
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+}
+
+.section-desc {
+  color: #888;
+  font-size: 0.88rem;
+  margin-bottom: 20px;
+}
+
+/* ── 模块一：样本卡片 ── */
+
+.sample-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.sample-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.2s, background 0.2s;
+  text-align: left;
+}
+
+.sample-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+.sample-card.active {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.07);
+  box-shadow: 0 0 0 1px #ffd700 inset;
+}
+
+.sample-card .sc-icon {
+  color: #90caf9;
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.sample-card .sc-file {
+  font-family: "SF Mono", Menlo, Consolas, "Courier New", monospace;
+  color: #e0e0e0;
+  font-size: 0.95rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.sample-card .sc-size {
+  color: #ffd700;
+  font-size: 0.85rem;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.sample-card .sc-desc {
+  color: #888;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.sample-card .sc-predict {
+  color: #90caf9;
+  font-size: 0.78rem;
+  display: block;
+  border-top: 1px dashed rgba(144, 202, 249, 0.25);
+  padding-top: 8px;
+}
+
+.sample-card.active .sc-predict {
+  color: #ffd700;
+}
+
+/* ── 模块二：终端实验台 ── */
+
+.term-window {
+  background: #0a0e14;
+  border: 1px solid #1e2a3a;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+}
+
+.term-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #111826;
+  border-bottom: 1px solid #1e2a3a;
+}
+
+.term-titlebar .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.term-titlebar .dot.red { background: #ff5f56; }
+.term-titlebar .dot.yellow { background: #ffbd2e; }
+.term-titlebar .dot.green { background: #27c93f; }
+
+.term-titlebar .term-title {
+  margin-left: 8px;
+  color: #6b7f95;
+  font-size: 0.78rem;
+  font-family: "SF Mono", Menlo, Consolas, "Courier New", monospace;
+}
+
+.term-body {
+  padding: 18px;
+  font-family: "SF Mono", "Fira Code", Menlo, Consolas, "Courier New", monospace;
+}
+
+.term-file-row {
+  color: #6b7f95;
+  font-size: 0.8rem;
+  margin-bottom: 14px;
+}
+
+.term-file-row .tfr-name {
+  color: #81c784;
+}
+
+.term-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.term-stat {
+  background: #070b10;
+  border: 1px solid #16202e;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+.term-stat .ts-label {
+  color: #6b7f95;
+  font-size: 0.72rem;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
+.term-stat .ts-value {
+  color: #e0e0e0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.term-stat .ts-value.gold { color: #ffd700; }
+.term-stat .ts-value.good { color: #81c784; }
+.term-stat .ts-value.bad { color: #ff6b6b; }
+
+/* 熵仪表盘 */
+
+.entropy-gauge {
+  background: #070b10;
+  border: 1px solid #16202e;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.entropy-gauge .eg-head {
+  display: flex;
+  justify-content: space-between;
+  color: #6b7f95;
+  font-size: 0.75rem;
+  margin-bottom: 8px;
+}
+
+.entropy-gauge .eg-head .eg-val {
+  color: #81c784;
+}
+
+.entropy-gauge .eg-head .eg-val.full {
+  color: #ffd700;
+}
+
+.entropy-gauge .eg-bar {
+  height: 10px;
+  background: #101826;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.entropy-gauge .eg-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #2e7d32, #81c784);
+  border-radius: 5px;
+  transition: width 0.5s ease, background 0.5s ease;
+}
+
+.entropy-gauge .eg-fill.full {
+  background: linear-gradient(90deg, #ff8f00, #ffd700);
+}
+
+.entropy-gauge .eg-note {
+  color: #556677;
+  font-size: 0.7rem;
+  margin-top: 8px;
+}
+
+/* 按钮区 */
+
+.term-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.btn-primary {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  border: none;
+  border-radius: 8px;
+  color: #1a1a2e;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.1s;
+  white-space: nowrap;
+}
+
+.btn-primary:hover { transform: scale(1.02); }
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-secondary {
+  padding: 10px 18px;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 8px;
+  color: #ffd700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover { background: rgba(255, 215, 0, 0.2); }
+
+.btn-reset {
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #aaa;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.btn-reset:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* 下载提示行 */
+
+.term-hint {
+  color: #556677;
+  font-size: 0.72rem;
+  margin: -6px 0 14px;
+  line-height: 1.6;
+}
+
+/* 「压不动了」判定框 */
+
+.verdict {
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  color: #ffd700;
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+
+.verdict .vd-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.verdict .vd-body {
+  color: #d4c37a;
+}
+
+/* 终端日志 */
+
+.term-log {
+  background: #070b10;
+  border: 1px solid #16202e;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+  font-size: 0.8rem;
+  line-height: 1.8;
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.term-log .lg-cmd { color: #81c784; }
+.term-log .lg-dim { color: #556677; }
+.term-log .lg-size { color: #e0e0e0; }
+.term-log .lg-gold { color: #ffd700; }
+.term-log .lg-good { color: #81c784; }
+.term-log .lg-bad { color: #ff6b6b; }
+
+/* 预览 + hexdump 双栏 */
+
+.term-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.term-split .tp-title {
+  color: #6b7f95;
+  font-size: 0.72rem;
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.term-preview,
+.term-hex {
+  background: #070b10;
+  border: 1px solid #16202e;
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 120px;
+}
+
+.term-preview .prev-text {
+  color: #b0bec5;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.term-preview .prev-img {
+  max-width: 100%;
+  border-radius: 6px;
+  display: block;
+}
+
+.term-preview .prev-binary {
+  color: #556677;
+  font-size: 0.75rem;
+  line-height: 1.7;
+}
+
+.term-hex pre {
+  color: #81c784;
+  font-size: 0.72rem;
+  line-height: 1.7;
+  margin: 0;
+  overflow-x: auto;
+}
+
+.term-error {
+  color: #ff6b6b;
+  font-size: 0.78rem;
+  margin-bottom: 12px;
+}
+
+/* 尺寸曲线 */
+
+.chart-wrap {
+  margin-top: 20px;
+  height: 280px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.chart-wrap .chart-note {
+  color: #556677;
+  font-size: 0.75rem;
+  margin-bottom: 8px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ── 模块三：万能压缩器彩蛋 ── */
+
+.btn-egg {
+  display: block;
+  margin: 0 auto;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #ce93d8, #ab47bc);
+  border: none;
+  border-radius: 10px;
+  color: #1a1a2e;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(206, 147, 216, 0.25);
+}
+
+.btn-egg:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(206, 147, 216, 0.4);
+}
+
+.uni-report {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.uni-card {
+  background: #0a0e14;
+  border: 1px solid #1e2a3a;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.uni-card .uni-title {
+  color: #6b7f95;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+
+.uni-card .uni-big {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.uni-card.uni-good .uni-big { color: #81c784; }
+.uni-card.uni-bad .uni-big { color: #ff6b6b; font-size: 1.1rem; }
+
+.uni-card .uni-line {
+  color: #888;
+  font-size: 0.78rem;
+  line-height: 1.8;
+}
+
+.uni-card .uni-line.success { color: #81c784; }
+.uni-card .uni-line.danger { color: #ff6b6b; }
+
+/* 鸽笼格子 */
+
+.pigeon-wrap {
+  margin-top: 18px;
+  background: #0a0e14;
+  border: 1px solid #1e2a3a;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.pigeon-wrap .pg-caption {
+  color: #90caf9;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+
+.pigeon-wrap .pg-caption strong {
+  color: #ffd700;
+}
+
+.pigeon-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 3px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.pigeon-grid .pg-cell {
+  aspect-ratio: 1;
+  background: rgba(129, 199, 132, 0.12);
+  border: 1px solid rgba(129, 199, 132, 0.25);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #81c784;
+  font-size: 0.6rem;
+}
+
+.pigeon-grid .pg-cell.hot {
+  background: rgba(255, 107, 107, 0.18);
+  border-color: rgba(255, 107, 107, 0.5);
+  color: #ff6b6b;
+  animation: pg-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pg-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.3); }
+  50% { box-shadow: 0 0 10px 2px rgba(255, 107, 107, 0.35); }
+}
+
+.pg-legend {
+  text-align: center;
+  color: #556677;
+  font-size: 0.72rem;
+  margin-top: 12px;
+}
+
+.insight-box {
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-top: 18px;
+}
+
+.insight-box.gold {
+  background: rgba(255, 215, 0, 0.06);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.insight-box.blue {
+  background: rgba(144, 202, 249, 0.06);
+  border: 1px solid rgba(144, 202, 249, 0.3);
+}
+
+.insight-box h3 {
+  color: #ffd700;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.insight-box.blue h3 {
+  color: #90caf9;
+}
+
+.insight-box p {
+  color: #b0bec5;
+  font-size: 0.85rem;
+  line-height: 1.75;
+  margin: 0;
+}
+
+.insight-box p strong {
+  color: #ffd700;
+}
+
+.insight-box.blue p strong {
+  color: #90caf9;
+}
+
+/* ── 模块四：原理卡片 ── */
+
+.principle-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.principle-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.principle-card .num {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  color: rgba(255, 215, 0, 0.5);
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.principle-card h4 {
+  color: #e0e0e0;
+  font-size: 0.98rem;
+  margin-bottom: 10px;
+}
+
+.principle-card p {
+  color: #999;
+  font-size: 0.83rem;
+  line-height: 1.75;
+  margin: 0;
+}
+
+.principle-card p strong {
+  color: #ffd700;
+}
+
+/* ── 响应式 ── */
+
+@media (max-width: 720px) {
+  .term-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .term-split {
+    grid-template-columns: 1fr;
+  }
+
+  .uni-report {
+    grid-template-columns: 1fr;
+  }
+
+  .principle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ascii-banner {
+    font-size: 0.62rem;
+    padding: 10px 12px;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-reset {
+    flex: 1 1 auto;
+  }
+}

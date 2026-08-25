@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="选一个文件不停点压缩，看它第二轮就膨胀；熵仪表盘逼近 8.00 时信息已塞满。再运行「压缩成功率 100%」的万能压缩器，看鸽笼原理如何证明：万能压缩在数学上等价于永动机。">
+  <title>压缩的极限：万能压缩器为什么是数学骗局 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-file-zip"></i> 压缩的极限：万能压缩器为什么是数学骗局</h1>
+    <p>任何声称「任意文件、越压越小」的软件，数学上等价于永动机。选一个文件，不停点「再压一次」，亲眼看着它第二轮就开始膨胀；最后再运行那个「压缩成功率 100%」的万能压缩器，看鸽笼原理当场拆穿它。</p>
+    <pre class="ascii-banner"><span class="ab-cmd">$ gzip novel.txt</span>       <span class="ab-gold">7,016 B</span> <span class="ab-dim">-></span> <span class="ab-gold">3,198 B</span>   <span class="ab-ok">又小了 54.4%</span>
+<span class="ab-cmd">$ gzip novel.txt.gz</span>    <span class="ab-gold">3,198 B</span> <span class="ab-dim">-></span> <span class="ab-gold">3,221 B</span>   <span class="ab-bad">开始膨胀</span>
+<span class="ab-cmd">$ gzip novel.txt.gz.gz</span> <span class="ab-gold">3,221 B</span> <span class="ab-dim">-></span> <span class="ab-gold">3,244 B</span>   <span class="ab-bad">每层 +23B 格式税</span>
+<span class="ab-dim"># 第 2 轮起，gzip 开始反向工作。这不是 bug，是数学。</span></pre>
+  </div>
+
+  <!-- ── 模块一：选样本 ── -->
+  <div class="section" id="sampleSection">
+    <h2><i class="ti ti-files"></i> 第一步：选一个文件当实验品</h2>
+    <p class="section-desc">四个文件，四种命运。先在心里猜一猜谁最耐压、谁一点就瘪，再点卡片验证。</p>
+    <div class="sample-grid" id="sampleGrid"></div>
+  </div>
+
+  <!-- ── 模块二：压缩实验台 ── -->
+  <div class="section" id="labSection">
+    <h2><i class="ti ti-compress"></i> 压缩实验台</h2>
+    <p class="section-desc">每点一次「再压一次」，就给当前文件再套一层 gzip。盯住三个读数：大小、上一轮变化、熵。熵走到 8.00，说明信息已经塞满，一个比特都压不掉了。</p>
+
+    <div class="term-window">
+      <div class="term-titlebar">
+        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+        <span class="term-title">compress-lab -- bash</span>
+      </div>
+      <div class="term-body">
+        <div class="term-file-row" id="termFileRow"></div>
+
+        <div class="term-stats">
+          <div class="term-stat">
+            <div class="ts-label">当前大小</div>
+            <div class="ts-value gold" id="statSize">-</div>
+          </div>
+          <div class="term-stat">
+            <div class="ts-label">已压轮数</div>
+            <div class="ts-value" id="statRounds">0</div>
+          </div>
+          <div class="term-stat">
+            <div class="ts-label">累计变化</div>
+            <div class="ts-value" id="statTotal">-</div>
+          </div>
+          <div class="term-stat">
+            <div class="ts-label">上一轮变化</div>
+            <div class="ts-value" id="statLast">-</div>
+          </div>
+        </div>
+
+        <div class="entropy-gauge">
+          <div class="eg-head">
+            <span>熵（信息密度）</span>
+            <span class="eg-val" id="entropyVal">- / 8.00 bits/byte</span>
+          </div>
+          <div class="eg-bar"><div class="eg-fill" id="entropyFill"></div></div>
+          <div class="eg-note">熵 = 字节分布的混乱度。低 = 字节大量重复，一压就瘪；8.00 = 与随机数据无异，压缩算法无从下手。</div>
+        </div>
+
+        <div class="term-buttons">
+          <button id="compressBtn" class="btn-primary"><i class="ti ti-archive"></i> 再压一次</button>
+          <button id="compress5Btn" class="btn-secondary"><i class="ti ti-player-play"></i> 连压 ×5</button>
+          <button id="resetBtn" class="btn-reset"><i class="ti ti-refresh"></i> 重置</button>
+          <button id="downloadBtn" class="btn-secondary"><i class="ti ti-download"></i> 下载当前文件</button>
+        </div>
+        <div class="term-hint" id="downloadHint"></div>
+
+        <div class="term-error" id="termError" style="display:none"></div>
+        <div class="verdict" id="verdictBox" style="display:none"></div>
+
+        <div class="term-log" id="termLog"></div>
+
+        <div class="term-split">
+          <div class="term-preview">
+            <div class="tp-title">文件预览</div>
+            <div id="filePreview"></div>
+          </div>
+          <div class="term-hex">
+            <div class="tp-title">字节内容（hexdump，每轮更新）</div>
+            <pre id="hexDump"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="chart-note"># 每轮压缩后的文件大小曲线 -- 看它何时掉头向上</div>
+      <canvas id="sizeChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── 模块三：万能压缩器彩蛋 ── -->
+  <div class="section" id="eggSection">
+    <h2><i class="ti ti-flask"></i> 彩蛋：我的万能压缩器</h2>
+    <p class="section-desc">把上面正在实验的文件压成 1 个字节。压缩成功率 100%，童叟无欺。至于还原嘛……先别问。</p>
+    <button id="universalBtn" class="btn-egg"><i class="ti ti-zap"></i> 运行万能压缩器</button>
+    <div id="universalResult" style="display:none"></div>
+  </div>
+
+  <!-- ── 模块四：原理 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 四条原理，一堵墙</h2>
+    <p class="section-desc">为什么「越压越小」注定失败？答案不需要微积分，只需要数鸽子。</p>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>鸽笼原理：压缩的上限是数出来的</h4>
+        <p>2 字节文件有 <strong>65,536</strong> 种取值，1 字节只有 <strong>256</strong> 种。想把前者的每一种都映到后者，至少 65,280 个文件必须共享同一个压缩结果--解压器无法区分它们。这不是工程难题，是计数问题：<strong>球比洞多，就必然挤。</strong></p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>可压缩性 = 冗余 = 规律</h4>
+        <p>文本能压一半，是因为语言满是规律：q 后面几乎总是 u，常见词反复出现。照片压不动，是因为 PNG/JPEG 编码时已经把冗余吃干净了。随机数据一个比特都压不掉，因为它<strong>本来就没有规律</strong>。压缩算法不是在「变魔术」，是在「找规律」。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>格式税：压不动还要倒贴</h4>
+        <p>gzip 每套一层要交约 <strong>18~40 字节</strong> 的固定开销（文件头 + 校验和 + 存储块记账）。对压不动的数据，这笔税全额照收--这就是实验台里第二轮之后曲线缓慢上翘的原因。<strong>「压缩后的文件再压缩」稳赔不赚。</strong></p>
+      </div>
+      <div class="principle-card">
+        <div class="num">04</div>
+        <h4>历史一直在重播这个骗局</h4>
+        <p>2002 年美国公司 Zeosync 宣称「突破了压缩极限」，拿融资上新闻，随后在技术圈的笑声中蒸发；荷兰发明家 Sloot 声称能把整部电影存进 8KB，源码在签约前夜随他一起消失。骗局的演示永远用<strong>文本和表格</strong>，永远不敢当众压缩一段掷硬币得到的随机数。</p>
+      </div>
+    </div>
+
+    <div class="insight-box gold">
+      <h3><i class="ti ti-bulb"></i> 一句话记住</h3>
+      <p>压缩的本质是<strong>把规律改写成短代码</strong>。规律是燃料，烧完就没了；随机是灰烬，谁也压不动它。任何「万能」压缩器的正确名字都叫：<strong>有损压缩 + 说谎的还原器</strong>。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="data.js"></script>
+<script src="cat-data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

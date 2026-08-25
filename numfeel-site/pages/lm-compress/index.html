@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="大模型是史上最强的预测器，也是最强的压缩器：图片压过 JPEG-XL 两倍、文本压过 bz2 四倍。亲手体验预测如何压缩数据，看它为什么至今没人用。">
+  <title>LMCompress：大模型当压缩器，为什么没人用 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-brain"></i> LMCompress：让大模型当压缩器</h1>
+    <p>压缩的本质是预测：猜得越准，编码越短。大模型是人类史上最强的预测器——文本压过 bz2 四倍，图片压过 JPEG-XL 两倍。可它至今没人用。亲手压一压，你就知道为什么。</p>
+  </div>
+
+  <!-- ── 模块一：预测演示 ── -->
+  <div class="section" id="predictSection">
+    <h2><i class="ti ti-eye"></i> 先看：模型是怎么"猜"下一个字的</h2>
+    <p class="section-desc">输入几个字，看三个不同"聪明程度"的模型各自押谁。越聪明的模型，猜测越集中、越有把握。</p>
+
+    <div class="predict-input-row">
+      <input type="text" id="predictInput" placeholder="输入几个字，比如：压缩的本质是" autocomplete="off" maxlength="30">
+      <div class="predict-presets">
+        <span class="preset-label">试试：</span>
+        <button class="preset-btn" data-val="压缩的本质是">压缩的本质是</button>
+        <button class="preset-btn" data-val="预测模型越">预测模型越</button>
+        <button class="preset-btn" data-val="大语言模型">大语言模型</button>
+        <button class="preset-btn" data-val="一个">一个</button>
+      </div>
+    </div>
+
+    <div class="model-cards" id="modelCards">
+      <div class="model-card" data-order="1">
+        <div class="model-card-head">
+          <span class="model-name">只看频率</span>
+          <span class="model-tag tag-weak">1-gram · 什么都不会</span>
+        </div>
+        <div class="model-pred" id="pred1"></div>
+        <div class="model-note">不看上下文，按全局频率猜。对任何前缀给出的都是同一套答案。</div>
+      </div>
+      <div class="model-card" data-order="3">
+        <div class="model-card-head">
+          <span class="model-name">记住前两个字</span>
+          <span class="model-tag tag-mid">3-gram · 有点感觉了</span>
+        </div>
+        <div class="model-pred" id="pred3"></div>
+        <div class="model-note">记住前两个字的搭配，押注明显集中。这是压缩率提升最快的一阶。</div>
+      </div>
+      <div class="model-card" data-order="5">
+        <div class="model-card-head">
+          <span class="model-name">回看四个字</span>
+          <span class="model-tag tag-smart">5-gram · 胸有成竹</span>
+        </div>
+        <div class="model-pred" id="pred5"></div>
+        <div class="model-note">回看四个字，往往只有一个答案冒尖——几乎不用花比特就能写对。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 模块二：亲手压一压 ── -->
+  <div class="section" id="compressSection">
+    <h2><i class="ti ti-flask"></i> 亲手压一压：模型越聪明，文件越小</h2>
+    <p class="section-desc">选一段文字（或自己粘贴），点「开始压缩」。每个字符按预测概率编码，猜得越准，占的比特越少。右图是 1~5 阶模型对同一份文本的压缩结果。</p>
+
+    <div class="preset-cards">
+      <button class="preset-card" data-key="zh">
+        <i class="ti ti-language-hiragana"></i>
+        <span class="preset-card-title">中文科普</span>
+        <span class="preset-card-desc">模型受过中文科普训练，读起来顺</span>
+      </button>
+      <button class="preset-card" data-key="log">
+        <i class="ti ti-terminal-2"></i>
+        <span class="preset-card-title">服务器日志</span>
+        <span class="preset-card-desc">模型没见过，全靠边压边学</span>
+      </button>
+      <button class="preset-card" data-key="en">
+        <i class="ti ti-language-english"></i>
+        <span class="preset-card-title">英文句子</span>
+        <span class="preset-card-desc">模型懂一点英文，但不多</span>
+      </button>
+    </div>
+
+    <textarea id="compressText" rows="4" spellcheck="false"></textarea>
+
+    <div class="compress-actions">
+      <button class="btn-primary" id="runCompressBtn"><i class="ti ti-player-play"></i> 开始压缩</button>
+      <button class="btn-secondary" id="copyResultBtn"><i class="ti ti-copy"></i> 复制结果</button>
+    </div>
+
+    <div class="compress-result hidden" id="compressResult">
+      <div class="result-stats">
+        <div class="result-card">
+          <div class="result-label">原始体积</div>
+          <div class="result-value" id="statOriginal">—</div>
+        </div>
+        <div class="result-card highlight">
+          <div class="result-label">5-gram 压后</div>
+          <div class="result-value" id="statCompressed">—</div>
+        </div>
+        <div class="result-card highlight-gold">
+          <div class="result-label">省了多少</div>
+          <div class="result-value" id="statSaved">—</div>
+          <div class="result-sub" id="statBpc">— bits/字符</div>
+        </div>
+      </div>
+      <div class="insight-box gold" id="compressInsight">
+        <h3><i class="ti ti-bulb"></i> 看这里</h3>
+        <p id="compressInsightText">—</p>
+      </div>
+      <div class="chart-grid">
+        <div class="chart-box">
+          <h4><i class="ti ti-chart-bar"></i> 阶数越高，压得越小</h4>
+          <canvas id="orderChart" height="240"></canvas>
+        </div>
+        <div class="chart-box">
+          <h4><i class="ti ti-chart-line"></i> 边压边学：模型在适应你的文字</h4>
+          <canvas id="curveChart" height="240"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 模块三：训练数据量 ── -->
+  <div class="section" id="dataSection">
+    <h2><i class="ti ti-database"></i> 喂更多数据，模型更懂你</h2>
+    <p class="section-desc">预训练语料从 1,000 字拉满到 5,000 字，看中文科普的压缩率怎么变。模型见过的数据越多，它就越懂这门语言。</p>
+    <div class="data-slider-row">
+      <label>预训练数据量</label>
+      <input type="range" id="dataSlider" min="1000" max="5307" step="100" value="2000">
+      <span class="control-value" id="dataValue">2,000 字</span>
+      <button class="btn-secondary" id="runDataBtn"><i class="ti ti-player-play"></i> 跑一遍</button>
+    </div>
+    <div class="data-chart-box">
+      <canvas id="dataChart" height="220"></canvas>
+    </div>
+    <div class="insight-box blue" id="dataInsight">
+      <h3><i class="ti ti-bulb"></i> 为什么 LLM 能压过 bz2 四倍</h3>
+      <p>你刚看到的只是 5,000 字的效果。真正的语言模型读过的语料以万亿 token 计，是这里的十亿倍。数据量的差距，就是压缩率的差距——这也是 n-gram 类算法的天花板。</p>
+    </div>
+  </div>
+
+  <!-- ── 模块四：解压成本对决 ── -->
+  <div class="section" id="decodeSection">
+    <h2><i class="ti ti-timer"></i> 解压成本对决：压得快，解得动吗？</h2>
+    <p class="section-desc">压缩只是故事的一半。解压时 gzip 一眨眼，LMCompress 要跑一遍 80 亿参数的模型逐字推理。点按钮，看它们解压同一份 1MB 文件要多久。</p>
+    <div style="text-align:center; margin-bottom:16px;">
+      <button class="btn-primary" id="runDecodeBtn"><i class="ti ti-player-play"></i> 开始解压</button>
+    </div>
+    <div id="decodeRace"></div>
+    <div class="decode-verdict hidden" id="decodeVerdict"></div>
+  </div>
+
+  <!-- ── 模块五：三角权衡 ── -->
+  <div class="section" id="tradeoffSection">
+    <h2><i class="ti ti-chart-scatter"></i> 三角权衡：又准又快的方案不存在</h2>
+    <p class="section-desc">横轴是模型规模，纵轴是压缩率，气泡大小是解压 1MB 所需时间。左下角是 gzip——便宜但压得少；右上角是 LMCompress——压得狠但解压以小时计。示意数据，非实测基准。</p>
+    <div class="tradeoff-chart-box">
+      <canvas id="tradeoffChart" height="300"></canvas>
+    </div>
+  </div>
+
+  <!-- ── 模块六：为什么没人用 ── -->
+  <div class="section" id="whySection">
+    <h2><i class="ti ti-question-mark"></i> 为什么没人用？</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>算力黑洞</h4>
+        <p>每还原一个字符，都要让大模型前向推理一次。省下来的带宽，全被解压的算力账单吃了回去。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>版本锁死</h4>
+        <p>解压必须用同一个模型。模型一升级、一更换，旧文件就永远躺在硬盘里读不出来。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>生态为零</h4>
+        <p>没有格式标准，没有工具链，浏览器和操作系统都不认识它。没人敢带头换，也就没人跟着换。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">04</div>
+        <h4>论文怎么说的</h4>
+        <p>LMCompress（arXiv:2407.07723，Nature Machine Intelligence 2025）：图片压过 JPEG-XL 两倍、音频压过 FLAC 两倍、视频压过 H.264 两倍、文本压过 bz2 四倍。技术赢了，现实没接住。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

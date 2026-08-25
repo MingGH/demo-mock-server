@@ -1,0 +1,552 @@
+/* ── LMCompress 演示页样式 ── */
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background-attachment: fixed;
+  color: #e8e8f0;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+}
+
+/* 标题区 */
+.header h1 {
+  font-size: 1.7rem;
+  color: #ffd700;
+  background: linear-gradient(90deg, #ffd700, #fff3b0, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+  margin-bottom: 8px;
+}
+
+.header p {
+  color: #aab;
+  font-size: 0.95rem;
+  margin-top: 0;
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* 区块 */
+.section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 20px;
+  margin: 18px 0;
+}
+
+.section h2 {
+  font-size: 1.2rem;
+  color: #ffd700;
+  margin: 0 0 4px;
+}
+
+.section-desc {
+  color: #889;
+  font-size: 0.88rem;
+  margin: 4px 0 16px;
+}
+
+.section h4 {
+  color: #ccd;
+  font-size: 0.95rem;
+  margin: 0 0 10px;
+}
+
+/* ── 模块一：预测演示 ── */
+.predict-input-row {
+  margin-bottom: 14px;
+}
+
+.predict-input-row input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(144, 202, 249, 0.3);
+  background: rgba(10, 15, 30, 0.6);
+  color: #fff;
+  font-size: 1rem;
+}
+
+.predict-input-row input:focus {
+  outline: none;
+  border-color: #ffd700;
+}
+
+.predict-presets {
+  margin-top: 10px;
+}
+
+.preset-label {
+  color: #889;
+  font-size: 0.85rem;
+  margin-right: 6px;
+}
+
+.preset-btn {
+  background: rgba(144, 202, 249, 0.12);
+  border: 1px solid rgba(144, 202, 249, 0.35);
+  color: #90caf9;
+  border-radius: 999px;
+  padding: 4px 12px;
+  margin: 3px 4px 3px 0;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-btn:hover {
+  background: rgba(144, 202, 249, 0.25);
+  color: #fff;
+}
+
+.model-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.model-card {
+  background: rgba(10, 15, 30, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 14px;
+  min-width: 0;
+}
+
+.model-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.model-name {
+  font-weight: 600;
+  color: #eee;
+  font-size: 0.95rem;
+}
+
+.model-tag {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tag-weak { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+.tag-mid { background: rgba(255, 183, 77, 0.15); color: #ffb74d; }
+.tag-smart { background: rgba(129, 199, 132, 0.15); color: #81c784; }
+
+.model-pred {
+  min-height: 148px;
+}
+
+.pred-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.pred-char {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(144, 202, 249, 0.12);
+  border: 1px solid rgba(144, 202, 249, 0.3);
+  color: #90caf9;
+  font-size: 0.95rem;
+}
+
+.pred-bar-wrap {
+  flex: 1;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.pred-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #90caf9, #ffd700);
+  border-radius: 6px;
+}
+
+.pred-prob {
+  width: 46px;
+  flex: 0 0 46px;
+  text-align: right;
+  color: #889;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pred-empty {
+  color: #667;
+  font-size: 0.85rem;
+  padding: 20px 0;
+}
+
+.model-note {
+  color: #667;
+  font-size: 0.78rem;
+  margin-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  padding-top: 8px;
+}
+
+/* ── 模块二：压缩实验 ── */
+.preset-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.preset-card {
+  background: rgba(10, 15, 30, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: left;
+  color: #eee;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preset-card:hover,
+.preset-card.active {
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.preset-card i {
+  font-size: 1.3rem;
+  color: #90caf9;
+}
+
+.preset-card-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.preset-card-desc {
+  color: #889;
+  font-size: 0.75rem;
+}
+
+textarea#compressText {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(144, 202, 249, 0.3);
+  background: rgba(10, 15, 30, 0.6);
+  color: #fff;
+  font-size: 0.9rem;
+  resize: vertical;
+  font-family: inherit;
+  margin-bottom: 12px;
+}
+
+.compress-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #ffd700, #f0a500);
+  border: none;
+  color: #1a1a2e;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(255, 215, 0, 0.3);
+}
+
+.btn-secondary {
+  background: rgba(144, 202, 249, 0.12);
+  border: 1px solid rgba(144, 202, 249, 0.4);
+  color: #90caf9;
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.92rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(144, 202, 249, 0.25);
+}
+
+/* 结果区 */
+.result-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.result-card {
+  background: rgba(10, 15, 30, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+}
+
+.result-card.highlight {
+  border-color: rgba(129, 199, 132, 0.5);
+}
+
+.result-card.highlight-gold {
+  border-color: rgba(255, 215, 0, 0.6);
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.result-label {
+  color: #889;
+  font-size: 0.8rem;
+}
+
+.result-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 4px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.highlight .result-value { color: #81c784; }
+.highlight-gold .result-value { color: #ffd700; }
+
+.result-sub {
+  color: #889;
+  font-size: 0.78rem;
+}
+
+/* 洞察框 */
+.insight-box {
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 14px 0;
+}
+
+.insight-box h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.insight-box p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #dde;
+}
+
+.insight-box.gold {
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+}
+
+.insight-box.gold h3 { color: #ffd700; }
+
+.insight-box.blue {
+  background: rgba(144, 202, 249, 0.08);
+  border: 1px solid rgba(144, 202, 249, 0.35);
+}
+
+.insight-box.blue h3 { color: #90caf9; }
+
+/* 图表 */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.chart-box,
+.data-chart-box,
+.tradeoff-chart-box {
+  background: rgba(10, 15, 30, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px;
+  position: relative;
+  min-width: 0;
+}
+
+/* ── 模块三：数据量 ── */
+.data-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.data-slider-row label {
+  color: #aab;
+  font-size: 0.9rem;
+}
+
+.data-slider-row input[type="range"] {
+  flex: 1;
+  min-width: 160px;
+  accent-color: #ffd700;
+}
+
+.control-value {
+  color: #ffd700;
+  font-weight: 600;
+  min-width: 80px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 模块四：解压对决 ── */
+.decode-row {
+  background: rgba(10, 15, 30, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.decode-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.decode-name {
+  font-weight: 600;
+  color: #eee;
+  font-size: 0.92rem;
+}
+
+.decode-time {
+  color: #889;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.decode-track {
+  height: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.decode-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 8px;
+}
+
+.decode-status {
+  color: #667;
+  font-size: 0.8rem;
+  margin-top: 6px;
+}
+
+.decode-verdict {
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: #ffb0b0;
+  font-size: 0.9rem;
+  margin-top: 12px;
+}
+
+/* ── 模块六：为什么没人用 ── */
+.principle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.principle-card {
+  background: rgba(10, 15, 30, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.principle-card .num {
+  color: #ffd700;
+  font-weight: 700;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.principle-card h4 {
+  margin: 6px 0;
+  font-size: 1rem;
+  color: #eee;
+}
+
+.principle-card p {
+  margin: 0;
+  color: #99a;
+  font-size: 0.85rem;
+}
+
+/* ── 通用 ── */
+.hidden {
+  display: none !important;
+}
+
+/* ── 移动端适配 ── */
+@media (max-width: 720px) {
+  .container { padding: 16px 10px 40px; }
+  .model-cards { grid-template-columns: 1fr; }
+  .preset-cards { grid-template-columns: 1fr; }
+  .chart-grid { grid-template-columns: 1fr; }
+  .principle-grid { grid-template-columns: 1fr; }
+  .result-stats { grid-template-columns: 1fr 1fr; }
+  .result-card:last-child { grid-column: 1 / -1; }
+  .header h1 { font-size: 1.35rem; }
+}

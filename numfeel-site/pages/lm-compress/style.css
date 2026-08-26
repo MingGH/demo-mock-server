@@ -414,6 +414,40 @@ textarea#compressText {
   padding: 14px;
   position: relative;
   min-width: 0;
+  /* 关键：给 Chart.js（maintainAspectRatio: false）一个确定的容器高度，
+     否则 canvas 高度会与容器高度互相拉扯，图表不断变高、页面卡死 */
+  height: 280px;
+}
+
+/* 带标题的图表卡片：标题在上、图表区占满剩余空间 */
+.chart-box {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 独立的图表高度容器：只有 .chart-canvas-wrap 决定 canvas 尺寸。
+   Chart.js 的 ResizeObserver 观察到的始终是这块固定大小区域，
+   杜绝 canvas 与容器互相撑高的死循环 */
+.chart-box .chart-canvas-wrap,
+.data-chart-box .chart-canvas-wrap,
+.tradeoff-chart-box .chart-canvas-wrap {
+  position: relative;
+  height: 100%;
+  min-height: 240px;
+  overflow: hidden;
+}
+
+.chart-box .chart-canvas-wrap {
+  flex: 1 1 auto;
+  height: auto;
+}
+
+.chart-canvas-wrap canvas {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 /* ── 模块三：数据量 ── */

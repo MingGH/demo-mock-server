@@ -8,8 +8,8 @@
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
 </head>
 <body>
 <div class="container">
@@ -116,11 +116,11 @@
       <div class="chart-grid">
         <div class="chart-box">
           <h4><i class="ti ti-chart-bar"></i> 阶数越高，压得越小</h4>
-          <canvas id="orderChart" height="240"></canvas>
+          <div class="chart-canvas-wrap"><canvas id="orderChart"></canvas></div>
         </div>
         <div class="chart-box">
           <h4><i class="ti ti-chart-line"></i> 边压边学：模型在适应你的文字</h4>
-          <canvas id="curveChart" height="240"></canvas>
+          <div class="chart-canvas-wrap"><canvas id="curveChart"></canvas></div>
         </div>
       </div>
     </div>
@@ -137,7 +137,7 @@
       <button class="btn-secondary" id="runDataBtn"><i class="ti ti-player-play"></i> 跑一遍</button>
     </div>
     <div class="data-chart-box">
-      <canvas id="dataChart" height="220"></canvas>
+      <div class="chart-canvas-wrap"><canvas id="dataChart"></canvas></div>
     </div>
     <div class="insight-box blue" id="dataInsight">
       <h3><i class="ti ti-bulb"></i> 为什么 LLM 能压过 bz2 四倍</h3>
@@ -161,7 +161,7 @@
     <h2><i class="ti ti-chart-scatter"></i> 三角权衡：又准又快的方案不存在</h2>
     <p class="section-desc">横轴是模型规模，纵轴是压缩率，气泡大小是解压 1MB 所需时间。左下角是 gzip——便宜但压得少；右上角是 LMCompress——压得狠但解压以小时计。示意数据，非实测基准。</p>
     <div class="tradeoff-chart-box">
-      <canvas id="tradeoffChart" height="300"></canvas>
+      <div class="chart-canvas-wrap"><canvas id="tradeoffChart"></canvas></div>
     </div>
   </div>
 

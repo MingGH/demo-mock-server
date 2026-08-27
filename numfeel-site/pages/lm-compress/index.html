@@ -90,7 +90,12 @@
 
     <div class="compress-actions">
       <button class="btn-primary" id="runCompressBtn"><i class="ti ti-player-play"></i> 开始压缩</button>
-      <button class="btn-secondary" id="copyResultBtn"><i class="ti ti-copy"></i> 复制结果</button>
+      <button class="btn-secondary" id="copyResultBtn"><i class="ti ti-copy"></i> 复制摘要</button>
+    </div>
+
+    <div class="compress-progress hidden" id="compressProgress">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText">正在逐字符编码…</div>
     </div>
 
     <div class="compress-result hidden" id="compressResult">
@@ -196,5 +201,6 @@
 
 <script src="engine.js"></script>
 <script src="app.js"></script>
+<div class="copy-toast hidden" id="copyToast">已复制本次压缩的数据摘要</div>
 </body>
 </html>

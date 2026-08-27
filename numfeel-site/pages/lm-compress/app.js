@@ -130,15 +130,62 @@
 
   function runCompress(noScroll) {
     var text = $('compressText').value;
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      flashButton($('runCompressBtn'), '先粘贴点内容再压');
+      return;
+    }
 
+    // 进入"正在压缩"状态
+    $('compressResult').classList.add('hidden');
+    var btn = $('runCompressBtn');
+    btn.disabled = true;
+    var btnOrigin = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-loader-2 spin"></i> 压缩中…';
+
+    var progressEl = $('compressProgress');
+    var fill = $('progressFill');
+    var progressText = $('progressText');
+    progressEl.classList.remove('hidden');
+    fill.style.width = '0%';
+    var chars = text.length;
+    var steps = [
+      '正在构建预测模型…',
+      '正在逐字符编码（共 ' + chars + ' 个字符）…',
+      '正在对比 1~5 阶模型…',
+      '正在绘制结果…'
+    ];
+
+    // 先让浏览器渲染出 loading 状态，再把瞬时计算包进进度条动画里
+    setTimeout(function () {
+      var duration = 900;
+      var start = null;
+      function stepFrame(ts) {
+        if (!start) start = ts;
+        var p = Math.min(1, (ts - start) / duration);
+        fill.style.width = (p * 100) + '%';
+        var si = Math.min(steps.length - 1, Math.floor(p * steps.length));
+        progressText.textContent = steps[si];
+        if (p < 1) {
+          window.requestAnimationFrame(stepFrame);
+        } else {
+          fill.style.width = '100%';
+          progressText.textContent = '完成：压缩前后每个字符都分毫不差';
+          finish();
+        }
+      }
+      window.requestAnimationFrame(stepFrame);
+    }, 60);
+  }
+
+  function finish() {
+    var text = $('compressText').value;
     var reports = sweepOrders(text, TRAINING_CORPUS, MAX_ORDER);
     lastReport = reports[reports.length - 1];
 
-    // 统计卡（用最高阶结果）
-    $('statOriginal').textContent = formatBytes(lastReport.originalBytes);
-    $('statCompressed').textContent = formatBytes(lastReport.compressedBytes);
-    $('statSaved').textContent = '-' + lastReport.savedPercent.toFixed(1) + '%';
+    // 统计卡：数字滚动到目标值
+    animateNumber($('statOriginal'), lastReport.originalBytes, formatBytes, 500);
+    animateNumber($('statCompressed'), lastReport.compressedBytes, formatBytes, 500);
+    animateNumber($('statSaved'), lastReport.savedPercent, function (v) { return '-' + v.toFixed(1) + '%'; }, 500);
     $('statBpc').textContent = lastReport.bitsPerChar.toFixed(2) + ' bits/字符';
 
     // 洞察文案
@@ -153,20 +200,51 @@
       insight += '最佳阶数是 ' + best.order + '-gram（' + best.savedPercent.toFixed(1) + '%）。';
     }
     if (currentPreset === 'zh') {
-      insight += '换「服务器日志」试试：模型完全陌生的文本，学习曲线会更陡峭。';
+      insight += '换个「服务器日志」试试：模型完全陌生的文本，学习曲线会很陡。';
     }
     $('compressInsightText').textContent = insight;
     nfTrack('lm_compress', { saved: Math.round(lastReport.savedPercent), order: lastReport.order });
 
-    // 阶数对比图
     renderOrderChart(reports);
-    // 学习曲线（用最高阶的逐字符比特）
     renderCurveChart(lastReport.perCharBits);
 
-    $('compressResult').classList.remove('hidden');
-    if (!noScroll) {
-      $('compressResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // 进度条停一瞬，再让位给结果卡片
+    setTimeout(function () {
+      $('compressProgress').classList.add('hidden');
+      var resultEl = $('compressResult');
+      resultEl.classList.remove('hidden');
+      resultEl.classList.remove('pop-in');
+      void resultEl.offsetWidth;
+      resultEl.classList.add('pop-in');
+      var runBtn = $('runCompressBtn');
+      runBtn.disabled = false;
+      runBtn.innerHTML = '<i class="ti ti-player-play"></i> 再压一次';
+      if (!noScroll) {
+        resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 420);
+  }
+
+  function animateNumber(el, target, fmt, duration) {
+    var startTime = null;
+    function frame(ts) {
+      if (!startTime) startTime = ts;
+      var p = Math.min(1, (ts - startTime) / duration);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(target * eased);
+      if (p < 1) window.requestAnimationFrame(frame);
     }
+    window.requestAnimationFrame(frame);
+  }
+
+  function flashButton(btn, msg) {
+    var origin = btn.innerHTML;
+    btn.textContent = msg;
+    btn.classList.add('btn-warn');
+    setTimeout(function () {
+      btn.innerHTML = origin;
+      btn.classList.remove('btn-warn');
+    }, 1200);
   }
 
   function renderOrderChart(reports) {
@@ -254,26 +332,43 @@
   }
 
   function copyResult() {
-    if (!lastReport) return;
+    if (!lastReport) {
+      flashButton($('copyResultBtn'), '先压一次再复制');
+      return;
+    }
     var text = '【LMCompress 压缩实验】' +
       '原始 ' + formatBytes(lastReport.originalBytes) +
       ' → ' + lastReport.order + '-gram 压后 ' + formatBytes(lastReport.compressedBytes) +
       '，省 ' + lastReport.savedPercent.toFixed(1) + '%' +
       '，' + lastReport.bitsPerChar.toFixed(2) + ' bits/字符。压缩的本质是预测。';
+
+    function showToast() {
+      var toast = $('copyToast');
+      toast.classList.remove('hidden');
+      toast.classList.remove('toast-up');
+      void toast.offsetWidth;
+      toast.classList.add('toast-up');
+      setTimeout(function () { toast.classList.add('hidden'); }, 1800);
+    }
+
     var done = false;
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () { done = true; }).catch(function () {});
+      navigator.clipboard.writeText(text).then(function () { done = true; showToast(); }).catch(function () {
+        fallbackCopy();
+      });
+    } else {
+      fallbackCopy();
     }
-    setTimeout(function () {
-      if (!done) {
-        var ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand('copy'); } catch (e) {}
-        document.body.removeChild(ta);
-      }
-    }, 80);
+
+    function fallbackCopy() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      showToast();
+    }
   }
 
   // ══════════════════════════════════════════════════════════

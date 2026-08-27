@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="LZW 无损压缩交互演示：把一个文件压小还不丢一个字，靠的是把重复的东西记住，下次直接说编号。体验文本/图片/噪声三种输入，逐步观看字典学习过程，验证逐字节无损。">
+  <title>LZW 无损压缩：文件变小，却一字不丢 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="engine.js?v=1"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-file-compressed"></i> LZW 无损压缩</h1>
+    <p>把一个文件压小还不丢一个字，靠的居然是「把重复的东西记住，下次直接说『就那个』」。没有 AI，没有概率模型，只有一张越学越聪明的字典。</p>
+  </div>
+
+  <!-- ── 输入选择 ── -->
+  <section class="section" id="inputSection">
+    <h2><i class="ti ti-edit"></i> 选输入：文本 / 图片 / 随机噪声</h2>
+    <p class="step-hint">同一套 LZW 算法，压三段性质完全不同的数据，看结果差多少。选完点「开始压缩」。</p>
+
+    <div class="type-tabs" id="typeTabs">
+      <button class="type-tab active" data-type="text"><i class="ti ti-text-size"></i> 文本</button>
+      <button class="type-tab" data-type="image"><i class="ti ti-photo"></i> 图片</button>
+      <button class="type-tab" data-type="noise"><i class="ti ti-wave-square"></i> 随机噪声</button>
+    </div>
+
+    <!-- 文本面板 -->
+    <div class="type-panel" id="panelText">
+      <div class="preset-row">
+        <button class="btn btn-secondary btn-sm text-preset" data-text="poem"><i class="ti ti-book"></i> 重复诗句</button>
+        <button class="btn btn-secondary btn-sm text-preset" data-text="tongue"><i class="ti ti-mood-wink"></i> 绕口令</button>
+        <button class="btn btn-secondary btn-sm text-preset" data-text="prose"><i class="ti ti-writing"></i> 自然段落</button>
+      </div>
+      <textarea id="textInput" rows="5" maxlength="500" spellcheck="false"></textarea>
+    </div>
+
+    <!-- 图片面板 -->
+    <div class="type-panel" id="panelImage" style="display:none;">
+      <div class="upload-zone" id="imageUploadZone">
+        <i class="ti ti-cloud-upload upload-icon"></i>
+        <div class="upload-text">点击上传图片，或拖拽图片到此处</div>
+        <span class="upload-hint">支持 JPG / PNG / WebP，自动降为 64×64 的 16 级灰度</span>
+      </div>
+      <input type="file" id="imageFile" accept="image/*" hidden>
+      <div class="btn-row" style="justify-content:center;">
+        <button class="btn btn-secondary" id="useDefaultImageBtn"><i class="ti ti-pattern"></i> 使用默认示例图</button>
+      </div>
+      <div class="canvas-pair" id="imagePreview" style="display:none;">
+        <div class="canvas-box">
+          <div class="canvas-label">原图（灰度）</div>
+          <canvas id="previewOriginalCanvas"></canvas>
+        </div>
+        <div class="canvas-box">
+          <div class="canvas-label">16 级灰度（就是 GIF 的「调色板」）</div>
+          <canvas id="previewQuantCanvas"></canvas>
+        </div>
+      </div>
+      <p class="panel-note">
+        <i class="ti ti-info-circle"></i>
+        先降到 16 级灰再压缩——GIF 也是这么干的：先定调色板（这里 16 种灰），再对调色板编号做 LZW。
+        平坦区域会出现大段重复编号，这正是 LZW 的食物。
+      </p>
+    </div>
+
+    <!-- 噪声面板 -->
+    <div class="type-panel" id="panelNoise" style="display:none;">
+      <div class="controls-row">
+        <div class="control-group">
+          <h3><i class="ti ti-settings"></i> 噪声长度</h3>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>字节数</span>
+              <span class="val" id="noiseSizeVal">1024 B</span>
+            </div>
+            <input type="range" id="noiseSizeSlider" min="0" max="3" value="1" step="1">
+          </div>
+          <div class="btn-row" style="margin:0;">
+            <button class="btn btn-secondary btn-sm" id="regenerateNoiseBtn"><i class="ti ti-refresh"></i> 重新生成</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <h3><i class="ti ti-shield-lock"></i> 真随机源</h3>
+          <p style="color:#a0a0a0;font-size:0.85rem;line-height:1.7;">
+            用 <code>crypto.getRandomValues</code> 生成的字节，没有任何规律。
+            猜猜看：LZW 能把它压小吗？答案是<b style="color:#ff6b6b;">不能</b>——先压再看，这个反差就是鸽巢原理。
+          </p>
+        </div>
+      </div>
+      <pre class="noise-preview" id="noisePreview"></pre>
+    </div>
+
+    <div class="btn-row" style="justify-content:center;margin-top:18px;">
+      <button class="btn btn-primary btn-lg" id="compressBtn"><i class="ti ti-player-play"></i> 开始压缩</button>
+    </div>
+
+    <!-- 统计行 -->
+    <div class="stats-row" id="statsRow" style="display:none;">
+      <div class="stat-item"><span class="val" id="statOrigBytes">—</span><span class="lbl">原始大小</span></div>
+      <div class="stat-item"><span class="val" id="statCompBytes">—</span><span class="lbl">压缩后大小</span></div>
+      <div class="stat-item highlight"><span class="val" id="statRatio">—</span><span class="lbl">压缩比</span></div>
+      <div class="stat-item"><span class="val" id="statDict">—</span><span class="lbl">字典条目 起始→学完</span></div>
+      <div class="stat-item"><span class="val" id="statTime">—</span><span class="lbl">处理耗时</span></div>
+    </div>
+    <p class="size-breakdown" id="sizeBreakdown" style="display:none;"></p>
+  </section>
+
+  <!-- ── 无损验证 ── -->
+  <section class="section" id="verifySection" style="display:none;">
+    <h2><i class="ti ti-shield-check"></i> 无损验证：压完解压，一字不差</h2>
+    <p class="step-hint">编码器丢掉原文件，只用「字母表 + 编号流」解压。下面逐字节对比，差一个字节都算失败。</p>
+
+    <div class="lossless-badge" id="losslessBadge">
+      <i class="ti ti-circle-check"></i>
+      <span id="losslessBadgeText">逐字节一致，无损成立</span>
+    </div>
+
+    <div id="verifyText" style="display:none;">
+      <div class="verify-pair">
+        <div class="verify-box">
+          <div class="verify-label">原文</div>
+          <pre id="origTextDisplay" class="verify-pre"></pre>
+        </div>
+        <div class="verify-box">
+          <div class="verify-label">解压后（同一份文件？）</div>
+          <pre id="decodedTextDisplay" class="verify-pre"></pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="verifyImage" style="display:none;">
+      <div class="canvas-pair">
+        <div class="canvas-box">
+          <div class="canvas-label">原图像素</div>
+          <canvas id="verifyOrigCanvas"></canvas>
+        </div>
+        <div class="canvas-box">
+          <div class="canvas-label">解压后像素</div>
+          <canvas id="verifyDecodedCanvas"></canvas>
+        </div>
+      </div>
+      <p class="panel-note"><i class="ti ti-pixel"></i> <span id="verifyPixelDiff">—</span></p>
+    </div>
+
+    <div id="verifyNoise" style="display:none;">
+      <div class="verify-pair">
+        <div class="verify-box">
+          <div class="verify-label">原始字节（前 256 字节）</div>
+          <pre id="origNoiseDisplay" class="verify-pre"></pre>
+        </div>
+        <div class="verify-box">
+          <div class="verify-label">解压字节（前 256 字节）</div>
+          <pre id="decodedNoiseDisplay" class="verify-pre"></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="justify-content:center;">
+      <button class="btn btn-secondary" id="downloadBtn"><i class="ti ti-download"></i> 下载压缩结果</button>
+      <button class="btn btn-secondary" id="copyBtn"><i class="ti ti-copy"></i> 复制编号流</button>
+    </div>
+  </section>
+
+  <!-- ── 编码过程可视化 ── -->
+  <section class="section" id="animSection" style="display:none;">
+    <h2><i class="ti ti-stack-2"></i> 字典是怎么「越学越聪明」的</h2>
+    <p class="step-hint">逐帧看编码器扫描输入：左下方字典每学到一个新短语就多一行，读头每遇到匹配不上的组合就把当前词报成一个编号。</p>
+
+    <div class="anim-controls">
+      <button class="btn btn-primary btn-sm" id="animPlayBtn"><i class="ti ti-player-play"></i> 播放</button>
+      <button class="btn btn-secondary btn-sm" id="animRestartBtn"><i class="ti ti-player-track-prev"></i> 重来</button>
+      <div class="slider-group" style="flex:1;">
+        <div class="slider-label">
+          <span>速度</span>
+          <span class="val" id="animSpeedVal">中</span>
+        </div>
+        <input type="range" id="animSpeedSlider" min="1" max="3" value="2" step="1">
+      </div>
+      <div class="slider-group" style="flex:1;">
+        <div class="slider-label">
+          <span>进度 <span id="stepCounter" style="color:#90caf9;">0 / 0</span></span>
+        </div>
+        <input type="range" id="animProgressSlider" min="0" max="1" value="0" step="1">
+      </div>
+    </div>
+
+    <div class="step-desc" id="stepDesc">
+      <span class="step-desc-num" id="stepDescCode">—</span>
+      <span id="stepDescText">准备就绪</span>
+    </div>
+
+    <div class="anim-panels">
+      <div class="anim-panel">
+        <div class="anim-panel-title"><i class="ti ti-eye"></i> 读头在输入上扫过 <span class="anim-panel-hint">高亮 = 命中的词，绿色 = 刚学进字典</span></div>
+        <div class="anim-input-wrap"><div class="anim-input" id="animInput"></div></div>
+      </div>
+      <div class="anim-panel">
+        <div class="anim-panel-title"><i class="ti ti-book-2"></i> 字典 <span class="anim-panel-hint">编号 → 词条</span></div>
+        <div class="dict-wrap">
+          <table class="dict-table">
+            <tbody id="dictTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="anim-panel">
+        <div class="anim-panel-title"><i class="ti ti-list-numbers"></i> 输出编号流 <span class="anim-panel-hint">这就是压缩后的文件主体</span></div>
+        <div class="code-chips" id="codeChips"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 鸽巢原理 ── -->
+  <section class="section" id="pigeonSection" style="display:none;">
+    <h2><i class="ti ti-alert-triangle"></i> 为什么随机数据压不动</h2>
+    <div class="insight-box">
+      <i class="ti ti-info-circle" style="color:#ffd700;margin-right:8px;"></i>
+      <span style="color:#c0c0c0;font-size:0.9rem;">
+        N 个字节有 2<sup>8N</sup> 种可能。任何无损压缩都把它们映射到更少的压缩串上——
+        可压缩串的数量小于原始串，必然有至少两个原始串对应同一个压缩串，解压时无法区分。
+        所以「真正随机的数据不可压缩」不是实现不行，是<b style="color:#ffd700;">数学上不可能</b>。
+        刚才 LZW 压噪声不但没变小，反而因为要附带字典而变大——这就是证据。
+      </span>
+    </div>
+  </section>
+
+  <!-- ── 核心代码 ── -->
+  <section class="section" id="codeSection">
+    <h2><i class="ti ti-code"></i> 核心代码</h2>
+    <div class="code-block">
+      <pre><code># 编码：边读边学
+字典 = 输入里每个不重复字符（按首次出现顺序）→ 编号 0,1,2...
+词 w = 空
+for 字符 c in 输入:
+    if w + c 在字典里:      # 认得，先攒着，还能更长
+        w = w + c
+    else:                   # 不认得了：把 w 报出去，把 w+c 学进字典
+        输出 字典[w]
+        字典[w + c] = 下一个编号
+        w = c
+输出 字典[w]                # 收尾，最后一个词也要报
+
+# 解码：不碰原文件，重建出同一个字典
+for 编号 k in 编号流:
+    输出 字典[k]
+    字典[下一个编号] = 上一个词 + 本词首字符   # 和编码器同步学习</code></pre>
+    </div>
+    <p style="color:#a0a0a0; margin-top:12px; font-size:0.88rem;">
+      真正的 LZW 还要处理「编号 9 位变 10 位、10 位变 11 位」的变长打包和清字典位；
+      这里为了可读性用定长编号。核心思想一行没省：<b style="color:#ffd700;">能匹配就攒，攒不住就报编号、学新词。</b>
+    </p>
+  </section>
+
+  <!-- ── 原理卡片 ── -->
+  <section class="section" id="principleSection">
+    <h2><i class="ti ti-brain"></i> 原理：三张卡看懂 LZW</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>先来后到</h4>
+        <p>字典从空开始，边读边建：第一次见到的字符先拿小号编号，后来发现的重复短语按顺序排队拿大号。谁先出现，谁先有名字——编号小的词条一定比编号大的更早出现。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>命中缓存</h4>
+        <p>重复片段只记一次编号，下次整段直接说「就那个」。第一次读「所谓伊人」要花 4 个编号，第二次读到直接报一个编号——字典越长，单次省得越多。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>无损的保证</h4>
+        <p>解码器不依赖原文件：只要拿到「字母表 + 编号流」，就能重建出与编码器一模一样的字典。编号一一对应，所以压缩再狠，解压出来也一字不差——这是数学保证，不是工程尽力。</p>
+      </div>
+    </div>
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 姊妹篇：有损 vs 无损</h3>
+      <p>本站的 JPEG2000 演示讲「有损压缩怎么丢数据」——把人不敏感的高频细节扔掉换体积；这里讲「无损压缩怎么一个字都不丢」——把重复记住、把冗余删掉。有损靠人眼，无损靠字典，两篇合起来就是一套压缩专题。</p>
+    </div>
+  </section>
+
+  <!-- ── 应用场景 ── -->
+  <section class="section" id="usageSection">
+    <h2><i class="ti ti-history"></i> 一篇 1977 年的论文，活到今天</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-photo"></i></div>
+        <h4>GIF（1987，老而不死）</h4>
+        <p>CompuServe 发布时选 LZW 当心脏，一张动图能压到原来的几分之一。1990 年代因专利打了一场大官司，但 GIF 至今还是表情包的原生格式。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-photo-down"></i></div>
+        <h4>PNG</h4>
+        <p>PNG 内置的 DEFLATE 压缩 = LZ77（LZ 家族第二代）+ 霍夫曼编码。GIF 之后，无损压缩扛把子的位置传给了 LZ 家族。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-terminal-2"></i></div>
+        <h4>Unix compress</h4>
+        <p>1984 年 Spencer Thomas 把 LZW 写进 Unix，一条 <code>compress</code> 命令压缩率吊打当时的霍夫曼压缩器，从 BSD 一路活到 Linux 的默认工具箱里。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-file-text"></i></div>
+        <h4>TIFF</h4>
+        <p>扫描仪和印刷界的 TIFF 标准把 LZW 列为内置压缩选项，二十多年没变过。文档格式的宿命就是：标准定了，算法就永生。</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="app.js?v=1"></script>
+</body>
+</html>

@@ -72,7 +72,10 @@ function setupUpload() {
 }
 
 function handleFile(file) {
-  if (!file.type.startsWith('image/')) return;
+  if (!file.type.startsWith('image/')) {
+    showLoadError('不支持的图片格式，请用 JPG / PNG / WebP');
+    return;
+  }
   nfTrack('upload', { source: 'file' });
   const reader = new FileReader();
   reader.onload = (e) => loadImage(e.target.result);
@@ -343,7 +346,7 @@ function renderAnimCanvas() {
 }
 
 function updateAnimProgress() {
-  document.getElementById('animProgress').style.width = (animN / period * 100) + '%';
+  document.getElementById('animProgress').style.width = (period > 0 ? (animN / period * 100) : 0) + '%';
 }
 
 function pauseAnimation() {

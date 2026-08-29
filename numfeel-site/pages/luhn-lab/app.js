@@ -69,17 +69,17 @@ function renderAll(value) {
 function renderResult(r) {
   if (!r) {
     resultBanner.className = 'result-banner';
-    resultIcon.textContent = '⚠';
+    resultIcon.innerHTML = '<i class="ti ti-alert-circle"></i>';
     resultText.textContent = '请输入纯数字（可带空格或横线）';
     return;
   }
   if (r.valid) {
     resultBanner.className = 'result-banner ok';
-    resultIcon.textContent = '✓';
+    resultIcon.innerHTML = '<i class="ti ti-circle-check"></i>';
     resultText.textContent = '校验通过：校验和 ' + r.sum + ' 能被 10 整除，格式合法';
   } else {
     resultBanner.className = 'result-banner fail';
-    resultIcon.textContent = '✕';
+    resultIcon.innerHTML = '<i class="ti ti-circle-x"></i>';
     resultText.textContent = '校验失败：校验和 ' + r.sum + ' 不能被 10 整除——最后一位或某位数字有误';
   }
 }
@@ -132,18 +132,23 @@ function renderSteps(r) {
 }
 
 // ── 随机改一位：演示手误导致校验失败 ──
+// 任意位置改成"必然让 Luhn 校验失败"的数字：每个位置只有 1 个候选数字
+// 能保持校验和不变，其余 9 个都必败，随机选一个必败的即可（不会出现改了还通过的情况）。
 function mutateOneDigit() {
   const digits = normalizeDigits(cardInput.value);
   if (!digits || digits.length < 3) return;
   const arr = Array.from(digits);
-  // 改一个非校验位，保证算法能揪出来（改校验位也行，这里随机挑一位）
   const idx = Math.floor(Math.random() * arr.length);
   const orig = arr[idx];
-  let next = orig;
-  while (next === orig) {
-    next = String(Math.floor(Math.random() * 10));
+  const failing = [];
+  for (let d = 0; d <= 9; d++) {
+    const nd = String(d);
+    if (nd === orig) continue;
+    const trial = arr.slice();
+    trial[idx] = nd;
+    if (luhnSum(trial.join('')) % 10 !== 0) failing.push(nd);
   }
-  arr[idx] = next;
+  arr[idx] = failing[Math.floor(Math.random() * failing.length)];
   cardInput.value = arr.join('');
   nfTrack('mutate', { at: idx });
   renderAll(cardInput.value);

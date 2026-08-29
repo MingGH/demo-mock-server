@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Luhn 校验算法交互演示：亲手一步步算银行卡号的校验位，看它怎么发现抄写错误，又为什么拦不住真正的诈骗。">
+  <title>Luhn：卡号最后一位的秘密 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-numbers"></i> Luhn：卡号最后一位的秘密</h1>
+    <p>每一张银行卡号的最后一位都不是随便写的——它是前面所有数字算出来的"校验位"。手误抄错一位、把相邻两位写反，都逃不过这最后一位。输入你的卡号（或随便编一串），看它怎么一步步把错误揪出来。</p>
+  </div>
+
+  <!-- ── 模块一：亲手算 Luhn ── -->
+  <div class="section">
+    <h2><i class="ti ti-hand-click"></i> 亲手算一遍 Luhn 校验</h2>
+    <p class="section-hint">输入一串数字，右边会按真实算法逐步拆解：从右往左，偶数位 ×2，超过 9 再减 9，全部加起来必须能被 10 整除。</p>
+
+    <div class="input-row">
+      <input type="text" id="cardInput" placeholder="输入卡号，如 4242424242424242" inputmode="numeric" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="checkBtn"><i class="ti ti-check"></i> 校验</button>
+      <button class="btn btn-secondary" id="mutateBtn"><i class="ti ti-shuffle"></i> 随机改一位</button>
+    </div>
+
+    <div class="presets">
+      <span class="preset-label">试试真实测试号：</span>
+      <button class="preset-chip" data-card="4242424242424242">Visa</button>
+      <button class="preset-chip" data-card="5555555555554444">Mastercard</button>
+      <button class="preset-chip" data-card="378282246310005">Amex</button>
+      <button class="preset-chip" data-card="6222021234567890">银联</button>
+    </div>
+
+    <div class="result-banner" id="resultBanner">
+      <span id="resultIcon" class="banner-icon">—</span>
+      <span id="resultText">输入一串数字开始</span>
+    </div>
+
+    <div class="steps-wrap" id="stepsWrap" style="display:none;">
+      <div class="digits-row" id="digitsRow"></div>
+      <div class="sum-line">
+        <span>校验和 = </span><span class="sum-val" id="sumVal">—</span>
+        <span class="sum-verdict" id="sumVerdict">—</span>
+      </div>
+      <p class="zoom-hint-text">绿色 = 不加倍 · 金色 = ×2 后 ≤9 · 橙色 = ×2 后 >9 减 9。位置编号从右往左数（第 1 位 = 校验位本身，不加倍）。</p>
+    </div>
+  </div>
+
+  <!-- ── 模块二：生成一张合法卡号 ── -->
+  <div class="section">
+    <h2><i class="ti ti-magic-stick"></i> 由前缀生成一张"合法"卡号</h2>
+    <p class="section-hint">输入任意前缀（比如真实卡组织的 BIN 段），让算法帮你把校验位补上——你会看到最后一位不是随机的，而是被前面的数字"逼"出来的。</p>
+
+    <div class="input-row">
+      <input type="text" id="genInput" placeholder="输入前缀，如 424242424242424" inputmode="numeric" autocomplete="off" spellcheck="false">
+      <button class="btn btn-primary" id="genBtn"><i class="ti ti-wand"></i> 生成校验位</button>
+      <button class="btn btn-secondary" id="genRandomBtn"><i class="ti ti-dice-5"></i> 随机一张</button>
+    </div>
+
+    <div class="generate-result" id="generateResult" style="display:none;">
+      <div class="gen-formula" id="genFormula"></div>
+      <div class="gen-card" id="genCard">
+        <span class="gen-brand" id="genBrand">—</span>
+        <span class="gen-number" id="genNumber">—</span>
+        <button class="btn btn-secondary btn-sm" id="copyBtn"><i class="ti ti-copy"></i> 复制</button>
+      </div>
+      <p class="zoom-hint-text" id="genCheckHint"></p>
+    </div>
+  </div>
+
+  <!-- ── 模块三：卡组织识别 ── -->
+  <div class="section">
+    <h2><i class="ti ti-id-badge"></i> 卡号一开头的数字，暴露了卡组织</h2>
+    <p class="section-hint">卡号前几位（BIN / IIN）由卡组织分配：Visa 以 4 开头、Mastercard 以 5 开头、银联以 62 开头……输入号即可识别。</p>
+    <div class="brand-display" id="brandDisplay">
+      <div class="brand-chip" id="brandChip"><span id="brandName">等待输入…</span></div>
+      <div class="brand-meta" id="brandMeta">—</div>
+    </div>
+  </div>
+
+  <!-- ── 模块四：原理 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 它能做什么，不能做什么</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>它是校验和，不是加密</h4>
+        <p>算法公开、人人可算。它的全部作用就是把"抄错/敲错"提前拦下来——网页、收银台、数据库导入时先过一遍，错误号根本进不了系统。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>能发现哪些错</h4>
+        <p>所有单个数字的错误、以及绝大多数相邻两位互换（比如 18 → 81）。这正是手写录入最常见的两类失误。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>拦不住诈骗</h4>
+        <p>只要会算法，随便拼一个前缀就能生成"格式合法"的号。真实支付的安全靠 CVV、3DS 验证、发卡行风控与在线授权——Luhn 和这些都无关。</p>
+      </div>
+    </div>
+    <div class="insight-box green">
+      <h3><i class="ti ti-bulb"></i> 为什么网上"卡号生成器"能通过校验</h3>
+      <p>因为它们用的正是这个公开算法补的校验位——生成的号 Luhn 校验 100% 通过，却依然是一张不存在的卡。所以"Luhn 通过"只说明格式对，绝不说明这张卡真实存在或能用。下次看到哪个网站用 Luhn 当"安全验证"，它验证的只是你有没有认真打错字。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

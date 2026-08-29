@@ -76,8 +76,15 @@
             </div>
             <input type="range" id="periodSlider" min="0" max="100" value="0" step="1" disabled>
           </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>播放速度</span>
+              <span class="val" id="playSpeedVal">中</span>
+            </div>
+            <input type="range" id="playSpeedSlider" min="1" max="3" value="2" step="1">
+          </div>
           <div class="btn-row">
-            <button class="btn btn-primary btn-sm" id="playBtn"><i class="ti ti-player-play"></i> 播放揉碎</button>
+            <button class="btn btn-primary btn-sm" id="playBtn"><i class="ti ti-player-play"></i> 播放到复原</button>
             <button class="btn btn-secondary btn-sm" id="pauseBtn" style="display:none;"><i class="ti ti-player-pause"></i> 暂停</button>
             <button class="btn btn-secondary btn-sm" id="restoreBtn"><i class="ti ti-refresh"></i> 一键还原</button>
             <button class="btn btn-secondary btn-sm" id="downloadBtn"><i class="ti ti-download"></i> 下载置乱图</button>
@@ -86,6 +93,7 @@
           <div class="restored-box" id="restoredBox" style="display:none;">
             <i class="ti ti-check"></i> 转够 T 次，原图回来了——一个像素都不差
           </div>
+          <p class="recovery-hint" id="recoveryHint" style="display:none;">快到了！再揉 <span id="recoveryLeft">0</span> 次，原图就自己走回来了</p>
         </div>
 
         <div class="control-group">
@@ -98,32 +106,6 @@
           <p class="section-hint" style="margin-top:12px;">T 只由边长 N 决定：对 512 的图，T=384。所以「揉碎 50 次拼不回来」只是次数不够，不是无解。</p>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- ── 揉碎动画 ── -->
-  <div class="section" id="animSection" style="display:none;">
-    <h2><i class="ti ti-player-play"></i> 看着它一点点碎掉</h2>
-    <p style="color:#a0a0a0; margin-bottom:16px; font-size:0.9rem;">
-      从 0 次开始逐次迭代，看像素如何被矩阵 A 一遍遍搬走——前几轮还能看出轮廓，后面就彻底雪花。
-    </p>
-    <div class="anim-canvas-wrap">
-      <canvas id="animCanvas"></canvas>
-    </div>
-    <div class="anim-controls">
-      <button class="btn btn-primary btn-sm" id="animPlayBtn"><i class="ti ti-player-play"></i> 播放</button>
-      <button class="btn btn-secondary btn-sm" id="animPauseBtn"><i class="ti ti-player-pause"></i> 暂停</button>
-      <button class="btn btn-secondary btn-sm" id="animRestoreBtn"><i class="ti ti-refresh"></i> 回到 0 次</button>
-      <div class="slider-group" style="flex:1; margin:0;">
-        <div class="slider-label">
-          <span>速度</span>
-          <span class="val" id="animSpeedVal">中</span>
-        </div>
-        <input type="range" id="animSpeedSlider" min="1" max="3" value="2" step="1">
-      </div>
-    </div>
-    <div class="anim-progress">
-      <div class="anim-progress-fill" id="animProgress"></div>
     </div>
   </div>
 

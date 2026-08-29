@@ -11,6 +11,7 @@ let period = 0;            // 周期 T
 let curN = 0;              // 当前揉碎次数（主区）
 let curBuffer = null;      // 当前显示的像素
 let animId = null;         // 动画句柄
+let playing = false;       // 播放到复原进行中
 let restoring = false;     // 一键还原动画进行中（防重入）
 
 // ── DOM ──
@@ -202,33 +203,56 @@ function setN(n) {
 function renderScramble() {
   const ctx = scrambleCanvas.getContext('2d');
   ctx.putImageData(new ImageData(curBuffer, size, size), 0, 0);
-  scrambleLabel.textContent = '揉碎 ' + curN + ' 次';
+  scrambleLabel.textContent = curN > 0 && period > 0 && curN % period === 0
+    ? '揉碎 ' + curN + ' 次（= 周期 T，原图复原）'
+    : '揉碎 ' + curN + ' 次';
   scrambleVal.textContent = curN;
   document.getElementById('statN').textContent = curN;
   document.getElementById('statLeft').textContent = Math.max(0, period - curN);
 
-  if (period > 0 && curN > 0 && curN % period === 0) {
-    restoredBox.style.display = 'flex';
+  const atPeriod = period > 0 && curN > 0 && curN % period === 0;
+  restoredBox.style.display = atPeriod ? 'flex' : 'none';
+
+  // 接近复原时给一句提示，让"384 次复原"不再神秘
+  const left = period > 0 ? period - curN : -1;
+  const hint = document.getElementById('recoveryHint');
+  if (period > 0 && left > 0 && left <= 16) {
+    document.getElementById('recoveryLeft').textContent = left;
+    hint.style.display = 'block';
   } else {
-    restoredBox.style.display = 'none';
+    hint.style.display = 'none';
   }
 }
 
 // ── 控制绑定 ──
+const PLAY_SPEEDS = [1, 4, 16];
+const SPEED_NAMES = ['慢', '中', '快'];
+let playSpeed = 4;
+
 function setupControls() {
   // 揉碎次数滑条
   scrambleSlider.addEventListener('input', () => {
     const n = parseInt(scrambleSlider.value);
     scrambleVal.textContent = n;
+    // 用户手动接管时暂停播放，避免两路争抢
+    if (playing) pausePlayback();
+    if (restoring) return;
     setN(n);
   });
   scrambleSlider.addEventListener('change', () => {
     nfTrack('scramble_change', { n: parseInt(scrambleSlider.value), period: period });
   });
 
-  // 播放
-  document.getElementById('playBtn').addEventListener('click', startAnimation);
-  document.getElementById('pauseBtn').addEventListener('click', pauseAnimation);
+  // 播放速度
+  const speedSlider = document.getElementById('playSpeedSlider');
+  speedSlider.addEventListener('input', () => {
+    playSpeed = PLAY_SPEEDS[parseInt(speedSlider.value) - 1];
+    document.getElementById('playSpeedVal').textContent = SPEED_NAMES[parseInt(speedSlider.value) - 1];
+  });
+
+  // 播放到复原（直接在右侧画布上迭代）
+  document.getElementById('playBtn').addEventListener('click', startPlayback);
+  document.getElementById('pauseBtn').addEventListener('click', pausePlayback);
 
   // 一键还原（动画式快速逆迭代）
   document.getElementById('restoreBtn').addEventListener('click', restoreAnimation);
@@ -246,20 +270,58 @@ function setupControls() {
   document.getElementById('reuploadBtn').addEventListener('click', () => {
     fileInput.click();
   });
-
-  // 动画区控制
-  document.getElementById('animPlayBtn').addEventListener('click', resumeAnimation);
-  document.getElementById('animPauseBtn').addEventListener('click', pauseAnimation);
-  document.getElementById('animRestoreBtn').addEventListener('click', () => {
-    resetAnimState();
-  });
 }
 
-// ── 主区一键还原动画 ──
+// ── 播放到复原：主区画布 + 滑条同步前进，到 T 自动停 ──
+function startPlayback() {
+  if (!curBuffer || !period || playing || restoring) return;
+  nfTrack('animate_start', {});
+  playing = true;
+  document.getElementById('playBtn').style.display = 'none';
+  document.getElementById('pauseBtn').style.display = '';
+  playbackFrame();
+}
+
+function playbackFrame() {
+  if (!playing || !curBuffer || !period) return;
+  const step = Math.min(playSpeed, period - curN);
+  if (step <= 0) {
+    finishPlayback();
+    return;
+  }
+  curBuffer = Arnold.applyMapTimesPow(forwardPowers, curBuffer, step, size);
+  curN += step;
+  scrambleSlider.value = curN;
+  renderScramble();
+  if (curN >= period) {
+    finishPlayback();
+    return;
+  }
+  animId = requestAnimationFrame(playbackFrame);
+}
+
+function finishPlayback() {
+  playing = false;
+  document.getElementById('playBtn').style.display = '';
+  document.getElementById('pauseBtn').style.display = 'none';
+  nfTrack('animate_end', { n: curN, period: period });
+}
+
+function pausePlayback() {
+  if (!playing) return;
+  playing = false;
+  if (animId) {
+    cancelAnimationFrame(animId);
+    animId = null;
+  }
+  document.getElementById('playBtn').style.display = '';
+  document.getElementById('pauseBtn').style.display = 'none';
+}
+
+// ── 一键还原动画 ──
 function restoreAnimation() {
-  if (!curBuffer || curN === 0 || restoring) return;
+  if (!curBuffer || curN === 0 || restoring || playing) return;
   nfTrack('restore', { fromN: curN });
-  stopAnimation();
   restoring = true;
   document.getElementById('playBtn').style.display = 'none';
   const step = () => {
@@ -278,104 +340,20 @@ function restoreAnimation() {
   animId = requestAnimationFrame(step);
 }
 
-// ── 揉碎动画（独立画布，从 0 跑到 T，看完整轮回）──
-let animPaused = false;
-let animBuffer = null;
-let animN = 0;
-let animRunning = false;
-
-function startAnimation() {
-  if (!squareData || animRunning) return;
-  nfTrack('animate_start', {});
-
-  const animSection = document.getElementById('animSection');
-  animSection.style.display = 'block';
-  animSection.scrollIntoView({ behavior: 'smooth' });
-
-  resetAnimState();
-  animRunning = true;
-  document.getElementById('animPlayBtn').style.display = 'none';
-  document.getElementById('animPauseBtn').style.display = '';
-  runAnimFrame();
-}
-
-function resetAnimState() {
-  animN = 0;
-  animPaused = false;
-  if (squareData) {
-    animBuffer = new Uint8ClampedArray(squareData);
-  }
-  const animCanvas = document.getElementById('animCanvas');
-  if (animCanvas) {
-    animCanvas.width = size;
-    animCanvas.height = size;
-    renderAnimCanvas();
-  }
-  updateAnimProgress();
-}
-
-function runAnimFrame() {
-  if (animPaused || !animBuffer || !period) return;
-
-  const speedSlider = document.getElementById('animSpeedSlider');
-  const speeds = [1, 4, 16];
-  const speed = speeds[parseInt(speedSlider.value) - 1];
-  const speedNames = ['慢', '中', '快'];
-  document.getElementById('animSpeedVal').textContent = speedNames[parseInt(speedSlider.value) - 1];
-
-  animBuffer = Arnold.applyMapTimesPow(forwardPowers, animBuffer, speed, size);
-  animN += speed;
-  if (animN >= period) {
-    animN = period;
-    renderAnimCanvas();
-    updateAnimProgress();
-    animRunning = false;
-    document.getElementById('animPlayBtn').style.display = '';
-    document.getElementById('animPauseBtn').style.display = 'none';
-    return;
-  }
-  renderAnimCanvas();
-  updateAnimProgress();
-  animId = requestAnimationFrame(runAnimFrame);
-}
-
-function renderAnimCanvas() {
-  const animCanvas = document.getElementById('animCanvas');
-  const ctx = animCanvas.getContext('2d');
-  ctx.putImageData(new ImageData(animBuffer, size, size), 0, 0);
-}
-
-function updateAnimProgress() {
-  document.getElementById('animProgress').style.width = (period > 0 ? (animN / period * 100) : 0) + '%';
-}
-
-function pauseAnimation() {
-  animPaused = true;
+// ── 停止所有动画（换图时调用）──
+function stopAnimation() {
   if (animId) {
     cancelAnimationFrame(animId);
     animId = null;
   }
-}
-
-function resumeAnimation() {
-  if (!animRunning) {
-    startAnimation();
-    return;
-  }
-  animPaused = false;
-  if (!animId) runAnimFrame();
-}
-
-function stopAnimation() {
-  pauseAnimation();
-  animRunning = false;
+  playing = false;
   restoring = false;
-  document.getElementById('animPlayBtn').style.display = '';
-  document.getElementById('animPauseBtn').style.display = 'none';
+  document.getElementById('playBtn').style.display = '';
+  document.getElementById('pauseBtn').style.display = 'none';
 }
 
 // ── 行为埋点（NFTrack，见 components/track.js）──
-// 事件：session_start / upload / scramble_change / animate_start / restore / download / session_end
+// 事件：session_start / upload / scramble_change / animate_start / animate_end / restore / download / session_end
 function nfTrack(name, props, opts) {
   try { if (window.NFTrack) window.NFTrack.track(name, props, opts); } catch (e) {}
 }

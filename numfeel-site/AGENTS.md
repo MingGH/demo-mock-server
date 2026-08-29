@@ -22,7 +22,7 @@
   - 手势识别 → Hammer.js
   - 拖拽 → Sortable.js / interact.js
 - 图标统一使用 **Tabler Icons**（`<i class="ti ti-xxx"></i>`），通过 `components/header.js` 全局引入 CDN。**不要用 emoji 作为图标**。
-- JS 语法保持 **ES5 兼容风格**：使用 `var`、`function` 声明，避免依赖需要转译的新语法，确保旧浏览器可直接运行。第三方库自身内部使用 ES6+ 语法不受此约束（它们自己已处理好兼容性）。
+- JS 语法使用**现代 ES6+（ES2017 级别）**：`const`/`let`、箭头函数、模板字符串、解构、可选链 `?.`、`Set`/`Map` 等均可直接使用——现代浏览器与 Node 原生支持，无需转译。避免使用需要构建/转译的语法（JSX / TS / 装饰器等）。第三方库内部语法不受此约束。
 
 ## 目录组织
 

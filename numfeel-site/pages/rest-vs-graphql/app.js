@@ -176,11 +176,11 @@
       var fields = eng.summarizeFields(withDesc);
 
       els.exp1Insight.innerHTML = withDesc
-        ? '页面想要<b>简介</b>了。瘦身版套餐里没有，当场掉链子；GraphQL 随手自选，响应依旧精准。<br>' +
-          'REST 想加字段得重新发版，GraphQL 想加就加——这就是「套餐 vs 自选」。'
-        : '完整套餐塞了 <b>' + fields.full + '</b> 个字段，页面只用 <b>' + fields.core + '</b> 个，' +
+        ? '页面想要<b>简介</b>了。REST 瘦身版没这个字段，当场掉链子；GraphQL 随手自选，响应依旧精准。<br>' +
+          'REST 加字段得等重新发版，GraphQL 想加就加——这就是「固定接口 vs 自选」。'
+        : 'RESTful 完整版塞了 <b>' + fields.full + '</b> 个字段，页面只用 <b>' + fields.core + '</b> 个，' +
           '浪费 <b style="color:#ff6b6b">' + fields.wasted + ' 个（' + Math.round(fields.wastePct * 100) + '%）</b>。' +
-          '瘦身版把冗余砍到 <b style="color:#81c784">' + fmtBytes(ov.wastedBytes) + '</b>——' +
+          'REST 瘦身版把冗余砍到 <b style="color:#81c784">' + fmtBytes(ov.wastedBytes) + '</b>——' +
           'over-fetch 源于设计偷懒，认真设计接口同样能避免。';
 
       // 更新手机列表为真实数据

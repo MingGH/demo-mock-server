@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="同一个图书列表页，用 REST 套餐、瘦身 REST、GraphQL 三种方式取数。现场对比返回字节、缓存命中、服务端 SQL 成本，搞懂为什么 GraphQL 能精确取数，REST 却仍是主流。">
+  <title>REST vs GraphQL：为什么精确取数仍打不过通用接口 | 数字直觉</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <h1>REST vs GraphQL</h1>
+      <p>先当一回前端：做个图书榜单页，只需要 4 个字段。按 ①②③④ 往下玩，答案自己冒出来。</p>
+    </div>
+
+    <nav class="guide" aria-label="实验步骤">
+      <a class="guide-step active" href="#exp-1" data-target="exp-1"><b>①</b> 精确取数</a>
+      <a class="guide-step" href="#exp-2" data-target="exp-2"><b>②</b> 缓存红利</a>
+      <a class="guide-step" href="#exp-3" data-target="exp-3"><b>③</b> 成本爆炸</a>
+      <a class="guide-step" href="#balance" data-target="balance"><b>④</b> 结论</a>
+    </nav>
+
+    <!-- 实验一：取数对决 -->
+    <div class="card" id="exp-1">
+      <div class="card-title">
+        <span class="step-badge">01</span> 前端只要 4 个字段，接口却塞了 11 个
+      </div>
+      <div class="card-desc">榜单页只用 <b>书名 · 作者 · 评分 · 价格</b>。三种接口各返回了什么？<br>再点一下「<b>简介</b>」开关，看页面想要新字段时，谁会掉链子。</div>
+
+      <div class="phone-wrap">
+        <div class="phone">
+          <div class="phone-header">图书商城 · 排行榜</div>
+          <div class="field-picker" id="field-picker">
+            <label class="field-chip"><input type="checkbox" value="title" checked disabled> 书名</label>
+            <label class="field-chip"><input type="checkbox" value="author" checked disabled> 作者</label>
+            <label class="field-chip"><input type="checkbox" value="rating" checked disabled> 评分</label>
+            <label class="field-chip"><input type="checkbox" value="price" checked disabled> 价格</label>
+            <label class="field-chip"><input type="checkbox" value="id" checked disabled> ID</label>
+            <label class="field-chip chip-primary" id="chip-description"><input type="checkbox" value="description" id="ck-description"> 简介 <span class="chip-hint">点我试试</span></label>
+          </div>
+          <div class="phone-sub">页面卡片只需要：书名 · 作者 · 评分 · 价格</div>
+          <div class="phone-list" id="phone-list">加载中...</div>
+        </div>
+
+        <div class="vs-panel">
+          <div class="vs-legend">
+            <span class="legend-dot used"></span> 页面用到 <span class="legend-dot waste"></span> 多余字段
+          </div>
+          <div class="vs-row" id="vs-rest">
+            <div class="vs-head">REST 完整套餐 <span class="vs-url">GET /catalog/full</span></div>
+            <div class="vs-stats">
+              <span class="stat-val" id="vs-rest-size">-</span>
+              <span class="stat-lbl">响应字节</span>
+              <span class="stat-val" id="vs-rest-waste">-</span>
+              <span class="stat-lbl">浪费</span>
+            </div>
+            <pre class="vs-json" id="vs-rest-json">请求中...</pre>
+          </div>
+          <div class="vs-row" id="vs-light">
+            <div class="vs-head">REST 瘦身版 <span class="vs-url">GET /catalog/light</span></div>
+            <div class="vs-stats">
+              <span class="stat-val" id="vs-light-size">-</span>
+              <span class="stat-lbl">响应字节</span>
+              <span class="stat-val" id="vs-light-waste">-</span>
+              <span class="stat-lbl">浪费</span>
+            </div>
+            <pre class="vs-json" id="vs-light-json">请求中...</pre>
+          </div>
+          <div class="vs-row" id="vs-gql">
+            <div class="vs-head">GraphQL 自选 <span class="vs-url">POST /graphql</span></div>
+            <div class="vs-stats">
+              <span class="stat-val" id="vs-gql-size">-</span>
+              <span class="stat-lbl">响应字节</span>
+              <span class="stat-val" id="vs-gql-waste">-</span>
+              <span class="stat-lbl">浪费</span>
+            </div>
+            <pre class="vs-json" id="vs-gql-json">请求中...</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="insight-bar" id="exp1-insight"></div>
+    </div>
+
+    <!-- 实验二：缓存竞速 -->
+    <div class="card" id="exp-2">
+      <div class="card-title">
+        <span class="step-badge">02</span> 连刷 10 次，GET 白嫖缓存
+      </div>
+      <div class="card-desc">REST 走 GET，浏览器自动缓存；GraphQL 走 POST，次次全价。<br>点下面按钮，看 10 次累计差多少。</div>
+
+      <div class="bench-controls">
+        <button class="btn btn-primary" id="btn-bench" type="button"><i class="ti ti-refresh"></i> 连刷 10 次</button>
+        <span class="hint" id="bench-status"></span>
+      </div>
+      <div class="bench-table-wrap">
+        <table class="bench-table">
+          <thead>
+            <tr>
+              <th>指标</th>
+              <th>REST 完整套餐</th>
+              <th>REST 瘦身版</th>
+              <th>GraphQL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>首次耗时</td><td id="b-first-rest">-</td><td id="b-first-light">-</td><td id="b-first-gql">-</td></tr>
+            <tr><td>第 2 次起平均</td><td id="b-avg-rest">-</td><td id="b-avg-light">-</td><td id="b-avg-gql">-</td></tr>
+            <tr><td>10 次累计</td><td id="b-total-rest">-</td><td id="b-total-light">-</td><td id="b-total-gql">-</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="insight-bar" id="exp2-insight"></div>
+    </div>
+
+    <!-- 实验三：查询成本爆炸 -->
+    <div class="card" id="exp-3">
+      <div class="card-title">
+        <span class="step-badge">03</span> 拖大 limit，服务端成本就爆
+      </div>
+      <div class="card-desc">GraphQL 想多深就多深。把 limit 拖到 <b>100</b>，勾上 <b>author + reviews</b>，点「跑一次」，看服务端真实执行多少次 SQL。</div>
+
+      <div class="gql-ctrl">
+        <label>limit
+          <input type="range" id="gql-limit" min="1" max="100" value="10">
+          <span class="gql-limit-val" id="gql-limit-val">10</span>
+        </label>
+        <label class="check"><input type="checkbox" id="gql-author" checked> 请求 author</label>
+        <label class="check"><input type="checkbox" id="gql-reviews" checked> 请求 reviews</label>
+        <button class="btn btn-primary" id="btn-gql-run" type="button"><i class="ti ti-play"></i> 跑一次</button>
+      </div>
+
+      <div class="cost-grid">
+        <div class="cost-item">
+          <div class="cost-num" id="cost-dbcalls">-</div>
+          <div class="cost-lbl">服务端 SQL 次数</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-num" id="cost-rows">-</div>
+          <div class="cost-lbl">加载数据行</div>
+        </div>
+        <div class="cost-item">
+          <div class="cost-num" id="cost-ms">-</div>
+          <div class="cost-lbl">服务端耗时 ms</div>
+        </div>
+      </div>
+
+      <div class="pred-row">
+        <span class="hint">理论预测（N+1 模型）：</span>
+        <span id="pred-text">-</span>
+      </div>
+      <div class="insight-bar" id="exp3-insight"></div>
+    </div>
+
+    <!-- 收尾天平 -->
+    <div class="card balance" id="balance">
+      <div class="card-title"><span class="step-badge">04</span> 结论：为什么 REST 仍是主流</div>
+      <div class="balance-row">
+        <div class="balance-side">
+          <div class="balance-tag green">GraphQL</div>
+          <ul>
+            <li>客户端精确取数，省流量</li>
+            <li>一次请求拿完嵌套数据</li>
+            <li>代价：服务端成本无上界</li>
+          </ul>
+        </div>
+        <div class="balance-mid">=</div>
+        <div class="balance-side">
+          <div class="balance-tag gold">REST</div>
+          <ul>
+            <li>接口即契约，成本可预估</li>
+            <li>GET 天然可缓存、幂等</li>
+            <li>代价：字段冗余（可优化）</li>
+          </ul>
+        </div>
+      </div>
+      <p class="balance-conclusion">GraphQL 的代价集中在服务端：它把复杂度从客户端搬到了服务端——<b>而公开 API 是服务端买单</b>。BFF 内部用 GraphQL、对外用 REST，是最常见的折中。</p>
+    </div>
+
+    <div class="footer-note">
+      数据来自真实后端 <code>numfeel-api</code>（200 位作者 · 10000 本书 · 约 25000 条书评），可开 DevTools 自行核对响应头与字节数。
+    </div>
+
+  </div>
+  <script src="../../components/header.js" defer></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -503,6 +503,43 @@ CREATE TABLE IF NOT EXISTS iowa_gambling_leaderboard (
     INDEX idx_iowa_lb_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- REST vs GraphQL 对比实验：模拟图书电商数据
+-- authors 200 / books 10,000 / reviews ~30,000，由 BookStoreDataInitializer 在启动时幂等生成
+CREATE TABLE IF NOT EXISTS bookstore_authors (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    name       VARCHAR(64)  NOT NULL COMMENT '作者姓名',
+    country    VARCHAR(32)  NOT NULL COMMENT '国籍',
+    birth_year SMALLINT     NOT NULL COMMENT '出生年份',
+    bio        VARCHAR(512) NOT NULL COMMENT '作者简介',
+    INDEX idx_bs_author_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS bookstore_books (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    title          VARCHAR(128) NOT NULL COMMENT '书名',
+    author_id      INT          NOT NULL COMMENT '作者 ID（bookstore_authors.id）',
+    isbn           VARCHAR(20)  NOT NULL COMMENT 'ISBN 编号',
+    category       VARCHAR(32)  NOT NULL COMMENT '分类',
+    price          DOUBLE       NOT NULL COMMENT '售价（元）',
+    rating         DOUBLE       NOT NULL COMMENT '评分 1.0-5.0',
+    pages          SMALLINT     NOT NULL COMMENT '页数',
+    stock          INT          NOT NULL COMMENT '库存',
+    published_year SMALLINT     NOT NULL COMMENT '出版年份',
+    description    VARCHAR(512) NOT NULL COMMENT '图书简介（用于演示 over-fetch 的重量字段）',
+    INDEX idx_bs_book_author (author_id),
+    INDEX idx_bs_book_category (category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS bookstore_reviews (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    book_id    INT          NOT NULL COMMENT '书 ID（bookstore_books.id）',
+    rating     TINYINT      NOT NULL COMMENT '评分 1-5',
+    content    VARCHAR(256) NOT NULL COMMENT '评论内容',
+    reviewer   VARCHAR(64)  NOT NULL COMMENT '评论者昵称',
+    created_at BIGINT       NOT NULL COMMENT '评论时间戳（ms）',
+    INDEX idx_bs_review_book (book_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 键盘输入节奏识别（keystroke dynamics）打字样本
 -- 记录每次打字样本的按压时长与键间间隔特征，用于全站节奏独特性统计
 CREATE TABLE IF NOT EXISTS keystroke_profiles (

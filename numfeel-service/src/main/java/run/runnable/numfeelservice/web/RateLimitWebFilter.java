@@ -99,6 +99,9 @@ public class RateLimitWebFilter implements WebFilter {
         rules.add(new Rule(isPost("/zhihu/analyze"), RateLimitWebFilter::routeKey, 3, 60));
         // multipart 上传：20/min/IP（另有每小时 1GB 字节配额，见 MultipartUploadService）
         rules.add(new Rule(isPost("/multipart/upload"), RateLimitWebFilter::routeKey, 20, 60));
+        // GraphQL 查询端点（rest-vs-graphql 演示）：60/min/IP，
+        // 嵌套查询成本随客户端请求变化，单独设桶便于演示页高频对比
+        rules.add(new Rule(isPost("/graphql"), RateLimitWebFilter::routeKey, 60, 60));
         // 其余写接口：10/min
         rules.add(new Rule(RateLimitWebFilter::isWriteThrottled, RateLimitWebFilter::routeKey, 10, 60));
     }

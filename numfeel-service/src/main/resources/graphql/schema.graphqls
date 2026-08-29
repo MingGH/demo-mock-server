@@ -1,0 +1,49 @@
+"REST vs GraphQL 对比实验 — GraphQL 类型定义"
+type Query {
+    "查询书目录；meta 里暴露本次请求的 DB 调用次数/加载行数/耗时，用于演示服务端成本"
+    books(limit: Int = 10): BookListResult!
+}
+
+type BookListResult {
+    books: [Book!]!
+    meta: CostMeta!
+}
+
+type CostMeta {
+    "本次查询实际执行的 DB 查询次数（N+1 时随嵌套深度上升）"
+    dbCalls: Int!
+    "本次查询实际加载的数据行数"
+    rowsLoaded: Int!
+    "服务端处理耗时（毫秒）"
+    elapsedMs: Int!
+}
+
+type Book {
+    id: ID!
+    title: String!
+    author: Author!
+    isbn: String
+    category: String
+    price: Float!
+    rating: Float!
+    pages: Int
+    stock: Int
+    publishedYear: Int
+    description: String
+    "嵌套请求时触发逐书查询（N+1），用于演示查询成本失控"
+    reviews: [Review!]
+}
+
+type Author {
+    id: ID!
+    name: String!
+    country: String!
+    bio: String
+}
+
+type Review {
+    id: ID!
+    rating: Int!
+    content: String!
+    reviewer: String!
+}

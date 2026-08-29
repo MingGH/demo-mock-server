@@ -32,7 +32,7 @@ function init() {
   setupUpload();
   setupPresets();
   setupControls();
-  loadPreset('sample-parrot.jpg');
+  loadPreset('images/sample-girl.webp');
 }
 
 // ── 预设 ──

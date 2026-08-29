@@ -84,6 +84,46 @@ function applyMapTimes(rgba, map, times, size) {
 }
 
 /**
+ * 构建映射的倍增幂表：powers[k] = map^(2^k)，k 从 0 开始。
+ * 把"连续应用 times 次"压缩成 log2(times) 次置换（动画/滑条的核心加速）。
+ * @param {Uint32Array} map 映射表（powers[0] 即其副本）
+ * @param {number} size 方形图像边长 N
+ * @param {number} maxTimes 需要支持的最大迭代次数，幂表覆盖到 ≥ maxTimes
+ * @returns {Uint32Array[]} powers[k] = map^(2^k)
+ */
+function buildMapPowers(map, size, maxTimes) {
+  var bits = 1;
+  while ((1 << bits) <= maxTimes) bits++;
+  var powers = [new Uint32Array(map)];
+  for (var k = 1; k < bits; k++) {
+    var prev = powers[k - 1];
+    var cur = new Uint32Array(prev);
+    composeMap(cur, prev, size); // cur = prev ∘ prev
+    powers.push(cur);
+  }
+  return powers;
+}
+
+/**
+ * 用倍增幂表快速应用 times 次映射，结果与 applyMapTimes 完全一致。
+ * @param {Uint32Array[]} powers buildMapPowers 的返回值
+ * @param {Uint8ClampedArray} rgba 原始 RGBA 像素
+ * @param {number} times 迭代次数（≥0）
+ * @param {number} size 方形图像边长 N
+ * @returns {Uint8ClampedArray} 置乱后的像素数组
+ */
+function applyMapTimesPow(powers, rgba, times, size) {
+  var cur = rgba;
+  var k = 0;
+  while (times > 0) {
+    if (times % 2 === 1) cur = applyMap(cur, powers[k], size);
+    times = Math.floor(times / 2);
+    k++;
+  }
+  return cur;
+}
+
+/**
  * 复合映射：a = a ∘ b（先按 b 再按 a），用于周期检测
  * @param {Uint32Array} a 将被原地更新的映射
  * @param {Uint32Array} b 复合在后者的映射
@@ -130,7 +170,8 @@ function findPeriod(size) {
 }
 
 /**
- * 将任意尺寸图像居中填充为方形（超出部分裁掉，不足部分补黑）
+ * 将任意尺寸图像填充为方形（超出部分裁掉，不足部分补黑）
+ * 注意：差值不是偶数时（如 3 行补到 4 行），偏移向下取整，黑边会偏向底部。
  * @param {Uint8ClampedArray} rgba 原始 RGBA 像素（宽×高×4）
  * @param {number} width 原图宽度
  * @param {number} height 原图高度
@@ -160,6 +201,8 @@ var Arnold = {
   buildInverseMap: buildInverseMap,
   applyMap: applyMap,
   applyMapTimes: applyMapTimes,
+  buildMapPowers: buildMapPowers,
+  applyMapTimesPow: applyMapTimesPow,
   composeMap: composeMap,
   isIdentityMap: isIdentityMap,
   findPeriod: findPeriod,

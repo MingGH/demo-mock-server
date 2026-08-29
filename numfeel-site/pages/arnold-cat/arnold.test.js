@@ -99,6 +99,40 @@ function testPixelConservation() {
   assert(sorted(rgba) === sorted(scrambled), 'size=9：置乱 7 次后像素多集完全守恒');
 }
 
+// ── 测试 7：倍增幂表加速结果与暴力迭代完全一致 ──
+function testMapPowersMatchBruteForce() {
+  for (const size of [16, 64, 512]) {
+    const map = arnold.buildForwardMap(size);
+    const powers = arnold.buildMapPowers(map, size, 384);
+    const rgba = new Uint8ClampedArray(size * size * 4);
+    for (let i = 0; i < rgba.length; i++) rgba[i] = (i * 17 + 9) % 256;
+    for (const times of [0, 1, 7, 16, 50, 384]) {
+      const brute = arnold.applyMapTimes(rgba, map, times, size);
+      const fast = arnold.applyMapTimesPow(powers, rgba, times, size);
+      let same = true;
+      for (let i = 0; i < brute.length; i++) {
+        if (fast[i] !== brute[i]) { same = false; break; }
+      }
+      assert(same, `size=${size}：幂表快算 ${times} 次与暴力迭代逐像素一致`);
+    }
+  }
+}
+
+// ── 测试 8：幂表应用 512² 图周期 384 次后复原 ──
+function testPowersPeriodRestores() {
+  const size = 512;
+  const map = arnold.buildForwardMap(size);
+  const powers = arnold.buildMapPowers(map, size, 384);
+  const rgba = new Uint8ClampedArray(size * size * 4);
+  for (let i = 0; i < rgba.length; i++) rgba[i] = (i * 29 + 3) % 256;
+  const scrambled = arnold.applyMapTimesPow(powers, rgba, 384, size);
+  let same = true;
+  for (let i = 0; i < rgba.length; i++) {
+    if (scrambled[i] !== rgba[i]) { same = false; break; }
+  }
+  assert(same, 'size=512：幂表迭代 384 次（周期）像素复原');
+}
+
 // ── 运行 ──
 testForwardInverseRestores();
 testPeriodRestores();
@@ -106,6 +140,8 @@ testPeriodFormula();
 testNotRestoredBeforePeriod();
 testPadToSquare();
 testPixelConservation();
+testMapPowersMatchBruteForce();
+testPowersPeriodRestores();
 
 console.log(`\n结果：${passed} 通过，${failed} 失败`);
 if (failed > 0) process.exit(1);

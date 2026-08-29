@@ -5,10 +5,13 @@ let squareData = null;     // 方形 RGBA 像素（Uint8ClampedArray）
 let size = 0;              // 方形边长 N
 let forwardMap = null;
 let inverseMap = null;
+let forwardPowers = null;  // 倍增幂表：forwardMap^(2^k)
+let inversePowers = null;
 let period = 0;            // 周期 T
 let curN = 0;              // 当前揉碎次数（主区）
 let curBuffer = null;      // 当前显示的像素
 let animId = null;         // 动画句柄
+let restoring = false;     // 一键还原动画进行中（防重入）
 
 // ── DOM ──
 const uploadArea = document.getElementById('uploadArea');
@@ -76,11 +79,25 @@ function handleFile(file) {
   reader.readAsDataURL(file);
 }
 
+// ── 错误提示 ──
+let errorToastTimer = null;
+function showLoadError(msg) {
+  const toast = document.getElementById('errorToast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  if (errorToastTimer) clearTimeout(errorToastTimer);
+  errorToastTimer = setTimeout(() => { toast.style.display = 'none'; }, 3000);
+}
+
 // ── 加载图片 ──
 function loadImage(src) {
   stopAnimation();
   const img = new Image();
   img.crossOrigin = 'anonymous';
+  img.onerror = () => {
+    showLoadError('图片加载失败，请重试或换一张');
+  };
   img.onload = () => {
     // 缩放到最大 512（置乱迭代更快，周期也更短）
     const maxDim = 512;
@@ -116,6 +133,8 @@ function loadImage(src) {
     // 建立映射与周期（异步计算，避免阻塞首帧）
     forwardMap = Arnold.buildForwardMap(size);
     inverseMap = Arnold.buildInverseMap(size);
+    forwardPowers = null;
+    inversePowers = null;
     curN = 0;
     curBuffer = new Uint8ClampedArray(squareData);
     period = 0;
@@ -141,6 +160,15 @@ function loadImage(src) {
       const t0 = performance.now();
       period = Arnold.findPeriod(size);
       const elapsed = performance.now() - t0;
+      if (period < 0) {
+        period = 0;
+        periodVal.textContent = '计算失败';
+        document.getElementById('statPeriod').textContent = '—';
+        return;
+      }
+      // 幂表覆盖到 2×周期即可（还原路径最多走一个周期）
+      forwardPowers = Arnold.buildMapPowers(forwardMap, size, period * 2);
+      inversePowers = Arnold.buildMapPowers(inverseMap, size, period * 2);
       scrambleSlider.max = period;
       periodSlider.max = period;
       periodSlider.value = period;
@@ -159,9 +187,9 @@ function setN(n) {
   if (!curBuffer || n === curN) return;
   const t0 = performance.now();
   if (n > curN) {
-    curBuffer = Arnold.applyMapTimes(curBuffer, forwardMap, n - curN, size);
+    curBuffer = Arnold.applyMapTimesPow(forwardPowers, curBuffer, n - curN, size);
   } else {
-    curBuffer = Arnold.applyMapTimes(curBuffer, inverseMap, curN - n, size);
+    curBuffer = Arnold.applyMapTimesPow(inversePowers, curBuffer, curN - n, size);
   }
   curN = n;
   renderScramble();
@@ -170,7 +198,7 @@ function setN(n) {
 
 function renderScramble() {
   const ctx = scrambleCanvas.getContext('2d');
-  ctx.putImageData(new ImageData(new Uint8ClampedArray(curBuffer), size, size), 0, 0);
+  ctx.putImageData(new ImageData(curBuffer, size, size), 0, 0);
   scrambleLabel.textContent = '揉碎 ' + curN + ' 次';
   scrambleVal.textContent = curN;
   document.getElementById('statN').textContent = curN;
@@ -226,17 +254,19 @@ function setupControls() {
 
 // ── 主区一键还原动画 ──
 function restoreAnimation() {
-  if (!curBuffer || curN === 0) return;
+  if (!curBuffer || curN === 0 || restoring) return;
   nfTrack('restore', { fromN: curN });
   stopAnimation();
+  restoring = true;
   document.getElementById('playBtn').style.display = 'none';
   const step = () => {
     if (curN <= 0) {
+      restoring = false;
       document.getElementById('playBtn').style.display = '';
       return;
     }
     const back = Math.min(curN, 4);
-    curBuffer = Arnold.applyMapTimes(curBuffer, inverseMap, back, size);
+    curBuffer = Arnold.applyMapTimesPow(inversePowers, curBuffer, back, size);
     curN -= back;
     scrambleSlider.value = curN;
     renderScramble();
@@ -290,7 +320,7 @@ function runAnimFrame() {
   const speedNames = ['慢', '中', '快'];
   document.getElementById('animSpeedVal').textContent = speedNames[parseInt(speedSlider.value) - 1];
 
-  animBuffer = Arnold.applyMapTimes(animBuffer, forwardMap, speed, size);
+  animBuffer = Arnold.applyMapTimesPow(forwardPowers, animBuffer, speed, size);
   animN += speed;
   if (animN >= period) {
     animN = period;
@@ -309,7 +339,7 @@ function runAnimFrame() {
 function renderAnimCanvas() {
   const animCanvas = document.getElementById('animCanvas');
   const ctx = animCanvas.getContext('2d');
-  ctx.putImageData(new ImageData(new Uint8ClampedArray(animBuffer), size, size), 0, 0);
+  ctx.putImageData(new ImageData(animBuffer, size, size), 0, 0);
 }
 
 function updateAnimProgress() {
@@ -336,6 +366,7 @@ function resumeAnimation() {
 function stopAnimation() {
   pauseAnimation();
   animRunning = false;
+  restoring = false;
   document.getElementById('animPlayBtn').style.display = '';
   document.getElementById('animPauseBtn').style.display = 'none';
 }

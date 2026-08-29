@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Arnold 猫变换交互演示：把一张图揉碎成雪花噪声，再转回来竟然原样复原。矩阵置乱、模运算、有限置换必循环——亲眼见证像素的轮回。">
+  <title>一张图揉碎 50 次，还能原样拼回来吗？ | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-puzzle"></i> 一张图揉碎 50 次，还能原样拼回来吗？</h1>
+    <p>不是「加密」，而是「置换」：矩阵把每个像素搬去新位置，一个不丢、也不多一个。搬得足够多次，图变成彻底的雪花噪声——但置换必循环，转够一圈，<strong>原图自己走回来了</strong>。</p>
+  </div>
+
+  <!-- ── 主交互区 ── -->
+  <div class="section">
+    <h2><i class="ti ti-photo"></i> 现场揉碎</h2>
+    <p class="section-hint">挑一张样例图或上传自己的图，拖动滑条把像素「揉碎」到任意次数。然后——把次数拉满到周期 T，看它原样回来。</p>
+
+    <div class="presets-row">
+      <span class="presets-label"><i class="ti ti-photo-scan"></i> 先挑一张</span>
+      <div class="preset-list" id="presetList">
+        <button class="preset-card active" data-src="sample-parrot.jpg" data-name="鹦鹉">
+          <img src="sample-parrot.jpg" alt="鹦鹉" loading="lazy">
+          <span class="preset-name">鹦鹉</span>
+        </button>
+        <button class="preset-card" data-src="sample-stainedglass.jpg" data-name="彩窗">
+          <img src="sample-stainedglass.jpg" alt="彩窗" loading="lazy">
+          <span class="preset-name">彩窗</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="upload-area" id="uploadArea">
+      <div class="upload-content">
+        <i class="ti ti-cloud-upload" style="font-size: 2.5rem; color: #ffd700;"></i>
+        <p>或者上传你自己的图</p>
+        <span class="upload-hint">支持 JPG / PNG / WebP · 会自动居中填充为方形</span>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+
+    <div class="canvas-area" id="canvasArea" style="display:none;">
+      <div class="canvas-pair">
+        <div class="canvas-box">
+          <div class="canvas-label">原图</div>
+          <canvas id="originalCanvas"></canvas>
+          <div class="canvas-caption">未动过的像素</div>
+        </div>
+        <div class="canvas-box">
+          <div class="canvas-label" id="scrambleLabel">揉碎 0 次</div>
+          <canvas id="scrambleCanvas"></canvas>
+          <div class="canvas-caption">矩阵 A 置乱后的像素（一个都没少）</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="control-group">
+          <h3><i class="ti ti-settings"></i> 揉碎次数</h3>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>当前迭代次数 n</span>
+              <span class="val" id="scrambleVal">0</span>
+            </div>
+            <input type="range" id="scrambleSlider" min="0" max="100" value="0" step="1">
+          </div>
+          <div class="slider-group">
+            <div class="slider-label">
+              <span>周期 T（转够 T 次原图复原）</span>
+              <span class="val" id="periodVal">—</span>
+            </div>
+            <input type="range" id="periodSlider" min="0" max="100" value="0" step="1" disabled>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary btn-sm" id="playBtn"><i class="ti ti-player-play"></i> 播放揉碎</button>
+            <button class="btn btn-secondary btn-sm" id="pauseBtn" style="display:none;"><i class="ti ti-player-pause"></i> 暂停</button>
+            <button class="btn btn-secondary btn-sm" id="restoreBtn"><i class="ti ti-refresh"></i> 一键还原</button>
+            <button class="btn btn-secondary btn-sm" id="downloadBtn"><i class="ti ti-download"></i> 下载置乱图</button>
+            <button class="btn btn-secondary btn-sm" id="reuploadBtn"><i class="ti ti-upload"></i> 换一张</button>
+          </div>
+          <div class="restored-box" id="restoredBox" style="display:none;">
+            <i class="ti ti-check"></i> 转够 T 次，原图回来了——一个像素都不差
+          </div>
+        </div>
+
+        <div class="control-group">
+          <h3><i class="ti ti-adjustments"></i> 当前状态</h3>
+          <div class="state-line"><span class="state-key">图片边长（方形）</span><span class="state-val" id="statSize">—</span></div>
+          <div class="state-line"><span class="state-key">周期 T（来自边长，与内容无关）</span><span class="state-val" id="statPeriod">—</span></div>
+          <div class="state-line"><span class="state-key">已揉碎次数</span><span class="state-val" id="statN">0</span></div>
+          <div class="state-line"><span class="state-key">距离复原还差</span><span class="state-val" id="statLeft">—</span></div>
+          <div class="state-line"><span class="state-key">处理耗时</span><span class="state-val" id="statTime">—</span></div>
+          <p class="section-hint" style="margin-top:12px;">T 只由边长 N 决定：对 512 的图，T=384。所以「揉碎 50 次拼不回来」只是次数不够，不是无解。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 揉碎动画 ── -->
+  <div class="section" id="animSection" style="display:none;">
+    <h2><i class="ti ti-player-play"></i> 看着它一点点碎掉</h2>
+    <p style="color:#a0a0a0; margin-bottom:16px; font-size:0.9rem;">
+      从 0 次开始逐次迭代，看像素如何被矩阵 A 一遍遍搬走——前几轮还能看出轮廓，后面就彻底雪花。
+    </p>
+    <div class="anim-canvas-wrap">
+      <canvas id="animCanvas"></canvas>
+    </div>
+    <div class="anim-controls">
+      <button class="btn btn-primary btn-sm" id="animPlayBtn"><i class="ti ti-player-play"></i> 播放</button>
+      <button class="btn btn-secondary btn-sm" id="animPauseBtn"><i class="ti ti-player-pause"></i> 暂停</button>
+      <button class="btn btn-secondary btn-sm" id="animRestoreBtn"><i class="ti ti-refresh"></i> 回到 0 次</button>
+      <div class="slider-group" style="flex:1; margin:0;">
+        <div class="slider-label">
+          <span>速度</span>
+          <span class="val" id="animSpeedVal">中</span>
+        </div>
+        <input type="range" id="animSpeedSlider" min="1" max="3" value="2" step="1">
+      </div>
+    </div>
+    <div class="anim-progress">
+      <div class="anim-progress-fill" id="animProgress"></div>
+    </div>
+  </div>
+
+  <!-- ── 原理解释 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brain"></i> 为什么揉碎了还能拼回来</h2>
+
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h4>不是抹掉，是搬家</h4>
+        <p>每个像素 (x, y) 被矩阵 A 送到新位置 (x+y, x+2y)，然后对 N 取模。所有像素一次变换全部换位，一个不少、一个不多——所以它不是「加密」，是「置换」。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h4>取模让一切留在图里</h4>
+        <p>坐标算完都要 mod N，像素永远出不了图。而 det(A)=1 保证变换是双射：两个不同像素绝不会撞到同一个位置，所以信息零损耗。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h4>置换必循环</h4>
+        <p>有限集合上的排列，迭代足够多次必然回到起点——这是置换群的基本定理。周期 T 只由边长 N 决定，跟图片内容毫无关系。</p>
+      </div>
+    </div>
+
+    <div class="insight-box green" style="margin-top:20px;">
+      <h3><i class="ti ti-bulb"></i> 妙在哪</h3>
+      <p>「揉碎」看起来像随机噪声，实际上每一步都是严格确定的数学运算。看似无序的雪花背后是一台精确的时钟：对 2 的幂边长 N=2<sup>k</sup>（k≥3），周期 T = 3·2<sup>k-2</sup>。512 的图，T=384——不多不少，转够 384 次，原图自动归位。混乱是有周期的。</p>
+    </div>
+  </div>
+
+  <!-- ── 核心代码 ── -->
+  <div class="section">
+    <h2><i class="ti ti-code"></i> 核心代码</h2>
+    <div class="code-block">
+      <pre><code>// 前向：像素 (x, y) 搬去 (x+y, x+2y)，全部对 N 取模
+function forward(x, y, N) {
+  return [(x + y) % N, (x + 2 * y) % N];
+}
+
+// 逆向：一次变换，从任意置乱状态还原
+function inverse(x, y, N) {
+  return [(2 * x - y) % N, (-x + y) % N];
+}
+
+// 周期检测：迭代直到映射变回恒等
+function findPeriod(N) {
+  let cur = forwardMap(N), t = 1;
+  while (!isIdentity(cur)) {
+    cur = compose(cur, forwardMap(N));  // 再搬一次
+    t++;
+  }
+  return t;  // N=512 → 384
+}</code></pre>
+    </div>
+    <p style="color:#a0a0a0; margin-top:12px; font-size:0.88rem;">
+      一个矩阵、两次取模、一个循环。没有随机数，没有密钥，没有任何「隐藏信息」——纯排列的必然轮回。
+    </p>
+  </div>
+
+  <!-- ── 应用场景 ── -->
+  <div class="section">
+    <h2><i class="ti ti-history"></i> 它被用来干嘛</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-lock"></i></div>
+        <h4>图像置乱（加密预处理）</h4>
+        <p>先把像素打乱，再做真正的加密——置乱本身不是密码，但它能把明文的结构彻底抹平，让后续加密更安全。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-watermark"></i></div>
+        <h4>数字水印</h4>
+        <p>论文/照片加水印前先 Arnold 置乱，水印被分散到全图，裁剪、压缩后依然能抠出来。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-cat"></i></div>
+        <h4>混沌系统的入门钥匙</h4>
+        <p>Arnold 变换是「确定性系统的不可预测性」最简单直观的例子：规则完全公开，过程却像随机。混沌加密的教科书开场白。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num"><i class="ti ti-mouse"></i></div>
+        <h4>名字的来历</h4>
+        <p>1960 年代，苏联数学家 Vladimir Arnold 用一张猫脸图演示这个变换，猫就成了数学史上最著名的实验动物。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="arnold.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

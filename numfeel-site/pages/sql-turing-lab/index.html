@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SQL 不只是 SELECT * FROM xxx。用递归 CTE 在你浏览器里现场画曼德博集合、跑康威生命游戏——所有计算都由 DuckDB 里的真 SQL 完成。">
+  <title>SQL 图灵完备实验室：用 SQL 画分形、跑游戏 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-database-cog"></i> SQL 图灵完备实验室</h1>
+    <p>SQL 不只 <code>SELECT * FROM xxx</code>。1999 年递归 CTE 让它成了图灵完备语言——下面每个画面，都是你浏览器里的 DuckDB 用<b>真 SQL</b> 现场算出来的。</p>
+    <div class="hero-badge"><i class="ti ti-bolt"></i> DuckDB-WASM · 纯浏览器运行 · 无需服务器</div>
+  </div>
+
+  <!-- ── 原理 ── -->
+  <div class="section" id="principleSection">
+    <h2><i class="ti ti-brain"></i> 先看懂：递归 CTE 给了 SQL 一个「循环」</h2>
+    <p class="section-desc">普通 SQL 只会查数。加了 <code>WITH RECURSIVE</code> 之后，它能像程序一样反复执行自己——循环，是写任何游戏和图形算法的第一步。</p>
+    <div class="code-block" id="principleCode">
+      <div class="code-head"><span>递归 CTE 最小例子（数到 5）</span><button class="copy-btn" data-copy="principleCode"><i class="ti ti-copy"></i> 复制</button></div>
+<pre><code>WITH RECURSIVE t(i) AS (
+    SELECT 1            -- 种子：第一行
+    UNION ALL
+    SELECT i + 1        -- 递归：拿上一行 +1
+    FROM t
+    WHERE i &lt; 5         -- 终止条件
+)
+SELECT * FROM t;        -- 1,2,3,4,5</code></pre>
+    </div>
+  </div>
+
+  <!-- ── Demo 1：递归计数 ── -->
+  <div class="section" id="counterSection">
+    <h2><i class="ti ti-number"></i> 动手一：让 SQL 自己数数</h2>
+    <p class="section-desc">拖动滑块改变上限，点「运行」——下面这一列数字，是数据库自己循环出来的。</p>
+    <div class="control-row">
+      <label for="counterN">数到 <strong id="counterNVal">10</strong></label>
+      <input type="range" id="counterN" min="1" max="30" value="10" step="1">
+      <button id="counterRunBtn" class="btn-primary"><i class="ti ti-player-play"></i> 运行 SQL</button>
+    </div>
+    <div class="counter-output" id="counterOutput">
+      <span class="placeholder">点击「运行 SQL」让数据库开始数数…</span>
+    </div>
+    <div class="code-block">
+      <div class="code-head"><span>执行的 SQL</span><button class="copy-btn" data-copy="counterSqlCode"><i class="ti ti-copy"></i> 复制</button></div>
+      <pre><code id="counterSqlCode"></code></pre>
+    </div>
+  </div>
+
+  <!-- ── Demo 2：曼德博集合 ── -->
+  <div class="section" id="mandelSection">
+    <h2><i class="ti ti-fractal"></i> 动手二：一条 SQL 画出曼德博集合</h2>
+    <p class="section-desc">坐标轴上的每个点对应一个复数 c，反复算 z = z² + c。冲出去的出局，留下的连成那个无限精细的分形。几百万次迭代，全在一条递归 CTE 里。</p>
+    <div class="control-row wrap">
+      <div class="preset-group">
+        <span class="preset-label">预设：</span>
+        <button class="btn-secondary mandel-preset" data-w="60" data-h="40" data-it="30">快速</button>
+        <button class="btn-secondary mandel-preset" data-w="120" data-h="80" data-it="50">标准</button>
+        <button class="btn-secondary mandel-preset" data-w="240" data-h="160" data-it="80">高清</button>
+      </div>
+      <button id="mandelRunBtn" class="btn-primary"><i class="ti ti-player-play"></i> 用 SQL 生成</button>
+    </div>
+    <div class="mandel-canvas-wrap">
+      <canvas id="mandelCanvas" width="120" height="80"></canvas>
+      <div class="mandel-loading" id="mandelLoading" style="display:none;">SQL 正在迭代计算…</div>
+    </div>
+    <div class="mandel-meta">
+      <span>分辨率 <strong id="mandelRes">120 × 80</strong></span>
+      <span>最大迭代 <strong id="mandelIter">50</strong></span>
+      <span>耗时 <strong id="mandelTime">—</strong></span>
+    </div>
+    <div class="code-block">
+      <div class="code-head"><span>执行的 SQL</span><button class="copy-btn" data-copy="mandelSqlCode"><i class="ti ti-copy"></i> 复制</button></div>
+      <pre><code id="mandelSqlCode"></code></pre>
+    </div>
+  </div>
+
+  <!-- ── Demo 3：生命游戏 ── -->
+  <div class="section" id="lifeSection">
+    <h2><i class="ti ti-lifebuoy"></i> 动手三：SQL 驱动康威生命游戏</h2>
+    <p class="section-desc">棋盘是一张表，活细胞是一行记录。点棋盘可增减细胞；每点一次「演化一代」，就有一条 SQL 统计每个格子的邻居数，算出下一代。这就是 SQL 版的游戏循环。</p>
+    <div class="control-row wrap">
+      <div class="preset-group">
+        <span class="preset-label">图案：</span>
+        <button class="btn-secondary life-preset" data-preset="glider">滑翔机</button>
+        <button class="btn-secondary life-preset" data-preset="blinker">闪烁器</button>
+        <button class="btn-secondary life-preset" data-preset="pulsar">脉冲星</button>
+        <button class="btn-secondary life-preset" data-preset="random">随机</button>
+      </div>
+    </div>
+    <div class="control-row wrap">
+      <button id="lifeStepBtn" class="btn-primary"><i class="ti ti-step-into"></i> 演化一代</button>
+      <button id="lifeAutoBtn" class="btn-secondary"><i class="ti ti-player-play"></i> 自动播放</button>
+      <button id="lifeClearBtn" class="btn-reset"><i class="ti ti-refresh"></i> 清空</button>
+      <span class="life-gen">第 <strong id="lifeGen">0</strong> 代</span>
+    </div>
+    <div class="life-canvas-wrap">
+      <canvas id="lifeCanvas"></canvas>
+    </div>
+    <div class="code-block">
+      <div class="code-head"><span>演化一代用的 SQL</span><button class="copy-btn" data-copy="lifeSqlCode"><i class="ti ti-copy"></i> 复制</button></div>
+      <pre><code id="lifeSqlCode"></code></pre>
+    </div>
+  </div>
+
+  <!-- ── 自由查询台 ── -->
+  <div class="section" id="freeSection">
+    <h2><i class="ti ti-terminal-2"></i> 自由查询台：写你自己的 SQL</h2>
+    <p class="section-desc">DuckDB 已经在浏览器里跑起来了。随便改下面的查询，点「运行」看结果。</p>
+    <textarea id="freeSql" class="free-sql-input" spellcheck="false">WITH RECURSIVE fib(a, b) AS (
+  SELECT 1, 1
+  UNION ALL
+  SELECT b, a + b FROM fib WHERE a + b &lt; 200
+)
+SELECT a AS fibonacci FROM fib;</textarea>
+    <div class="control-row">
+      <button id="freeRunBtn" class="btn-primary"><i class="ti ti-player-play"></i> 运行</button>
+      <span class="free-status" id="freeStatus"></span>
+    </div>
+    <div class="free-result" id="freeResult"></div>
+  </div>
+
+  <div class="footer-note">
+    <p><i class="ti ti-info-circle"></i> 本页依赖 <a href="https://github.com/duckdb/duckdb-wasm" target="_blank" rel="noopener">DuckDB-WASM</a>（浏览器内嵌数据库）。首次使用需下载约 2MB 的 WASM 模块；若长时间停留在「加载中」，多为网络原因，刷新重试即可。</p>
+  </div>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

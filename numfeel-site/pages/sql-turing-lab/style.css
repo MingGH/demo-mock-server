@@ -1,0 +1,434 @@
+/* ── SQL 图灵完备实验室 Demo 样式 ── */
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.header h1 {
+  font-size: 1.9rem;
+  color: #ffd700;
+  margin-bottom: 12px;
+}
+
+.header p {
+  color: #aaa;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.header p code {
+  background: rgba(255, 215, 0, 0.12);
+  color: #ffd700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.88rem;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 7px 14px;
+  background: rgba(129, 199, 132, 0.12);
+  border: 1px solid rgba(129, 199, 132, 0.35);
+  border-radius: 999px;
+  color: #81c784;
+  font-size: 0.8rem;
+}
+
+.section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 32px;
+}
+
+.section h2 {
+  color: #e0e0e0;
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+}
+
+.section-desc {
+  color: #888;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.section-desc code {
+  background: rgba(144, 202, 249, 0.12);
+  color: #90caf9;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
+
+/* ── 代码块 ── */
+.code-block {
+  margin-top: 18px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.code-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #888;
+  font-size: 0.78rem;
+}
+
+.copy-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #aaa;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.copy-btn:hover {
+  color: #ffd700;
+  border-color: #ffd700;
+}
+
+.code-block pre {
+  margin: 0;
+  padding: 14px;
+  overflow-x: auto;
+}
+
+.code-block code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.8rem;
+  color: #90caf9;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+/* ── 按钮 ── */
+.btn-primary {
+  padding: 11px 22px;
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  border: none;
+  border-radius: 8px;
+  color: #1a1a2e;
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.2s;
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-primary:disabled {
+  filter: grayscale(0.6);
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  color: #ffd700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 215, 0, 0.2);
+}
+
+.btn-secondary.active {
+  background: rgba(255, 215, 0, 0.3);
+  border-color: #ffd700;
+}
+
+.btn-reset {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  border-radius: 6px;
+  color: #ff6b6b;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-reset:hover {
+  background: rgba(255, 107, 107, 0.12);
+}
+
+/* ── 控制行 ── */
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.control-row.wrap {
+  flex-wrap: wrap;
+}
+
+.control-row label {
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.control-row label strong {
+  color: #ffd700;
+}
+
+input[type='range'] {
+  flex: 1;
+  min-width: 140px;
+  accent-color: #ffd700;
+}
+
+.preset-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preset-label {
+  color: #888;
+  font-size: 0.82rem;
+}
+
+/* ── Demo 1：计数输出 ── */
+.counter-output {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 48px;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+
+.counter-output .placeholder {
+  color: #666;
+  font-size: 0.85rem;
+  align-self: center;
+}
+
+.counter-num {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(144, 202, 249, 0.12);
+  border: 1px solid rgba(144, 202, 249, 0.3);
+  border-radius: 8px;
+  color: #90caf9;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* ── Demo 2：曼德博 ── */
+.mandel-canvas-wrap {
+  position: relative;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #06081a;
+}
+
+#mandelCanvas {
+  display: block;
+  width: 100%;
+  image-rendering: pixelated;
+  aspect-ratio: 3 / 2;
+}
+
+.mandel-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 8, 26, 0.75);
+  color: #90caf9;
+  font-size: 0.9rem;
+}
+
+.mandel-meta {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  color: #888;
+  font-size: 0.82rem;
+  margin-bottom: 4px;
+}
+
+.mandel-meta strong {
+  color: #ffd700;
+}
+
+/* ── Demo 3：生命游戏 ── */
+.life-canvas-wrap {
+  margin: 16px 0;
+  text-align: center;
+}
+
+#lifeCanvas {
+  background: #06081a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  touch-action: manipulation;
+  max-width: 100%;
+}
+
+.life-gen {
+  color: #aaa;
+  font-size: 0.9rem;
+  margin-left: auto;
+}
+
+.life-gen strong {
+  color: #ffd700;
+  font-size: 1.1rem;
+}
+
+/* ── 自由查询台 ── */
+.free-sql-input {
+  width: 100%;
+  min-height: 150px;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: #90caf9;
+  font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.free-sql-input:focus {
+  border-color: #ffd700;
+}
+
+.free-status {
+  color: #81c784;
+  font-size: 0.82rem;
+}
+
+.free-status.error {
+  color: #ff6b6b;
+}
+
+.free-result {
+  margin-top: 14px;
+  overflow-x: auto;
+}
+
+.free-result table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+.free-result th {
+  background: rgba(255, 215, 0, 0.12);
+  color: #ffd700;
+  padding: 8px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.free-result td {
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #ddd;
+  white-space: nowrap;
+}
+
+.free-result .empty {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+/* ── 底部说明 ── */
+.footer-note {
+  color: #666;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  padding: 0 6px 30px;
+}
+
+.footer-note a {
+  color: #90caf9;
+  text-decoration: none;
+}
+
+/* ── 移动端 ── */
+@media (max-width: 600px) {
+  .container {
+    padding: 12px;
+  }
+
+  .section {
+    padding: 18px;
+  }
+
+  .header h1 {
+    font-size: 1.5rem;
+  }
+
+  .control-row {
+    gap: 8px;
+  }
+
+  .btn-primary {
+    width: 100%;
+  }
+
+  .preset-group .btn-secondary {
+    flex: 1;
+  }
+
+  .counter-num {
+    width: 34px;
+    height: 34px;
+    font-size: 0.82rem;
+  }
+
+  .life-gen {
+    margin-left: 0;
+  }
+}

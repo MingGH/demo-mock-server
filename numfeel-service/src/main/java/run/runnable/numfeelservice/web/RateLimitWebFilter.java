@@ -33,6 +33,11 @@ import java.util.function.Predicate;
  *   <li>全局：每分钟 200 次（所有请求）</li>
  *   <li>{@code POST /fingerprint/collect}：每分钟 60 次</li>
  *   <li>{@code POST /social-engineering/submit}：每分钟 30 次</li>
+ *   <li>{@code POST /yaml-court/parse}：每分钟 30 次</li>
+ *   <li>{@code POST /zhihu/analyze}：每分钟 3 次</li>
+ *   <li>{@code POST /multipart/upload}：每分钟 20 次</li>
+ *   <li>{@code POST /graphql}：每分钟 60 次</li>
+ *   <li>{@code POST /yaml-court/parse}：每分钟 30 次</li>
  *   <li>其余写接口（各种 {@code /submit}、排行榜 POST）：每分钟 10 次</li>
  * </ul>
  * 命中任一规则上限即返回 429。请求需同时满足全局规则与最具体的匹配规则。
@@ -102,6 +107,8 @@ public class RateLimitWebFilter implements WebFilter {
         // GraphQL 查询端点（rest-vs-graphql 演示）：60/min/IP，
         // 嵌套查询成本随客户端请求变化，单独设桶便于演示页高频对比
         rules.add(new Rule(isPost("/graphql"), RateLimitWebFilter::routeKey, 60, 60));
+        // YAML 对照解析（yaml-minefield 演示）：30/min/IP，前端有防抖，正常使用远低于该值
+        rules.add(new Rule(isPost("/yaml-court/parse"), RateLimitWebFilter::routeKey, 30, 60));
         // 其余写接口：10/min
         rules.add(new Rule(RateLimitWebFilter::isWriteThrottled, RateLimitWebFilter::routeKey, 10, 60));
     }

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="8 道 YAML 陷阱题，你能排掉几颗雷？再打开解析器对照台，让浏览器和服务器现场打架给你看。">
+  <title>YAML 地雷阵 | 数字直觉</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- js-yaml：浏览器端解析（YAML 1.2） -->
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+  <!-- Chart.js：结果页图表 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- GSAP：转场与微动效 -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ═══ 开场 ═══ -->
+    <section id="view-intro" class="view">
+      <div class="hero">
+        <div class="hero-eyebrow"><i class="ti ti-binary"></i> 技术演示 · YAML</div>
+        <h1 class="hero-title">YAML 地雷阵</h1>
+        <p class="hero-sub">你以为「可读性极佳」的配置格式，藏着一整片雷区。<br>8 道题，踩中几颗，玩完你就知道了。</p>
+        <button id="btn-start" class="btn-primary" type="button">
+          <i class="ti ti-bomb"></i> 开始排雷
+        </button>
+        <p class="hero-hint">每类陷阱至少一道 · 连对有加成 · 限时 20 秒<br>滚到底部还有「解析器对照台」，让浏览器和服务器现场打架</p>
+      </div>
+
+      <div class="intro-cards">
+        <div class="intro-card">
+          <i class="ti ti-flag-2"></i>
+          <h3>Norway 问题</h3>
+          <p>country: no，是挪威还是 false？YAML 1.1 用 20 秒毁掉一个国家。</p>
+        </div>
+        <div class="intro-card">
+          <i class="ti ti-clock-hour-4"></i>
+          <h3>六十进制</h3>
+          <p>duration: 12:30，你写的是半小时，它读出来是 750 秒。</p>
+        </div>
+        <div class="intro-card">
+          <i class="ti ti-tab"></i>
+          <h3>Tab 之刑</h3>
+          <p>缩进按一下 Tab，报错文案像天书，你找三天找不到错在哪。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 答题 ═══ -->
+    <section id="view-quiz" class="view" style="display:none">
+      <div class="quiz-top">
+        <div class="q-progress-wrap">
+          <div class="q-progress-bar"><div id="q-progress"></div></div>
+        </div>
+        <span id="q-index" class="q-index">1 / 8</span>
+        <span id="q-score" class="q-score">得分 0</span>
+      </div>
+
+      <div class="q-meta">
+        <span id="q-category" class="q-category">布尔陷阱</span>
+        <span id="q-severity" class="severity sev-4"></span>
+      </div>
+
+      <div class="q-timer-row">
+        <span id="q-timer" class="q-timer">20s</span>
+        <div class="timer-track"><div id="timer-bar"></div></div>
+      </div>
+
+      <div class="q-card">
+        <div class="q-yaml" id="q-yaml"></div>
+        <p class="q-question" id="q-question"></p>
+        <div id="q-options" class="q-options"></div>
+
+        <div id="q-explain" class="q-explain" style="display:none">
+          <div class="explain-icon"><i class="ti ti-bulb"></i></div>
+          <p id="explain-text"></p>
+        </div>
+
+        <button id="btn-next" class="btn-primary" type="button" style="display:none">
+          下一颗雷 <i class="ti ti-arrow-right"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- ═══ 结果 ═══ -->
+    <section id="view-result" class="view" style="display:none">
+      <div class="result-hero">
+        <div class="res-badge"><i class="ti ti-shield-check"></i></div>
+        <h2 id="res-title" class="res-title">缩进幸存者</h2>
+        <p id="res-comment" class="res-comment"></p>
+        <div class="res-stats">
+          <div class="res-stat">
+            <span id="res-score" class="res-big gold">0</span>
+            <span id="res-score-label" class="res-label">8 题总分</span>
+          </div>
+          <div class="res-stat">
+            <span id="res-correct" class="res-big green">0 / 8</span>
+            <span class="res-label">正确率</span>
+          </div>
+        </div>
+        <div class="res-actions">
+          <button id="btn-restart" class="btn-primary" type="button"><i class="ti ti-refresh"></i> 再排一局</button>
+          <button id="btn-share" class="btn-ghost" type="button"><i class="ti ti-copy"></i> 复制战绩分享</button>
+          <button id="btn-again" class="btn-ghost" type="button"><i class="ti ti-arrow-left"></i> 回开场</button>
+        </div>
+      </div>
+
+      <div class="res-chart-wrap">
+        <h3 class="section-title"><i class="ti ti-chart-bar"></i> 你踩的雷分布在哪</h3>
+        <div class="chart-box"><canvas id="res-chart"></canvas></div>
+      </div>
+
+      <div class="res-list-wrap">
+        <h3 class="section-title"><i class="ti ti-list-details"></i> 逐题复盘</h3>
+        <div id="res-list" class="res-list"></div>
+        <p class="res-tip">悬停每行可看该题的完整解释。</p>
+      </div>
+    </section>
+
+    <!-- ═══ 解析器对照台 ═══ -->
+    <section id="view-court" class="view">
+      <div class="court-header">
+        <h2 class="section-title"><i class="ti ti-versions"></i> 解析器对照台</h2>
+        <p class="court-desc">把任何一段 YAML 同时丢给浏览器（js-yaml 4，YAML 1.2）和服务器（SnakeYAML 2.x，YAML 1.1）。同一行字，两台机器可能读出完全不同的东西。</p>
+      </div>
+
+      <div class="presets">
+        <span class="presets-label">试试这些雷：</span>
+        <button class="preset-btn" type="button" data-yaml="country: no">Norway 问题</button>
+        <button class="preset-btn" type="button" data-yaml="duration: 12:30">六十进制</button>
+        <button class="preset-btn" type="button" data-yaml="zip: 02134">八进制邮编</button>
+        <button class="preset-btn" type="button" data-yaml="order_id: 1234567890123456789">19 位大数</button>
+        <button class="preset-btn" type="button" data-yaml="agree: y">单字母 y</button>
+        <button class="preset-btn" type="button" data-yaml="version: 1.10">浮点丢零</button>
+        <button class="preset-btn" type="button" data-yaml="server:&#10;  port: 8080">正常配置</button>
+      </div>
+
+      <textarea id="court-input" class="court-input" spellcheck="false" placeholder="粘贴一段 YAML，看两台解析器怎么打架…"></textarea>
+
+      <div class="court-controls">
+        <button id="btn-court-run" class="btn-primary" type="button"><i class="ti ti-play"></i> 解析对照</button>
+        <span id="court-status" class="court-status"></span>
+      </div>
+
+      <div id="court-verdict" class="court-verdict"></div>
+
+      <div class="court-table-wrap">
+        <table class="court-table">
+          <thead>
+            <tr>
+              <th class="court-th-key">键</th>
+              <th id="court-front-tag" class="court-th-front">浏览器 js-yaml 4</th>
+              <th id="court-back-tag" class="court-th-back">服务器 SnakeYAML 2.x</th>
+            </tr>
+          </thead>
+          <tbody id="court-table">
+            <tr><td colspan="3" class="court-empty">解析中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="court-foot">两边都报错，或读出来的值不一样，就是「解析器打架」。这不算 bug，这是 YAML 1.1 与 1.2 的三十年代差，你只是替它背了锅。</p>
+    </section>
+
+  </div>
+
+  <script src="../../components/header.js" defer></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

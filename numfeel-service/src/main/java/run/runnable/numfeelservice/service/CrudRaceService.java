@@ -1,10 +1,14 @@
 package run.runnable.numfeelservice.service;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import run.runnable.numfeelservice.web.ApiException;
@@ -16,7 +20,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -33,7 +39,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * 前端无需先调 reset。同一引擎的基准测试用 {@link ReentrantLock} 串行化，避免多用户互相污染数字。
  * <p>
  * text/caffeine 是纯内存/磁盘阻塞操作，统一调度到 {@code Schedulers.boundedElastic()}；
- * mysql 走 R2DBC 反应式链，锁在订阅时获取、doFinally 里释放。
+ * mysql 走 R2DBC 反应式链，锁在 boundedElastic 上获取、doFinally 里释放（不能阻塞事件循环）。
  */
 @Service
 public class CrudRaceService {
@@ -41,17 +47,40 @@ public class CrudRaceService {
     private static final Logger log = LoggerFactory.getLogger(CrudRaceService.class);
 
     /** 数据行数上限 */
-    static final int MAX_COUNT = 100_000;
+    public static final int MAX_COUNT = 100_000;
     /** 单次基准操作次数上限 */
-    static final int MAX_OPS = 2000;
+    public static final int MAX_OPS = 2000;
+    /** mysql 批量插入的批大小 */
+    private static final int MYSQL_BATCH = 2000;
+
+    private final DatabaseClient databaseClient;
+
+    public CrudRaceService(DatabaseClient databaseClient) {
+        this.databaseClient = databaseClient;
+    }
+
+    // ============= text 引擎状态 =============
 
     /** text 引擎的数据文件（临时目录，服务重启即重建） */
     private Path dataFile;
-
-    /** text 引擎锁 + 就绪状态 */
     private final ReentrantLock textLock = new ReentrantLock();
     private int textCount = -1;
     private boolean textDirty = true;
+
+    // ============= mysql 引擎状态 =============
+
+    private final ReentrantLock mysqlLock = new ReentrantLock();
+    private int mysqlCount = -1;
+    private boolean mysqlDirty = true;
+
+    // ============= caffeine 引擎状态 =============
+
+    private final Cache<String, String> caffeineCache = Caffeine.newBuilder()
+            .maximumSize(1_000_000)
+            .build();
+    private final ReentrantLock caffeineLock = new ReentrantLock();
+    private int caffeineCount = -1;
+    private boolean caffeineDirty = true;
 
     @PostConstruct
     void init() {
@@ -88,10 +117,31 @@ public class CrudRaceService {
         return switch (engine) {
             case "text" -> Mono.fromCallable(() -> doRunText(count, op, ops))
                     .subscribeOn(Schedulers.boundedElastic());
-            case "mysql", "caffeine" -> Mono.error(ApiException.badRequest(
-                    "engine '" + engine + "' not implemented yet"));
+            case "caffeine" -> Mono.fromCallable(() -> doRunCaffeine(count, op, ops))
+                    .subscribeOn(Schedulers.boundedElastic());
+            case "mysql" -> runMysql(count, op, ops);
             default -> Mono.error(ApiException.badRequest("unknown engine: " + engine));
         };
+    }
+
+    /**
+     * 各引擎可用性（供前端展示与降级）。
+     *
+     * @return Map：每个引擎名 → { available: boolean }
+     */
+    public Mono<Map<String, Object>> status() {
+        return databaseClient.sql("SELECT 1 AS ok").fetch().one().hasElement()
+                .map(ping -> Map.<String, Object>of(
+                        "text", Map.of("available", true),
+                        "mysql", Map.of("available", ping),
+                        "caffeine", Map.of("available", true)))
+                .onErrorResume(e -> {
+                    log.warn("crud-race mysql ping failed: {}", e.getMessage());
+                    return Mono.just(Map.of(
+                            "text", Map.of("available", true),
+                            "mysql", Map.of("available", false),
+                            "caffeine", Map.of("available", true)));
+                });
     }
 
     // ============= text 引擎 =============
@@ -228,6 +278,189 @@ public class CrudRaceService {
             sb.append(line).append('\n');
         }
         Files.writeString(dataFile, sb.toString(), StandardCharsets.UTF_8);
+    }
+
+    // ============= mysql 引擎 =============
+
+    /**
+     * mysql 引擎基准测试（反应式链）。
+     * 锁在 boundedElastic 线程上获取（不能阻塞事件循环），doFinally 释放。
+     *
+     * @param count 数据行数
+     * @param op    操作类型
+     * @param ops   操作次数
+     * @return 基准结果
+     */
+    Mono<RunResult> runMysql(int count, String op, int ops) {
+        return Mono.fromCallable(() -> {
+                    mysqlLock.lock();
+                    return true;
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(ignored -> {
+                    try {
+                        return doRunMysql(count, op, ops)
+                                .doFinally(sig -> mysqlLock.unlock());
+                    } catch (RuntimeException e) {
+                        mysqlLock.unlock();
+                        throw e;
+                    }
+                });
+    }
+
+    /** mysql 引擎一轮完整运行：按需重建数据 → 基准 → 汇总。 */
+    Mono<RunResult> doRunMysql(int count, String op, int ops) {
+        return Mono.defer(() -> {
+            boolean needReset = mysqlCount != count || mysqlDirty;
+            Mono<Long> resetMsMono;
+            if (needReset) {
+                long resetStart = System.nanoTime();
+                resetMsMono = resetMysql(count)
+                        .map(v -> {
+                            mysqlCount = count;
+                            mysqlDirty = false;
+                            return (System.nanoTime() - resetStart) / 1_000_000;
+                        });
+            } else {
+                resetMsMono = Mono.just(0L);
+            }
+            return resetMsMono.flatMap(resetMs -> {
+                long start = System.nanoTime();
+                AtomicInteger ok = new AtomicInteger();
+                return Flux.range(0, ops)
+                        .concatMap(i -> mysqlOp(op, count, i)
+                                .doOnNext(hit -> {
+                                    if (hit) ok.incrementAndGet();
+                                }))
+                        .then(Mono.fromCallable(() -> {
+                            long totalNs = System.nanoTime() - start;
+                            if ("insert".equals(op) || "delete".equals(op)) {
+                                mysqlDirty = true;
+                            }
+                            return buildResult("mysql", op, count, ops, ok.get(), resetMs, totalNs, null);
+                        }));
+            });
+        });
+    }
+
+    /** 重建 mysql 数据：清空表后分批插入 count 行 seed 数据。 */
+    Mono<Void> resetMysql(int count) {
+        return databaseClient.sql("TRUNCATE TABLE crud_race_kv")
+                .fetch().rowsUpdated()
+                .then()
+                .then(insertMysqlSeed(count));
+    }
+
+    /** 分批插入 seed 数据（批大小 {@link #MYSQL_BATCH}）。 */
+    private Mono<Void> insertMysqlSeed(int count) {
+        int batches = (count + MYSQL_BATCH - 1) / MYSQL_BATCH;
+        return Flux.range(0, batches)
+                .concatMap(b -> {
+                    int from = b * MYSQL_BATCH;
+                    int to = Math.min(from + MYSQL_BATCH, count);
+                    int rows = to - from;
+                    StringBuilder sql = new StringBuilder(
+                            "INSERT INTO crud_race_kv (k, v, created_at) VALUES ");
+                    for (int i = 0; i < rows; i++) {
+                        sql.append(i == 0 ? "(?,?,?)" : ",(?,?,?)");
+                    }
+                    DatabaseClient.GenericExecuteSpec spec = databaseClient.sql(sql.toString());
+                    int p = 0;
+                    for (int i = from; i < to; i++) {
+                        spec = spec.bind(p++, keyOf(i));
+                        spec = spec.bind(p++, valueOf(i));
+                        spec = spec.bind(p++, 0L);
+                    }
+                    return spec.fetch().rowsUpdated().then();
+                })
+                .then();
+    }
+
+    /**
+     * mysql 引擎单次操作。
+     *
+     * @return Mono&lt;Boolean&gt;：本次操作是否命中（行存在/受影响）
+     */
+    Mono<Boolean> mysqlOp(String op, int count, int i) {
+        return switch (op) {
+            case "get" -> databaseClient.sql("SELECT v FROM crud_race_kv WHERE k = ?")
+                    .bind(0, keyOf(randomIndex(count)))
+                    .map((row, metadata) -> row.get("v", String.class))
+                    .one()
+                    .map(v -> v != null)
+                    .defaultIfEmpty(false);
+            case "update" -> databaseClient.sql("UPDATE crud_race_kv SET v = ? WHERE k = ?")
+                    .bind(0, valueOf(randomIndex(1_000_000)))
+                    .bind(1, keyOf(randomIndex(count)))
+                    .fetch().rowsUpdated()
+                    .defaultIfEmpty(0L)
+                    .map(n -> n > 0);
+            case "insert" -> databaseClient.sql(
+                            "INSERT INTO crud_race_kv (k, v, created_at) VALUES (?, ?, ?)")
+                    .bind(0, keyOf(1_000_000 + i))
+                    .bind(1, valueOf(randomIndex(1_000_000)))
+                    .bind(2, 0L)
+                    .fetch().rowsUpdated()
+                    .defaultIfEmpty(0L)
+                    .map(n -> n > 0);
+            case "delete" -> databaseClient.sql("DELETE FROM crud_race_kv WHERE k = ?")
+                    .bind(0, keyOf(randomIndex(count)))
+                    .fetch().rowsUpdated()
+                    .defaultIfEmpty(0L)
+                    .map(n -> n > 0);
+            default -> Mono.error(ApiException.badRequest("unknown op: " + op));
+        };
+    }
+
+    // ============= caffeine 引擎 =============
+
+    /**
+     * caffeine 引擎基准测试（阻塞实现，调用方负责调度到 boundedElastic）。
+     *
+     * @param count 数据行数
+     * @param op    操作类型
+     * @param ops   操作次数
+     * @return 基准结果
+     */
+    RunResult doRunCaffeine(int count, String op, int ops) {
+        caffeineLock.lock();
+        try {
+            long resetStart = System.nanoTime();
+            if (caffeineCount != count || caffeineDirty) {
+                caffeineCache.invalidateAll();
+                for (int i = 0; i < count; i++) {
+                    caffeineCache.put(keyOf(i), valueOf(i));
+                }
+                caffeineCount = count;
+                caffeineDirty = false;
+            }
+            long resetMs = elapsedMs(resetStart);
+
+            long start = System.nanoTime();
+            int ok = 0;
+            for (int i = 0; i < ops; i++) {
+                boolean success = switch (op) {
+                    case "get" -> caffeineCache.getIfPresent(keyOf(randomIndex(count))) != null;
+                    case "update" -> caffeineCache.asMap()
+                            .replace(keyOf(randomIndex(count)), valueOf(randomIndex(1_000_000))) != null;
+                    case "insert" -> {
+                        caffeineCache.put(keyOf(1_000_000 + i), valueOf(randomIndex(1_000_000)));
+                        yield true;
+                    }
+                    case "delete" -> caffeineCache.asMap()
+                            .remove(keyOf(randomIndex(count))) != null;
+                    default -> false;
+                };
+                if (success) ok++;
+            }
+            long totalNs = System.nanoTime() - start;
+            if ("insert".equals(op) || "delete".equals(op)) {
+                caffeineDirty = true;
+            }
+            return buildResult("caffeine", op, count, ops, ok, resetMs, totalNs, null);
+        } finally {
+            caffeineLock.unlock();
+        }
     }
 
     // ============= seed 数据生成（确定性） =============

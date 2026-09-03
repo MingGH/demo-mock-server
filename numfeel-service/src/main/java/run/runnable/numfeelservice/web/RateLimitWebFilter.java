@@ -109,6 +109,8 @@ public class RateLimitWebFilter implements WebFilter {
         rules.add(new Rule(isPost("/graphql"), RateLimitWebFilter::routeKey, 60, 60));
         // YAML 对照解析（yaml-minefield 演示）：30/min/IP，前端有防抖，正常使用远低于该值
         rules.add(new Rule(isPost("/yaml-court/parse"), RateLimitWebFilter::routeKey, 30, 60));
+        // 增删改查引擎大赛：60/min/IP（一次全规模曲线 = 16 次调用，前端串行跑，够用）
+        rules.add(new Rule(isPost("/crud-race/run"), RateLimitWebFilter::routeKey, 60, 60));
         // 其余写接口：10/min
         rules.add(new Rule(RateLimitWebFilter::isWriteThrottled, RateLimitWebFilter::routeKey, 10, 60));
     }

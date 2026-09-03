@@ -555,3 +555,12 @@ CREATE TABLE IF NOT EXISTS keystroke_profiles (
     INDEX idx_kp_created (created_at),
     INDEX idx_kp_session (session_id, sample_index)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 增删改查引擎大赛：MySQL 引擎的 key-value 种子数据表
+-- 同一份数据（k/v/时间戳）同时跑在文本文件、MySQL、Caffeine、IndexedDB 上做基准对比。
+-- 基准前由服务端 TRUNCATE + 分批重灌，因此不加二级索引，避免污染写入基准数字。
+CREATE TABLE IF NOT EXISTS crud_race_kv (
+    k          VARCHAR(16) PRIMARY KEY COMMENT 'key：k + 7 位序号',
+    v          VARCHAR(64)  NOT NULL COMMENT 'value：模拟订单串',
+    created_at BIGINT       NOT NULL COMMENT '入库时间戳（ms，seed 数据为 0）'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -13,9 +13,10 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * CrudRaceService 单元测试 — text 引擎部分。
+ * CrudRaceService 单元测试 — text / caffeine 引擎。
  * <p>
  * 覆盖：seed 生成确定性、四种 CRUD 操作语义、脏标记自动重建、基准结果统计。
+ * mysql 引擎需要真实数据库，由部署环境验证，此处不覆盖。
  */
 class CrudRaceServiceTest {
 
@@ -23,7 +24,7 @@ class CrudRaceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CrudRaceService();
+        service = new CrudRaceService(null);
         service.init();
     }
 
@@ -182,6 +183,40 @@ class CrudRaceServiceTest {
         service.doRunText(100, "get", 5);
         service.doRunText(500, "get", 5);
         assertEquals(500, lineCount());
+    }
+
+    // ============= caffeine 引擎 =============
+
+    @Test
+    void runCaffeine_get_all_hit() {
+        RunResult r = service.doRunCaffeine(100, "get", 50);
+        assertEquals("caffeine", r.engine());
+        assertEquals(50, r.okCount());
+        assertTrue(r.qps() > 0);
+        assertNull(r.dataSizeBytes(), "caffeine engine has no file size");
+    }
+
+    @Test
+    void runCaffeine_memory_engine_should_be_fast() {
+        // 纯内存哈希表：200 次 get 应在毫秒级完成，这是「内存引擎快」的基本盘
+        RunResult r = service.doRunCaffeine(10_000, "get", 200);
+        assertTrue(r.totalMs() < 1000, "caffeine 200 gets should finish quickly, got " + r.totalMs() + "ms");
+    }
+
+    @Test
+    void runCaffeine_insert_marks_dirty_and_reseeds() {
+        RunResult first = service.doRunCaffeine(50, "insert", 20);
+        assertEquals(20, first.okCount());
+
+        // insert 弄脏数据后，下一轮同 count 自动重建，key 空间恢复完整
+        RunResult second = service.doRunCaffeine(50, "get", 10);
+        assertEquals(10, second.okCount(), "reseeded data has all keys");
+    }
+
+    @Test
+    void runCaffeine_update_hits_seeded_key() {
+        RunResult r = service.doRunCaffeine(100, "update", 50);
+        assertEquals(50, r.okCount(), "all random keys exist in seeded data");
     }
 
     // ============= 统计辅助 =============

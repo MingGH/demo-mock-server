@@ -23,7 +23,22 @@
       }
     } catch (e) { /* 埋点失败不影响功能 */ }
   }
-  nfTrack('session_start', {});
+  // 注意：header.js 是 defer 加载、track.js 由它异步注入，因此本脚本同步执行时
+  // window.NFTrack 必然尚未就绪——session_start 不能在这里同步发，改到 init() 里
+  // 轮询等 SDK 就绪后补发一次（trackOnce 保证同标签页只记一次）。
+  var sessionStartAttempts = 0;
+  function ensureSessionStart() {
+    if (sessionStartAttempts < 0) return;
+    if (window.NFTrack && typeof window.NFTrack.trackOnce === 'function') {
+      try {
+        window.NFTrack.trackOnce('session_start', {});
+      } catch (e) { /* ignore */ }
+      sessionStartAttempts = -1;
+      return;
+    }
+    if (++sessionStartAttempts > 25) return; // 最多等 5 秒
+    setTimeout(ensureSessionStart, 200);
+  }
   window.addEventListener('pagehide', function () {
     nfTrack('session_end', { reason: 'leave' }, { force: true });
   });
@@ -187,7 +202,15 @@
     step();
   }
 
+  /** 清掉所有可见行上的扫描高亮。 */
+  function clearScanning() {
+    document.querySelectorAll('#fileBox .file-row.scanning').forEach(function (row) {
+      row.classList.remove('scanning');
+    });
+  }
+
   function finishGet(r, key) {
+    clearScanning();
     if (r.found) {
       var hitRow = document.querySelector('#fileBox .file-row[data-idx="' + (r.scanned - 1) + '"]');
       if (hitRow) hitRow.classList.add('hit');
@@ -232,6 +255,7 @@
         i++;
         setTimeout(step, 14);
       } else {
+        clearScanning();
         reading.querySelector('span').textContent = '读完了整个文件（' + size.toLocaleString() + ' 行）';
         doRewrite();
       }
@@ -402,10 +426,11 @@
     });
   }
 
-  /** IndexedDB 一轮基准：结构对齐后端 RunResult。 */
+  /** IndexedDB 一轮基准：结构对齐后端 RunResult。跑完立即关闭连接，避免泄漏。 */
   function idbRun(count, op, ops) {
-    var db;
+    var db = null;
     var t0 = performance.now();
+    function closeDb() { try { if (db) db.close(); } catch (e) { /* ignore */ } }
     return idbOpen()
       .then(function (d) {
         db = d;
@@ -427,14 +452,20 @@
         }
         return seq.then(function () {
           var totalMs = performance.now() - t1;
-          return {
+          var result = {
             engine: 'indexeddb', op: op, count: count, ops: ops, okCount: ok,
             resetMs: resetMs, totalMs: totalMs,
             avgUs: totalMs * 1000 / ops,
             qps: ops / (totalMs / 1000),
             dataSizeBytes: null
           };
+          closeDb();
+          return result;
         });
+      })
+      .catch(function (err) {
+        closeDb();
+        throw err;
       });
   }
 
@@ -541,8 +572,24 @@
 
   // ── 结果渲染 ──
 
+  /** 比赛视图与增长曲线视图互斥：比赛视图显示柱状图 + 表格。 */
+  function showRaceView() {
+    $('curveBlock').style.display = 'none';
+    if (curveChart) { curveChart.destroy(); curveChart = null; }
+    $('barBlock').style.display = 'block';
+    $('tableBlock').style.display = 'block';
+  }
+
+  /** 比赛视图与增长曲线视图互斥：曲线视图显示折线图。 */
+  function showCurveView() {
+    $('barBlock').style.display = 'none';
+    $('tableBlock').style.display = 'none';
+    $('curveBlock').style.display = 'block';
+  }
+
   function renderRaceResults(results, count, op, ops) {
     $('raceResult').style.display = 'block';
+    showRaceView();
 
     var textResult = results.filter(function (r) { return r.engine === 'text'; })[0];
     var ratioParts = [];
@@ -557,6 +604,18 @@
 
     renderBarChart(results);
     renderResultTable(results);
+  }
+
+  /** 图表组件加载失败时的降级提示（数字结果不受影响）。 */
+  function showChartFallback(containerId) {
+    var wrap = $(containerId);
+    if (!wrap) return;
+    var canvasWrap = wrap.querySelector('.chart-canvas-wrap');
+    if (canvasWrap) {
+      canvasWrap.innerHTML =
+        '<div style="color:#888;font-size:0.82rem;text-align:center;padding:44px 10px;">' +
+        '图表组件加载失败，数字结果以表格和上方结论为准。</div>';
+    }
   }
 
   function renderBarChart(results) {
@@ -605,6 +664,8 @@
           }
         }
       });
+    }).catch(function () {
+      showChartFallback('barBlock');
     });
   }
 
@@ -690,7 +751,7 @@
 
   function renderCurve(op, ops) {
     $('raceResult').style.display = 'block';
-    $('curveBlock').style.display = 'block';
+    showCurveView();
     $('ratioLine').innerHTML = '这是「' + OP_CN[op] + '」操作随数据量增长的真实曲线（每档 100 次操作）。' +
       '文本文件的线越来越陡——它每次都要扫全表；其他引擎靠索引/内存基本走平。';
 
@@ -740,6 +801,8 @@
           }
         }
       });
+    }).catch(function () {
+      showChartFallback('curveBlock');
     });
   }
 
@@ -771,11 +834,16 @@
     document.body.removeChild(ta);
   }
 
+  var COPY_BTN_HTML = '<i class="ti ti-copy"></i> 复制比赛结果';
+  var copyBtnTimer = null;
   function flashCopyBtn() {
-    var btn = $('copyBtn');
-    var orig = btn.innerHTML;
-    btn.innerHTML = '<i class="ti ti-check"></i> 已复制';
-    setTimeout(function () { btn.innerHTML = orig; }, 1500);
+    // 用固定文案恢复 + 清掉旧定时器，避免连点时把「已复制」快照当成原始文案
+    if (copyBtnTimer) clearTimeout(copyBtnTimer);
+    $('copyBtn').innerHTML = '<i class="ti ti-check"></i> 已复制';
+    copyBtnTimer = setTimeout(function () {
+      $('copyBtn').innerHTML = COPY_BTN_HTML;
+      copyBtnTimer = null;
+    }, 1500);
   }
 
   // ══════════════════════════════════════════════════════════
@@ -819,6 +887,9 @@
   }
 
   function init() {
+    // session_start 埋点：SDK 由 defer 的 header.js 异步注入，等它就绪后补发
+    ensureSessionStart();
+
     // 模块一：零门槛启动
     loadDataset(8);
     setOp('get');

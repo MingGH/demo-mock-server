@@ -3,6 +3,7 @@ package run.runnable.numfeelservice.service;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 import run.runnable.numfeelservice.service.CrudRaceService.RunResult;
 
 import java.io.IOException;
@@ -217,6 +218,25 @@ class CrudRaceServiceTest {
     void runCaffeine_update_hits_seeded_key() {
         RunResult r = service.doRunCaffeine(100, "update", 50);
         assertEquals(50, r.okCount(), "all random keys exist in seeded data");
+    }
+
+    // ============= mysql 引擎（就绪状态机，不连真库） =============
+
+    @Test
+    void resetDoneMarker_emits_value_after_empty_reset() {
+        // 回归测试：曾对 Mono<Void> 调 map，lambda 永不执行导致链路空完成。
+        // resetDoneMarker 必须保证 reset 完成后发射一个值并更新就绪状态。
+        Long resetMs = service.resetDoneMarker(Mono.<Void>empty(), 500, System.nanoTime()).block();
+        assertNotNull(resetMs, "resetDoneMarker must emit elapsed ms even for empty reset");
+        assertTrue(resetMs >= 0);
+        assertTrue(service.mysqlReadyFor(500), "resetDoneMarker must mark mysql ready for count");
+    }
+
+    @Test
+    void resetDoneMarker_changes_ready_count() {
+        service.resetDoneMarker(Mono.<Void>empty(), 100, System.nanoTime()).block();
+        assertTrue(service.mysqlReadyFor(100));
+        assertFalse(service.mysqlReadyFor(200), "ready state must track latest count");
     }
 
     // ============= 统计辅助 =============

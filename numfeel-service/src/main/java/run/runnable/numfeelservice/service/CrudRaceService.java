@@ -284,7 +284,8 @@ public class CrudRaceService {
 
     /**
      * mysql 引擎基准测试（反应式链）。
-     * 锁在 boundedElastic 线程上获取（不能阻塞事件循环），doFinally 释放。
+     * 锁在 boundedElastic 线程上获取（不能阻塞事件循环），通过 {@code Mono.usingWhen}
+     * 保证 onComplete / onError / cancel（客户端断连）三条路径都会释放锁。
      *
      * @param count 数据行数
      * @param op    操作类型
@@ -292,20 +293,16 @@ public class CrudRaceService {
      * @return 基准结果
      */
     Mono<RunResult> runMysql(int count, String op, int ops) {
-        return Mono.fromCallable(() -> {
+        return Mono.usingWhen(
+                Mono.fromCallable(() -> {
                     mysqlLock.lock();
                     return true;
                 })
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(ignored -> {
-                    try {
-                        return doRunMysql(count, op, ops)
-                                .doFinally(sig -> mysqlLock.unlock());
-                    } catch (RuntimeException e) {
-                        mysqlLock.unlock();
-                        throw e;
-                    }
-                });
+                        .subscribeOn(Schedulers.boundedElastic()),
+                ignored -> doRunMysql(count, op, ops),
+                ignored -> Mono.fromRunnable(mysqlLock::unlock),
+                (ignored, ex) -> Mono.fromRunnable(mysqlLock::unlock),
+                ignored -> Mono.fromRunnable(mysqlLock::unlock));
     }
 
     /** mysql 引擎一轮完整运行：按需重建数据 → 基准 → 汇总。 */
@@ -315,12 +312,9 @@ public class CrudRaceService {
             Mono<Long> resetMsMono;
             if (needReset) {
                 long resetStart = System.nanoTime();
-                resetMsMono = resetMysql(count)
-                        .map(v -> {
-                            mysqlCount = count;
-                            mysqlDirty = false;
-                            return (System.nanoTime() - resetStart) / 1_000_000;
-                        });
+                // 注意：resetMysql 是 Mono<Void>（空完成），必须用 then 挂后续动作，
+                // 对空 Mono 调 map 的 lambda 永远不会执行。
+                resetMsMono = resetDoneMarker(resetMysql(count), count, resetStart);
             } else {
                 resetMsMono = Mono.just(0L);
             }
@@ -341,6 +335,33 @@ public class CrudRaceService {
                         }));
             });
         });
+    }
+
+    /**
+     * reset 完成后更新就绪状态并返回耗时（毫秒）。独立成方法便于回归测试
+     * 「空 Mono 上挂后续动作」这一类错误。
+     *
+     * @param reset      重置链（Mono&lt;Void&gt;，空完成）
+     * @param count      重置到的行数
+     * @param resetStart 重置开始的 nanoTime
+     * @return 重置耗时（毫秒），保证发射一个值
+     */
+    Mono<Long> resetDoneMarker(Mono<Void> reset, int count, long resetStart) {
+        return reset.then(Mono.fromCallable(() -> {
+            mysqlCount = count;
+            mysqlDirty = false;
+            return (System.nanoTime() - resetStart) / 1_000_000;
+        }));
+    }
+
+    /**
+     * mysql 引擎是否已为 count 行就绪（包级可见，供单元测试验证就绪状态机）。
+     *
+     * @param count 目标行数
+     * @return 就绪且未写脏时返回 true
+     */
+    boolean mysqlReadyFor(int count) {
+        return mysqlCount == count && !mysqlDirty;
     }
 
     /** 重建 mysql 数据：清空表后分批插入 count 行 seed 数据。 */

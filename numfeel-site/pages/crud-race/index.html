@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="增删改查引擎大赛：一个文本文件就能当数据库——亲手玩一次它的增删改查，再把同一份数据放到 MySQL、Caffeine、IndexedDB 上跑个对比，直观感受数据库到底解决了什么。">
+  <title>增删改查引擎大赛 | 数据库不就是增删改查吗？ | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-database"></i> 增删改查引擎大赛</h1>
+    <p>「数据库不就是增删改查一些数据吗？」——你说得对，一个文本文件就能做到。下面这个 data.txt 就是一个完整支持增删改查的「数据库」，你可以亲手玩它；然后我们把它和 MySQL、Caffeine 缓存、IndexedDB 放在同一条起跑线上，跑同一份数据，看谁先撑不住。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       模块 1 - 亲手玩「文本文件数据库」
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-file-text"></i> 模块一 · 你的第一个数据库：data.txt</span>
+      <span class="card-hint">左边是文件本体，右边是操作台。每行一条「key|value」，这就是全部的数据结构</span>
+    </div>
+
+    <div class="dual-view">
+      <!-- 左：文件视图 -->
+      <div class="panel">
+        <div class="panel-label"><i class="ti ti-file"></i> data.txt · 文件视图</div>
+        <div class="file-box" id="fileBox"></div>
+        <div class="file-stats">
+          <span><i class="ti ti-list-numbers"></i> <b id="fsRows">8</b> 行</span>
+          <span><i class="ti ti-weight"></i> <b id="fsBytes">352 B</b></span>
+          <span><i class="ti ti-arrow-loop-right"></i> 累计写回 <b id="fsWritten" class="hl-red">0</b> 行</span>
+        </div>
+      </div>
+      <!-- 右：操作台 -->
+      <div class="panel">
+        <div class="panel-label"><i class="ti ti-terminal-2"></i> 操作台 · 选一个操作</div>
+        <div class="op-tabs" id="opTabs">
+          <button class="op-tab active" data-op="get"><i class="ti ti-zoom"></i> 查询</button>
+          <button class="op-tab" data-op="insert"><i class="ti ti-plus"></i> 插入</button>
+          <button class="op-tab" data-op="update"><i class="ti ti-pencil"></i> 更新</button>
+          <button class="op-tab" data-op="delete"><i class="ti ti-trash"></i> 删除</button>
+        </div>
+
+        <div class="op-config">
+          <label class="op-key-label" id="keyLabel">要查的 key</label>
+          <input type="text" class="op-key-input" id="keyInput" value="k0000003" spellcheck="false">
+          <button class="btn btn-primary" id="opRunBtn"><i class="ti ti-player-play-filled"></i> 执行</button>
+        </div>
+
+        <div class="op-result" id="opResult">
+          <div class="op-result-placeholder">点「执行」看这个操作在文件上怎么跑</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 数据量切换 -->
+    <div class="load-row">
+      <span class="load-label"><i class="ti ti-database-export"></i> 往文件里塞数据</span>
+      <div class="load-presets" id="loadPresets">
+        <button class="load-preset" data-n="8">8 行</button>
+        <button class="load-preset" data-n="100">100 行</button>
+        <button class="load-preset" data-n="1000">1,000 行</button>
+        <button class="load-preset" data-n="10000">10,000 行</button>
+      </div>
+      <span class="load-note" id="loadNote">文件越大，查询扫的行数越多、更新重写的行数越多</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       模块 2 - 四引擎大赛
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-trophy"></i> 模块二 · 四引擎大赛</span>
+      <span class="card-hint">同一份数据、同一个操作，跑在不同引擎上。数字是真实计时，不是我编的</span>
+    </div>
+
+    <!-- 降级提示（默认隐藏） -->
+    <div class="notice notice-red" id="apiError" style="display:none">
+      <i class="ti ti-alert-triangle"></i>
+      <span id="apiErrorText">后端暂时连不上，大赛跑不了。模块一不受影响，可以先玩上面的。</span>
+    </div>
+
+    <!-- 规模预设 -->
+    <div class="race-config">
+      <div class="race-config-item">
+        <div class="race-config-label"><i class="ti ti-database"></i> 数据量</div>
+        <div class="scale-presets" id="scalePresets">
+          <button class="scale-preset active" data-count="100">100 条</button>
+          <button class="scale-preset" data-count="1000">1,000 条</button>
+          <button class="scale-preset" data-count="10000">10,000 条</button>
+          <button class="scale-preset" data-count="100000">100,000 条</button>
+        </div>
+      </div>
+      <div class="race-config-item">
+        <div class="race-config-label"><i class="ti ti-repeat"></i> 比什么操作</div>
+        <div class="scale-presets" id="raceOpTabs">
+          <button class="scale-preset active" data-op="get">查询</button>
+          <button class="scale-preset" data-op="update">更新</button>
+          <button class="scale-preset" data-op="insert">插入</button>
+          <button class="scale-preset" data-op="delete">删除</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary btn-run" id="raceRunBtn">
+        <i class="ti ti-player-play-filled"></i> 开跑（每个引擎 200 次操作）
+      </button>
+      <button class="btn btn-secondary" id="curveBtn">
+        <i class="ti ti-chart-line"></i> 全规模增长曲线（100 → 100,000）
+      </button>
+    </div>
+
+    <!-- 进度反馈 -->
+    <div class="progress-area" id="raceProgress" style="display:none">
+      <div class="progress-bar-track"><div class="progress-bar-fill" id="raceProgressFill"></div></div>
+      <div class="progress-text" id="raceProgressText">准备中…</div>
+    </div>
+
+    <!-- 结果区 -->
+    <div class="result-area" id="raceResult" style="display:none">
+      <div class="ratio-line" id="ratioLine">—</div>
+
+      <div class="chart-block">
+        <div class="chart-title"><i class="ti ti-chart-bar"></i> 200 次操作总耗时（对数刻度）</div>
+        <div class="chart-canvas-wrap"><canvas id="barChart"></canvas></div>
+      </div>
+
+      <div class="result-table-wrap">
+        <table class="result-table" id="resultTable">
+          <thead>
+            <tr>
+              <th>引擎</th><th>跑在哪</th><th>总耗时</th><th>单次均值</th><th>QPS</th><th>vs 文本文件</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="chart-block" id="curveBlock" style="display:none">
+        <div class="chart-title"><i class="ti ti-chart-line"></i> 随数据量增长的耗时曲线（对数刻度）</div>
+        <div class="chart-canvas-wrap"><canvas id="curveChart"></canvas></div>
+        <p class="micro-note" id="curveNote">看曲线的形状：谁随数据量变陡，谁在裸泳。</p>
+      </div>
+    </div>
+
+    <!-- 诚实说明 -->
+    <div class="notice notice-blue">
+      <i class="ti ti-info-circle"></i>
+      <span><b>诚实说明：</b>文本文件、MySQL、Caffeine 跑在服务器上（MySQL 还要跨一次网络，这是真实系统的真实成本）；IndexedDB 跑在你浏览器里。所以这不是严格的实验室对比，但每个数字都是真实计时。「准备数据」的耗时单独统计，不算进比赛成绩。</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       结论
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-bulb"></i> 所以，数据库难在哪？</span>
+    </div>
+    <div class="conclusion">
+      <p>增删改查是数据库的<b class="hl-gold">接口</b>，不是它的<b class="hl-gold">难度</b>。data.txt 十行代码就有全部四个功能，但数据量涨四个数量级、并发涌进来、机器写到一半断电之后，增删改查还要又快又稳——索引、缓冲池、事务日志、崩溃恢复，每一项都是在给「简单」支付利息。上面的曲线就是第一笔利息的账单。</p>
+      <p class="micro-note">想继续深挖：数据库怎么用 B 树把查询从「扫全表」变成「跳几步」，见下面的关联演示。</p>
+      <div class="sibling-links">
+        <a class="sibling-link" href="../filesystem-is-database/">
+          <i class="ti ti-binary-tree-2"></i> 文件系统本来就是数据库（B 树索引可视化）
+        </a>
+        <a class="sibling-link" href="../../index.html">
+          <i class="ti ti-home"></i> 回首页看更多演示
+        </a>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary btn-sm" id="copyBtn"><i class="ti ti-copy"></i> 复制比赛结果</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="./engine.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

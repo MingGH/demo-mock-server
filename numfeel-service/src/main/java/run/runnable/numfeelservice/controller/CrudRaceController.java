@@ -66,6 +66,11 @@ public class CrudRaceController {
         if (ops < 1 || ops > CrudRaceService.MAX_OPS) {
             throw ApiException.badRequest("ops must be between 1 and " + CrudRaceService.MAX_OPS);
         }
+        // mysql 基准同一时刻只放行一个（permit 在订阅前同步获取，零泄漏窗口）；
+        // 信号量而非可重入锁：响应式收尾线程不定，ReentrantLock 跨线程解锁会炸
+        if ("mysql".equals(engine) && !service.tryAcquireMysqlPermit()) {
+            throw new ApiException(503, "MySQL benchmark is running, please retry in a few seconds");
+        }
 
         return service.run(engine, count, op, ops)
                 .map(ApiResponse::ok)

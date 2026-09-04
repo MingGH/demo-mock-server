@@ -220,7 +220,27 @@ class CrudRaceServiceTest {
         assertEquals(50, r.okCount(), "all random keys exist in seeded data");
     }
 
-    // ============= mysql 引擎（就绪状态机，不连真库） =============
+    // ============= mysql 引擎（就绪状态机 + permit，不连真库） =============
+
+    @Test
+    void mysqlPermit_is_mutex_and_releasable() {
+        assertTrue(service.tryAcquireMysqlPermit(), "first acquire succeeds");
+        assertFalse(service.tryAcquireMysqlPermit(), "second acquire is rejected");
+        service.releaseMysqlPermit();
+        assertTrue(service.tryAcquireMysqlPermit(), "re-acquire after release succeeds");
+        service.releaseMysqlPermit();
+    }
+
+    @Test
+    void runMysql_releases_permit_on_error() {
+        // DatabaseClient 为 null，订阅后 defer 内部抛 NPE → onError → doFinally 仍须释放许可
+        assertTrue(service.tryAcquireMysqlPermit());
+        service.runMysql(10, "get", 1)
+                .onErrorResume(e -> Mono.empty())
+                .block(java.time.Duration.ofSeconds(2));
+        assertTrue(service.tryAcquireMysqlPermit(), "permit must be released even on error");
+        service.releaseMysqlPermit();
+    }
 
     @Test
     void resetDoneMarker_emits_value_after_empty_reset() {

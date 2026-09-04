@@ -24,6 +24,8 @@ class CrudRaceControllerTest {
     @BeforeEach
     void setUp() {
         mockService = mock(CrudRaceService.class);
+        // Controller 对 mysql 引擎先同步拿许可，默认放行，个别用例单独覆盖
+        when(mockService.tryAcquireMysqlPermit()).thenReturn(true);
         client = WebTestClient.bindToController(new CrudRaceController(mockService))
                 .controllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -104,6 +106,17 @@ class CrudRaceControllerTest {
                 .bodyValue("{\"ops\":0}")
                 .exchange()
                 .expectStatus().isEqualTo(400);
+    }
+
+    @Test
+    void run_mysql_permit_busy_returns_503() {
+        when(mockService.tryAcquireMysqlPermit()).thenReturn(false);
+
+        client.post().uri("/crud-race/run")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"engine\":\"mysql\",\"op\":\"get\"}")
+                .exchange()
+                .expectStatus().isEqualTo(503);
     }
 
     @Test

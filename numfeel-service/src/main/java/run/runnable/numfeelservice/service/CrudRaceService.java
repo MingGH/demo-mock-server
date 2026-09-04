@@ -69,9 +69,31 @@ public class CrudRaceService {
 
     // ============= mysql 引擎状态 =============
 
-    private final ReentrantLock mysqlLock = new ReentrantLock();
+    /**
+     * mysql 引擎并发闸门：同一时刻只放行一个基准，避免多用户互相污染数字。
+     * 必须用 {@link Semaphore} 而非 ReentrantLock——响应式链的收尾发生在任意
+     * Netty/R2DBC 线程上，ReentrantLock 要求同线程解锁，跨线程 unlock 会抛
+     * IllegalMonitorStateException（生产日志已验证）；Semaphore.release 无线程约束。
+     */
+    private final java.util.concurrent.Semaphore mysqlPermit = new java.util.concurrent.Semaphore(1);
     private int mysqlCount = -1;
     private boolean mysqlDirty = true;
+
+    /**
+     * 尝试获取 mysql 基准执行许可。
+     * 必须在 HTTP handler 线程同步调用（Mono 订阅前），这样「拿到许可 → doFinally
+     * 挂载释放」之间不存在可取消的异步间隙，许可不会因客户端断连而泄漏。
+     *
+     * @return 是否获取成功
+     */
+    public boolean tryAcquireMysqlPermit() {
+        return mysqlPermit.tryAcquire();
+    }
+
+    /** 释放 mysql 基准许可（runMysql 的 doFinally 在三条完成路径上调用）。 */
+    public void releaseMysqlPermit() {
+        mysqlPermit.release();
+    }
 
     // ============= caffeine 引擎状态 =============
 
@@ -284,8 +306,8 @@ public class CrudRaceService {
 
     /**
      * mysql 引擎基准测试（反应式链）。
-     * 锁在 boundedElastic 线程上获取（不能阻塞事件循环），通过 {@code Mono.usingWhen}
-     * 保证 onComplete / onError / cancel（客户端断连）三条路径都会释放锁。
+     * 调用前必须已通过 {@link #tryAcquireMysqlPermit()} 拿到许可；
+     * {@code doFinally} 保证 onComplete / onError / cancel（客户端断连）三条路径都释放许可。
      *
      * @param count 数据行数
      * @param op    操作类型
@@ -293,16 +315,8 @@ public class CrudRaceService {
      * @return 基准结果
      */
     Mono<RunResult> runMysql(int count, String op, int ops) {
-        return Mono.usingWhen(
-                Mono.fromCallable(() -> {
-                    mysqlLock.lock();
-                    return true;
-                })
-                        .subscribeOn(Schedulers.boundedElastic()),
-                ignored -> doRunMysql(count, op, ops),
-                ignored -> Mono.fromRunnable(mysqlLock::unlock),
-                (ignored, ex) -> Mono.fromRunnable(mysqlLock::unlock),
-                ignored -> Mono.fromRunnable(mysqlLock::unlock));
+        return doRunMysql(count, op, ops)
+                .doFinally(sig -> releaseMysqlPermit());
     }
 
     /** mysql 引擎一轮完整运行：按需重建数据 → 基准 → 汇总。 */
@@ -364,9 +378,13 @@ public class CrudRaceService {
         return mysqlCount == count && !mysqlDirty;
     }
 
-    /** 重建 mysql 数据：清空表后分批插入 count 行 seed 数据。 */
+    /**
+     * 重建 mysql 数据：清空表后分批插入 count 行 seed 数据。
+     * 用 DELETE 而非 TRUNCATE：TRUNCATE 需要 DROP 权限，生产库账号通常没有；
+     * DELETE 虽然慢（逐行记 undo log），但重灌耗时单独统计在 resetMs 里，不计入基准成绩。
+     */
     Mono<Void> resetMysql(int count) {
-        return databaseClient.sql("TRUNCATE TABLE crud_race_kv")
+        return databaseClient.sql("DELETE FROM crud_race_kv")
                 .fetch().rowsUpdated()
                 .then()
                 .then(insertMysqlSeed(count));

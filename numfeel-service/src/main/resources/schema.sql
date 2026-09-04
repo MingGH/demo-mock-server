@@ -558,7 +558,8 @@ CREATE TABLE IF NOT EXISTS keystroke_profiles (
 
 -- 增删改查引擎大赛：MySQL 引擎的 key-value 种子数据表
 -- 同一份数据（k/v/时间戳）同时跑在文本文件、MySQL、Caffeine、IndexedDB 上做基准对比。
--- 基准前由服务端 TRUNCATE + 分批重灌，因此不加二级索引，避免污染写入基准数字。
+-- 基准前由服务端 DELETE 清空 + 分批重灌（不用 TRUNCATE：需 DROP 权限，生产账号通常没有），
+-- 因此不加二级索引，避免污染写入基准数字。
 CREATE TABLE IF NOT EXISTS crud_race_kv (
     k          VARCHAR(16) PRIMARY KEY COMMENT 'key：k + 7 位序号',
     v          VARCHAR(64)  NOT NULL COMMENT 'value：模拟订单串',

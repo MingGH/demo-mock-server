@@ -69,10 +69,15 @@
 
     var showRows = Math.min(n, VISIBLE);
     for (var i = 0; i < showRows; i++) box.appendChild(makeRow(i, lines[i]));
-    if (n > VISIBLE + 2) {
-      box.appendChild(makeGapRow('… 中间 ' + (n - VISIBLE - 2) + ' 行未展示 …'));
-      box.appendChild(makeRow(n - 2, lines[n - 2]));
-      box.appendChild(makeRow(n - 1, lines[n - 1]));
+    if (n > VISIBLE) {
+      // 尾部展示 2 行（不够 2 行就展示 1 行），剩余的用省略行表示；
+      // hidden 为 0 时不渲染 gap，避免 n=21/22 时边界行静默丢失
+      var tailRows = Math.min(2, n - VISIBLE);
+      var hidden = n - showRows - tailRows;
+      if (hidden > 0) {
+        box.appendChild(makeGapRow('… 中间 ' + hidden.toLocaleString() + ' 行未展示 …'));
+      }
+      for (i = n - tailRows; i < n; i++) box.appendChild(makeRow(i, lines[i]));
     }
 
     updateFileStats();
@@ -128,6 +133,7 @@
   };
 
   function setOp(op) {
+    if (busy) return; // 动画期间锁定操作台，防 setTimeout 回调交叉污染
     currentOp = op;
     document.querySelectorAll('.op-tab').forEach(function (t) {
       t.classList.toggle('active', t.dataset.op === op);
@@ -178,7 +184,9 @@
       if (idx < r.scanned) rows.push(row);
     });
 
-    var visibleCount = rows.length;
+    // 行号一律取元素自身 dataset.idx + 1：带省略号时 DOM 末尾两行是真实行号
+    // n-1/n，按元素序号数会显示成第 21/22 行
+    function rowNo(row) { return parseInt(row.dataset.idx, 10) + 1; }
     var scanStep = resultStep('step-reading', 'scan-eye', '逐行扫描中…');
     var i = 0;
 
@@ -188,11 +196,11 @@
         rows[i].classList.add('scanning');
         i++;
         scanStep.querySelector('span').textContent =
-          '逐行扫描中… 第 ' + Math.min(i, r.scanned) + ' 行';
+          '逐行扫描中… 第 ' + rowNo(rows[i - 1]).toLocaleString() + ' 行';
         setTimeout(step, i < 6 ? 50 : 16);
-      } else if (r.scanned > visibleCount) {
-        // 命中行在未渲染区域：快进计数器
-        raceNumber(visibleCount, r.scanned, 550, function (v) {
+      } else if (rows.length > 0 && r.scanned > rowNo(rows[rows.length - 1])) {
+        // 命中行在未渲染区域：从最后可见行的真实行号快进
+        raceNumber(rowNo(rows[rows.length - 1]), r.scanned, 550, function (v) {
           scanStep.querySelector('span').textContent = '快进扫描中… ' + v.toLocaleString() + ' / ' + r.scanned.toLocaleString() + ' 行';
         }, function () { finishGet(r, key); });
       } else {
@@ -327,6 +335,7 @@
   // ── 数据量切换 ──
 
   function loadDataset(n) {
+    if (busy) return; // 动画期间禁止重载：insert/update 的延时回调会写到新数据上
     textEngine.loadSeed(n);
     renderFileView();
     var input = $('keyInput');

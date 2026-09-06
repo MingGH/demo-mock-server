@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="一个 100 行的 Java Agent 正在监视运行这个页面的后端服务：你点一下按钮，就能在时间轴上看到服务端每个方法的耗时和它跑在哪个线程上——而业务代码，一行都没改。">
+  <title>培养舱实况：一个 Java Agent 正在监视这个服务 | 数字直觉</title>
+  <meta property="og:title" content="培养舱实况：一个 Java Agent 正在监视这个服务">
+  <meta property="og:description" content="不改一行业务代码，ByteBuddy 插桩采集方法调用事件流，线程泳道时间轴实时呈现。">
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-radar-2"></i> 培养舱实况：一个 Java Agent 正在监视这个服务</h1>
+    <p>Go/Node 把程序编译成「罐头」，Java 把程序养在「培养舱」里。这个页面就是培养舱的观察窗：
+      一个约 <strong>100 行</strong>的 Java Agent（ByteBuddy 插桩）挂在正在服务这个页面的后端进程上，
+      把每一次方法调用的耗时和线程记下来——<strong>业务代码一行都没改</strong>。</p>
+    <span class="live-tag"><span class="dot"></span>实时采集 · 每 2 秒拉取增量</span>
+  </div>
+
+  <!-- ── 模块一：证据与操作 ── -->
+  <div class="section">
+    <h2><i class="ti ti-certificate"></i> 现场：agent 的自报家门</h2>
+    <p class="section-desc">这些数字来自 agent 自身的 /agent/stats 接口——它甚至统计了自己过滤掉了多少噪声调用。</p>
+    <div class="metrics">
+      <div class="metric"><div class="label">已插桩业务类</div><div class="value" id="mTypes">—</div><div class="hint">不改一行代码拿到的</div></div>
+      <div class="metric"><div class="label">已记录方法调用</div><div class="value" id="mCollected">—</div><div class="hint">耗时 ≥ 10µs 才记</div></div>
+      <div class="metric"><div class="label">过滤掉的噪声</div><div class="value" id="mFiltered">—</div><div class="hint">启动期数百万次微调用</div></div>
+      <div class="metric"><div class="label">缓冲丢弃</div><div class="value" id="mDropped">—</div><div class="hint">环形缓冲写满挤最旧</div></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="btnCall"><i class="ti ti-bolt"></i> 对后端发一次真实请求</button>
+      <button class="btn" id="btnPause"><i class="ti ti-player-pause"></i> 暂停采集</button>
+      <button class="btn" id="btnClear"><i class="ti ti-eraser"></i> 清空视图</button>
+    </div>
+    <div class="empty-hint" id="hint">提示：点「发一次真实请求」，几秒后下面的时间轴上就会出现这次调用在服务端留下的脚印。</div>
+  </div>
+
+  <!-- ── 模块二：线程泳道时间轴 ── -->
+  <div class="section">
+    <h2><i class="ti ti-timeline"></i> 时间轴：方法调用跑在了哪个线程上</h2>
+    <p class="section-desc">每条泳道是一条线程，横条是一次方法调用（位置 = 发生时刻，宽度 = 耗时）。
+      反应式服务里线程名信息量爆炸：蓝色是 Netty 事件循环（装配链路），橙色是 boundedElastic（兜住阻塞操作）。</p>
+    <div id="laneWrap">
+      <div class="empty-hint" id="laneEmpty">时间轴还没有数据——agent 刚记下的调用会自动出现在这里。</div>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="swatch" style="background:#90caf9"></span>reactor-http-nio（事件循环）</span>
+      <span class="legend-item"><span class="swatch" style="background:#ffb74d"></span>boundedElastic（阻塞兜底池）</span>
+      <span class="legend-item"><span class="swatch" style="background:#ffd700"></span>main</span>
+      <span class="legend-item"><span class="swatch" style="background:#ff6b6b"></span>抛了异常的调用</span>
+    </div>
+  </div>
+
+  <!-- ── 模块三：事件明细 ── -->
+  <div class="section">
+    <h2><i class="ti ti-list-details"></i> 明细：最近的方法调用</h2>
+    <p class="section-desc">每个事件都带完整坐标：类、方法、耗时、线程、嵌套深度。这就是 APM 链路追踪的原始形态。</p>
+    <div class="table-wrap">
+      <table class="events">
+        <thead><tr><th>时刻</th><th>方法</th><th>耗时</th><th>线程</th><th>深度</th></tr></thead>
+        <tbody id="eventRows">
+          <tr><td colspan="5" class="empty-hint">暂无数据</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── 模块四：原理三张卡 ── -->
+  <div class="section">
+    <h2><i class="ti ti-school"></i> 原理：agent 是怎么「不碰代码」改掉代码的</h2>
+    <p class="section-desc">全部魔法集中在类加载的一瞬间，磁盘上的 jar 和源码仓库自始至终没有被打开过。</p>
+    <div class="grid-3">
+      <div class="cell">
+        <h3><i class="ti ti-transform"></i> 1. 内联插桩</h3>
+        <p>agent 注册一个 <code>ClassFileTransformer</code>；每个类被加载时，JVM 把原始字节码递给它，
+          ByteBuddy 用 <code>@Advice</code> 把「进入记时间 / 退出算耗时」几行指令<em>原地拷贝</em>进方法体。
+          不生成代理类、不改方法签名。</p>
+      </div>
+      <div class="cell">
+        <h3><i class="ti ti-package"></i> 2. shade + relocate</h3>
+        <p>ByteBuddy 自身被改名打包进 agent jar（<code>shaded.bytebuddy</code>），
+          与业务 classpath 上任何版本的 byte-buddy 物理隔离——这是所有生产级 agent（OTel、Arthas）的标准姿势。</p>
+      </div>
+      <div class="cell">
+        <h3><i class="ti ti-plug-connected"></i> 3. 数据回流</h3>
+        <p>事件写进进程内的环形缓冲，agent 自带一个只绑定 127.0.0.1 的 HTTP 接口；
+          本服务用一个 5 行的转发 controller 把它带出去。读者把 agent 挂到任何 Spring 项目上，同样三步就能复现。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">对照实验：把本页URL里的 ?api= 换成你本地服务的地址，再给你的服务挂上
+    <code>trace-agent.jar</code>（仓库 trace-agent/ 目录，构建一条命令），你自己的服务也能被这样「开天眼」。
+    SkyWalking / OpenTelemetry 的 javaagent 就是这个机制的产品化。</div>
+
+  <div class="error-box" id="errorBox" style="display:none"></div>
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -859,10 +859,22 @@
       "icon": "ti-code",
       "demos": [
         {
+          "href": "pages/java-agent-lab/",
+          "icon": "ti-radar-2",
+          "title": "培养舱实况：一个 Java Agent 正在监视这个服务",
+          "desc": "一个约 100 行的 Java Agent 挂在正在服务这个页面的后端进程上：你点一下按钮，就能在线程泳道时间轴上看到这次调用的每个方法耗时多少、跑在哪个线程上——而业务代码，一行都没改。这就是 SkyWalking、OTel 全链路追踪的底层机制现场版。"
+        },
+        {
           "href": "pages/crud-race/",
           "icon": "ti-trophy",
           "title": "增删改查引擎大赛：一个文本文件够当数据库吗",
           "desc": "「数据库不就是增删改查吗？」一个 data.txt 就能全做到——亲手玩一次它的增删改查，再把同一份数据扔给 MySQL、Caffeine、IndexedDB 跑真实基准：100 条时文本文件还挺快，10 万条时查询要扫全表、更新要重写整个文件。看曲线变陡的那一刻，你就懂了数据库在替你扛什么。"
+        },
+        {
+          "href": "pages/k8s-controllers/",
+          "icon": "ti-topology-star",
+          "title": "谁在替你重启 Pod：K8s 控制器编排可视化",
+          "desc": "Kubernetes 里没有一个组件知道全局：HPA 只看负载改「期望副本数」，ReplicaSet 控制器只管让实际数向期望数收敛。亲手杀 Pod 看自愈，注入流量洪峰看自动扩缩容——两个互不相识的控制器，靠一份共享的期望状态完成协作，这正是 Unix 管道思想在基础设施里的变体。"
         },
         {
           "href": "pages/compression-limit/",

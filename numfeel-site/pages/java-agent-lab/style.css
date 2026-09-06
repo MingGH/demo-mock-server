@@ -1,0 +1,260 @@
+/* java-agent-lab：培养舱实况（线程泳道时间轴） */
+
+body {
+  margin: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background-attachment: fixed;
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+}
+
+/* ── 头部 ── */
+.header {
+  text-align: center;
+  padding: 36px 12px 20px;
+}
+.header h1 {
+  font-size: clamp(22px, 4vw, 32px);
+  background: linear-gradient(90deg, #ffd700, #ffe98a, #ffd700);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}
+@keyframes shimmer { to { background-position: 200% center; } }
+.header p {
+  max-width: 760px;
+  margin: 14px auto 0;
+  line-height: 1.8;
+  color: #cfcfcf;
+  font-size: 15px;
+  text-align: justify;
+}
+.header strong { color: #ffd700; }
+
+.live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 999px;
+  font-size: 12px;
+  color: #ffd700;
+  letter-spacing: 1px;
+}
+.live-tag .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #81c784;
+  animation: blink 1.6s ease-in-out infinite;
+}
+@keyframes blink { 50% { opacity: 0.25; } }
+
+/* ── 通用区块 ── */
+.section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 22px 20px;
+  margin-top: 22px;
+}
+.section h2 {
+  font-size: 18px;
+  color: #ffd700;
+  margin: 0 0 6px;
+}
+.section-desc {
+  color: #888;
+  font-size: 13px;
+  margin: 0 0 16px;
+  line-height: 1.7;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.metric {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.metric .label { font-size: 12px; color: #888; }
+.metric .value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffd700;
+  margin: 4px 0 2px;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+.metric .hint { font-size: 11px; color: #666; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.btn {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e0e0e0;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:hover { background: rgba(255, 255, 255, 0.12); }
+.btn-primary {
+  background: linear-gradient(135deg, #b8860b, #ffd700);
+  border: none;
+  color: #1a1a2e;
+  font-weight: 700;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+
+.empty-hint { color: #666; font-size: 13px; }
+
+/* ── 泳道时间轴 ── */
+.lane {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.lane .lane-name {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: #9ecbff;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lane .track {
+  position: relative;
+  height: 30px;
+  background:
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 100% 15px, 15px 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.span {
+  position: absolute;
+  top: 6px;
+  height: 18px;
+  border-radius: 4px;
+  opacity: 0.85;
+  cursor: pointer;
+  min-width: 2px;
+}
+.span:hover { opacity: 1; outline: 1px solid rgba(255, 255, 255, 0.7); z-index: 2; }
+.span.err { background: #ff6b6b !important; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
+.legend-item { font-size: 12px; color: #999; display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+/* ── 事件表 ── */
+.table-wrap { overflow-x: auto; }
+table.events {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+table.events th {
+  text-align: left;
+  color: #888;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+table.events td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+table.events td.mono { font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.dur { color: #ffd700; font-weight: 600; }
+.thread-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+tr.err-row td { color: #ff6b6b; }
+
+/* ── 原理卡 ── */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.cell {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 16px;
+}
+.cell h3 { font-size: 15px; color: #90caf9; margin: 0 0 8px; }
+.cell p { font-size: 13px; color: #bbb; line-height: 1.8; margin: 0; }
+.cell em { color: #ffd700; font-style: normal; }
+.cell code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #9ecbff;
+}
+
+.footnote {
+  margin-top: 26px;
+  padding: 14px 16px;
+  border-left: 3px solid rgba(255, 215, 0, 0.4);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  color: #888;
+  font-size: 12.5px;
+  line-height: 1.8;
+}
+.footnote code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: #9ecbff;
+}
+
+.error-box {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 107, 107, 0.5);
+  background: rgba(255, 107, 107, 0.08);
+  border-radius: 10px;
+  color: #ff6b6b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .lane { grid-template-columns: 1fr; gap: 3px; }
+  .lane .lane-name { text-align: left; }
+}

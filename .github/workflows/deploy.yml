@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - 'numfeel-service/**'
+      - 'trace-agent/**'
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,6 +27,14 @@ jobs:
           VERSION=$(awk '/<parent>/,/<\/parent>/{next} /<version>/{gsub(/.*<version>|<\/version>.*/,"");print;exit}' pom.xml)
           echo "Project version is $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+      - name: Build trace-agent
+        working-directory: trace-agent
+        run: ./mvnw -B clean package -DskipTests
+      - name: Copy trace-agent jar into service target
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p numfeel-service/target
+          cp trace-agent/target/trace-agent.jar numfeel-service/target/trace-agent.jar
       - name: Build with Maven
         run: |
           ./mvnw clean package dockerfile:build -DskipTests

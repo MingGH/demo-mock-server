@@ -3,6 +3,8 @@
 FROM eclipse-temurin:17-jre
 
 ARG JAR_FILE=target/numfeel-service-0.0.1-SNAPSHOT.jar
+# trace-agent 由 CI 先行构建并拷入 numfeel-service/target/（见 deploy.yml）
+ARG AGENT_FILE=target/trace-agent.jar
 ENV PROJECT_HOME=/usr/local/numfeel-service
 
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
@@ -11,6 +13,7 @@ RUN mkdir -p $PROJECT_HOME && mkdir -p $PROJECT_HOME/data
 
 WORKDIR $PROJECT_HOME
 COPY ${JAR_FILE} $PROJECT_HOME/numfeel-service.jar
+COPY ${AGENT_FILE} $PROJECT_HOME/trace-agent.jar
 
 EXPOSE 8080
 
@@ -19,5 +22,6 @@ EXPOSE 8080
 # - 上游统计接口 token：NINJA_API_TOKEN
 # - 运行时数据目录（HuChenFeng 词云语料）自动下载到 ./data
 # - 静态前端（pages/components）单独部署在 numfeel.996.ninja，本服务默认不托管；
-#   如需本服务托管，可挂载目录并设置 static.pages-location / static.components-location
-ENTRYPOINT ["java", "-Xms384m", "-Xmx768m", "-jar", "/usr/local/numfeel-service/numfeel-service.jar"]
+# - -javaagent 挂载 trace-agent：业务代码零改动，采集方法调用事件流，
+#   经 GET /agent/events、/agent/stats（AgentTraceController 回环转发）对外暴露
+ENTRYPOINT ["java", "-Xms384m", "-Xmx768m", "-javaagent:/usr/local/numfeel-service/trace-agent.jar", "-jar", "/usr/local/numfeel-service/numfeel-service.jar"]

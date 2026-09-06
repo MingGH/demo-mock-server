@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>run.runnable</groupId>
+	<artifactId>trace-agent</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>trace-agent</name>
+	<description>Java Agent demo：不改一行业务代码，插桩采集方法调用事件流并通过内置 HTTP 接口暴露</description>
+
+	<properties>
+		<maven.compiler.release>17</maven.compiler.release>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<bytebuddy.version>1.17.6</bytebuddy.version>
+	</properties>
+
+	<dependencies>
+		<!-- 字节码改写；shade 时内嵌进 agent jar 并 relocate，运行时零外部依赖 -->
+		<dependency>
+			<groupId>net.bytebuddy</groupId>
+			<artifactId>byte-buddy</artifactId>
+			<version>${bytebuddy.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.13.2</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<!-- 产物固定为 target/trace-agent.jar，供 numfeel-service 镜像 COPY -->
+		<finalName>trace-agent</finalName>
+
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.2.5</version>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.6.0</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals><goal>shade</goal></goals>
+						<configuration>
+							<!-- 演示用途，不发布到 Maven 仓库，无需生成 reduced pom -->
+							<createDependencyReducedPom>false</createDependencyReducedPom>
+							<!-- 把 ByteBuddy 的 class 平铺合并进 agent jar（fat jar） -->
+							<relocations>
+								<relocation>
+									<pattern>net.bytebuddy</pattern>
+									<shadedPattern>run.runnable.traceagent.shaded.bytebuddy</shadedPattern>
+								</relocation>
+							</relocations>
+							<filters>
+								<filter>
+									<artifact>net.bytebuddy:byte-buddy</artifact>
+									<excludes>
+										<!-- MRJAR 的 JDK24+ 条目，shade 内置 ASM 解析不了；本 agent 只跑在 17/21 -->
+										<exclude>META-INF/versions/**</exclude>
+									</excludes>
+								</filter>
+								<filter>
+									<artifact>*:*</artifact>
+									<excludes>
+										<exclude>META-INF/*.SF</exclude>
+										<exclude>META-INF/*.DSA</exclude>
+										<exclude>META-INF/*.RSA</exclude>
+										<exclude>module-info.class</exclude>
+										<exclude>META-INF/versions/*/module-info.class</exclude>
+									</excludes>
+								</filter>
+							</filters>
+							<!-- 写入 agent 入口清单：JVM 靠这两个条目认识它 -->
+							<transformers>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<manifestEntries>
+										<Premain-Class>run.runnable.traceagent.TraceAgent</Premain-Class>
+										<Agent-Class>run.runnable.traceagent.TraceAgent</Agent-Class>
+										<Can-Retransform-Classes>true</Can-Retransform-Classes>
+									</manifestEntries>
+								</transformer>
+							</transformers>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>

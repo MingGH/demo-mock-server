@@ -30,7 +30,7 @@ import java.util.function.Predicate;
  * <p>
  * 规则（每个 IP）：
  * <ul>
- *   <li>全局：每分钟 200 次（所有请求）</li>
+ *   <li>全局：每分钟 400 次（所有请求）</li>
  *   <li>{@code POST /fingerprint/collect}：每分钟 60 次</li>
  *   <li>{@code POST /social-engineering/submit}：每分钟 30 次</li>
  *   <li>{@code POST /yaml-court/parse}：每分钟 30 次</li>
@@ -91,8 +91,8 @@ public class RateLimitWebFilter implements WebFilter {
     private final List<Rule> rules = new ArrayList<>();
 
     public RateLimitWebFilter() {
-        // 全局：200/min
-        rules.add(new Rule(req -> true, req -> "global", 200, 60));
+        // 全局：400/min
+        rules.add(new Rule(req -> true, req -> "global", 400, 60));
         // 指纹采集：60/min
         rules.add(new Rule(isPost("/fingerprint/collect"), RateLimitWebFilter::routeKey, 60, 60));
         // 社工防骗提交：30/min

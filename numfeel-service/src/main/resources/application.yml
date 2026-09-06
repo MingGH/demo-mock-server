@@ -43,6 +43,10 @@ numfeel:
     enabled: ${NUMFEEL_EVENTS_ENABLED:true}
     salt: ${NUMFEEL_EVENTS_SALT:numfeel-events-default-salt-please-override}
 
+# trace-agent 内置接口端口（仅绑定 127.0.0.1，经 AgentTraceService 回环转发）
+  agent:
+    port: 9999
+
 # multipart/form-data 上传演示
   upload:
     dir: ${NUMFEEL_UPLOAD_DIR:${java.io.tmpdir}/numfeel-upload}

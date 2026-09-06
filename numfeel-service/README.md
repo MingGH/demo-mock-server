@@ -23,6 +23,16 @@ Numfeel 后端服务 — 从 Vert.x 迁移至 Spring Boot WebFlux。
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
+本地带 trace-agent 调试（需先在 `../trace-agent` 执行 `./mvnw package`）：
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev \
+  -Dspring-boot.run.jvmArguments="-javaagent:../trace-agent/target/trace-agent.jar"
+```
+
+生产镜像由 CI 构建：先 build `trace-agent`，把 jar 拷进 `target/`，Dockerfile 里
+`COPY` 进镜像并在 ENTRYPOINT 加 `-javaagent`。业务代码对 agent 零依赖。
+
 ## 必需环境变量
 
 | 变量               | 说明             | 默认值         |

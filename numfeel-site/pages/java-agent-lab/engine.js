@@ -82,6 +82,10 @@ function timelineLayout(events, nowMs, windowMs) {
   return { t0: t0, t1: t1, windowMs: win, lanes: lanes, count: count };
 }
 
+if (typeof window !== 'undefined') {
+  window.AgentLab = { formatDuration: formatDuration, pickLaneColor: pickLaneColor, methodLabel: methodLabel, timelineLayout: timelineLayout };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { formatDuration: formatDuration, pickLaneColor: pickLaneColor, methodLabel: methodLabel, timelineLayout: timelineLayout };
 }

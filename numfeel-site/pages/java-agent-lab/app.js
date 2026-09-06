@@ -71,6 +71,7 @@
         el.collected.textContent = formatCount(json.data.collected);
         el.filtered.textContent = formatCount(json.data.filtered);
         el.dropped.textContent = formatCount(json.data.dropped);
+        showError('');
       })
       .catch(function () { showError('拿不到 agent 统计：后端可能没挂 -javaagent 启动。'); });
   }

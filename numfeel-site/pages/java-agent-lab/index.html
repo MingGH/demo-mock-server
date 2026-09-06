@@ -17,8 +17,8 @@
   <div class="header">
     <h1><i class="ti ti-radar-2"></i> 培养舱实况：一个 Java Agent 正在监视这个服务</h1>
     <p>Go/Node 把程序编译成「罐头」，Java 把程序养在「培养舱」里。这个页面就是培养舱的观察窗：
-      一个约 <strong>100 行</strong>的 Java Agent（ByteBuddy 插桩）挂在正在服务这个页面的后端进程上，
-      把每一次方法调用的耗时和线程记下来——<strong>业务代码一行都没改</strong>。</p>
+      一个<strong>核心插桩不足百行</strong>的 Java Agent（ByteBuddy 插桩）挂在正在服务这个页面的后端进程上，
+      把方法调用（耗时 ≥ 10µs）的耗时、线程、异常记下来——<strong>业务代码一行都没改</strong>。</p>
     <span class="live-tag"><span class="dot"></span>实时采集 · 每 2 秒拉取增量</span>
   </div>
 
@@ -29,8 +29,8 @@
     <div class="metrics">
       <div class="metric"><div class="label">已插桩业务类</div><div class="value" id="mTypes">—</div><div class="hint">不改一行代码拿到的</div></div>
       <div class="metric"><div class="label">已记录方法调用</div><div class="value" id="mCollected">—</div><div class="hint">耗时 ≥ 10µs 才记</div></div>
-      <div class="metric"><div class="label">过滤掉的噪声</div><div class="value" id="mFiltered">—</div><div class="hint">启动期数百万次微调用</div></div>
-      <div class="metric"><div class="label">缓冲丢弃</div><div class="value" id="mDropped">—</div><div class="hint">环形缓冲写满挤最旧</div></div>
+      <div class="metric"><div class="label">过滤掉的噪声</div><div class="value" id="mFiltered">—</div><div class="hint">耗时 &lt; 10µs 的调用，多来自启动期分词</div></div>
+      <div class="metric"><div class="label">缓冲丢弃</div><div class="value" id="mDropped">—</div><div class="hint">缓冲只有 4096 条，写满时最旧的让位</div></div>
     </div>
     <div class="actions">
       <button class="btn btn-primary" id="btnCall"><i class="ti ti-bolt"></i> 对后端发一次真实请求</button>
@@ -44,7 +44,7 @@
   <div class="section">
     <h2><i class="ti ti-timeline"></i> 时间轴：方法调用跑在了哪个线程上</h2>
     <p class="section-desc">每条泳道是一条线程，横条是一次方法调用（位置 = 发生时刻，宽度 = 耗时）。
-      反应式服务里线程名信息量爆炸：蓝色是 Netty 事件循环（装配链路），橙色是 boundedElastic（兜住阻塞操作）。</p>
+      反应式服务里线程名信息量爆炸：蓝色是 Netty 事件循环（请求响应的主战场），橙色是 boundedElastic（兜住阻塞操作）。</p>
     <div id="laneWrap">
       <div class="empty-hint" id="laneEmpty">时间轴还没有数据——agent 刚记下的调用会自动出现在这里。</div>
     </div>
@@ -89,13 +89,14 @@
       <div class="cell">
         <h3><i class="ti ti-plug-connected"></i> 3. 数据回流</h3>
         <p>事件写进进程内的环形缓冲，agent 自带一个只绑定 127.0.0.1 的 HTTP 接口；
-          本服务用一个 5 行的转发 controller 把它带出去。读者把 agent 挂到任何 Spring 项目上，同样三步就能复现。</p>
+          对外只靠一个<strong>两个 GET 方法</strong>的转发 controller。读者把 agent 挂到任何 Spring 项目上，同样三步就能复现。</p>
       </div>
     </div>
   </div>
 
-  <div class="footnote">对照实验：把本页URL里的 ?api= 换成你本地服务的地址，再给你的服务挂上
-    <code>trace-agent.jar</code>（仓库 trace-agent/ 目录，构建一条命令），你自己的服务也能被这样「开天眼」。
+  <div class="footnote">对照实验：在本页地址后面加上 <code>?api=http://localhost:8080</code>（指向你本地服务），
+    再给你的服务挂上 <code>trace-agent.jar</code>（仓库 trace-agent/ 目录，<code>./mvnw package</code> 一条命令构建），
+    你自己的服务也能被这样「开天眼」。
     SkyWalking / OpenTelemetry 的 javaagent 就是这个机制的产品化。</div>
 
   <div class="error-box" id="errorBox" style="display:none"></div>

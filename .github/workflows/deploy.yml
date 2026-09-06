@@ -6,6 +6,7 @@ on:
     paths:
       - 'numfeel-service/**'
       - 'trace-agent/**'
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -30,14 +31,18 @@ jobs:
       - name: Build trace-agent
         working-directory: trace-agent
         run: ./mvnw -B clean package -DskipTests
+      - name: Build service jar
+        run: |
+          ./mvnw -B clean package -DskipTests
+      # 注意顺序：拷 agent jar 必须在 clean 之后，否则 clean 会把它清掉
       - name: Copy trace-agent jar into service target
         working-directory: ${{ github.workspace }}
         run: |
           mkdir -p numfeel-service/target
           cp trace-agent/target/trace-agent.jar numfeel-service/target/trace-agent.jar
-      - name: Build with Maven
+      - name: Build Docker image
         run: |
-          ./mvnw clean package dockerfile:build -DskipTests
+          ./mvnw -B dockerfile:build -DskipTests
       - name: Log in to Ali Container
         run: |
           docker login --username=${{ secrets.ALI_CONTAINER_USER }} --password="${{ secrets.ALI_CONTAINER_PWD }}" registry.cn-hongkong.aliyuncs.com

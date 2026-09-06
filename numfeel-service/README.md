@@ -30,8 +30,10 @@ Numfeel 后端服务 — 从 Vert.x 迁移至 Spring Boot WebFlux。
   -Dspring-boot.run.jvmArguments="-javaagent:../trace-agent/target/trace-agent.jar"
 ```
 
-生产镜像由 CI 构建：先 build `trace-agent`，把 jar 拷进 `target/`，Dockerfile 里
-`COPY` 进镜像并在 ENTRYPOINT 加 `-javaagent`。业务代码对 agent 零依赖。
+生产镜像由 CI 构建，顺序固定：先 build `trace-agent` → `clean package` 出服务
+jar → 把 agent jar 拷进 `target/` → `dockerfile:build`（COPY 进镜像并在
+ENTRYPOINT 加 `-javaagent`）。拷 agent 必须在 `clean` 之后，否则会被清掉。
+业务代码对 agent 零依赖。
 
 ## 必需环境变量
 

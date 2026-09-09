@@ -14,7 +14,7 @@
 ## 项目结构
 
 ```
-├── numfeel-service/       # 后端 — Spring Boot WebFlux（Java 17）
+├── numfeel-service/       # 后端 — Spring Boot WebFlux（Java 25）
 │   ├── src/main/java/.../controller/   # REST 控制器（薄层）
 │   ├── src/main/java/.../service/      # 业务逻辑层
 │   ├── src/main/java/.../dto/          # 请求/响应 DTO（Java record）
@@ -35,7 +35,7 @@
 ## 技术栈
 
 ### 后端（numfeel-service）
-- **Java 17** + **Spring Boot 4** + **WebFlux**（Netty）
+- **Java 25** + **Spring Boot 4** + **WebFlux**（Netty）
 - **R2DBC MySQL** — 反应式数据库访问
 - **Bucket4j + Caffeine** — IP 级别限流（1000次/分钟全局，写接口按路由分桶）
 - **Jieba** — 中文分词（词云）

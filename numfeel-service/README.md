@@ -4,7 +4,7 @@ Numfeel 后端服务 — 从 Vert.x 迁移至 Spring Boot WebFlux。
 
 ## 技术栈
 
-- **Java 17**、**Spring Boot 4**、**WebFlux**（Netty）
+- **Java 25**、**Spring Boot 4**、**WebFlux**（Netty）
 - **R2DBC MySQL**（`io.asyncer:r2dbc-mysql`）反应式数据库访问
 - **Bucket4j** — IP 级别限流
 - **Caffeine** — 本地缓存（限流桶、文档追踪、词云）

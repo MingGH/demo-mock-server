@@ -9,9 +9,9 @@
 	<description>Java Agent demo：不改一行业务代码，插桩采集方法调用事件流并通过内置 HTTP 接口暴露</description>
 
 	<properties>
-		<maven.compiler.release>17</maven.compiler.release>
+		<maven.compiler.release>25</maven.compiler.release>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<bytebuddy.version>1.17.6</bytebuddy.version>
+		<bytebuddy.version>1.18.13</bytebuddy.version>
 	</properties>
 
 	<dependencies>
@@ -44,7 +44,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.6.0</version>
+				<version>3.6.2</version>
 				<executions>
 					<execution>
 						<phase>package</phase>
@@ -63,8 +63,9 @@
 								<filter>
 									<artifact>net.bytebuddy:byte-buddy</artifact>
 									<excludes>
-										<!-- MRJAR 的 JDK24+ 条目，shade 内置 ASM 解析不了；本 agent 只跑在 17/21 -->
-										<exclude>META-INF/versions/**</exclude>
+										<!-- ByteBuddy MRJAR 的 JDK25/26 条目与本项目无关（本 agent 用 shaded 副本），
+									     且能避免 shade ASM 解析多版本 class 的坑、减小 jar 体积 -->
+									<exclude>META-INF/versions/**</exclude>
 									</excludes>
 								</filter>
 								<filter>

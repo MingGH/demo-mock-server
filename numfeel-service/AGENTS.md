@@ -2,7 +2,7 @@
 
 ## 语言与 JDK
 
-- **Java 17**。使用现代语言特性：`var`、`switch` 表达式、文本块。
+- **Java 25**。使用现代语言特性：`var`、`switch` 表达式、文本块。
 - **DTO 必须使用 Java record**，不得使用普通类。请求/响应 record 放在 `controller.dto` 包下，每个字段必须写 Javadoc。
 
 ## 反应式规范

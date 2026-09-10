@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="想象不出四维空间？不需要想象。旋转、投影、切片三种玩法，亲手把一个四维超立方体拆开看：w 轴是什么、截面为什么会变形，以及 2D 生物看 3D 和我们看 4D 是同一件事。">
+  <title>想象不出四维空间？把超立方体拆给你看 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/math/ConvexHull.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/ConvexGeometry.js"></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-cube"></i> 四维空间解剖台</h1>
+    <p>「三角形内角和 180°」「直线只有一种」——这些其实都是平地的乡巴佬规矩。这里关着一个四维物体：<strong>超立方体</strong>。你不需要"想象"第四个方向，拖滑杆、拉切片，让计算替你看见。</p>
+  </div>
+
+  <div class="section hero-section">
+    <h2><i class="ti ti-3d-cube-sphere"></i> 1. 投影间：先让它动起来</h2>
+    <p class="section-desc">下面是它在我们三维空间的影子（4D→3D 透视投影，就像你的手在灯下投在墙上的影子是 2D 的）。拖动旋转，或直接用鼠标转动视角。<span class="dim">颜色越亮 = w 值越大 = 离"四维相机"越近。</span></p>
+
+    <div class="stage-wrap">
+      <div class="canvas-frame main-frame">
+        <canvas id="tessCanvas"></canvas>
+        <div class="frame-tag">4D → 3D 影子 · 拖动旋转视角</div>
+      </div>
+      <div class="control-col">
+        <div class="preset-grid" id="presetGrid"></div>
+        <div class="control-panel">
+          <div class="control-group">
+            <label>XW 平面转速 <span class="control-value" id="xwValue">0.35</span></label>
+            <input type="range" id="xwSlider" min="-1" max="1" step="0.01" value="0.35">
+          </div>
+          <div class="control-group">
+            <label>YW 平面转速 <span class="control-value" id="ywValue">0.22</span></label>
+            <input type="range" id="ywSlider" min="-1" max="1" step="0.01" value="0.22">
+          </div>
+          <div class="control-group">
+            <label>ZW 平面转速 <span class="control-value" id="zwValue">0.00</span></label>
+            <input type="range" id="zwSlider" min="-1" max="1" step="0.01" value="0">
+          </div>
+          <div class="control-group">
+            <label>投影距离 d <span class="control-value" id="camValue">3.0</span></label>
+            <input type="range" id="camSlider" min="2.2" max="6" step="0.1" value="3">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-note" id="rotationNote">注意看：它在"里外翻转"。三维物体的旋转绕一根轴，而它的旋转绕一个<b>平面</b>——这是四维给我们的第一个下马威。</div>
+  </div>
+
+  <div class="section">
+    <h2><i class="ti ti-scissors"></i> 2. 切片台：超立方体穿过我们空间的瞬间</h2>
+    <p class="section-desc">一个球穿过桌面，桌上的 2D 生物会看到一个点冒出来、变成圆、再缩回点消失。把场景升高一维：<strong>超立方体穿过我们的空间时，我们看到的就是下面这个会变形的截面</strong>。</p>
+
+    <div class="slice-layout">
+      <div class="canvas-frame slice-frame">
+        <canvas id="sliceCanvas"></canvas>
+        <div class="frame-tag" id="sliceTag">截面：—</div>
+      </div>
+      <div class="slice-controls">
+        <button id="sliceToggleBtn" class="btn-primary"><i class="ti ti-eye-off"></i> 隐藏截面实体</button>
+        <div class="control-group wide">
+          <label>切片位置 w <span class="control-value" id="wValue">0.35</span></label>
+          <input type="range" id="wSlider" min="-1.35" max="1.35" step="0.01" value="0.35">
+        </div>
+        <button id="autoSliceBtn" class="btn-secondary"><i class="ti ti-player-play"></i> 自动往返切割</button>
+        <div class="slice-readout">
+          <div class="readout-row"><span>截面顶点</span><strong id="sliceVerts">—</strong></div>
+          <div class="readout-row"><span>形态判断</span><strong id="sliceDesc">—</strong></div>
+        </div>
+        <p class="section-desc dim small-note">提示：先去第 1 节选「龙卷风」，再回来切——你会见到静止时永远不可能出现的怪多面体。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><i class="ti ti-dimensions"></i> 3. 平面国对照：同一件事的两个维度</h2>
+    <p class="section-desc">左边：一个三维方块穿过平面国（俯视）。右边：超立方体穿过我们的空间（沿 z 轴俯视投影）。<strong>两张图是同一个故事</strong>，只是维度差了一层。</p>
+
+    <div class="flatland-slider">
+      <label>穿越进度 <span class="control-value" id="crossValue">0.40</span></label>
+      <input type="range" id="crossSlider" min="-1.45" max="1.45" step="0.01" value="0.4">
+    </div>
+    <div class="flatland-grid">
+      <figure class="flat-card">
+        <canvas id="cube2dCanvas"></canvas>
+        <figcaption><i class="ti ti-square"></i> 2D 生物看到的：凭空出现、变大、变形、消失的四边形</figcaption>
+      </figure>
+      <figure class="flat-card">
+        <canvas id="tess2dCanvas"></canvas>
+        <figcaption><i class="ti ti-cube"></i> 我们（俯视）看到的：凭空出现、变大、变形的多面体截面</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="section principle-section">
+    <h2><i class="ti ti-bulb"></i> 你应该带走的直觉</h2>
+    <div class="principle-grid">
+      <div class="principle-card">
+        <div class="num">01</div>
+        <h3>"想象不出来"不是你的错</h3>
+        <p>数学家也想不出来。他们靠的是公式和交互——就像你刚才做的那样。看见 ≠ 在脑内成像，计算可以代替直觉。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">02</div>
+        <h3>降维类比是最稳的梯子</h3>
+        <p>第 3 节里两个面板完全同构：困惑 2D 生物的问题和困惑我们的问题是同一个问题。想不通四维时，先想想平面国。</p>
+      </div>
+      <div class="principle-card">
+        <div class="num">03</div>
+        <h3>旋转绕平面，不绕轴</h3>
+        <p>四维空间里基本旋转发生在两个坐标张成的平面上（XW、YW……），没有"转轴"。所以双旋的超立方体才会呈现出三维世界里不可能的里外翻转。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section share-section">
+    <button id="copyShareBtn" class="btn-secondary"><i class="ti ti-copy"></i> 复制我的实验记录</button>
+    <span class="dim" id="copyHint"></span>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

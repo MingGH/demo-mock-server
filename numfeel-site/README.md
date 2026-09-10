@@ -98,6 +98,7 @@
 - [少一个队友，团战为什么输得这么惨](https://numfeel.996.ninja/pages/lanchester-law/) - 4打5不是稍微吃亏，而是注定团灭。兰彻斯特平方律：有集火时战力正比于人数的平方，...
 
 ### 📐 数学可视化
+- [四维空间解剖台：亲手玩超立方体](https://numfeel.996.ninja/pages/tesseract/) - 想象不出四维空间？不需要想象。旋转、投影、切片三种玩法，亲眼看超立方体穿过我们的...
 - [欧拉公式可视化](https://numfeel.996.ninja/pages/euler-formula.html) - e^(iπ)+1=0，被费曼称为数学的珠宝。用动画理解五大常数如何完美相遇。
 - [指数增长有多恐怖](https://numfeel.996.ninja/pages/exponential-growth.html) - 一张纸对折42次，厚度超过地月距离。点击对折，亲眼见证指数增长的恐怖。
 - [数据大小可视化](https://numfeel.996.ninja/pages/data-size-visualizer.html) - 1MB/1GB/1TB到底有多大？用动画和类比让你直观感受数据的重量。

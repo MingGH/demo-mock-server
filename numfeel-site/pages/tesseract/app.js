@@ -154,7 +154,6 @@
 
     initSliceScene();
     resizeScene();
-    global.addEventListener('resize', resizeScene);
   }
 
   function initSliceScene() {
@@ -581,22 +580,27 @@
     bindSlider('xwSlider', 'xwValue', function (v) { return v.toFixed(2); }, function (v) {
       state.speeds.xw = v;
       markActivePreset('');
+      requestRender();
     });
     bindSlider('ywSlider', 'ywValue', function (v) { return v.toFixed(2); }, function (v) {
       state.speeds.yw = v;
       markActivePreset('');
+      requestRender();
     });
     bindSlider('zwSlider', 'zwValue', function (v) { return v.toFixed(2); }, function (v) {
       state.speeds.zw = v;
       markActivePreset('');
+      requestRender();
     });
     bindSlider('camSlider', 'camValue', function (v) { return v.toFixed(1); }, function (v) {
       state.camDistance = v;
+      requestRender();
     });
     bindSlider('wSlider', 'wValue', function (v) { return v.toFixed(2); }, function (v) {
       state.wSlice = v;
       state.sliceAuto = false;
       updateAutoBtnLabel();
+      requestRender();
       if (!state.firstWDrag) {
         state.firstWDrag = true;
         nfTrack('slice_first_drag', {});
@@ -612,6 +616,7 @@
       lastSliceKey = '';
       updateSliceToggleLabel();
       rebuildSlice();
+      requestRender();
       nfTrack('toggle_slice', { on: state.sliceVisible });
     });
 
@@ -622,11 +627,18 @@
     });
 
     $('copyShareBtn').addEventListener('click', function () {
-      var text = buildShareText();
-      copyToClipboard(text);
-      $('copyHint').textContent = '已复制，去粘贴给朋友吧';
-      var self = this;
-      setTimeout(function () { $('copyHint').textContent = ''; self.blur(); }, 2400);
+      var btn = this;
+      var hint = $('copyHint');
+      var result = copyToClipboard(buildShareText());
+      var showHint = function (ok) {
+        hint.textContent = ok ? '已复制，去粘贴给朋友吧' : '复制失败了，请手动复制页面链接';
+        setTimeout(function () { hint.textContent = ''; btn.blur(); }, 2400);
+      };
+      if (result && typeof result.then === 'function') {
+        result.then(showHint);
+      } else {
+        showHint(result);
+      }
     });
   }
 
@@ -638,21 +650,36 @@
       'https://numfeel.996.ninja/pages/tesseract/';
   }
 
+  /**
+   * 复制文本到剪贴板。
+   * 异步 Clipboard API 可用时返回 Promise<boolean>；否则走 execCommand 同步兜底，返回布尔值。
+   * 两条路径的失败都会被捕获并体现在返回值里，不再产生未处理的 Promise rejection。
+   */
   function copyToClipboard(text) {
     try {
       if (global.navigator && global.navigator.clipboard && global.navigator.clipboard.writeText) {
-        global.navigator.clipboard.writeText(text);
-        return;
+        return global.navigator.clipboard.writeText(text).then(
+          function () { return true; },
+          function () { return legacyCopy(text); }
+        );
       }
     } catch (e) {}
+    return legacyCopy(text);
+  }
+
+  /** execCommand 同步复制兜底，返回是否成功 */
+  function legacyCopy(text) {
     try {
       var ta = document.createElement('textarea');
       ta.value = text;
       document.body.appendChild(ta);
       ta.select();
-      document.execCommand('copy');
+      var ok = document.execCommand('copy');
       document.body.removeChild(ta);
-    } catch (e2) {}
+      return !!ok;
+    } catch (e2) {
+      return false;
+    }
   }
 
   // ══ 主循环 ══════════════════════════════════════════════════════════
@@ -703,6 +730,19 @@
     rafId = global.requestAnimationFrame(loop);
   }
 
+  /** 减少动态效果模式下的按需渲染：不做连续动画，仅在控件变化时渲染一帧 */
+  var renderQueued = false;
+  function requestRender() {
+    if (!prefersReducedMotion || renderQueued) {
+      return;
+    }
+    renderQueued = true;
+    global.requestAnimationFrame(function (now) {
+      renderQueued = false;
+      tick(now || 0);
+    });
+  }
+
   // ── 对外暴露（供冒烟测试与调试） ────────────────────────────────────
   global.__tess = {
     state: state,
@@ -718,17 +758,22 @@
   buildPresetGrid();
   bindControls();
   initScene();
+  // resize 时同时刷新 WebGL 画布与 2D 平面国面板（后者缓冲只在 drawFlatland 时更新）
+  global.addEventListener('resize', function () {
+    resizeScene();
+    drawFlatland();
+  });
   updateProjectionBuffers();
   rebuildSlice();
   drawFlatland();
   syncControlValues();
   updateSliceToggleLabel();
   updateAutoBtnLabel();
+  trackSessionStart();
   if (prefersReducedMotion) {
     $('rotationNote').innerHTML = '已检测到你偏好减少动态效果：所有旋转默认关闭，可手动拖滑杆观察每一步的变化。';
-  }
-  trackSessionStart();
-  if (!prefersReducedMotion) {
+    tick(0); // 不做连续动画，先静态渲染一帧，后续由滑杆事件按需重绘
+  } else {
     loop(0);
   }
 })(typeof window !== 'undefined' ? window : this);

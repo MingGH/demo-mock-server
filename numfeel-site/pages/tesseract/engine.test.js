@@ -70,8 +70,7 @@ var R = engine.rotPlane4(0, 3, Math.PI / 5);
 var RtR = engine.matMul4(R, transpose(R));
 var isOrthogonal = true;
 for (var r = 0; r < 16; r++) {
-  var expect = (r % 5 === r / 5) ? 1 : 0;
-  expect = (Math.floor(r / 4) === r % 4) ? 1 : 0;
+  var expect = (Math.floor(r / 4) === r % 4) ? 1 : 0;
   if (!approxEq(RtR[r], expect, 1e-9)) { isOrthogonal = false; }
 }
 assert(isOrthogonal, 'XW 平面旋转矩阵正交：R·Rᵀ = I');

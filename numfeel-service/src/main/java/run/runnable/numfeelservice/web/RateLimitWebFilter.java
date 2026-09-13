@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -30,7 +31,6 @@ import java.util.function.Predicate;
  * <p>
  * 规则（每个 IP）：
  * <ul>
- *   <li>全局：每分钟 400 次（所有请求）</li>
  *   <li>{@code POST /fingerprint/collect}：每分钟 60 次</li>
  *   <li>{@code POST /social-engineering/submit}：每分钟 30 次</li>
  *   <li>{@code POST /yaml-court/parse}：每分钟 30 次</li>
@@ -40,9 +40,13 @@ import java.util.function.Predicate;
  *   <li>{@code POST /yaml-court/parse}：每分钟 30 次</li>
  *   <li>其余写接口（各种 {@code /submit}、排行榜 POST）：每分钟 10 次</li>
  * </ul>
- * 命中任一规则上限即返回 429。请求需同时满足全局规则与最具体的匹配规则。
+ * 命中任一规则上限即返回 429。请求需满足所有命中的规则。
+ * <p>
+ * 通过 {@code numfeel.rate-limit.enabled=false} 可整体关闭（本地压测/基准用），
+ * 缺省开启，生产行为不变。
  */
 @Component
+@ConditionalOnProperty(name = "numfeel.rate-limit.enabled", havingValue = "true", matchIfMissing = true)
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class RateLimitWebFilter implements WebFilter {
 
@@ -91,8 +95,6 @@ public class RateLimitWebFilter implements WebFilter {
     private final List<Rule> rules = new ArrayList<>();
 
     public RateLimitWebFilter() {
-        // 全局：400/min
-        rules.add(new Rule(req -> true, req -> "global", 400, 60));
         // 指纹采集：60/min
         rules.add(new Rule(isPost("/fingerprint/collect"), RateLimitWebFilter::routeKey, 60, 60));
         // 社工防骗提交：30/min

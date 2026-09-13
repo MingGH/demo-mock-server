@@ -24,4 +24,6 @@ EXPOSE 8080
 # - 静态前端（pages/components）单独部署在 numfeel.996.ninja，本服务默认不托管；
 # - -javaagent 挂载 trace-agent：业务代码零改动，采集方法调用事件流，
 #   经 GET /agent/events、/agent/stats（AgentTraceController 回环转发）对外暴露
-ENTRYPOINT ["java", "-Xms384m", "-Xmx768m", "-javaagent:/usr/local/numfeel-service/trace-agent.jar", "-jar", "/usr/local/numfeel-service/numfeel-service.jar"]
+# - -XX:MaxRAMPercentage=75：堆上限 = 容器 limit 的 75%（limit 2G → 堆 1.5G），
+#   剩余 25% 留给 Metaspace / Code Cache / 线程栈等堆外内存，改 limit 时堆自动跟着变
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-javaagent:/usr/local/numfeel-service/trace-agent.jar", "-jar", "/usr/local/numfeel-service/numfeel-service.jar"]

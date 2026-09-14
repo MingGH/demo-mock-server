@@ -43,6 +43,10 @@ numfeel:
     enabled: ${NUMFEEL_EVENTS_ENABLED:true}
     salt: ${NUMFEEL_EVENTS_SALT:numfeel-events-default-salt-please-override}
 
+# echo 微服务（rpc-chain 演示）；生产环境经 Service DNS 内网访问，本地默认 8100 端口
+  echo:
+    base-url: ${NUMFEEL_ECHO_BASE_URL:http://localhost:8100}
+
 # trace-agent 内置接口端口（仅绑定 127.0.0.1，经 AgentTraceService 回环转发）
   agent:
     port: 9999

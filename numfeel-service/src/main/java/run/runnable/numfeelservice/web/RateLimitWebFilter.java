@@ -38,6 +38,7 @@ import java.util.function.Predicate;
  *   <li>{@code POST /multipart/upload}：每分钟 20 次</li>
  *   <li>{@code POST /graphql}：每分钟 60 次</li>
  *   <li>{@code POST /yaml-court/parse}：每分钟 30 次</li>
+ *   <li>{@code GET /demo/rpc-chain}：每分钟 20 次（每次请求会串行发起最多 20 跳跨服务调用）</li>
  *   <li>其余写接口（各种 {@code /submit}、排行榜 POST）：每分钟 10 次</li>
  * </ul>
  * 命中任一规则上限即返回 429。请求需满足所有命中的规则。
@@ -111,6 +112,8 @@ public class RateLimitWebFilter implements WebFilter {
         rules.add(new Rule(isPost("/graphql"), RateLimitWebFilter::routeKey, 60, 60));
         // YAML 对照解析（yaml-minefield 演示）：30/min/IP，前端有防抖，正常使用远低于该值
         rules.add(new Rule(isPost("/yaml-court/parse"), RateLimitWebFilter::routeKey, 30, 60));
+        // RPC 链路演示：20/min/IP，一次请求串行发起最多 20 跳跨服务调用，单独设桶
+        rules.add(new Rule(isGet("/demo/rpc-chain"), RateLimitWebFilter::routeKey, 20, 60));
         // 增删改查引擎大赛：60/min/IP（一次全规模曲线 = 16 次调用，前端串行跑，够用）
         rules.add(new Rule(isPost("/crud-race/run"), RateLimitWebFilter::routeKey, 60, 60));
         // 其余写接口：10/min
@@ -119,6 +122,10 @@ public class RateLimitWebFilter implements WebFilter {
 
     private static Predicate<ServerHttpRequest> isPost(String path) {
         return req -> "POST".equals(req.getMethod().name()) && req.getPath().value().endsWith(path);
+    }
+
+    private static Predicate<ServerHttpRequest> isGet(String path) {
+        return req -> "GET".equals(req.getMethod().name()) && req.getPath().value().endsWith(path);
     }
 
     private static boolean isWriteThrottled(ServerHttpRequest req) {

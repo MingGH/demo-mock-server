@@ -1,0 +1,57 @@
+# rpc-chain 演示的下游 echo 微服务：仅被 numfeel-service 通过
+# Service DNS 内网调用（numfeel-echo-service.runnable-run.svc.cluster.local:8100），
+# 不暴露 Ingress。内存账本：hello-world 级 FastAPI 实际 RSS ~50-80MB。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: numfeel-echo-deployment
+  namespace: runnable-run
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: numfeel-echo
+  template:
+    metadata:
+      labels:
+        app: numfeel-echo
+    spec:
+      containers:
+        - name: numfeel-echo
+          image: registry.cn-hongkong.aliyuncs.com/runnable-run/numfeel-echo:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8100
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8100
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8100
+            initialDelaySeconds: 10
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: numfeel-echo-service
+  namespace: runnable-run
+spec:
+  selector:
+    app: numfeel-echo
+  ports:
+    - protocol: TCP
+      port: 8100
+      targetPort: 8100

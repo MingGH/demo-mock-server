@@ -45,6 +45,7 @@ ENTRYPOINT 加 `-javaagent`）。拷 agent 必须在 `clean` 之后，否则会�
 | `MYSQL_PASSWORD`   | MySQL 密码       |（空）          |
 | `MYSQL_DB`         | 数据库名         | `demomockserver` |
 | `NINJA_API_TOKEN`  | 上游统计 API 令牌 |（空）          |
+| `NUMFEEL_ECHO_BASE_URL` | echo 微服务基址（rpc-chain 演示） | `http://localhost:8100` |
 
 ## 项目结构
 

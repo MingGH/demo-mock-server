@@ -86,6 +86,8 @@ spec:
                 secretKeyRef:
                   name: mysql-secret
                   key: password
+            - name: NUMFEEL_ECHO_BASE_URL
+              value: http://numfeel-echo-service.runnable-run.svc.cluster.local:8100
             - name: TURNSTILE_SECRET_KEY
               valueFrom:
                 secretKeyRef:

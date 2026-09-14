@@ -6,6 +6,7 @@ on:
     paths:
       - 'numfeel-service/**'
       - 'trace-agent/**'
+      - 'numfeel-echo/**'
   workflow_dispatch:
 jobs:
   build:
@@ -43,6 +44,10 @@ jobs:
       - name: Build Docker image
         run: |
           ./mvnw -B dockerfile:build -DskipTests
+      - name: Build echo-service Docker image
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker build -t registry.cn-hongkong.aliyuncs.com/runnable-run/numfeel-echo:latest numfeel-echo
       - name: Log in to Ali Container
         run: |
           docker login --username=${{ secrets.ALI_CONTAINER_USER }} --password="${{ secrets.ALI_CONTAINER_PWD }}" registry.cn-hongkong.aliyuncs.com
@@ -50,6 +55,9 @@ jobs:
         run: |
           docker tag registry.cn-hongkong.aliyuncs.com/runnable-run/numfeel-service:${{ env.VERSION }} registry.cn-hongkong.aliyuncs.com/runnable-run/numfeel-service:latest
           docker push registry.cn-hongkong.aliyuncs.com/runnable-run/numfeel-service:latest
+      - name: Push echo-service Docker image to Ali Container
+        run: |
+          docker push registry.cn-hongkong.aliyuncs.com/runnable-run/numfeel-echo:latest
   deploy:
     runs-on: ubuntu-latest
     needs: build
@@ -57,12 +65,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          sparse-checkout: 'numfeel-service/k3s-deployment-prod.yaml'
+          sparse-checkout: |
+            numfeel-service/k3s-deployment-prod.yaml
+            numfeel-echo/k3s-deployment-prod.yaml
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
       - name: Deploy to K3s
         run: |
           echo "${{ secrets.KUBE_CONFIG }}" > K3S_KUBE_CONFIG.yaml
           chmod 600 K3S_KUBE_CONFIG.yaml
-          kubectl --kubeconfig=K3S_KUBE_CONFIG.yaml apply -f numfeel-service/k3s-deployment-prod.yaml
+          kubectl --kubeconfig=K3S_KUBE_CONFIG.yaml apply -f numfeel-service/k3s-deployment-prod.yaml -f numfeel-echo/k3s-deployment-prod.yaml
           kubectl --kubeconfig=K3S_KUBE_CONFIG.yaml patch deployment demo-mock-server-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"date\":\"`date +'%s'`\"}}}}}" -n runnable-run

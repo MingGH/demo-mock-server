@@ -1,5 +1,5 @@
 /* ── 基础 ── */
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
   font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
@@ -191,10 +191,24 @@ body {
 /* ── 响应式 ── */
 @media (max-width: 720px) {
   .header h1 { font-size: 1.5rem; }
+  .header p { font-size: 0.9rem; }
   .scenarios { grid-template-columns: 1fr 1fr; }
   .params { grid-template-columns: 1fr; }
+  .ratio-line { font-size: 0.95rem; padding: 12px 14px; }
   .chart-canvas-wrap { height: 260px; }
-  .chart-short { height: 190px; }
+  .chart-short { height: 180px; }
+  .result-table { font-size: 0.78rem; }
+  .result-table th, .result-table td { padding: 7px 8px; }
   .btn-run { width: 100%; justify-content: center; }
   .btn-row .btn-secondary { flex: 1; justify-content: center; }
+}
+
+@media (max-width: 480px) {
+  body { padding: 14px 10px 50px; }
+  .card { padding: 16px 14px; }
+  .scenarios { grid-template-columns: 1fr; }
+  .scenario { flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+  .scenario-desc { display: none; }
+  .param input[type="range"]::-webkit-slider-thumb { width: 22px; height: 22px; }
+  .param input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; }
 }

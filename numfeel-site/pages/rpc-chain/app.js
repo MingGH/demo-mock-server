@@ -160,7 +160,7 @@
   }
 
   function renderMainChart(s) {
-    var d = RPC.methodVsRpcChart(s);
+    var d = RPC.methodVsRpcChart(s, window.innerWidth < 600);
     loadChartJS().then(function () {
       if (mainChart) mainChart.destroy();
       mainChart = new Chart($('mainChart'), {

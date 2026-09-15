@@ -151,11 +151,14 @@
    * 主图数据：跨进程一跳的机制开销 vs 同 JVM 一次方法调用。
    * 取对数轴，两者的数量级差距是这张图要表达的结论。
    * @param {object} s summarize() 的结果
+   * @param {boolean} compact 紧凑标签（移动端窄屏用，单行短文案）
    * @returns {object} { labels, values, colors }
    */
-  function methodVsRpcChart(s) {
+  function methodVsRpcChart(s, compact) {
     return {
-      labels: ['跨进程 RPC 一跳\n（扣除业务时间）', '同 JVM 方法调用\n（1 次）'],
+      labels: compact
+        ? ['RPC 一跳', '方法调用']
+        : ['跨进程 RPC 一跳\n（扣除业务时间）', '同 JVM 方法调用\n（1 次）'],
       values: [Math.max(s.avgHopOverheadMs, 1e-9), Math.max(s.baselineMs, 1e-9)],
       colors: ['#ff6b6b', '#81c784']
     };

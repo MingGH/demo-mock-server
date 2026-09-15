@@ -121,6 +121,16 @@
   assert(main.values[0] > 0 && main.values[1] > 0, '主图数值均为正（对数轴要求）');
   assertEqual(main.colors.length, 2, '主图颜色齐全');
 
+  // 紧凑标签（移动端窄屏）
+  var compactMain = E.methodVsRpcChart(s, true);
+  assertEqual(compactMain.labels.length, 2, 'compact 主图两根柱');
+  assert(compactMain.labels.every(function (l) { return l.indexOf('\n') === -1; }),
+    'compact 标签单行');
+  assertEqual(compactMain.labels[0], 'RPC 一跳', 'compact 标签文案');
+  assertClose(compactMain.values[0], main.values[0], 1e-15, 'compact 数值与常规一致');
+  var defaultMain = E.methodVsRpcChart(s);
+  assert(defaultMain.labels[0].indexOf('\n') !== -1, '常规标签含换行的两行文案');
+
   var per = E.perHopChart(REPORT);
   assertEqual(per.labels.length, 3, '次图逐跳标签数 = 跳数');
   assertEqual(per.labels[0], '第 1 跳', '次图标签文案');

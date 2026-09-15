@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="「有分布式了，单体性能就不重要了」是真的吗？这个页面跑一条真实的跨进程链路：一个 Spring Boot 服务经 HTTP 串行调用一个 Python 服务，逐跳计时，再和同一个 JVM 里一次普通方法调用比。六个数级差距，自己跑一遍看。">
+  <title>RPC 链路计时器：分布式了，单体性能就不重要了吗 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-network"></i> 分布式了，单体性能就不重要了吗</h1>
+    <p>「反正有分布式了，单机随便写写。」这句话流传很广。下面这条链路是真的：一个 Java 服务经 HTTP 串行调用一个 Python 服务，所有耗时都在服务端测，再和同一个 JVM 里一次普通方法调用并排放在一起。所谓一跳（hop），就是一次完整的跨服务调用：请求发给下游服务、下游处理完、再把结果传回来。一跳里包含了网络往返、序列化反序列化和两边的框架调度，这些是单体应用里不存在、分布式强加给你的成本。跳数你定，每一跳还能注入指定的模拟业务耗时，跑一遍就知道差几个数量级。</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       实操 - 亲手跑一条跨服务链路
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-route"></i> 亲手跑一条跨服务链路</span>
+      <span class="card-hint">选一个场景直接跑，或者自己调跳数和每跳耗时。数字全部来自真实计时，不是我编的</span>
+    </div>
+
+    <!-- 降级提示（默认隐藏） -->
+    <div class="notice notice-red" id="apiError" style="display:none">
+      <i class="ti ti-alert-triangle"></i>
+      <span id="apiErrorText">后端暂时连不上，跑不了。稍后再试。</span>
+    </div>
+
+    <!-- 场景预设 -->
+    <div class="scenario-label"><i class="ti ti-cards"></i> 选一个场景</div>
+    <div class="scenarios" id="scenarios">
+      <button class="scenario active" data-hops="5" data-delay="0">
+        <span class="scenario-name">空跑 5 跳</span>
+        <span class="scenario-params">hops=5 · delayMs=0</span>
+        <span class="scenario-desc">不注入任何业务耗时，只看 RPC 机制本身要花多少</span>
+      </button>
+      <button class="scenario" data-hops="5" data-delay="80">
+        <span class="scenario-name">慢下游 × 5 跳</span>
+        <span class="scenario-params">hops=5 · delayMs=80</span>
+        <span class="scenario-desc">每跳下游多花 80 ms，看整条链路的延迟预算怎么被吃掉</span>
+      </button>
+      <button class="scenario" data-hops="20" data-delay="0">
+        <span class="scenario-name">长链路 20 跳</span>
+        <span class="scenario-params">hops=20 · delayMs=0</span>
+        <span class="scenario-desc">单跳开销乘 20，链路越长每个节点越金贵</span>
+      </button>
+      <button class="scenario" data-hops="20" data-delay="80">
+        <span class="scenario-name">长链路 + 慢下游</span>
+        <span class="scenario-params">hops=20 · delayMs=80</span>
+        <span class="scenario-desc">两个因素叠在一起：跳数乘上每跳的慢</span>
+      </button>
+    </div>
+
+    <!-- 高级参数 -->
+    <div class="params">
+      <div class="param">
+        <label class="param-label" for="hopsRange">
+          <i class="ti ti-git-branch"></i> 跳数 <b id="hopsVal">5</b>
+        </label>
+        <input type="range" id="hopsRange" min="1" max="20" step="1" value="5">
+        <span class="param-hint">链路上串几个服务（1~20）</span>
+      </div>
+      <div class="param">
+        <label class="param-label" for="delayRange">
+          <i class="ti ti-hourglass"></i> 每跳注入 <b id="delayVal">0</b> ms
+        </label>
+        <input type="range" id="delayRange" min="0" max="500" step="10" value="0">
+        <span class="param-hint">模拟一个慢下游（0~500 ms，0 表示不注入）</span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary btn-run" id="runBtn">
+        <i class="ti ti-player-play-filled"></i> 跑这条链路
+      </button>
+      <span class="run-status" id="runStatus"></span>
+    </div>
+
+    <!-- 结果区 -->
+    <div class="result-area" id="result" style="display:none">
+      <div class="ratio-line" id="ratioLine">—</div>
+
+      <div class="chart-block">
+        <div class="chart-title"><i class="ti ti-arrows-diff"></i> 跨进程一跳 vs 同 JVM 一次方法调用（对数刻度）</div>
+        <div class="chart-canvas-wrap chart-short"><canvas id="mainChart"></canvas></div>
+        <p class="micro-note">左边这根柱子已经扣掉了下游自报的业务耗时，剩下的全是「把调用送出去再拿回来」的成本：网络往返、双向序列化、框架调度。右边是同进程里一次加法方法调用。</p>
+      </div>
+
+      <div class="chart-block">
+        <div class="chart-title"><i class="ti ti-chart-bar"></i> 逐跳端到端耗时（对数刻度）</div>
+        <div class="chart-canvas-wrap"><canvas id="hopChart"></canvas></div>
+        <p class="micro-note" id="hopNote">第一跳通常偏慢：要建连接，JIT 也还没热起来。</p>
+      </div>
+
+      <div class="result-table-wrap">
+        <table class="result-table" id="hopTable">
+          <thead>
+            <tr>
+              <th>跳</th><th>端到端</th><th>下游自报业务</th><th>RPC 机制开销</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 诚实说明 -->
+    <div class="notice notice-blue">
+      <i class="ti ti-info-circle"></i>
+      <span><b>诚实说明：</b>所有耗时都由服务端用纳秒时钟测量后随响应返回，页面只负责画出来。如果你让浏览器自己掐表，你到机房的公网抖动会比每跳的差异还大，那测出来的是你家网速，不是 RPC 开销。下游那个 Python 服务上跑的就是一个 <code>sleep</code>，不碰数据库。</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       结论
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="ti ti-bulb"></i> 所以，分布式淘汰了单机性能吗？</span>
+    </div>
+    <div class="conclusion">
+      <p>没有。它只是把单机性能的角色换了：从决定「能不能用」，变成决定<b class="hl-gold">用户等多久</b>、<b class="hl-gold">你花多少钱</b>、<b class="hl-gold">系统离雪崩有多远</b>。上面那条链路的每一跳，都要为跨进程这件事付一笔固定成本，跳数一乘，这笔成本就直接压在用户的等待时间里。链路越长，每个节点的单机性能越金贵。</p>
+      <p>把上面的「每跳注入」拉到 80 ms 再跑一次，你看到的就是一个慢下游怎么吃掉整条链路的预算。真实系统里那一跳可能是一条没走索引的查询、一次 GC 停顿，或者一个没配连接池的调用。熔断、限流、降级这一整套，很大一部分都是在给单机性能不足擦屁股。</p>
+      <p class="micro-note">反过来看做得最好的那批系统：Kafka、Redis、ClickHouse、Netty，全是先有单机性能怪物，才谈得上分布式。共识、选主、副本同步这些协调动作的成本是固定的，节点越慢，协调开销占总时间的比重越高，横向扩展的收益递减得越快。</p>
+      <div class="sibling-links">
+        <a class="sibling-link" href="../cascade-failure/">
+          <i class="ti ti-zap-off"></i> 越修越崩：级联故障模拟器（一个慢节点怎么拖垮全网）
+        </a>
+        <a class="sibling-link" href="../crud-race/">
+          <i class="ti ti-trophy"></i> 增删改查引擎大赛（单机性能差在哪，跑个分就知道）
+        </a>
+        <a class="sibling-link" href="../../index.html">
+          <i class="ti ti-home"></i> 回首页看更多演示
+        </a>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary btn-sm" id="copyBtn"><i class="ti ti-copy"></i> 复制本次结果</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="./engine.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

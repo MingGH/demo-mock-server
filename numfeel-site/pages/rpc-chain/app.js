@@ -131,15 +131,18 @@
   function renderResult(report, s) {
     $('result').style.display = 'block';
 
-    var ratioText = '这条链路里，把一次调用送出去再拿回来的机制开销是 ' +
-      '<b class="hl-red">' + RPC.formatMs(s.avgHopOverheadMs) + '</b>/跳，' +
-      '而同一个 JVM 里调用一次方法只要 <b class="hl-green">' + RPC.formatNanos(s.iterations ? report.methodCallBaseline.avgNanos : 0) +
+    var ratioText = '这条链路里，每跳端到端 <b class="hl-gold">' + RPC.formatMs(s.avgHopMs) + '</b>' +
+      (report.delayMs > 0
+        ? '，其中 ' + report.delayMs + ' ms 是注入的业务时间，剩下的机制开销只有 <b class="hl-red">' + RPC.formatMs(s.avgHopOverheadMs) + '</b>/跳'
+        : '，把一次调用送出去再拿回来的机制开销是 <b class="hl-red">' + RPC.formatMs(s.avgHopOverheadMs) + '</b>/跳') +
+      '，而同一个 JVM 里调用一次方法只要 <b class="hl-green">' + RPC.formatNanos(report.methodCallBaseline.avgNanos) +
       '</b>，相差 <b class="hl-gold">' + RPC.formatRatio(s.ratio) + '</b>（' + s.orders + ' 个数量级）。' +
-      '总耗时 <b class="hl-gold">' + RPC.formatMs(s.totalMillis) + '</b> 中，真正的业务时间只占 <b class="hl-blue">' +
+      '总耗时 <b class="hl-gold">' + RPC.formatMs(s.totalMillis) + '</b> 中，真正的业务时间占 <b class="hl-blue">' +
       s.upstreamPct.toFixed(1) + '%</b>。';
 
     if (report.delayMs > 0) {
-      ratioText += '本轮每跳注入了 ' + report.delayMs + ' ms 模拟业务耗时：下游慢，整条链路就得慢，跳数一乘，预算立刻爆掉。';
+      ratioText += '注意机制开销并不随注入量变化：注入 0 是这几个毫秒，注入 ' + report.delayMs +
+        ' ms 还是这几个毫秒。它是分布式按跳收取的固定税；真正把延迟预算吃掉的，是随跳数线性累加的业务时间。';
     }
 
     $('ratioLine').innerHTML = ratioText;

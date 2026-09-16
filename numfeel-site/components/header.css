@@ -1000,6 +1000,8 @@ body.numfeel-shell.detail-page .related-card {
   display: flex;
   align-items: center;
   gap: 12px;
+  /* 网格项默认可被内容撑开；标题是 nowrap，不放开就会把整页顶出横向滚动条 */
+  min-width: 0;
   padding: 14px 16px;
   border-radius: 20px;
   border: 1px solid rgba(242, 228, 207, 0.08);

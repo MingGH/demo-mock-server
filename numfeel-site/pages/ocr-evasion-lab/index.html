@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="OCR 规避实验室：把一句话做成图片，调到机器读不出、你还读得出。浏览器里跑真实 OCR 引擎当场验货，看你能找到几条「人机分离」的配方——以及这件事为什么在今天已经不值钱。">
+  <title>OCR 规避实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <!-- ══════════════════════════════════════════════════════════
+       Hero
+  ══════════════════════════════════════════════════════════ -->
+  <section class="hero">
+    <h1 class="hero-title"><i class="ti ti-eye-off"></i> OCR 规避实验室</h1>
+    <p class="hero-sub">把一句话做成图片，调到机器读不出、而你还能读得出。页面里跑的是真实的 Tesseract 引擎，每一轮都会给出识别结果，看你能找到几条「人机分离」的配方。</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary btn-lg" id="heroCta">
+        <i class="ti ti-adjustments"></i> 进实验台
+      </button>
+    </div>
+    <div class="hero-tags">
+      <span class="tag tag-fun"><i class="ti ti-bolt"></i> 动手实验</span>
+      <span class="tag tag-easy"><i class="ti ti-photo-off"></i> 图片不出浏览器</span>
+      <span class="tag tag-medium"><i class="ti ti-alert-triangle"></i> 结论反直觉</span>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       实验台
+  ══════════════════════════════════════════════════════════ -->
+  <section class="lab" id="lab">
+    <div class="section-head">
+      <h2><i class="ti ti-adjustments"></i> 实验台</h2>
+      <p class="section-note">先自己看一眼预览图，读得出就读得出，读不出就读不出。然后按两个按钮之一，跟机器对一次答案。想连续试就换预设，一轮一轮来。</p>
+    </div>
+
+    <div class="lab-grid">
+      <!-- 左：参数 -->
+      <div class="panel">
+        <div class="field">
+          <label for="sourceText">要藏起来的原文</label>
+          <div class="text-row">
+            <input id="sourceText" type="text" maxlength="22" value="会议纪要：项目延期两周" autocomplete="off">
+            <button class="btn btn-secondary btn-sm" id="rerollText" title="换一句">
+              <i class="ti ti-dice-5"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>现成配方</label>
+          <div class="preset-row" id="presetRow"></div>
+        </div>
+
+        <div class="field">
+          <label>手动调参</label>
+          <div class="sliders" id="sliderBox"></div>
+          <button class="link-btn" id="btnResetSliders">全部归零</button>
+        </div>
+      </div>
+
+      <!-- 右：预览 + 判定 -->
+      <div class="panel">
+        <div class="preview-head">
+          <span class="preview-label">机器看到的就是这张图</span>
+          <span class="engine-badge" id="engineBadge"><i class="ti ti-clock"></i> OCR 引擎待启动</span>
+        </div>
+
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="previewCanvas" width="1000" height="260"></canvas>
+        </div>
+        <p class="canvas-hint"><i class="ti ti-zoom-in"></i> 图看不清就点它放大，再点一下收起</p>
+
+        <div class="progress-line" id="progressLine" hidden>
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div class="verdict">
+          <div class="verdict-ask" id="verdictAsk">
+            <p class="verdict-q">你还读得出吗？</p>
+            <div class="verdict-btns">
+              <button class="btn btn-primary" id="btnHumanYes"><i class="ti ti-eye"></i> 我读出来了</button>
+              <button class="btn btn-secondary" id="btnHumanNo"><i class="ti ti-eye-off"></i> 我读不出来</button>
+            </div>
+            <button class="link-btn" id="btnPeek">不判定，直接偷看机器答案</button>
+          </div>
+
+          <div class="verdict-result" id="verdictResult" hidden></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       战绩
+  ══════════════════════════════════════════════════════════ -->
+  <section class="board">
+    <div class="section-head">
+      <h2><i class="ti ti-chart-dots"></i> 战绩</h2>
+      <p class="section-note">四个格子里，只有第一格算真的找到了方法：人读得出、机器读不出。另外三格，要么参数根本没起作用，要么把图弄成了谁都读不出的样子。</p>
+    </div>
+
+    <div class="board-grid">
+      <div class="quad" id="quad"></div>
+
+      <div class="chart-card">
+        <div class="chart-head">
+          <span class="chart-title"><i class="ti ti-chart-dots"></i> 每一轮落在哪</span>
+          <span class="chart-hint">横轴是参数强度，纵轴是机器读出的相似度，蓝色虚线是 80% 判定阈值</span>
+        </div>
+        <div class="chart-box"><canvas id="roundChart"></canvas></div>
+        <div class="chart-legend">
+          <span><i class="dot dot-separation"></i>人机分离</span>
+          <span><i class="dot dot-both-ok"></i>都能读</span>
+          <span><i class="dot dot-machine-only"></i>只有机器能读</span>
+          <span><i class="dot dot-both-fail"></i>都读不出</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="separation-block">
+      <div class="separation-head">
+        <h3><i class="ti ti-target-arrow"></i> 你找到的「人机分离」配方</h3>
+        <button class="btn btn-secondary btn-sm" id="btnCopy"><i class="ti ti-copy"></i> 复制战绩</button>
+      </div>
+      <div class="separation-list" id="separationList"></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════
+       反转区
+  ══════════════════════════════════════════════════════════ -->
+  <section class="twist">
+    <div class="section-head">
+      <h2><i class="ti ti-history"></i> 但你刚才干的这件事，有 20 年历史了</h2>
+    </div>
+
+    <div class="twist-list">
+      <div class="twist-item">
+        <div class="twist-icon"><i class="ti ti-shield-lock"></i></div>
+        <div>
+          <h4>你调出来的每一招，都是验证码用过的</h4>
+          <p>波浪扭曲、干扰线、笔画切断、低对比度、切碎错位，这些手法 CAPTCHA 在 2005 年前后就全用过了。你刚才调出来的东西，等于手工做了一个二十年前的验证码。</p>
+        </div>
+      </div>
+
+      <div class="twist-item">
+        <div class="twist-icon"><i class="ti ti-scan"></i></div>
+        <div>
+          <h4>而深度学习的 OCR，早就不看笔画了</h4>
+          <p>传统 OCR 要先二值化、再切字、再逐字比对，你把笔画切碎它就崩。现在的识别模型把整行送进网络，靠上下文猜整句，字被切碎了它反而补得更准。</p>
+        </div>
+      </div>
+
+      <div class="twist-item">
+        <div class="twist-icon"><i class="ti ti-brain"></i></div>
+        <div>
+          <h4>更麻烦的是，现在读图的不止 OCR</h4>
+          <p>多模态大模型是直接看这张图的。它能靠语义把残缺的、扭曲的、错位的字补回来，比人还稳。你把人眼卡在临界点上，它照样读得出来。</p>
+        </div>
+      </div>
+
+      <div class="twist-item">
+        <div class="twist-icon"><i class="ti ti-bug"></i></div>
+        <div>
+          <h4>唯一真能骗过模型的，是「对抗样本」</h4>
+          <p>在像素上叠一层人眼几乎看不见的扰动，让模型把「机密」读成「公开」。这招确实有效，但它是针对某个具体模型算出来的，换个引擎、升个版本就可能失效，现在多模态模型也扛住了不少。</p>
+        </div>
+      </div>
+
+      <div class="twist-item">
+        <div class="twist-icon"><i class="ti ti-bulb"></i></div>
+        <div>
+          <h4>还有更聪明的一类做法：让 OCR 读错内容</h4>
+          <p>知乎这个问题下面有个答案就很有意思：在大字里藏小字。OCR 认出大字，就认为这块区域已经处理完，不会往下细看，而小字才是真正要藏的东西。另一个答案用 Gamma 曲线配黑白棋盘格做仿色，人眼看到的亮度和模型降采样后拿到的数值对不上，字在人眼里还在，在模型眼里已经没了。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="conclusion">
+      <h3><i class="ti ti-bulb"></i> 所以别在像素上较劲</h3>
+      <p>把秘密做成图片这件事本身，才是问题所在。</p>
+      <ul>
+        <li><strong>要发就发局部。</strong>把需要看的那一块截出来，别把整屏丢出去。</li>
+        <li><strong>用权限，别用像素。</strong>真要防机器，靠访问控制、水印追溯、加密通道，图像技巧挡不住。</li>
+        <li><strong>把「人还能读」当成一条底线。</strong>如果人眼也读不出了，这张图对谁都没用了。</li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

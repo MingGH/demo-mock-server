@@ -64,6 +64,12 @@
   assertClose(s.ratio, 5345555.555555556, 1, 'ratio = RPC 机制开销 ÷ 方法调用');
   assertEqual(s.orders, 6, 'orders 取到 6 个数量级');
 
+  // 链路对链路：纯机制开销（扣业务） vs N 次方法调用合计
+  assertClose(s.baselineChainMs, 2.7e-6, 1e-15, 'baselineChainMs = 单次基线 × 跳数');
+  assertClose(s.taxRatio, 23.913 / 2.7e-6, 1, 'taxRatio = 链路机制开销 ÷ N 次方法调用合计');
+  assertEqual(s.taxOrders, 6, 'taxOrders 6 个数量级');
+  assertClose(s.overheadMs, 23.913, 1e-9, 'overheadMs 已扣除全部业务时间');
+
   // 边界：单跳报告
   var single = E.summarize({
     hops: 1, delayMs: 0, totalMillis: 2.0,
@@ -116,17 +122,44 @@
   var main = E.methodVsRpcChart(s);
   assertEqual(main.labels.length, 2, '主图两根柱');
   assertEqual(main.values.length, 2, '主图两个数值');
-  assertClose(main.values[0], 4.811, 1e-9, '主图第一根是 RPC 机制开销');
-  assertClose(main.values[1], 9e-7, 1e-15, '主图第二根是方法调用基线');
-  assert(main.values[0] > 0 && main.values[1] > 0, '主图数值均为正（对数轴要求）');
+  assertClose(main.values[0], 23.913, 1e-9, '主图第一根是链路纯机制开销（已扣业务时间）');
+  assertClose(main.values[1], 2.7e-6, 1e-15, '主图第二根是 N 次方法调用合计');
+  assert(main.values.every(function (v) { return v > 0; }), '主图数值均为正（对数轴要求）');
   assertEqual(main.colors.length, 2, '主图颜色齐全');
+  assert(main.values[0] > main.values[1] * 1e6, '链路机制开销远高于方法调用合计（数量级落差）');
+
+  // 关键性质：注入业务时间不改变左柱——两边工作量必须都归零才可比
+  var zeroDelay = E.summarize({
+    hops: 2, delayMs: 0, totalMillis: 6.9,
+    hopTimings: [
+      { hop: 1, millis: 3.5, upstreamUs: 45 },
+      { hop: 2, millis: 3.4, upstreamUs: 40 }
+    ],
+    methodCallBaseline: { iterations: 1000000, avgNanos: 200 }
+  });
+  var injected = E.summarize({
+    hops: 2, delayMs: 100, totalMillis: 206.9,
+    hopTimings: [
+      { hop: 1, millis: 103.5, upstreamUs: 100050 },
+      { hop: 2, millis: 103.4, upstreamUs: 100040 }
+    ],
+    methodCallBaseline: { iterations: 1000000, avgNanos: 200 }
+  });
+  var zeroChart = E.methodVsRpcChart(zeroDelay);
+  var injectedChart = E.methodVsRpcChart(injected);
+  assertClose(injectedChart.values[0], zeroChart.values[0], 0.15,
+    '注入 100ms 业务时间后左柱（机制开销）基本不变');
+  assertClose(injectedChart.values[0], 6.81, 0.02,
+    '左柱 = 总耗时 206.9 − 业务时间 200.09');
+  assert(injected.totalMillis > zeroDelay.totalMillis * 20,
+    '注入后链路总耗时暴涨（业务时间确实生效，只是不计入左柱）');
 
   // 紧凑标签（移动端窄屏）
   var compactMain = E.methodVsRpcChart(s, true);
   assertEqual(compactMain.labels.length, 2, 'compact 主图两根柱');
   assert(compactMain.labels.every(function (l) { return l.indexOf('\n') === -1; }),
     'compact 标签单行');
-  assertEqual(compactMain.labels[0], 'RPC 一跳', 'compact 标签文案');
+  assertEqual(compactMain.labels[0], 'N 跳 RPC 机制开销', 'compact 标签文案');
   assertClose(compactMain.values[0], main.values[0], 1e-15, 'compact 数值与常规一致');
   var defaultMain = E.methodVsRpcChart(s);
   assert(defaultMain.labels[0].indexOf('\n') !== -1, '常规标签含换行的两行文案');

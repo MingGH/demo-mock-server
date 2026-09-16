@@ -131,18 +131,17 @@
   function renderResult(report, s) {
     $('result').style.display = 'block';
 
-    var ratioText = '这条链路里，每跳端到端 <b class="hl-gold">' + RPC.formatMs(s.avgHopMs) + '</b>' +
-      (report.delayMs > 0
-        ? '，其中 ' + report.delayMs + ' ms 是注入的业务时间，剩下的机制开销只有 <b class="hl-red">' + RPC.formatMs(s.avgHopOverheadMs) + '</b>/跳'
-        : '，把一次调用送出去再拿回来的机制开销是 <b class="hl-red">' + RPC.formatMs(s.avgHopOverheadMs) + '</b>/跳') +
-      '，而同一个 JVM 里调用一次方法只要 <b class="hl-green">' + RPC.formatNanos(report.methodCallBaseline.avgNanos) +
-      '</b>，相差 <b class="hl-gold">' + RPC.formatRatio(s.ratio) + '</b>（' + s.orders + ' 个数量级）。' +
-      '总耗时 <b class="hl-gold">' + RPC.formatMs(s.totalMillis) + '</b> 中，真正的业务时间占 <b class="hl-blue">' +
-      s.upstreamPct.toFixed(1) + '%</b>。';
+    var ratioText = '这条 ' + report.hops + ' 跳链路的纯 RPC 机制开销 <b class="hl-red">' + RPC.formatMs(s.overheadMs) + '</b>' +
+      '（每跳 ' + RPC.formatMs(s.avgHopOverheadMs) + '，网络往返 + 双向序列化 + 框架调度），' +
+      '同样的 ' + report.hops + ' 次方法调用在同一个 JVM 里连续做完合计只要 <b class="hl-green">' +
+      RPC.formatNanos(s.baselineChainMs * 1e6) + '</b>，相差 <b class="hl-gold">' +
+      RPC.formatRatio(s.taxRatio) + '</b>（' + s.taxOrders + ' 个数量级）。' +
+      '两边都不含业务工作量，比的就是「把调用送出去」这件事本身有多贵。';
 
     if (report.delayMs > 0) {
-      ratioText += '注意机制开销并不随注入量变化：注入 0 是这几个毫秒，注入 ' + report.delayMs +
-        ' ms 还是这几个毫秒。它是分布式按跳收取的固定税；真正把延迟预算吃掉的，是随跳数线性累加的业务时间。';
+      ratioText += '本轮还往每跳注入了 ' + report.delayMs + ' ms 业务时间，链路总耗时被抬到 <b class="hl-gold">' +
+        RPC.formatMs(s.totalMillis) + '</b>，其中业务时间占 ' + s.upstreamPct.toFixed(1) +
+        '%。这部分在单体里同样要花，不算分布式的账；但注意机制开销纹丝不动，它是按跳收的固定税，你越慢的业务只会让这笔税摊得越不显眼。';
     }
 
     $('ratioLine').innerHTML = ratioText;
@@ -197,7 +196,9 @@
             tooltip: {
               callbacks: {
                 label: function (ctx) {
-                  return ' ' + RPC.formatMs(ctx.parsed.x);
+                  return ' ' + (ctx.dataIndex === 1
+                    ? RPC.formatNanos(ctx.parsed.x * 1e6)
+                    : RPC.formatMs(ctx.parsed.x));
                 }
               }
             }

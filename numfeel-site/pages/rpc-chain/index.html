@@ -86,15 +86,15 @@
       <div class="ratio-line" id="ratioLine">—</div>
 
       <div class="chart-block">
-        <div class="chart-title"><i class="ti ti-arrows-diff"></i> 跨进程一跳 vs 同 JVM 一次方法调用（对数刻度）</div>
+        <div class="chart-title"><i class="ti ti-arrows-diff"></i> 整条链路 vs 同样次数的方法调用（对数刻度）</div>
         <div class="chart-canvas-wrap chart-short"><canvas id="mainChart"></canvas></div>
-        <p class="micro-note">左边这根柱子已经扣掉了下游自报的业务耗时，剩下的全是「把调用送出去再拿回来」的成本：网络往返、双向序列化、框架调度。右边是同进程里一次加法方法调用。</p>
+        <p class="micro-note">红柱是整条 N 跳链路扣掉业务时间后的纯 RPC 机制开销：网络往返、双向序列化、框架调度。绿柱是把同样次数的调用放进同一个 JVM 里连做 N 次的合计。两根柱的业务工作量都是零，比的就是「把调用送出去」这件事有多贵。注入的模拟业务时间不计入红柱：那部分工作量在单体里一样要花，不是分布式的成本。</p>
       </div>
 
       <div class="chart-block">
         <div class="chart-title"><i class="ti ti-chart-bar"></i> 逐跳端到端耗时（对数刻度）</div>
         <div class="chart-canvas-wrap"><canvas id="hopChart"></canvas></div>
-        <p class="micro-note" id="hopNote">第一跳通常偏慢：要建连接，JIT 也还没热起来。</p>
+        <p class="micro-note" id="hopNote">这一张是端到端，包含你注入的业务时间：注入多少就抬高多少。第一跳通常偏慢，要建连接、JIT 也还没热。和上一张对照着看：上一张扣掉业务、只算分布式的账，这一张是用户实际要等多久。</p>
       </div>
 
       <div class="result-table-wrap">

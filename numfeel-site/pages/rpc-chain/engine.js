@@ -68,7 +68,10 @@
       ? hops.reduce(function (s, h) { return s + hopOverheadMs(h); }, 0) / hops.length
       : 0;
     var baselineMs = report.methodCallBaseline.avgNanos / 1e6;
+    var baselineChainMs = baselineMs * report.hops;
+    var overheadMs = Math.max(0, report.totalMillis - upstreamMs);
     var ratio = baselineMs > 0 ? avgHopOverheadMs / baselineMs : 0;
+    var taxRatio = baselineChainMs > 0 ? overheadMs / baselineChainMs : 0;
     return {
       hops: report.hops,
       delayMs: report.delayMs,
@@ -76,11 +79,14 @@
       avgHopMs: avgHopMs,
       avgHopOverheadMs: avgHopOverheadMs,
       upstreamMs: upstreamMs,
-      overheadMs: Math.max(0, report.totalMillis - upstreamMs),
+      overheadMs: overheadMs,
       baselineMs: baselineMs,
+      baselineChainMs: baselineChainMs,
       iterations: report.methodCallBaseline.iterations,
       ratio: ratio,
       orders: countOrders(ratio),
+      taxRatio: taxRatio,
+      taxOrders: countOrders(taxRatio),
       upstreamPct: report.totalMillis > 0 ? upstreamMs / report.totalMillis * 100 : 0
     };
   }
@@ -148,8 +154,10 @@
   // ── 图表数据 ──
 
   /**
-   * 主图数据：跨进程一跳的机制开销 vs 同 JVM 一次方法调用。
-   * 取对数轴，两者的数量级差距是这张图要表达的结论。
+   * 主图数据：链路对链路的对比，两边工作量都归零才可比。
+   * 左柱是整条 N 跳链路扣掉业务时间后的纯 RPC 机制开销（网络往返 + 双向序列化 + 框架）；
+   * 右柱是把同样 N 次调用放进同一个 JVM 里连续做完的合计（业务工作量同为 0）。
+   * 注入的模拟业务时间不计入左柱：那部分工作量在单体里一样要花，不是分布式带来的成本。
    * @param {object} s summarize() 的结果
    * @param {boolean} compact 紧凑标签（移动端窄屏用，单行短文案）
    * @returns {object} { labels, values, colors }
@@ -157,9 +165,12 @@
   function methodVsRpcChart(s, compact) {
     return {
       labels: compact
-        ? ['RPC 一跳', '方法调用']
-        : ['跨进程 RPC 一跳\n（扣除业务时间）', '同 JVM 方法调用\n（1 次）'],
-      values: [Math.max(s.avgHopOverheadMs, 1e-9), Math.max(s.baselineMs, 1e-9)],
+        ? ['N 跳 RPC 机制开销', '方法调用 × N']
+        : ['N 跳 RPC 机制开销\n（已扣除业务时间）', '同 JVM 方法调用 × N\n（同样次数，业务工作量为 0）'],
+      values: [
+        Math.max(s.overheadMs, 1e-9),
+        Math.max(s.baselineChainMs, 1e-9)
+      ],
       colors: ['#ff6b6b', '#81c784']
     };
   }

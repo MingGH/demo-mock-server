@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="一个 SQLite 文件装下整个 AI 知识库：提问看它毫秒级检索，盲测对战关键词与向量的混合检索，投喂一段文字立即变成它的记忆。">
+  <title>一个文件的 AI 大脑 · SQLite RAG 实验室 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>一个文件的 AI 大脑</h1>
+      <p>
+        这个页面背后没有数据库服务，没有容器，没有运维——只有一个躺在磁盘上的 .db 文件。
+        提一个问题，看它多少毫秒捞到答案；再盲测一场，跟混合检索掰个手腕。
+      </p>
+    </header>
+
+    <img class="hero-img" src="images/hero.png" alt="一个发光的知识库.db文件，机器人好奇地看着它" loading="lazy">
+
+    <section class="demo-section" id="lab">
+      <h2><i class="ti ti-bolt"></i> 检索实验台</h2>
+      <p class="section-desc">关键词通道走 SQLite 自带的 FTS5，语义通道走向量近邻，两个通道的结果用 RRF 融合。全部发生在同一个 SQLite 进程里。</p>
+      <div class="ask-row">
+        <input id="ask-input" type="text" placeholder="问点什么，比如：微信聊天记录藏在哪" aria-label="问题输入框">
+        <button id="ask-btn" class="btn btn-primary"><i class="ti ti-search"></i> 问它</button>
+      </div>
+      <div id="ask-suggest" class="suggest"></div>
+      <div id="ask-status" class="status-line" hidden>
+        已经翻找 <b id="ask-timer" class="timer">0ms</b> …
+      </div>
+      <div id="ask-error" class="verdict bad hidden"></div>
+      <div id="ask-results"></div>
+      <div class="chart-wrap" id="timing-chart-wrap" hidden>
+        <canvas id="timing-chart"></canvas>
+        <p class="chart-note">SQLite 内部各阶段耗时（毫秒）。图上最长的格子一般也不到一次眨眼时间的千分之一。</p>
+      </div>
+    </section>
+
+    <section class="demo-section" id="battle">
+      <h2><i class="ti ti-swords"></i> 盲测对战：你 vs 混合检索</h2>
+      <p class="section-desc">同一道题，关键词与语义两个通道各出三张卡。选出你觉得最切题的三张，看看融合排序的判断跟你合不合。</p>
+      <div class="ask-row">
+        <input id="battle-input" type="text" placeholder="出一道题，比如：断电了数据会丢吗" aria-label="对战问题输入框">
+        <button id="battle-start" class="btn btn-primary"><i class="ti ti-play"></i> 开战</button>
+      </div>
+      <div id="battle-suggest" class="suggest"></div>
+      <div id="battle-cards" class="bcards"></div>
+      <div class="battle-actions hidden" id="battle-actions">
+        <button id="battle-submit" class="btn btn-primary" disabled>揭晓</button>
+        <button id="battle-again" class="btn btn-secondary">换个题目</button>
+        <span id="battle-progress" class="progress"></span>
+      </div>
+      <div id="battle-verdict" class="verdict hidden"></div>
+      <div id="battle-scorebar" class="scorebar hidden">
+        <span>累积 <b id="score-total">0</b> 分</span>
+        <span>全中连胜 <b id="score-streak">0</b></span>
+        <span>史高连胜 <b id="score-best">0</b></span>
+      </div>
+    </section>
+
+    <section class="demo-section" id="feed">
+      <h2><i class="ti ti-cloud-upload"></i> 给它投喂一段新记忆</h2>
+      <p class="section-desc">写点它不知道的事：切块、向量化、写进那个 .db 文件，全程毫秒级，喂完立刻可检索。数据落在服务端数据库文件里。</p>
+      <input id="feed-title" type="text" placeholder="标题（选填），比如：楼下拉面店情报" aria-label="标题输入框">
+      <textarea id="feed-text" placeholder="写点什么让它记住。要写清楚一点，比如时间、地点、价格，喂进去之后你随时可以提问题。"></textarea>
+      <div class="row">
+        <button id="feed-submit" class="btn btn-primary"><i class="ti ti-paper-plane"></i> 喂进去</button>
+        <span id="feed-msg" class="feed-msg"></span>
+      </div>
+    </section>
+
+    <section class="demo-section info-strip" id="info-strip">
+      <h2><i class="ti ti-file-zip"></i> 档案卡</h2>
+      <div id="info-row" class="info-row">加载中…</div>
+    </section>
+
+    <div class="ad-slot" id="ad-container">广告位</div>
+
+    <footer class="footer">
+      检索完全跑在一个 SQLite 文件里（FTS5 全文模块 + 进程内向量近邻），页面是它唯一的窗口。
+      想理解融合排序为什么这样设计，配套文章见页面右上角反链卡片。
+    </footer>
+  </div>
+
+  <script src="logic.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

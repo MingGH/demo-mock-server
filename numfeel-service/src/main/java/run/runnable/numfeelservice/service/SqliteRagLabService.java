@@ -70,6 +70,7 @@ public class SqliteRagLabService {
             for (SqliteRagLabCorpus.Entry doc : SqliteRagLabCorpus.DOCS) {
                 ingestInternal(doc.title(), doc.text(), "内置语料");
             }
+            checkpointTruncate();
             log.info("SqliteRagLab initialized: {} docs, {} chunks, db={}KB",
                     countDocs(), countChunks(), dbFileSize() / 1024);
         } catch (Exception e) {

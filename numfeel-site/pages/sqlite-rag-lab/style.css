@@ -161,3 +161,42 @@ textarea { width: 100%; min-height: 110px; resize: vertical; }
   .ask-row .btn { justify-content: center; }
   .battle-actions { gap: 8px; }
 }
+
+/* 链路图：SQLite 与 RAG 的关系 */
+.flow {
+  background: rgba(255,215,0,0.04);
+  border: 1px solid rgba(255,215,0,0.15);
+  border-radius: 16px;
+  padding: 22px 18px;
+  margin-bottom: 26px;
+}
+.flow-line {
+  display: flex; align-items: stretch; gap: 10px;
+  flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px;
+}
+.flow-node {
+  flex: 1; min-width: 128px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 12px; padding: 14px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.flow-node.hot {
+  border-color: rgba(255,215,0,0.55);
+  background: rgba(255,215,0,0.08);
+}
+.flow-node b { font-size: 0.92rem; color: #e8e8e8; }
+.flow-node.hot b { color: #ffd700; }
+.flow-node small, .step-label, .flow-note { color: #888; font-size: 0.78rem; }
+.step-label { color: #ffd700; font-size: 0.72rem; }
+.flow-branches { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.flow-arrow {
+  align-self: center; color: #ffd700; font-size: 1.1rem; flex-shrink: 0;
+}
+.flow-note { margin-top: 14px; color: #888; font-size: 0.85rem; }
+
+@media (max-width: 640px) {
+  .flow-node { min-width: 0; flex: 1 1 140px; }
+  .flow-line { flex-wrap: wrap; }
+  .flow-arrow { transform: rotate(90deg); }
+}

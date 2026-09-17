@@ -15,15 +15,49 @@
     <header class="header">
       <h1>一个文件的 AI 大脑</h1>
       <p>
-        这个页面背后没有数据库服务，没有容器，没有运维——只有一个躺在磁盘上的 .db 文件。
-        提一个问题，看它多少毫秒捞到答案；再盲测一场，跟混合检索掰个手腕。
+        RAG（检索增强生成）需要两样东西：全文检索 + 向量检索。传统做法是部署一套向量数据库服务；
+        这个页面演示另一种答案：一个 .db 文件装下知识块、向量索引和全文索引，
+        没有数据库服务器，没有容器，没有运维。
       </p>
     </header>
 
+    <section class="flow" id="flow">
+      <div class="flow-line">
+        <div class="flow-node">
+          <span class="flow-step"></span>
+          <b>你的问题</b>
+          <small>向量化 + 分词</small>
+        </div>
+        <div class="flow-arrow"><i class="ti ti-arrow-right"></i></div>
+        <div class="flow-node hot">
+          <span class="flow-step"></span>
+          <b>SQLite 文件</b>
+          <small>整个 RAG 的心脏只是磁盘上一个文件</small>
+          <div class="flow-branches">
+            <span class="chip fts">FTS5 关键词</span>
+            <span class="chip vec">向量近邻</span>
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="ti ti-arrow-right"></i></div>
+        <div class="flow-node">
+          <span class="flow-step"></span>
+          <b>RRF 融合</b>
+          <small>两路结果按 1/(排名+60) 相加</small>
+        </div>
+        <div class="flow-arrow"><i class="ti ti-arrow-right"></i></div>
+        <div class="flow-node">
+          <span class="flow-step"></span>
+          <b>最相关的原文</b>
+          <small>塞进 AI 的提示词</small>
+        </div>
+      </div>
+      <p class="flow-note">下面照着这条链路玩：先提问看手速，再盲测融合排序的判断，最后投喂一段它不知道的新事。</p>
+    </section>
+
 
     <section class="demo-section" id="lab">
-      <h2><i class="ti ti-bolt"></i> 检索实验台</h2>
-      <p class="section-desc">关键词通道走 SQLite 自带的 FTS5，语义通道走向量近邻，两个通道的结果用 RRF 融合。全部发生在同一个 SQLite 进程里。</p>
+      <h2><i class="ti ti-bolt"></i> 第一步 · 检索实验台</h2>
+      <p class="section-desc">你的问题同时打向两个通道：FTS5 管精确关键词，向量近邻管换个说法也能命中。看看 SQLite 一个进程里走完这趟要几毫秒。</p>
       <div class="ask-row">
         <input id="ask-input" type="text" placeholder="问点什么，比如：微信聊天记录藏在哪" aria-label="问题输入框">
         <button id="ask-btn" class="btn btn-primary"><i class="ti ti-search"></i> 问它</button>
@@ -41,8 +75,8 @@
     </section>
 
     <section class="demo-section" id="battle">
-      <h2><i class="ti ti-swords"></i> 盲测对战：你 vs 混合检索</h2>
-      <p class="section-desc">同一道题，关键词与语义两个通道各出三张卡。选出你觉得最切题的三张，看看融合排序的判断跟你合不合。</p>
+      <h2><i class="ti ti-swords"></i> 第二关 · 盲测对战：你 vs 混合检索</h2>
+      <p class="section-desc">为什么 RAG 圈不做单通道？关键词听得懂术语却听不懂换一种说法；反过来向量能联想又常漏掉精确词。同一道题双路各出三张卡，你选三张，看融合排序的判断跟你合不合。</p>
       <div class="ask-row">
         <input id="battle-input" type="text" placeholder="出一道题，比如：断电了数据会丢吗" aria-label="对战问题输入框">
         <button id="battle-start" class="btn btn-primary"><i class="ti ti-play"></i> 开战</button>
@@ -63,7 +97,7 @@
     </section>
 
     <section class="demo-section" id="feed">
-      <h2><i class="ti ti-cloud-upload"></i> 给它投喂一段新记忆</h2>
+      <h2><i class="ti ti-cloud-upload"></i> 终极玩法 · 投喂新记忆</h2>
       <p class="section-desc">写点它不知道的事：切块、向量化、写进那个 .db 文件，全程毫秒级，喂完立刻可检索。数据落在服务端数据库文件里。</p>
       <input id="feed-title" type="text" placeholder="标题（选填），比如：楼下拉面店情报" aria-label="标题输入框">
       <textarea id="feed-text" placeholder="写点什么让它记住。要写清楚一点，比如时间、地点、价格，喂进去之后你随时可以提问题。"></textarea>

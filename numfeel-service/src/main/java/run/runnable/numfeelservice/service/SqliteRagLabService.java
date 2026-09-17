@@ -214,6 +214,7 @@ public class SqliteRagLabService {
     synchronized Map<String, Object> doIngest(String title, String text) {
         long t0 = System.nanoTime();
         int docId = ingestInternal(title, text, "用户投喂");
+        checkpointTruncate();
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("docId", docId);
         res.put("chunks", countChunks());
@@ -352,6 +353,15 @@ public class SqliteRagLabService {
         try {
             conn.rollback();
         } catch (SQLException ignored) {
+        }
+    }
+
+    /** 把 WAL 日志合并回主 .db 文件并清空，保证"整个知识库 = 一个文件"的展示真实。 */
+    private void checkpointTruncate() {
+        try (Statement st = conn.createStatement()) {
+            st.execute("PRAGMA wal_checkpoint(TRUNCATE)");
+        } catch (SQLException e) {
+            log.warn("wal checkpoint failed: {}", e.getMessage());
         }
     }
 

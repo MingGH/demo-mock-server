@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="同一家虚构耳机店，六种设计手法：巨字排印、硬边网格、错位拼贴、荧光对撞、信号故障、滚动字幕。每个案例都能动手调，按住降噪看页面安静下来。">
+  <title>粗野主义装修队：给耳机店做 6 种设计 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-palette-off"></i> 粗野主义装修队</h1>
+    <p>同一家耳机店，同一套商品信息，六种设计手法各写一版。点开一页，动手试一试每种手法改了什么。</p>
+    <span class="fiction-note">演示商店 · 虚构品牌「声止 SOUNDSTOP」，购买与购物车均为模拟，不会产生真实订单</span>
+  </div>
+
+  <!-- ── 普通版基线 ── -->
+  <section class="section base-section">
+    <h2><i class="ti ti-hash"></i> 先看原版：普通得不能再普通的商品页</h2>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 这是六种设计共同的底稿。全屏弹层里可以随时切回这版对照。</p>
+    <div class="product-card">
+      <div class="product-media">
+        <img src="images/product.png" alt="头戴式耳机产品图" loading="lazy">
+      </div>
+      <div class="product-info">
+        <div class="product-brand">声止 SOUNDSTOP</div>
+        <div class="product-name">无线降噪头戴耳机 X1</div>
+        <div class="product-price">¥1299</div>
+        <ul class="product-desc" id="baseDesc"></ul>
+        <div class="product-cta">
+          <button class="btn btn-primary" type="button" data-base-buy>立即购买</button>
+          <button class="btn btn-secondary" type="button" data-base-cart>加入购物车</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 案例卡片 ── -->
+  <section class="section cases-section">
+    <h2><i class="ti ti-bolt"></i> 六种手法，点开就能动手</h2>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 每张卡片上方是缩略预览。全屏后每个案例都有一个核心玩法，右上角可切「普通版」对照。</p>
+    <div class="case-grid" id="caseGrid"></div>
+  </section>
+
+  <!-- ── 收束原理 ── -->
+  <section class="section">
+    <h2><i class="ti ti-brain"></i> 所以「冲击力」是什么</h2>
+    <div class="takeaway">
+      <div class="takeaway-card">
+        <div class="num">01</div>
+        <h4>预期被打破，注意力才来</h4>
+        <p>大脑对「和平时一样」的内容自动略过，对「不该长这样」的版面多停一拍。冲击力的来源就在这一拍。</p>
+      </div>
+      <div class="takeaway-card">
+        <div class="num">02</div>
+        <h4>暴露结构，反而让人多看</h4>
+        <p>粗野主义把网格、边框、接缝亮出来。装饰少了，组织方式本身成了被看的东西。</p>
+      </div>
+      <div class="takeaway-card">
+        <div class="num">03</div>
+        <h4>大多数手法只值几行 CSS</h4>
+        <p>这套演示没有图片特效，体积小、加载快。冲击力和成本常常没有关系。</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ── 全屏案例弹层 ── -->
+<div class="brutal-overlay" id="brutalOverlay" role="dialog" aria-modal="true" aria-label="设计案例全屏演示" aria-hidden="true">
+  <header class="bt-chrome">
+    <span class="bt-chrome-label" id="btLabel"></span>
+    <div class="bt-chrome-actions">
+      <button class="bt-chip" type="button" id="btModeBtn" aria-pressed="false"><i class="ti ti-switch-horizontal"></i> 普通版</button>
+      <button class="bt-chip" type="button" id="btPauseBtn" aria-pressed="false"><i class="ti ti-player-pause"></i> 暂停动态</button>
+      <button class="bt-chip" type="button" id="btCartBtn" aria-label="购物车（模拟）"><i class="ti ti-shopping-cart"></i> <span class="bt-cart-count">0</span></button>
+      <button class="bt-close" type="button" id="btCloseBtn" aria-label="关闭（Esc）"><i class="ti ti-x"></i></button>
+    </div>
+  </header>
+
+  <main class="brutal-stage" id="brutalStage"></main>
+
+  <span class="bt-fiction">虚构商店 · 仅供演示</span>
+
+  <nav class="bt-nav" aria-label="案例切换">
+    <button class="bt-nav-btn" type="button" id="btPrev" aria-label="上一个案例（←）"><i class="ti ti-arrow-left"></i></button>
+    <div class="bt-dots" id="btDots"></div>
+    <button class="bt-nav-btn" type="button" id="btNext" aria-label="下一个案例（→）"><i class="ti ti-arrow-right"></i></button>
+  </nav>
+
+  <button class="bt-principle-btn" type="button" id="btPrincipleBtn"><i class="ti ti-book-2"></i><span>设计说明</span></button>
+  <aside class="bt-principle" id="btPrinciple" aria-hidden="true">
+    <button class="bt-principle-close" type="button" aria-label="收起说明"><i class="ti ti-x"></i></button>
+    <h4 id="btPrincipleName"></h4>
+    <section>
+      <h5><i class="ti ti-history"></i> 手法来源</h5>
+      <p id="btHistory"></p>
+    </section>
+    <section>
+      <h5><i class="ti ti-mood-happy"></i> 为什么值得看</h5>
+      <p id="btPsyche"></p>
+    </section>
+  </aside>
+
+  <div class="bt-toast" id="btToast" role="status" aria-live="polite"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/Draggable.min.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

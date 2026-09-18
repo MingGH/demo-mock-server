@@ -4,7 +4,7 @@
  */
 
 const {
-  charTokens, buildHighlight, rrfExplain, gradePicks, nextScore,
+  charTokens, buildHighlight, rrfExplain, describeResultRanks, gradePicks, nextScore,
   shuffleWithSeed, formatMs, formatBytes, uniqueIds, QUESTION_SUGGESTIONS,
 } = require('./logic.js');
 
@@ -63,6 +63,33 @@ console.log('\n📐 rrfExplain');
   assert(approx(scores.get(21), 1 / 61, 1e-9), '向量第1名贡献 1/61');
   assert(order[0] === 11, '双通道命中者排第一');
   assert(order[1] === 21 || order[1] === 12, '并列第二');
+})();
+
+// ========== describeResultRanks ==========
+console.log('\ndescribeResultRanks');
+(() => {
+  const results = [
+    { chunkId: 11, title: 'same title', rrf: 0.03 },
+    { chunkId: 12, title: 'same title', rrf: 0.016 },
+    { chunkId: 21, rrf: 0.015 },
+  ];
+  const channels = {
+    fts: [{ chunkId: 11 }, { chunkId: 12 }],
+    vec: [{ chunkId: 21 }, { chunkId: 11 }],
+  };
+  const before = JSON.stringify({ results, channels });
+  const ranked = describeResultRanks(results, channels);
+  assertEq(ranked.map(r => [r.ftsRank, r.vecRank]), [[1, 2], [2, null], [null, 1]],
+    'Map ranks by chunk ID, not document title');
+  assertEq(ranked.map(r => r.chunkId), [11, 12, 21], 'Keep server fused order');
+  assertEq(ranked.map(r => r.rrf), [0.03, 0.016, 0.015], 'Keep server scores');
+  assertEq(JSON.stringify({ results, channels }), before, 'Do not mutate API data');
+  assert(ranked[0] !== results[0], 'Return a new result object');
+  assertEq(describeResultRanks([], channels), [], 'Empty results');
+  assertEq(describeResultRanks(results).map(r => r.ftsRank), [null, null, null],
+    'Missing channels remain unranked');
+  assertEq(describeResultRanks(results, { fts: [] }).map(r => r.vecRank), [null, null, null],
+    'Empty or missing channel has no rank');
 })();
 
 // ========== gradePicks ==========

@@ -80,7 +80,7 @@ textarea { width: 100%; min-height: 110px; resize: vertical; }
 .status-line { margin-top: 14px; color: #9aa0c3; font-size: 0.88rem; }
 .status-line b { font-size: 1.05rem; }
 
-.hidden { display: none !important; }
+.hidden, [hidden] { display: none !important; }
 
 .chip {
   display: inline-flex; align-items: center; gap: 4px;
@@ -108,8 +108,28 @@ textarea { width: 100%; min-height: 110px; resize: vertical; }
   padding: 0 2px; border-radius: 3px;
 }
 
-.chart-wrap { height: 190px; margin-top: 16px; }
+.chart-wrap { margin-top: 24px; }
+.timing-canvas-wrap { position: relative; height: 190px; }
+.timing-summary { color: #ffd700; font-size: 0.88rem; margin: 8px 0; }
+.timing-values { display: flex; gap: 12px 24px; flex-wrap: wrap; }
+.timing-values div { display: flex; gap: 8px; font-size: 0.86rem; }
+.timing-values dt { color: #9aa0c3; }
+.timing-values dd { color: #ffd700; font-variant-numeric: tabular-nums; }
 .chart-note { color: #888; font-size: 0.78rem; margin-top: 6px; }
+
+#search-explanation { margin-top: 24px; }
+.demo-section h3 { font-size: 1rem; color: #ffd700; }
+.channel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 14px 0 24px; }
+.channel-panel { min-width: 0; padding: 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; }
+.channel-panel h4 { color: #90caf9; font-size: 0.88rem; }
+.ranking-list { padding-left: 24px; font-size: 0.82rem; overflow-wrap: anywhere; }
+.ranking-list li { margin-top: 12px; padding-left: 4px; }
+.ranking-list li::marker { color: #ffd700; font-weight: 700; }
+.ranking-list p { margin-top: 4px; color: #b9bfd0; }
+.ranking-list .rank-detail { display: block; }
+.rank-detail { margin-top: 6px; color: #9aa0c3; font-size: 0.76rem; overflow-wrap: anywhere; }
+.ranking-empty { list-style: none; color: #888; }
+.rc-content { overflow-wrap: anywhere; }
 
 .bcards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
 .bcard {
@@ -157,6 +177,7 @@ textarea { width: 100%; min-height: 110px; resize: vertical; }
   .header h1 { font-size: 1.55rem; }
   .demo-section { padding: 18px; }
   .bcards { grid-template-columns: repeat(2, 1fr); }
+  .channel-grid { grid-template-columns: 1fr; }
   .ask-row { flex-direction: column; }
   .ask-row .btn { justify-content: center; }
   .battle-actions { gap: 8px; }

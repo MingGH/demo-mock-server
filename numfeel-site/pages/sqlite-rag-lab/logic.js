@@ -83,6 +83,25 @@ const SqliteRagLogic = (function() {
   }
 
   /**
+   * Attach per-channel ranks without changing the server's fused order or score.
+   * @param {object[]} results Server-ranked fused results.
+   * @param {{fts?: object[], vec?: object[]}} channels Candidate lists.
+   * @returns {object[]} Results with nullable one-based ftsRank and vecRank.
+   */
+  function describeResultRanks(results, channels = {}) {
+    const ranks = key => new Map(
+      (channels[key] || []).map((hit, index) => [hit.chunkId, index + 1])
+    );
+    const fts = ranks('fts');
+    const vec = ranks('vec');
+    return results.map(hit => ({
+      ...hit,
+      ftsRank: fts.get(hit.chunkId) ?? null,
+      vecRank: vec.get(hit.chunkId) ?? null,
+    }));
+  }
+
+  /**
    * 盲测打分：从 6 张卡里选出的 picks 与融合答案 target 求交集。
    * @param {number[]} picks 选中的 chunkId
    * @param {number[]} target 融合 TopN 的 chunkId
@@ -184,6 +203,7 @@ const SqliteRagLogic = (function() {
     charTokens,
     buildHighlight,
     rrfExplain,
+    describeResultRanks,
     gradePicks,
     nextScore,
     shuffleWithSeed,

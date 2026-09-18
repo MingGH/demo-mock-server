@@ -15,9 +15,8 @@
     <header class="header">
       <h1>一个文件的 AI 大脑</h1>
       <p>
-        RAG（检索增强生成）需要两样东西：全文检索 + 向量检索。传统做法是部署一套向量数据库服务；
-        这个页面演示另一种答案：一个 .db 文件装下知识块、向量索引和全文索引，
-        没有数据库服务器，没有容器，没有运维。
+        SQLite 也能做 RAG 的知识库。这一页演示检索部分：原文、向量和全文索引存在一个 .db 文件里，
+        不用单独部署数据库服务。输入问题，看看关键词、向量和融合排序分别找到了什么。
       </p>
     </header>
 
@@ -57,26 +56,48 @@
 
     <section class="demo-section" id="lab">
       <h2><i class="ti ti-bolt"></i> 第一步 · 检索实验台</h2>
-      <p class="section-desc">你的问题同时打向两个通道：FTS5 管精确关键词，向量近邻管换个说法也能命中。看看 SQLite 一个进程里走完这趟要几毫秒。</p>
+      <p class="section-desc">同一个问题，分别走 FTS5 和向量近邻。对比两路名次，再看融合结果。本页向量采用哈希嵌入，用于演示流程，不代表语义模型效果。</p>
       <div class="ask-row">
         <input id="ask-input" type="text" placeholder="问点什么，比如：微信聊天记录藏在哪" aria-label="问题输入框">
         <button id="ask-btn" class="btn btn-primary"><i class="ti ti-search"></i> 问它</button>
       </div>
       <div id="ask-suggest" class="suggest"></div>
-      <div id="ask-status" class="status-line" hidden>
+      <div id="ask-status" class="status-line" role="status" hidden>
         已经翻找 <b id="ask-timer" class="timer">0ms</b> …
       </div>
-      <div id="ask-error" class="verdict bad hidden"></div>
-      <div id="ask-results"></div>
+      <div id="ask-error" class="verdict bad hidden" role="alert"></div>
+      <div id="search-explanation" hidden>
+        <h3>两路各自找到了什么</h3>
+        <p class="chart-note">按各通道返回的名次排列。同名文档可能有多个文本块。</p>
+        <div class="channel-grid">
+          <section class="channel-panel">
+            <h4>FTS5 关键词</h4>
+            <ol id="fts-ranking" class="ranking-list"></ol>
+          </section>
+          <section class="channel-panel">
+            <h4>向量近邻（哈希嵌入）</h4>
+            <ol id="vec-ranking" class="ranking-list"></ol>
+          </section>
+        </div>
+        <h3>RRF 融合后的结果</h3>
+        <p class="chart-note">各通道按 1 /（排名 + 60）给分，再相加。没有进入该通道候选列表的文本块，贡献为零。</p>
+      </div>
+      <div id="ask-results" aria-live="polite"></div>
       <div class="chart-wrap" id="timing-chart-wrap" hidden>
-        <canvas id="timing-chart"></canvas>
-        <p class="chart-note">SQLite 内部各阶段耗时（毫秒）。图上最长的格子一般也不到一次眨眼时间的千分之一。</p>
+        <h3>这次检索花了多久</h3>
+        <p id="timing-summary" class="timing-summary"></p>
+        <div class="timing-canvas-wrap" id="timing-canvas-wrap">
+          <canvas id="timing-chart" role="img" aria-label="关键词、向量与融合耗时对比，数值见下方列表"></canvas>
+        </div>
+        <dl id="timing-values" class="timing-values"></dl>
+        <p id="timing-fallback" class="chart-note" hidden>图表暂未加载，耗时数值仍可查看。</p>
+        <p class="chart-note">服务端总耗时还含查询向量生成等开销，不含网络往返。向量近邻在 Java 进程内计算，并非全部在 SQLite 内部执行。</p>
       </div>
     </section>
 
     <section class="demo-section" id="battle">
       <h2><i class="ti ti-swords"></i> 第二关 · 盲测对战：你 vs 混合检索</h2>
-      <p class="section-desc">为什么 RAG 圈不做单通道？关键词听得懂术语却听不懂换一种说法；反过来向量能联想又常漏掉精确词。同一道题双路各出三张卡，你选三张，看融合排序的判断跟你合不合。</p>
+      <p class="section-desc">两路各取前三条，去重后打乱。你最多选三张，再与 RRF 结果对照。这是排序对比，不是人工标注的标准答案。</p>
       <div class="ask-row">
         <input id="battle-input" type="text" placeholder="出一道题，比如：断电了数据会丢吗" aria-label="对战问题输入框">
         <button id="battle-start" class="btn btn-primary"><i class="ti ti-play"></i> 开战</button>
@@ -98,7 +119,7 @@
 
     <section class="demo-section" id="feed">
       <h2><i class="ti ti-cloud-upload"></i> 终极玩法 · 投喂新记忆</h2>
-      <p class="section-desc">写点它不知道的事：切块、向量化、写进那个 .db 文件，全程毫秒级，喂完立刻可检索。数据落在服务端数据库文件里。</p>
+      <p class="section-desc">写一段测试文字，切块、生成哈希向量并写入 .db，再回到上面检索。数据存在公共服务端，不承诺长期保存，请勿提交隐私资料。</p>
       <input id="feed-title" type="text" placeholder="标题（选填），比如：楼下拉面店情报" aria-label="标题输入框">
       <textarea id="feed-text" placeholder="写点什么让它记住。要写清楚一点，比如时间、地点、价格，喂进去之后你随时可以提问题。"></textarea>
       <div class="row">
@@ -113,7 +134,7 @@
     </section>
 
     <footer class="footer">
-      检索完全跑在一个 SQLite 文件里（FTS5 全文模块 + 进程内向量近邻），页面是它唯一的窗口。
+      原文与向量存于 SQLite，关键词走 FTS5，向量近邻在 Java 进程内计算。本页不调用大模型生成回答。
       想理解融合排序为什么这样设计，配套文章见页面右上角反链卡片。
     </footer>
   </div>

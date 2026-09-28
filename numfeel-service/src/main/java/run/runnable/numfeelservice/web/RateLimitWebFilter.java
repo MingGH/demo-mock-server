@@ -114,6 +114,8 @@ public class RateLimitWebFilter implements WebFilter {
         rules.add(new Rule(isPost("/yaml-court/parse"), RateLimitWebFilter::routeKey, 30, 60));
         // RPC 链路演示：20/min/IP，一次请求串行发起最多 20 跳跨服务调用，单独设桶
         rules.add(new Rule(isGet("/demo/rpc-chain"), RateLimitWebFilter::routeKey, 20, 60));
+        // 时间同步（gps-time）：100/min/IP，一次测量打 7 个样本，留够重试空间
+        rules.add(new Rule(isGet("/time/sync"), RateLimitWebFilter::routeKey, 100, 60));
         // 增删改查引擎大赛：60/min/IP（一次全规模曲线 = 16 次调用，前端串行跑，够用）
         rules.add(new Rule(isPost("/crud-race/run"), RateLimitWebFilter::routeKey, 60, 60));
         // 其余写接口：10/min

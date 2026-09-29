@@ -11,6 +11,13 @@ RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 RUN echo 'Asia/Shanghai' >/etc/timezone
 RUN mkdir -p $PROJECT_HOME && mkdir -p $PROJECT_HOME/data
 
+# gif2webp：libwebp 自带的命令行工具，「知乎动态头像注入器」用它做 gif→动态 webp 转换。
+# 比整套 ffmpeg 轻得多（webp 包仅数 MB），装完立刻自检，缺失就在构建期报错。
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends webp \
+    && rm -rf /var/lib/apt/lists/* \
+    && gif2webp -version
+
 WORKDIR $PROJECT_HOME
 COPY ${JAR_FILE} $PROJECT_HOME/numfeel-service.jar
 COPY ${AGENT_FILE} $PROJECT_HOME/trace-agent.jar

@@ -12,6 +12,10 @@ spring:
   sql:
     init:
       mode: never
+  # gif→webp 转换接口要聚合原始 gif 字节，默认 256KB 不够
+  http:
+    codecs:
+      max-in-memory-size: 25MB
 
 server:
   port: 8080
@@ -57,6 +61,11 @@ numfeel:
     max-file-bytes: ${NUMFEEL_UPLOAD_MAX_FILE:5242880}        # 单文件 5MB
     max-hourly-bytes: ${NUMFEEL_UPLOAD_MAX_HOURLY:1073741824}  # 每小时/IP 1GB
     expiration-ms: ${NUMFEEL_UPLOAD_TTL_MS:300000}             # 5 分钟后删除
+
+# gif→webp 转换（zhihu-dynamic-avatar）依赖 libwebp 的 gif2webp，镜像里由 webp 包提供；
+# 不在 PATH 时用绝对路径覆盖。
+  gif2webp:
+    path: ${NUMFEEL_GIF2WEBP_PATH:gif2webp}
 
 logging:
   level:

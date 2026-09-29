@@ -39,6 +39,7 @@ import java.util.function.Predicate;
  *   <li>{@code POST /graphql}：每分钟 60 次</li>
  *   <li>{@code POST /yaml-court/parse}：每分钟 30 次</li>
  *   <li>{@code GET /demo/rpc-chain}：每分钟 20 次（每次请求会串行发起最多 20 跳跨服务调用）</li>
+ *   <li>{@code POST /avatar/convert-webp}：每分钟 5 次（每次拉起 gif2webp 子进程，CPU 密集）</li>
  *   <li>其余写接口（各种 {@code /submit}、排行榜 POST）：每分钟 10 次</li>
  * </ul>
  * 命中任一规则上限即返回 429。请求需满足所有命中的规则。
@@ -118,6 +119,8 @@ public class RateLimitWebFilter implements WebFilter {
         rules.add(new Rule(isGet("/time/sync"), RateLimitWebFilter::routeKey, 100, 60));
         // 增删改查引擎大赛：60/min/IP（一次全规模曲线 = 16 次调用，前端串行跑，够用）
         rules.add(new Rule(isPost("/crud-race/run"), RateLimitWebFilter::routeKey, 60, 60));
+        // gif→webp 转换（zhihu-dynamic-avatar）：5/min/IP，gif2webp 子进程是 CPU 密集操作
+        rules.add(new Rule(isPost("/avatar/convert-webp"), RateLimitWebFilter::routeKey, 5, 60));
         // 其余写接口：10/min
         rules.add(new Rule(RateLimitWebFilter::isWriteThrottled, RateLimitWebFilter::routeKey, 10, 60));
     }

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="知乎换头像时会用 canvas 截第一帧，动图秒变静态。生成一段注入脚本劫持 toBlob，粘贴到知乎控制台即可偷换成完整动图。内置本页模拟器先验证效果，支持 gif 一键转 webp。">
+  <title>知乎动态头像注入器 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-user-bolt"></i> 知乎动态头像注入器</h1>
+    <p>知乎保存头像时会用 canvas 截第一帧，动图秒变静态。但图床显示时只看内容不认后缀。把 <code>toBlob</code> 的返回值偷换成完整动图，知乎就会乖乖帮你存下它。选一张动图，这里帮你生成注入脚本，还能先在本页模拟器里验货。</p>
+  </div>
+
+  <!-- ── 原理对比 ── -->
+  <div class="section">
+    <h2><i class="ti ti-arrows-split-2"></i> 原理：一帧之差</h2>
+    <p class="section-desc">同样点一次「保存」，有没有注入，走向完全不同。</p>
+
+    <div class="flow-grid">
+      <div class="flow-card bad">
+        <div class="flow-title"><i class="ti ti-scissors"></i> 正常流程：被截帧</div>
+        <div class="flow-steps">
+          <span>选一张动图</span><i class="ti ti-arrow-right"></i>
+          <span>canvas 画当前帧</span><i class="ti ti-arrow-right"></i>
+          <span class="hl-red">toBlob 只留这一帧</span><i class="ti ti-arrow-right"></i>
+          <span>上传静态图</span><i class="ti ti-arrow-right"></i>
+          <span class="hl-red">头像不会动</span>
+        </div>
+      </div>
+      <div class="flow-card good">
+        <div class="flow-title"><i class="ti ti-bolt"></i> 注入之后：偷梁换柱</div>
+        <div class="flow-steps">
+          <span>随便选一张图</span><i class="ti ti-arrow-right"></i>
+          <span>canvas 走个过场</span><i class="ti ti-arrow-right"></i>
+          <span class="hl-green">toBlob 被拦截换包</span><i class="ti ti-arrow-right"></i>
+          <span>上传完整动图</span><i class="ti ti-arrow-right"></i>
+          <span class="hl-green">头像动了</span>
+        </div>
+      </div>
+    </div>
+    <p class="flow-note">关键在图床：知乎显示头像时直接加载文件，不看后缀。所以只要文件内容是动图，前端就能动起来。</p>
+  </div>
+
+  <!-- ── 第一步：选动图 ── -->
+  <div class="section">
+    <h2><i class="ti ti-photo-plus"></i> 第一步：选一张动图</h2>
+    <p class="section-desc">支持动态 webp 和 gif。webp 体积更小，知乎原生支持。也可以先用内置样例跑通流程。</p>
+
+    <div class="dropzone" id="dropzone">
+      <i class="ti ti-cloud-upload"></i>
+      <p>点击选择，或把动图拖进来</p>
+      <p class="dropzone-sub">动态 webp / gif，建议 1MB 以内</p>
+      <input type="file" id="fileInput" accept="image/webp,image/gif" hidden>
+    </div>
+
+    <div class="sample-bar">
+      <button class="btn btn-secondary" id="sampleBtn"><i class="ti ti-sparkles"></i> 先用内置样例试试</button>
+    </div>
+
+    <div class="msg-list" id="msgList"></div>
+
+    <div class="file-panel" id="filePanel" style="display:none;">
+      <div class="preview-box">
+        <img id="previewImg" alt="动图预览">
+        <div class="anim-badge" id="animBadge">检测中…</div>
+      </div>
+      <div class="file-info">
+        <div class="info-row"><span class="info-label">文件名：</span><code id="fileName">—</code></div>
+        <div class="info-row"><span class="info-label">格式：</span><code id="fileMime">—</code></div>
+        <div class="info-row"><span class="info-label">大小：</span><code id="fileSize">—</code></div>
+        <div class="info-row"><span class="info-label">尺寸：</span><code id="fileDim">—</code></div>
+        <div class="info-actions">
+          <button class="btn btn-primary" id="convertBtn" style="display:none;">
+            <i class="ti ti-transform"></i> 转成 webp 减体积
+          </button>
+          <span class="convert-status" id="convertStatus"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 第二步：生成脚本 ── -->
+  <div class="section">
+    <h2><i class="ti ti-code"></i> 第二步：复制注入脚本</h2>
+    <p class="section-desc">脚本已把你的动图以 base64 内嵌进去，粘贴即用。先别急着去知乎，第三步可以在本页先验证。</p>
+
+    <div class="script-box">
+      <div class="script-toolbar">
+        <span class="script-size" id="scriptSize">未生成</span>
+        <div>
+          <button class="btn btn-primary" id="copyBtn" disabled><i class="ti ti-copy"></i> 复制脚本</button>
+          <button class="btn btn-secondary" id="downloadBtn" disabled><i class="ti ti-download"></i> 下载 .js</button>
+        </div>
+      </div>
+      <pre class="script-pre"><code id="scriptCode">选好动图后，脚本会出现在这里。</code></pre>
+    </div>
+  </div>
+
+  <!-- ── 第三步：本页模拟 ── -->
+  <div class="section">
+    <h2><i class="ti ti-flask"></i> 第三步：本页先模拟一遍</h2>
+    <p class="section-desc">下面两张卡模拟知乎的「保存头像」。左边走原生逻辑，右边先注入再保存。两张结果图放一起，差别一眼可见。</p>
+
+    <div class="lab-grid">
+      <div class="lab-card">
+        <div class="lab-title"><i class="ti ti-scissors"></i> 正常上传（原生）</div>
+        <p class="lab-desc">不注入，直接 canvas.toBlob。知乎每天都在这么干。</p>
+        <button class="btn btn-secondary" id="mockNormalBtn" disabled><i class="ti ti-play"></i> 模拟保存</button>
+        <div class="lab-result" id="normalResult"><span class="lab-empty">还没跑</span></div>
+        <div class="lab-verdict" id="normalVerdict"></div>
+      </div>
+      <div class="lab-card">
+        <div class="lab-title"><i class="ti ti-bolt"></i> 注入后上传</div>
+        <p class="lab-desc">先把脚本注入到本页，再点保存。和知乎实战完全一致。</p>
+        <div class="lab-actions">
+          <button class="btn btn-primary" id="injectBtn" disabled><i class="ti ti-syringe"></i> ① 注入到本页</button>
+          <button class="btn btn-secondary" id="mockInjectedBtn" disabled><i class="ti ti-play"></i> ② 模拟保存</button>
+        </div>
+        <div class="lab-status" id="injectStatus">注入状态：未注入</div>
+        <div class="lab-result" id="injectedResult"><span class="lab-empty">还没跑</span></div>
+        <div class="lab-verdict" id="injectedVerdict"></div>
+      </div>
+    </div>
+
+    <div class="lab-foot">
+      <button class="btn btn-secondary" id="restoreBtn" disabled><i class="ti ti-restore"></i> 玩完了，还原本页的 toBlob</button>
+      <p class="hint">注入只对当前页面生效，刷新即失效。左边那张卡始终走原生逻辑，方便随时对比。</p>
+    </div>
+  </div>
+
+  <!-- ── 第四步：知乎实战 ── -->
+  <div class="section">
+    <h2><i class="ti ti-brand-zhihu"></i> 第四步：去知乎实战</h2>
+    <p class="section-desc">模拟器里看到动图之后，就可以动真格的了。</p>
+
+    <ol class="step-list">
+      <li>复制第二步生成的脚本。</li>
+      <li>打开知乎「我的主页」，确认已登录。</li>
+      <li>按 F12 打开开发者工具，切到 Console。</li>
+      <li>首次粘贴会弹警告，按提示输入 <code>allow pasting</code>。</li>
+      <li>粘贴脚本，按回车，看到「注入成功」。</li>
+      <li>走正常换头像流程，随便选一张图。</li>
+      <li>点保存，上传的其实是你的动图。</li>
+      <li>去任意回答的点赞列表，看头像动起来。</li>
+    </ol>
+
+    <div class="note-list">
+      <div class="note-item"><i class="ti ti-refresh-alert"></i> 刷新页面后注入失效，需要重新粘贴执行。</div>
+      <div class="note-item"><i class="ti ti-hourglass"></i> 头像有 CDN 缓存，生效前多刷新几次。</div>
+      <div class="note-item"><i class="ti ti-device-mobile"></i> app 端仅在部分场景生效，比如点赞列表。</div>
+      <div class="note-item"><i class="ti ti-photo"></i> 主页封面图也能用同样方法换成动图。</div>
+    </div>
+  </div>
+
+  <!-- ── 常见问题 ── -->
+  <div class="section">
+    <h2><i class="ti ti-help"></i> 常见问题</h2>
+
+    <div class="faq-item">
+      <h3>粘贴后报 <code>Invalid or unexpected token</code>？</h3>
+      <p>脚本被截断了。回到第二步，用「复制脚本」按钮完整复制一遍。</p>
+    </div>
+    <div class="faq-item">
+      <h3>报 <code>not correctly encoded</code>？</h3>
+      <p>base64 没复制全，同样重新完整复制一次。手动选中容易漏头漏尾。</p>
+    </div>
+    <div class="faq-item">
+      <h3>只能用 webp 吗？</h3>
+      <p>gif 也行，知乎的 gif 管线同样保留动画。但 webp 体积更小，更稳。</p>
+    </div>
+    <div class="faq-item">
+      <h3>这算漏洞吗？</h3>
+      <p>算图床校验不严。仅供学习研究，别上传违规内容。</p>
+    </div>
+  </div>
+
+</div>
+
+<script src="sample-data.js"></script>
+<script src="logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

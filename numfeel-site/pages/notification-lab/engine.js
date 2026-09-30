@@ -517,18 +517,23 @@ function formatMatrixCell(cell) {
   return table[cell] || { text: cell, tone: 'idle' };
 }
 
+const engineExports = {
+  CAPABILITY_DEFS: CAPABILITY_DEFS,
+  PLATFORM_MATRIX: PLATFORM_MATRIX,
+  NOTIFICATION_PRESETS: NOTIFICATION_PRESETS,
+  PERMISSION_STATES: PERMISSION_STATES,
+  detectCapabilities: detectCapabilities,
+  describePlatform: describePlatform,
+  collectEnv: collectEnv,
+  summarize: summarize,
+  explainPermission: explainPermission,
+  buildNotification: buildNotification,
+  formatMatrixCell: formatMatrixCell
+};
+
+// 浏览器直接挂到 window（供 app.js 使用），Node 里走 module.exports（供测试使用）。
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = {
-    CAPABILITY_DEFS: CAPABILITY_DEFS,
-    PLATFORM_MATRIX: PLATFORM_MATRIX,
-    NOTIFICATION_PRESETS: NOTIFICATION_PRESETS,
-    PERMISSION_STATES: PERMISSION_STATES,
-    detectCapabilities: detectCapabilities,
-    describePlatform: describePlatform,
-    collectEnv: collectEnv,
-    summarize: summarize,
-    explainPermission: explainPermission,
-    buildNotification: buildNotification,
-    formatMatrixCell: formatMatrixCell
-  };
+  module.exports = engineExports;
+} else if (typeof window !== 'undefined') {
+  window.engine = engineExports;
 }

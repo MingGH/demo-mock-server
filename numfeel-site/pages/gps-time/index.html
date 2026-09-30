@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="你以为 GPS 是做定位的，其实它主业是发时间。亲手把时钟误差拆出来看它怎么把位置炸到几十公里外，再亲手量出你浏览器和你设备的真实时钟精度。">
+  <title>GPS 的真正产品是时间 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-clock-filled"></i> GPS 的真正产品，不是位置，是时间</h1>
+    <p>每个 GPS 卫星都背着一台原子钟。你以为它在告诉你在哪，其实它主要在告诉你<b>几点了</b>——精确到 30 纳秒的那种。定位只是「拿几个时间差解个方程」的副产品。</p>
+  </div>
+
+  <!-- ══════════ Hero ══════════ -->
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="hero-lead">这个每次打开地图都被你在用的技术，主业是<b>授时</b>。</p>
+      <p class="hero-hint">下面三件事，你可以亲手做：① 看时钟误差怎么毁掉定位；② 量你浏览器的时钟精度；③ 量你设备离真实时间差多远。</p>
+      <button class="btn btn-primary btn-lg" id="heroBtn"><i class="ti ti-bolt"></i> 先看它怎么把时间变成位置</button>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <canvas id="heroCanvas" width="320" height="200"></canvas>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 A：三个未知数 ══════════ -->
+  <section class="section" id="solveSection">
+    <div class="round-head">
+      <span class="tag tag-fun">定位</span>
+      <h2><i class="ti ti-satellite"></i> 四颗星，四个未知数</h2>
+    </div>
+    <p class="section-desc">接收机想算自己的位置 (x, y)，但它自己那块廉价石英钟和天空的原子钟<b>对不齐</b>，于是多出一个隐藏未知数：钟差 b。</p>
+
+    <div class="module">
+      <div class="solve-layout">
+        <div class="canvas-wrap">
+          <canvas id="solveCanvas" width="560" height="420"></canvas>
+          <p class="canvas-cap">拖拽<b>你的接收机</b>（金色点），卫星位置固定。</p>
+        </div>
+        <div class="solve-side">
+          <div class="toggle-row">
+            <label class="switch" title="把「时钟偏差」当成已知，其实是漏掉了这个未知数">
+              <input type="checkbox" id="assumeClockKnown">
+              <span class="slider"></span>
+            </label>
+            <div class="toggle-text">
+              <b id="assumeLabel">把时钟偏差当未知数（正确）</b>
+              <span class="toggle-sub">漏掉它，位置就会飞走</span>
+            </div>
+          </div>
+          <div class="stat-grid">
+            <div class="stat"><span class="stat-label">解出的位置误差</span><strong id="solveError">0 m</strong></div>
+            <div class="stat"><span class="stat-label">解出的钟差</span><strong id="solveBias">—</strong></div>
+            <div class="stat"><span class="stat-label">代入卫星数</span><strong id="solveSats">4</strong></div>
+            <div class="stat"><span class="stat-label">正交残差</span><strong id="solveResidual">—</strong></div>
+          </div>
+          <div class="solve-note" id="solveNote"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 B：1 纳秒 = 30 厘米 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-medium">换算</span>
+      <h2><i class="ti ti-ruler-measure"></i> 1 纳秒 = 30 厘米</h2>
+    </div>
+    <p class="section-desc">光速是 299,792,458 米/秒。所以时钟误差每差 1 纳秒，你算出的距离就偏 30 厘米；每差 1 毫秒，位置就偏 300 公里。</p>
+    <div class="module">
+      <label class="slider-label">时钟误差：<strong id="errVal">1 ms</strong></label>
+      <input type="range" id="errSlider" min="-9" max="0" value="-3" step="0.1" class="log-slider">
+      <div class="err-readout">
+        <div><span class="stat-label">造成的位置误差</span><strong id="errRange">300 km</strong></div>
+        <div class="err-real" id="errReal">高频交易时序错乱</div>
+        <div class="err-detail" id="errRealDetail"></div>
+      </div>
+      <div class="chart-wrap"><canvas id="errChart" height="220"></canvas></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 C：你的浏览器时钟有多准 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-fun">实测</span>
+      <h2><i class="ti ti-percentage"></i> 你的浏览器时钟有多准（真测量）</h2>
+    </div>
+    <p class="section-desc">为了防 Spectre 侧信道攻击，浏览器故意把你的高精度时钟削钝。打开这个开关，当场在你的设备上量出它被削到了什么粒度。</p>
+    <div class="module">
+      <div class="action-bar">
+        <button class="btn btn-primary" id="measureBtn"><i class="ti ti-player-play"></i> 测量我浏览器的时钟精度</button>
+      </div>
+      <div class="quant-result" id="quantResult">
+        <p class="placeholder-text">点「测量」，看看你的浏览器把 performance.now() 削到了多少。</p>
+      </div>
+      <div class="quant-note" id="quantNote"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 D：你的设备差了多少 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-fun">实测</span>
+      <h2><i class="ti ti-clock-exclamation"></i> 你这台设备离真实时间差了多少</h2>
+    </div>
+    <p class="section-desc">真正网络校时（NTP）走 UDP/123，浏览器发不了。所以我们用 HTTP 近似一次伪 NTP：连打几个样本，套四时间戳公式，挑网络抖动最小的那次。</p>
+    <div class="module">
+      <div class="action-bar">
+        <button class="btn btn-primary" id="syncBtn"><i class="ti ti-clock-pin"></i> 测量我的设备时钟偏差</button>
+        <button class="btn btn-secondary btn-sm hidden" id="retrySyncBtn"><i class="ti ti-rotate"></i> 再测一次</button>
+      </div>
+      <div class="sync-result" id="syncResult">
+        <p class="placeholder-text">点「测量」，结果会诚实标注这是 HTTP 近似，不是真 NTP。</p>
+      </div>
+      <div class="sync-layers" id="syncLayers"></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 模块 E：多出来的那一秒 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-easy">事故</span>
+      <h2><i class="ti ti-arrow-big-right"></i> 多出来的那一秒，是如何把互联网绊倒的</h2>
+    </div>
+    <p class="section-desc">2012 年 6 月 30 日，世界协调时间多了 1 秒（闰秒）。全球一大片机器的时钟被「往前跳了一秒」然后倒回去——结果很多程序直接卡死。</p>
+    <div class="leap-timeline" id="leapTimeline">
+      <div class="leap-item"><span class="leap-time">23:59:59</span> Reddit 无法访问</div>
+      <div class="leap-item"><span class="leap-time">+1 秒</span> Mozilla、Cloudflare、LinkedIn 陆续瘫掉</div>
+      <div class="leap-item"><span class="leap-time">事后</span> 一堆公司改用「闰秒平滑」：把多出的一秒分散到整点里慢慢摊掉</div>
+    </div>
+    <div class="module">
+      <h3><i class="ti ti-video"></i> 模拟插一秒：为什么程序会被吓到</h3>
+      <p class="module-hint">很多系统用「单调递增"时间差"」来判断超时。闰秒让墙上钟往回跳 1 秒，这些差值瞬间变成负数，超时判断直接错乱。</p>
+      <div class="leap-demo">
+        <div class="leap-clock" id="leapClock"></div>
+        <button class="btn btn-secondary btn-sm" id="leapPlay"><i class="ti ti-player-play"></i> 播放：插入一秒</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="restart-bar">
+    <button class="btn btn-secondary" id="topBtn"><i class="ti ti-arrow-up"></i> 回到顶部</button>
+    <button class="btn btn-secondary" id="copyResult"><i class="ti ti-copy"></i> 复制我的测量结果</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

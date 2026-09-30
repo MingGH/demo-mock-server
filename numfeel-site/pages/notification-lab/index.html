@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="浏览器通知现在能做到什么程度？实测 10 项通知能力，看清各平台差距：iOS 为何晚 8 年才支持、为何必须装到主屏幕、通知能带按钮、角标、震动、静默替换，以及 Safari 封杀静默推送的机制。">
+  <title>浏览器通知能力实验室：现在能做到什么程度 | 数字直觉</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+
+    <div class="header">
+      <h1>浏览器通知能力实验室</h1>
+      <p>10 项能力逐项实测，看清你的浏览器到底能弹什么、弹不了什么</p>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-badge"><i class="ti ti-bell-ringing"></i> 通知能力实测</div>
+      <div class="hero-title">你的浏览器能弹什么通知？</div>
+      <div class="hero-sub">
+        点一下，浏览器会真的给你弹一条系统通知。<br>
+        然后逐项测出 10 项通知能力，并对照各平台的真实支持情况。
+      </div>
+      <button class="hero-cta" id="hero-cta" type="button">
+        <i class="ti ti-player-play-filled"></i>
+        弹一条给我看
+      </button>
+      <div class="hero-hint" id="hero-hint">不会立刻要权限，先看能力清单</div>
+    </div>
+
+    <!-- 权限状态 -->
+    <div class="card" id="permission-card">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-lock"></i> 当前权限状态</span>
+        <span class="perm-badge" id="perm-badge">检测中</span>
+      </div>
+      <div class="perm-advice" id="perm-advice">正在读取浏览器通知权限…</div>
+    </div>
+
+    <!-- 能力清单 -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-list-check"></i> 10 项能力实测</span>
+        <span class="score-badge" id="score-badge">- / 10</span>
+      </div>
+      <p class="card-desc">每一项都标注了它的检测方式和存在理由。灰底的四项无法在探测阶段确认，需要实际发一条通知才知道。</p>
+      <div class="meter"><div class="meter-fill" id="meter-fill" style="width: 0%;"></div></div>
+      <div class="cap-list" id="cap-list"></div>
+    </div>
+
+    <!-- 通知工坊 -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-hammer"></i> 通知工坊</span>
+      </div>
+      <p class="card-desc">点任意一张卡片，真的往你的系统通知中心发一条。改一改参数，重发一次，对比差别。</p>
+      <div class="preset-grid" id="preset-grid"></div>
+    </div>
+
+    <!-- 平台对照 -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="ti ti-versus"></i> 各平台真实支持情况</span>
+      </div>
+      <p class="card-desc">结论取自各浏览器厂商与 MDN 的公开文档。国产浏览器与微信内置浏览器未验证，故不列入。</p>
+      <div class="table-wrap">
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>平台</th>
+              <th>基础通知</th>
+              <th>Web Push</th>
+              <th>角标</th>
+            </tr>
+          </thead>
+          <tbody id="matrix-body"></tbody>
+        </table>
+      </div>
+      <div class="matrix-notes" id="matrix-notes"></div>
+    </div>
+
+    <!-- 了解更多 -->
+    <button class="more-toggle" id="more-toggle" type="button">
+      <i class="ti ti-chevron-right"></i> <span>这些规则是怎么来的</span>
+    </button>
+    <div class="more-content" id="more-content">
+      <strong>iOS 为什么晚了 8 年？</strong>Android 从 2015 年就支持 Web Push，苹果直到 2023 年 3 月的 iOS 16.4 才跟上，而且附带一个硬条件：<em>只有「已添加到主屏幕」的 App 才有推送</em>。所以大量 iPhone 用户以为自己收不到通知，实际是没把网站装到桌面。<br><br>
+
+      <strong>Safari 为什么不支持静默推送？</strong>Apple 的官方文档写得很直白：不支持「不可见推送」，而且如果你的 Service Worker 收到推送后不立刻显示通知，Safari 会直接撤销你这个站点的推送权限。对比 Chrome，Safari 把「必须让用户看见」写成了惩罚条款。<br><br>
+
+      <strong>静默推送意味着什么？</strong>理论上，网站可以在用户完全不知情的情况下往你的电脑里送数据并执行代码——后台同步、预缓存、上报埋点。正因如此，它也是各厂商防守最紧的地方：注册 Service Worker 需要用户手势，权限一旦被拒就再也拉不回来。<br><br>
+
+      <strong>角标为什么各家不一样？</strong>Android 的未读角标是系统自己画的，浏览器根本不给你这个 API。桌面端只有 Chrome / Edge 装成 PWA 后才能用 setAppBadge。Safari 和 Firefox 桌面版压根不支持 Badging API。<br><br>
+
+      <strong>通知按钮是好事还是坏事？</strong>技术上它让用户不用点进页面就能做决定，钓鱼和误触的绝佳载体也在这里——用户以为自己在系统层做选择，其实是在给一个网页授权。所以这四项能力本页都标为「需实际发送后确认」，不预先替你下结论。
+    </div>
+
+  </div>
+
+  <script src="../../components/header.js" defer></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

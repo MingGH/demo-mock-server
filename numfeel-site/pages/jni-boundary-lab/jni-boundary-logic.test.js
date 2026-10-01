@@ -30,6 +30,12 @@ function assertClose(actual, expected, relTol, msg) {
 // 本机 2026-10-01 实测锚点
 const MEASURED = { toll: 19.2, java: 0.63, percall: 31.5, batch: 0.049 };
 
+function assertThrows(fn, msg) {
+  let threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  assert(threw, 'should throw: ' + (msg || ''));
+}
+
 console.log('== speedup ==');
 
 t('单次过境 vs Java：0.63/31.5 → 慢 50 倍', () => {
@@ -61,7 +67,30 @@ t('非法输入抛异常', () => {
   assert(threw);
 });
 
-console.log('== measuredCurve（由实测值推导）==');
+console.log('== measuredCrossover（逐档实测）==');
+
+t('第一批赢的批量档位：java 0.629,33 档 0.631 输,100 档 0.241 赢 → 100', () => {
+  const pts = [
+    { batch: 1, perOpNs: 19.25 },
+    { batch: 3, perOpNs: 6.45 },
+    { batch: 10, perOpNs: 1.97 },
+    { batch: 33, perOpNs: 0.631 },
+    { batch: 100, perOpNs: 0.241 }
+  ];
+  assert(L.measuredCrossover(0.629292, pts) === 100);
+});
+
+t('全档皆输：返回 null（JIT 死局）', () => {
+  const pts = [{ batch: 1, perOpNs: 20 }, { batch: 1000, perOpNs: 1 }];
+  assert(L.measuredCrossover(0.5, pts) === null);
+});
+
+t('非法结构抛异常', () => {
+  assertThrows(() => L.measuredCrossover(1, []));
+  assertThrows(() => L.measuredCrossover(1, [{ batch: 0, perOpNs: 0.5 }]));
+});
+
+console.log('== measuredCurve（由实测值推导，作 curve 接口失败时的兜底）==');
 
 t('N=1 时 C++ 均摊 = b + v = 19.25ns，与实测单次过境同量级', () => {
   const c = L.measuredCurve(MEASURED.java, MEASURED.batch, MEASURED.toll, 1000000);

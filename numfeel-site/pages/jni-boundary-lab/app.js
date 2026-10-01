@@ -23,7 +23,8 @@
   var state = {
     count: 1000000,
     running: false,
-    results: {}   // lane -> {medianNs, perOpNs, count, reps, ...}
+    results: {},  // lane -> {medianNs, perOpNs, count, reps, ...}
+    curve: null   // [{batch, perOpNs}...] 逐档实测，/curve 失败时保持 null 走推演兜底
   };
 
   // ===== DOM =====
@@ -100,6 +101,7 @@
     if (state.running) return;
     state.running = true;
     state.results = {};
+    state.curve = null;
     els.fire.disabled = true;
     els.verdict.textContent = '实测中，各车道依次发车…';
     els.verdict.className = 'verdict';
@@ -119,7 +121,7 @@
     var idx = 0;
     function next() {
       if (idx >= LANES.length) {
-        finish();
+        loadCurve().then(finish);
         return;
       }
       var lane = LANES[idx];
@@ -140,6 +142,27 @@
       });
     }
     next();
+  }
+
+  /** 逐档实测攒批曲线：每个点都是一次真实测量（一批 B 次操作，B 从 1 到整轮） */
+  function loadCurve() {
+    log('逐档实测曲线：13 档批量，从一批 1 次到整轮一批…');
+    return fetch(API_BASE + '/jni-boundary/curve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count: state.count })
+    }).then(function (r) {
+      return r.json().then(function (body) {
+        if (body.status !== 200) throw new Error(body.message || ('HTTP ' + r.status));
+        state.curve = body.data;
+        var min = state.curve.reduce(function (a, p) { return p.perOpNs < a.perOpNs ? p : a; });
+        log('曲线实测完成：13 档，最快一批 ' + L.fmtCount(min.batch) + ' 次（' +
+            L.fmtNs(min.perOpNs) + '/次操作）', 'ok');
+      });
+    }).catch(function (e) {
+      state.curve = null;
+      log('逐档实测失败（' + e.message + '），曲线退回公式推演', 'err');
+    });
   }
 
   function updateTable(lane, data) {
@@ -193,7 +216,8 @@
       toll: state.results.noop ? state.results.noop.perOpNs : null,
       java: state.results.java,
       percall: state.results['native-percall'],
-      batch: state.results['native-batch']
+      batch: state.results['native-batch'],
+      curve: state.curve
     });
     els.verdict.textContent = v.text;
     els.verdict.className = ('verdict ' + v.cls).trim();
@@ -215,8 +239,19 @@
     var n = state.results.noop;
     if (!j || !b || !n) return;
 
-    var curve = L.measuredCurve(j.perOpNs, b.perOpNs, n.perOpNs, state.count);
-    var cross = L.crossoverBatch(j.perOpNs, b.perOpNs, n.perOpNs);
+    var measured = Array.isArray(state.curve) && state.curve.length > 0;
+    var cross = measured
+      ? L.measuredCrossover(j.perOpNs, state.curve)
+      : L.crossoverBatch(j.perOpNs, b.perOpNs, n.perOpNs);
+    var javaData, nativeData;
+    if (measured) {
+      javaData = state.curve.map(function (p) { return { x: p.batch, y: j.perOpNs }; });
+      nativeData = state.curve.map(function (p) { return { x: p.batch, y: p.perOpNs }; });
+    } else {
+      var curve = L.measuredCurve(j.perOpNs, b.perOpNs, n.perOpNs, state.count);
+      javaData = curve.batches.map(function (x) { return { x: x, y: j.perOpNs }; });
+      nativeData = curve.batches.map(function (x, i) { return { x: x, y: curve.nativePerOp[i] }; });
+    }
 
     var cfg = {
       type: 'line',
@@ -224,22 +259,24 @@
         datasets: [
           {
             label: 'Java（实测，恒定）',
-            data: curve.batches.map(function (x) { return { x: x, y: j.perOpNs }; }),
+            data: javaData,
             borderColor: '#60a5fa',
-            pointRadius: 0,
+            pointRadius: measured ? 3 : 0,
+            pointBackgroundColor: '#60a5fa',
             borderWidth: 2.5,
             tension: 0
           },
           {
-            label: 'C++ 攒批（过路费 ÷ N + 实测 v）',
-            data: curve.batches.map(function (x, i) { return { x: x, y: curve.nativePerOp[i] }; }),
+            label: measured ? 'C++ 攒批（逐档实测）' : 'C++ 攒批（过路费 ÷ N + 实测 v，推演）',
+            data: nativeData,
             borderColor: '#fb923c',
-            pointRadius: 0,
+            pointRadius: measured ? 3 : 0,
+            pointBackgroundColor: '#fb923c',
             borderWidth: 2.5,
             tension: 0.15
           },
           {
-            label: cross ? '实测交叉点 N* ≈ ' + L.fmtCount(Math.ceil(cross)) : '',
+            label: cross ? (measured ? '实测交叉点：一批 ' + L.fmtCount(cross) + ' 次' : '推演交叉点 N* ≈ ' + L.fmtCount(Math.ceil(cross))) : '',
             data: cross ? [{ x: Math.max(1, cross), y: j.perOpNs }] : [],
             borderColor: 'transparent',
             pointStyle: 'rectRot',

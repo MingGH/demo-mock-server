@@ -32,7 +32,7 @@
         <button class="fire-btn" id="fire">▶ 发车实测</button>
       </div>
       <div class="progress-line" id="progress-line" aria-hidden="true"><div class="progress-fill" id="progress-fill"></div></div>
-      <p class="deck-note" id="deck-note">四条车道依次跑：纯过路费 → Java JIT → C++ 单次过境 → C++ 攒批。每条车道预热后测 5 轮取中位数，现场测，不背答案。</p>
+      <p class="deck-note" id="deck-note">四条车道依次跑：纯过路费 → Java JIT → C++ 单次过境 → C++ 攒批。每条车道预热后测 5 轮取中位数；车道跑完再把 13 档批量逐档实测成曲线。现场测，不背答案。</p>
     </section>
 
     <!-- 对撞屏：双车道 -->
@@ -74,8 +74,9 @@
     <!-- 实测曲线 -->
     <section class="card" aria-label="实测曲线">
       <div class="card-title">摊薄过路费：交叉点在哪里</div>
-      <p class="card-desc">横轴是「攒多少次操作再过境一次」，纵轴是摊到每次操作的耗时。
-      C++ 曲线由实测值推导：过路费 b ÷ N + C++ 纯计算 v。b 和 v 都是刚才实测的，曲线不背答案。</p>
+      <p class="card-desc">横轴回答的就是「一批是多少」：从一批 1 次、3 次、10 次……一直到整轮一批，
+      <strong>每一档都是后端真测的</strong>，不是公式画出来的。纵轴是摊到每次操作的耗时。
+      发车时那轮「攒批过境」用的是最大档——整轮一批。</p>
       <div class="chart-box"><canvas id="chart" aria-label="均摊耗时随批量大小变化的实测推导曲线"></canvas></div>
     </section>
 
@@ -124,6 +125,8 @@ void nb_noop() {                    // 纯过路费：什么都不干，专量�
         第二行在攒批车道：把 N 次操作攒成一次过境，过路费摊到接近零，
         C++ 纯计算的优势才释放出来。交叉点 N* = b / (j − v)，b 是过路费、
         j 和 v 是两侧每次操作的耗时——全部来自你刚才那次实测。
+        曲线图上 13 档批量逐档真测，直接检验这个公式：实测交叉点应该落在
+        公式预言的位置附近；如果整条曲线都压不下去，那就是 JIT 连推演的机会都没给。
       </p>
       <p class="principle-text">
         所以 Java 标准库的选择说得通：集合操作是纳秒粒度，JVM 的正确姿势是让 JIT

@@ -69,6 +69,27 @@ const JniBoundaryLogic = (function () {
   }
 
   /**
+   * 逐档实测曲线上的交叉点：第一批 perOp < Java 的批量档位。
+   * points 由后端 /curve 逐档真测返回。找不到赢家返回 null。
+   */
+  function measuredCrossover(javaPerOpNs, points) {
+    assertPositive(javaPerOpNs, 'Java 每次操作耗时');
+    if (!Array.isArray(points) || points.length === 0) {
+      throw new Error('points 必须是非空数组');
+    }
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      if (typeof p.batch !== 'number' || p.batch < 1 || typeof p.perOpNs !== 'number' || p.perOpNs <= 0) {
+        throw new Error('point[' + i + '] 结构非法');
+      }
+      if (p.perOpNs < javaPerOpNs) {
+        return p.batch;
+      }
+    }
+    return null;
+  }
+
+  /**
    * 判词状态机：输入实测结果（可为 null = 该车道还没跑），
    * 输出 { cls, text }。撞墙诚实点名，包括「JIT 赢了」这种最反直觉的结局。
    */
@@ -98,11 +119,14 @@ const JniBoundaryLogic = (function () {
       cls = 'success';
     }
 
-    const cross = crossoverBatch(j, v, b);
+    const cross = Array.isArray(r.curve) && r.curve.length > 0
+      ? measuredCrossover(j, r.curve)
+      : crossoverBatch(j, v, b);
+    const crossLabel = Array.isArray(r.curve) && r.curve.length > 0 ? '交叉点实测在 ' : '交叉点推演约 ';
     const batchRatio = v / j;
     if (batchRatio < 1) {
       parts.push('攒批过境快 ' + (1 / batchRatio).toFixed(1) + ' 倍' +
-        (cross ? '，交叉点约 ' + Math.ceil(cross).toLocaleString('zh-CN') + ' 次——批量过了这条线，C++ 才开始挣钱' : ''));
+        (cross ? '，' + crossLabel + Math.ceil(cross).toLocaleString('zh-CN') + ' 次——批量过了这条线，C++ 才开始挣钱' : ''));
       if (cls !== 'success') cls = 'success';
     } else {
       parts.push('攒批也赢不了（JIT 把 Java 循环编到了 ' + fmtNs(j) + '/次，C++ 没有纯计算优势）');
@@ -132,6 +156,7 @@ const JniBoundaryLogic = (function () {
   return {
     speedup,
     crossoverBatch,
+    measuredCrossover,
     measuredCurve,
     verdict,
     fmtNs,

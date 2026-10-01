@@ -1,5 +1,6 @@
 /**
  * 玻璃大炮 - DOM 交互层（无业务公式，全部计算走 GlassCannonLogic）
+ * 地牢规则：战斗必须手动「开战」，属性/楼层/祝福变动后回到待命状态。
  */
 (function () {
   const L = window.GlassCannonLogic;
@@ -14,9 +15,11 @@
       myHp: $('v-myhp'), myDps: $('v-mydps'), enemyHp: $('v-enemyhp'), enemyDps: $('v-enemydps')
     },
     buffToggle: $('buff-toggle'),
-    replay: $('replay'),
+    fight: $('btn-fight'),
     badgeMe: $('badge-me'),
     badgeEnemy: $('badge-enemy'),
+    fighterMe: $('fighter-me'),
+    fighterEnemy: $('fighter-enemy'),
     barMeFill: $('bar-me-fill'),
     barMeLabel: $('bar-me-label'),
     barEnemyFill: $('bar-enemy-fill'),
@@ -95,6 +98,28 @@
     els.log.scrollTop = els.log.scrollHeight;
   }
 
+  function spawnFloat(fighterEl, text, cls) {
+    const span = document.createElement('span');
+    span.className = 'dmg-float ' + cls;
+    span.textContent = text;
+    span.style.left = (25 + Math.random() * 50) + '%';
+    fighterEl.appendChild(span);
+    span.addEventListener('animationend', function () { span.remove(); });
+    setTimeout(function () { if (span.parentNode) span.remove(); }, 1200);
+  }
+
+  function resetArenaToStandby() {
+    stopFight();
+    const eff = effectiveStats(readStats());
+    setBar(els.barMeFill, els.barMeLabel, eff.myHp, eff.myHp);
+    setBar(els.barEnemyFill, els.barEnemyLabel, eff.enemyHp, eff.enemyHp);
+    els.log.innerHTML = '';
+    logLine('🕯 队伍在地牢待命。施放祝福，然后按「开战」。', 'log-info');
+    els.fight.textContent = '⚔ 开战';
+    els.fight.disabled = false;
+    els.buffToggle.disabled = false;
+  }
+
   function outcomeText(o) {
     return o === 'win' ? '你赢了' : (o === 'lose' ? '你输了' : '同归于尽');
   }
@@ -112,20 +137,25 @@
     const t = L.fightTimes(eff);
     const endTime = Math.min(t.killTime, t.deathTime);
 
+    els.fight.disabled = true;
+    els.buffToggle.disabled = true;
     els.log.innerHTML = '';
     logLine('0.0s 战斗开始', 'log-info');
-    if (state.buffOn) logLine('你开启 buff：伤害 ×2，承伤 ×3', 'log-info');
-    if (eff.enemyDps === 0) logLine('敌人输出为 0——这是一根木桩', 'log-info');
+    if (state.buffOn) logLine('牧师的祝福生效：战士输出 ×2，承伤 ×3', 'log-info');
+    if (eff.enemyDps === 0) logLine('怪物输出为 0——这是一根木桩', 'log-info');
 
     function finish(simT) {
       const o = L.outcome(eff);
       setBar(els.barMeFill, els.barMeLabel, o === 'win' ? eff.myHp : 0, eff.myHp);
       setBar(els.barEnemyFill, els.barEnemyLabel, o === 'lose' ? eff.enemyHp : 0, eff.enemyHp);
       const stamp = simT === Infinity ? '' : simT.toFixed(1) + 's ';
-      if (o === 'win') logLine(stamp + '敌人倒下——' + outcomeText(o), 'log-win');
+      if (o === 'win') logLine(stamp + '怪物倒下——' + outcomeText(o), 'log-win');
       else if (o === 'lose') logLine(stamp + '你倒下了——' + outcomeText(o), 'log-lose');
       else logLine(stamp + '同时倒下——' + outcomeText(o), 'log-tie');
       state.playing = false;
+      els.fight.disabled = false;
+      els.buffToggle.disabled = false;
+      els.fight.textContent = '⚔ 再战一场';
     }
 
     if (reduceMotion || endTime === 0) {
@@ -136,6 +166,8 @@
     const realDuration = Math.min(6, Math.max(1.2, endTime / 6));
     const scale = realDuration / endTime;
     const t0 = performance.now();
+    const floatInterval = 0.5; // 每 0.5 个模拟秒跳一次伤害数字
+    let lastFloatT = 0;
     state.playing = true;
 
     function frame(now) {
@@ -149,6 +181,13 @@
       const enemyCur = eff.enemyHp * (1 - simT / t.killTime);
       setBar(els.barMeFill, els.barMeLabel, myCur, eff.myHp);
       setBar(els.barEnemyFill, els.barEnemyLabel, enemyCur, eff.enemyHp);
+      while (simT - lastFloatT >= floatInterval && simT < endTime) {
+        lastFloatT += floatInterval;
+        spawnFloat(els.fighterEnemy, '-' + fmtHp(eff.myDps * floatInterval), 'dmg-to-enemy');
+        if (eff.enemyDps > 0) {
+          spawnFloat(els.fighterMe, '-' + fmtHp(eff.enemyDps * floatInterval), 'dmg-to-me');
+        }
+      }
       state.raf = requestAnimationFrame(frame);
     }
     state.raf = requestAnimationFrame(frame);
@@ -168,7 +207,7 @@
       return;
     }
     if (v.buffed.outcome === 'win') {
-      els.mission.textContent = '✅ 达成：开着 buff 也能站到最后';
+      els.mission.textContent = '✅ 达成：开着祝福也能站到最后';
       els.mission.classList.add('ok');
     } else if (v.buffed.outcome === 'tie') {
       els.mission.textContent = '⚖️ 同归于尽——差一口气';
@@ -190,11 +229,11 @@
 
   function renderTicker(v, stats) {
     if (stats.enemyDps === 0) {
-      els.ticker.innerHTML = '敌人输出为 0：你永远不会被击杀，buff 纯赚——但也没人会为打木桩配装。';
+      els.ticker.innerHTML = '怪物输出为 0：你永远不会被击杀，祝福纯赚——但也没人会为打木桩配装。';
       return;
     }
     els.ticker.innerHTML =
-      '开 buff 后：优势比 <strong>' + fmtA(v.A) + ' → ' + fmtA(v.Abuff) + '</strong>（×2/3）；' +
+      '施放祝福后：优势比 <strong>' + fmtA(v.A) + ' → ' + fmtA(v.Abuff) + '</strong>（×2/3）；' +
       '击杀 <strong>' + fmtTime(v.baseline.killTime) + ' → ' + fmtTime(v.buffed.killTime) + '</strong>，' +
       '被击杀 <strong>' + fmtTime(v.baseline.deathTime) + ' → ' + fmtTime(v.buffed.deathTime) + '</strong>。';
   }
@@ -212,13 +251,13 @@
     els.rKill.textContent = fmtTime(cur.killTime);
     els.rKill.className = 'value' + (cur.outcome === 'win' ? ' hot' : '');
     els.rKillSub.textContent = state.buffOn
-      ? '关 buff 时 ' + fmtTime(v.baseline.killTime)
-      : '开 buff 后 ' + fmtTime(v.buffed.killTime);
+      ? '没祝福时 ' + fmtTime(v.baseline.killTime)
+      : '有祝福时 ' + fmtTime(v.buffed.killTime);
     els.rSurv.textContent = fmtTime(cur.deathTime);
     els.rSurv.className = 'value' + (cur.outcome === 'lose' ? ' dead' : ' hot');
     els.rSurvSub.textContent = state.buffOn
-      ? '关 buff 时 ' + fmtTime(v.baseline.deathTime)
-      : '开 buff 后 ' + fmtTime(v.buffed.deathTime);
+      ? '没祝福时 ' + fmtTime(v.baseline.deathTime)
+      : '有祝福时 ' + fmtTime(v.buffed.deathTime);
     els.rAdv.textContent = fmtA(v.A);
     els.rAdvBuff.textContent = fmtA(v.Abuff);
 
@@ -226,13 +265,12 @@
     renderMission(v, stats);
     renderAxis(v);
     renderTicker(v, stats);
-    return v;
   }
 
   function renderBuffToggle() {
     els.buffToggle.classList.toggle('on', state.buffOn);
     els.buffToggle.setAttribute('aria-pressed', String(state.buffOn));
-    els.buffToggle.textContent = state.buffOn ? '🔴 buff 已激活（点我关闭）' : '🔴 buff 未激活（点我开启）';
+    els.buffToggle.textContent = state.buffOn ? '✨ 祝福生效中（点击驱散）' : '✨ 牧师的祝福（未施放）';
     els.badgeMe.classList.toggle('on-me', state.buffOn);
     els.badgeEnemy.classList.toggle('on-enemy', state.buffOn);
   }
@@ -240,15 +278,16 @@
   function refresh() {
     renderBuffToggle();
     renderNumbers();
-    startFight();
+    resetArenaToStandby();
   }
 
   els.buffToggle.addEventListener('click', function () {
+    if (state.playing) return;
     state.buffOn = !state.buffOn;
     refresh();
   });
 
-  els.replay.addEventListener('click', startFight);
+  els.fight.addEventListener('click', startFight);
 
   Object.keys(els.sliders).forEach(function (k) {
     els.sliders[k].addEventListener('input', function () {
@@ -259,6 +298,7 @@
 
   els.presets.forEach(function (btn) {
     btn.addEventListener('click', function () {
+      if (state.playing) return;
       const p = PRESETS[btn.dataset.preset];
       els.sliders.myHp.value = p.myHp;
       els.sliders.myDps.value = p.myDps;

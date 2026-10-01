@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="一亿访客挤进 12KB 内存，误差不到 1%。亲手灌数据看 HashSet 内存爆掉，再看 HyperLogLog 怎么翻盘。">
+  <title>12KB 记住一亿人：HyperLogLog 实验室 | 数字直觉</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="../../components/header.js" defer></script>
+  <script src="hyperloglog-logic.js"></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-binary"></i> 12KB 记住一亿人</h1>
+    <p>今天有 1 亿人访问了你的网站。统计独立访客数：HashSet 要 7.2GB，HyperLogLog 只要 12KB。代价是不到 1% 的误差——下面亲手验证这句话。</p>
+  </div>
+
+  <!-- 挑战目标 -->
+  <div class="section" id="missionSection">
+    <h2><i class="ti ti-flag"></i> 挑战</h2>
+    <p class="section-desc">统计模块分到的内存预算是 <strong>64MB</strong>。选一个网站规模，把访客灌进去，数准他们。</p>
+    <div class="preset-row" id="presetRow">
+      <button class="preset-btn" data-target="100000">校园论坛<br><small>10 万访客</small></button>
+      <button class="preset-btn" data-target="10000000">创业 App<br><small>1000 万访客</small></button>
+      <button class="preset-btn active" data-target="100000000">国民应用<br><small>1 亿访客</small></button>
+    </div>
+  </div>
+
+  <!-- 策略选择 -->
+  <div class="section">
+    <h2><i class="ti ti-poker-chip"></i> 选你的数据结构</h2>
+    <p class="section-desc">三种方案都能数 UV，账单完全不同。先试试直觉方案。</p>
+    <div class="strategy-row" id="strategyRow">
+      <button class="strategy-btn active" data-strategy="hashset">
+        <span class="strategy-name">HashSet 精确去重</span>
+        <span class="strategy-note">每条 ID 都存下来，答案 100% 准</span>
+        <span class="strategy-mem" id="mem-hashset">0 B</span>
+      </button>
+      <button class="strategy-btn" data-strategy="bitmap">
+        <span class="strategy-name">Bitmap 位图</span>
+        <span class="strategy-note">1 个 ID 占 1 位，前提：ID 是连续整数</span>
+        <span class="strategy-mem" id="mem-bitmap">0 B</span>
+      </button>
+      <button class="strategy-btn" data-strategy="hll">
+        <span class="strategy-name">HyperLogLog</span>
+        <span class="strategy-note">不存任何 ID，误差约 0.8%</span>
+        <span class="strategy-mem" id="mem-hll">12.0 KB</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 数据洪流台 -->
+  <div class="section" id="floodSection">
+    <h2><i class="ti ti-tornado"></i> 数据洪流台</h2>
+    <p class="section-desc">灌数据，盯着三条内存条。撞墙了就换个数据结构再来——访客可不会等你。</p>
+    <div class="btn-row">
+      <button class="btn" id="pour1w">灌 1 万</button>
+      <button class="btn" id="pour10w">灌 10 万</button>
+      <button class="btn btn-primary" id="autoBtn">全速灌满</button>
+      <button class="btn btn-warn" id="dupBtn">重复访客炸弹 ×10000</button>
+      <button class="btn btn-ghost" id="resetBtn">重置</button>
+    </div>
+    <div class="flood-status" id="floodStatus">目标 1 亿访客，还没开始灌。</div>
+    <div class="stream-feed" id="streamFeed" aria-live="off"></div>
+
+    <div class="stats-grid">
+      <div class="stat-item"><div class="stat-label">已接待请求</div><div class="stat-val" id="statTotal">0</div></div>
+      <div class="stat-item"><div class="stat-label">真实 UV</div><div class="stat-val" id="statDistinct">0</div></div>
+      <div class="stat-item"><div class="stat-label">HLL 估计</div><div class="stat-val" id="statEstimate">0</div></div>
+      <div class="stat-item"><div class="stat-label">偏差</div><div class="stat-val" id="statErr">—</div></div>
+    </div>
+
+    <div class="mem-bars">
+      <div class="mem-row" id="row-hashset">
+        <span class="mem-name">HashSet</span>
+        <div class="mem-track"><div class="mem-fill" id="fill-hashset"></div></div>
+        <span class="mem-label" id="label-hashset">0 B</span>
+      </div>
+      <div class="mem-row" id="row-bitmap">
+        <span class="mem-name">Bitmap</span>
+        <div class="mem-track"><div class="mem-fill" id="fill-bitmap"></div></div>
+        <span class="mem-label" id="label-bitmap">0 B</span>
+      </div>
+      <div class="mem-row" id="row-hll">
+        <span class="mem-name">HLL</span>
+        <div class="mem-track"><div class="mem-fill" id="fill-hll"></div></div>
+        <span class="mem-label" id="label-hll">12.0 KB</span>
+      </div>
+      <div class="mem-budget">预算线 64MB，条形线性缩放——小到看不见，正是重点；爆表部分标红</div>
+    </div>
+
+    <div class="ticker" id="marginalTicker">灌一次试试：每一步的内存账单会出现在这里。</div>
+    <div class="verdict" id="verdict">三条内存条已经在跑了。HashSet 是直觉方案——先试试它。</div>
+  </div>
+
+  <!-- 寄存器显微镜 -->
+  <div class="section">
+    <h2><i class="ti ti-microscope"></i> 寄存器显微镜</h2>
+    <p class="section-desc">这是 HLL 的全部家当：16384 个桶，每桶 6 bit，合计 12KB（画面显示 128 个抽样）。每桶只记一件事：见过的最长"硬币连击"是多长。点一个桶看看。</p>
+    <div class="reg-grid" id="regGrid"></div>
+    <div class="reg-detail" id="regDetail">点击任意桶查看它的记录。</div>
+  </div>
+
+  <!-- 抛硬币直觉实验室 -->
+  <div class="section" id="coinSection">
+    <h2><i class="ti ti-topology-star"></i> 抛硬币直觉实验室</h2>
+    <p class="section-desc">HLL 的全部聪明来自一个抛硬币事实：<strong>看到"连续正面 20 连击"，说明你大概率已经抛了上百万次</strong>。亲手验一下。</p>
+    <div class="coin-panel">
+      <div class="btn-row">
+        <button class="btn" id="coinFlip1">抛一次</button>
+        <button class="btn" id="coinReset">手动实验重置</button>
+      </div>
+      <div class="coin-reading">
+        <div class="coin-item"><span class="coin-label">已抛次数</span><span class="coin-val" id="coinActual">0</span></div>
+        <div class="coin-item"><span class="coin-label">最长正面连击</span><span class="coin-val" id="coinBest">0</span></div>
+        <div class="coin-item"><span class="coin-label">2^连击 反推</span><span class="coin-val" id="coinEstimate">1</span></div>
+      </div>
+      <div class="coin-log" id="coinLog">手动抛，看看连击纪录怎么爬。</div>
+      <div class="btn-row coin-auto-row">
+        <button class="btn btn-secondary" id="coin100">连抛 100 次</button>
+        <button class="btn btn-secondary" id="coin10k">连抛 1 万次</button>
+        <button class="btn btn-secondary" id="coin1m">连抛 100 万次</button>
+      </div>
+      <div class="coin-log" id="coinAutoLog">连抛按钮：每次都是一局全新实验，看看单局有多飘。</div>
+    </div>
+  </div>
+
+  <!-- 误差曲线 -->
+  <div class="section">
+    <h2><i class="ti ti-chart-line"></i> 真值 vs 估计</h2>
+    <p class="section-desc">蓝线是真实 UV，橙线是 HLL 用 12KB 估出来的数。两条线重合到分不开，就是这 12KB 的价值。先灌点数据再回来看。</p>
+    <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    <div class="chart-fallback" id="chartFallback" hidden>图表库加载失败（当前离线？），数据仍在上方统计区实时更新。</div>
+  </div>
+
+  <!-- 模型与出处 -->
+  <div class="section section-notes">
+    <h2><i class="ti ti-flask"></i> 本页模型说明</h2>
+    <ul class="notes-list">
+      <li>HashSet 按 Java HashMap 平均每条目约 72 字节计（16 字符 ID），不同语言量级相同。</li>
+      <li>Bitmap 需要连续整数 ID；真实访客 ID 是任意字符串，给字符串发号本身要先记住发过号的 ID——发号表就是另一个 HashSet。</li>
+      <li>HLL 参数 16384 桶 × 6bit，与 Redis 稠密编码一致，理论标准差 0.81%；本页用 32 位演示哈希，生产实现普遍用 64 位。</li>
+      <li>全部计算在你的浏览器里完成，没有后端。</li>
+    </ul>
+    <p class="ref-line">出处：Flajolet 等，HyperLogLog: the analysis of a near-optimal cardinality estimation algorithm, 2007；Redis PFCOUNT / PFADD 文档。</p>
+  </div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

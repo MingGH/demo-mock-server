@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="64 核服务器买回来，为什么只快了 4 倍？阿姆达尔定律交互演示：亲手买核撞墙，再亲手砸穿这堵墙。">
+  <title>买核大亨：64 核为什么只快了 4 倍 | 数字直觉</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="../../components/header.js" defer></script>
+  <script src="amdahl-logic.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+
+    <header class="hero">
+      <h1>买核大亨</h1>
+      <p class="subtitle">64 核服务器买回来，为什么只快了 4 倍？<br>这堵墙 1967 年就砌好了。今天你来亲手撞一次。</p>
+    </header>
+
+    <!-- 任务卡 -->
+    <section class="card mission-card" aria-label="挑战任务">
+      <div class="card-title">📅 本季度 OKR</div>
+      <p class="mission-text">
+        数据组的一份报表任务要跑 <strong>100 分钟</strong>。老板发话：压进 <strong>25 分钟</strong>以内，
+        预算管够，服务器随便加。你的任务：达标。
+      </p>
+      <div class="progress-track" role="progressbar" aria-label="目标进度" aria-valuemin="0" aria-valuemax="100" id="target-progress">
+        <div class="progress-fill" id="progress-fill"></div>
+        <span class="progress-label" id="progress-label">0%</span>
+      </div>
+    </section>
+
+    <!-- 场景选择 -->
+    <section class="card" aria-label="代码现状">
+      <div class="card-title">🧬 你的代码现状</div>
+      <p class="card-desc">串行比例：任务里有多少部分一个核干活时其余核只能干等。选一个开局，或拖下面的滑块。</p>
+      <div class="preset-row" id="preset-row">
+        <button class="preset-btn" data-serial="15">乐观的团队<br><small>串行 15%</small></button>
+        <button class="preset-btn active" data-serial="25">普通的后端<br><small>串行 25%</small></button>
+        <button class="preset-btn" data-serial="40">祖传代码<br><small>串行 40%</small></button>
+      </div>
+    </section>
+
+    <!-- 操作台 -->
+    <section class="card" aria-label="操作台">
+      <div class="card-title">🎮 操作台</div>
+
+      <div class="slider-group">
+        <label for="serial-slider"><span>串行比例（花多少核都救不了的部分）</span><span id="serial-value" class="slider-value">25%</span></label>
+        <input type="range" id="serial-slider" min="0" max="95" step="1" value="25">
+      </div>
+
+      <div class="slider-group">
+        <label for="cores-slider"><span>核心数</span><span id="cores-value" class="slider-value">1 核</span></label>
+        <input type="range" id="cores-slider" min="0" max="100" step="1" value="0">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="buy-1">买 1 核</button>
+        <button class="btn" id="buy-10">买 10 核</button>
+        <button class="btn btn-secondary" id="sell-10">退租 10 核</button>
+        <button class="btn btn-refactor" id="refactor">🔧 优化代码（串行 −1%）</button>
+        <button class="btn btn-ghost" id="reset">重置</button>
+      </div>
+    </section>
+
+    <!-- 战报 -->
+    <section class="card" aria-label="当前战报">
+      <div class="card-title">📊 战报</div>
+      <div class="result-grid">
+        <div class="result-item"><div class="label">实际加速</div><div class="value" id="stat-speedup">1.00x</div></div>
+        <div class="result-item"><div class="label">总耗时</div><div class="value" id="stat-time">100 分钟</div></div>
+        <div class="result-item"><div class="label">核心利用率</div><div class="value" id="stat-eff">100%</div></div>
+        <div class="result-item red"><div class="label">已烧经费</div><div class="value" id="stat-cost">¥0 万</div></div>
+      </div>
+      <div class="ticker" id="marginal-ticker">每一颗核按 ¥1 万/年计费。</div>
+      <div class="verdict" id="verdict">先买几颗核试试水。</div>
+    </section>
+
+    <!-- 曲线 -->
+    <section class="card" aria-label="加速比曲线">
+      <div class="card-title">📈 加速比曲线</div>
+      <p class="card-desc">青色线是你，红色虚线是老板的目标（4x），黄色虚线是这串代码的天花板。曲线再陡，也穿不过天花板。</p>
+      <div class="chart-box"><canvas id="chart" aria-label="加速比随核心数变化的曲线"></canvas></div>
+    </section>
+
+    <!-- 原理 -->
+    <section class="card" aria-label="原理">
+      <div class="card-title">🧮 墙是怎么砌起来的</div>
+      <div class="formula">S(n) = 1 / ( s + (1 − s) / n )</div>
+      <p class="principle-text">
+        s 是串行比例，n 是核心数。分母里的 s 永远除不掉，所以 n 拉到无穷大，
+        加速比也只能逼近 1/s。串行 25%，天花板就是 4 倍——你烧再多的钱，
+        只是在逼近它，永远踩不到它。
+      </p>
+      <p class="principle-text">
+        这个公式叫阿姆达尔定律，Gene Amdahl 在 1967 年发表。当年没人在意：
+        那会儿 CPU 主频一年涨一半，谁需要并行。2004 年前后主频撞上功耗墙，
+        全行业转头堆核数，这个半个多世纪前的公式才变成每个架构师头顶的墙。
+      </p>
+      <p class="principle-text">
+        砸穿它的方法只有一个：回过头优化那个 s。demo 里的「优化代码」按钮
+        每点一次串行减 1%——真实世界里，这一下往往比你想象中贵得多。
+      </p>
+    </section>
+
+    <footer class="page-footer">
+      <p>定律出处：G. M. Amdahl, <em>Validity of the Single Processor Approach to Achieving Large Scale Computing Capabilities</em>, AFIPS 1967</p>
+      <p><a href="../../index.html">← 回到数字直觉首页</a>，那里还有 230 多个可以亲手验证的演示。</p>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

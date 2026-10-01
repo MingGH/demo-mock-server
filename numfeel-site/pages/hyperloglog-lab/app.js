@@ -397,6 +397,9 @@
   });
   function coinAuto(k) {
     var s = L.coinFlipStats(k);
+    el.coinActual.textContent = fmtInt(s.flips);
+    el.coinBest.textContent = String(s.longestRun);
+    el.coinEstimate.textContent = fmtInt(s.estimate);
     var logEl = el.coinAutoLog;
     logEl.textContent = '连抛 ' + fmtInt(k) + ' 次（全新一局）：最长连击 ' + s.longestRun +
       '，反推 2^' + s.longestRun + ' ≈ ' + fmtInt(s.estimate) + '，真实 ' + fmtInt(k) +

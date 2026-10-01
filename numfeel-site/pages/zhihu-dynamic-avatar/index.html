@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="知乎换头像时会用 canvas 截第一帧，动图秒变静态。生成一段注入脚本劫持 toBlob，粘贴到知乎控制台即可偷换成完整动图。内置本页模拟器先验证效果，支持 gif 一键转 webp。">
+  <meta name="description" content="知乎换头像时会用 canvas 截第一帧，动图秒变静态。生成一段注入脚本劫持 toBlob，粘贴到知乎控制台即可偷换成完整动图。内置本页模拟器先验证效果，gif 可一键转成 webp（gif 直传会被知乎转静态）。">
   <title>知乎动态头像注入器 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
@@ -50,12 +50,12 @@
   <!-- ── 第一步：选动图 ── -->
   <div class="section">
     <h2><i class="ti ti-photo-plus"></i> 第一步：选一张动图</h2>
-    <p class="section-desc">支持动态 webp 和 gif。webp 体积更小，知乎原生支持。也可以先用内置样例跑通流程。</p>
+    <p class="section-desc">最终必须是动态 webp。gif 直传会被知乎转成静态图，选 gif 后请先点「转成 webp」。也可以先用内置样例跑通流程。</p>
 
     <div class="dropzone" id="dropzone">
       <i class="ti ti-cloud-upload"></i>
       <p>点击选择，或把动图拖进来</p>
-      <p class="dropzone-sub">动态 webp / gif，建议 1MB 以内</p>
+      <p class="dropzone-sub">动态 webp / gif，gif 会自动提示先转换</p>
       <input type="file" id="fileInput" accept="image/webp,image/gif" hidden>
     </div>
 
@@ -77,7 +77,7 @@
         <div class="info-row"><span class="info-label">尺寸：</span><code id="fileDim">—</code></div>
         <div class="info-actions">
           <button class="btn btn-primary" id="convertBtn" style="display:none;">
-            <i class="ti ti-transform"></i> 转成 webp 减体积
+            <i class="ti ti-transform"></i> 转成 webp（gif 必须先转）
           </button>
           <span class="convert-status" id="convertStatus"></span>
         </div>
@@ -151,6 +151,7 @@
     </ol>
 
     <div class="note-list">
+      <div class="note-item"><i class="ti ti-photo-off"></i> 必须用动态 webp，gif 上传后会被转成静态图。</div>
       <div class="note-item"><i class="ti ti-refresh-alert"></i> 刷新页面后注入失效，需要重新粘贴执行。</div>
       <div class="note-item"><i class="ti ti-hourglass"></i> 头像有 CDN 缓存，生效前多刷新几次。</div>
       <div class="note-item"><i class="ti ti-device-mobile"></i> app 端仅在部分场景生效，比如点赞列表。</div>
@@ -171,8 +172,12 @@
       <p>base64 没复制全，同样重新完整复制一次。手动选中容易漏头漏尾。</p>
     </div>
     <div class="faq-item">
-      <h3>只能用 webp 吗？</h3>
-      <p>gif 也行，知乎的 gif 管线同样保留动画。但 webp 体积更小，更稳。</p>
+      <h3>gif 能直接注入吗？</h3>
+      <p>不行。实测 gif 上传后还是静态的，知乎会把 gif 转成静态图。必须先转成动态 webp 再注入。</p>
+    </div>
+    <div class="faq-item">
+      <h3>转换是本地做的吗？</h3>
+      <p>不是。页面把 gif 发到服务器，在服务端转成 webp，不占用你的浏览器算力。</p>
     </div>
     <div class="faq-item">
       <h3>这算漏洞吗？</h3>

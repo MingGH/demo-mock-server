@@ -74,10 +74,12 @@ let r = L.validateAvatarFile({ size: 300 * 1024, type: 'image/webp' });
 assert(r.ok && r.warnings.length === 0, 'validate: 小体积 webp 直接通过');
 
 r = L.validateAvatarFile({ size: 300 * 1024, type: 'image/gif' });
-assert(r.ok && r.warnings.length === 1, 'validate: gif 通过但提示转 webp');
+assert(r.ok && r.warnings.length === 1 && r.warnings[0].includes('转成 webp'),
+  'validate: gif 通过但提示必须转 webp');
 
 r = L.validateAvatarFile({ size: 100 * 1024, type: 'image/png' });
-assert(!r.ok && r.errors.length === 1, 'validate: png 被拒绝');
+assert(!r.ok && r.errors.length === 1 && !r.errors[0].includes('gif'),
+  'validate: png 被拒绝且不再引导用 gif');
 
 r = L.validateAvatarFile({ size: 100 * 1024, type: 'image/jpeg' });
 assert(!r.ok, 'validate: jpeg 被拒绝');

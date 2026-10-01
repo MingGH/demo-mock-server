@@ -139,13 +139,14 @@ function validateAvatarFile(file) {
   if (type === 'image/webp') {
     // 最推荐的格式
   } else if (type === 'image/gif') {
-    warnings.push('gif 体积通常偏大，建议转成 webp 再注入');
+    // 实测 gif 上传后会被知乎转成静态图，必须先转 webp
+    warnings.push('知乎会把 gif 转成静态图，必须先点「转成 webp」再注入');
   } else if (type === 'image/png' || type === 'image/apng') {
-    errors.push('PNG 会被知乎管线重绘成静态图，请改用 webp 或 gif');
+    errors.push('PNG 会被知乎管线重绘成静态图，请改用动态 webp');
   } else if (type.indexOf('image/') === 0) {
-    errors.push('这个格式不会动，请用动态 webp 或 gif');
+    errors.push('这个格式不会动，请用动态 webp');
   } else {
-    errors.push('不是图片文件，请用动态 webp 或 gif');
+    errors.push('不是图片文件，请用动态 webp');
   }
 
   if (size > 5 * 1024 * 1024) {

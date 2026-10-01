@@ -235,71 +235,39 @@
     track('sample_loaded');
   });
 
-  // ── gif → webp 转换（ffmpeg.wasm 懒加载）────────────────
+  // ── gif → webp 转换（服务端 ffmpeg）────────────────
 
-  var ffmpegLoading = null;
-
-  function loadScriptTag(src) {
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement('script');
-      s.src = src;
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
-  }
-
-  function ensureFfmpeg() {
-    if (ffmpegLoading) return ffmpegLoading;
-    ffmpegLoading = loadScriptTag('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js')
-      .then(function () {
-        var ffmpeg = window.FFmpeg.createFFmpeg({
-          log: false,
-          corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
-        });
-        ffmpeg.setProgress(function (p) {
-          var pct = Math.max(0, Math.min(100, Math.round((p.ratio || 0) * 100)));
-          els.convertStatus.textContent = '转换中 ' + pct + '%';
-        });
-        return ffmpeg.load().then(function () { return ffmpeg; });
-      });
-    return ffmpegLoading;
-  }
+  var CONVERT_API = 'https://numfeel-api.996.ninja/avatar/convert-webp';
 
   els.convertBtn.addEventListener('click', function () {
     if (!current || current.mime !== 'image/gif') return;
     var before = current.bytes.length;
     els.convertBtn.disabled = true;
-    els.convertStatus.textContent = '首次使用要加载转换组件（约 20MB）…';
+    els.convertStatus.textContent = '上传服务器转换中…';
 
-    ensureFfmpeg().then(function (ffmpeg) {
-      els.convertStatus.textContent = '转换中…';
-      return window.FFmpeg.fetchFile(new Blob([current.bytes], { type: current.mime }))
-        .then(function (data) {
-          ffmpeg.FS('writeFile', 'input.gif', data);
-          return ffmpeg.run(
-            '-i', 'input.gif',
-            '-c:v', 'libwebp',
-            '-loop', '0',
-            '-q:v', '75',
-            '-vf', 'scale=w=min(480\\,iw):h=-2',
-            'output.webp'
-          );
-        })
-        .then(function () {
-          var out = ffmpeg.FS('readFile', 'output.webp');
-          try { ffmpeg.FS('unlink', 'input.gif'); ffmpeg.FS('unlink', 'output.webp'); } catch (e) {}
-          return out;
+    fetch(CONVERT_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'image/gif' },
+      body: new Blob([current.bytes], { type: 'image/gif' })
+    }).then(function (res) {
+      if (!res.ok) {
+        return res.json().then(function (j) {
+          throw new Error((j && j.message) || ('HTTP ' + res.status));
+        }, function () {
+          throw new Error('HTTP ' + res.status);
         });
-    }).then(function (out) {
-      var after = out.length;
-      loadBytes(current.name.replace(/\.gif$/i, '') + '.webp', 'image/webp', out);
+      }
+      return res.arrayBuffer();
+    }).then(function (buf) {
+      var bytes = new Uint8Array(buf);
+      var after = bytes.length;
+      loadBytes(current.name.replace(/\.gif$/i, '') + '.webp', 'image/webp', bytes);
       els.convertStatus.textContent =
         '转换完成：' + formatBytes(before) + ' → ' + formatBytes(after);
       track('convert_webp', { ok: true, from: sizeBucket(before), to: sizeBucket(after) });
     }).catch(function (err) {
       var detail = err && err.message ? '：' + err.message : '';
-      els.convertStatus.textContent = '转换组件加载失败' + detail + '。可直接注入 gif，或换个在线工具转 webp。';
+      els.convertStatus.textContent = '服务器转换失败' + detail + '。可换个在线工具转 webp 再上传。';
       track('convert_webp', { ok: false });
     }).finally(function () {
       els.convertBtn.disabled = false;

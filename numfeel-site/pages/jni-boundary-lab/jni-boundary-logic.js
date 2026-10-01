@@ -1,166 +1,141 @@
 /**
- * JNI 边界收费站 - 核心逻辑
- * 模型：跨语言调用边界是一次"过路费"，C++ 的计算速度优势要先把过路费挣回来。
+ * 跨界收费站 - 核心逻辑
+ * 输入全部来自后端 /jni-boundary 接口的真实测量值：
+ *   tollPerCallNs  纯过路费（noop 车道均摊）
+ *   javaPerOpNs    Java JIT 循环每次操作耗时
+ *   percallPerOpNs C++ 单次过境模式每次操作耗时
+ *   batchPerOpNs   C++ 攒批过境模式每次操作耗时
+ * 公式推导仍然摊开：曲线的形状由 b + N·v 与 N·j 决定，但 j、v、b 全是实测值。
  */
 
 const JniBoundaryLogic = (function () {
 
-  function assertNs(v, name) {
+  function assertPositive(v, name) {
     if (typeof v !== 'number' || Number.isNaN(v) || v <= 0) {
       throw new Error(name + ' 必须是 > 0 的数字');
     }
   }
 
-  function assertSpeedup(v) {
-    if (typeof v !== 'number' || Number.isNaN(v) || v < 1) {
-      throw new Error('C++ 相对速度必须 >= 1');
+  /**
+   * 实测加速比：Java 每次操作耗时 / 对方每次操作耗时（>1 表示对方赢）
+   */
+  function speedup(javaPerOpNs, otherPerOpNs) {
+    assertPositive(javaPerOpNs, 'Java 每次操作耗时');
+    assertPositive(otherPerOpNs, '对方每次操作耗时');
+    return javaPerOpNs / otherPerOpNs;
+  }
+
+  /**
+   * 实测交叉点：N* = b / (j - v)
+   * b = 每次过境的固定开销（noop 均摊），j = Java 每次，v = C++ 攒批每次。
+   * j <= v 时（JIT 后的 Java 不输 C++）没有交叉点，返回 null。
+   */
+  function crossoverBatch(javaPerOpNs, batchPerOpNs, tollPerCallNs) {
+    assertPositive(javaPerOpNs, 'Java 每次操作耗时');
+    assertPositive(batchPerOpNs, 'C++ 攒批每次操作耗时');
+    if (typeof tollPerCallNs !== 'number' || Number.isNaN(tollPerCallNs) || tollPerCallNs < 0) {
+      throw new Error('过路费必须 >= 0');
     }
+    if (batchPerOpNs >= javaPerOpNs) return null;
+    return tollPerCallNs / (javaPerOpNs - batchPerOpNs);
   }
 
-  function assertBatchN(n) {
-    if (!Number.isInteger(n) || n < 1) {
-      throw new Error('批量大小必须是 >= 1 的整数');
+  /**
+   * 由实测值推导的均摊曲线：
+   *   C++ 攒批每次操作 = toll / N + batchPerOp
+   *   Java 每次操作 = javaPerOp（JIT 内没有收费站，恒定）
+   * 返回对数取样的 { batches, javaPerOp, nativePerOp }。
+   */
+  function measuredCurve(javaPerOpNs, batchPerOpNs, tollPerCallNs, maxBatch) {
+    assertPositive(javaPerOpNs, 'Java 每次操作耗时');
+    assertPositive(batchPerOpNs, 'C++ 攒批每次操作耗时');
+    if (typeof tollPerCallNs !== 'number' || Number.isNaN(tollPerCallNs) || tollPerCallNs < 0) {
+      throw new Error('过路费必须 >= 0');
     }
-  }
-
-  /**
-   * C++ 单次操作耗时 = Java 耗时 / 相对速度
-   */
-  function nativeOpNs(javaOpNs, cppSpeedup) {
-    assertNs(javaOpNs, 'Java 单次操作耗时');
-    assertSpeedup(cppSpeedup);
-    return javaOpNs / cppSpeedup;
-  }
-
-  /**
-   * Java 方案总耗时：循环在 JIT 里，没有边界概念，批量大小不影响它
-   */
-  function javaTotal(batchN, javaOpNs) {
-    assertBatchN(batchN);
-    assertNs(javaOpNs, 'Java 单次操作耗时');
-    return batchN * javaOpNs;
-  }
-
-  /**
-   * C++ 单次过境模式：每次操作都要交一次过路费
-   */
-  function nativePerCallTotal(batchN, nativeOpNs, boundaryNs) {
-    assertBatchN(batchN);
-    assertNs(nativeOpNs, 'C++ 单次操作耗时');
-    assertNs(boundaryNs, '边界过路费');
-    return batchN * (nativeOpNs + boundaryNs);
-  }
-
-  /**
-   * C++ 批量过境模式：攒 batchN 次操作，只交一次过路费
-   */
-  function nativeBatchTotal(batchN, nativeOpNs, boundaryNs) {
-    assertBatchN(batchN);
-    assertNs(nativeOpNs, 'C++ 单次操作耗时');
-    assertNs(boundaryNs, '边界过路费');
-    return boundaryNs + batchN * nativeOpNs;
-  }
-
-  /**
-   * 批量过境模式反超 Java 所需的最小批量：
-   *   b + N*v < N*j  =>  N > b / (j - v)
-   * j <= v（C++ 不比 JIT 后的 Java 快）时永远反超不了，返回 null
-   */
-  function crossoverBatch(javaOpNs, nativeOpNs, boundaryNs) {
-    assertNs(javaOpNs, 'Java 单次操作耗时');
-    assertNs(nativeOpNs, 'C++ 单次操作耗时');
-    assertNs(boundaryNs, '边界过路费');
-    if (nativeOpNs >= javaOpNs) return null;
-    return boundaryNs / (javaOpNs - nativeOpNs);
-  }
-
-  /**
-   * 实际加速比 = Java 总耗时 / C++ 总耗时
-   */
-  function speedup(javaTotalNs, otherTotalNs) {
-    if (typeof javaTotalNs !== 'number' || javaTotalNs <= 0 ||
-        typeof otherTotalNs !== 'number' || otherTotalNs <= 0) {
-      throw new Error('总耗时必须是 > 0 的数字');
-    }
-    return javaTotalNs / otherTotalNs;
-  }
-
-  /**
-   * 过路费占总耗时的比例
-   * mode: 'perCall' 每次操作都过境；'batch' 攒批过境
-   */
-  function boundaryShare(batchN, nativeOpNs, boundaryNs, mode) {
-    assertBatchN(batchN);
-    assertNs(nativeOpNs, 'C++ 单次操作耗时');
-    assertNs(boundaryNs, '边界过路费');
-    if (mode !== 'perCall' && mode !== 'batch') {
-      throw new Error("mode 必须是 'perCall' 或 'batch'");
-    }
-    const total = mode === 'perCall'
-      ? nativePerCallTotal(batchN, nativeOpNs, boundaryNs)
-      : nativeBatchTotal(batchN, nativeOpNs, boundaryNs);
-    const toll = mode === 'perCall' ? batchN * boundaryNs : boundaryNs;
-    return toll / total;
-  }
-
-  /**
-   * 均摊到每次操作的耗时
-   */
-  function amortizedPerOp(totalNs, batchN) {
-    if (typeof totalNs !== 'number' || totalNs <= 0) {
-      throw new Error('总耗时必须是 > 0 的数字');
-    }
-    assertBatchN(batchN);
-    return totalNs / batchN;
-  }
-
-  /**
-   * 把批量从 prev 提到 curr，均摊耗时降了多少
-   */
-  function marginalGain(javaOpNs, nativeOpNs, boundaryNs, prev, curr) {
-    assertBatchN(prev);
-    assertBatchN(curr);
-    const a = amortizedPerOp(nativeBatchTotal(prev, nativeOpNs, boundaryNs), prev);
-    const b = amortizedPerOp(nativeBatchTotal(curr, nativeOpNs, boundaryNs), curr);
-    return a - b;
-  }
-
-  /**
-   * 画曲线用：对数取样的批量点，Java 与 C++ 批量模式的均摊耗时
-   */
-  function amortizedCurve(javaOpNs, nativeOpNs, boundaryNs, maxBatch) {
-    assertNs(javaOpNs, 'Java 单次操作耗时');
-    assertNs(nativeOpNs, 'C++ 单次操作耗时');
-    assertNs(boundaryNs, '边界过路费');
     if (!Number.isInteger(maxBatch) || maxBatch < 1) {
       throw new Error('最大批量必须是 >= 1 的整数');
     }
     const steps = 41;
     const logMax = Math.log10(maxBatch);
-    const batchSizes = [];
-    const javaPerOp = [];
+    const batches = [];
     const nativePerOp = [];
     for (let i = 0; i < steps; i++) {
       const n = Math.max(1, Math.round(Math.pow(10, (logMax * i) / (steps - 1))));
-      if (batchSizes.length > 0 && n === batchSizes[batchSizes.length - 1]) continue;
-      batchSizes.push(n);
-      javaPerOp.push(javaOpNs);
-      nativePerOp.push(amortizedPerOp(nativeBatchTotal(n, nativeOpNs, boundaryNs), n));
+      if (batches.length > 0 && n === batches[batches.length - 1]) continue;
+      batches.push(n);
+      nativePerOp.push(tollPerCallNs / n + batchPerOpNs);
     }
-    return { batchSizes, javaPerOp, nativePerOp };
+    return { batches, javaPerOp: batches.map(() => javaPerOpNs), nativePerOp };
+  }
+
+  /**
+   * 判词状态机：输入实测结果（可为 null = 该车道还没跑），
+   * 输出 { cls, text }。撞墙诚实点名，包括「JIT 赢了」这种最反直觉的结局。
+   */
+  function verdict(results) {
+    const r = results || {};
+    const hasAll = r.java && r.percall && r.batch && typeof r.toll === 'number';
+
+    if (!hasAll) {
+      return { cls: '', text: '按「开始实测」，四条车道会在你访问的这台后端上依次跑真基准。' };
+    }
+
+    const j = r.java.perOpNs;
+    const pc = r.percall.perOpNs;
+    const v = r.batch.perOpNs;
+    const b = r.toll;
+
+    const parts = [];
+    let cls = '';
+
+    const pcRatio = pc / j;
+    if (pcRatio > 1) {
+      parts.push('单次过境慢 ' + pcRatio.toFixed(1) + ' 倍——每次调用交 ' + fmtNs(b) +
+        ' 过路费，把活本身（' + fmtNs(j) + '/次）彻底淹没');
+      cls = 'warn';
+    } else {
+      parts.push('单次过境也快 ' + (1 / pcRatio).toFixed(1) + ' 倍——这次活够粗，过路费一次就挣回来了');
+      cls = 'success';
+    }
+
+    const cross = crossoverBatch(j, v, b);
+    const batchRatio = v / j;
+    if (batchRatio < 1) {
+      parts.push('攒批过境快 ' + (1 / batchRatio).toFixed(1) + ' 倍' +
+        (cross ? '，交叉点约 ' + Math.ceil(cross).toLocaleString('zh-CN') + ' 次——批量过了这条线，C++ 才开始挣钱' : ''));
+      if (cls !== 'success') cls = 'success';
+    } else {
+      parts.push('攒批也赢不了（JIT 把 Java 循环编到了 ' + fmtNs(j) + '/次，C++ 没有纯计算优势）');
+      cls = 'warn';
+    }
+
+    return { cls, text: parts.join('。') + '。' };
+  }
+
+  /**
+   * 纳秒自适应格式化
+   */
+  function fmtNs(ns) {
+    if (ns < 10) return (Math.round(ns * 100) / 100) + ' ns';
+    if (ns < 1000) return (Math.round(ns * 10) / 10) + ' ns';
+    if (ns < 1e6) return (Math.round(ns / 100) / 10) + ' µs';
+    return (Math.round(ns / 1e4) / 100) + ' ms';
+  }
+
+  /**
+   * 大数字分隔格式化：1234567 → 1,234,567
+   */
+  function fmtCount(n) {
+    return Number(n).toLocaleString('zh-CN');
   }
 
   return {
-    nativeOpNs,
-    javaTotal,
-    nativePerCallTotal,
-    nativeBatchTotal,
-    crossoverBatch,
     speedup,
-    boundaryShare,
-    amortizedPerOp,
-    marginalGain,
-    amortizedCurve
+    crossoverBatch,
+    measuredCurve,
+    verdict,
+    fmtNs,
+    fmtCount
   };
 })();
 

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="把 Java 集合换成 C++，为什么反而慢了 16 倍？JNI 边界收费站交互演示：单次过境撞墙，攒批反转曲线，亲手找那个交叉点。">
-  <title>JNI 收费站：为什么 Java 的集合不用 C++ 写 | 数字直觉</title>
+  <meta name="description" content="把 Java 循环换成 C++ 会快还是慢？后端真的挂着一段 C++ 共享库：Java JIT、单次过境、攒批过境三条车道在你访问的服务器上跑真基准，数字当场测出来。">
+  <title>跨界收费站：C++ 真的比 Java 快吗？后端实测 | 数字直觉</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="../../components/header.js" defer></script>
   <script src="jni-boundary-logic.js"></script>
@@ -14,124 +14,134 @@
   <div class="container">
 
     <header class="hero">
-      <h1>JNI 收费站</h1>
-      <p class="subtitle">「C++ 比 Java 快，那把 java.util 全换成 C++ 岂不起飞？」<br>
-      在 JVM 和 C++ 之间，有一个收费站。今天你来给它定价。</p>
+      <h1>跨界收费站</h1>
+      <p class="subtitle">「C++ 比 Java 快，把循环全换成 C++ 岂不起飞？」<br>
+      这台后端服务里真的挂了一段 C++ 共享库。别猜了，发车实测。</p>
+      <div class="status-chip" id="status-chip"><span class="dot"></span><span id="status-text">正在连接后端…</span></div>
     </header>
 
-    <!-- 任务卡 -->
-    <section class="card mission-card" aria-label="挑战任务">
-      <div class="card-title">📋 性能委员会的提案</div>
-      <p class="mission-text">
-        你提议把 Java 标准库的容器换成 C++ 高速版。委员会回了一句话：
-        <strong>「可以，拿数据来——让总耗时至少快到 2 倍。」</strong>
-        手里只有三个旋钮：C++ 纯计算快多少、过路费多贵、一次过境带多少活。
-      </p>
-      <div class="progress-track" role="progressbar" aria-label="目标进度" aria-valuemin="0" aria-valuemax="100" id="target-progress">
-        <div class="progress-fill" id="progress-fill"></div>
-        <span class="progress-label" id="progress-label">0%</span>
+    <!-- 控制台 -->
+    <section class="card control-deck" aria-label="控制台">
+      <div class="deck-row">
+        <div class="seg-group" id="scale-group" role="radiogroup" aria-label="数据规模">
+          <button class="seg-btn" data-count="100000">10 万</button>
+          <button class="seg-btn" data-count="500000">50 万</button>
+          <button class="seg-btn active" data-count="1000000">100 万</button>
+          <button class="seg-btn" data-count="5000000">500 万</button>
+        </div>
+        <button class="fire-btn" id="fire">▶ 发车实测</button>
+      </div>
+      <div class="progress-line" id="progress-line" aria-hidden="true"><div class="progress-fill" id="progress-fill"></div></div>
+      <p class="deck-note" id="deck-note">四条车道依次跑：纯过路费 → Java JIT → C++ 单次过境 → C++ 攒批。每条车道预热后测 5 轮取中位数，现场测，不背答案。</p>
+    </section>
+
+    <!-- 对撞屏：双车道 -->
+    <section class="crash-screen" aria-label="双车道对撞结果">
+      <div class="lane java-lane" id="lane-java">
+        <div class="lane-head">JAVA 车道<span class="lane-sub">JIT 编译后的裸循环</span></div>
+        <div class="lane-number" id="num-java">—</div>
+        <div class="lane-unit">ns / 次操作</div>
+        <div class="lane-speedup" id="speed-java">&nbsp;</div>
+      </div>
+      <div class="crash-vs">VS</div>
+      <div class="lane native-lane" id="lane-native">
+        <div class="lane-head">C++ 车道<span class="lane-sub">FFM 调用真实共享库</span></div>
+        <div class="lane-number" id="num-native">—</div>
+        <div class="lane-unit">ns / 次操作（攒批过境）</div>
+        <div class="lane-speedup" id="speed-native">&nbsp;</div>
       </div>
     </section>
 
-    <!-- 场景选择 -->
-    <section class="card" aria-label="工作负载">
-      <div class="card-title">🧬 你的工作负载</div>
-      <p class="card-desc">Java 侧耗时是 JIT 编译后的水平。选一个开局，或直接拖旋钮。</p>
-      <div class="preset-row" id="preset-row">
-        <button class="preset-btn active" data-preset="get">
-          ArrayList.get 流水线<small>Java 5ns · C++ 快 3 倍 · 过路费 80ns</small>
-        </button>
-        <button class="preset-btn" data-preset="zlib">
-          大块压缩 zlib<small>Java 2000ns · C++ 快 5 倍 · 过路费 80ns</small>
-        </button>
-        <button class="preset-btn" data-preset="jit">
-          JIT 强势区<small>Java 3ns · C++ 没快（内联+标量替换）</small>
-        </button>
+    <!-- 全车道明细 -->
+    <section class="card" aria-label="全车道明细">
+      <div class="card-title">四条车道的原始读数</div>
+      <div class="table-wrap">
+        <table class="bench-table">
+          <thead>
+            <tr><th>车道</th><th>总耗时</th><th>每次操作</th><th>对比 Java</th></tr>
+          </thead>
+          <tbody id="table-body">
+            <tr data-lane="noop"><td>纯过路费（noop）</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr data-lane="java"><td>Java JIT 循环</td><td>—</td><td>—</td><td>基准</td></tr>
+            <tr data-lane="native-percall"><td>C++ 单次过境</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr data-lane="native-batch"><td>C++ 攒批过境</td><td>—</td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>
       </div>
+      <div class="verdict" id="verdict">发车之前，先预测一下：哪条车道会赢？</div>
     </section>
 
-    <!-- 操作台 -->
-    <section class="card" aria-label="操作台">
-      <div class="card-title">🎮 操作台</div>
-
-      <div class="slider-group">
-        <label for="speed-slider"><span>C++ 纯计算速度（Java 的几倍）</span><span id="speed-value" class="slider-value">3.0 倍</span></label>
-        <input type="range" id="speed-slider" min="10" max="100" step="5" value="30">
-      </div>
-
-      <div class="slider-group">
-        <label for="toll-slider"><span>每次过境的过路费（一次 JNI/FFM 调用）</span><span id="toll-value" class="slider-value">80 ns</span></label>
-        <input type="range" id="toll-slider" min="10" max="300" step="10" value="80">
-      </div>
-
-      <div class="slider-group">
-        <label for="batch-slider"><span>批量大小（一次过境带多少次操作）</span><span id="batch-value" class="slider-value">1 次</span></label>
-        <input type="range" id="batch-slider" min="0" max="100" step="1" value="0">
-      </div>
-
-      <div class="btn-row">
-        <button class="btn" id="batch-x10">批量 ×10</button>
-        <button class="btn btn-secondary" id="batch-div10">批量 ÷10</button>
-        <button class="btn btn-refactor" id="goto-cross">🎯 去交叉点</button>
-        <button class="btn btn-ghost" id="reset">重置</button>
-      </div>
+    <!-- 实测曲线 -->
+    <section class="card" aria-label="实测曲线">
+      <div class="card-title">摊薄过路费：交叉点在哪里</div>
+      <p class="card-desc">横轴是「攒多少次操作再过境一次」，纵轴是摊到每次操作的耗时。
+      C++ 曲线由实测值推导：过路费 b ÷ N + C++ 纯计算 v。b 和 v 都是刚才实测的，曲线不背答案。</p>
+      <div class="chart-box"><canvas id="chart" aria-label="均摊耗时随批量大小变化的实测推导曲线"></canvas></div>
     </section>
 
-    <!-- 战报 -->
-    <section class="card" aria-label="当前战报">
-      <div class="card-title">📊 战报</div>
-      <div class="result-grid">
-        <div class="result-item"><div class="label">Java 总耗时</div><div class="value" id="stat-java">—</div></div>
-        <div class="result-item"><div class="label">C++ 攒批总耗时</div><div class="value" id="stat-native">—</div></div>
-        <div class="result-item"><div class="label">实际加速</div><div class="value" id="stat-speedup">—</div></div>
-        <div class="result-item red"><div class="label">过路费占比</div><div class="value" id="stat-toll">—</div></div>
-      </div>
-      <div class="ticker" id="marginal-ticker">批量 +1 只能摊薄过路费，Java 那条线一动不动。</div>
-      <div class="ticker percall-ticker" id="percall-ticker">单次过境模式（每次操作都交 80ns）：还在等第一笔活。</div>
-      <div class="verdict" id="verdict">先在「批量大小 = 1」感受一下撞墙，再点「批量 ×10」。</div>
+    <!-- 终端日志 -->
+    <section class="card" aria-label="实测日志">
+      <div class="card-title">实测日志</div>
+      <div class="term" id="term"><div class="term-line">// 等待发车…</div></div>
     </section>
 
-    <!-- 曲线 -->
-    <section class="card" aria-label="均摊耗时曲线">
-      <div class="card-title">📈 均摊耗时曲线</div>
-      <p class="card-desc">横轴是批量大小，纵轴是摊到每次操作的耗时。青色平线是 Java（JIT 内没有收费站），
-      白线是 C++ 攒批方案：批量小，它高在天上；批量够大，它俯冲到青线之下。</p>
-      <div class="chart-box"><canvas id="chart" aria-label="均摊耗时随批量大小变化的曲线"></canvas></div>
+    <!-- 被测的 C++ -->
+    <section class="card" aria-label="被测 C++ 源码">
+      <div class="card-title">被测的 C++，一共 20 行</div>
+      <p class="card-desc">编译成共享库挂在后端进程里，Java 25 的 FFM（Foreign Function &amp; Memory API）直接调用。没有任何 mock——你测的就是这段机器码。</p>
+      <pre class="code-block">#include &lt;cstdint&gt;
+
+extern "C" {
+
+int32_t nb_get_at(const int32_t* arr, int32_t index) {
+    return arr[index];              // 单次过境：每个元素都要调一次
+}
+
+int64_t nb_sum_range(const int32_t* arr, int32_t start, int32_t end) {
+    int64_t acc = 0;
+    for (int32_t i = start; i &lt; end; i++) {
+        acc += arr[i];              // 攒批过境：一次调用，循环在 C++ 里干完
+    }
+    return acc;
+}
+
+void nb_noop() {                    // 纯过路费：什么都不干，专量边界开销
+}
+
+}</pre>
     </section>
 
     <!-- 原理 -->
     <section class="card" aria-label="原理">
-      <div class="card-title">🧮 收费站是怎么算钱的</div>
-      <div class="formula">C++ 赢的条件：&nbsp;b + N·v &lt; N·j</div>
+      <div class="card-title">为什么这个实验回答了那个知乎问题</div>
       <p class="principle-text">
-        j 是 Java（JIT 编译后）每次操作的耗时，v 是 C++ 纯计算耗时，b 是过一次境的固定过路费，
-        N 是攒多少次操作再过境。整理一下，交叉点在 <strong>N* = b / (j − v)</strong>：
-        C++ 的速度优势每小时能挣 (j − v) 纳秒，先把过路费 b 挣回来，剩下的才是纯赚。
-        批量拉到无穷大，加速比的天花板是 <strong>j / v</strong>——过路费摊到零也到不了更高的地方。
+        知乎上的问题是：Java 没有值类型和指针，容器天生写不好，为什么不用 C++ 写一套、
+        JNI 调用？这张实测台就是答案的第一行：数组读取这种纳秒级操作，JIT 编译后的
+        Java 每次只要不到 1ns，而跨一次语言边界要几十 ns——单次过境慢几十倍。
+        C++ 的速度优势要先挣回过路费才轮得到赢。
       </p>
       <p class="principle-text">
-        对应到真实 JVM：ArrayList.get 这种纳秒级操作，JIT 把它内联成几条机器指令，
-        而一次 JNI 调用要切换栈帧、保存寄存器、挂异常检查点，量级在几十到几百纳秒。
-        每步都过境，等于把 5ns 的活干成 80ns——这就是单次过境反而慢十几倍的原因。
-        JVM 自己要下探到 C 层时走的也不是 JNI，而是 intrinsic：JIT 认出
-        System.arraycopy 这类方法，直接换上手写的向量化机器码，收费站都不过。
+        第二行在攒批车道：把 N 次操作攒成一次过境，过路费摊到接近零，
+        C++ 纯计算的优势才释放出来。交叉点 N* = b / (j − v)，b 是过路费、
+        j 和 v 是两侧每次操作的耗时——全部来自你刚才那次实测。
       </p>
       <p class="principle-text">
-        那什么时候过境划算？粗粒度的活：zlib 压一大块 buffer、读写一个 socket。
-        过路费只交一次，里面包着几千纳秒的正经活，曲线从第一格就压在 Java 之下。
-        java.util.zip 和 NIO 的 selector 就是这么干的。语言层面的后续也在印证这个模型：
-        Valhalla 在给 Java 补值类型（把 j 本身做小），Panama 的 FFM API
-        在把过路费 b 降下来（比传统 JNI 便宜数倍，JDK 22 起正式可用）——两条路，都没打算把收费站修成高速路。
+        所以 Java 标准库的选择说得通：集合操作是纳秒粒度，JVM 的正确姿势是让 JIT
+        把 Java 代码本身编译成机器码（内联、标量替换）、让 intrinsic
+        把 arraycopy 这类底层操作直接换成向量化指令——代码不过境，才不用交过路费。
+        真正粗粒度的活（压缩一块 buffer、读写 socket）才值得过境，
+        java.util.zip 和 NIO 就是这么干的。后来 Panama FFM 把过路费降了下来，
+        Valhalla 在给 Java 补值类型——账本的两端都在改，方向依然是语言自己演化。
       </p>
       <p class="principle-text">
-        关于数字的诚实说明：本页的耗时是<strong>模型参数</strong>，不是某台机器的实测值。
-        量级参考公开的 JNI 开销讨论与 JMH 基准常识，公式全部摊开可复算——拖动旋钮，曲线会告诉你结论对参数有多敏感。
+        你看到的数字跑在<span class="env-info" id="env-info">后端</span>上，
+        换台机器重跑数字会变，结论的形状不会：单次过境输，攒批反超，
+        交叉点之前的 C++ 只是台昂贵的跷跷板。
       </p>
     </section>
 
     <footer class="page-footer">
-      <p>出处：Java Native Interface 规范 · JEP 454（Foreign Function &amp; Memory API，JDK 22）·
-      Project Valhalla（值类型）· HotSpot intrinsic 列表（System.arraycopy、Math 等）</p>
+      <p>实测环境：Spring Boot 4 / Java 25 FFM（JEP 454）调用 gcc -O2 编译的 C++20 共享库 · 每车道 5 轮取中位数</p>
       <p><a href="../../index.html">← 回到数字直觉首页</a>，那里还有 230 多个可以亲手验证的演示。</p>
     </footer>
 

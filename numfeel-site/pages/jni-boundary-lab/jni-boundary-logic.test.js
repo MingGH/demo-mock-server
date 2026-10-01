@@ -1,6 +1,6 @@
 /**
- * JNI 边界收费站 - 逻辑单测
- * 用可手算的参数反推公式，再检查边界非法输入。
+ * 跨界收费站 - 逻辑单测
+ * 用本机真实测量值（noop 19.2ns / java 0.63ns / percall 31.5ns / batch 0.049ns）做锚点。
  */
 const L = require('./jni-boundary-logic.js');
 
@@ -24,144 +24,121 @@ function assert(cond, msg) {
 
 function assertClose(actual, expected, relTol, msg) {
   const tol = Math.max(Math.abs(expected), 1) * relTol;
-  assert(Math.abs(actual - expected) <= tol,
-    (msg || '') + ' expected ~' + expected + ', got ' + actual);
+  assert(Math.abs(actual - expected) <= tol, (msg || '') + ' expected ~' + expected + ', got ' + actual);
 }
 
-function assertThrows(fn, msg) {
-  let threw = false;
-  try { fn(); } catch (e) { threw = true; }
-  assert(threw, 'should throw: ' + (msg || ''));
-}
-
-console.log('== nativeOpNs ==');
-
-t('3 倍速：5ns / 3 = 1.667ns', () => {
-  assertClose(L.nativeOpNs(5, 3), 5 / 3, 1e-9);
-});
-
-t('1 倍速：等于 Java 本身', () => {
-  assertClose(L.nativeOpNs(5, 1), 5, 1e-9);
-});
-
-console.log('== javaTotal ==');
-
-t('批量不影响 Java：100 万次 × 5ns = 5ms', () => {
-  assertClose(L.javaTotal(1000000, 5), 5e6, 1e-9);
-  assertClose(L.javaTotal(1, 5), 5, 1e-9);
-});
-
-console.log('== nativePerCallTotal ==');
-
-t('每次都过境：N=1 时 2+80=82ns', () => {
-  assertClose(L.nativePerCallTotal(1, 2, 80), 82, 1e-9);
-});
-
-t('线性增长：N=1000 → 82000ns', () => {
-  assertClose(L.nativePerCallTotal(1000, 2, 80), 82000, 1e-9);
-});
-
-console.log('== nativeBatchTotal ==');
-
-t('攒批过境：80 + 100×2 = 280ns', () => {
-  assertClose(L.nativeBatchTotal(100, 2, 80), 280, 1e-9);
-});
-
-t('批量趋大：过路费占比趋近 0', () => {
-  const share = L.boundaryShare(1000000, 2, 80, 'batch');
-  assert(share < 0.001, 'share=' + share);
-});
-
-console.log('== crossoverBatch：核心反直觉点 ==');
-
-t('教科书值：80 / (5 - 5/3) = 24 次开始反超', () => {
-  assertClose(L.crossoverBatch(5, 5 / 3, 80), 24, 1e-9);
-});
-
-t('N=23 还没反超，N=25 已反超', () => {
-  const j = 5, v = 5 / 3, b = 80;
-  assert(L.javaTotal(23, j) <= L.nativeBatchTotal(23, v, b), '23 should still lose');
-  assert(L.javaTotal(25, j) > L.nativeBatchTotal(25, v, b), '25 should win');
-});
-
-t('C++ 不比 JIT 后的 Java 快：永远反超不了，返回 null', () => {
-  assert(L.crossoverBatch(3, 3, 80) === null, 'equal speedup');
-  assert(L.crossoverBatch(3, 4, 80) === null, 'native slower');
-});
-
-t('过路费越高，交叉点越靠右', () => {
-  const c1 = L.crossoverBatch(5, 2, 80);
-  const c2 = L.crossoverBatch(5, 2, 200);
-  assert(c2 > c1, 'higher toll pushes crossover right');
-});
+// 本机 2026-10-01 实测锚点
+const MEASURED = { toll: 19.2, java: 0.63, percall: 31.5, batch: 0.049 };
 
 console.log('== speedup ==');
 
-t('达标案例：N=100，j=5，v=5/3，b=80 → 约 2.03 倍', () => {
-  const s = L.speedup(L.javaTotal(100, 5), L.nativeBatchTotal(100, 5 / 3, 80));
-  assertClose(s, 2.027, 0.01);
+t('单次过境 vs Java：0.63/31.5 → 慢 50 倍', () => {
+  assertClose(L.speedup(MEASURED.java, MEASURED.percall), 0.02, 0.001);
 });
 
-t('撞墙案例：N=1 单次过境 → 5/(80+5/3) ≈ 0.061 倍（慢 16 倍）', () => {
-  const s = L.speedup(L.javaTotal(1, 5), L.nativePerCallTotal(1, 5 / 3, 80));
-  assertClose(s, 5 / (80 + 5 / 3), 1e-9);
-  assert(s < 0.1, 'single-call should lose badly');
+t('攒批 vs Java：0.63/0.049 → 快约 12.9 倍', () => {
+  assertClose(L.speedup(MEASURED.java, MEASURED.batch), 12.857, 0.01);
 });
 
-console.log('== boundaryShare ==');
+console.log('== crossoverBatch（实测值版）==');
 
-t('单次过境 N=1：过路费占 80/82 ≈ 97.6%', () => {
-  assertClose(L.boundaryShare(1, 2, 80, 'perCall'), 80 / 82, 1e-9);
+t('实测锚点：19.2 / (0.63 - 0.049) ≈ 33.04 次（上整 34）', () => {
+  const c = L.crossoverBatch(MEASURED.java, MEASURED.batch, MEASURED.toll);
+  assertClose(c, 33.04, 0.01);
 });
 
-t('批量过境 N=100：过路费占 80/280 ≈ 28.6%', () => {
-  assertClose(L.boundaryShare(100, 2, 80, 'batch'), 80 / 280, 1e-9);
+t('C++ 不比 JIT 后的 Java 快：返回 null', () => {
+  assert(L.crossoverBatch(0.5, 0.5, 20) === null);
+  assert(L.crossoverBatch(0.5, 0.6, 20) === null);
 });
 
-console.log('== marginalGain ==');
-
-t('批量越大，边际收益越小：1→2 涨 40ns，9999→10000 只涨不到 0.01ns', () => {
-  const g1 = L.marginalGain(5, 2, 80, 1, 2);
-  const g2 = L.marginalGain(5, 2, 80, 9999, 10000);
-  assertClose(g1, 40, 1e-9);
-  assert(g2 < 0.01, 'g2=' + g2);
+t('非法输入抛异常', () => {
+  let threw = false;
+  try { L.crossoverBatch(0, 1, 1); } catch (e) { threw = true; }
+  assert(threw);
+  threw = false;
+  try { L.crossoverBatch(1, 1, -1); } catch (e) { threw = true; }
+  assert(threw);
 });
 
-console.log('== amortizedCurve ==');
+console.log('== measuredCurve（由实测值推导）==');
 
-t('曲线首点 N=1：Java 5 / C++ 82，末点趋近 C++ 纯计算耗时', () => {
-  const c = L.amortizedCurve(5, 2, 80, 100000);
-  assertClose(c.javaPerOp[0], 5, 1e-9);
-  assertClose(c.nativePerOp[0], 82, 1e-9);
+t('N=1 时 C++ 均摊 = b + v = 19.25ns，与实测单次过境同量级', () => {
+  const c = L.measuredCurve(MEASURED.java, MEASURED.batch, MEASURED.toll, 1000000);
+  assertClose(c.nativePerOp[0], MEASURED.toll + MEASURED.batch, 1e-9);
+  assertClose(c.javaPerOp[0], MEASURED.java, 1e-9);
+});
+
+t('大批量时 C++ 均摊趋近实测 v=0.049，Java 线恒定', () => {
+  const c = L.measuredCurve(MEASURED.java, MEASURED.batch, MEASURED.toll, 1000000);
   const last = c.nativePerOp[c.nativePerOp.length - 1];
-  assert(last < 2.01 && last > 2, 'last=' + last);
-  assert(c.javaPerOp.every(v => v === 5), 'java line flat');
+  assert(last < MEASURED.batch * 1.01, 'last=' + last);
+  assert(c.javaPerOp.every(v => v === MEASURED.java), 'java flat');
 });
 
-t('曲线单调不升：批量越大均摊越低', () => {
-  const c = L.amortizedCurve(5, 2, 80, 100000);
+t('曲线单调不升', () => {
+  const c = L.measuredCurve(MEASURED.java, MEASURED.batch, MEASURED.toll, 1000000);
   for (let i = 1; i < c.nativePerOp.length; i++) {
     assert(c.nativePerOp[i] <= c.nativePerOp[i - 1], 'monotonic at i=' + i);
   }
 });
 
-console.log('== 非法输入 ==');
+console.log('== verdict（真实数据状态机）==');
 
-t('批量 0 / 负数 / 非整数都要抛异常', () => {
-  assertThrows(() => L.javaTotal(0, 5));
-  assertThrows(() => L.javaTotal(-10, 5));
-  assertThrows(() => L.javaTotal(1.5, 5));
+t('数据不全：引导用户先跑', () => {
+  const v = L.verdict({});
+  assert(v.text.includes('开始实测'));
 });
 
-t('耗时必须 > 0，速度必须 >= 1', () => {
-  assertThrows(() => L.nativeOpNs(0, 3));
-  assertThrows(() => L.nativeOpNs(-1, 3));
-  assertThrows(() => L.nativeOpNs(5, 0.5));
-  assertThrows(() => L.nativeBatchTotal(10, 2, 0));
+t('教科书结局：单次撞墙 + 攒批反转，判词点名两者', () => {
+  const r = {
+    toll: MEASURED.toll,
+    java: { perOpNs: MEASURED.java },
+    percall: { perOpNs: MEASURED.percall },
+    batch: { perOpNs: MEASURED.batch }
+  };
+  const v = L.verdict(r);
+  assert(v.cls === 'success', v.cls);
+  assert(v.text.includes('慢 50.0 倍'), v.text);
+  assert(v.text.includes('攒批过境快 12.9 倍'), v.text);
+  assert(v.text.includes('34'), v.text);
 });
 
-t('mode 非法值抛异常', () => {
-  assertThrows(() => L.boundaryShare(10, 2, 80, 'nonsense'));
+t('粗活结局：单次也赢（zlib 型负载）', () => {
+  const r = {
+    toll: MEASURED.toll,
+    java: { perOpNs: 2000 },
+    percall: { perOpNs: 480 },
+    batch: { perOpNs: 400 }
+  };
+  const v = L.verdict(r);
+  assert(v.cls === 'success', v.cls);
+  assert(v.text.includes('单次过境也快'), v.text);
+});
+
+t('JIT 死局结局：C++ 纯计算没有优势', () => {
+  const r = {
+    toll: MEASURED.toll,
+    java: { perOpNs: 0.5 },
+    percall: { perOpNs: 20 },
+    batch: { perOpNs: 0.6 }
+  };
+  const v = L.verdict(r);
+  assert(v.cls === 'warn', v.cls);
+  assert(v.text.includes('赢不了'), v.text);
+});
+
+console.log('== fmt ==');
+
+t('fmtNs 三段自适应', () => {
+  assert(L.fmtNs(0.049) === '0.05 ns', L.fmtNs(0.049));
+  assert(L.fmtNs(31.517) === '31.5 ns', L.fmtNs(31.517));
+  assert(L.fmtNs(19199.5) === '19.2 µs', L.fmtNs(19199.5));
+  assert(L.fmtNs(3244666) === '3.24 ms', L.fmtNs(3244666));
+});
+
+t('fmtCount 千分位', () => {
+  assert(L.fmtCount(1000000) === '1,000,000');
 });
 
 console.log('');

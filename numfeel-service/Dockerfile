@@ -1,3 +1,9 @@
+# 第一阶段：编译 C++ 原生基准库（跨界收费站 demo 的真实 C++ 车道）
+# gcc 官方镜像只用于编译 20 行的 .so，最终镜像不带编译器
+FROM gcc:13 AS native-builder
+COPY native/nativebench.cpp /tmp/nativebench.cpp
+RUN gcc -O2 -shared -fPIC -o /tmp/libnativebench.so /tmp/nativebench.cpp
+
 # Eclipse Temurin 25（HotSpot，LTS）。与文章使用的 G1 / ZGC 等 HotSpot 概念保持一致，
 # 也让 /jvm-memory 返回的 GC 名与内存池（Metaspace / Code Cache）对得上。
 FROM eclipse-temurin:25-jre
@@ -21,6 +27,8 @@ RUN apt-get update \
 WORKDIR $PROJECT_HOME
 COPY ${JAR_FILE} $PROJECT_HOME/numfeel-service.jar
 COPY ${AGENT_FILE} $PROJECT_HOME/trace-agent.jar
+# 真实 C++ 共享库：/jni-boundary 基准接口的 native 车道从这里加载
+COPY --from=native-builder /tmp/libnativebench.so $PROJECT_HOME/native/libnativebench.so
 
 EXPOSE 8080
 
@@ -33,4 +41,4 @@ EXPOSE 8080
 #   经 GET /agent/events、/agent/stats（AgentTraceController 回环转发）对外暴露
 # - -XX:MaxRAMPercentage=75：堆上限 = 容器 limit 的 75%（limit 2G → 堆 1.5G），
 #   剩余 25% 留给 Metaspace / Code Cache / 线程栈等堆外内存，改 limit 时堆自动跟着变
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-javaagent:/usr/local/numfeel-service/trace-agent.jar", "-jar", "/usr/local/numfeel-service/numfeel-service.jar"]
+ENTRYPOINT ["java", "--enable-native-access=ALL-UNNAMED", "-XX:MaxRAMPercentage=75.0", "-javaagent:/usr/local/numfeel-service/trace-agent.jar", "-jar", "/usr/local/numfeel-service/numfeel-service.jar"]

@@ -77,3 +77,20 @@ src/main/java/run/runnable/numfeelservice/
 - **表结构初始化**：启动时通过 `SchemaInitializer` 从 `schema.sql` 尽力执行 DDL（失败不阻断服务，与旧版 Vert.x 行为一致）。
 - **数据库查询**：聚合/统计类优先使用 `DatabaseClient` 原生 SQL；避免 `selectAll()` + Java stream 内存过滤。简单 CRUD 使用 `R2dbcEntityTemplate`。
 - **DTO 使用 record**：所有请求/响应 DTO 均为 Java record，每个字段带 Javadoc。
+
+## 跨界收费站（/jni-boundary）本地开发
+
+后端挂了一段真实 C++ 共享库（`native/nativebench.cpp`），通过 Java 25 FFM 调用。
+
+本地（macOS）编译并运行：
+
+```bash
+clang++ -O2 -shared -fPIC -o /tmp/libnativebench.dylib native/nativebench.cpp
+NATIVE_BENCH_LIB=/tmp/libnativebench.dylib \
+JAVA_TOOL_OPTIONS='--enable-native-access=ALL-UNNAMED' \
+./mvnw spring-boot:run -DskipTests
+```
+
+容器内不需要手动编译：Dockerfile 第一阶段用 gcc:13 编出 `libnativebench.so`，
+运行时自动从 `./native/` 加载。接口：`GET /jni-boundary/status`、
+`POST /jni-boundary/run`（body: `{"lane":"java|native-percall|native-batch|noop","count":1000000}`）。

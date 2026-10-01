@@ -307,7 +307,7 @@ function sendNotification(options, meta) {
         return worker.showNotification('数字直觉 · ' + meta.name, options)
           .then(function () { return { ok: true }; });
       }
-      return showDirect(options).then(function (ok) {
+      return showDirect(options, meta).then(function (ok) {
         return { ok: ok, reason: 'fallback' };
       });
     })
@@ -323,9 +323,9 @@ function sendNotification(options, meta) {
     });
 }
 
-function showDirect(options) {
+function showDirect(options, meta) {
   try {
-    var n = new Notification('数字直觉 · ' + (options.title || ''), options);
+    var n = new Notification('数字直觉 · ' + meta.name, options);
     return Promise.resolve(Boolean(n));
   } catch (error) {
     return Promise.resolve(false);

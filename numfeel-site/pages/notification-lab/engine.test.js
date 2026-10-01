@@ -102,6 +102,27 @@ function assertEqual(actual, expected, msg) {
   assert(env.hasPushManager, '能力探测只反映 API 是否存在，限制由 detail 说明');
 })();
 
+// ── 测试：真实 iOS 普通标签页（无 PushManager）也提示主屏幕限制 ──
+(function testIOSNonStandaloneNoPushManager() {
+  var env = {
+    hasNotification: true,
+    hasServiceWorker: true,
+    hasPushManager: false,
+    hasBadging: false,
+    hasVibrate: true,
+    hasWakeLock: false,
+    isIOS: true,
+    isAndroid: false,
+    standalone: false
+  };
+
+  var caps = engine.detectCapabilities(env);
+  var push = caps.find(function (c) { return c.id === 'push'; });
+
+  assert(push.detail.indexOf('主屏幕') !== -1,
+    '真实 iOS 标签页没有 PushManager，但仍应解释主屏幕限制而不是只说缺少 API');
+})();
+
 // ── 测试：iOS 主屏幕 App 拿到推送 ──
 (function testIOSStandalone() {
   var env = {

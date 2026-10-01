@@ -339,16 +339,18 @@ function probeCapability(id, env) {
  * 拼装 Web Push 的说明文案。
  *
  * iOS 上「浏览器支持」和「实际能收到」是两件事，检测结果需要分开讲。
+ * 注意 iOS 普通标签页根本不暴露 PushManager，所以 iOS 判断必须放在
+ * hasPushManager 检查之前，否则这句提示永远走不到。
  *
  * @param {object} env 浏览器能力标志集合
  * @returns {string} 能力说明
  */
 function buildPushDetail(env) {
-  if (!env.hasPushManager) {
-    return '缺少 PushManager';
-  }
   if (env.isIOS && !env.standalone) {
     return 'iOS 仅对已添加到主屏幕的 App 开放推送，当前是普通网页';
+  }
+  if (!env.hasPushManager) {
+    return '缺少 PushManager';
   }
   if (env.isIOS) {
     return 'iOS 主屏幕 App，可以订阅推送';
@@ -358,13 +360,14 @@ function buildPushDetail(env) {
 
 /**
  * 拼装角标能力说明，区分「平台自绘」和「API 自己画」。
+ * 只有 hasBadging 为 true 时才会走到这里，文案不能再声称浏览器不暴露该 API。
  *
  * @param {object} env 浏览器能力标志集合
  * @returns {string} 能力说明
  */
 function buildBadgingDetail(env) {
   if (env.isAndroid) {
-    return 'Android 由系统自绘角标，浏览器不暴露该 API';
+    return 'API 可用，但 Android 未读角标由系统自绘，网页设置的数字取决于桌面启动器';
   }
   if (env.standalone) {
     return '以 PWA 独立窗口运行，角标可用';

@@ -118,7 +118,10 @@ function firePreset(presetId) {
   }
 
   var built = engine.buildNotification(preset);
-  sendNotification(built.options, built.meta);
+  var options = built.options;
+  // 每次点击生成唯一 tag，避免被当成「替换上一条」而不重新弹出。
+  options.tag = uniqueTag(built.meta.id);
+  sendNotification(options, built.meta);
 }
 
 function fireRenotifySequence() {
@@ -226,6 +229,7 @@ function sendDemoGreeting() {
   var built = engine.buildNotification(engine.NOTIFICATION_PRESETS[0]);
   var options = built.options;
   options.body = '通知能力已点亮，往下看你的浏览器能弹什么。';
+  options.tag = uniqueTag(built.meta.id);
 
   return sendNotification(options, built.meta)
     .then(function () {
@@ -271,6 +275,18 @@ function ensureWorker() {
 }
 
 // ── 真正发出一条通知 ──
+/**
+ * 生成唯一 tag：在基础 tag 上追加时间戳。
+ * 同 tag 的通知会被浏览器当作「替换旧通知」，导致重复点击不重新弹；
+ * 加时间戳后每次点击都是全新的一条。
+ *
+ * @param {string} base 预设自带的基础 tag
+ * @returns {string} 唯一的 tag
+ */
+function uniqueTag(base) {
+  return base + '-' + Date.now();
+}
+
 function sendNotification(options, meta) {
   if (currentPermission() !== 'granted') {
     return Promise.resolve({ ok: false, reason: 'permission' });

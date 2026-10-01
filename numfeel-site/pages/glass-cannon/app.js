@@ -146,8 +146,11 @@
 
     function finish(simT) {
       const o = L.outcome(eff);
-      setBar(els.barMeFill, els.barMeLabel, o === 'win' ? eff.myHp : 0, eff.myHp);
-      setBar(els.barEnemyFill, els.barEnemyLabel, o === 'lose' ? eff.enemyHp : 0, eff.enemyHp);
+      // 结算时刻的精确剩余血量：败方归零，胜方保留被打掉的伤害
+      const myFinal = t.deathTime === Infinity ? eff.myHp : Math.max(0, eff.myHp - eff.enemyDps * simT);
+      const enemyFinal = Math.max(0, eff.enemyHp - eff.myDps * simT);
+      setBar(els.barMeFill, els.barMeLabel, myFinal, eff.myHp);
+      setBar(els.barEnemyFill, els.barEnemyLabel, enemyFinal, eff.enemyHp);
       const stamp = simT === Infinity ? '' : simT.toFixed(1) + 's ';
       if (o === 'win') logLine(stamp + '怪物倒下——' + outcomeText(o), 'log-win');
       else if (o === 'lose') logLine(stamp + '你倒下了——' + outcomeText(o), 'log-lose');

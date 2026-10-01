@@ -28,38 +28,49 @@
     </div>
   </section>
 
-  <!-- ══════════ 模块 A：三个未知数 ══════════ -->
+  <!-- ══════════ 模块 A：三个圆，一个交点（三步渐进） ══════════ -->
   <section class="section" id="solveSection">
     <div class="round-head">
       <span class="tag tag-fun">定位</span>
-      <h2><i class="ti ti-satellite"></i> 四颗星，四个未知数</h2>
+      <h2><i class="ti ti-satellite"></i> 定位的本质：三个圆，一个交点</h2>
     </div>
-    <p class="section-desc">接收机想算自己的位置 (x, y)，但它自己那块廉价石英钟和天空的原子钟<b>对不齐</b>，于是多出一个隐藏未知数：<b>钟差 b</b>——就是你的时钟和原子钟之间的时间差，说白了，你的表慢了多少。几十纳秒乘上光速，就是几十米。</p>
+    <p class="section-desc">忘掉公式。GPS 定位这件事，画三个圆就能看懂。分三步走，每一步都能动手拖。</p>
 
     <div class="module">
+      <div class="step-tabs" id="stepTabs">
+        <button class="step-tab active" data-step="1">① 三个圆定一个点</button>
+        <button class="step-tab" data-step="2">② 表慢了，圆全歪</button>
+        <button class="step-tab" data-step="3">③ GPS 的天才一招</button>
+      </div>
+      <p class="step-guide" id="stepGuide"></p>
       <div class="solve-layout">
         <div class="canvas-wrap">
           <canvas id="solveCanvas" width="560" height="420"></canvas>
-          <p class="canvas-cap">拖拽<b>你的接收机</b>（金色点），卫星位置固定。</p>
+          <p class="canvas-cap">拖拽<b>你的接收机</b>（金色点），圆会跟着重新找交点。</p>
         </div>
         <div class="solve-side">
-          <div class="toggle-row">
-            <label class="switch" title="把「时钟偏差」当成已知，其实是漏掉了这个未知数">
+          <div id="step2Controls" class="step2-controls" style="display:none">
+            <label class="slider-label">把我的表拨慢：<strong id="biasVal">100 µs</strong> <span class="slider-sub" id="biasSub">（每个距离虚胖 30 km）</span></label>
+            <input type="range" id="biasSlider" min="0" max="200" value="100" step="10">
+          </div>
+          <div id="step3Toggle" class="toggle-row" style="display:none">
+            <label class="switch" title="打开 = 拒绝承认表慢，假装自己有原子钟">
               <input type="checkbox" id="assumeClockKnown">
               <span class="slider"></span>
             </label>
             <div class="toggle-text">
-              <b id="assumeLabel">把时钟偏差当未知数（正确）</b>
-              <span class="toggle-sub">漏掉它，位置就会飞走</span>
+              <b id="assumeLabel">假装我的表很准</b>
+              <span class="toggle-sub">拒绝让圆缩小，看位置飞走</span>
             </div>
           </div>
           <div class="stat-grid">
-            <div class="stat"><span class="stat-label">解出的位置误差</span><strong id="solveError">0 m</strong></div>
-            <div class="stat"><span class="stat-label">解出的钟差</span><strong id="solveBias">—</strong></div>
-            <div class="stat"><span class="stat-label">代入卫星数</span><strong id="solveSats">4</strong></div>
-            <div class="stat"><span class="stat-label">正交残差</span><strong id="solveResidual">—</strong></div>
+            <div class="stat"><span class="stat-label">定位结果</span><strong id="solveError">—</strong></div>
+            <div class="stat"><span class="stat-label">三个圆交上了吗</span><strong id="solveJoin">—</strong></div>
+            <div class="stat"><span class="stat-label">你的表慢了多少</span><strong id="solveBias">—</strong></div>
+            <div class="stat"><span class="stat-label">用了几颗卫星</span><strong id="solveSats">4</strong></div>
           </div>
           <div class="solve-note" id="solveNote"></div>
+          <button class="btn btn-primary" id="nextStepBtn">下一步：如果表慢了呢 →</button>
         </div>
       </div>
     </div>

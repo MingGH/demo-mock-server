@@ -73,12 +73,29 @@ body {
 .action-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 
 /* ── 模块 A：solve ── */
+.step-tabs { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.step-tab {
+  padding: 9px 16px; border-radius: 20px; font-size: 0.88rem; cursor: pointer;
+  background: rgba(255,255,255,0.05); color: #aaa; border: 1px solid rgba(255,255,255,0.12);
+  transition: all 0.2s ease;
+}
+.step-tab:hover { color: #e8e8e8; border-color: rgba(255,215,0,0.4); }
+.step-tab.active { background: rgba(255,215,0,0.14); color: #ffd700; border-color: #ffd700; font-weight: 700; }
+.step-guide {
+  font-size: 0.92rem; color: #ccc; line-height: 1.75; margin-bottom: 18px;
+  padding: 14px 16px; border-radius: 10px;
+  background: rgba(144,202,249,0.06); border: 1px solid rgba(144,202,249,0.15);
+}
+.step-guide b { color: #ffd700; }
 .solve-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; align-items: start; }
 .canvas-wrap { min-width: 0; }
 #solveCanvas { width: 100%; height: auto; background: rgba(0,0,0,0.35); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); display: block; touch-action: none; }
 .canvas-cap { font-size: 0.78rem; color: #777; margin-top: 8px; }
 .canvas-cap b { color: #ffd700; }
 .solve-side { min-width: 0; }
+.step2-controls { margin-bottom: 16px; padding: 14px 16px; border-radius: 10px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); }
+.step2-controls .slider-label { margin-bottom: 12px; }
+.slider-sub { font-size: 0.78rem; color: #888; }
 .toggle-row { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
 .toggle-text b { display: block; font-size: 0.95rem; color: #e8e8e8; }
 .toggle-sub { font-size: 0.78rem; color: #888; }

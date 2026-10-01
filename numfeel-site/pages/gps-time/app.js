@@ -36,11 +36,11 @@
   }
 
   // ════════════════════════════════════════════════════════════════
-  // 模块 A：四颗星，四个未知数（2D 定位解算 + 可拖拽接收机）
+  // 模块 A：三个圆，一个交点（三步渐进：定位 → 表慢 → GPS 的解法）
   // ════════════════════════════════════════════════════════════════
   var solveState = {
     cv: null, ctx: null,
-    cssW: 560, cssH: 420,   // 画布的逻辑(物理像素)尺寸，世界坐标映射用
+    cssW: 560, cssH: 420,   // 画布的逻辑像素尺寸，世界坐标映射用
     dpr: 1,
     scale: 0.006,           // px 每米，自动适配内容
     sats: [   // 卫星平面坐标（米），围绕画布中心分布
@@ -50,11 +50,27 @@
       { x: -9000, y: -11000 }
     ],
     truePos: { x: 200, y: -150 },   // 真实接收机位置
-    clockBias: 1e-4,                // 100µs = 29.98 km
+    step: 1,                // 当前步骤 1/2/3
+    userBiasUs: 100,        // 步骤 2/3 里"你的表慢了多少"（微秒），滑块可调
+    assumeKnown: false,     // 步骤 3 的开关：假装表很准
+    animT: 1,               // 步骤 3 收缩动画进度 0→1
+    animRaf: null,
     dragging: false
   };
 
-  // 世界坐标(米) ↔ 画布坐标(px) 的缩放；全部用 cssW/cssH（逻辑像素），与事件坐标一致。
+  var GUIDE = {
+    1: '每颗卫星都带着原子钟，不停广播「现在是几点」。信号跑到你手机要花一点时间——<b>路上花的时间 × 光速 = 你离它多远</b>。以卫星为圆心、这个距离为半径画个圆：两个圆交出两个点，三个圆只剩一个交点。那个交点，就是你在哪。',
+    2: '麻烦来了：你的手机里没有原子钟，只有几块钱的石英表。假设它慢了 100 微秒——信号「在路上花的时间」就被你量多了 100 微秒，<b>每个距离都虚胖了同一段</b>。三个圆各自胖了一圈，再也凑不出一个公共的交点。你的位置，卡在了几条弧线中间的空地里。',
+    3: '三颗卫星量的是同一块慢表，所以三个圆多出来的长度是<b>同一个数</b>。GPS 的解法：与其猜表慢多少，干脆把它当成第三个未知数——<b>让三个圆一起缩小同样的长度</b>，什么时候重新交于一点，缩掉的长度就是你的表慢了多少。位置和钟差，一次全出来。（真实 GPS 在三维空间：位置 3 个数 + 钟差 = 4 个未知数，所以手机要同时看到 4 颗星；这里是平面版，3 颗就够。）'
+  };
+
+  var NEXT_BTN = {
+    1: '下一步：如果表慢了呢 →',
+    2: '下一步：看 GPS 怎么救场 →',
+    3: '← 再从第一步看一遍'
+  };
+
+  // 世界坐标(米) ↔ 画布坐标(px)；全部用 cssW/cssH（逻辑像素），与事件坐标一致。
   function worldToCanvas(p) {
     var scale = solveState.scale;
     var cx = solveState.cssW / 2, cy = solveState.cssH / 2;
@@ -66,28 +82,68 @@
     return { x: (px - cx) / scale, y: (cy - py) / scale };
   }
 
-  // 按当前内容(卫星 + 接收机)自适应缩放，保证全部可见。
+  // 按当前内容自适应缩放；留出余量给步骤 2/3 里鼓出来的圆弧。
   function fitSolveView() {
     var maxX = 1, maxY = 1;
-    var pts = solveState.sats.concat([solveState.truePos]);
-    pts.forEach(function (p) {
+    solveState.sats.forEach(function (p) {
       maxX = Math.max(maxX, Math.abs(p.x));
       maxY = Math.max(maxY, Math.abs(p.y));
     });
-    var sx = (solveState.cssW / 2 - 30) / maxX;
-    var sy = (solveState.cssH / 2 - 30) / maxY;
-    solveState.scale = Math.max(1e-9, Math.min(sx, sy));
+    var sx = (solveState.cssW / 2 - 40) / maxX;
+    var sy = (solveState.cssH / 2 - 40) / maxY;
+    solveState.scale = Math.max(1e-9, Math.min(sx, sy) * 0.8);
   }
 
-  function solvePseudoranges(useBias) {
+  // 当前假设的钟差（秒）。步骤 1 是"表很准"的世界，步骤 2/3 用滑块值。
+  function currentBiasSeconds() {
+    return solveState.step === 1 ? 0 : solveState.userBiasUs * 1e-6;
+  }
+
+  function prsFor(biasSeconds) {
     return solveState.sats.map(function (s) {
-      return window.GPS_ENGINE.pseudorange(window.GPS_ENGINE.dist2d(solveState.truePos, s),
-        useBias ? solveState.clockBias : 0);
+      return window.GPS_ENGINE.pseudorange(window.GPS_ENGINE.dist2d(solveState.truePos, s), biasSeconds);
     });
   }
 
+  function easeInOut(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function startShrinkAnim() {
+    if (solveState.animRaf) { cancelAnimationFrame(solveState.animRaf); solveState.animRaf = null; }
+    solveState.animT = 0;
+    var start = performance.now();
+    var dur = 1600;
+    (function frame(now) {
+      solveState.animT = Math.min(1, (now - start) / dur);
+      drawSolve();
+      if (solveState.animT < 1) {
+        solveState.animRaf = requestAnimationFrame(frame);
+      } else {
+        solveState.animRaf = null;
+      }
+    })(start);
+  }
+
+  function stopShrinkAnim() {
+    if (solveState.animRaf) { cancelAnimationFrame(solveState.animRaf); solveState.animRaf = null; }
+    solveState.animT = 1;
+  }
+
+  function drawCircleAt(sat, radiusM, style, width, dashed) {
+    var ctx = solveState.ctx;
+    var c = worldToCanvas(sat);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, Math.max(1, radiusM * solveState.scale), 0, Math.PI * 2);
+    ctx.strokeStyle = style;
+    ctx.lineWidth = width;
+    if (dashed) ctx.setLineDash([6, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
   function drawSolve() {
-    var cv = solveState.cv, ctx = solveState.ctx;
+    var ctx = solveState.ctx;
     var W = solveState.cssW, H = solveState.cssH;
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fillRect(0, 0, W, H);
@@ -98,58 +154,81 @@
     for (var g = 0; g <= W; g += 40) { ctx.beginPath(); ctx.moveTo(g, 0); ctx.lineTo(g, H); ctx.stroke(); }
     for (var g2 = 0; g2 <= H; g2 += 40) { ctx.beginPath(); ctx.moveTo(0, g2); ctx.lineTo(W, g2); ctx.stroke(); }
 
-    var assumeKnown = $('assumeClockKnown').checked;
-    var prs = solvePseudoranges(true);
+    var step = solveState.step;
+    var biasS = currentBiasSeconds();
+    var biasM = biasS * window.GPS_ENGINE.SPEED_OF_LIGHT;   // 表慢带来的"虚胖"（米）
+    var E = window.GPS_ENGINE;
 
-    // 卫星
+    var solved = null;
+    if (step === 3 && !solveState.assumeKnown) {
+      solved = E.solvePosition(solveState.sats, prsFor(biasS), {});
+      if (solved) {
+        var shrinkTarget = solved.clockBiasSeconds * E.SPEED_OF_LIGHT; // 应该缩掉的长度
+        var e = easeInOut(solveState.animT);
+        // 圆：从"虚胖"半径收缩到"重新交于一点"的半径
+        solveState.sats.forEach(function (s) {
+          var rho = E.dist2d(solveState.truePos, s) + biasM;
+          var r = rho - shrinkTarget * e;
+          drawCircleAt(s, r, 'rgba(129,199,132,0.55)', 2, false);
+        });
+        // 收缩完成：高亮交点
+        if (solveState.animT >= 1) {
+          var ip = worldToCanvas({ x: solved.x, y: solved.y });
+          ctx.beginPath(); ctx.arc(ip.x, ip.y, 14, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(129,199,132,0.9)'; ctx.lineWidth = 2; ctx.stroke();
+        }
+      }
+    } else if (step === 3 && solveState.assumeKnown) {
+      // 假装表准：拒绝收缩，圆停在虚胖状态
+      solveState.sats.forEach(function (s) {
+        drawCircleAt(s, E.dist2d(solveState.truePos, s) + biasM, 'rgba(255,107,107,0.5)', 2, false);
+      });
+    } else if (step === 2) {
+      // 灰色虚线：真实距离的圆（三条本应交于一点）
+      solveState.sats.forEach(function (s) {
+        drawCircleAt(s, E.dist2d(solveState.truePos, s), 'rgba(144,202,249,0.25)', 1.5, true);
+      });
+      // 红色实线：按慢表量出来的圆（全部虚胖，交不上）
+      solveState.sats.forEach(function (s) {
+        drawCircleAt(s, E.dist2d(solveState.truePos, s) + biasM, 'rgba(255,107,107,0.55)', 2, false);
+      });
+    } else {
+      // 步骤 1：干净的三(四)个圆，全部穿过接收机
+      solveState.sats.forEach(function (s) {
+        drawCircleAt(s, E.dist2d(solveState.truePos, s), 'rgba(144,202,249,0.5)', 2, false);
+      });
+    }
+
+    // 卫星（蓝点）
     solveState.sats.forEach(function (s) {
       var p = worldToCanvas(s);
       ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
       ctx.fillStyle = '#90caf9'; ctx.fill();
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-      // 卫星到接收机的伪距连线
-      var tp = worldToCanvas(solveState.truePos);
-      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(tp.x, tp.y);
-      ctx.strokeStyle = 'rgba(144,202,249,0.35)'; ctx.lineWidth = 1; ctx.stroke();
     });
 
     // 真实接收机（金色）
-    var tp2 = worldToCanvas(solveState.truePos);
-    ctx.beginPath(); ctx.arc(tp2.x, tp2.y, 8, 0, Math.PI * 2);
+    var tp = worldToCanvas(solveState.truePos);
+    ctx.beginPath(); ctx.arc(tp.x, tp.y, 8, 0, Math.PI * 2);
     ctx.fillStyle = '#ffd700'; ctx.fill();
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
-    ctx.fillText('你的接收机', tp2.x + 12, tp2.y - 12);
+    ctx.fillText(step === 1 ? '你 = 交点' : '你的真实位置', tp.x + 12, tp.y - 12);
 
-    // 解算结果
-    var solve = window.GPS_ENGINE.solvePosition(solveState.sats, prs, { assumeClockKnown: assumeKnown });
-    var errText, noteText, noteCls;
-
-    if (!solve) {
-      errText = '无解';
-      noteText = '卫星太少或几何退化，解不出来。';
-      noteCls = 'warn';
-      $('solveBias').textContent = '—';
-      $('solveResidual').textContent = '—';
-    } else {
-      var errM = Math.hypot(solve.x - solveState.truePos.x, solve.y - solveState.truePos.y);
-      var biasUs = solve.clockBiasSeconds * 1e6;
-
-      if (assumeKnown) {
-        noteText = '你把「钟差」当已知、直接摁掉了这个未知数。可真实伪距里其实藏着 ' +
-          (solveState.clockBias * 1e6).toFixed(0) + ' µs 的钟差，被系统强行摊进了位置——' +
-          '这就偏了 ' + (errM / 1000).toFixed(1) + ' 公里。';
-        noteCls = 'warn';
-        // 画一个偏离的标记（超出画布时画在边缘箭头）
-        var sp = worldToCanvas({ x: solve.x, y: solve.y });
+    // 步骤 3 + 假装表准：画出被推走的位置
+    var errKm = 0;
+    if (step === 3 && solveState.assumeKnown) {
+      var bad = E.solvePosition(solveState.sats, prsFor(biasS), { assumeClockKnown: true });
+      if (bad) {
+        errKm = Math.hypot(bad.x - solveState.truePos.x, bad.y - solveState.truePos.y) / 1000;
+        var sp = worldToCanvas({ x: bad.x, y: bad.y });
         var inV = sp.x > 10 && sp.x < W - 10 && sp.y > 10 && sp.y < H - 10;
         if (inV) {
           ctx.beginPath(); ctx.arc(sp.x, sp.y, 6, 0, Math.PI * 2);
           ctx.fillStyle = '#ff6b6b'; ctx.fill();
           ctx.fillStyle = '#ff6b6b'; ctx.font = '11px sans-serif';
-          ctx.fillText('错误解(' + (errM / 1000).toFixed(0) + 'km)', sp.x + 10, sp.y + 4);
+          ctx.fillText('被推到这 (' + errKm.toFixed(0) + ' km)', sp.x + 10, sp.y + 4);
         } else {
-          // 画向偏离方向的箭头
           var dx = sp.x - W / 2, dy = sp.y - H / 2;
           var len = Math.hypot(dx, dy) || 1;
           var ex = W / 2 + (dx / len) * (Math.min(W, H) / 2 - 14);
@@ -158,26 +237,62 @@
           ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 2; ctx.stroke();
           ctx.beginPath(); ctx.arc(ex, ey, 6, 0, Math.PI * 2); ctx.fillStyle = '#ff6b6b'; ctx.fill();
           ctx.fillStyle = '#ff6b6b'; ctx.font = '11px sans-serif';
-          ctx.fillText('偏了 ' + (errM / 1000).toFixed(0) + ' km ↑', ex, ey - 12);
+          ctx.fillText('偏了 ' + errKm.toFixed(0) + ' km ↑', ex, ey - 12);
         }
-        errText = (errM / 1000).toFixed(1) + ' km ×';
-      } else {
-        noteText = '你把「钟差 b」也当成未知数一起解——4 颗卫星、2 个位置 + 1 个钟差 = 3 个未知数。' +
-          '位置收敛回几米，还顺手解出了接收机时钟比真时间慢 ' + biasUs.toFixed(1) + ' µs。' +
-          '「GPS 主业是授时」：定位只负责兑换时间误差。';
-        noteCls = '';
-        errText = errM < 1 ? '≈ 0 m' : errM.toFixed(0) + ' m';
       }
-      $('solveBias').textContent = assumeKnown ? '已忽略' :
-        (solve.clockBiasSeconds === 0 ? '0 µs' : solve.clockBiasSeconds * 1e6).toString() + ' µs';
-      $('solveResidual').textContent = (solve.residual / 1000).toFixed(2) + ' km';
     }
 
-    $('solveError').textContent = errText;
-    $('solveNote').textContent = noteText;
-    $('solveNote').className = 'solve-note' + (noteCls === 'warn' ? ' warn' : '');
-    $('solveSats').textContent = solveState.sats.length;
-    $('assumeLabel').textContent = assumeKnown ? '把时钟偏差当已知（漏掉未知数）' : '把时钟偏差当未知数（正确）';
+    updateSolveUI(solved, errKm);
+  }
+
+  function updateSolveUI(solved, errKm) {
+    var step = solveState.step;
+    var biasUs = solveState.userBiasUs;
+    var biasKm = (solveState.userBiasUs * 1e-6 * window.GPS_ENGINE.SPEED_OF_LIGHT) / 1000;
+    var errEl = $('solveError'), joinEl = $('solveJoin'), biasEl = $('solveBias'), noteEl = $('solveNote');
+    var noteText, warn = false;
+
+    if (step === 1) {
+      errEl.textContent = '✓ 找到你了';
+      joinEl.textContent = '交于一点';
+      biasEl.textContent = '0（假设表很准）';
+      noteText = '位置就是这么「解」出来的：它压根不需要解方程——三颗卫星各给一个距离，三个圆在图上自己交出那个点。你要的信息，全在卫星广播的时间和信号路上花掉的时间里。';
+    } else if (step === 2) {
+      errEl.textContent = '✗ 卡在缝隙里';
+      joinEl.textContent = '没有公共交点';
+      biasEl.textContent = '你拨的 ' + biasUs + ' µs';
+      noteText = '三个红圆各自多出了同一段（' + biasKm.toFixed(0) + ' km），谁也不肯和别人交在一点。灰虚线是本该有的圆。你的位置信息没有被算错——是数据本身带着同一个错误，交点从图上消失了。';
+      warn = true;
+    } else if (!solveState.assumeKnown) {
+      var solvedUs = solved ? solved.clockBiasSeconds * 1e6 : biasUs;
+      errEl.textContent = '✓ 找回你的位置';
+      joinEl.textContent = '缩小 ' + (solvedUs * 1e-6 * window.GPS_ENGINE.SPEED_OF_LIGHT / 1000).toFixed(0) + ' km 后交于一点';
+      biasEl.textContent = '≈ ' + solvedUs.toFixed(0) + ' µs（算出来的）';
+      noteText = '算法做的事：让三个圆一起缩小同样的长度，直到重新交于一点。刚才缩掉的那段 ≈' + (solvedUs * 1e-6 * window.GPS_ENGINE.SPEED_OF_LIGHT / 1000).toFixed(0) + ' km，除以光速 ≈ ' + solvedUs.toFixed(0) + ' µs——这就是你的表慢了多少。没拨表、没对时，纯靠「三个圆必须交于一点」这一个条件，钟差自己冒了出来。这就是「GPS 主业是授时」：定位的过程顺手把时间也修好了。';
+    } else {
+      errEl.textContent = '✗ 偏了 ' + errKm.toFixed(0) + ' km';
+      joinEl.textContent = '拒绝缩小，没有交点';
+      biasEl.textContent = '被假装成 0';
+      noteText = '你打开了「假装我的表很准」：圆一步都不许缩。三个圆永远交不上，算法只能硬把位置推到 ' + errKm.toFixed(0) + ' 公里外去凑答案。错误不会消失，只会被摊进位置里——这就是漏掉「钟差」这个未知数的代价。';
+      warn = true;
+    }
+    noteEl.textContent = noteText;
+    noteEl.className = 'solve-note' + (warn ? ' warn' : '');
+    $('solveSats').textContent = '4（3 颗就够，多 1 颗防错）';
+  }
+
+  function setStep(n) {
+    solveState.step = n;
+    document.querySelectorAll('.step-tab').forEach(function (t) {
+      t.classList.toggle('active', Number(t.dataset.step) === n);
+    });
+    $('stepGuide').innerHTML = GUIDE[n];
+    $('step2Controls').style.display = n === 2 ? '' : 'none';
+    $('step3Toggle').style.display = n === 3 ? '' : 'none';
+    $('nextStepBtn').textContent = NEXT_BTN[n];
+    nfTrack('solve_step', { step: n });
+    if (n === 3 && !solveState.assumeKnown) startShrinkAnim();
+    else { stopShrinkAnim(); drawSolve(); }
   }
 
   function initSolve() {
@@ -197,14 +312,33 @@
     solveState.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     fitSolveView();
 
-    $('assumeClockKnown').addEventListener('change', function () {
-      var assume = $('assumeClockKnown').checked;
-      nfTrack('solve_run', { assumeClockKnown: assume ? 1 : 0 });
+    // 步骤切换
+    document.querySelectorAll('.step-tab').forEach(function (t) {
+      t.addEventListener('click', function () { setStep(Number(t.dataset.step)); });
+    });
+    $('nextStepBtn').addEventListener('click', function () {
+      setStep(solveState.step % 3 + 1);
+    });
+
+    // 步骤 2 滑块：把表拨慢
+    $('biasSlider').addEventListener('input', function () {
+      solveState.userBiasUs = Number(this.value);
+      var km = solveState.userBiasUs * 1e-6 * window.GPS_ENGINE.SPEED_OF_LIGHT / 1000;
+      $('biasVal').textContent = solveState.userBiasUs + ' µs';
+      $('biasSub').textContent = solveState.userBiasUs === 0 ? '（表很准，圆能交上）' : '（每个距离虚胖 ' + km.toFixed(0) + ' km）';
       drawSolve();
     });
 
+    // 步骤 3 开关：假装表准
+    $('assumeClockKnown').addEventListener('change', function () {
+      solveState.assumeKnown = this.checked;
+      $('assumeLabel').textContent = this.checked ? '假装我的表很准' : '让圆一起缩小（GPS 的做法）';
+      nfTrack('solve_run', { assumeClockKnown: this.checked ? 1 : 0 });
+      if (!this.checked) startShrinkAnim();
+      else { stopShrinkAnim(); drawSolve(); }
+    });
+
     // 拖拽接收机
-    var dragging = false;
     function pos(evt) {
       var r = solveState.cv.getBoundingClientRect();
       return { x: evt.clientX - r.left, y: evt.clientY - r.top };
@@ -212,27 +346,28 @@
     solveState.cv.addEventListener('pointerdown', function (e) {
       var p = pos(e);
       var tp = worldToCanvas(solveState.truePos);
-      if (Math.hypot(p.x - tp.x, p.y - tp.y) < 16) {
-        dragging = true;
+      if (Math.hypot(p.x - tp.x, p.y - tp.y) < 20) {
+        solveState.dragging = true;
         solveState.cv.setPointerCapture(e.pointerId);
         solveState.cv.classList.add('placed');
       }
     });
     solveState.cv.addEventListener('pointermove', function (e) {
-      if (!dragging) return;
+      if (!solveState.dragging) return;
       var p = pos(e);
       solveState.truePos = canvasToWorld(p.x, p.y);
+      if (solveState.step === 3) stopShrinkAnim(); // 拖动时跳到终态，松手再播动画
       drawSolve();
     });
     solveState.cv.addEventListener('pointerup', function () {
-      if (dragging) {
-        dragging = false;
+      if (solveState.dragging) {
+        solveState.dragging = false;
         solveState.cv.classList.remove('placed');
-        nfTrack('solve_run', { assumeClockKnown: $('assumeClockKnown').checked ? 1 : 0 });
+        if (solveState.step === 3 && !solveState.assumeKnown) startShrinkAnim();
       }
     });
 
-    drawSolve();
+    setStep(1);
   }
 
   // ════════════════════════════════════════════════════════════════

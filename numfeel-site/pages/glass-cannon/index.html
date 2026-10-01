@@ -31,7 +31,7 @@
     </section>
 
     <!-- 地牢战场 -->
-    <section class="card" aria-label="地牢战场">
+    <section class="card" aria-label="地牢战场" id="arena-card">
       <div class="card-title">⚔ 地牢战场</div>
       <div class="arena">
         <div class="fighter fighter-me" id="fighter-me">
@@ -130,6 +130,11 @@
         <label for="s-enemydps"><span>怪物输出（拉到 0 就是木桩）</span><span id="v-enemydps" class="slider-value">60</span></label>
         <input type="range" id="s-enemydps" min="0" max="300" step="5" value="60">
       </div>
+      <div class="altar-summary" id="altar-summary">
+        当前面板：A = <strong id="altar-a">—</strong>，施祝福后 A′ = <strong id="altar-abuff">—</strong>
+        <span class="legend-chip" id="altar-band">—</span>
+      </div>
+      <button class="btn btn-fight btn-altar-fight" id="btn-fight-altar">⚔ 用这套属性开战</button>
     </section>
 
     <!-- 祝福的账本 -->

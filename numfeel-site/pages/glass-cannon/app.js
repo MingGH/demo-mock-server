@@ -35,7 +35,12 @@
     mission: $('mission-status'),
     markerA: $('marker-a'), markerALabel: $('marker-a-label'),
     markerABuff: $('marker-abuff'), markerABuffLabel: $('marker-abuff-label'),
-    presets: document.querySelectorAll('.preset-btn')
+    presets: document.querySelectorAll('.preset-btn'),
+    altarA: $('altar-a'),
+    altarABuff: $('altar-abuff'),
+    altarBand: $('altar-band'),
+    altarFight: $('btn-fight-altar'),
+    arenaCard: $('arena-card')
   };
 
   const PRESETS = {
@@ -268,6 +273,28 @@
     renderMission(v, stats);
     renderAxis(v);
     renderTicker(v, stats);
+    renderAltar(v, stats);
+  }
+
+  function renderAltar(v, stats) {
+    els.altarA.textContent = fmtA(v.A);
+    els.altarABuff.textContent = fmtA(v.Abuff);
+    els.altarBand.className = 'legend-chip';
+    if (stats.enemyDps === 0) {
+      els.altarBand.classList.add('chip-safe');
+      els.altarBand.textContent = '木桩局，怎么开都赢';
+      return;
+    }
+    if (v.band === 'safe') {
+      els.altarBand.classList.add('chip-safe');
+      els.altarBand.textContent = v.Abuff > 1 ? '安全区，怎么开都赢' : '安全区（施祝福后仍在 1.5 内）';
+    } else if (v.band === 'flip') {
+      els.altarBand.classList.add('chip-flip');
+      els.altarBand.textContent = '毒区，施祝福必翻车';
+    } else {
+      els.altarBand.classList.add('chip-lose');
+      els.altarBand.textContent = '败局，祝福只能让你输得更快';
+    }
   }
 
   function renderBuffToggle() {
@@ -291,6 +318,11 @@
   });
 
   els.fight.addEventListener('click', startFight);
+
+  els.altarFight.addEventListener('click', function () {
+    els.arenaCard.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    startFight();
+  });
 
   Object.keys(els.sliders).forEach(function (k) {
     els.sliders[k].addEventListener('input', function () {

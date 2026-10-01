@@ -14,6 +14,7 @@ import run.runnable.numfeelservice.web.ApiException;
 import run.runnable.numfeelservice.web.ApiResponse;
 import tools.jackson.databind.JsonNode;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,6 +23,8 @@ import java.util.Map;
  * GET  /jni-boundary/status — native 库可用性与运行环境
  * POST /jni-boundary/run    — 在指定车道上跑一轮真实基准
  *                             body: { "lane": "java|native-percall|native-batch|noop", "count": 1000000 }
+ * POST /jni-boundary/curve  — 逐档实测攒批曲线（每档批量都是真测量值）
+ *                             body: { "count": 1000000 }
  */
 @RestController
 @RequestMapping("/jni-boundary")
@@ -51,15 +54,28 @@ public class NativeBenchController {
         if (count < 1 || count > NativeBenchService.MAX_COUNT) {
             throw ApiException.badRequest("count must be between 1 and " + NativeBenchService.MAX_COUNT);
         }
-        // 基准同一时刻只放行一个（许可在订阅前同步获取，doFinally 释放）
+        return runGuarded(() -> service.run(lane, count).map(ApiResponse::ok));
+    }
+
+    @PostMapping("/curve")
+    public Mono<ResponseEntity<JsonNode>> curve(@RequestBody(required = false) Map<String, Object> body) {
+        int count = extractInt(body, "count", 1_000_000);
+        if (count < 1 || count > NativeBenchService.MAX_COUNT) {
+            throw ApiException.badRequest("count must be between 1 and " + NativeBenchService.MAX_COUNT);
+        }
+        return runGuarded(() -> service.runCurve(count).map(ApiResponse::ok));
+    }
+
+    /** 共用闸门：许可在订阅前同步获取，doFinally 释放，异常统一 500 */
+    private Mono<ResponseEntity<JsonNode>> runGuarded(
+            java.util.function.Supplier<Mono<ResponseEntity<JsonNode>>> task) {
         if (!service.tryAcquirePermit()) {
             throw new ApiException(503, "a benchmark is already running, please retry in a few seconds");
         }
-
-        return service.run(lane, count)
-                .map(ApiResponse::ok)
+        return task.get()
+                .map(x -> (ResponseEntity<JsonNode>) x)
                 .onErrorResume(err -> {
-                    log.error("jni-boundary run error", err);
+                    log.error("jni-boundary benchmark error", err);
                     return Mono.just(ApiResponse.error(500, "Internal error"));
                 })
                 .doFinally(signal -> service.releasePermit());

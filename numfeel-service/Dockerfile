@@ -2,7 +2,8 @@
 # gcc 官方镜像只用于编译 20 行的 .so，最终镜像不带编译器
 FROM gcc:13 AS native-builder
 COPY native/nativebench.cpp /tmp/nativebench.cpp
-RUN gcc -O2 -shared -fPIC -o /tmp/libnativebench.so /tmp/nativebench.cpp
+# -O3 开自动向量化：给 C++ 最好的武器，别让「C++ 更快」输在编译选项上
+RUN gcc -O3 -shared -fPIC -o /tmp/libnativebench.so /tmp/nativebench.cpp
 
 # Eclipse Temurin 25（HotSpot，LTS）。与文章使用的 G1 / ZGC 等 HotSpot 概念保持一致，
 # 也让 /jvm-memory 返回的 GC 名与内存池（Metaspace / Code Cache）对得上。

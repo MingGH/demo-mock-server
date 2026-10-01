@@ -51,6 +51,8 @@ public class NativeBenchService {
     public static final int MAX_COUNT = 5_000_000;
     /** 每条车道正式测量的轮数（奇数，中位数取正中） */
     public static final int REPS = 5;
+    /** 曲线每个批量档位的测量轮数 */
+    public static final int CURVE_REPS = 3;
     /** 每条车道的预热目标操作数（触发 JIT C2 编译） */
     private static final int WARM_OPS = 200_000;
 
@@ -251,6 +253,26 @@ public class NativeBenchService {
         return elapsed;
     }
 
+    /**
+     * 攒批过境的分批版本：count 次操作拆成每批 batch 次，
+     * 每批一次过境。曲线逐点实测用的就是它。
+     */
+    private long laneNativeBatchByBatch(int count, int batch) {
+        long acc = 0;
+        long start = System.nanoTime();
+        try {
+            for (int begin = 0; begin < count; begin += batch) {
+                int end = Math.min(begin + batch, count);
+                acc += (long) mhSumRange.invoke(dataSegment, begin, end);
+            }
+        } catch (Throwable e) {
+            throw new IllegalStateException("native batch(" + batch + ") failed", e);
+        }
+        long elapsed = System.nanoTime() - start;
+        blackhole = acc;
+        return elapsed;
+    }
+
     private long laneNativeBatch(int count) {
         long sum;
         long start = System.nanoTime();
@@ -354,6 +376,49 @@ public class NativeBenchService {
         info.put("available", false);
         info.put("error", nativeError);
         return info;
+    }
+
+    /**
+     * 逐档实测攒批曲线：对每档批量 B，把 count 次操作按 B 分批过境，
+     * 实测每批的过路费摊销。返回的每个点都是真实测量值。
+     */
+    public Mono<List<Map<String, Object>>> runCurve(int count) {
+        if (count < 1 || count > MAX_COUNT) {
+            throw ApiException.badRequest("count must be between 1 and " + MAX_COUNT);
+        }
+        return Mono.fromCallable(() -> doRunCurve(count))
+                .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private List<Map<String, Object>> doRunCurve(int count) {
+        ensureLoaded();
+        ensureData(count);
+        warmUpOnce();
+
+        // 对数取样的批量档位，覆盖「一批 1 次」到「整轮一批」
+        int[] batches = {1, 3, 10, 33, 100, 333, 1000, 3333, 10000, 33333, 100000, 333333, 1000000};
+        List<Map<String, Object>> points = new java.util.ArrayList<>();
+        for (int batch : batches) {
+            if (batch > count) break;
+            // 每档先热身一轮再测 3 轮取中位数（曲线点要抗 GC 离群，又不能太慢）
+            runBatchOnce(count, batch);
+            long[] samples = new long[CURVE_REPS];
+            for (int r = 0; r < CURVE_REPS; r++) {
+                samples[r] = runBatchOnce(count, batch);
+            }
+            long median = NativeBenchStats.median(samples);
+            Map<String, Object> point = new HashMap<>();
+            point.put("batch", batch);
+            point.put("calls", (count + batch - 1) / batch);
+            point.put("medianNs", median);
+            point.put("perOpNs", (double) median / count);
+            points.add(point);
+        }
+        return points;
+    }
+
+    private long runBatchOnce(int count, int batch) {
+        return laneNativeBatchByBatch(count, batch);
     }
 
     /** 尝试获取基准执行许可（必须在订阅前同步调用，防多用户互相污染数字） */

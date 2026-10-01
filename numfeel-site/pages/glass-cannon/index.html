@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="伤害×2、承伤×3的buff到底是赚是亏？优势比交互演示：险胜局开buff必翻车，碾压局纯提速，必败局死得更快。">
+  <title>玻璃大炮：伤害×2 承伤×3 的 buff 赚吗 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="glass-cannon-logic.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+
+    <header class="hero">
+      <h1>玻璃大炮</h1>
+      <p class="subtitle">伤害 ×2、承伤 ×3，这个 buff 到底赚不赚？<br>答案不在倍数里，在你的余量里。</p>
+    </header>
+
+    <!-- 挑战 -->
+    <section class="card mission-card" aria-label="挑战">
+      <div class="card-title">🎯 挑战</div>
+      <p class="mission-text">
+        把 buff 开到最大，还能<strong>站着看敌人倒下</strong>。
+        拖动下面的属性，找到那条分界线。
+      </p>
+      <div class="mission-status" id="mission-status">挑战进行中</div>
+    </section>
+
+    <!-- 对撞台 -->
+    <section class="card" aria-label="对撞台">
+      <div class="card-title">🥊 对撞台</div>
+      <div class="arena">
+        <div class="fighter fighter-me">
+          <div class="fighter-head">
+            <span class="fighter-name">你</span>
+            <span class="buff-badge" id="badge-me">伤害 ×2</span>
+          </div>
+          <div class="hp-track hp-me">
+            <div class="hp-fill hp-fill-me" id="bar-me-fill"></div>
+            <span class="hp-label" id="bar-me-label">1500 / 1500</span>
+          </div>
+        </div>
+        <div class="vs">VS</div>
+        <div class="fighter fighter-enemy">
+          <div class="fighter-head">
+            <span class="fighter-name">敌人</span>
+            <span class="buff-badge buff-badge-enemy" id="badge-enemy">对你输出 ×3</span>
+          </div>
+          <div class="hp-track hp-enemy">
+            <div class="hp-fill hp-fill-enemy" id="bar-enemy-fill"></div>
+            <span class="hp-label" id="bar-enemy-label">2500 / 2500</span>
+          </div>
+        </div>
+      </div>
+      <div class="arena-controls">
+        <button class="btn btn-buff" id="buff-toggle" aria-pressed="false">🔴 buff 未激活（点我开启）</button>
+        <button class="btn btn-replay" id="replay">▶ 重播这场战斗</button>
+      </div>
+      <div class="ticker" id="ticker">开 buff：优势比 ×2/3，击杀时间减半，被击杀时间除以三。</div>
+      <div class="log" id="log" aria-live="polite"></div>
+    </section>
+
+    <!-- 战报 -->
+    <section class="card" aria-label="战报">
+      <div class="card-title">📊 战报</div>
+      <div class="result-grid">
+        <div class="result-item"><div class="label">击杀敌人需要</div><div class="value" id="r-kill">—</div><div class="sub" id="r-kill-sub"></div></div>
+        <div class="result-item"><div class="label">你能活</div><div class="value" id="r-surv">—</div><div class="sub" id="r-surv-sub"></div></div>
+        <div class="result-item"><div class="label">优势比 A</div><div class="value" id="r-adv">—</div><div class="sub">血量×输出 ÷ 敌方乘积</div></div>
+        <div class="result-item"><div class="label">开 buff 后 A′</div><div class="value" id="r-advbuff">—</div><div class="sub">A × 2/3，永远打折</div></div>
+      </div>
+      <div class="verdict" id="verdict">—</div>
+      <p class="verdict-detail" id="verdict-detail"></p>
+    </section>
+
+    <!-- 优势比标尺 -->
+    <section class="card" aria-label="优势比标尺">
+      <div class="card-title">📏 优势比标尺</div>
+      <p class="card-desc">buff 的正负不取决于 2 和 3，取决于你的 A 落在哪一段。灰三角是关 buff 的 A，亮三角是开 buff 后的 A′。</p>
+      <div class="axis" id="axis">
+        <div class="axis-zone zone-lose"></div>
+        <div class="axis-zone zone-flip"></div>
+        <div class="axis-zone zone-safe"></div>
+        <div class="axis-tick" style="left: 33.33%"><span>1</span></div>
+        <div class="axis-tick" style="left: 50%"><span>1.5</span></div>
+        <div class="axis-marker marker-base" id="marker-a"><span id="marker-a-label">A</span></div>
+        <div class="axis-marker marker-buff" id="marker-abuff"><span id="marker-abuff-label">A′</span></div>
+      </div>
+      <div class="axis-legend">
+        <span class="legend-chip chip-lose">A ≤ 1 输得更快</span>
+        <span class="legend-chip chip-flip">1 ~ 1.5 险胜翻车</span>
+        <span class="legend-chip chip-safe">A &gt; 1.5 纯提速</span>
+      </div>
+    </section>
+
+    <!-- 三档开局 -->
+    <section class="card" aria-label="三档开局">
+      <div class="card-title">🎬 三档开局</div>
+      <p class="card-desc">选一档直接开打，或去属性台自己调。</p>
+      <div class="preset-row" id="preset-row">
+        <button class="preset-btn" data-preset="stomp">碾压局<small>A ≈ 5.6，怎么开都赢</small></button>
+        <button class="preset-btn active" data-preset="close">险胜局<small>A ≈ 1.2，buff 毒区</small></button>
+        <button class="preset-btn" data-preset="doomed">必败局<small>A ≈ 0.2，输得更快</small></button>
+      </div>
+    </section>
+
+    <!-- 属性台 -->
+    <section class="card" aria-label="属性台">
+      <div class="card-title">🎛️ 属性台</div>
+      <div class="slider-group">
+        <label for="s-myhp"><span>你的血量</span><span id="v-myhp" class="slider-value">1500</span></label>
+        <input type="range" id="s-myhp" min="100" max="5000" step="50" value="1500">
+      </div>
+      <div class="slider-group">
+        <label for="s-mydps"><span>你的输出</span><span id="v-mydps" class="slider-value">120</span></label>
+        <input type="range" id="s-mydps" min="10" max="300" step="5" value="120">
+      </div>
+      <div class="slider-group">
+        <label for="s-enemyhp"><span>敌人血量</span><span id="v-enemyhp" class="slider-value">2500</span></label>
+        <input type="range" id="s-enemyhp" min="100" max="5000" step="50" value="2500">
+      </div>
+      <div class="slider-group">
+        <label for="s-enemydps"><span>敌人输出（拉到 0 就是木桩）</span><span id="v-enemydps" class="slider-value">60</span></label>
+        <input type="range" id="s-enemydps" min="0" max="300" step="5" value="60">
+      </div>
+    </section>
+
+    <!-- 原理 -->
+    <section class="card" aria-label="原理">
+      <div class="card-title">🧮 账是怎么算的</div>
+      <div class="formula">A = (你的血量 × 你的输出) ÷ (敌人血量 × 敌人输出)</div>
+      <p class="principle-text">
+        持续对拍里，谁先倒只看两个时间：击杀敌人要多久，你能活多久。
+        两个时间都由四个数决定，约掉就是优势比 A。A &gt; 1 你站到最后，A = 1 同归于尽，A &lt; 1 你先走。
+      </p>
+      <p class="principle-text">
+        开 buff：输出 ×2 让你杀得更快，承伤 ×3 让你死得更快，合起来
+        <strong>A′ = A × 2/3</strong>。优势永远打 6.7 折——所以这个 buff 永远救不了败局，
+        只会把 A 在 1 ~ 1.5 之间的险胜局翻成暴毙。只有 A &gt; 1.5 的碾压局，它才是纯赚的提速器。
+      </p>
+      <p class="principle-text">
+        「打木桩就赚」不是抖机灵：敌人输出为 0 时 A 是无穷大，怎么打折都还在安全区。
+        真实游戏里敢发这种 buff，是因为多数战斗要么碾压（清小怪），要么根本不持续对拍
+        （秒杀流、控制链），承伤 ×3 没机会兑现。buff 正负不取决于数字，取决于你的战斗落在哪一段。
+      </p>
+    </section>
+
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

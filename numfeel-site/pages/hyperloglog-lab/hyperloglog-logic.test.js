@@ -88,8 +88,8 @@ t('内存模型：HashSet 72B/条、位图 1bit/ID', () => {
   assert.strictEqual(L.hashSetBytes(100000000), 7200000000);
   assert.strictEqual(L.bitmapBytes(99999999), 12500000);
   assert.strictEqual(L.bitmapBytes(0), 1);
-  assert.strictEqual(L.budgetBytes(), 67108864);
-  assert.strictEqual(L.hashSetCapacity(), Math.floor(67108864 / 72));
+  assert.strictEqual(L.budgetBytes(), 64000000);
+  assert.strictEqual(L.hashSetCapacity(), Math.floor(64000000 / 72));
 });
 
 // 10. 抛硬币：确定 RNG 下精确断言

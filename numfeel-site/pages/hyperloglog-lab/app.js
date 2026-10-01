@@ -56,9 +56,9 @@
     return s;
   }
   function fmtBytes(b) {
-    if (b >= 1073741824) return trim(b / 1073741824) + ' GB';
-    if (b >= 1048576) return trim(b / 1048576) + ' MB';
-    if (b >= 1024) return trim(b / 1024) + ' KB';
+    if (b >= 1e9) return trim(b / 1e9) + ' GB';
+    if (b >= 1e6) return trim(b / 1e6) + ' MB';
+    if (b >= 1e3) return trim(b / 1e3) + ' KB';
     return b + ' B';
   }
   function fmtPct(x) { return (x * 100).toFixed(2) + '%'; }
@@ -182,6 +182,7 @@
     var remain = state.target - state.uniqueCount;
     var chunk = Math.min(200000, remain);
     pour(chunk);
+    if (state.strategy === 'hashset' && state.oom) { stopStream(); return; }
     if (state.streaming) setTimeout(stepStream, 30);
   }
 
@@ -218,7 +219,7 @@
       return { cls: 'good', text: '目标达成：' + fmtInt(n) + ' 名访客，HLL 全程 12KB，估计 ' + fmtInt(est) +
         '，偏差 ' + errTxt + '（理论标准差 0.81%）。同样的活，HashSet 要 ' + fmtBytes(hs) + '。' };
     }
-    return { cls: '', text: 'HLL 运行中：内存钉死 12.0 KB，第 ' + fmtInt(n) + ' 位访客进来，它一个字节都没多花。' +
+    return { cls: '', text: 'HLL 运行中：内存钉死 12.29 KB，第 ' + fmtInt(n) + ' 位访客进来，它一个字节都没多花。' +
       '误差由 16384 个桶摊平，看下方曲线就知道它有多稳。' };
   }
 

@@ -109,7 +109,7 @@
   }
 
   // ---------- 内存模型（量级演示用，UI 明示假设） ----------
-  const BUDGET_BYTES = 64 * 1024 * 1024;         // 统计模块的内存预算：64MB
+  const BUDGET_BYTES = 64 * 1000 * 1000;           // 统计模块的内存预算：64MB（十进制）
   const HASHSET_BYTES_PER_ID = 72;               // Java HashMap 平均每条目约 72B（16 字符 ID）
 
   function budgetBytes() {

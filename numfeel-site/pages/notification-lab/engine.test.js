@@ -257,7 +257,7 @@ function assertEqual(actual, expected, msg) {
 (function testPresetIntegrity() {
   var presets = engine.NOTIFICATION_PRESETS;
 
-  assertEqual(presets.length, 5, '预设场景应有 5 个');
+  assertEqual(presets.length, 6, '预设场景应有 6 个');
 
   var ids = presets.map(function (p) { return p.id; });
   assertEqual(new Set(ids).size, ids.length, '预设 ID 不应重复');
@@ -292,6 +292,19 @@ function assertEqual(actual, expected, msg) {
 
   assertEqual(new Set(tags).size, 1, '连发多条应共用同一个 tag 才能互相替换');
   assertEqual(preset.options.renotify, true, 'renotify 预设应开启静默更新');
+})();
+
+// ── 测试：定时通知预设 ──
+(function testDelayedPreset() {
+  var preset = engine.NOTIFICATION_PRESETS.find(function (p) { return p.id === 'delayed'; });
+
+  assert(preset, '应存在 delayed 预设');
+  assertEqual(preset.delayMs, 5000, '延迟应为 5000ms');
+  assertEqual(preset.options.tag, 'nf-delayed', 'delayed 预设应带固定基础 tag');
+
+  // delayMs 是调度用的元字段，不应泄漏进通知构造参数
+  var built = engine.buildNotification(preset);
+  assert(typeof built.options.delayMs === 'undefined', 'delayMs 不应出现在通知 options 里');
 })();
 
 // ── 测试：平台对照表 ──

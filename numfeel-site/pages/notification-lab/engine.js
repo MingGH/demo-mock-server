@@ -205,6 +205,19 @@ const NOTIFICATION_PRESETS = [
     }
   },
   {
+    id: 'delayed',
+    name: '5 秒后送达',
+    icon: 'ti-clock',
+    tone: 'fun',
+    desc: '点完之后你有 5 秒，切到别的标签页或别的应用，看通知能不能找到你。',
+    note: '页面必须保持打开：标签页退到后台可以，关掉浏览器就发不出。能穿透「关掉浏览器」的只有服务器 Web Push。',
+    delayMs: 5000,
+    options: {
+      body: '这条通知是在你切到别处之后送达的。',
+      tag: 'nf-delayed'
+    }
+  },
+  {
     id: 'renotify',
     name: '静默替换旧通知',
     icon: 'ti-refresh',

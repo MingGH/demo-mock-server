@@ -121,6 +121,15 @@ function firePreset(presetId) {
   var options = built.options;
   // 每次点击生成唯一 tag，避免被当成「替换上一条」而不重新弹出。
   options.tag = uniqueTag(built.meta.id);
+
+  if (preset.delayMs) {
+    markScheduled(built.meta.id, preset.delayMs);
+    window.setTimeout(function () {
+      sendNotification(options, built.meta);
+    }, preset.delayMs);
+    return;
+  }
+
   sendNotification(options, built.meta);
 }
 
@@ -321,6 +330,16 @@ function showDirect(options) {
   } catch (error) {
     return Promise.resolve(false);
   }
+}
+
+function markScheduled(presetId, delayMs) {
+  var slot = document.querySelector('[data-sent="' + presetId + '"]');
+  if (!slot) {
+    return;
+  }
+  slot.textContent = '已预约，' + Math.round(delayMs / 1000) + ' 秒后送达，现在可以切走了';
+  slot.className = 'preset-sent';
+  slot.style.color = '#90caf9';
 }
 
 function markSent(presetId, ok) {

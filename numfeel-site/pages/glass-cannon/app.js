@@ -1,6 +1,6 @@
 /**
  * 玻璃大炮 - DOM 交互层（无业务公式，全部计算走 GlassCannonLogic）
- * 地牢规则：战斗必须手动「开战」，属性/楼层/祝福变动后回到待命状态。
+ * 地牢规则：战斗手动开战；立绘状态化演出（受击/死亡/祝福/结算遮罩）。
  */
 (function () {
   const L = window.GlassCannonLogic;
@@ -20,6 +20,10 @@
     badgeEnemy: $('badge-enemy'),
     fighterMe: $('fighter-me'),
     fighterEnemy: $('fighter-enemy'),
+    portraitMe: $('portrait-me'),
+    portraitEnemy: $('portrait-enemy'),
+    overlay: $('battle-overlay'),
+    overlayText: $('battle-overlay-text'),
     barMeFill: $('bar-me-fill'),
     barMeLabel: $('bar-me-label'),
     barEnemyFill: $('bar-enemy-fill'),
@@ -35,12 +39,12 @@
     mission: $('mission-status'),
     markerA: $('marker-a'), markerALabel: $('marker-a-label'),
     markerABuff: $('marker-abuff'), markerABuffLabel: $('marker-abuff-label'),
-    presets: document.querySelectorAll('.preset-btn'),
     altarA: $('altar-a'),
     altarABuff: $('altar-abuff'),
     altarBand: $('altar-band'),
     altarFight: $('btn-fight-altar'),
-    arenaCard: $('arena-card')
+    arenaCard: $('arena-card'),
+    presets: document.querySelectorAll('.preset-btn')
   };
 
   const PRESETS = {
@@ -49,7 +53,8 @@
     doomed: { myHp: 800, myDps: 60, enemyHp: 2400, enemyDps: 100 }
   };
 
-  const state = { buffOn: false, raf: null, playing: false };
+  const state = { buffOn: false, raf: null, playing: false, finishTimer: null, overlayTimer: null };
+  const hitTimers = new Map();
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function readStats() {
@@ -113,8 +118,38 @@
     setTimeout(function () { if (span.parentNode) span.remove(); }, 1200);
   }
 
+  function flashHit(portrait) {
+    if (reduceMotion) return;
+    portrait.classList.remove('hit');
+    void portrait.offsetWidth; // 重启动画
+    portrait.classList.add('hit');
+    const old = hitTimers.get(portrait);
+    if (old) clearTimeout(old);
+    hitTimers.set(portrait, setTimeout(function () { portrait.classList.remove('hit'); }, 200));
+  }
+
+  function hideOverlay() {
+    if (state.overlayTimer) { clearTimeout(state.overlayTimer); state.overlayTimer = null; }
+    els.overlay.classList.remove('show', 'fade', 'overlay-win', 'overlay-lose', 'overlay-tie');
+  }
+
+  function showOverlay(kind, text) {
+    els.overlayText.textContent = text;
+    els.overlay.classList.add('show', kind);
+    if (!reduceMotion) {
+      state.overlayTimer = setTimeout(function () {
+        els.overlay.classList.add('fade');
+      }, 1500);
+    }
+  }
+
   function resetArenaToStandby() {
     stopFight();
+    hideOverlay();
+    els.portraitMe.classList.remove('dead', 'hit');
+    els.portraitEnemy.classList.remove('dead', 'hit');
+    els.fighterMe.classList.remove('dead');
+    els.fighterEnemy.classList.remove('dead');
     const eff = effectiveStats(readStats());
     setBar(els.barMeFill, els.barMeLabel, eff.myHp, eff.myHp);
     setBar(els.barEnemyFill, els.barEnemyLabel, eff.enemyHp, eff.enemyHp);
@@ -129,14 +164,27 @@
     return o === 'win' ? '你赢了' : (o === 'lose' ? '你输了' : '同归于尽');
   }
 
+  function overlayFor(o) {
+    if (o === 'win') return { kind: 'overlay-win', text: '胜 利' };
+    if (o === 'lose') return { kind: 'overlay-lose', text: '战 败' };
+    return { kind: 'overlay-tie', text: '同归于尽' };
+  }
+
   function stopFight() {
     if (state.raf) cancelAnimationFrame(state.raf);
     state.raf = null;
     state.playing = false;
+    if (state.finishTimer) { clearTimeout(state.finishTimer); state.finishTimer = null; }
   }
 
   function startFight() {
     stopFight();
+    hideOverlay();
+    els.portraitMe.classList.remove('dead', 'hit');
+    els.portraitEnemy.classList.remove('dead', 'hit');
+    els.fighterMe.classList.remove('dead');
+    els.fighterEnemy.classList.remove('dead');
+
     const stats = readStats();
     const eff = effectiveStats(stats);
     const t = L.fightTimes(eff);
@@ -156,14 +204,31 @@
       const enemyFinal = Math.max(0, eff.enemyHp - eff.myDps * simT);
       setBar(els.barMeFill, els.barMeLabel, myFinal, eff.myHp);
       setBar(els.barEnemyFill, els.barEnemyLabel, enemyFinal, eff.enemyHp);
-      const stamp = simT === Infinity ? '' : simT.toFixed(1) + 's ';
-      if (o === 'win') logLine(stamp + '怪物倒下——' + outcomeText(o), 'log-win');
-      else if (o === 'lose') logLine(stamp + '你倒下了——' + outcomeText(o), 'log-lose');
-      else logLine(stamp + '同时倒下——' + outcomeText(o), 'log-tie');
-      state.playing = false;
-      els.fight.disabled = false;
-      els.buffToggle.disabled = false;
-      els.fight.textContent = '⚔ 再战一场';
+
+      const loserPortrait = o === 'win' ? els.portraitEnemy : (o === 'lose' ? els.portraitMe : null);
+      const loserFighter = o === 'win' ? els.fighterEnemy : (o === 'lose' ? els.fighterMe : null);
+      if (loserPortrait) loserPortrait.classList.add('dead');
+      if (loserFighter) loserFighter.classList.add('dead');
+
+      function settle() {
+        const stamp = simT === Infinity ? '' : simT.toFixed(1) + 's ';
+        if (o === 'win') logLine(stamp + '怪物倒下——' + outcomeText(o), 'log-win');
+        else if (o === 'lose') logLine(stamp + '你倒下了——' + outcomeText(o), 'log-lose');
+        else logLine(stamp + '同时倒下——' + outcomeText(o), 'log-tie');
+        const ov = overlayFor(o);
+        showOverlay(ov.kind, ov.text);
+        state.playing = false;
+        els.fight.disabled = false;
+        els.buffToggle.disabled = false;
+        els.fight.textContent = '⚔ 再战一场';
+      }
+
+      if (reduceMotion) {
+        settle();
+      } else {
+        // 打击停顿：结算前停 300ms，让死亡姿态先立住
+        state.finishTimer = setTimeout(settle, 300);
+      }
     }
 
     if (reduceMotion || endTime === 0) {
@@ -171,16 +236,17 @@
       return;
     }
 
-    const realDuration = Math.min(6, Math.max(1.2, endTime / 6));
+    const realDuration = 3; // 战斗演出统一 3 秒
     const scale = realDuration / endTime;
+    const floatEvery = 0.15; // 每 0.15 真实秒一跳伤害数字
     const t0 = performance.now();
-    const floatInterval = 0.5; // 每 0.5 个模拟秒跳一次伤害数字
-    let lastFloatT = 0;
+    let lastFloatReal = -floatEvery;
     state.playing = true;
 
     function frame(now) {
       if (!state.playing) return;
-      const simT = ((now - t0) / 1000) / scale;
+      const realT = (now - t0) / 1000;
+      const simT = realT / scale;
       if (simT >= endTime) {
         finish(endTime);
         return;
@@ -189,11 +255,13 @@
       const enemyCur = eff.enemyHp * (1 - simT / t.killTime);
       setBar(els.barMeFill, els.barMeLabel, myCur, eff.myHp);
       setBar(els.barEnemyFill, els.barEnemyLabel, enemyCur, eff.enemyHp);
-      while (simT - lastFloatT >= floatInterval && simT < endTime) {
-        lastFloatT += floatInterval;
-        spawnFloat(els.fighterEnemy, '-' + fmtHp(eff.myDps * floatInterval), 'dmg-to-enemy');
+      while (realT - lastFloatReal >= floatEvery && realT > 0.1) {
+        lastFloatReal += floatEvery;
+        spawnFloat(els.fighterEnemy, '-' + fmtHp(eff.myDps * (floatEvery / scale)), 'dmg-to-enemy');
+        flashHit(els.portraitEnemy);
         if (eff.enemyDps > 0) {
-          spawnFloat(els.fighterMe, '-' + fmtHp(eff.enemyDps * floatInterval), 'dmg-to-me');
+          spawnFloat(els.fighterMe, '-' + fmtHp(eff.enemyDps * (floatEvery / scale)), 'dmg-to-me');
+          flashHit(els.portraitMe);
         }
       }
       state.raf = requestAnimationFrame(frame);
@@ -246,6 +314,27 @@
       '被击杀 <strong>' + fmtTime(v.baseline.deathTime) + ' → ' + fmtTime(v.buffed.deathTime) + '</strong>。';
   }
 
+  function renderAltar(v, stats) {
+    els.altarA.textContent = fmtA(v.A);
+    els.altarABuff.textContent = fmtA(v.Abuff);
+    els.altarBand.className = 'legend-chip';
+    if (stats.enemyDps === 0) {
+      els.altarBand.classList.add('chip-safe');
+      els.altarBand.textContent = '木桩局，怎么开都赢';
+      return;
+    }
+    if (v.band === 'safe') {
+      els.altarBand.classList.add('chip-safe');
+      els.altarBand.textContent = v.Abuff > 1 ? '安全区，怎么开都赢' : '安全区（施祝福后仍在 1.5 内）';
+    } else if (v.band === 'flip') {
+      els.altarBand.classList.add('chip-flip');
+      els.altarBand.textContent = '毒区，施祝福必翻车';
+    } else {
+      els.altarBand.classList.add('chip-lose');
+      els.altarBand.textContent = '败局，祝福只能让你输得更快';
+    }
+  }
+
   function renderNumbers() {
     const stats = readStats();
     const v = L.verdict(stats);
@@ -276,33 +365,13 @@
     renderAltar(v, stats);
   }
 
-  function renderAltar(v, stats) {
-    els.altarA.textContent = fmtA(v.A);
-    els.altarABuff.textContent = fmtA(v.Abuff);
-    els.altarBand.className = 'legend-chip';
-    if (stats.enemyDps === 0) {
-      els.altarBand.classList.add('chip-safe');
-      els.altarBand.textContent = '木桩局，怎么开都赢';
-      return;
-    }
-    if (v.band === 'safe') {
-      els.altarBand.classList.add('chip-safe');
-      els.altarBand.textContent = v.Abuff > 1 ? '安全区，怎么开都赢' : '安全区（施祝福后仍在 1.5 内）';
-    } else if (v.band === 'flip') {
-      els.altarBand.classList.add('chip-flip');
-      els.altarBand.textContent = '毒区，施祝福必翻车';
-    } else {
-      els.altarBand.classList.add('chip-lose');
-      els.altarBand.textContent = '败局，祝福只能让你输得更快';
-    }
-  }
-
   function renderBuffToggle() {
     els.buffToggle.classList.toggle('on', state.buffOn);
     els.buffToggle.setAttribute('aria-pressed', String(state.buffOn));
     els.buffToggle.textContent = state.buffOn ? '✨ 祝福生效中（点击驱散）' : '✨ 牧师的祝福（未施放）';
     els.badgeMe.classList.toggle('on-me', state.buffOn);
     els.badgeEnemy.classList.toggle('on-enemy', state.buffOn);
+    els.portraitMe.classList.toggle('blessed', state.buffOn);
   }
 
   function refresh() {
@@ -322,6 +391,10 @@
   els.altarFight.addEventListener('click', function () {
     els.arenaCard.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     startFight();
+  });
+
+  els.overlay.addEventListener('click', function () {
+    els.overlay.classList.add('fade');
   });
 
   Object.keys(els.sliders).forEach(function (k) {

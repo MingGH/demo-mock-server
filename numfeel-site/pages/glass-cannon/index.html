@@ -35,28 +35,31 @@
       <div class="card-title">⚔ 地牢战场</div>
       <div class="arena">
         <div class="fighter fighter-me" id="fighter-me">
-          <div class="portrait portrait-me" role="img" aria-label="牧师与战士背靠背而立"></div>
+          <div class="portrait portrait-me" id="portrait-me" role="img" aria-label="牧师与战士背靠背而立">
+            <div class="hp-track hp-me">
+              <div class="hp-fill hp-fill-me" id="bar-me-fill"></div>
+              <span class="hp-label" id="bar-me-label">1500 / 1500</span>
+            </div>
+          </div>
           <div class="fighter-head">
             <span class="fighter-name">牧师 &amp; 战士</span>
             <span class="buff-badge" id="badge-me">祝福 ×2</span>
           </div>
-          <div class="hp-track hp-me">
-            <div class="hp-fill hp-fill-me" id="bar-me-fill"></div>
-            <span class="hp-label" id="bar-me-label">1500 / 1500</span>
-          </div>
         </div>
-        <div class="vs">⚔</div>
+        <div class="vs">VS</div>
         <div class="fighter fighter-enemy" id="fighter-enemy">
-          <div class="portrait portrait-enemy" role="img" aria-label="丑陋的独眼食人魔举着骨棒"></div>
+          <div class="portrait portrait-enemy" id="portrait-enemy" role="img" aria-label="丑陋的独眼食人魔举着骨棒">
+            <div class="hp-track hp-enemy">
+              <div class="hp-fill hp-fill-enemy" id="bar-enemy-fill"></div>
+              <span class="hp-label" id="bar-enemy-label">2500 / 2500</span>
+            </div>
+          </div>
           <div class="fighter-head">
             <span class="fighter-name">食人魔</span>
             <span class="buff-badge buff-badge-enemy" id="badge-enemy">对你输出 ×3</span>
           </div>
-          <div class="hp-track hp-enemy">
-            <div class="hp-fill hp-fill-enemy" id="bar-enemy-fill"></div>
-            <span class="hp-label" id="bar-enemy-label">2500 / 2500</span>
-          </div>
         </div>
+        <div class="battle-overlay" id="battle-overlay"><span class="battle-overlay-text" id="battle-overlay-text">胜利</span></div>
       </div>
       <div class="arena-controls">
         <button class="btn btn-buff" id="buff-toggle" aria-pressed="false">✨ 牧师的祝福（未施放）</button>

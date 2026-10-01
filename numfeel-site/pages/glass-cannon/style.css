@@ -78,20 +78,51 @@ body {
 .mission-status.tie { background: rgba(224,138,46,0.14); border-color: rgba(240,180,82,0.5); color: #f0b452; }
 
 /* 战场：立绘对峙 */
-.arena { display: flex; gap: 12px; align-items: stretch; margin-bottom: 18px; }
+.arena { position: relative; display: flex; gap: 12px; align-items: stretch; margin-bottom: 18px; }
 .fighter { flex: 1; position: relative; min-width: 0; }
 .portrait {
+  position: relative;
   height: 190px;
   border-radius: 12px;
   border: 1px solid rgba(120,88,48,0.5);
   background-size: cover;
   background-position: center 20%;
   box-shadow: inset 0 0 40px rgba(0,0,0,0.55);
-  margin-bottom: 10px;
   overflow: hidden;
+  transition: filter 0.5s ease, transform 0.5s ease, box-shadow 0.4s ease;
 }
 .portrait-me { background-image: url('images/duo.jpg'); background-position: center 25%; }
-.portrait-enemy { background-image: url('images/monster.jpg'); background-position: center 42%; }
+.portrait-enemy { background-image: url('images/monster.jpg'); background-position: center 42%; animation: breathe 2.6s ease-in-out infinite; }
+@keyframes breathe {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.07); }
+}
+/* 受击：震动 + 红闪 */
+.portrait.hit { animation: hitShake 0.18s ease-out; }
+@keyframes hitShake {
+  0% { transform: translateX(0); filter: brightness(1); }
+  30% { transform: translateX(-5px) rotate(-0.6deg); filter: brightness(1.7) sepia(0.4) hue-rotate(-30deg); }
+  60% { transform: translateX(4px) rotate(0.5deg); filter: brightness(1.4); }
+  100% { transform: translateX(0); filter: brightness(1); }
+}
+/* 死亡：灰化 + 倾倒 + 压暗 */
+.portrait.dead {
+  filter: grayscale(0.9) brightness(0.45);
+  transform: translateY(5%) rotate(-4deg);
+}
+.portrait-enemy.dead { transform: translateY(5%) rotate(4deg); }
+/* 祝福：金色光晕常驻我方 */
+.portrait-me.blessed { box-shadow: inset 0 0 46px rgba(245,215,142,0.5), 0 0 22px rgba(240,180,82,0.35); border-color: rgba(245,215,142,0.65); }
+/* 血条叠进立绘内部 */
+.portrait .hp-track {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  height: 34px;
+  margin: 0;
+}
+.fighter.dead .hp-track { opacity: 0.25; }
 .fighter-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 6px; }
 .fighter-name { font-weight: 700; font-size: 13.5px; color: #f0dcc0; }
 .buff-badge {
@@ -132,10 +163,41 @@ body {
 }
 .vs {
   align-self: center;
-  color: rgba(240,180,82,0.5);
-  font-size: 20px;
+  color: rgba(240,180,82,0.55);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  writing-mode: vertical-rl;
   text-shadow: 0 0 16px rgba(240,180,82,0.4);
   flex: 0 0 auto;
+  padding: 0 2px;
+}
+
+/* 结算遮罩 */
+.battle-overlay {
+  position: absolute;
+  inset: -1px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.battle-overlay.show { opacity: 1; pointer-events: auto; cursor: pointer; }
+.battle-overlay.show.fade { opacity: 0; pointer-events: none; }
+.battle-overlay.overlay-win { background: radial-gradient(ellipse at center, rgba(240,180,82,0.4), rgba(20,12,4,0.82) 75%); }
+.battle-overlay.overlay-lose { background: radial-gradient(ellipse at center, rgba(168,58,50,0.45), rgba(14,6,4,0.85) 75%); }
+.battle-overlay.overlay-tie { background: radial-gradient(ellipse at center, rgba(120,88,48,0.5), rgba(12,9,5,0.85) 75%); }
+.battle-overlay-text {
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: 14px;
+  text-indent: 14px;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(0,0,0,0.9), 0 4px 12px rgba(0,0,0,0.8);
 }
 
 /* 飘伤害数字 */
@@ -407,7 +469,14 @@ input[type="range"]::-moz-range-thumb {
   .btn { min-width: 100%; }
 }
 
+@media (max-width: 560px) {
+  .battle-overlay-text { font-size: 30px; letter-spacing: 9px; text-indent: 9px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .hp-fill, .axis-marker, .buff-badge { transition: none; }
+  .hp-fill, .axis-marker, .buff-badge, .portrait { transition: none; }
   .dmg-float { animation: none; display: none; }
+  .portrait-enemy { animation: none; }
+  .portrait.hit { animation: none; }
+  .battle-overlay.show { transition: none; }
 }

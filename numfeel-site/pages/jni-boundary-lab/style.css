@@ -1,5 +1,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+html { -webkit-text-size-adjust: 100%; }
+
 body {
   font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
   background: #0b0e14;
@@ -44,7 +47,12 @@ body {
   font-family: var(--mono);
   font-size: 12px;
   color: rgba(255,255,255,0.65);
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+  text-align: center;
 }
+.status-chip .dot { flex: 0 0 auto; }
 .status-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; }
 .status-chip.online .dot { background: #4ade80; box-shadow: 0 0 6px rgba(74,222,128,0.8); }
 .status-chip.offline .dot { background: #f87171; }
@@ -152,7 +160,7 @@ body {
 }
 
 /* 明细表 */
-.table-wrap { overflow-x: auto; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .bench-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
 .bench-table th {
   text-align: left;
@@ -196,6 +204,7 @@ body {
   padding: 14px;
   max-height: 260px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   color: rgba(255,255,255,0.6);
 }
 .term-line { white-space: pre-wrap; word-break: break-all; }
@@ -237,13 +246,45 @@ body {
 .page-footer a { color: rgba(96,165,250,0.7); text-decoration: none; }
 .page-footer a:hover { text-decoration: underline; }
 
+@media (prefers-reduced-motion: reduce) {
+  .hero h1 { animation: none; -webkit-text-fill-color: initial; background: none; color: #f3f6fc; }
+  .progress-fill, .btn, .fire-btn, .verdict { transition: none; }
+  .btn:hover, .fire-btn:hover:not(:disabled) { transform: none; box-shadow: none; }
+}
+
 @media (max-width: 600px) {
+  body { padding: 16px 12px calc(48px + env(safe-area-inset-bottom)); }
+  .hero { margin: 12px 0 22px; }
   .hero h1 { font-size: 1.7rem; }
-  .card { padding: 16px; }
-  .crash-screen { grid-template-columns: 1fr; }
-  .crash-vs { text-align: center; }
-  .lane-number { font-size: 2.1rem; }
-  .chart-box { height: 240px; }
+  .subtitle { font-size: 13.5px; }
+  .card { padding: 14px 12px; border-radius: 12px; margin-bottom: 14px; }
+  .card-title { font-size: 14px; }
+  .card-desc { font-size: 12px; }
+
+  .deck-row { flex-direction: column; }
+  .seg-group { min-width: 0; width: 100%; }
   .fire-btn { width: 100%; }
-  .seg-btn { min-height: 44px; }
+  .deck-note { font-size: 11.5px; }
+
+  .crash-screen { grid-template-columns: 1fr; gap: 8px; }
+  .crash-vs { text-align: center; font-size: 0.9rem; padding: 0; }
+  .lane { padding: 14px 12px; }
+  .lane-number { font-size: 2rem; margin-top: 8px; }
+  .lane-speedup { font-size: 12px; margin-top: 6px; }
+
+  .bench-table { font-size: 12px; }
+  .bench-table th { padding: 6px 6px; }
+  .bench-table td { padding: 8px 6px; }
+
+  .chart-box { height: 250px; }
+  .term { max-height: 190px; font-size: 11px; padding: 10px; }
+  .code-block { font-size: 11px; line-height: 1.7; padding: 12px; }
+  .principle-text { font-size: 13.5px; line-height: 1.85; }
+  .verdict { font-size: 12.5px; }
+}
+
+@media (max-width: 360px) {
+  .lane-number { font-size: 1.7rem; }
+  .chart-box { height: 220px; }
+  .seg-btn { font-size: 12px; padding: 0 2px; }
 }

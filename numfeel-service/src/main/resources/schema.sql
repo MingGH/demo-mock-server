@@ -565,3 +565,9 @@ CREATE TABLE IF NOT EXISTS crud_race_kv (
     v          VARCHAR(64)  NOT NULL COMMENT 'value：模拟订单串',
     created_at BIGINT       NOT NULL COMMENT '入库时间戳（ms，seed 数据为 0）'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- UUID 碰撞实验：已生成的 UUIDv4 精确去重表
+-- 只存 16 字节二进制主键；用表本身作为唯一性判断来源。
+CREATE TABLE IF NOT EXISTS uuid_collision_seen (
+    id BINARY(16) NOT NULL PRIMARY KEY COMMENT 'UUIDv4 的 16 字节二进制'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

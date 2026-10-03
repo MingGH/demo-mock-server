@@ -121,6 +121,8 @@ public class RateLimitWebFilter implements WebFilter {
         rules.add(new Rule(isPost("/crud-race/run"), RateLimitWebFilter::routeKey, 60, 60));
         // gif→webp 转换（zhihu-dynamic-avatar）：60/min/IP，gif2webp 子进程是 CPU 密集操作
         rules.add(new Rule(isPost("/avatar/convert-webp"), RateLimitWebFilter::routeKey, 60, 60));
+        // UUID 碰撞实验：20/min/IP；10 万条一批会触发 20 次多行插入
+        rules.add(new Rule(isPost("/uuid-collision/append"), RateLimitWebFilter::routeKey, 20, 60));
         // 其余写接口：10/min
         rules.add(new Rule(RateLimitWebFilter::isWriteThrottled, RateLimitWebFilter::routeKey, 10, 60));
     }

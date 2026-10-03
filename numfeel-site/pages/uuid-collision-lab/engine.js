@@ -1,0 +1,153 @@
+/**
+ * UUID 碰撞实验 — 纯逻辑层。
+ * 负责：生日问题公式、数据库行数展示、接口调用与结果格式化。
+ */
+(function (exports) {
+  'use strict';
+
+  var DEFAULT_API_BASE = 'https://numfeel-api.996.ninja';
+  var API_BASE = (typeof location !== 'undefined' &&
+    new URLSearchParams(location.search).get('api')) || DEFAULT_API_BASE;
+  var TARGET_ROW_COUNT = 100000000;
+  var TRIM_THRESHOLD = 1000000;
+  var APPEND_COUNTS = [1000, 10000, 100000];
+
+  /**
+   * 计算 n 个随机样本能组成的两两比较数。
+   * @param {number} n 样本数
+   * @returns {number} n(n-1)/2
+   */
+  function expectedPairs(n) {
+    return n < 2 ? 0 : n * (n - 1) / 2;
+  }
+
+  /**
+   * 计算 n 个 122 位随机 UUID 至少出现一次冲突的概率。
+   * @param {number} n 样本数
+   * @returns {number} 冲突概率
+   */
+  function collisionProbability(n) {
+    if (n < 2) return 0;
+    var pairs = expectedPairs(n);
+    var randomBits = 122;
+    var spaceSize = Math.pow(2, randomBits);
+    var lambda = pairs / spaceSize;
+    return lambda < 1e-12 ? lambda : 1 - Math.exp(-lambda);
+  }
+
+  /**
+   * 把整数格式化为带千分位的文本。
+   * @param {number} value 数值
+   * @returns {string} 格式化结果
+   */
+  function formatInteger(value) {
+    return Number(value || 0).toLocaleString('zh-CN');
+  }
+
+  /**
+   * 把百分比格式化为固定两位小数。
+   * @param {number} value 百分比
+   * @returns {string} 格式化结果
+   */
+  function formatPercent(value) {
+    return Number(value || 0).toFixed(2) + '%';
+  }
+
+  /**
+   * 把概率格式化为科学计数法，方便展示极小数。
+   * @param {number} value 概率
+   * @returns {string} 如 9.41 × 10⁻²²
+   */
+  function formatProbability(value) {
+    if (!value || value <= 0) return '0';
+    var exponent = Math.floor(Math.log10(value));
+    var mantissa = value / Math.pow(10, exponent);
+    var superscripts = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+    var expText = String(exponent).split('').map(function (ch) {
+      return ch === '-' ? '⁻' : superscripts[Number(ch)];
+    }).join('');
+    return mantissa.toFixed(2) + ' × 10' + expText;
+  }
+
+  /**
+   * 把毫秒格式化为人类友好的耗时。
+   * @param {number} ms 毫秒
+   * @returns {string} 耗时文本
+   */
+  function formatDuration(ms) {
+    var value = Number(ms || 0);
+    if (value < 1) return value.toFixed(2) + ' ms';
+    if (value < 1000) return Math.round(value) + ' ms';
+    return (value / 1000).toFixed(2) + ' s';
+  }
+
+  /**
+   * 把行数换算成 16 字节原始负载的容量。
+   * @param {number} rowCount 行数
+   * @returns {string} 如 1.49 GiB
+   */
+  function rawBytes(rowCount) {
+    var bytes = Number(rowCount || 0) * 16;
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KiB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MiB';
+    return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GiB';
+  }
+
+  /**
+   * 调后端查询状态。
+   * @returns {Promise<object>} status.data
+   */
+  function fetchStatus() {
+    return fetch(API_BASE + '/uuid-collision/status').then(parseJson);
+  }
+
+  /**
+   * 调后端追加一批 UUID。
+   * @param {number} count 1000 / 10000 / 100000
+   * @returns {Promise<object>} append.data
+   */
+  function appendUuids(count) {
+    return fetch(API_BASE + '/uuid-collision/append', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count: count })
+    }).then(parseJson);
+  }
+
+  /**
+   * 解析统一 API 响应。
+   * @param {Response} response fetch 响应
+   * @returns {Promise<object>} data 字段
+   */
+  function parseJson(response) {
+    if (response.status === 429) {
+      throw new Error('操作太频繁，一分钟后再试。');
+    }
+    return response.json().then(function (json) {
+      if (response.status !== 200 || json.status !== 200) {
+        throw new Error(json.message || ('HTTP ' + response.status));
+      }
+      return json.data;
+    });
+  }
+
+  exports.API_BASE = API_BASE;
+  exports.DEFAULT_API_BASE = DEFAULT_API_BASE;
+  exports.TARGET_ROW_COUNT = TARGET_ROW_COUNT;
+  exports.TRIM_THRESHOLD = TRIM_THRESHOLD;
+  exports.APPEND_COUNTS = APPEND_COUNTS;
+  exports.expectedPairs = expectedPairs;
+  exports.collisionProbability = collisionProbability;
+  exports.formatInteger = formatInteger;
+  exports.formatPercent = formatPercent;
+  exports.formatProbability = formatProbability;
+  exports.formatDuration = formatDuration;
+  exports.rawBytes = rawBytes;
+  exports.fetchStatus = fetchStatus;
+  exports.appendUuids = appendUuids;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = exports;
+  }
+})(typeof window === 'undefined' ? {} : (window.UuidLab = {}));

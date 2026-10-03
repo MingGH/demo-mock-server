@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="在 MySQL 里真实生成 1 亿条 UUIDv4 并用主键精确查重：现场追加 1000、10000 或 100000 条，看真实行数、耗时和重复数。">
+  <title>UUID 冲突实验室：MySQL 里真实塞下 1 亿个随机 ID | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="container">
+  <header class="hero">
+    <p class="eyebrow">UUIDv4 · 生日问题 · 精确去重</p>
+    <h1>UUID 冲突实验室</h1>
+    <p class="lead">这里不背「UUID 几乎不会重复」这句话。后端正在往 MySQL 里真实写入随机 UUIDv4，主键本身就是查重器。你可以亲手再追加一批，看这张表被撑到多大。</p>
+  </header>
+
+  <section class="card">
+    <div class="card-head">
+      <h2><i class="ti ti-database"></i> MySQL 实况</h2>
+      <span class="hint">每 5 秒刷新一次；页面显示的是数据库 COUNT(*) 查出的真实行数</span>
+    </div>
+
+    <div id="apiNotice" class="notice error hidden">
+      <i class="ti ti-plug-connected-x"></i>
+      <span id="apiNoticeText">后端暂时连不上。可用「?api=http://localhost:8080」指向本地服务。</span>
+    </div>
+
+    <div class="metric-grid">
+      <article class="metric primary">
+        <span class="metric-label">数据库实际行数</span>
+        <strong id="dbRows" class="metric-value">—</strong>
+        <span id="rawBytes" class="metric-sub">原始 UUID 负载 —</span>
+      </article>
+      <article class="metric">
+        <span class="metric-label">基础实验目标</span>
+        <strong id="targetRows" class="metric-value">—</strong>
+        <span class="metric-sub">超过 101,000,000 才裁剪</span>
+      </article>
+      <article class="metric">
+        <span class="metric-label">补齐进度</span>
+        <strong id="progress" class="metric-value">—</strong>
+        <span class="metric-sub" id="backendState">状态未知</span>
+      </article>
+    </div>
+
+    <div class="progress">
+      <div id="progressBar" class="progress-bar"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2><i class="ti ti-bolt"></i> 亲手追加一批</h2>
+      <span class="hint">UUIDv4 由服务端 SecureRandom 生成；100000 条会拆成 20 次批量插入</span>
+    </div>
+
+    <div class="append-row">
+      <button class="append-btn" data-count="1000">追加 1,000 条</button>
+      <button class="append-btn" data-count="10000">追加 10,000 条</button>
+      <button class="append-btn accent" data-count="100000">追加 100,000 条</button>
+    </div>
+
+    <div id="appendResult" class="result hidden">
+      <div class="result-grid">
+        <div><span>请求生成</span><strong id="requestedCount">—</strong></div>
+        <div><span>新插入</span><strong id="insertedCount" class="green">—</strong></div>
+        <div><span>本批重复</span><strong id="duplicateCount" class="red">—</strong></div>
+        <div><span>耗时</span><strong id="elapsed">—</strong></div>
+        <div><span>行数变化</span><strong id="rowDelta">—</strong></div>
+        <div><span>写入速度</span><strong id="insertSpeed">—</strong></div>
+      </div>
+      <p class="footnote">重复数按「请求条数 − INSERT IGNORE 真正写入条数」计算。只有同一批撞上已有主键时它才会变大。</p>
+    </div>
+    <p id="appendStatus" class="inline-status">选择一个规模，后端会真的生成并插入。</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2><i class="ti ti-alert-triangle"></i> 为什么 1 亿条还看不到冲突？</h2>
+      <span class="hint">下面是公式推算，不是本次数据库实测</span>
+    </div>
+    <div class="math-grid">
+      <div class="math-item">
+        <span>UUIDv4 随机位</span><strong>122 位</strong>
+      </div>
+      <div class="math-item">
+        <span>1 亿条的比较对</span><strong id="pairCount">—</strong>
+      </div>
+      <div class="math-item">
+        <span>1 亿条冲突概率</span><strong id="collisionOdds">—</strong>
+      </div>
+    </div>
+    <p class="explain">1 亿条 UUID 已经是很大的表，但对 122 位随机空间来说仍只是很小的一撮。判断重复不能用 HyperLogLog：它能估「大约有多少个不同值」，误差可能大到把一个重复淹没；这里用 MySQL 主键，撞了就是撞了，没撞就没撞。</p>
+    <div class="notice warning">
+      <i class="ti ti-shield-check"></i>
+      <span>诚实说明：0 冲突是实验观察，不是数学证明。UUIDv4 的安全性依赖生成器有足够的随机熵；实现错误或熵源有问题的 UUID 仍然可能撞。</span>
+    </div>
+  </section>
+
+  <footer class="page-footer">
+    <a class="ghost-link" href="../../index.html"><i class="ti ti-home"></i> 回首页看更多演示</a>
+  </footer>
+</main>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

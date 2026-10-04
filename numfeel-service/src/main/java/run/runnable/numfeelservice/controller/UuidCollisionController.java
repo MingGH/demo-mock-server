@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import run.runnable.numfeelservice.controller.dto.UuidCollisionRequests.AppendRequest;
+import run.runnable.numfeelservice.controller.dto.UuidCollisionRequests.LookupRequest;
 import run.runnable.numfeelservice.controller.dto.UuidCollisionResponses.AppendResponse;
+import run.runnable.numfeelservice.controller.dto.UuidCollisionResponses.LookupResponse;
 import run.runnable.numfeelservice.controller.dto.UuidCollisionResponses.StatusResponse;
 import run.runnable.numfeelservice.service.UuidCollisionService;
 import run.runnable.numfeelservice.web.ApiEnvelope;
@@ -45,5 +47,17 @@ public class UuidCollisionController {
     public Mono<ApiEnvelope<AppendResponse>> append(@RequestBody(required = false) AppendRequest request) {
         int count = request == null || request.count() == null ? 0 : request.count();
         return service.append(count).map(ApiEnvelope::ok);
+    }
+
+    /**
+     * 用主键索引查询某个 UUID 是否已在当前实验表中。
+     *
+     * @param request 请求体，包含 uuid 字段
+     * @return 查询结果
+     */
+    @PostMapping("/lookup")
+    public Mono<ApiEnvelope<LookupResponse>> lookup(@RequestBody(required = false) LookupRequest request) {
+        String uuid = request == null ? null : request.uuid();
+        return service.lookup(uuid).map(ApiEnvelope::ok);
     }
 }

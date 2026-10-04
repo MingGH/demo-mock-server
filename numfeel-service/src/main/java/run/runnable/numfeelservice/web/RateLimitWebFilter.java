@@ -123,6 +123,8 @@ public class RateLimitWebFilter implements WebFilter {
         rules.add(new Rule(isPost("/avatar/convert-webp"), RateLimitWebFilter::routeKey, 60, 60));
         // UUID 碰撞实验：20/min/IP；10 万条一批会触发 20 次多行插入
         rules.add(new Rule(isPost("/uuid-collision/append"), RateLimitWebFilter::routeKey, 20, 60));
+        // UUID 主键查询很快；给一个宽松但明确的额度，防脚本刷日志
+        rules.add(new Rule(isPost("/uuid-collision/lookup"), RateLimitWebFilter::routeKey, 60, 60));
         // 其余写接口：10/min
         rules.add(new Rule(RateLimitWebFilter::isWriteThrottled, RateLimitWebFilter::routeKey, 10, 60));
     }

@@ -10,6 +10,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import run.runnable.numfeelservice.controller.dto.UuidCollisionResponses.AppendResponse;
+import run.runnable.numfeelservice.controller.dto.UuidCollisionResponses.LookupResponse;
 import run.runnable.numfeelservice.controller.dto.UuidCollisionResponses.StatusResponse;
 import run.runnable.numfeelservice.web.ApiException;
 
@@ -198,6 +199,36 @@ public class UuidCollisionService {
     }
 
     /**
+     * 用主键索引查询单个 UUID 是否已出现在表中。
+     *
+     * @param requestedUuid 用户输入的 UUIDv4
+     * @return 查询结果
+     */
+    public Mono<LookupResponse> lookup(String requestedUuid) {
+        UUID uuid = parseUuidV4(requestedUuid);
+        byte[] id = toBinary(uuid);
+        long start = System.nanoTime();
+        return databaseRowCount(false)
+                .flatMap(rowCount -> db.sql("""
+                                SELECT EXISTS(
+                                    SELECT 1
+                                    FROM uuid_collision_seen
+                                    WHERE id = ?
+                                ) AS exists_flag
+                                """)
+                        .bind(0, id)
+                        .map(row -> Boolean.TRUE.equals(row.get("exists_flag")))
+                        .one()
+                        .defaultIfEmpty(false)
+                        .map(exists -> new LookupResponse(
+                                uuid.toString(),
+                                exists,
+                                rowCount,
+                                "PRIMARY KEY (BINARY(16))",
+                                elapsedMs(start))));
+    }
+
+    /**
      * 查询实验状态。行数来自启动/每分钟刷新的 COUNT 快照，
      * 写入和删除会增量修正快照，避免每次请求都扫描 1 亿行表。
      *
@@ -358,6 +389,33 @@ public class UuidCollisionService {
                 .putLong(uuid.getMostSignificantBits())
                 .putLong(uuid.getLeastSignificantBits())
                 .array();
+    }
+
+    /**
+     * 解析并验证用户输入的 UUIDv4。
+     *
+     * @param value 用户输入
+     * @return 规范化 UUID
+     */
+    private UUID parseUuidV4(String value) {
+        if (value == null || value.isBlank()) {
+            throw ApiException.badRequest("uuid is required");
+        }
+        String normalized = value.trim().toLowerCase();
+        if (normalized.matches("[0-9a-f]{32}")) {
+            normalized = normalized.replaceFirst(
+                    "([0-9a-f]{8})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{12})",
+                    "$1-$2-$3-$4-$5");
+        }
+        try {
+            UUID uuid = UUID.fromString(normalized);
+            if (uuid.version() != 4) {
+                throw ApiException.badRequest("only UUIDv4 can be checked");
+            }
+            return uuid;
+        } catch (IllegalArgumentException e) {
+            throw ApiException.badRequest("invalid UUIDv4");
+        }
     }
 
     /**

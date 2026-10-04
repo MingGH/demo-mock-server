@@ -43,4 +43,21 @@ public final class UuidCollisionResponses {
             long databaseRowCountAfter,
             long elapsedMs) {
     }
+
+    /**
+     * UUID 查询响应。
+     *
+     * @param requestedUuid 规范化后的 UUID 字符串
+     * @param exists 是否已出现在当前实验表
+     * @param databaseRowCount 查询时的表行数快照
+     * @param queryMethod 本次使用的查询方式
+     * @param elapsedMs 查询耗时（毫秒）
+     */
+    public record LookupResponse(
+            String requestedUuid,
+            boolean exists,
+            long databaseRowCount,
+            String queryMethod,
+            long elapsedMs) {
+    }
 }

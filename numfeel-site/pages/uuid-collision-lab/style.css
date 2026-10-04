@@ -82,6 +82,20 @@ h1 {
   background: linear-gradient(135deg, #ffd700, #f59e0b);
 }
 .append-btn.accent:hover { box-shadow: 0 6px 20px rgba(255,215,0,0.2); }
+.lookup-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 10px;
+}
+.lookup-input {
+  min-height: 44px; width: 100%;
+  background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 11px; color: #ffd700; padding: 10px 12px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 0.82rem;
+}
+.lookup-input:focus {
+  outline: none; border-color: rgba(255,215,0,0.5);
+}
+.lookup-input::placeholder { color: #6a7387; }
+
 .result {
   margin-top: 16px; padding: 16px; border-radius: 14px;
   background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.07);
@@ -126,7 +140,7 @@ h1 {
   text-decoration: none; font-size: 0.88rem;
 }
 @media (max-width: 700px) {
-  .metric-grid, .append-row, .result-grid, .math-grid { grid-template-columns: 1fr; }
+  .metric-grid, .append-row, .result-grid, .math-grid, .lookup-row { grid-template-columns: 1fr; }
   .card { padding: 20px 14px; }
   .append-btn { font-size: 1rem; }
   .math-item strong, .result-grid strong { font-size: 1.1rem; }

@@ -42,6 +42,13 @@
     '极小概率用科学计数法显示');
   assertEqual(E.formatDuration(1234), '1.23 s', '秒级耗时格式化');
   assertEqual(E.rawBytes(100000000), '1.49 GiB', '1 亿条原始 16 字节负载为 1.49 GiB');
+  assertEqual(E.normalizeUuidInput('550E8400-E29B-41D4-A716-446655440000'),
+    '550e8400-e29b-41d4-a716-446655440000', 'UUID 支持大写并规范化');
+  assertEqual(E.normalizeUuidInput('550e8400e29b41d4a716446655440000'),
+    '550e8400-e29b-41d4-a716-446655440000', 'UUID 支持无连字符');
+  assertEqual(E.normalizeUuidInput('not-a-uuid'), null, '非法 UUID 返回 null');
+  assertEqual(E.normalizeUuidInput('550e8400-e29b-11d4-a716-446655440000'), null,
+    '非 UUIDv4 返回 null');
   assertEqual(E.insertSpeedPerSecond(500, 1000), 500, '实际插入速度按 insertedCount 计算');
   assertEqual(E.insertSpeedPerSecond(1000, 0), 0, '耗时为 0 时速度为 0');
   assertEqual(E.insertSpeedPerSecond(0, 1000), 0, '插入数为 0 时速度为 0');

@@ -15,4 +15,12 @@ public final class UuidCollisionRequests {
      */
     public record AppendRequest(Integer count) {
     }
+
+    /**
+     * 查询某个 UUID 是否已在实验表中。
+     *
+     * @param uuid 用户提供的 UUIDv4；支持带连字符或不带连字符
+     */
+    public record LookupRequest(String uuid) {
+    }
 }

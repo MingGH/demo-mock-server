@@ -107,11 +107,37 @@
   }
 
   /**
+   * 校验并规范化用户输入的 UUIDv4。
+   * @param {string} value 用户输入
+   * @returns {string|null} 小写规范形式；非法时返回 null
+   */
+  function normalizeUuidInput(value) {
+    var raw = String(value || '').trim().toLowerCase();
+    if (/^[0-9a-f]{32}$/.test(raw)) {
+      raw = raw.replace(/^([0-9a-f]{8})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{12})$/, '$1-$2-$3-$4-$5');
+    }
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(raw) ? raw : null;
+  }
+
+  /**
    * 调后端查询状态。
    * @returns {Promise<object>} status.data
    */
   function fetchStatus() {
     return fetch(API_BASE + '/uuid-collision/status').then(parseJson);
+  }
+
+  /**
+   * 查询某个 UUID 是否已在当前实验表中。
+   * @param {string} value UUIDv4 输入
+   * @returns {Promise<object>} lookup.data
+   */
+  function lookupUuid(value) {
+    return fetch(API_BASE + '/uuid-collision/lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uuid: value })
+    }).then(parseJson);
   }
 
   /**
@@ -158,6 +184,8 @@
   exports.rawBytes = rawBytes;
   exports.insertSpeedPerSecond = insertSpeedPerSecond;
   exports.fetchStatus = fetchStatus;
+  exports.normalizeUuidInput = normalizeUuidInput;
+  exports.lookupUuid = lookupUuid;
   exports.appendUuids = appendUuids;
 
   if (typeof module !== 'undefined' && module.exports) {

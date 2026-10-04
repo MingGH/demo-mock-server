@@ -78,6 +78,27 @@
 
   <section class="card">
     <div class="card-head">
+      <h2><i class="ti ti-search"></i> 查查你的 UUID</h2>
+      <span class="hint">走 BINARY(16) 主键索引；返回的是当前表里的精确匹配结果</span>
+    </div>
+    <div class="lookup-row">
+      <input id="lookupInput" class="lookup-input" type="text" spellcheck="false"
+             placeholder="粘贴 UUIDv4，例如 550e8400-e29b-41d4-a716-446655440000">
+      <button id="lookupBtn" class="append-btn accent">查询</button>
+    </div>
+    <p id="lookupStatus" class="inline-status">输入一个 UUIDv4，看它是否已经撞进这张表。</p>
+    <div id="lookupResult" class="result hidden">
+      <div class="result-grid">
+        <div><span>查询结果</span><strong id="lookupExists">—</strong></div>
+        <div><span>查询耗时</span><strong id="lookupElapsed">—</strong></div>
+        <div><span>查询方式</span><strong id="lookupMethod">主键索引</strong></div>
+      </div>
+      <p class="footnote">输入已规范化为 <span id="lookupUuid"></span>；查询时表内有 <span id="lookupRows"></span> 行。</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
       <h2><i class="ti ti-alert-triangle"></i> 为什么 1 亿条还看不到冲突？</h2>
       <span class="hint">下面是公式推算，不是本次数据库实测</span>
     </div>

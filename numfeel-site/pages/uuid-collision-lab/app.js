@@ -9,6 +9,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var refreshTimer = null;
   var appending = false;
+  var lookupBusy = false;
 
   if (typeof window !== 'undefined') {
     window.NF_TRACK_UMAMI_MIRROR = ['append_run', 'pagehide'];
@@ -69,6 +70,44 @@
       : '—';
   }
 
+  function renderLookup(data) {
+    $('lookupResult').classList.remove('hidden');
+    $('lookupExists').textContent = data.exists ? '撞上了' : '没有撞上';
+    $('lookupExists').className = data.exists ? 'red' : 'green';
+    $('lookupElapsed').textContent = E.formatDuration(data.elapsedMs);
+    $('lookupMethod').textContent = data.queryMethod || '主键索引';
+    $('lookupUuid').textContent = data.requestedUuid;
+    $('lookupRows').textContent = E.formatInteger(data.databaseRowCount);
+  }
+
+  function runLookup() {
+    if (lookupBusy) return;
+    var normalized = E.normalizeUuidInput($('lookupInput').value);
+    if (!normalized) {
+      $('lookupStatus').textContent = '请输入合法的 UUIDv4；支持带连字符或不带连字符。';
+      return;
+    }
+    lookupBusy = true;
+    $('lookupBtn').disabled = true;
+    $('lookupStatus').textContent = '正在用主键索引查询…';
+    E.lookupUuid(normalized).then(function (data) {
+      renderLookup(data);
+      $('lookupStatus').textContent = data.exists
+        ? '结果：这个 UUID 已在当前表里。'
+        : '结果：这个 UUID 不在当前表里。';
+      track('lookup_run', {
+        exists: data.exists,
+        rows: Number(data.databaseRowCount),
+        elapsed_ms: Number(data.elapsedMs)
+      });
+    }).catch(function (error) {
+      $('lookupStatus').textContent = error.message || '查询失败，请稍后再试。';
+    }).finally(function () {
+      lookupBusy = false;
+      $('lookupBtn').disabled = false;
+    });
+  }
+
   function setButtonsDisabled(disabled) {
     document.querySelectorAll('.append-btn').forEach(function (button) {
       button.disabled = disabled;
@@ -109,6 +148,10 @@
       button.addEventListener('click', function () {
         runAppend(Number(button.dataset.count));
       });
+    });
+    $('lookupBtn').addEventListener('click', runLookup);
+    $('lookupInput').addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') runLookup();
     });
     refreshStatus();
     startRefresh();

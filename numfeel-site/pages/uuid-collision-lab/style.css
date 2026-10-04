@@ -64,29 +64,33 @@ h1 {
 }
 .conflict-metric .metric-label { color: #81c784; }
 .lookup-shell {
-  display: flex; align-items: center; gap: 12px;
-  background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035));
-  border: 1px solid rgba(255,215,0,0.24);
-  border-radius: 18px; padding: 9px 10px 9px 16px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  display: flex !important; align-items: center; gap: 14px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.035));
+  border: 1px solid rgba(255,215,0,0.28);
+  border-radius: 20px; padding: 10px 12px 10px 18px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10), 0 10px 30px rgba(0,0,0,0.16);
 }
 .lookup-shell > .ti {
   color: #ffd700; font-size: 1.25rem; flex-shrink: 0;
 }
 .lookup-input {
-  flex: 1; min-width: 0; min-height: 44px;
-  background: transparent; border: none; outline: none;
-  color: #ffd700; font-family: 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 0.82rem; letter-spacing: 0.01em;
+  flex: 1 !important; min-width: 0 !important; min-height: 48px !important;
+  display: block !important; width: auto !important;
+  background: transparent !important; border: none !important; outline: none !important;
+  border-radius: 0 !important; box-shadow: none !important;
+  color: #ffd700 !important; font-family: 'SF Mono', Menlo, Consolas, monospace !important;
+  font-size: 0.88rem !important; letter-spacing: 0.01em;
 }
 .lookup-input::placeholder {
   color: #7d8698; font-family: inherit; font-size: 0.88rem; letter-spacing: 0;
 }
 .lookup-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  min-height: 44px; padding: 0 20px; border: none; border-radius: 12px;
-  color: #191932; background: linear-gradient(135deg, #ffd700, #f59e0b);
-  font-weight: 750; font-size: 0.9rem; cursor: pointer;
+  display: inline-flex !important; align-items: center; justify-content: center; gap: 7px;
+  min-height: 48px !important; min-width: 108px; padding: 0 22px !important;
+  border: none !important; border-radius: 14px !important;
+  color: #191932 !important; background: linear-gradient(135deg, #ffd700, #f59e0b) !important;
+  font-family: inherit !important; font-weight: 750 !important; font-size: 0.94rem !important;
+  cursor: pointer; box-shadow: 0 8px 24px rgba(255,215,0,0.18) !important;
   transition: transform .12s, box-shadow .15s, filter .15s;
   touch-action: manipulation;
 }

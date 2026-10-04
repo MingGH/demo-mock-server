@@ -13,7 +13,7 @@
   <header class="hero">
     <p class="eyebrow">UUIDv4 · 生日问题 · 精确去重</p>
     <h1>UUID 冲突实验室</h1>
-    <p class="lead">这里不背「UUID 几乎不会重复」这句话。后端正在往 MySQL 里真实写入随机 UUIDv4，主键本身就是查重器。你可以亲手再追加一批，看这张表被撑到多大。</p>
+    <p class="lead">这里正在往 MySQL 里真实存储 1 亿个 UUIDv4。你觉得会有冲突的吗？主键本身就是查重器；下面会直接给出当前实测判定，你也可以粘贴一个 UUID 查查它有没有撞进表里。</p>
   </header>
 
   <section class="card">
@@ -43,10 +43,37 @@
         <strong id="progress" class="metric-value">—</strong>
         <span class="metric-sub" id="backendState">状态未知</span>
       </article>
+      <article class="metric conflict-metric">
+        <span class="metric-label">冲突判定</span>
+        <strong id="conflictCount" class="metric-value">—</strong>
+        <span class="metric-sub" id="conflictNote">等待状态返回</span>
+      </article>
     </div>
 
     <div class="progress">
       <div id="progressBar" class="progress-bar"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2><i class="ti ti-search"></i> 查查你的 UUID</h2>
+      <span class="hint">走 BINARY(16) 主键索引；返回的是当前表里的精确匹配结果</span>
+    </div>
+    <div class="lookup-shell">
+      <i class="ti ti-fingerprint" aria-hidden="true"></i>
+      <input id="lookupInput" class="lookup-input" type="text" spellcheck="false"
+             placeholder="粘贴你的 UUIDv4" aria-label="输入 UUIDv4">
+      <button id="lookupBtn" class="lookup-btn"><i class="ti ti-search" aria-hidden="true"></i>查询</button>
+    </div>
+    <p id="lookupStatus" class="inline-status">输入一个 UUIDv4，看它是否已经撞进这张表。</p>
+    <div id="lookupResult" class="result hidden">
+      <div class="result-grid">
+        <div><span>查询结果</span><strong id="lookupExists">—</strong></div>
+        <div><span>查询耗时</span><strong id="lookupElapsed">—</strong></div>
+        <div><span>查询方式</span><strong id="lookupMethod">主键索引</strong></div>
+      </div>
+      <p class="footnote">输入已规范化为 <span id="lookupUuid"></span>；查询时表内有 <span id="lookupRows"></span> 行。</p>
     </div>
   </section>
 
@@ -74,27 +101,6 @@
       <p class="footnote">重复数按「请求条数 − INSERT IGNORE 真正写入条数」计算。包括本批内部重复和与已有行重复。</p>
     </div>
     <p id="appendStatus" class="inline-status">选择一个规模，后端会真的生成并插入。</p>
-  </section>
-
-  <section class="card">
-    <div class="card-head">
-      <h2><i class="ti ti-search"></i> 查查你的 UUID</h2>
-      <span class="hint">走 BINARY(16) 主键索引；返回的是当前表里的精确匹配结果</span>
-    </div>
-    <div class="lookup-row">
-      <input id="lookupInput" class="lookup-input" type="text" spellcheck="false"
-             placeholder="粘贴 UUIDv4，例如 550e8400-e29b-41d4-a716-446655440000">
-      <button id="lookupBtn" class="append-btn accent">查询</button>
-    </div>
-    <p id="lookupStatus" class="inline-status">输入一个 UUIDv4，看它是否已经撞进这张表。</p>
-    <div id="lookupResult" class="result hidden">
-      <div class="result-grid">
-        <div><span>查询结果</span><strong id="lookupExists">—</strong></div>
-        <div><span>查询耗时</span><strong id="lookupElapsed">—</strong></div>
-        <div><span>查询方式</span><strong id="lookupMethod">主键索引</strong></div>
-      </div>
-      <p class="footnote">输入已规范化为 <span id="lookupUuid"></span>；查询时表内有 <span id="lookupRows"></span> 行。</p>
-    </div>
   </section>
 
   <section class="card">

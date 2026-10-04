@@ -41,7 +41,7 @@ h1 {
 }
 .hint { color: #8d95a8; font-size: 0.8rem; display: block; margin-top: 6px; line-height: 1.5; }
 .metric-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
 }
 .metric {
   background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.06);
@@ -58,6 +58,42 @@ h1 {
 }
 .metric.primary .metric-value { font-size: clamp(1.5rem, 6vw, 2.2rem); }
 .metric-sub { display: block; color: #8d95a8; font-size: 0.75rem; margin-top: 6px; }
+.conflict-metric {
+  background: rgba(129,199,132,0.08);
+  border-color: rgba(129,199,132,0.25);
+}
+.conflict-metric .metric-label { color: #81c784; }
+.lookup-shell {
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035));
+  border: 1px solid rgba(255,215,0,0.24);
+  border-radius: 18px; padding: 9px 10px 9px 16px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.lookup-shell > .ti {
+  color: #ffd700; font-size: 1.25rem; flex-shrink: 0;
+}
+.lookup-input {
+  flex: 1; min-width: 0; min-height: 44px;
+  background: transparent; border: none; outline: none;
+  color: #ffd700; font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.82rem; letter-spacing: 0.01em;
+}
+.lookup-input::placeholder {
+  color: #7d8698; font-family: inherit; font-size: 0.88rem; letter-spacing: 0;
+}
+.lookup-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 20px; border: none; border-radius: 12px;
+  color: #191932; background: linear-gradient(135deg, #ffd700, #f59e0b);
+  font-weight: 750; font-size: 0.9rem; cursor: pointer;
+  transition: transform .12s, box-shadow .15s, filter .15s;
+  touch-action: manipulation;
+}
+.lookup-btn:hover { box-shadow: 0 6px 18px rgba(255,215,0,0.22); }
+.lookup-btn:active { transform: scale(0.97); }
+.lookup-btn:disabled { opacity: .5; cursor: not-allowed; }
+
 .progress {
   height: 9px; background: rgba(255,255,255,0.08); border-radius: 999px;
   overflow: hidden; margin-top: 16px;
@@ -140,7 +176,11 @@ h1 {
   text-decoration: none; font-size: 0.88rem;
 }
 @media (max-width: 700px) {
-  .metric-grid, .append-row, .result-grid, .math-grid, .lookup-row { grid-template-columns: 1fr; }
+  .metric-grid, .append-row, .result-grid, .math-grid { grid-template-columns: 1fr; }
+  .lookup-shell { padding: 8px; border-radius: 15px; gap: 8px; }
+  .lookup-shell > .ti { display: none; }
+  .lookup-input { font-size: 0.72rem; }
+  .lookup-btn { flex: 1; }
   .card { padding: 20px 14px; }
   .append-btn { font-size: 1rem; }
   .math-item strong, .result-grid strong { font-size: 1.1rem; }

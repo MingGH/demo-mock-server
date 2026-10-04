@@ -58,6 +58,8 @@ public class UuidCollisionService {
     private final AtomicLong cachedRowCountAtMs = new AtomicLong(0L);
     /** 每次增量更新都会变化，避免仍在途的旧 COUNT 查询覆盖新快照。 */
     private final AtomicLong rowCountVersion = new AtomicLong(0L);
+    /** 服务进程启动后观察到的主键冲突数量；重启后重新累计。 */
+    private final AtomicLong observedConflictCount = new AtomicLong(0L);
 
     public UuidCollisionService(DatabaseClient db) {
         this.db = db;
@@ -240,6 +242,7 @@ public class UuidCollisionService {
                         TARGET_ROW_COUNT,
                         TARGET_ROW_COUNT + TRIM_THRESHOLD,
                         Math.min(100D, count * 100D / TARGET_ROW_COUNT),
+                        observedConflictCount.get(),
                         writeBusy.get()));
     }
 
@@ -329,8 +332,12 @@ public class UuidCollisionService {
         return spec.fetch()
                 .rowsUpdated()
                 .map(inserted -> {
+                    long duplicates = values.size() - inserted;
+                    if (duplicates > 0) {
+                        observedConflictCount.addAndGet(duplicates);
+                    }
                     updateCachedRowCount(inserted);
-                    return new BatchResult(inserted, values.size() - inserted);
+                    return new BatchResult(inserted, duplicates);
                 });
     }
 

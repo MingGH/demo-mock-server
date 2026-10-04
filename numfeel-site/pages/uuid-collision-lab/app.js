@@ -41,6 +41,14 @@
       ? '后台任务正在检查或写入'
       : data.databaseRowCount >= data.targetRowCount ? '已达目标；等待下一次检查' : '后台补齐中';
     $('progressBar').style.width = Math.min(100, Math.max(0, data.progressPercent)) + '%';
+    var conflicts = Number(data.conflictCount || 0);
+    $('conflictCount').textContent = conflicts > 0 ? E.formatInteger(conflicts) + ' 条' : '0 条';
+    $('conflictCount').className = 'metric-value ' + (conflicts > 0 ? 'red' : 'green');
+    $('conflictNote').textContent = conflicts > 0
+      ? '发现主键冲突；请检查日志'
+      : data.databaseRowCount >= data.targetRowCount
+        ? E.formatInteger(data.databaseRowCount) + ' 条实测，未发现冲突'
+        : E.formatInteger(data.databaseRowCount) + ' 条实测，尚未发现冲突';
   }
 
   function refreshStatus() {

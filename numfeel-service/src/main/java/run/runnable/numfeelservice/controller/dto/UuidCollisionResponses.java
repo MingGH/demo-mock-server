@@ -15,6 +15,7 @@ public final class UuidCollisionResponses {
      * @param targetRowCount 基础实验目标行数
      * @param trimThreshold 行数超过该阈值时触发裁剪
      * @param progressPercent 相对目标行数的进度百分比
+     * @param conflictCount 服务进程启动后观察到的主键冲突数量
      * @param backgroundBusy 后台检查或补齐任务是否正在运行
      */
     public record StatusResponse(
@@ -22,6 +23,7 @@ public final class UuidCollisionResponses {
             long targetRowCount,
             long trimThreshold,
             double progressPercent,
+            long conflictCount,
             boolean backgroundBusy) {
     }
 

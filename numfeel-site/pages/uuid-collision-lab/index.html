@@ -58,7 +58,7 @@
   <section class="card">
     <div class="card-head">
       <h2><i class="ti ti-search"></i> 查查你的 UUID</h2>
-      <span class="hint">走 BINARY(16) 主键索引；返回的是当前表里的精确匹配结果</span>
+      <span class="hint">走 BINARY(16) 主键索引；冲突事件会写入独立账本，主表裁剪不会清除历史冲突数</span>
     </div>
     <div class="lookup-shell">
       <i class="ti ti-fingerprint" aria-hidden="true"></i>

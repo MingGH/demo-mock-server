@@ -571,3 +571,13 @@ CREATE TABLE IF NOT EXISTS crud_race_kv (
 CREATE TABLE IF NOT EXISTS uuid_collision_seen (
     id BINARY(16) NOT NULL PRIMARY KEY COMMENT 'UUIDv4 的 16 字节二进制'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- UUID 碰撞实验：持久化冲突账本。
+-- 每个 UUID 一行；occurrence_count 是该 UUID 再次生成造成的冲突次数。
+-- 这张表独立于 uuid_collision_seen，主表裁剪不会影响历史冲突统计。
+CREATE TABLE IF NOT EXISTS uuid_collision_conflicts (
+    id              BINARY(16) NOT NULL PRIMARY KEY COMMENT '发生冲突的 UUIDv4',
+    first_seen_at   BIGINT     NOT NULL COMMENT '首次发现冲突时间戳（ms）',
+    last_seen_at    BIGINT     NOT NULL COMMENT '最近一次发现冲突时间戳（ms）',
+    occurrence_count BIGINT    NOT NULL DEFAULT 0 COMMENT '该 UUID 累计冲突次数'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

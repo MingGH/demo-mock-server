@@ -16,7 +16,10 @@ import run.runnable.numfeelservice.web.ApiException;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -76,11 +79,36 @@ public class UuidCollisionService {
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                         """)
                 .then()
+                .then(db.sql("""
+                        CREATE TABLE IF NOT EXISTS uuid_collision_conflicts (
+                            id               BINARY(16) NOT NULL PRIMARY KEY,
+                            first_seen_at    BIGINT     NOT NULL,
+                            last_seen_at     BIGINT     NOT NULL,
+                            occurrence_count BIGINT     NOT NULL DEFAULT 0
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                        """).then())
+                .then(loadPersistentConflictCount())
                 .then(databaseRowCount(true))
-                .doOnSuccess(count -> log.info("UUID collision table ready, initial rows: {}", count))
+                .doOnSuccess(count -> log.info(
+                        "UUID collision table ready, initial rows: {}, persistent conflicts: {}",
+                        count, observedConflictCount.get()))
                 .doOnError(err -> log.warn("UUID collision schema init failed: {}", err.getMessage()))
                 .onErrorComplete()
                 .subscribe();
+    }
+
+    /**
+     * 从持久化冲突账本恢复历史冲突总数。
+     *
+     * @return 完成信号
+     */
+    private Mono<Void> loadPersistentConflictCount() {
+        return db.sql("SELECT COALESCE(SUM(occurrence_count), 0) AS conflict_count FROM uuid_collision_conflicts")
+                .map(row -> ((Number) row.get("conflict_count")).longValue())
+                .one()
+                .defaultIfEmpty(0L)
+                .doOnNext(observedConflictCount::set)
+                .then();
     }
 
     /**
@@ -297,13 +325,19 @@ public class UuidCollisionService {
      *
      * @return 16 字节 UUID 列表
      */
-    private Mono<List<byte[]>> generateBatch(int size) {
+    private Mono<GeneratedBatch> generateBatch(int size) {
         return Mono.fromCallable(() -> {
-            List<byte[]> values = new ArrayList<>(size);
+            Map<UUID, Integer> counts = new LinkedHashMap<>();
             for (int i = 0; i < size; i++) {
-                values.add(toBinary(UUID.randomUUID()));
+                UUID uuid = UUID.randomUUID();
+                counts.merge(uuid, 1, Integer::sum);
             }
-            return values;
+            List<byte[]> values = new ArrayList<>(counts.size());
+            for (UUID uuid : counts.keySet()) {
+                values.add(toBinary(uuid));
+            }
+            int generatedCount = counts.values().stream().mapToInt(Integer::intValue).sum();
+            return new GeneratedBatch(values, counts, generatedCount);
         }).subscribeOn(Schedulers.fromExecutor(uuidExecutor));
     }
 
@@ -313,10 +347,97 @@ public class UuidCollisionService {
      * @param values 待插入 UUID 列表
      * @return 插入结果
      */
-    private Mono<BatchResult> insertBatch(List<byte[]> values) {
+    private Mono<BatchResult> insertBatch(GeneratedBatch batch) {
+        List<byte[]> values = batch.values();
         if (values.isEmpty()) {
             return Mono.just(new BatchResult(0L, 0L));
         }
+        return findExistingIds(values)
+                .flatMap(existingIds -> recordConflicts(batch.counts(), existingIds)
+                        .then(insertUniqueBatch(values, batch.generatedCount())));
+    }
+
+    /**
+     * 查询本批中已经存在于主表的 UUID，用于精确记录冲突。
+     *
+     * @param values 本批去重后的 UUID 二进制
+     * @return 已存在 UUID 集合
+     */
+    private Mono<Set<UUID>> findExistingIds(List<byte[]> values) {
+        StringBuilder placeholders = new StringBuilder(values.size() * 2);
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) placeholders.append(',');
+            placeholders.append('?');
+        }
+        DatabaseClient.GenericExecuteSpec spec = db.sql(
+                "SELECT id FROM uuid_collision_seen WHERE id IN (" + placeholders + ")");
+        for (int i = 0; i < values.size(); i++) {
+            spec = spec.bind(i, values.get(i));
+        }
+        return spec.map(row -> fromBinary(row.get("id", byte[].class)))
+                .all()
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    /**
+     * 在主表插入前把冲突事件写入持久化账本。
+     *
+     * @param counts 本批每个 UUID 的生成次数
+     * @param existingIds 插入前已存在于主表的 UUID
+     * @return 完成信号
+     */
+    private Mono<Void> recordConflicts(Map<UUID, Integer> counts, Set<UUID> existingIds) {
+        long now = System.currentTimeMillis();
+        List<Map.Entry<UUID, Integer>> conflicts = counts.entrySet().stream()
+                .filter(entry -> existingIds.contains(entry.getKey()) || entry.getValue() > 1)
+                .map(entry -> Map.entry(
+                        entry.getKey(),
+                        existingIds.contains(entry.getKey())
+                                ? entry.getValue()
+                                : entry.getValue() - 1))
+                .filter(entry -> entry.getValue() > 0)
+                .toList();
+        if (conflicts.isEmpty()) {
+            return Mono.empty();
+        }
+        StringBuilder placeholders = new StringBuilder(conflicts.size() * 24);
+        for (int i = 0; i < conflicts.size(); i++) {
+            if (i > 0) placeholders.append(',');
+            placeholders.append("(?,?,?,?)");
+        }
+        DatabaseClient.GenericExecuteSpec spec = db.sql("""
+                        INSERT INTO uuid_collision_conflicts
+                            (id, first_seen_at, last_seen_at, occurrence_count)
+                        VALUES """ + placeholders + """
+                        ON DUPLICATE KEY UPDATE
+                            occurrence_count = occurrence_count + VALUES(occurrence_count),
+                            last_seen_at = VALUES(last_seen_at)
+                        """);
+        int index = 0;
+        for (Map.Entry<UUID, Integer> conflict : conflicts) {
+            byte[] id = toBinary(conflict.getKey());
+            spec = spec.bind(index++, id)
+                    .bind(index++, now)
+                    .bind(index++, now)
+                    .bind(index++, conflict.getValue().longValue());
+        }
+        long totalConflicts = conflicts.stream()
+                .mapToLong(Map.Entry::getValue)
+                .sum();
+        return spec.fetch()
+                .rowsUpdated()
+                .doOnSuccess(ignored -> observedConflictCount.addAndGet(totalConflicts))
+                .then();
+    }
+
+    /**
+     * 执行去重后的多行 INSERT IGNORE 并增量维护行数快照。
+     *
+     * @param values 去重后的 UUID 二进制
+     * @param generatedCount 本批实际生成的 UUID 总数
+     * @return 插入结果
+     */
+    private Mono<BatchResult> insertUniqueBatch(List<byte[]> values, int generatedCount) {
         StringBuilder placeholders = new StringBuilder(values.size() * 4);
         for (int i = 0; i < values.size(); i++) {
             if (i > 0) {
@@ -332,12 +453,8 @@ public class UuidCollisionService {
         return spec.fetch()
                 .rowsUpdated()
                 .map(inserted -> {
-                    long duplicates = values.size() - inserted;
-                    if (duplicates > 0) {
-                        observedConflictCount.addAndGet(duplicates);
-                    }
                     updateCachedRowCount(inserted);
-                    return new BatchResult(inserted, duplicates);
+                    return new BatchResult(inserted, generatedCount - inserted);
                 });
     }
 
@@ -382,6 +499,17 @@ public class UuidCollisionService {
             cachedRowCountAtMs.set(System.currentTimeMillis());
         }
         rowCountVersion.incrementAndGet();
+    }
+
+    /**
+     * 把 16 字节二进制还原成 UUID。
+     *
+     * @param id 数据库返回的二进制主键
+     * @return UUID
+     */
+    private UUID fromBinary(byte[] id) {
+        ByteBuffer buffer = ByteBuffer.wrap(id);
+        return new UUID(buffer.getLong(), buffer.getLong());
     }
 
     /**
@@ -432,6 +560,13 @@ public class UuidCollisionService {
      */
     private long elapsedMs(long startNano) {
         return Math.max(0L, (System.nanoTime() - startNano) / 1_000_000L);
+    }
+
+    /** 一次生成的去重值、生成次数映射和总生成数。 */
+    private record GeneratedBatch(
+            List<byte[]> values,
+            Map<UUID, Integer> counts,
+            int generatedCount) {
     }
 
     /** 一批或多批插入的累计结果。 */

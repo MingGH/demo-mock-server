@@ -246,7 +246,13 @@ public class UuidCollisionService {
                         ) AS exists_flag
                         """)
                 .bind(0, id)
-                .map(row -> Boolean.TRUE.equals(row.get("exists_flag")))
+                .map(row -> {
+                    Object value = row.get("exists_flag");
+                    if (value instanceof Boolean exists) {
+                        return exists;
+                    }
+                    return value instanceof Number number && number.longValue() != 0;
+                })
                 .one()
                 .defaultIfEmpty(false)
                 .map(exists -> new LookupResponse(

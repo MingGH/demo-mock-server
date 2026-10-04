@@ -119,7 +119,6 @@
         <span>1 亿条冲突概率</span><strong id="collisionOdds">—</strong>
       </div>
     </div>
-    <p class="explain">1 亿条 UUID 已经是很大的表，但对 122 位随机空间来说仍只是很小的一撮。判断重复不能用 HyperLogLog：它能估「大约有多少个不同值」，误差可能大到把一个重复淹没；这里用 MySQL 主键，撞了就是撞了，没撞就没撞。</p>
     <div class="notice warning">
       <i class="ti ti-shield-check"></i>
       <span>诚实说明：0 冲突是实验观察，不是数学证明。UUIDv4 的安全性依赖生成器有足够的随机熵；实现错误或熵源有问题的 UUID 仍然可能撞。</span>

@@ -1,7 +1,5 @@
 package run.runnable.numfeelservice.service;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +14,6 @@ import run.runnable.numfeelservice.controller.dto.UuidCollisionResponses.StatusR
 import run.runnable.numfeelservice.web.ApiException;
 
 import java.nio.ByteBuffer;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -47,16 +44,19 @@ public class UuidCollisionService {
     private static final int SEED_BATCHES_PER_TICK = 4;
     /** 清理时的单次 DELETE 行数。 */
     private static final long DELETE_BATCH_SIZE = 50_000;
+    /** 真实 COUNT(*) 的刷新周期；中间变化由插入/删除结果增量维护。 */
+    private static final long ROW_COUNT_REFRESH_MS = 60_000L;
 
     private final DatabaseClient db;
     /** 4 个生成批次并发执行；SQL 执行仍是 R2DBC 响应式 I/O。 */
     private final ExecutorService uuidExecutor = Executors.newFixedThreadPool(4);
     /** 后台任务和现场追加互斥。 */
     private final AtomicBoolean writeBusy = new AtomicBoolean(false);
-    /** 短缓存：100M 行 COUNT(*) 有成本，避免前端连点直接打穿数据库。 */
-    private final Cache<String, Long> rowCountCache = Caffeine.newBuilder()
-            .expireAfterWrite(Duration.ofSeconds(2))
-            .build();
+    /** 启动时查询、每分钟刷新的行数快照；-1 表示尚未初始化。 */
+    private final AtomicLong cachedRowCount = new AtomicLong(-1L);
+    private final AtomicLong cachedRowCountAtMs = new AtomicLong(0L);
+    /** 每次增量更新都会变化，避免仍在途的旧 COUNT 查询覆盖新快照。 */
+    private final AtomicLong rowCountVersion = new AtomicLong(0L);
 
     public UuidCollisionService(DatabaseClient db) {
         this.db = db;
@@ -73,10 +73,23 @@ public class UuidCollisionService {
                         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                         """)
                 .then()
-                .doOnSuccess(ignored -> log.info("UUID collision table ready"))
+                .then(databaseRowCount(true))
+                .doOnSuccess(count -> log.info("UUID collision table ready, initial rows: {}", count))
                 .doOnError(err -> log.warn("UUID collision schema init failed: {}", err.getMessage()))
                 .onErrorComplete()
                 .subscribe();
+    }
+
+    /**
+     * 每分钟刷新一次真实 COUNT(*)，避免 status 接口反复扫描 1 亿行表。
+     */
+    @Scheduled(initialDelay = 1_000L, fixedDelay = ROW_COUNT_REFRESH_MS)
+    public void refreshRowCount() {
+        databaseRowCount(true)
+                .subscribe(
+                        count -> log.debug("UUID collision row count refreshed: {}", count),
+                        err -> log.warn("UUID collision row count refresh failed: {}", err.getMessage())
+                );
     }
 
     /**
@@ -117,7 +130,7 @@ public class UuidCollisionService {
      * @return 完成信号
      */
     private Mono<Void> checkOnce() {
-        return databaseRowCount(true)
+        return databaseRowCount(false)
                 .flatMap(count -> {
                     if (count > TARGET_ROW_COUNT + TRIM_THRESHOLD) {
                         return trimToTarget(count);
@@ -175,17 +188,18 @@ public class UuidCollisionService {
                                     remaining.set(0L);
                                 } else {
                                     remaining.addAndGet(-deleted);
+                                    updateCachedRowCount(-deleted);
                                 }
                             });
                 })
                 .repeat(() -> remaining.get() > 0)
                 .reduce(0L, Long::sum)
-                .then()
-                .doOnSuccess(ignored -> rowCountCache.invalidate("count"));
+                .then();
     }
 
     /**
-     * 查询实验状态。行数来自 MySQL 实时 COUNT(*)，短缓存 2 秒。
+     * 查询实验状态。行数来自启动/每分钟刷新的 COUNT 快照，
+     * 写入和删除会增量修正快照，避免每次请求都扫描 1 亿行表。
      *
      * @return 状态响应
      */
@@ -215,7 +229,7 @@ public class UuidCollisionService {
         long start = System.nanoTime();
         return databaseRowCount(false)
                 .flatMap(before -> insertExactly(requestedCount)
-                        .flatMap(result -> databaseRowCount(true)
+                        .flatMap(result -> databaseRowCount(false)
                                 .map(after -> new AppendResponse(
                                         requestedCount,
                                         result.insertedCount(),
@@ -284,27 +298,53 @@ public class UuidCollisionService {
         }
         return spec.fetch()
                 .rowsUpdated()
-                .map(inserted -> new BatchResult(inserted, values.size() - inserted))
-                .doFinally(ignored -> rowCountCache.invalidate("count"));
+                .map(inserted -> {
+                    updateCachedRowCount(inserted);
+                    return new BatchResult(inserted, values.size() - inserted);
+                });
     }
 
     /**
-     * 读取真实行数。force 为 true 时绕过短缓存。
+     * 读取行数。force 为 true 时查询数据库；false 时优先读 60 秒快照。
+     * 启动时首次查询，定时任务每分钟刷新；写入和删除会更新快照。
      *
      * @param force 是否强制查询数据库
      * @return 行数
      */
     private Mono<Long> databaseRowCount(boolean force) {
         if (!force) {
-            Long cached = rowCountCache.getIfPresent("count");
-            if (cached != null) {
+            long cached = cachedRowCount.get();
+            long cachedAt = cachedRowCountAtMs.get();
+            if (cached >= 0
+                    && cachedAt > 0
+                    && System.currentTimeMillis() - cachedAt <= ROW_COUNT_REFRESH_MS) {
                 return Mono.just(cached);
             }
         }
+        long version = rowCountVersion.get();
         return db.sql("SELECT COUNT(*) AS row_count FROM uuid_collision_seen")
                 .map(row -> ((Number) row.get("row_count")).longValue())
                 .one()
-                .doOnNext(count -> rowCountCache.put("count", count));
+                .doOnNext(count -> {
+                    // 查询期间若有写入/删除，增量版本已变化；这次旧快照不覆盖新值。
+                    if (version == rowCountVersion.get()) {
+                        cachedRowCount.set(count);
+                        cachedRowCountAtMs.set(System.currentTimeMillis());
+                    }
+                });
+    }
+
+    /**
+     * 用一批 SQL 的实际影响行数修正内存行数快照。
+     *
+     * @param delta 新增或删除的行数；删除传负数
+     */
+    private void updateCachedRowCount(long delta) {
+        if (cachedRowCount.get() >= 0) {
+            cachedRowCount.addAndGet(delta);
+            cachedRowCountAtMs.set(System.currentTimeMillis());
+        }
+        rowCountVersion.incrementAndGet();
     }
 
     /**

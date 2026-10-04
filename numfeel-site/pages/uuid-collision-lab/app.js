@@ -77,7 +77,9 @@
     $('lookupElapsed').textContent = E.formatDuration(data.elapsedMs);
     $('lookupMethod').textContent = data.queryMethod || '主键索引';
     $('lookupUuid').textContent = data.requestedUuid;
-    $('lookupRows').textContent = E.formatInteger(data.databaseRowCount);
+    $('lookupRows').textContent = data.databaseRowCount >= 0
+      ? E.formatInteger(data.databaseRowCount)
+      : '—';
   }
 
   function runLookup() {

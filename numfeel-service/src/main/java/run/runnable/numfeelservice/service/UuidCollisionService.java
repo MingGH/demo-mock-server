@@ -208,24 +208,23 @@ public class UuidCollisionService {
         UUID uuid = parseUuidV4(requestedUuid);
         byte[] id = toBinary(uuid);
         long start = System.nanoTime();
-        return databaseRowCount(false)
-                .flatMap(rowCount -> db.sql("""
-                                SELECT EXISTS(
-                                    SELECT 1
-                                    FROM uuid_collision_seen
-                                    WHERE id = ?
-                                ) AS exists_flag
-                                """)
-                        .bind(0, id)
-                        .map(row -> Boolean.TRUE.equals(row.get("exists_flag")))
-                        .one()
-                        .defaultIfEmpty(false)
-                        .map(exists -> new LookupResponse(
-                                uuid.toString(),
-                                exists,
-                                rowCount,
-                                "PRIMARY KEY (BINARY(16))",
-                                elapsedMs(start))));
+        return db.sql("""
+                        SELECT EXISTS(
+                            SELECT 1
+                            FROM uuid_collision_seen
+                            WHERE id = ?
+                        ) AS exists_flag
+                        """)
+                .bind(0, id)
+                .map(row -> Boolean.TRUE.equals(row.get("exists_flag")))
+                .one()
+                .defaultIfEmpty(false)
+                .map(exists -> new LookupResponse(
+                        uuid.toString(),
+                        exists,
+                        cachedRowCount.get(),
+                        "PRIMARY KEY (BINARY(16))",
+                        elapsedMs(start)));
     }
 
     /**

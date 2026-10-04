@@ -65,7 +65,7 @@
     var delta = data.databaseRowCountAfter - data.databaseRowCountBefore;
     $('rowDelta').textContent = (delta >= 0 ? '+' : '') + E.formatInteger(delta);
     $('insertSpeed').textContent = data.elapsedMs > 0
-      ? E.formatInteger(Math.round(data.requestedCount * 1000 / data.elapsedMs)) + ' /s'
+      ? E.formatInteger(Math.round(E.insertSpeedPerSecond(data.insertedCount, data.elapsedMs))) + ' /s'
       : '—';
   }
 

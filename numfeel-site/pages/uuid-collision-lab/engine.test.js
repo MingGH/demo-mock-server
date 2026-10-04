@@ -42,6 +42,9 @@
     '极小概率用科学计数法显示');
   assertEqual(E.formatDuration(1234), '1.23 s', '秒级耗时格式化');
   assertEqual(E.rawBytes(100000000), '1.49 GiB', '1 亿条原始 16 字节负载为 1.49 GiB');
+  assertEqual(E.insertSpeedPerSecond(500, 1000), 500, '实际插入速度按 insertedCount 计算');
+  assertEqual(E.insertSpeedPerSecond(1000, 0), 0, '耗时为 0 时速度为 0');
+  assertEqual(E.insertSpeedPerSecond(0, 1000), 0, '插入数为 0 时速度为 0');
   assertEqual(E.API_BASE, 'https://numfeel-api.996.ninja', '生产 API 地址正确');
 
   console.log('\n通过 ' + passed + ' 个，失败 ' + failed + ' 个');

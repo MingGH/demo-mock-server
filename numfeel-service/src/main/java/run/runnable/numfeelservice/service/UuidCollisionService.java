@@ -169,7 +169,14 @@ public class UuidCollisionService {
                     return db.sql("DELETE FROM uuid_collision_seen LIMIT " + limit)
                             .fetch()
                             .rowsUpdated()
-                            .doOnNext(remaining::addAndGet);
+                            .doOnNext(deleted -> {
+                                if (deleted <= 0) {
+                                    // 防御：即使数据库行为异常或并发清理，也不能进入空转循环。
+                                    remaining.set(0L);
+                                } else {
+                                    remaining.addAndGet(-deleted);
+                                }
+                            });
                 })
                 .repeat(() -> remaining.get() > 0)
                 .reduce(0L, Long::sum)

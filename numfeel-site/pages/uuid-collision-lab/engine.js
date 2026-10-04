@@ -82,6 +82,18 @@
   }
 
   /**
+   * 计算实际插入速度；重复被主键拒绝的行不计入写入量。
+   * @param {number} insertedCount 真正写入的新 UUID 数
+   * @param {number} elapsedMs 耗时毫秒
+   * @returns {number} 每秒插入行数
+   */
+  function insertSpeedPerSecond(insertedCount, elapsedMs) {
+    var count = Number(insertedCount || 0);
+    var elapsed = Number(elapsedMs || 0);
+    return elapsed > 0 ? count * 1000 / elapsed : 0;
+  }
+
+  /**
    * 把行数换算成 16 字节原始负载的容量。
    * @param {number} rowCount 行数
    * @returns {string} 如 1.49 GiB
@@ -144,6 +156,7 @@
   exports.formatProbability = formatProbability;
   exports.formatDuration = formatDuration;
   exports.rawBytes = rawBytes;
+  exports.insertSpeedPerSecond = insertSpeedPerSecond;
   exports.fetchStatus = fetchStatus;
   exports.appendUuids = appendUuids;
 

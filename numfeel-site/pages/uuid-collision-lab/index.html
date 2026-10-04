@@ -71,7 +71,7 @@
         <div><span>行数变化</span><strong id="rowDelta">—</strong></div>
         <div><span>写入速度</span><strong id="insertSpeed">—</strong></div>
       </div>
-      <p class="footnote">重复数按「请求条数 − INSERT IGNORE 真正写入条数」计算。只有同一批撞上已有主键时它才会变大。</p>
+      <p class="footnote">重复数按「请求条数 − INSERT IGNORE 真正写入条数」计算。包括本批内部重复和与已有行重复。</p>
     </div>
     <p id="appendStatus" class="inline-status">选择一个规模，后端会真的生成并插入。</p>
   </section>

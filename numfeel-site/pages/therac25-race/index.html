@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Therac-25 竞态事故互动复现：当一局比拼手速的点射游戏，亲手把两条命令打进竞态窗口，看到 MALFUNCTION 54 与过量辐射的全过程。还原 1985-87 医疗加速器的软件竞态灾难。">
+  <title>Therac-25 竞态事故 · 复现操作台 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+<div class="container">
+
+  <!-- ═══════════ 病历封皮 ═══════════ -->
+  <div class="header">
+    <h1><i class="ti ti-stethoscope"></i> Therac-25：一场由「赶时间」触发的软件事故</h1>
+    <p>把两条命令连打得太快，让一台放疗机误杀患者。</p>
+  </div>
+
+  <div class="case-meta">
+    <span>案卷 THE-25/86</span>
+    <span>涉事设备 医疗直线加速器</span>
+    <span>时间 1985–1987</span>
+    <span>后果 6 起超剂量事故</span>
+  </div>
+
+  <!-- ═══════════ 第一段：复现操作台（小游戏） ═══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-video-game"></i> 复现操作台 · 开一枪试试</h2>
+    <p class="section-desc">
+      选一档固件，然后在键盘上<span class="hl-gold">连打两枚键</span>：
+      先按 <kbd>Q</kbd>（设置挡板位置），紧接着按 <kbd>E</kbd>（全功率 X 射线）。
+      两道命令的间隔越短，就越可能滑进「检查」与「开火」之间的竞态窗口。
+    </p>
+
+    <!-- 固件选择（预设场景卡片） -->
+    <div class="preset-row" id="presetRow">
+      <!-- JS 渲染三档固件卡片 -->
+    </div>
+
+    <!-- 游戏画布：治疗室场景 -->
+    <div class="stage-wrap">
+      <canvas id="stage" width="760" height="340"></canvas>
+
+      <!-- 监护仪 -->
+      <div class="monitor" id="monitor">
+        <div class="mon-line"><span class="mon-label">挡板</span><span class="mon-val" id="monBlocker">中位</span></div>
+        <div class="mon-line"><span class="mon-label">剂量</span><span class="mon-val" id="monDose">0</span></div>
+        <div class="mon-line"><span class="mon-label">状态</span><span class="mon-val" id="monStatus">待命</span></div>
+      </div>
+
+      <!-- 操作提示 / 手速读数 -->
+      <div class="shoot-zone">
+        <div class="keys-hint">
+          <kbd>Q</kbd><i class="ti ti-arrow-right"></i><kbd>E</kbd>
+          <span class="hint-sub">连打，越快越好</span>
+          <div class="tap-btns" id="tapBtns">
+            <button class="tap-btn" id="tapA" aria-label="设置挡板"><i class="ti ti-shield-half-filled"></i> 挡板</button>
+            <button class="tap-btn tap-fire" id="tapB" aria-label="开火"><i class="ti ti-broadcast"></i> 开火</button>
+          </div>
+        </div>
+        <div class="shot-stats">
+          <div class="stat"><span class="s-label">本次间隔</span><span class="s-val mono" id="readDt">– ms</span></div>
+          <div class="stat"><span class="s-label">竞态窗口</span><span class="s-val mono" id="readWindow">– ms</span></div>
+          <div class="stat"><span class="s-label">累计复现</span><span class="s-val mono" id="readScore">0</span></div>
+        </div>
+        <button class="btn btn-reset" id="rearmBtn"><i class="ti ti-refresh"></i> 再来一枪</button>
+      </div>
+    </div>
+
+    <!-- 结果横幅 -->
+    <div class="outcome" id="outcome" hidden></div>
+  </div>
+
+  <!-- ═══════════ 第二段：时序放大镜（理解窗口） ═══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-timeline"></i> 时序放大镜：窗口在哪</h2>
+    <p class="section-desc">
+      机器内部在<strong>轮询循环</strong>里顺序做「检查挡板 → 使能射线」。两步之间有一段毫秒级空当——
+      第二道命令若是从这条缝里挤进来，就会覆盖刚验证过的挡板位置。
+    </p>
+    <div class="event-flight" id="raceViz"></div>
+    <div class="timing-control">
+      <label>竞态窗口 <span class="mono" id="winRead">58 ms</span></label>
+      <input type="range" id="winSlider" min="0" max="300" step="1" value="58">
+      <div class="timing-labels"><span>0 ms（已锁）</span><span>300 ms（大敞口）</span></div>
+    </div>
+    <div class="chart-card">
+      <canvas id="timingChart" height="180"></canvas>
+      <p class="chart-caption">竖轴浅色区块 = 能命中窗口的连打间隔范围。人类两秒连点通常落在 200ms 开外。</p>
+    </div>
+  </div>
+
+  <!-- ═══════════ 第三段：修好它 ═══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-lock-square-rounded"></i> 一行互斥锁：缝死窗口</h2>
+    <p class="section-desc">
+      修复方案朴素得反衬出悲剧的荒唐——把「检查挡板」和「开火」包进同一个原子动作，
+      让第二道命令要么排在检查前、要么排在开火后，独独没法插进中间。
+    </p>
+
+    <div class="fix-cards">
+      <div class="fix-card bad">
+        <div class="fc-tag">修复前</div>
+        <pre class="fc-code">// 伪代码 · 有竞态
+if (blockerInPlace) {
+    <span class="hl-red">beam.power = dose;   // 此时被第二道命令覆盖</span>
+}
+beam.fire();</pre>
+      </div>
+      <div class="fix-card good">
+        <div class="fc-tag">修复后</div>
+        <pre class="fc-code">// 伪代码 · 原子化
+synchronized(lock) {
+    if (blockerInPlace) {
+        beam.power = dose;
+    }
+}
+beam.fire();   // 检查与赋值之间，没人插得进手
+</pre>
+      </div>
+    </div>
+
+    <!-- 上手验证：切到修复固件再连打 -->
+    <div class="verify-cta">
+      <button class="btn btn-primary" id="goFixedBtn"><i class="ti ti-lock"></i> 切到加锁固件，再连打一次</button>
+    </div>
+  </div>
+
+  <!-- ═══════════ 史实复盘 ═══════════ -->
+  <div class="section">
+    <h2><i class="ti ti-history"></i> 复盘：这台机器为什么反复误杀</h2>
+    <div id="timelineList"></div>
+    <div class="insight-box">
+      <h4><i class="ti ti-alert-triangle"></i> 一句话教训</h4>
+      <p>
+        1985–1987 年累计 6 起超剂量事故，多人因过量辐射去世。
+        其根因并非操作员手快——竞赛总是它们的错——而是<strong>机器把「保命的安全判断」
+        托付给了纯软件里一个可被打断的瞬间</strong>。安全关键逻辑必须硬件冗余 + 原子化。
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="therac25-logic.js?v=3"></script>
+<script src="app.js?v=3"></script>
+</body>
+</html>

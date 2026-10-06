@@ -43,6 +43,8 @@
 
   var els = {};
   var chart = null;
+  var STAGE_W = 760;
+  var STAGE_H = 340;
 
   // ── 初始化 ────────────────────────────
   document.addEventListener('DOMContentLoaded', init);
@@ -56,7 +58,7 @@
     buildChart();
     renderTimeline();
     bindSupplement();
-    drawStage(0);
+    resizeStage();
   }
 
   function cacheEls() {
@@ -153,6 +155,13 @@
     // 触屏大按钮（移动端替代键盘）
     els.tapA.addEventListener('pointerdown', function (e) { if (e.button !== 0) return; e.preventDefault(); onKeyA(); });
     els.tapB.addEventListener('pointerdown', function (e) { if (e.button !== 0) return; e.preventDefault(); onKeyB(); });
+
+    // 视口变化（转屏/软键盘/窗口）时按新尺寸重设画布
+    var resizeTimer = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(resizeStage, 120);
+    });
   }
 
   function flashTap(btn) {
@@ -292,7 +301,10 @@
   function drawStage(anim) {
     var cv = els.stage;
     var ctx = els.ctx;
-    var W = cv.width, H = cv.height;
+    // 内部坐标系固定 760×340，按后备分辨率整体缩放，文字/徽标比例恒定
+    var scale = cv.width / STAGE_W;
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    var W = STAGE_W, H = STAGE_H;
 
     // 用 AI 贴图打底；未加载完成时退回程序化背景
     var tex = state.stageMode === 'boom' ? imgs.boom : imgs.room;
@@ -317,6 +329,20 @@
     if (anim) {
       loopBoom();
     }
+  }
+
+  // 后备分辨率跟随 CSS 宽度 × DPR，保证高分屏手机上画布清晰
+  function resizeStage() {
+    var cssW = els.stage.clientWidth;
+    if (!cssW) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 3);
+    var bw = Math.round(cssW * dpr);
+    var bh = Math.round(bw * STAGE_H / STAGE_W);
+    if (els.stage.width !== bw || els.stage.height !== bh) {
+      els.stage.width = bw;
+      els.stage.height = bh;
+    }
+    drawStage(0);
   }
 
   // cover 式绘制：按 canvas 宽高比居中裁切，避免贴图被拉伸变形

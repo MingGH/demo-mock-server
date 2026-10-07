@@ -530,4 +530,16 @@ public final class GameplayRequests {
     ) {
     }
 
+    /** 十连注 — 排行榜提交请求。bets 为逗号分隔的押注策略。 */
+    public record TenBetsLeaderboardSubmitRequest(
+            String username,
+            String mode,
+            String bets,
+            String challengeId,
+            String powHash,
+            String powNonce,
+            String cfTurnstileToken
+    ) {
+    }
+
 }

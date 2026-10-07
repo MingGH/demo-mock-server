@@ -393,4 +393,21 @@ public final class GameplayEntities {
     ) {
     }
 
+    /** 十连注 — 策略排行榜表映射。 */
+    @Table("ten_bets_leaderboard")
+    public record TenBetsLeaderboardEntry(
+            @Id Long id,
+            String username,
+            String mode,
+            @Column("final_capital") double finalCapital,
+            int rounds,
+            boolean won,
+            @Column("winner_pos") int winnerPos,
+            String bets,
+            @Column("pow_hash") String powHash,
+            @Column("pow_nonce") String powNonce,
+            @Column("created_at") long createdAt
+    ) {
+    }
+
 }

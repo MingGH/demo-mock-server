@@ -792,4 +792,57 @@ public final class GameplayResponses {
     ) {
     }
 
+    /** 十连注 — challenge 响应（winnerPos 服务器保密，不下发）。 */
+    public record TenBetsChallengeResponse(
+            String challengeId,
+            long expiresAt,
+            int difficulty
+    ) {
+    }
+
+    /** 十连注 — 排行榜单行。 */
+    public record TenBetsItem(
+            int rank,
+            String username,
+            String mode,
+            double finalCapital,
+            int rounds,
+            boolean won,
+            int winnerPos,
+            long createdAt
+    ) {
+    }
+
+    /** 十连注 — 单一策略的聚合统计。 */
+    public record TenBetsModeStat(
+            String mode,
+            long games,
+            long wins,
+            long busts,
+            double avgCapital,
+            double bestCapital,
+            double avgRounds
+    ) {
+    }
+
+    /** 十连注 — 排行榜响应：top 榜 + 策略聚合 + 总量。 */
+    public record TenBetsLeaderboardResponse(
+            List<TenBetsItem> top,
+            List<TenBetsModeStat> byMode,
+            long totalGames,
+            long totalPlayers
+    ) {
+    }
+
+    /** 十连注 — 提交成功响应（含服务器抽签与重放结果）。 */
+    public record TenBetsSubmitResponse(
+            int rank,
+            long total,
+            int winnerPos,
+            double finalCapital,
+            int rounds,
+            boolean won
+    ) {
+    }
+
 }

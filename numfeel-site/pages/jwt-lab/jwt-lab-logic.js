@@ -63,13 +63,21 @@
   }
 
   async function signHs256(header, payload, secret) {
+    const encodedHeader = encodeJson(header);
+    const encodedPayload = encodeJson(payload);
+    const signature = await signHs256Message(`${encodedHeader}.${encodedPayload}`, secret);
+    return {
+      header: encodedHeader,
+      payload: encodedPayload,
+      signature
+    };
+  }
+
+  async function signHs256Message(message, secret) {
     const crypto = globalObject.crypto;
     if (!crypto || !crypto.subtle) {
       throw new Error('Web Crypto unavailable');
     }
-    const encodedHeader = encodeJson(header);
-    const encodedPayload = encodeJson(payload);
-    const message = `${encodedHeader}.${encodedPayload}`;
     const key = await crypto.subtle.importKey(
       'raw',
       bytesFromUtf8(secret),
@@ -78,11 +86,7 @@
       ['sign']
     );
     const signature = await crypto.subtle.sign('HMAC', key, bytesFromUtf8(message));
-    return {
-      header: encodedHeader,
-      payload: encodedPayload,
-      signature: bytesToBase64Url(new Uint8Array(signature))
-    };
+    return bytesToBase64Url(new Uint8Array(signature));
   }
 
   function safeEqual(a, b) {
@@ -159,8 +163,8 @@
     }
 
     try {
-      const signed = await signHs256(parsed.header, parsed.payload, secret);
-      const valid = safeEqual(signed.signature, parsed.signature);
+      const signed = await signHs256Message(`${parsed.parts[0]}.${parsed.parts[1]}`, secret);
+      const valid = safeEqual(signed, parsed.signature);
       return {
         valid,
         reason: valid ? 'VALID' : 'SIGNATURE_MISMATCH',
@@ -169,8 +173,8 @@
     } catch (error) {
       return {
         valid: false,
-        reason: 'ALG_REJECTED',
-        message: '不支持的签名算法，直接拒绝。'
+        reason: 'SIGNING_ERROR',
+        message: '签名计算失败，拒绝这条 token。'
       };
     }
   }
@@ -236,6 +240,7 @@
     decodeSegment,
     safeDecodeSegment,
     signHs256,
+    signHs256Message,
     parseToken,
     safeParseToken,
     verifyToken,

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="把 JWT 拆成三段，亲手改一个字、伪造身份、爆破弱密钥，看签名为什么才是最后防线。">
   <title>JWT 拆解与攻击演示台 | 数字直觉</title>
   <script src="../../components/header.js" defer></script>
@@ -49,7 +49,8 @@
         <h2>Payload 编辑区</h2>
         <button class="mini-button" data-action="copy-token">复制 token</button>
       </div>
-      <textarea id="payloadInput" spellcheck="false" rows="8"></textarea>
+      <label class="sr-only" for="payloadInput">Payload JSON 编辑区</label>
+      <textarea id="payloadInput" spellcheck="false" rows="8" aria-label="Payload JSON 编辑区"></textarea>
       <div class="inline-note" id="payloadNote">编辑后只用当前 token 的旧签名继续验证。</div>
     </section>
 
@@ -88,7 +89,7 @@
       <div class="card-head">
         <h2>攻击记录</h2>
       </div>
-      <div class="log-box" id="attackLog" tabindex="0">
+      <div class="log-box" id="attackLog" tabindex="0" role="log" aria-label="攻击记录">
         <div>攻击台待命。</div>
       </div>
     </section>

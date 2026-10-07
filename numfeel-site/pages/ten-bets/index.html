@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#070b10">
+  <meta name="description" content="十连注互动演示：本金 100 元，10 次下注机会，随机 1 次中 10 倍，其余必打水漂。手动画出资金曲线，看条件概率如何把公平赌局变成一道可解的数学题。">
+  <title>十连注 · 十次押注怎么押 | 数字直觉</title>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.14.0/tabler-icons.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="term">
+
+    <div class="tbar">
+      <span class="dot dr"></span><span class="dot dy"></span><span class="dot dg"></span>
+      <em>ten-bets — 交易终端</em>
+    </div>
+
+    <header class="hero">
+      <p class="kicker">数字直觉 · 互动实验</p>
+      <h1>本金 <span class="tok-g">100 元</span>，<span class="tok-y">10 次</span>押注机会<br class="pc-br">只有 <span class="tok-y">1 注</span>能中 <span class="tok-y">10 倍</span>，其余<span class="tok-r">必打水漂</span><i> ▊</i></h1>
+      <p class="sub">随机哪一注会中，开局前就定了，但没人知道是哪一注。怎么押才能确保赚最多？大多数人第一局就梭哈归零。玩法：调注额 → 押注 → 看资金曲线——每押空一注，概率条都会发生一件反直觉的事。</p>
+    </header>
+
+    <div class="cols">
+      <div class="col">
+
+        <section>
+          <div class="h">ACCOUNT / 资金与概率</div>
+          <div class="money">
+            <div class="capital">当前资金<b id="capital">100</b>元</div>
+            <div class="rind">第 <span id="roundNo">1</span> / 10 注<br>本注中签概率 <b id="prob">10%</b></div>
+          </div>
+          <div class="prob"><i id="probFill"></i></div>
+          <div class="pnote" id="excluded">已排除 0 个位置 · 剩余 10 个</div>
+          <div class="stats">
+            <span>会话 <b id="stGames">0</b> 局</span>
+            <span>中签 <b id="stWins">0</b> 次</span>
+            <span>会话最高 <b id="stBest">—</b></span>
+            <span class="hi">历史最高 <b id="stBestEver">—</b></span>
+          </div>
+        </section>
+
+        <section class="bet" id="betPanel">
+          <div class="h">PLACE BET / 下注</div>
+          <label for="bet">本注金额<b id="betVal">10</b><span id="betHint">元 · 下注后剩余资金 ≥ 0</span></label>
+          <input type="range" id="bet" min="1" max="100" value="10" step="1">
+          <div class="chips">
+            <button data-v="1">1</button>
+            <button data-v="5">5</button>
+            <button data-v="10">10</button>
+            <button data-v="25">25</button>
+            <button data-v="all">ALL</button>
+          </div>
+          <div class="btns">
+            <button class="go" id="go">押 注</button>
+            <button class="re" id="undo" disabled>悔棋</button>
+            <button class="re" id="reset">重开一局</button>
+          </div>
+          <div class="pnote" id="betTip"></div>
+        </section>
+
+        <section>
+          <div class="h">STRATEGIES / 四种流派（点击重开一局并自动打完）</div>
+          <div class="sgrid">
+            <div class="strat-c">
+              <h3>梭哈派</h3>
+              <p>第 1 注全押。10% 变 1000，90% 归零。期望 100。</p>
+              <button class="auto" data-plan="allin">自动打完</button>
+            </div>
+            <div class="strat-c">
+              <h3>固定注</h3>
+              <p>每注 10 元。永不输光，保底 100，期望 145。</p>
+              <button class="auto" data-plan="uniform">自动打完</button>
+            </div>
+            <div class="strat-c">
+              <h3>探针流</h3>
+              <p>前 9 注各 1 元探路，没中第 10 注全押 91。保底 101，期望 185.5。</p>
+              <button class="auto" data-plan="probe">自动打完</button>
+            </div>
+            <div class="strat-c hot">
+              <h3>均注流</h3>
+              <p>注额每注 ×10/9，拉平所有结局。保底 = 期望 ≈ 153.5。</p>
+              <button class="auto" data-plan="equalize">自动打完</button>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div class="h">BATCH SIM / 批量模拟（固定每注金额）</div>
+          <div class="batch-form">
+            <label>每注 <input type="number" id="batchBet" min="1" max="100" step="1" value="10"> 元</label>
+            <label>次数
+              <select id="batchCount">
+                <option value="100">100</option>
+                <option value="1000" selected>1000</option>
+                <option value="custom">自定义</option>
+              </select>
+            </label>
+            <input type="number" id="batchCountCustom" min="1" max="100000" placeholder="≤100000" class="batch-custom" style="display:none">
+            <button class="go batch-run" id="batchRun">跑模拟</button>
+          </div>
+          <div class="pnote">每注押固定金额，钱不够时押剩余全部；中签或资金归零即止。上限 10 万局。</div>
+          <div id="batchResult"></div>
+        </section>
+
+      </div>
+      <div class="col">
+
+        <section id="curveSection">
+          <div class="h">CAPITAL CURVE / 资金曲线</div>
+          <div class="chart-box"><canvas id="curve" role="img" aria-label="资金曲线折线图：绿色实线为你的资金，黄色虚线为均注流保底 153.5，灰色虚线为本金 100"></canvas></div>
+          <div class="pnote">黄虚线：均注流保底 153.5 · 灰虚线：本金 100 · 折线止于本局最后一注</div>
+        </section>
+
+        <section>
+          <div class="h">ROUND LOG / 下注日志</div>
+          <div class="log-scroll">
+            <table>
+              <thead><tr><th>轮次</th><th>押注</th><th>结果</th><th>资金</th></tr></thead>
+              <tbody id="track"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <div class="h">LEADERBOARD / 策略排行榜（服务器抽签）</div>
+          <div class="pnote">上传后服务器用保密抽签重放你这局策略——比的是策略，不是运气。</div>
+          <div id="lbModes" class="lb-modes"></div>
+          <div class="log-scroll">
+            <table>
+              <thead><tr><th>#</th><th>玩家</th><th>流派</th><th>结算</th><th>轮次</th></tr></thead>
+              <tbody id="lbTop"></tbody>
+            </table>
+          </div>
+          <div class="btns">
+            <button class="go" id="lbOpen" disabled>上传本局策略</button>
+            <button class="re" id="lbRefresh">刷新</button>
+          </div>
+          <div class="pnote" id="lbNote"></div>
+        </section>
+
+      </div>
+    </div>
+
+    <div class="verdict" id="verdict"></div>
+
+    <div class="share-row" id="shareRow">
+      <button class="re" id="makeCard">生成结果卡</button>
+      <div id="cardHolder" class="card-holder"></div>
+    </div>
+
+    <div class="modal-mask" id="lbModal">
+      <div class="modal-card">
+        <div class="h">UPLOAD / 上传策略战绩</div>
+        <p class="pnote">提交后服务器会用保密抽签重放你这局策略，结算以服务器重放为准。中签位在挑战创建时已定但保密。</p>
+        <label class="lb-field">用户名
+          <input type="text" id="lbUsername" maxlength="50" placeholder="≤50 字符">
+        </label>
+        <div id="turnstileWidget" class="turnstile-box"></div>
+        <div class="pnote" id="lbStatus"></div>
+        <div class="btns">
+          <button class="go" id="lbSubmit">提交</button>
+          <button class="re" id="lbClose">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <footer>中签位开局预定 · 中签即停（剩余机会必输）· 数字可在页面复算 · 数字直觉 tenbets.996.ninja</footer>
+  </div>
+</div>
+
+<script src="ten-bets-logic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -19,11 +19,7 @@
     stGames: $('stGames'), stWins: $('stWins'), stBest: $('stBest'), stBestEver: $('stBestEver'),
     shareRow: $('shareRow'), cardHolder: $('cardHolder'),
     batchBet: $('batchBet'), batchCount: $('batchCount'), batchCountCustom: $('batchCountCustom'),
-    batchRun: $('batchRun'), batchResult: $('batchResult'),
-    lbTop: $('lbTop'), lbModes: $('lbModes'), lbOpen: $('lbOpen'), lbRefresh: $('lbRefresh'),
-    lbNote: $('lbNote'), lbModal: $('lbModal'), lbUsername: $('lbUsername'),
-    lbStatus: $('lbStatus'), lbSubmit: $('lbSubmit'), lbClose: $('lbClose'),
-    turnstileWidget: $('turnstileWidget')
+    batchRun: $('batchRun'), batchResult: $('batchResult')
   };
 
   var PLANS = {
@@ -274,8 +270,6 @@
     // 结果卡按钮：仅局终可见
     if (state.over) els.shareRow.classList.add('show');
     else els.shareRow.classList.remove('show');
-    // 上传按钮：仅局终可用（需要完整策略）
-    els.lbOpen.disabled = !state.over;
 
     renderStats();
     renderLog();
@@ -509,174 +503,6 @@
     });
   }
 
-  /* ── 排行榜 ── */
-  var API_BASE = 'https://numfeel-api.996.ninja';
-  var TURNSTILE_SITE_KEY = '0x4AAAAAADsMioJW-WyC3Fwm';
-  var turnstileId = null;
-
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (ch) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
-    });
-  }
-
-  function modeName(key) { return MODE_NAMES[key] || key; }
-
-  function loadLeaderboard() {
-    if (typeof fetch !== 'function') { els.lbNote.textContent = '榜单暂不可用（离线）'; return; }
-    els.lbNote.textContent = '榜单加载中…';
-    fetch(API_BASE + '/ten-bets/leaderboard?limit=10')
-      .then(function (r) { return r.json(); })
-      .then(function (json) {
-        if (json.status === 200 && json.data) {
-          renderLeaderboard(json.data);
-          els.lbNote.textContent = '共 ' + json.data.totalGames + ' 局 · ' + json.data.totalPlayers + ' 位玩家';
-        } else {
-          els.lbNote.textContent = json.message || '榜单暂不可用';
-        }
-      })
-      .catch(function () {
-        els.lbNote.textContent = '榜单暂不可用（本地预览或离线）';
-      });
-  }
-
-  function renderLeaderboard(data) {
-    var modeRows = (data.byMode || []).map(function (m) {
-      var busts = m.games - m.wins;
-      return '<div class="mode-row' + (m.avgCapital >= 140 ? ' hot' : '') + '"><b>' +
-        escapeHtml(modeName(m.mode)) + '</b><span>' + m.games + ' 局</span>' +
-        '<span>平均 ' + fmt(m.avgCapital) + '</span>' +
-        '<span>最佳 ' + fmt(m.bestCapital) + '</span>' +
-        '<span>爆仓 ' + (m.games ? Math.round(busts / m.games * 100) : 0) + '%</span></div>';
-    }).join('');
-    els.lbModes.innerHTML = modeRows || '<div class="pnote">还没有数据——来交第一份战绩</div>';
-
-    if (!data.top || data.top.length === 0) {
-      els.lbTop.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px">暂无数据</td></tr>';
-      return;
-    }
-    els.lbTop.innerHTML = data.top.map(function (item) {
-      var rank = item.rank <= 3 ? ['🥇', '🥈', '🥉'][item.rank - 1] : '#' + item.rank;
-      return '<tr><td>' + rank + '</td><td>' + escapeHtml(item.username) + '</td>' +
-        '<td>' + escapeHtml(modeName(item.mode)) + '</td>' +
-        '<td class="' + (item.finalCapital > 0 ? 'win' : 'lose') + '">' + fmt(item.finalCapital) + '</td>' +
-        '<td>' + item.rounds + '</td></tr>';
-    }).join('');
-  }
-
-  // ── 上传 modal ──
-  function openLbModal() {
-    if (!state.over) return;
-    els.lbStatus.textContent = '';
-    els.lbModal.classList.add('show');
-    renderTurnstile();
-  }
-  function closeLbModal() {
-    els.lbModal.classList.remove('show');
-    resetTurnstile();
-  }
-  function renderTurnstile() {
-    if (!els.turnstileWidget || typeof turnstile === 'undefined') return;
-    resetTurnstile();
-    turnstileId = turnstile.render(els.turnstileWidget, {
-      sitekey: TURNSTILE_SITE_KEY,
-      action: 'ten-bets-submit',
-      theme: 'auto'
-    });
-  }
-  function resetTurnstile() {
-    if (turnstileId !== null && typeof turnstile !== 'undefined') {
-      turnstile.reset(turnstileId);
-      turnstileId = null;
-    }
-  }
-  function getTurnstileToken() {
-    if (typeof turnstile === 'undefined') return null;
-    return turnstile.getResponse(turnstileId) || null;
-  }
-
-  function sha256Hex(message) {
-    var msgBuffer = new TextEncoder().encode(message);
-    return crypto.subtle.digest('SHA-256', msgBuffer).then(function (hashBuffer) {
-      var arr = Array.from(new Uint8Array(hashBuffer));
-      return arr.map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
-    });
-  }
-  function computePoW(payload, difficulty) {
-    difficulty = difficulty || 4;
-    var nonce = 0;
-    function step() {
-      while (true) {
-        var nonceStr = String(nonce);
-        nonce++;
-        return sha256Hex(payload + nonceStr).then(function (hash) {
-          if (hash.substring(0, difficulty) === '0'.repeat(difficulty)) {
-            return { hash: hash, nonce: nonceStr };
-          }
-          if (nonce % 500 === 0) { return new Promise(function (r) { setTimeout(r, 0); }).then(step); }
-          return step();
-        });
-      }
-    }
-    return step();
-  }
-
-  function submitToLeaderboard() {
-    if (typeof fetch !== 'function') { els.lbStatus.textContent = '当前环境无法提交（离线）'; return; }
-    var username = (els.lbUsername.value || '').trim();
-    var statusEl = els.lbStatus;
-    function setStatus(text, cls) { statusEl.textContent = text; statusEl.className = cls || ''; }
-    if (!username) { setStatus('请输入用户名', 'lb-err'); return; }
-    if (username.length > 50) { setStatus('用户名最多 50 个字符', 'lb-err'); return; }
-    if (!state.over || state.bets.length === 0) { setStatus('先打完一局再提交', 'lb-err'); return; }
-
-    var betsString = state.bets.map(function (b) { return fmt(b); }).join(',');
-    els.lbSubmit.disabled = true;
-    setStatus('正在申请挑战…');
-    fetch(API_BASE + '/ten-bets/leaderboard/challenge')
-      .then(function (r) { return r.json(); })
-      .then(function (json) {
-        if (json.status !== 200 || !json.data) throw new Error(json.message || '获取挑战失败');
-        var challenge = json.data;
-        setStatus('正在计算工作量证明…');
-        var payload = challenge.challengeId + '|' + username + '|' + gameMode + '|' + betsString;
-        return computePoW(payload, challenge.difficulty || 4).then(function (pow) {
-          setStatus('正在提交…');
-          return fetch(API_BASE + '/ten-bets/leaderboard/submit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              username: username,
-              mode: gameMode,
-              bets: betsString,
-              challengeId: challenge.challengeId,
-              powHash: pow.hash,
-              powNonce: pow.nonce,
-              cfTurnstileToken: getTurnstileToken() || ''
-            })
-          }).then(function (r) { return r.json(); });
-        });
-      })
-      .then(function (json) {
-        if (json.status === 200 && json.data) {
-          var d = json.data;
-          setStatus('服务器抽签：中签位 #' + d.winnerPos + '，你的策略结算 ' + fmt(d.finalCapital) +
-            ' 元（' + (d.won ? '中签' : '爆仓') + '）· 榜单第 ' + d.rank + ' 名 / 共 ' + d.total + ' 人', 'lb-ok');
-          track('ten_bets_lb_submit', {
-            mode: gameMode, capital: round2(d.finalCapital), rank: d.rank, won: d.won
-          });
-          loadLeaderboard();
-          setTimeout(closeLbModal, 3500);
-        } else {
-          setStatus(json.message || '提交失败', 'lb-err');
-        }
-      })
-      .catch(function (e) {
-        setStatus('网络错误：' + (e && e.message ? e.message : '请重试'), 'lb-err');
-      })
-      .finally(function () { els.lbSubmit.disabled = false; });
-  }
-
   function newGame() {
     state = L.createGame(Math.random);
     gameMode = 'manual';
@@ -713,11 +539,7 @@
   els.batchCount.addEventListener('change', function () {
     els.batchCountCustom.style.display = els.batchCount.value === 'custom' ? 'block' : 'none';
   });
-  els.lbOpen.addEventListener('click', openLbModal);
-  els.lbRefresh.addEventListener('click', loadLeaderboard);
-  els.lbClose.addEventListener('click', closeLbModal);
-  els.lbSubmit.addEventListener('click', submitToLeaderboard);
-  loadLeaderboard();
+
   var makeBtn = $('makeCard');
   if (makeBtn) makeBtn.addEventListener('click', onMakeCard);
 

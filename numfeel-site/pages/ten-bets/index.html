@@ -6,7 +6,6 @@
   <meta name="theme-color" content="#070b10">
   <meta name="description" content="十连注互动演示：本金 100 元，10 次下注机会，随机 1 次中 10 倍，其余必打水漂。手动画出资金曲线，看条件概率如何把公平赌局变成一道可解的数学题。">
   <title>十连注 · 十次押注怎么押 | 数字直觉</title>
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script src="../../components/header.js" defer></script>
   <link rel="stylesheet" href="../../components/header.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.14.0/tabler-icons.min.css">
@@ -128,23 +127,6 @@
           </div>
         </section>
 
-        <section>
-          <div class="h">LEADERBOARD / 策略排行榜（服务器抽签）</div>
-          <div class="pnote">上传后服务器用保密抽签重放你这局策略——比的是策略，不是运气。</div>
-          <div id="lbModes" class="lb-modes"></div>
-          <div class="log-scroll">
-            <table>
-              <thead><tr><th>#</th><th>玩家</th><th>流派</th><th>结算</th><th>轮次</th></tr></thead>
-              <tbody id="lbTop"></tbody>
-            </table>
-          </div>
-          <div class="btns">
-            <button class="go" id="lbOpen" disabled>上传本局策略</button>
-            <button class="re" id="lbRefresh">刷新</button>
-          </div>
-          <div class="pnote" id="lbNote"></div>
-        </section>
-
       </div>
     </div>
 
@@ -153,22 +135,6 @@
     <div class="share-row" id="shareRow">
       <button class="re" id="makeCard">生成结果卡</button>
       <div id="cardHolder" class="card-holder"></div>
-    </div>
-
-    <div class="modal-mask" id="lbModal">
-      <div class="modal-card">
-        <div class="h">UPLOAD / 上传策略战绩</div>
-        <p class="pnote">提交后服务器会用保密抽签重放你这局策略，结算以服务器重放为准。中签位在挑战创建时已定但保密。</p>
-        <label class="lb-field">用户名
-          <input type="text" id="lbUsername" maxlength="50" placeholder="≤50 字符">
-        </label>
-        <div id="turnstileWidget" class="turnstile-box"></div>
-        <div class="pnote" id="lbStatus"></div>
-        <div class="btns">
-          <button class="go" id="lbSubmit">提交</button>
-          <button class="re" id="lbClose">取消</button>
-        </div>
-      </div>
     </div>
 
     <footer>中签位开局预定 · 中签即停（剩余机会必输）· 数字可在页面复算 · 数字直觉 tenbets.996.ninja</footer>

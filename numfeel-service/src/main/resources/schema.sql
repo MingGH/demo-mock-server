@@ -581,24 +581,3 @@ CREATE TABLE IF NOT EXISTS uuid_collision_conflicts (
     last_seen_at    BIGINT     NOT NULL COMMENT '最近一次发现冲突时间戳（ms）',
     occurrence_count BIGINT    NOT NULL DEFAULT 0 COMMENT '该 UUID 累计冲突次数'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
--- 十连注 — 策略排行榜（服务器隐藏抽签 + 后端重放结算）
--- bets 为客户端上传的押注策略（逗号分隔，≤10 个数）；
--- winner_pos 在 challenge 创建时由服务器随机生成并保密，提交后用于重放。
-CREATE TABLE IF NOT EXISTS ten_bets_leaderboard (
-    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
-    username     VARCHAR(50)  NOT NULL,
-    mode         VARCHAR(16)  NOT NULL COMMENT 'manual/allin/uniform/probe/equalize',
-    final_capital DOUBLE      NOT NULL,
-    rounds       INT          NOT NULL,
-    won          TINYINT      NOT NULL,
-    winner_pos   INT          NOT NULL,
-    bets         TEXT         NOT NULL COMMENT '逗号分隔的每注金额',
-    pow_hash     VARCHAR(64)  NOT NULL COMMENT 'SHA-256 PoW 哈希',
-    pow_nonce    VARCHAR(32)  NOT NULL COMMENT 'PoW nonce',
-    created_at   BIGINT       NOT NULL,
-    INDEX idx_capital  (final_capital DESC),
-    INDEX idx_mode     (mode),
-    INDEX idx_username (username),
-    INDEX idx_pow_hash (pow_hash),
-    INDEX idx_created  (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

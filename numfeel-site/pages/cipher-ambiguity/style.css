@@ -1,0 +1,125 @@
+/* ══════════ cipher-ambiguity · 复古终端风 ══════════ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(170deg, #0a0f0a, #0d150d 55%, #0a1a12);
+  color: #c8e6c9;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+  padding: 20px 16px 60px;
+}
+
+.container { max-width: 560px; margin: 0 auto; }
+
+/* ── 页头 ── */
+.header { margin-bottom: 24px; }
+.header h1 { color: #7fff9e; font-size: 26px; margin-bottom: 10px; text-shadow: 0 0 16px rgba(127, 255, 158, .3); }
+.header p { color: #6f8f6f; font-size: 14px; line-height: 1.7; }
+.header strong { color: #7fff9e; }
+
+/* ── 通用 section ── */
+.section { margin-bottom: 26px; }
+.stage-tag {
+  display: inline-block; font-size: 11px; letter-spacing: 2px; color: #0a0f0a;
+  background: #7fff9e; border-radius: 6px; padding: 3px 10px; font-weight: 500; margin-bottom: 10px;
+}
+.section-hint { color: #6f8f6f; font-size: 13px; line-height: 1.7; margin-bottom: 14px; }
+.section-hint i { margin-right: 4px; }
+.section-hint strong { color: #7fff9e; }
+
+/* ── 终端窗口 ── */
+.terminal { border: 1px solid #2a4a2a; border-radius: 12px; background: #0d150d; overflow: hidden; }
+.term-bar {
+  background: #122012; padding: 8px 12px; font-size: 11px; color: #5f8f5f;
+  letter-spacing: 1px; display: flex; gap: 6px; align-items: center;
+}
+.term-dot { width: 8px; height: 8px; border-radius: 50%; background: #2a4a2a; }
+.term-caption { text-align: center; color: #4a6a4a; font-size: 11px; padding: 4px 0 12px; letter-spacing: 2px; }
+
+.cipher-strip { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 14px 8px 6px; }
+.cipher-cell {
+  font-family: Menlo, Consolas, monospace; font-size: 18px; color: #7fff9e; background: #0a120a;
+  border: 1px solid #234a23; border-radius: 8px; padding: 8px 10px; text-align: center;
+}
+
+/* ── 转盘 ── */
+.dial-label { color: #6f8f6f; font-size: 12px; letter-spacing: 1px; margin: 16px 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
+.dial-key { color: #7fff9e; font-size: 17px; font-family: Menlo, Consolas, monospace; }
+input[type="range"] { width: 100%; height: 44px; appearance: none; -webkit-appearance: none; background: transparent; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 10px; border-radius: 5px; background: linear-gradient(90deg, #1a3a1a, #2a5a2a); }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 34px; height: 34px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #a8ffb8, #3fae58); border: 2px solid #7fff9e;
+  margin-top: -12px; box-shadow: 0 0 12px rgba(127, 255, 158, .5);
+}
+input[type="range"]::-moz-range-track { height: 10px; border-radius: 5px; background: #1a3a1a; }
+input[type="range"]::-moz-range-thumb { width: 34px; height: 34px; border-radius: 50%; background: #7fff9e; border: 2px solid #3fae58; }
+.ticks { display: flex; justify-content: space-between; color: #3a5a3a; font-size: 10px; padding: 0 4px; }
+
+/* ── 解密输出 ── */
+.plain-out { border: 1px solid #2a4a2a; border-radius: 12px; background: #0d150d; padding: 18px 16px; margin: 14px 0; text-align: center; }
+.plain-line { font-size: 20px; color: #eaffea; line-height: 1.6; min-height: 32px; }
+.plain-sub { color: #4a6a4a; font-size: 11px; letter-spacing: 2px; margin-top: 8px; }
+
+/* ── 收集芯片 ── */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.chip { font-size: 12px; border: 1px dashed #2a4a2a; color: #3f5f3f; border-radius: 999px; padding: 6px 12px; }
+.chip.lit { border: 1px solid #7fff9e; color: #0a0f0a; background: #7fff9e; font-weight: 500; }
+
+/* ── 图表 ── */
+.chart-box { border: 1px solid #2a4a2a; border-radius: 12px; background: #0d150d; padding: 12px; }
+.chart-title { color: #6f8f6f; font-size: 12px; letter-spacing: 1px; margin-bottom: 8px; }
+.chart-wrap { position: relative; height: 180px; }
+.chart-wrap canvas { max-height: 180px; }
+
+/* ── 提示条 ── */
+.toast {
+  margin-top: 14px; border: 1px solid #7fff9e; background: rgba(127, 255, 158, .1);
+  color: #7fff9e; border-radius: 12px; padding: 12px 16px; font-size: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast.hidden { display: none; }
+
+/* ── 密钥空间 ── */
+.ks-readout { display: flex; align-items: baseline; gap: 10px; margin: 14px 0 6px; flex-wrap: wrap; }
+.ks-bits { color: #6f8f6f; font-size: 13px; }
+.ks-keys { color: #7fff9e; font-size: 26px; font-family: Menlo, Consolas, monospace; text-shadow: 0 0 14px rgba(127, 255, 158, .35); }
+.ks-unit { color: #6f8f6f; font-size: 13px; }
+.ks-meter { height: 10px; border-radius: 5px; background: rgba(127, 255, 158, .08); overflow: hidden; margin: 10px 0 12px; }
+.ks-meter-fill { height: 100%; width: 6%; border-radius: 5px; background: linear-gradient(90deg, #1a3a1a, #7fff9e); }
+.ks-note { color: #6f8f6f; font-size: 13px; line-height: 1.7; }
+.ks-note strong { color: #7fff9e; }
+
+/* ── 点题与小结 ── */
+.punch-card {
+  border: 1px solid rgba(127, 255, 158, .4); background: rgba(127, 255, 158, .06);
+  border-radius: 14px; padding: 18px 16px;
+}
+.punch-title { color: #7fff9e; font-size: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.punch-body { color: #b8d8b8; font-size: 14px; line-height: 1.8; }
+.punch-body strong { color: #7fff9e; }
+.summary-box {
+  margin-top: 14px; border: 1px dashed #2a4a2a; border-radius: 10px; background: #0a120a;
+  padding: 12px 14px; font-family: Menlo, Consolas, monospace; font-size: 12px; line-height: 1.8;
+  color: #8fbf8f; white-space: pre-wrap; word-break: break-all;
+}
+
+/* ── 按钮行 ── */
+.btn-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.btn-terminal {
+  background: none; border: 1px solid #2a4a2a; color: #6f8f6f; border-radius: 10px;
+  padding: 10px 18px; font-size: 13px; cursor: pointer; font-family: inherit;
+  display: inline-flex; gap: 6px; align-items: center; min-height: 44px;
+}
+.btn-terminal:active { transform: scale(.97); }
+.btn-green { border-color: #7fff9e; color: #0a0f0a; background: #7fff9e; font-weight: 500; }
+.foot-note { margin-top: 10px; color: #4a6a4a; font-size: 12px; }
+
+/* ── 响应式 ── */
+@media (max-width: 420px) {
+  .cipher-strip { gap: 5px; }
+  .cipher-cell { font-size: 13px; padding: 6px 7px; }
+  .plain-line { font-size: 18px; }
+  .ks-keys { font-size: 22px; }
+}

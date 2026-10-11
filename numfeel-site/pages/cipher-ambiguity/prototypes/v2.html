@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="密钥转盘：同一段密文，16 把钥匙，8 种真相。转一转，看密文如何见钥拆话。">
+<title>密钥转盘 · 版本 2</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { min-height:100vh; background:#0a0f0a; color:#c8e6c9;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI","SF Mono",monospace; padding:18px 16px 48px; }
+.wrap { max-width:520px; margin:0 auto; }
+.back { display:inline-flex; align-items:center; gap:6px; color:#4a6a4a; text-decoration:none; font-size:13px; margin-bottom:14px; }
+.stage-tag { display:inline-block; font-size:11px; letter-spacing:2px; color:#0a0f0a; background:#7fff9e;
+  border-radius:6px; padding:3px 10px; font-weight:500; }
+h1 { color:#7fff9e; font-size:24px; margin:6px 0 4px; text-shadow:0 0 14px rgba(127,255,158,.35); }
+.hint { color:#6f8f6f; font-size:14px; line-height:1.6; margin-bottom:16px; }
+.hint strong { color:#7fff9e; }
+
+.terminal { border:1px solid #2a4a2a; border-radius:12px; background:#0d150d; overflow:hidden; margin-bottom:14px; }
+.term-bar { background:#122012; padding:8px 12px; font-size:11px; color:#5f8f5f; letter-spacing:1px; display:flex; gap:6px; align-items:center; }
+.term-dot { width:8px; height:8px; border-radius:50%; background:#2a4a2a; }
+.cipher-strip { display:flex; gap:8px; justify-content:center; padding:14px 8px 6px; }
+.cipher-cell { font-family:Menlo,Consolas,monospace; font-size:18px; color:#7fff9e; background:#0a120a;
+  border:1px solid #234a23; border-radius:8px; padding:8px 10px; min-width:44px; text-align:center; }
+.term-caption { text-align:center; color:#4a6a4a; font-size:11px; padding:4px 0 12px; letter-spacing:2px; }
+
+.dial-label { color:#6f8f6f; font-size:12px; letter-spacing:1px; margin:16px 0 6px; display:flex; justify-content:space-between; }
+.dial-key { color:#7fff9e; font-size:16px; }
+input[type=range] { width:100%; height:44px; appearance:none; -webkit-appearance:none; background:transparent; cursor:pointer; }
+input[type=range]::-webkit-slider-runnable-track { height:10px; border-radius:5px; background:linear-gradient(90deg,#1a3a1a,#2a5a2a); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:34px; height:34px; border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#a8ffb8,#3fae58); border:2px solid #7fff9e; margin-top:-12px;
+  box-shadow:0 0 12px rgba(127,255,158,.5); }
+input[type=range]::-moz-range-track { height:10px; border-radius:5px; background:#1a3a1a; }
+input[type=range]::-moz-range-thumb { width:34px; height:34px; border-radius:50%; background:#7fff9e; border:2px solid #7fff9e; }
+.ticks { display:flex; justify-content:space-between; color:#3a5a3a; font-size:10px; padding:0 4px; }
+
+.plain-out { border:1px solid #2a4a2a; border-radius:12px; background:#0d150d; padding:16px; margin:14px 0; text-align:center; }
+.plain-line { font-size:19px; color:#eaffea; line-height:1.6; min-height:30px; }
+.plain-sub { color:#4a6a4a; font-size:11px; letter-spacing:2px; margin-top:6px; }
+
+.chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.chip { font-size:12px; border:1px dashed #2a4a2a; color:#3f5f3f; border-radius:999px; padding:6px 12px; background:transparent; }
+.chip.lit { border:1px solid #7fff9e; color:#0a0f0a; background:#7fff9e; font-weight:500; }
+
+.chart-box { border:1px solid #2a4a2a; border-radius:12px; background:#0d150d; padding:12px; margin-bottom:14px; }
+.chart-box canvas { max-height:180px; }
+.chart-title { color:#6f8f6f; font-size:12px; letter-spacing:1px; margin-bottom:8px; }
+
+.toast { display:none; margin-bottom:14px; border:1px solid #7fff9e; background:rgba(127,255,158,.1);
+  color:#7fff9e; border-radius:12px; padding:12px 16px; font-size:14px; display:flex; align-items:center; gap:8px; }
+.foot-row { display:flex; justify-content:space-between; align-items:center; }
+.reset { background:none; border:1px solid #2a4a2a; color:#6f8f6f; border-radius:10px; padding:9px 16px;
+  font-size:13px; cursor:pointer; font-family:inherit; display:inline-flex; gap:6px; align-items:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> 返回选择</a>
+  <span class="stage-tag">版本 2 · 复古终端</span>
+  <h1>转一转，一个密文八种真相</h1>
+  <p class="hint">密文固定不动，<strong>只有密钥在转</strong>。拖动转盘，看同一段密文在 16 把钥匙下说出的不同的话。</p>
+
+  <div class="terminal">
+    <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>&nbsp;cipher_fixed.bin</div>
+    <div class="cipher-strip"><span class="cipher-cell">9F</span><span class="cipher-cell">3A</span><span class="cipher-cell">C1</span><span class="cipher-cell">7E</span><span class="cipher-cell">55</span></div>
+    <div class="term-caption">— 密文永远不会变 —</div>
+  </div>
+
+  <div class="dial-label"><span>密钥转盘 KEY DIAL</span><span class="dial-key" id="dialKey">K=08</span></div>
+  <input type="range" id="dial" min="0" max="15" step="1" value="8" aria-label="密钥档位">
+  <div class="ticks"><span>0</span><span>4</span><span>8</span><span>12</span><span>15</span></div>
+
+  <div class="plain-out">
+    <div class="plain-line" id="plainLine"></div>
+    <div class="plain-sub" id="plainSub"></div>
+  </div>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="chart-box">
+    <div class="chart-title"><i class="ti ti-chart-bar"></i> 每种真相被几把钥匙解出</div>
+    <canvas id="chart" role="img" aria-label="每种明文被多少把钥匙解出的条形图"></canvas>
+  </div>
+
+  <div class="toast" id="toast"><i class="ti ti-trophy"></i> 集齐 8 种真相！密文还是那段密文。</div>
+
+  <div class="foot-row">
+    <button class="reset" id="resetBtn"><i class="ti ti-refresh"></i>重新转</button>
+    <span class="plain-sub" id="triedCount"></span>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  const dial = document.getElementById('dial');
+  const dialKey = document.getElementById('dialKey');
+  const line = document.getElementById('plainLine');
+  const sub = document.getElementById('plainSub');
+  const chipsBox = document.getElementById('chips');
+  const toast = document.getElementById('toast');
+  const triedEl = document.getElementById('triedCount');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const found = new Set();
+  const counts = new Array(OTP_PLAINTEXTS.length).fill(0);
+  let triedCount = 0;
+  const labels = OTP_PLAINTEXTS.map((t, i) => `真相 ${i + 1}`);
+
+  const chips = OTP_PLAINTEXTS.map((t, i) => {
+    const c = document.createElement('span');
+    c.className = 'chip';
+    c.textContent = `??? ${i + 1}/8`;
+    c.dataset.tooltip = '还没转出来';
+    chipsBox.appendChild(c);
+    return c;
+  });
+
+  const chart = new Chart(document.getElementById('chart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: counts.slice(), backgroundColor: 'rgba(127,255,158,.45)', borderRadius: 4 }] },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { displayColors: false } },
+      scales: {
+        x: { ticks: { precision: 0, color: '#4a6a4a', font: { size: 10 } }, grid: { color: 'rgba(127,255,158,.07)' }, beginAtZero: true },
+        y: { ticks: { color: '#6f8f6f', font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  function update() {
+    const r = decryptOtp(parseInt(dial.value, 10));
+    dialKey.textContent = `K=${String(r.keyIndex).padStart(2, '0')}`;
+    sub.textContent = `密钥 ${String(r.keyIndex).padStart(2, '0')} 号 · 解密输出`;
+    line.textContent = r.text;
+
+    if (reduced) { line.style.opacity = 1; }
+    else gsap.fromTo(line, { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.28, ease: 'power2.out' });
+
+    triedCount++;
+    counts[r.keyIndex % OTP_PLAINTEXTS.length]++;
+    chart.data.datasets[0].data = counts.slice();
+    chart.update('none');
+
+    if (!found.has(r.text)) {
+      found.add(r.text);
+      const i = OTP_PLAINTEXTS.indexOf(r.text);
+      chips[i].classList.add('lit');
+      chips[i].textContent = r.text.slice(0, 6) + '…';
+      chips[i].dataset.tooltip = r.text;
+      gsap.from(chips[i], { scale: 0.6, duration: 0.3, ease: 'back.out(2)' });
+      if (found.size === OTP_PLAINTEXTS.length) {
+        toast.style.display = 'flex';
+        gsap.from(toast, { y: 12, opacity: 0, duration: 0.4, ease: 'power2.out' });
+      }
+    }
+    triedEl.textContent = `已转动 ${triedCount} 次`;
+  }
+
+  dial.addEventListener('input', update);
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    found.clear();
+    counts.fill(0);
+    triedCount = 0;
+    chips.forEach((c, i) => { c.classList.remove('lit'); c.textContent = `??? ${i + 1}/8`; c.dataset.tooltip = '还没转出来'; });
+    toast.style.display = 'none';
+    chart.data.datasets[0].data = counts.slice();
+    chart.update('none');
+    update();
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>

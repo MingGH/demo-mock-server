@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="平方根谜宫：Rabin 密码的解密永远吐出四个候选明文。九宫格里藏着全部四个，点开它们。">
+<title>平方根谜宫 · 版本 3</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { min-height:100vh; background:linear-gradient(165deg,#1c1430,#221635 55%,#141020); color:#ece5f5;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; padding:18px 16px 48px; }
+.wrap { max-width:520px; margin:0 auto; }
+.back { display:inline-flex; align-items:center; gap:6px; color:#8a7fa0; text-decoration:none; font-size:13px; margin-bottom:14px; }
+.stage-tag { display:inline-block; font-size:11px; letter-spacing:2px; color:#221635; background:#ce93d8; border-radius:6px; padding:3px 10px; font-weight:500; }
+h1 { color:#ce93d8; font-size:24px; margin:6px 0 4px; }
+.hint { color:#a99cc0; font-size:14px; line-height:1.6; margin-bottom:16px; }
+.hint strong { color:#ffd700; }
+
+.cipher-math { display:flex; align-items:center; justify-content:center; gap:10px; background:rgba(206,147,216,.08);
+  border:1px solid rgba(206,147,216,.35); border-radius:12px; padding:12px; margin-bottom:16px; font-family:Menlo,Consolas,monospace; }
+.cipher-math b { color:#ffd700; font-size:18px; }
+.cipher-math span { color:#a99cc0; font-size:13px; }
+
+.status-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; font-size:13px; color:#a99cc0; }
+.status-row b { color:#ffd700; font-size:16px; }
+.status-row .miss { color:#ff8a8a; }
+
+.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+.cell { width:100%; height:100px; border:none; border-radius:14px; cursor:pointer; font-family:inherit;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); color:#b9aed0; font-size:20px;
+  display:flex; align-items:center; justify-content:center; transition:transform .12s; will-change:transform; }
+.cell:active { transform:scale(.94); }
+.cell.miss { background:rgba(255,107,107,.08); border-color:rgba(255,107,107,.25); color:#5f4a4a; cursor:default; }
+.cell.hit { background:linear-gradient(150deg,#6a3f8f,#4a2a68); border-color:#ce93d8; color:#fff; font-size:14px;
+  flex-direction:column; gap:4px; cursor:default; }
+.cell.hit i { color:#ffd700; }
+
+.reveal { display:none; background:rgba(255,215,0,.07); border:1px solid rgba(255,215,0,.4); border-radius:14px; padding:18px 16px; margin-bottom:14px; }
+.reveal-title { color:#ffd700; font-size:16px; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.reveal-body { color:#ccc; font-size:14px; line-height:1.7; }
+.reveal-body em { color:#ce93d8; font-style:normal; font-weight:500; }
+.roots { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.root-chip { border:1px solid #ce93d8; color:#ce93d8; border-radius:999px; padding:5px 12px; font-size:12px; }
+
+.foot-row { display:flex; justify-content:space-between; align-items:center; }
+.reset { background:none; border:1px solid rgba(255,255,255,.2); color:#a99cc0; border-radius:10px; padding:9px 16px;
+  font-size:13px; cursor:pointer; font-family:inherit; display:inline-flex; gap:6px; align-items:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> 返回选择</a>
+  <span class="stage-tag">版本 3 · 烧脑解谜</span>
+  <h1>一个密文，四个真相</h1>
+  <p class="hint">数学家 Rabin 发明的密码有个怪脾气：<strong>解密永远吐出 4 个候选明文</strong>，谁也不知道哪个是真相。九宫格里藏着全部 4 个——把它们点出来。</p>
+
+  <div class="cipher-math">
+    <span>密文</span><b>C = 6</b><span>≡ m² (mod 21)</span>
+  </div>
+
+  <div class="status-row">
+    <span>已找到 <b id="found">0</b> / 4 个候选</span>
+    <span class="miss" id="missRow" style="visibility:hidden">失手 <b id="miss">0</b> 次</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="reveal" id="reveal">
+    <div class="reveal-title"><i class="ti ti-bulb"></i> 为什么会有四个？</div>
+    <div class="reveal-body">解密 Rabin 密码等价于解方程 <em>x² ≡ C (mod n)</em>——当 n 是两个素数之积时，这个方程恰好有 <em>四个解</em>。数学没有说谎，它只是诚实地给出了四个答案。工程上要靠附加校验位才能挑出真话。</div>
+    <div class="roots" id="roots"></div>
+  </div>
+
+  <div class="foot-row">
+    <button class="reset" id="resetBtn"><i class="ti ti-refresh"></i>再来一局</button>
+    <span class="hint" style="margin:0;font-size:12px">每次落空，真相就近一步</span>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  const grid = document.getElementById('grid');
+  const foundEl = document.getElementById('found');
+  const missEl = document.getElementById('miss');
+  const missRow = document.getElementById('missRow');
+  const reveal = document.getElementById('reveal');
+  const rootsBox = document.getElementById('roots');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const pickedHits = [];
+  let misses = 0;
+  const cells = [];
+
+  for (let i = 0; i < RABIN_GRID.length; i++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cell';
+    btn.setAttribute('aria-label', `第 ${i + 1} 格`);
+    btn.textContent = '?';
+    btn.addEventListener('click', () => pick(i, btn));
+    grid.appendChild(btn);
+    cells.push(btn);
+  }
+
+  gsap.from('.cell', { scale: 0.5, opacity: 0, stagger: 0.05, duration: 0.35, ease: 'back.out(1.8)' });
+
+  function pick(id, btn) {
+    if (btn.classList.contains('hit') || btn.classList.contains('miss')) return;
+    const res = rabinPick(id);
+    if (!res.ok) return;
+
+    if (res.hit) {
+      btn.classList.add('hit');
+      btn.innerHTML = `<i class="ti ti-message"></i>${res.text}`;
+      pickedHits.push(id);
+      foundEl.textContent = pickedHits.length;
+      if (!reduced) gsap.from(btn, { rotateX: 90, scale: 0.8, duration: 0.4, ease: 'back.out(2)' });
+      if (rabinAllFound(pickedHits)) finish();
+    } else {
+      btn.classList.add('miss');
+      btn.textContent = '×';
+      misses++;
+      missEl.textContent = misses;
+      missRow.style.visibility = 'visible';
+      if (!reduced) gsap.fromTo(btn, { x: -7 }, { x: 0, duration: 0.4, ease: 'elastic.out(1,0.3)' });
+    }
+  }
+
+  function finish() {
+    RABIN_GRID.filter((c) => c.hit).forEach((c) => {
+      const chip = document.createElement('span');
+      chip.className = 'root-chip';
+      chip.textContent = c.text;
+      rootsBox.appendChild(chip);
+    });
+    reveal.style.display = 'block';
+    gsap.from(reveal, { y: 16, opacity: 0, duration: 0.5, ease: 'power2.out' });
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    pickedHits.length = 0;
+    misses = 0;
+    foundEl.textContent = '0';
+    missEl.textContent = '0';
+    missRow.style.visibility = 'hidden';
+    reveal.style.display = 'none';
+    rootsBox.innerHTML = '';
+    cells.forEach((c, i) => { c.className = 'cell'; c.textContent = '?'; });
+    gsap.from('.cell', { scale: 0.6, opacity: 0, stagger: 0.04, duration: 0.3, ease: 'back.out(1.8)' });
+  });
+})();
+</script>
+</body>
+</html>

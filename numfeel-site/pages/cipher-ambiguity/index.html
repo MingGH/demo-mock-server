@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="同一段密文能解出几种明文？密钥转盘交互演示：16 把钥匙、8 种真相、密钥空间的指数爆炸，理解一次一密与可否认加密的直觉根基。">
+  <title>密文的多重真相：转一转，一个密文八种真相 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="engine.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-rotate"></i> 密文的多重真相</h1>
+    <p>下面这段密文永远不会变。变的是钥匙——<strong>换一把钥匙，它就说出另一句话</strong>。16 把钥匙、8 种真相，转完你就明白：密文本身不携带唯一真相。</p>
+  </div>
+
+  <!-- ══════════ 第 1 步 · 固定的密文 ══════════ -->
+  <div class="section">
+    <div class="stage-tag">第 1 步 · 固定的密文</div>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 这是全部演示里唯一不变的东西：8 字节密文。盯住它——接下来无论看到什么，都是它「说」出来的。</p>
+    <div class="terminal">
+      <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>&nbsp;cipher_fixed.bin</div>
+      <div class="cipher-strip" id="hexStrip"></div>
+      <div class="term-caption">— 密文永远不会变 —</div>
+    </div>
+  </div>
+
+  <!-- ══════════ 第 2 步 · 密钥转盘 ══════════ -->
+  <div class="section">
+    <div class="stage-tag">第 2 步 · 密钥转盘</div>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 拖动转盘换一把钥匙（共 <strong>16 把，对应 4 位密钥</strong>），看同一段密文实时说出不同的话。集齐 8 种真相有彩蛋。</p>
+
+    <div class="terminal">
+      <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>&nbsp;key_dial</div>
+      <div style="padding: 4px 14px 12px;">
+        <div class="dial-label"><span>密钥转盘 KEY DIAL</span><span class="dial-key" id="dialKey">K=08</span></div>
+        <input type="range" id="dial" min="0" max="15" step="1" value="8" aria-label="密钥档位">
+        <div class="ticks"><span>0</span><span>4</span><span>8</span><span>12</span><span>15</span></div>
+      </div>
+    </div>
+
+    <div class="plain-out">
+      <div class="plain-line" id="plainLine" aria-live="polite"></div>
+      <div class="plain-sub" id="plainSub"></div>
+    </div>
+
+    <div class="chips" id="chips" aria-label="已收集的真相"></div>
+
+    <div class="chart-box">
+      <div class="chart-title"><i class="ti ti-chart-bar"></i> 每种真相被几把钥匙解出</div>
+      <div class="chart-wrap"><canvas id="truthChart" role="img" aria-label="每种明文被多少把钥匙解出的条形图"></canvas></div>
+    </div>
+
+    <div class="toast hidden" id="toast"><i class="ti ti-trophy"></i>&nbsp;集齐 8 种真相！而密文，还是那段密文。</div>
+
+    <div class="btn-row">
+      <button class="btn-terminal" id="resetBtn"><i class="ti ti-refresh"></i>重新转</button>
+      <span class="plain-sub" id="triedCount" style="align-self: center;"></span>
+    </div>
+  </div>
+
+  <!-- ══════════ 第 3 步 · 密钥空间 ══════════ -->
+  <div class="section">
+    <div class="stage-tag">第 3 步 · 把转盘想大一点</div>
+    <p class="section-hint"><i class="ti ti-info-circle"></i> 转盘只有 4 位密钥。位数每 +1，钥匙数量翻一倍——<strong>同一密文可能承载的"真相"数量也跟着翻倍</strong>。</p>
+
+    <div class="terminal">
+      <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>&nbsp;key_space_explorer</div>
+      <div style="padding: 4px 14px 14px;">
+        <div class="ks-readout">
+          <span class="ks-bits" id="ksBits">4 位密钥</span>
+          <span class="ks-keys" id="ksKeys">16</span>
+          <span class="ks-unit">把可能的钥匙</span>
+        </div>
+        <input type="range" id="bits" min="4" max="64" step="1" value="4" aria-label="密钥位数">
+        <div class="ticks"><span>4</span><span>19</span><span>34</span><span>49</span><span>64</span></div>
+        <div class="ks-meter"><div class="ks-meter-fill" id="ksMeterFill"></div></div>
+        <p class="ks-note" id="ksNote">现实中的 AES-256 有 <strong>2²⁵⁶</strong> 把钥匙——在它面前，转盘只是玩具。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 第 4 步 · 点题 ══════════ -->
+  <div class="section">
+    <div class="stage-tag">第 4 步 · 所以，答案是？</div>
+    <div class="punch-card">
+      <div class="punch-title"><i class="ti ti-bulb"></i> 是——而且这正是「完美保密」的另一面</div>
+      <div class="punch-body">
+        只要允许换钥匙，<strong>任何一段明文都存在一把恰好能解出它的钥匙</strong>（一次一密下甚至可以严格证明）。所以「同一段密文解出多种明文」恰恰是加密强度的来源：密钥空间越大，密文能承载的「候选真相」就越多。基于这个性质造出了<strong>可否认加密</strong>——被胁迫时交出另一把钥匙，密文照样自圆其说。密文从未说谎，说谎的从来是钥匙。
+      </div>
+      <div class="summary-box" id="summaryText"></div>
+      <div class="btn-row">
+        <button class="btn-terminal btn-green" id="copyBtn"><i class="ti ti-copy"></i>复制我的体验小结</button>
+        <span class="foot-note" id="copyToast" style="align-self: center; visibility: hidden;">已复制到剪贴板 ✓</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

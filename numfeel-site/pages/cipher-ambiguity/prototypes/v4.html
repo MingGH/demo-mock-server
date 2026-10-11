@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="审讯室：你手里有两把钥匙，交出哪一把？文字冒险式体验可否认加密。">
+<title>审讯室 · 版本 4</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { min-height:100vh; background:linear-gradient(170deg,#0d0d12,#161220 60%,#1a1424); color:#e5e0ec;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; padding:18px 16px 48px; }
+.wrap { max-width:520px; margin:0 auto; }
+.back { display:inline-flex; align-items:center; gap:6px; color:#7a7390; text-decoration:none; font-size:13px; margin-bottom:14px; }
+.stage-tag { display:inline-block; font-size:11px; letter-spacing:2px; color:#161220; background:#ff8a8a; border-radius:6px; padding:3px 10px; font-weight:500; }
+h1 { color:#ffb3b3; font-size:24px; margin:6px 0 4px; }
+.hint { color:#8f8aa5; font-size:14px; line-height:1.6; margin-bottom:16px; }
+
+.suspect-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.suspect-label { font-size:12px; color:#8f8aa5; white-space:nowrap; }
+.meter { flex:1; height:10px; border-radius:5px; background:rgba(255,255,255,.08); overflow:hidden; }
+.meter-fill { height:100%; width:30%; border-radius:5px; background:linear-gradient(90deg,#81c784,#ffd700,#ff6b6b); }
+
+.scene { background:#12101a; border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:18px 16px; min-height:130px; margin-bottom:14px; }
+.scene-tag { font-size:11px; letter-spacing:2px; color:#ff8a8a; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.scene-text { font-size:16px; line-height:1.8; color:#e5e0ec; min-height:58px; }
+.scene-text .caret { display:inline-block; width:8px; background:#ffb3b3; animation:blink 0.9s step-end infinite; }
+@keyframes blink { 50% { opacity:0; } }
+@media (prefers-reduced-motion: reduce) { .scene-text .caret { animation:none; } }
+
+.choices { display:flex; flex-direction:column; gap:10px; }
+.choice { border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.05); color:#e5e0ec;
+  border-radius:12px; padding:14px 16px; font-size:15px; text-align:left; cursor:pointer; font-family:inherit;
+  display:flex; align-items:center; gap:10px; min-height:52px; transition:transform .12s, border-color .15s; }
+.choice:active { transform:scale(.97); }
+.choice:hover { border-color:#ffb3b3; }
+.choice i { color:#ffb3b3; font-size:18px; }
+.choice.disabled { opacity:.45; pointer-events:none; }
+.choices.hidden { display:none; }
+
+.endings { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.end-chip { border:1px solid #81c784; color:#81c784; border-radius:999px; padding:5px 12px; font-size:12px; }
+
+.foot-row { display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
+.reset { background:none; border:1px solid rgba(255,255,255,.2); color:#8f8aa5; border-radius:10px; padding:9px 16px;
+  font-size:13px; cursor:pointer; font-family:inherit; display:inline-flex; gap:6px; align-items:center; }
+.dots { display:flex; gap:6px; }
+.dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.15); }
+.dot.on { background:#ff8a8a; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> 返回选择</a>
+  <span class="stage-tag">版本 4 · 文字冒险</span>
+  <h1>审讯室：你手里有两把钥匙</h1>
+  <p class="hint">深夜，一段密文摆在桌上。你口袋里其实装着两把钥匙——<strong>交出哪一把，决定了你的人生走向</strong>。</p>
+
+  <div class="suspect-row">
+    <span class="suspect-label">怀疑度</span>
+    <div class="meter" role="progressbar" aria-label="怀疑度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="30">
+      <div class="meter-fill" id="meterFill"></div>
+    </div>
+    <span class="suspect-label" id="meterVal">30%</span>
+  </div>
+
+  <div class="scene">
+    <div class="scene-tag"><i class="ti ti-door-enter"></i> <span id="sceneTag">第一幕 · 审讯开始</span></div>
+    <div class="scene-text" id="sceneText" aria-live="polite"></div>
+  </div>
+
+  <div class="choices" id="choices">
+    <button class="choice" data-id="real"><i class="ti ti-key"></i>交出真钥匙</button>
+    <button class="choice" data-id="fake"><i class="ti ti-key"></i>交出假钥匙</button>
+    <button class="choice" data-id="deny"><i class="ti ti-key-off"></i>交出坏钥匙</button>
+  </div>
+  <div class="choices hidden" id="nextRow">
+    <button class="choice" id="nextBtn"><i class="ti ti-arrow-right"></i><span id="nextLabel">下一幕</span></button>
+  </div>
+
+  <div class="endings" id="endings"></div>
+
+  <div class="foot-row">
+    <button class="reset" id="resetBtn"><i class="ti ti-refresh"></i>重玩</button>
+    <div class="dots" id="dots"><span class="dot on"></span><span class="dot"></span><span class="dot"></span></div>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  const sceneText = document.getElementById('sceneText');
+  const sceneTag = document.getElementById('sceneTag');
+  const choicesBox = document.getElementById('choices');
+  const nextRow = document.getElementById('nextRow');
+  const nextBtn = document.getElementById('nextBtn');
+  const nextLabel = document.getElementById('nextLabel');
+  const endingsBox = document.getElementById('endings');
+  const dots = document.querySelectorAll('#dots .dot');
+  const meterFill = document.getElementById('meterFill');
+  const meterVal = document.getElementById('meterVal');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const SCENES = [
+    { tag: '第一幕 · 审讯开始', text: '审讯官把一张打印着十六进制字符的纸推到你面前：「解密它。」你摸了摸口袋——两把钥匙都在。' },
+    { tag: '第二幕 · 律师赶到', text: '律师冲进审讯室：「没有义务自证其罪。」审讯官冷笑：「那再解一次，给律师看看。」' },
+    { tag: '终幕 · 真相折叠', text: '你忽然意识到一件事：密文底下可以叠着无数种真相，每一把钥匙都理直气壮。' }
+  ];
+  let round = 0;
+  let suspicion = 30;
+  let history = [];
+  let typing = false;
+
+  function type(el, text, done) {
+    if (reduced) { el.textContent = text; done(); return; }
+    typing = true;
+    el.innerHTML = '<span class="caret">&nbsp;</span>';
+    const caret = el.querySelector('.caret');
+    let i = 0;
+    const timer = setInterval(() => {
+      caret.insertAdjacentText('beforebegin', text[i]);
+      i++;
+      if (i >= text.length) {
+        clearInterval(timer);
+        typing = false;
+        caret.remove();
+        done();
+      }
+    }, 34);
+  }
+
+  function setSuspicion(v) {
+    suspicion = Math.max(0, Math.min(100, v));
+    gsap.to(meterFill, { width: suspicion + '%', duration: 0.5, ease: 'power2.out' });
+    meterVal.textContent = suspicion + '%';
+    meterFill.parentElement.setAttribute('aria-valuenow', String(suspicion));
+  }
+
+  function showScene(i, after) {
+    dots.forEach((d, j) => d.classList.toggle('on', j <= i));
+    sceneTag.textContent = SCENES[i].tag;
+    choicesBox.classList.add('hidden');
+    nextRow.classList.add('hidden');
+    gsap.from('.scene', { x: -10, opacity: 0.4, duration: 0.3 });
+    type(sceneText, SCENES[i].text, after);
+  }
+
+  function offerChoices() {
+    choicesBox.classList.remove('hidden');
+    gsap.from('.choice', { y: 12, opacity: 0, stagger: 0.08, duration: 0.3, clearProps: 'all' });
+  }
+
+  document.querySelectorAll('#choices .choice').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (typing) return;
+      const res = interrogationChoice(btn.dataset.id);
+      if (!res.ok) return;
+      history.push(btn.dataset.id);
+      setSuspicion(suspicion + (res.safe - 2) * 15);
+      choicesBox.classList.add('hidden');
+      type(sceneText, res.text, () => {
+        if (round === 0) {
+          round = 1;
+          nextLabel.textContent = '律师赶到';
+          nextRow.classList.remove('hidden');
+        } else {
+          finish();
+        }
+      });
+    });
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (typing) return;
+    showScene(1, offerChoices);
+  });
+
+  function finish() {
+    showScene(2, () => {
+      const final = interrogationChoice(history[history.length - 1] || 'fake');
+      const chip = document.createElement('span');
+      chip.className = 'end-chip';
+      chip.textContent = `结局：${final.title}`;
+      endingsBox.appendChild(chip);
+      gsap.from(chip, { scale: 0.5, opacity: 0, duration: 0.35, ease: 'back.out(2)' });
+      nextRow.classList.add('hidden');
+    });
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', () => window.location.reload());
+
+  showScene(0, offerChoices);
+})();
+</script>
+</body>
+</html>

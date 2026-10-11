@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="一段密文，两把钥匙：插入不同的钥匙，同一段密文解出完全不同的明文。">
+<title>双面密文 · 版本 1</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.44.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { min-height:100vh; background:linear-gradient(160deg,#1a1a2e,#16213e 55%,#0f3460); color:#e8e8f0;
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",sans-serif; padding:18px 16px 48px; }
+.wrap { max-width:520px; margin:0 auto; }
+.back { display:inline-flex; align-items:center; gap:6px; color:#888; text-decoration:none; font-size:13px; margin-bottom:14px; }
+h1 { color:#ffd700; font-size:24px; margin:6px 0 4px; }
+.hint { color:#9aa3b2; font-size:14px; line-height:1.6; margin-bottom:18px; }
+.hint strong { color:#90caf9; }
+
+.cipher-card { background:rgba(0,0,0,.45); border:1px solid rgba(255,215,0,.35); border-radius:14px;
+  padding:18px 16px; text-align:center; position:relative; overflow:hidden; }
+.cipher-label { color:#888; font-size:12px; letter-spacing:2px; margin-bottom:8px; }
+.cipher-hex { font-family:"SF Mono",Menlo,Consolas,monospace; font-size:22px; color:#ffd700; letter-spacing:3px;
+  text-shadow:0 0 12px rgba(255,215,0,.4); }
+.cipher-hex span { display:inline-block; }
+.lock-ico { position:absolute; right:12px; top:12px; color:rgba(255,215,0,.4); font-size:20px; }
+
+.key-tray { display:flex; gap:12px; margin:18px 0 8px; }
+.key-btn { flex:1; min-height:72px; border:none; border-radius:14px; cursor:pointer; color:#fff;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-size:15px;
+  font-family:inherit; transition:transform .15s; }
+.key-btn i { font-size:22px; }
+.key-btn:active { transform:scale(.96); }
+.key-red  { background:linear-gradient(150deg,#7a1f2b,#4a121b); box-shadow:0 4px 14px rgba(255,107,107,.25); }
+.key-blue { background:linear-gradient(150deg,#1f4a7a,#122a4a); box-shadow:0 4px 14px rgba(144,202,249,.25); }
+.key-gold { background:linear-gradient(150deg,#8a6d1f,#5c4712); box-shadow:0 4px 14px rgba(255,215,0,.35); width:100%; margin-top:2px; }
+.key-sub { font-size:11px; color:rgba(255,255,255,.65); }
+.key-hint { color:#888; font-size:12px; text-align:center; margin-bottom:14px; min-height:16px; }
+
+.scene { perspective:900px; }
+.plain-panel { background:#111827; border:1px solid rgba(255,255,255,.12); border-radius:14px;
+  padding:22px 18px; min-height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  transform-style:preserve-3d; will-change:transform; }
+.plain-tag { font-size:12px; letter-spacing:2px; color:#90caf9; }
+.plain-text { font-size:19px; color:#fff; text-align:center; line-height:1.6; }
+.plain-idle { color:#666; font-size:14px; }
+
+.punch { display:none; margin-top:16px; background:rgba(255,215,0,.08); border:1px solid rgba(255,215,0,.4);
+  border-radius:14px; padding:18px 16px; }
+.punch-title { color:#ffd700; font-size:16px; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.punch-body { color:#ccc; font-size:14px; line-height:1.7; }
+.punch-body em { color:#ffd700; font-style:normal; }
+
+.foot-row { display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+.reset { background:none; border:1px solid rgba(255,255,255,.2); color:#aaa; border-radius:10px;
+  padding:9px 16px; font-size:13px; cursor:pointer; font-family:inherit; display:inline-flex; gap:6px; align-items:center; }
+.stage-tag { display:inline-block; font-size:11px; letter-spacing:2px; color:#0f3460; background:#ffd700;
+  border-radius:6px; padding:3px 10px; font-weight:500; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html"><i class="ti ti-arrow-left"></i> 返回选择</a>
+  <span class="stage-tag">版本 1 · 特工解谜</span>
+  <h1>一段密文，两把钥匙</h1>
+  <p class="hint">你截获了这段密文。现场只找到两把钥匙——<strong>插进不同的钥匙，看看它到底在说什么。</strong></p>
+
+  <div class="cipher-card">
+    <i class="ti ti-lock lock-ico"></i>
+    <div class="cipher-label">CIPHERTEXT</div>
+    <div class="cipher-hex" id="hexRow"></div>
+  </div>
+
+  <div class="key-tray">
+    <button class="key-btn key-red" data-key="red"><i class="ti ti-key"></i>红钥匙<span class="key-sub">外观贵重</span></button>
+    <button class="key-btn key-blue" data-key="blue"><i class="ti ti-key"></i>蓝钥匙<span class="key-sub">平平无奇</span></button>
+  </div>
+  <button class="key-btn key-gold" data-key="gold" id="goldBtn" style="display:none"><i class="ti ti-key-filled"></i>金钥匙<span class="key-sub">不知从哪来的</span></button>
+  <div class="key-hint" id="keyHint"></div>
+
+  <div class="scene">
+    <div class="plain-panel" id="panel">
+      <div class="plain-idle" id="plainIdle">把钥匙插进锁孔，解密…</div>
+      <div class="plain-tag" id="plainTag" style="display:none"></div>
+      <div class="plain-text" id="plainText" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="punch" id="punch">
+    <div class="punch-title"><i class="ti ti-bulb"></i> 密文从未说谎——说谎的是钥匙</div>
+    <div class="punch-body">在「一次一密」里，任何一段明文都存在一把恰好能解出它的钥匙。所以密文本身<b>不携带唯一真相</b>，真相只属于拿对钥匙的人。这就是可否认加密的思想根源。</div>
+  </div>
+
+  <div class="foot-row">
+    <button class="reset" id="resetBtn"><i class="ti ti-refresh"></i>重新开始</button>
+    <span class="key-hint" id="progress" style="margin:0"></span>
+  </div>
+</div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  const hexRow = document.getElementById('hexRow');
+  CIPHERTEXT.split(' ').forEach((h) => {
+    const s = document.createElement('span');
+    s.textContent = h;
+    hexRow.appendChild(s);
+  });
+  gsap.from('#hexRow span', { y: 10, opacity: 0, stagger: 0.08, duration: 0.4, ease: 'power2.out' });
+
+  const panel = document.getElementById('panel');
+  const tagEl = document.getElementById('plainTag');
+  const textEl = document.getElementById('plainText');
+  const idleEl = document.getElementById('plainIdle');
+  const hintEl = document.getElementById('keyHint');
+  const goldBtn = document.getElementById('goldBtn');
+  const punch = document.getElementById('punch');
+  const progressEl = document.getElementById('progress');
+  const tried = new Set();
+  let flipping = false;
+
+  function updateProgress() {
+    const n = tried.size;
+    progressEl.textContent = n === 0 ? '' : `已尝试 ${n} / 3 把钥匙`;
+  }
+
+  function flipTo(res) {
+    if (flipping) return;
+    flipping = true;
+    idleEl.style.display = 'none';
+    gsap.timeline({ onComplete: () => { flipping = false; } })
+      .to(panel, { rotateY: 90, duration: 0.28, ease: 'power2.in' })
+      .add(() => {
+        tagEl.textContent = `${res.name} · ${res.tag}`;
+        textEl.textContent = res.text;
+        tagEl.style.display = '';
+        textEl.style.display = '';
+      })
+      .to(panel, { rotateY: 0, duration: 0.32, ease: 'power2.out' })
+      .from(textEl, { y: 10, opacity: 0, duration: 0.3 }, '-=0.15');
+  }
+
+  document.querySelectorAll('.key-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const res = decryptByKey(btn.dataset.key);
+      if (!res.ok || flipping) return;
+      tried.add(btn.dataset.key);
+      flipTo(res);
+      hintEl.textContent = btn.dataset.key === 'gold'
+        ? '它不属于任何人，却能解出一切。'
+        : '「这就是全部内容？」——换把钥匙试试。';
+      if (tried.has('red') && tried.has('blue') && !tried.has('gold')) {
+        goldBtn.style.display = 'flex';
+        gsap.from(goldBtn, { y: 14, opacity: 0, scale: 0.9, duration: 0.45, ease: 'back.out(2)' });
+        gsap.to(goldBtn, { boxShadow: '0 4px 26px rgba(255,215,0,.6)', repeat: -1, yoyo: true, duration: 0.9, ease: 'sine.inOut' });
+      }
+      if (btn.dataset.key === 'gold') {
+        punch.style.display = 'block';
+        gsap.from(punch, { y: 16, opacity: 0, duration: 0.5, ease: 'power2.out' });
+      }
+      updateProgress();
+    });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    tried.clear();
+    tagEl.style.display = 'none';
+    textEl.style.display = 'none';
+    idleEl.style.display = '';
+    hintEl.textContent = '';
+    goldBtn.style.display = 'none';
+    punch.style.display = 'none';
+    gsap.killTweensOf(goldBtn);
+    updateProgress();
+  });
+})();
+</script>
+</body>
+</html>

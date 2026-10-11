@@ -23,7 +23,7 @@
       loans: [
         { name: '平台A', amount: 80000, rate: 24 },
         { name: '平台B', amount: 60000, rate: 22 },
-        { name: '平台C', amount: 40000, rate: 30 },
+        { name: '平台C', amount: 40000, rate: 24 },
       ],
     },
     {
@@ -33,7 +33,7 @@
       loans: [
         { name: '平台A', amount: 120000, rate: 23.9 },
         { name: '平台B', amount: 100000, rate: 18 },
-        { name: '平台C', amount: 80000, rate: 35.9 },
+        { name: '平台C', amount: 80000, rate: 24 },
       ],
     },
   ];
@@ -223,6 +223,18 @@
       els.bankLine.textContent = '对照：同样 ' + yuan(summary.totalPrincipal)
         + ' 走银行信用贷（年化 4% · ' + bank.months + ' 期），月供约 ' + yuan(bank.monthly)
         + '。差距就是利率和期限。';
+
+      const rateWarning = doc.getElementById('rate-warning');
+      if (rateWarning) {
+        if (summary.weightedRate > 24) {
+          rateWarning.textContent = '综合年化 ' + pctText(summary.weightedRate)
+            + '：已超持牌机构 24% 上限惯例。民间借贷司法保护上限是 1 年期 LPR 的 4 倍，'
+            + '今天还敢标这个价的，先怀疑产品本身是否违规。';
+          rateWarning.hidden = false;
+        } else {
+          rateWarning.hidden = true;
+        }
+      }
     }
 
     function renderAfford(totalMonthly) {

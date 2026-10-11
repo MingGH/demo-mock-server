@@ -1,0 +1,488 @@
+/* 网贷上岸清单 — 账单工具风（暖棕深底 + 纸质账单） */
+
+:root {
+  --ink: #f2e4cf;
+  --mut: rgba(242, 228, 207, 0.55);
+  --faint: rgba(242, 228, 207, 0.38);
+  --line: rgba(242, 228, 207, 0.12);
+  --panel: rgba(28, 20, 14, 0.72);
+  --gold: #ffd166;
+  --orange: #c96b33;
+  --red: #ff6b6b;
+  --green: #81c784;
+  --blue: #90caf9;
+  --paper: #f3ecdf;
+  --paper-ink: #2b2018;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hero h1 {
+  color: var(--gold);
+}
+
+.hero .subtitle {
+  color: var(--mut);
+  line-height: 1.9;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.card-title .ti {
+  color: var(--orange);
+  margin-right: 6px;
+}
+
+.card-desc {
+  font-size: 12.5px;
+  color: var(--mut);
+  line-height: 1.8;
+  margin: 0 0 14px;
+}
+
+/* 预设 */
+.preset-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.preset-btn {
+  min-height: 56px;
+  padding: 10px 8px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(46, 32, 22, 0.6);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.25s var(--ease), background 0.25s var(--ease);
+}
+
+.preset-btn small {
+  display: block;
+  margin-top: 3px;
+  font-weight: 400;
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+.preset-btn.active {
+  border-color: rgba(201, 107, 51, 0.65);
+  background: rgba(201, 107, 51, 0.16);
+}
+
+/* 债务行 */
+.loan-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1.1fr 0.8fr 40px;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.loan-row input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.loan-row input.loan-name {
+  font-family: inherit;
+}
+
+.loan-del {
+  min-height: 44px;
+  min-width: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--faint);
+  font-size: 15px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.loan-del:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px dashed rgba(242, 228, 207, 0.28);
+  background: transparent;
+  color: var(--mut);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.form-error {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  background: rgba(255, 107, 107, 0.1);
+  color: var(--red);
+  font-size: 12.5px;
+}
+
+/* 月薪 / 期限 */
+.control-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.control label {
+  display: block;
+  font-size: 12px;
+  color: var(--mut);
+  margin-bottom: 6px;
+}
+
+.hl-num {
+  font-family: var(--mono);
+  color: var(--gold);
+}
+
+.control input[type="number"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+/* 滑杆：拇指 26px、轨道 34px（移动端规范） */
+input[type="range"] {
+  width: 100%;
+  height: 34px;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 26px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: var(--orange);
+  border: none;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--orange);
+  border: none;
+}
+
+/* 纸质账单 */
+.receipt {
+  background: var(--paper);
+  color: var(--paper-ink);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+}
+
+.receipt-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--paper-ink);
+  margin-bottom: 6px;
+}
+
+.receipt-title {
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+}
+
+.receipt-no {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: rgba(43, 32, 24, 0.55);
+}
+
+.r-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1.1fr 0.7fr 1.1fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-bottom: 1px dashed rgba(43, 32, 24, 0.25);
+  font-size: 12.5px;
+}
+
+.r-row .r-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.r-row .r-val,
+.r-row .r-rate {
+  font-family: var(--mono);
+  text-align: right;
+}
+
+.r-row .r-rate {
+  color: #b4441f;
+  font-weight: 700;
+}
+
+.sum-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px 14px;
+  margin-top: 14px;
+}
+
+.sum-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sum-label {
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: rgba(43, 32, 24, 0.55);
+}
+
+.sum-val {
+  font-family: var(--mono);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.hl-red {
+  color: #b4441f;
+}
+
+.bank-line {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid rgba(201, 107, 51, 0.7);
+  background: rgba(201, 107, 51, 0.1);
+  border-radius: 0 12px 12px 0;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: rgba(43, 32, 24, 0.85);
+}
+
+/* 承受力条 */
+.afford {
+  margin-top: 16px;
+}
+
+.afford-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.afford-track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(43, 32, 24, 0.14);
+  overflow: hidden;
+}
+
+.afford-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  transition: width 0.5s var(--ease), background 0.3s var(--ease);
+}
+
+.afford-fill.v-impossible,
+.afford-fill.v-critical {
+  background: var(--red);
+}
+
+.afford-fill.v-hard {
+  background: var(--orange);
+}
+
+.afford-fill.v-tight {
+  background: #d9a441;
+}
+
+.afford-fill.v-ok,
+.afford-fill.v-unknown {
+  background: #4e9d5c;
+}
+
+.verdict {
+  margin: 12px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.8;
+}
+
+.verdict.v-impossible,
+.verdict.v-critical {
+  color: #b4441f;
+}
+
+.verdict.v-hard {
+  color: #a35a17;
+}
+
+.verdict.v-tight {
+  color: #7a6210;
+}
+
+.verdict.v-ok {
+  color: #2f6d3c;
+}
+
+.verdict.v-unknown {
+  color: rgba(43, 32, 24, 0.6);
+}
+
+/* 说明 */
+.note-card {
+  margin-bottom: calc(18px + env(safe-area-inset-bottom));
+}
+
+.note-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--mut);
+  line-height: 1.9;
+}
+
+.note-list strong {
+  color: var(--ink);
+}
+
+/* 窄屏 */
+@media (max-width: 480px) {
+  .preset-row {
+    grid-template-columns: 1fr;
+  }
+
+  .preset-btn br {
+    display: none;
+  }
+
+  .preset-btn small {
+    margin-top: 2px;
+  }
+
+  .control-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .r-row {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 2px;
+  }
+
+  .r-row .r-name {
+    grid-column: 1 / -1;
+  }
+
+  .sum-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 极窄屏：债务行改为两行网格，避免数字输入框截断 */
+@media (max-width: 360px) {
+  .loan-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'name del'
+      'amount rate';
+  }
+
+  .loan-row .loan-name {
+    grid-area: name;
+  }
+
+  .loan-row .loan-amount {
+    grid-area: amount;
+  }
+
+  .loan-row .loan-rate {
+    grid-area: rate;
+  }
+
+  .loan-row .loan-del {
+    grid-area: del;
+    justify-self: end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="网贷欠了30万、月薪5千能还上吗？把你的账单一笔笔填进来，等额本息当场算清：每月要还多少、利息吃掉多少、还剩多少生活。">
+  <title>网贷上岸清单：把账算给你看 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <script src="debt-payoff-bill-logic.js"></script>
+  <script src="app.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+
+    <header class="hero">
+      <h1>网贷上岸清单</h1>
+      <p class="subtitle">
+        欠银行 30 万的人觉得日子还能过，欠网贷 30 万的人却很难生活。<br>
+        差别不在金额，在利率、期限和月供。把你的账单一笔笔填进来，当场算给你看。
+      </p>
+    </header>
+
+    <!-- 预设场景 -->
+    <section class="card" aria-label="预设场景">
+      <div class="card-title"><i class="ti ti-clipboard-list" aria-hidden="true"></i> 选一个开局，或直接填你自己的</div>
+      <p class="card-desc">三个真实感拉满的场景。默认打开就是最常见的那个：三笔网贷滚到 30 万。</p>
+      <div class="preset-row" id="preset-row">
+        <button type="button" class="preset-btn" data-preset="0">刚开始滚<br><small>1 笔 · 5 万 · 月薪 6 千</small></button>
+        <button type="button" class="preset-btn" data-preset="1">以贷养贷中<br><small>3 笔 · 18 万 · 月薪 7 千</small></button>
+        <button type="button" class="preset-btn active" data-preset="2">无解的账单<br><small>3 笔 · 30 万 · 月薪 5 千</small></button>
+      </div>
+    </section>
+
+    <!-- 债务清单 -->
+    <section class="card" aria-label="债务清单">
+      <div class="card-title"><i class="ti ti-list-numbers" aria-hidden="true"></i> 债务清单</div>
+      <p class="card-desc">每笔网贷填两列：还欠多少本金、真实年化利率多少。在借款合同或账单里找「综合年化利率」，别用日息或月费率估算。</p>
+      <div id="loan-rows" aria-label="债务明细行"></div>
+      <button type="button" class="btn ghost-btn" id="add-loan"><i class="ti ti-plus" aria-hidden="true"></i> 添加一笔</button>
+      <p id="form-error" class="form-error" role="alert" hidden></p>
+
+      <div class="control-grid">
+        <div class="control">
+          <label for="salary">税后月薪（元）</label>
+          <input type="number" id="salary" min="0" step="100" value="5000" inputmode="numeric">
+        </div>
+        <div class="control">
+          <label for="term">打算 <span id="term-value" class="hl-num">24 个月</span>还完</label>
+          <input type="range" id="term" min="6" max="60" step="1" value="24">
+        </div>
+      </div>
+    </section>
+
+    <!-- 账单 -->
+    <section class="receipt" aria-label="上岸账单">
+      <div class="receipt-head">
+        <span class="receipt-title">上岸账单</span>
+        <span class="receipt-no">等额本息估算 · 期数统一</span>
+      </div>
+      <div id="receipt-rows"></div>
+      <div class="sum-grid">
+        <div class="sum-item"><span class="sum-label">合计欠款</span><span class="sum-val" id="sum-principal">—</span></div>
+        <div class="sum-item"><span class="sum-label">每月必须还</span><span class="sum-val hl-red" id="sum-monthly">—</span></div>
+        <div class="sum-item"><span class="sum-label">总利息</span><span class="sum-val" id="sum-interest">—</span></div>
+        <div class="sum-item"><span class="sum-label">综合年化</span><span class="sum-val" id="sum-rate">—</span></div>
+      </div>
+      <p class="bank-line" id="bank-line"></p>
+      <div class="afford">
+        <div class="afford-head">
+          <span id="afford-label">每月还剩</span>
+          <span id="afford-pct" class="hl-num">—</span>
+        </div>
+        <div class="afford-track" role="progressbar" aria-label="月供占月薪比例" aria-valuemin="0" aria-valuemax="100" id="afford-track">
+          <div class="afford-fill" id="afford-fill"></div>
+        </div>
+      </div>
+      <p class="verdict" id="verdict">—</p>
+    </section>
+
+    <!-- 口径说明 -->
+    <section class="card note-card" aria-label="口径说明">
+      <div class="card-title"><i class="ti ti-info-circle" aria-hidden="true"></i> 这笔账怎么算的</div>
+      <ul class="note-list">
+        <li>月供用<strong>等额本息</strong>公式：M = P·r / (1 − (1+r)⁻ⁿ)，r 为月利率，n 为期数。页面上的每个数字都可以用这个公式复算。</li>
+        <li>综合年化 = 各笔利率按欠款金额加权平均。未计入逾期罚息、服务费、担保费和提前结清违约金，实际压力只会更大。</li>
+        <li>银行对照：同样欠款按年化 4%、至少 60 期计算，只做参照，不代表你能借到。</li>
+        <li>如果结论是「还不上」，数学上出路通常只有三条：止血（停止以贷养贷）、置换（低息替代高息）、协商（延期或减免）。工具只能算账，不能替你做决定。</li>
+      </ul>
+    </section>
+
+  </div>
+</body>
+</html>

@@ -36,6 +36,12 @@
     <section class="card" aria-label="债务清单">
       <div class="card-title"><i class="ti ti-list-numbers" aria-hidden="true"></i> 债务清单</div>
       <p class="card-desc">每笔网贷填两列：还欠多少本金、真实年化利率多少。在借款合同或账单里找「综合年化利率」，别用日息或月费率估算。</p>
+      <div class="loan-head" aria-hidden="true">
+        <span class="h-name">平台名称</span>
+        <span class="h-amount">欠款（元）</span>
+        <span class="h-rate">年化利率 %</span>
+        <span class="h-del"></span>
+      </div>
       <div id="loan-rows" aria-label="债务明细行"></div>
       <button type="button" class="btn ghost-btn" id="add-loan"><i class="ti ti-plus" aria-hidden="true"></i> 添加一笔</button>
       <p id="form-error" class="form-error" role="alert" hidden></p>

@@ -96,6 +96,15 @@
   margin-bottom: 8px;
 }
 
+.loan-head {
+  display: grid;
+  grid-template-columns: 1.3fr 1.1fr 0.8fr 40px;
+  gap: 8px;
+  padding: 0 0 4px;
+  font-size: 11px;
+  color: var(--mut);
+}
+
 .loan-row input {
   width: 100%;
   min-height: 44px;
@@ -439,6 +448,10 @@ input[type="range"]::-moz-range-thumb {
     grid-template-columns: 1fr;
   }
 
+  .loan-head .h-del {
+    display: none;
+  }
+
   .r-row {
     grid-template-columns: 1fr 1fr;
     row-gap: 2px;
@@ -477,6 +490,30 @@ input[type="range"]::-moz-range-thumb {
   .loan-row .loan-del {
     grid-area: del;
     justify-self: end;
+  }
+
+  .loan-head {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'name del'
+      'amount rate';
+    padding-bottom: 6px;
+  }
+
+  .loan-head .h-name {
+    grid-area: name;
+  }
+
+  .loan-head .h-amount {
+    grid-area: amount;
+  }
+
+  .loan-head .h-rate {
+    grid-area: rate;
+  }
+
+  .loan-head .h-del {
+    display: block;
   }
 }
 

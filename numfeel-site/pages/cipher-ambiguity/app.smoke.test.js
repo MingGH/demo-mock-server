@@ -91,8 +91,7 @@ var sandbox = {
 sandbox.window = sandbox;
 vm.createContext(sandbox);
 
-// 预置滑块初值（与 index.html 一致）
-byId('dial').value = '8';
+// 预置密钥空间滑块初值（与 index.html 一致）
 byId('bits').value = '4';
 
 // 引擎 + 页面脚本拼进同一份脚本，共享顶层作用域（与浏览器 classic script 行为一致）
@@ -113,18 +112,35 @@ console.log('\n📍 初始渲染');
   check(byId('triedCount').textContent === '已转动 0 次', '初始尝试次数为 0');
 }
 
-console.log('\n📍 转盘解密');
+console.log('\n📍 转盘交互');
 {
-  win.onDialInput('1');
-  check(byId('plainLine').textContent === '股票清仓，全部买金。', '档位 1 解出真相 2');
-  check(byId('dialKey').textContent === 'K=01', '档位读数跟随更新');
-  check(byId('chip-1').classList.contains('lit'), '真相 2 芯片点亮');
-  check(byId('triedCount').textContent === '已转动 1 次', '尝试次数计 1');
+  var dialEl = byId('dial');
+  check(dialEl.children.length === 32, '转盘渲染 16 刻度线 + 16 数字');
+  check(dialEl.children[17].className === 'tick-num on', '初始高亮刻度 8');
+  check(byId('dialKey').textContent === 'K=08', '初始读数 K=08');
 
+  dialEl.listeners.keydown({ key: 'ArrowRight', preventDefault: function () {} });
+  check(byId('dialKey').textContent === 'K=09', '方向键右 → 9 号');
+  dialEl.listeners.keydown({ key: 'End', preventDefault: function () {} });
+  check(byId('dialKey').textContent === 'K=15', 'End 键 → 15 号');
+  dialEl.listeners.keydown({ key: 'ArrowRight', preventDefault: function () {} });
+  check(byId('dialKey').textContent === 'K=00', '越过 15 折回 0 号');
+
+  dialEl.getBoundingClientRect = function () { return { left: 0, top: 0, width: 240, height: 240 }; };
+  dialEl.listeners.pointerdown({ clientX: 120, clientY: 0, pointerId: 1, preventDefault: function () {} });
+  dialEl.listeners.pointerup({});
+  check(byId('dialKey').textContent === 'K=00', '点击转盘顶部 → 0 号');
+  dialEl.listeners.pointerdown({ clientX: 240, clientY: 120, pointerId: 1, preventDefault: function () {} });
+  check(byId('dialKey').textContent === 'K=04', '按下转盘右侧 → 4 号（顺时针 90°）');
+  dialEl.listeners.pointermove({ clientX: 120, clientY: 240, pointerId: 1 });
+  check(byId('dialKey').textContent === 'K=08', '拖到底部 → 8 号（顺时针 180°）');
+  dialEl.listeners.pointerup({});
+
+  check(byId('triedCount').textContent === '已转动 6 次', '键盘 3 次 + 指针 3 次全部计数');
+  check(byId('chip-0').classList.contains('lit'), '真相 1 芯片点亮');
   for (var k = 0; k < 16; k++) win.onDialInput(String(k));
-  check(Object.keys(win).indexOf('onDialInput') !== -1, '处理器暴露在 window 上');
   check(byId('toast').className.indexOf('hidden') === -1, '集齐 8 种真相后彩蛋出现');
-  check(byId('triedCount').textContent === '已转动 17 次', '尝试次数 1+16=17');
+  check(byId('triedCount').textContent === '已转动 22 次', '尝试次数 6+16=22');
 }
 
 console.log('\n📍 重置');

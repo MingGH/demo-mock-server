@@ -39,10 +39,15 @@
 
     <div class="terminal">
       <div class="term-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>&nbsp;key_dial</div>
-      <div style="padding: 4px 14px 12px;">
-        <div class="dial-label"><span>密钥转盘 KEY DIAL</span><span class="dial-key" id="dialKey">K=08</span></div>
-        <input type="range" id="dial" min="0" max="15" step="1" value="8" aria-label="密钥档位">
-        <div class="ticks"><span>0</span><span>4</span><span>8</span><span>12</span><span>15</span></div>
+      <div style="padding: 4px 14px 14px;">
+        <div class="dial-label"><span>密钥转盘 KEY DIAL</span><span>拖动或点击刻度换钥匙</span></div>
+        <div class="dial-wrap">
+          <div class="dial" id="dial" role="slider" tabindex="0"
+               aria-label="密钥转盘，共 16 把钥匙" aria-valuemin="0" aria-valuemax="15" aria-valuenow="8">
+            <div class="dial-marker" id="dialMarker"><span class="dial-dot"></span></div>
+            <div class="dial-hub"><span class="dial-key" id="dialKey">K=08</span></div>
+          </div>
+        </div>
       </div>
     </div>
 

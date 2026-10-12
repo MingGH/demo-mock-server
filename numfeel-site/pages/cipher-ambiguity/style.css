@@ -73,6 +73,47 @@ input[type="range"]::-moz-range-thumb { width: 34px; height: 34px; border-radius
 .chart-wrap { position: relative; height: 180px; }
 .chart-wrap canvas { max-height: 180px; }
 
+/* ── 圆形转盘 ── */
+.dial-wrap { display: flex; justify-content: center; padding: 10px 0 6px; }
+.dial {
+  position: relative; width: 240px; height: 240px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #0f1c0f, #0a120a 70%);
+  border: 1px solid #234a23;
+  box-shadow: 0 0 24px rgba(127, 255, 158, .08), inset 0 0 30px rgba(0, 0, 0, .5);
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; outline: none;
+}
+.dial:active { cursor: grabbing; }
+.dial:focus-visible {
+  box-shadow: 0 0 0 2px rgba(127, 255, 158, .5),
+    0 0 24px rgba(127, 255, 158, .08), inset 0 0 30px rgba(0, 0, 0, .5);
+}
+.tick-line {
+  position: absolute; left: 50%; top: 50%; width: 2px; height: 8px;
+  background: #234a23; border-radius: 1px;
+}
+.tick-num {
+  position: absolute; left: 50%; top: 50%; width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: Menlo, Consolas, monospace; font-size: 12px; color: #4a6a4a;
+}
+.tick-num.on {
+  color: #0a0f0a; background: #7fff9e; border-radius: 50%; font-weight: 600;
+  box-shadow: 0 0 10px rgba(127, 255, 158, .6);
+}
+.dial-marker { position: absolute; inset: 0; pointer-events: none; }
+.dial-dot {
+  position: absolute; top: 5px; left: 50%; margin-left: -5px; width: 10px; height: 10px;
+  border-radius: 50%; background: #7fff9e; box-shadow: 0 0 12px rgba(127, 255, 158, .8);
+}
+.dial-hub {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 104px; height: 104px; border-radius: 50%;
+  background: #0a120a; border: 1px solid #234a23;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, .6); pointer-events: none;
+}
+.dial-hub .dial-key { font-size: 22px; }
+
 /* ── 提示条 ── */
 .toast {
   margin-top: 14px; border: 1px solid #7fff9e; background: rgba(127, 255, 158, .1);

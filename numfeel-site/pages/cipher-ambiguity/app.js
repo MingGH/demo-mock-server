@@ -10,8 +10,11 @@
     triedCount: 0,
     found: {},        // truthIndex -> true
     counts: [],       // 每种真相被几把钥匙解出
-    bits: 4
+    bits: 4,
+    dialIndex: 8      // 转盘当前档位（0..15）
   };
+
+  var dialRefs = { ticks: [], marker: null, initialized: false };
 
   var els = {};
   var chart = null;
@@ -40,14 +43,14 @@
     renderChips();
     initChart();
 
-    if (els.dial) els.dial.addEventListener('input', function () { window.onDialInput(els.dial.value); });
+    initDial();
     if (els.bits) els.bits.addEventListener('input', function () { window.onBitsInput(els.bits.value); });
     if (els.copyBtn) els.copyBtn.addEventListener('click', window.onCopy);
 
     var resetBtn = $('resetBtn');
     if (resetBtn) resetBtn.addEventListener('click', window.onReset);
 
-    renderDial(els.dial ? els.dial.value : 8);
+    renderDial(state.dialIndex);
     if (els.triedCount) els.triedCount.textContent = '已转动 0 次';
     window.onBitsInput(state.bits);
   }
@@ -106,6 +109,90 @@
   }
 
   /**
+   * 初始化圆形转盘：16 个刻度、指针标记、拖拽与键盘交互
+   */
+  function initDial() {
+    if (!els.dial) return;
+    var STEP = 360 / OTP_KEY_COUNT; // 22.5°
+    for (var i = 0; i < OTP_KEY_COUNT; i++) {
+      var line = document.createElement('div');
+      line.className = 'tick-line';
+      line.style.transform = 'translate(-50%,-50%) rotate(' + (i * STEP) + 'deg) translateY(-106px)';
+      els.dial.appendChild(line);
+
+      var num = document.createElement('div');
+      num.className = 'tick-num';
+      num.textContent = String(i);
+      num.style.transform = 'translate(-50%,-50%) rotate(' + (i * STEP) + 'deg) translateY(-88px) rotate(' + (-i * STEP) + 'deg)';
+      els.dial.appendChild(num);
+      dialRefs.ticks.push(num);
+    }
+    dialRefs.marker = $('dialMarker');
+
+    var dragging = false;
+    function pick(clientX, clientY) {
+      var rect = els.dial.getBoundingClientRect();
+      var dx = clientX - (rect.left + rect.width / 2);
+      var dy = clientY - (rect.top + rect.height / 2);
+      var ang = Math.atan2(dx, -dy) * 180 / Math.PI;
+      ang = (ang + 360) % 360;
+      setDial(Math.round(ang / STEP) % OTP_KEY_COUNT);
+    }
+    els.dial.addEventListener('pointerdown', function (e) {
+      dragging = true;
+      if (els.dial.setPointerCapture) els.dial.setPointerCapture(e.pointerId);
+      pick(e.clientX, e.clientY);
+      e.preventDefault();
+    });
+    els.dial.addEventListener('pointermove', function (e) {
+      if (dragging) pick(e.clientX, e.clientY);
+    });
+    ['pointerup', 'pointercancel'].forEach(function (t) {
+      els.dial.addEventListener(t, function () { dragging = false; });
+    });
+    els.dial.addEventListener('keydown', function (e) {
+      var next = null;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') next = state.dialIndex + 1;
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') next = state.dialIndex - 1;
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = OTP_KEY_COUNT - 1;
+      if (next !== null) { setDial(next); e.preventDefault(); }
+    });
+    setDial(state.dialIndex, true);
+  }
+
+  /**
+   * 把转盘拨到第 index 档：更新视觉并解密
+   * @param {number} index - 任意整数，自动折回 0..15
+   * @param {boolean} [silent] - true 时只渲染不计尝试（初始化、重置用）
+   */
+  function setDial(index, silent) {
+    var STEP = 360 / OTP_KEY_COUNT;
+    var i = ((Math.round(index) % OTP_KEY_COUNT) + OTP_KEY_COUNT) % OTP_KEY_COUNT;
+    var first = !dialRefs.initialized;
+    state.dialIndex = i;
+    dialRefs.initialized = true;
+    for (var j = 0; j < dialRefs.ticks.length; j++) {
+      dialRefs.ticks[j].className = 'tick-num' + (j === i ? ' on' : '');
+    }
+    if (els.dial && els.dial.setAttribute) els.dial.setAttribute('aria-valuenow', String(i));
+    var reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (dialRefs.marker) {
+      if (window.gsap && !reduced) {
+        window.gsap.to(dialRefs.marker, { rotation: i * STEP, duration: first ? 0 : 0.25, ease: 'power2.out' });
+      } else {
+        dialRefs.marker.style.transform = 'rotate(' + (i * STEP) + 'deg)';
+      }
+    }
+    if (silent) {
+      renderDial(i);
+      updateSummary();
+    } else {
+      window.onDialInput(i);
+    }
+  }
+
+  /**
    * 渲染转盘当前档位的解密结果（不计数，供初始化与重置复用）
    * @param {string|number} value - 滑块档位
    */
@@ -152,7 +239,7 @@
 
   /** 把当前档位的解密结果画出来但不计入尝试（初始化、重置用） */
   function reapplyDial() {
-    renderDial(els.dial ? els.dial.value : 8);
+    renderDial(state.dialIndex);
     updateSummary();
   }
 
@@ -227,6 +314,7 @@
   }
 
   window.onDialInput = onDialInput;
+  window.setDial = setDial;
   window.onBitsInput = onBitsInput;
   window.onCopy = onCopy;
   window.onReset = onReset;

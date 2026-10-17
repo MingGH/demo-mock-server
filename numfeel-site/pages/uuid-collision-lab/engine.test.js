@@ -30,7 +30,7 @@
   }
 
   assertEqual(E.TARGET_ROW_COUNT, 100000000, '目标行数是 1 亿');
-  assertEqual(E.TRIM_THRESHOLD, 1000000, '裁剪阈值是 100 万');
+  assertEqual(E.TRIM_THRESHOLD, 100000000, '裁剪阈值是 1 亿，超过 2 亿才触发');
   assertEqual(E.expectedPairs(100), 4950, '两两比较数公式正确');
   assertEqual(E.expectedPairs(1), 0, '单条没有比较对');
   assert(E.collisionProbability(100000000) > 9e-22 && E.collisionProbability(100000000) < 9.5e-22,

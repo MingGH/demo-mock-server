@@ -9,7 +9,7 @@
   var API_BASE = (typeof location !== 'undefined' &&
     new URLSearchParams(location.search).get('api')) || DEFAULT_API_BASE;
   var TARGET_ROW_COUNT = 100000000;
-  var TRIM_THRESHOLD = 1000000;
+  var TRIM_THRESHOLD = 100000000;
   var APPEND_COUNTS = [1000, 10000, 100000];
 
   /**

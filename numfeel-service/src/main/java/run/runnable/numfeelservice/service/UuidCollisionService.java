@@ -40,8 +40,8 @@ public class UuidCollisionService {
 
     /** 基础实验目标行数。 */
     public static final long TARGET_ROW_COUNT = 100_000_000L;
-    /** 真实行数超过目标这么多时才清理，避免把用户刚追加的少量数据删掉。 */
-    public static final long TRIM_THRESHOLD = 1_000_000L;
+    /** 真实行数超过目标这么多时才清理（即超过 2 亿），避免把用户刚追加的数据删掉。 */
+    public static final long TRIM_THRESHOLD = 100_000_000L;
     /** 一条批量 SQL 里的最大 VALUES 数。 */
     private static final int INSERT_BATCH_SIZE = 5_000;
     /** 每次定时检查最多插入的批数；4 批并发，每批 5000 条。 */

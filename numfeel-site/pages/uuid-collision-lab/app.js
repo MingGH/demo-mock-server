@@ -35,6 +35,7 @@
   function renderStatus(data) {
     $('dbRows').textContent = E.formatInteger(data.databaseRowCount);
     $('targetRows').textContent = E.formatInteger(data.targetRowCount);
+    $('trimThresholdNote').textContent = '超过 ' + E.formatInteger(data.trimThreshold) + ' 才裁剪';
     $('rawBytes').textContent = '原始 UUID 负载 ' + E.rawBytes(data.databaseRowCount);
     $('progress').textContent = E.formatPercent(data.progressPercent);
     $('backendState').textContent = data.backgroundBusy

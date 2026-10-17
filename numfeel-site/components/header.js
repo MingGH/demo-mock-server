@@ -512,7 +512,8 @@
 
   /**
    * 拉取首页精选：并发读取 demos.json 与后端 /leaderboard，
-   * 取历史总榜前 3 并渲染成卡片。任何一步失败都静默隐藏精选区，不影响页面。
+   * 按历史总榜顺序取前 3 个已收录的 demo 并渲染成卡片（跳过已下线/非 demo 路径）。
+   * 任何一步失败都静默隐藏精选区，不影响页面。
    */
   function loadFeatured() {
     var el = document.getElementById('homeFeatured');
@@ -525,12 +526,12 @@
       var body = res[1];
       if (!body || body.status !== 200 || !body.data) throw new Error('bad leaderboard response');
       var index = featuredDemoIndex(demos);
-      var entries = (body.data.allTime || []).slice(0, FEATURED_TOP);
+      var entries = body.data.allTime || [];
       var cards = [];
-      entries.forEach(function(entry) {
-        var meta = index[featuredNormalizeKey(entry.path)];
+      for (var i = 0; i < entries.length && cards.length < FEATURED_TOP; i++) {
+        var meta = index[featuredNormalizeKey(entries[i].path)];
         if (meta) cards.push(meta);
-      });
+      }
       renderFeatured(cards);
     }).catch(function() {
       if (el) el.classList.add('featured-empty');

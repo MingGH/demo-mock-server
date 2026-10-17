@@ -9,7 +9,8 @@
   var state = {
     triedCount: 0,
     found: {},        // truthIndex -> true
-    counts: [],       // 每种真相被几把钥匙解出
+    triedKeys: {},    // keyIndex -> true（图表按"不同钥匙"去重计数）
+    counts: [],       // 每种真相被几把不同的钥匙解出
     bits: 4,
     dialIndex: 8      // 转盘当前档位（0..15）
   };
@@ -217,8 +218,11 @@
     var r = decryptOtp(parseInt(value, 10));
 
     state.triedCount++;
-    state.counts[r.truthIndex] = (state.counts[r.truthIndex] || 0) + 1;
-    updateChart();
+    if (!state.triedKeys[r.keyIndex]) {
+      state.triedKeys[r.keyIndex] = true;
+      state.counts[r.truthIndex] = (state.counts[r.truthIndex] || 0) + 1;
+      updateChart();
+    }
 
     if (!state.found[r.truthIndex]) {
       state.found[r.truthIndex] = true;
@@ -296,15 +300,17 @@
     ta.style.opacity = '0';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); } catch (e) { /* 忽略 */ }
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
     document.body.removeChild(ta);
-    done();
+    if (ok) done();
   }
 
   /** 重置体验（保留密钥空间滑块位置） */
   function onReset() {
     state.triedCount = 0;
     state.found = {};
+    state.triedKeys = {};
     state.counts = [];
     renderChips();
     updateChart();

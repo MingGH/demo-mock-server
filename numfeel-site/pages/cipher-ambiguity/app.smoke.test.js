@@ -83,7 +83,9 @@ var sandbox = {
     this.data = cfg.data;
     this.updates = 0;
     this.update = function () { this.updates++; };
+    sandbox.ChartInstances.push(this);
   },
+  ChartInstances: [],
   console: console,
   setTimeout: setTimeout,
   clearTimeout: clearTimeout
@@ -141,6 +143,13 @@ console.log('\n📍 转盘交互');
   for (var k = 0; k < 16; k++) win.onDialInput(String(k));
   check(byId('toast').className.indexOf('hidden') === -1, '集齐 8 种真相后彩蛋出现');
   check(byId('triedCount').textContent === '已转动 22 次', '尝试次数 6+16=22');
+  var data = sandbox.ChartInstances[0].data.datasets[0].data;
+  check(data.length === 8 && data.every(function (v) { return v === 2; }), '每柱恰好 2（16 把不同钥匙 ÷ 8 种真相）');
+
+  win.onDialInput('0'); // 重复转已转过的档位
+  data = sandbox.ChartInstances[0].data.datasets[0].data;
+  check(data.every(function (v) { return v === 2; }), '重复转同一档不再累加图表');
+  check(byId('triedCount').textContent === '已转动 23 次', '尝试次数仍如实累计为 23');
 }
 
 console.log('\n📍 重置');

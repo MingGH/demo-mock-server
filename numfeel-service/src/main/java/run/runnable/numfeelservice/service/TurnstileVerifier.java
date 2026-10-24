@@ -31,6 +31,10 @@ public class TurnstileVerifier {
             @Value("${turnstile.secret-key}") String secretKey,
             @Value("${turnstile.siteverify-url:https://challenges.cloudflare.com/turnstile/v0/siteverify}") String siteVerifyUrl,
             WebClient.Builder webClientBuilder) {
+        if (!siteVerifyUrl.startsWith("https://")) {
+            throw new IllegalArgumentException(
+                    "turnstile.siteverify-url must use HTTPS to protect the secret key");
+        }
         this.secretKey = secretKey;
         this.siteVerifyUrl = siteVerifyUrl;
         this.webClient = webClientBuilder.build();

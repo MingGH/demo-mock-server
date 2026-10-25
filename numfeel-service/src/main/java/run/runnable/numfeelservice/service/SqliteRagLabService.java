@@ -1,9 +1,10 @@
 package run.runnable.numfeelservice.service;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -24,6 +25,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import run.runnable.numfeelservice.service.SqliteRagLabLogic.Hit;
@@ -58,25 +60,43 @@ public class SqliteRagLabService {
 
     /** 内存索引：chunkId -> 缓存行（含向量），KNN 在进程内完成 */
     private final Map<Long, CachedChunk> vectorTable = new LinkedHashMap<>();
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
+    private final Object initLock = new Object();
 
-    @PostConstruct
     void init() {
-        try {
-            dataDir = Files.createTempDirectory("sqlite-rag-lab-");
-            dbPath = dataDir.resolve("knowledge.db");
-            Class.forName("org.sqlite.JDBC");
-            conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath());
-            createSchema();
-            for (SqliteRagLabCorpus.Entry doc : SqliteRagLabCorpus.DOCS) {
-                ingestInternal(doc.title(), doc.text(), "内置语料");
+        if (initialized.get()) return;
+        synchronized (initLock) {
+            if (initialized.get()) return;
+            try {
+                dataDir = Files.createTempDirectory("sqlite-rag-lab-");
+                dbPath = dataDir.resolve("knowledge.db");
+                Class.forName("org.sqlite.JDBC");
+                conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath.toAbsolutePath());
+                createSchema();
+                for (SqliteRagLabCorpus.Entry doc : SqliteRagLabCorpus.DOCS) {
+                    ingestInternal(doc.title(), doc.text(), "内置语料");
+                }
+                checkpointTruncate();
+                initialized.set(true);
+                log.info("SqliteRagLab initialized: {} docs, {} chunks, db={}KB",
+                        countDocs(), countChunks(), dbFileSize() / 1024);
+            } catch (Exception e) {
+                cleanupResources();
+                log.error("Failed to initialize SqliteRagLabService", e);
+                throw new RuntimeException("SqliteRagLab init failed", e);
             }
-            checkpointTruncate();
-            log.info("SqliteRagLab initialized: {} docs, {} chunks, db={}KB",
-                    countDocs(), countChunks(), dbFileSize() / 1024);
-        } catch (Exception e) {
-            log.error("Failed to initialize SqliteRagLabService", e);
-            throw new RuntimeException("SqliteRagLab init failed", e);
         }
+    }
+
+    /** 应用就绪后异步预热，不阻塞 Spring 启动。 */
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmUpAsync() {
+        Mono.fromRunnable(this::init)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(
+                        ignored -> {},
+                        err -> log.error("SqliteRagLab async warmup failed: {}", err.getMessage())
+                );
     }
 
     private void createSchema() throws SQLException {
@@ -103,6 +123,13 @@ public class SqliteRagLabService {
 
     @PreDestroy
     void cleanup() {
+        synchronized (initLock) {
+            cleanupResources();
+        }
+    }
+
+    private void cleanupResources() {
+        if (dataDir == null) return;
         try {
             if (conn != null && !conn.isClosed()) {
                 try (Statement st = conn.createStatement()) {
@@ -117,26 +144,44 @@ public class SqliteRagLabService {
             log.info("SqliteRagLab cleaned up");
         } catch (IOException | SQLException e) {
             log.warn("SqliteRagLab cleanup failed: {}", e.getMessage());
+        } finally {
+            conn = null;
+            dataDir = null;
+            dbPath = null;
+            vectorTable.clear();
+            initialized.set(false);
         }
     }
 
     // ============= 公共 API（Mono 包装，阻塞调度） =============
 
     public Mono<Map<String, Object>> info() {
-        return Mono.fromCallable(this::doInfo).subscribeOn(Schedulers.boundedElastic());
+        return Mono.fromCallable(() -> {
+            init();
+            return doInfo();
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<Map<String, Object>> ask(String query) {
-        return Mono.fromCallable(() -> doHybridSearch(query, CHANNEL_LIMIT))
+        return Mono.fromCallable(() -> {
+                    init();
+                    return doHybridSearch(query, CHANNEL_LIMIT);
+                })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<Map<String, Object>> battle(String query) {
-        return Mono.fromCallable(() -> doBattle(query)).subscribeOn(Schedulers.boundedElastic());
+        return Mono.fromCallable(() -> {
+            init();
+            return doBattle(query);
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<Map<String, Object>> ingest(String title, String text) {
-        return Mono.fromCallable(() -> doIngest(title, text)).subscribeOn(Schedulers.boundedElastic());
+        return Mono.fromCallable(() -> {
+            init();
+            return doIngest(title, text);
+        }).subscribeOn(Schedulers.boundedElastic());
     }
 
     // ============= 核心实现 =============

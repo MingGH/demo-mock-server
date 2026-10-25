@@ -38,6 +38,12 @@ class SqliteRagLabServiceTest {
     }
 
     @Test
+    void cleanup_before_initialization_is_safe() {
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(
+                () -> new SqliteRagLabService().cleanup());
+    }
+
+    @Test
     void hybrid_finds_installed_base_doc_for_semantic_query() {
         Map<String, Object> r = service.doHybridSearch("世界上装机量最大的数据库是什么", 5);
         List<Map<String, Object>> results = top(r);

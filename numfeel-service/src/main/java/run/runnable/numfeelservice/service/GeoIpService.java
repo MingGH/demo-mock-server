@@ -2,10 +2,11 @@ package run.runnable.numfeelservice.service;
 
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.model.CityResponse;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -44,7 +45,7 @@ public class GeoIpService {
     private volatile DatabaseReader reader;
     private final AtomicBoolean downloading = new AtomicBoolean(false);
 
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     void init() {
         File dbFile = new File(DB_PATH);
         if (dbFile.exists()) {

@@ -1,9 +1,10 @@
 package run.runnable.numfeelservice.service;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -87,30 +88,53 @@ public class GrepVsSqliteService {
     private final AtomicInteger messageCount = new AtomicInteger(0);
     private final AtomicBoolean initialized = new AtomicBoolean(false);
     private final AtomicLong totalFileBytes = new AtomicLong(0);
+    private final Object initLock = new Object();
 
-    @PostConstruct
     void init() {
-        try {
-            dataDir = Files.createTempDirectory("grep-vs-sqlite-");
-            jsonlFilePath = dataDir.resolve("messages.jsonl");
-            sqliteDbPath = dataDir.resolve("messages.db");
-            jdbcUrl = "jdbc:sqlite:" + sqliteDbPath.toAbsolutePath();
+        if (initialized.get()) return;
+        synchronized (initLock) {
+            if (initialized.get()) return;
+            try {
+                dataDir = Files.createTempDirectory("grep-vs-sqlite-");
+                jsonlFilePath = dataDir.resolve("messages.jsonl");
+                sqliteDbPath = dataDir.resolve("messages.db");
+                jdbcUrl = "jdbc:sqlite:" + sqliteDbPath.toAbsolutePath();
 
-            initSqliteSchema();
-            generateData(DEFAULT_MESSAGE_COUNT);
-            initialized.set(true);
-            log.info("GrepVsSqlite arena initialized: {} messages, file={}KB, db={}KB",
-                    messageCount.get(),
-                    totalFileBytes.get() / 1024,
-                    getSqliteFileSize() / 1024);
-        } catch (Exception e) {
-            log.error("Failed to initialize GrepVsSqlite arena", e);
-            throw new RuntimeException("GrepVsSqlite init failed", e);
+                initSqliteSchema();
+                generateData(DEFAULT_MESSAGE_COUNT);
+                initialized.set(true);
+                log.info("GrepVsSqlite arena initialized: {} messages, file={}KB, db={}KB",
+                        messageCount.get(),
+                        totalFileBytes.get() / 1024,
+                        getSqliteFileSize() / 1024);
+            } catch (Exception e) {
+                cleanupResources();
+                log.error("Failed to initialize GrepVsSqlite arena", e);
+                throw new RuntimeException("GrepVsSqlite init failed", e);
+            }
         }
+    }
+
+    /** 应用就绪后异步预热，不阻塞 Spring 启动。 */
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmUpAsync() {
+        Mono.fromRunnable(this::init)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(
+                        ignored -> {},
+                        err -> log.error("GrepVsSqlite async warmup failed: {}", err.getMessage())
+                );
     }
 
     @PreDestroy
     void cleanup() {
+        synchronized (initLock) {
+            cleanupResources();
+        }
+    }
+
+    private void cleanupResources() {
+        if (dataDir == null) return;
         try {
             Files.deleteIfExists(jsonlFilePath);
             Files.deleteIfExists(sqliteDbPath);
@@ -121,6 +145,14 @@ public class GrepVsSqliteService {
             log.info("GrepVsSqlite arena cleaned up");
         } catch (Exception e) {
             log.warn("Failed to cleanup GrepVsSqlite arena: {}", e.getMessage());
+        } finally {
+            dataDir = null;
+            jsonlFilePath = null;
+            sqliteDbPath = null;
+            jdbcUrl = null;
+            messageCount.set(0);
+            totalFileBytes.set(0);
+            initialized.set(false);
         }
     }
 
@@ -128,37 +160,55 @@ public class GrepVsSqliteService {
 
     /** 获取当前数据集状态 */
     public Mono<StatusResult> status() {
-        return Mono.fromCallable(this::doStatus)
+        return Mono.fromCallable(() -> {
+                    init();
+                    return doStatus();
+                })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
     /** 搜索对比：grep vs SQLite FTS5 */
     public Mono<SearchResult> search(String keyword) {
-        return Mono.fromCallable(() -> doSearch(keyword))
+        return Mono.fromCallable(() -> {
+                    init();
+                    return doSearch(keyword);
+                })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
     /** 写入对比：append vs INSERT */
     public Mono<InsertResult> insert(String content, String sender) {
-        return Mono.fromCallable(() -> doInsert(content, sender))
+        return Mono.fromCallable(() -> {
+                    init();
+                    return doInsert(content, sender);
+                })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
     /** 复杂查询对比：多条件过滤 */
     public Mono<ComplexQueryResult> complexQuery(String type, int recentDays) {
-        return Mono.fromCallable(() -> doComplexQuery(type, recentDays))
+        return Mono.fromCallable(() -> {
+                    init();
+                    return doComplexQuery(type, recentDays);
+                })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
     /** 删除对比：文件重写 vs SQL DELETE */
     public Mono<DeleteResult> delete(String keyword) {
-        return Mono.fromCallable(() -> doDelete(keyword))
+        return Mono.fromCallable(() -> {
+                    init();
+                    return doDelete(keyword);
+                })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
     /** 重新初始化数据（指定消息数量） */
     public Mono<StatusResult> reinit(int count) {
-        return Mono.fromCallable(() -> doReinit(count))
+        return Mono.fromCallable(() -> {
+                    init();
+                    return doReinit(count);
+                })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 

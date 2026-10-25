@@ -45,6 +45,11 @@ class SqliteLabServiceTest {
     }
 
     @Test
+    void cleanup_before_initialization_is_safe() {
+        assertDoesNotThrow(() -> new SqliteLabService().cleanup());
+    }
+
+    @Test
     void singleWrite_increments_row_count() {
         service.doWrite("test");
         service.doWrite("test");

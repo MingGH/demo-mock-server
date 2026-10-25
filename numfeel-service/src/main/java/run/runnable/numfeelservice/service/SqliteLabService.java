@@ -1,9 +1,10 @@
 package run.runnable.numfeelservice.service;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -24,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * SQLite 并发压力实验室 — 业务逻辑层。
@@ -55,27 +57,59 @@ public class SqliteLabService {
     /** 累计统计 */
     private final AtomicLong totalWrites = new AtomicLong(0);
     private final AtomicLong totalBusyErrors = new AtomicLong(0);
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
+    private final Object initLock = new Object();
 
-    @PostConstruct
     void init() {
-        try {
-            dbPath = Files.createTempFile("sqlite-lab-", ".db");
-            jdbcUrl = "jdbc:sqlite:" + dbPath.toAbsolutePath();
-            initSchema();
-            log.info("SQLite lab database created at: {}", dbPath);
-        } catch (Exception e) {
-            log.error("Failed to initialize SQLite lab database", e);
-            throw new RuntimeException("SQLite lab init failed", e);
+        if (initialized.get()) return;
+        synchronized (initLock) {
+            if (initialized.get()) return;
+            try {
+                dbPath = Files.createTempFile("sqlite-lab-", ".db");
+                jdbcUrl = "jdbc:sqlite:" + dbPath.toAbsolutePath();
+                initSchema();
+                initialized.set(true);
+                log.info("SQLite lab database created at: {}", dbPath);
+            } catch (Exception e) {
+                cleanupResources();
+                log.error("Failed to initialize SQLite lab database", e);
+                throw new RuntimeException("SQLite lab init failed", e);
+            }
         }
+    }
+
+    /** 应用就绪后异步预热，不阻塞 Spring 启动。 */
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmUpAsync() {
+        Mono.fromRunnable(this::init)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(
+                        ignored -> {},
+                        err -> log.error("SQLite lab async warmup failed: {}", err.getMessage())
+                );
     }
 
     @PreDestroy
     void cleanup() {
+        synchronized (initLock) {
+            cleanupResources();
+        }
+    }
+
+    private void cleanupResources() {
+        if (dbPath == null) return;
         try {
             Files.deleteIfExists(dbPath);
             log.info("SQLite lab database cleaned up");
         } catch (Exception e) {
             log.warn("Failed to cleanup SQLite lab database: {}", e.getMessage());
+        } finally {
+            dbPath = null;
+            jdbcUrl = null;
+            initialized.set(false);
+            totalWrites.set(0);
+            totalBusyErrors.set(0);
+            recentWrites.clear();
         }
     }
 
@@ -106,7 +140,10 @@ public class SqliteLabService {
      * 执行一次写入操作，返回写入耗时（ms）。
      */
     public Mono<WriteResult> singleWrite(String source) {
-        return Mono.fromCallable(() -> doWrite(source))
+        return Mono.fromCallable(() -> {
+                    init();
+                    return doWrite(source);
+                })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -142,7 +179,10 @@ public class SqliteLabService {
      * @param walMode     是否启用 WAL 模式
      */
     public Mono<BurstResult> burst(int concurrency, boolean walMode) {
-        return Mono.fromCallable(() -> doBurst(concurrency, walMode))
+        return Mono.fromCallable(() -> {
+                    init();
+                    return doBurst(concurrency, walMode);
+                })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -213,7 +253,10 @@ public class SqliteLabService {
     // ============= 状态查询 =============
 
     public Mono<StatsResult> stats() {
-        return Mono.fromCallable(this::doStats)
+        return Mono.fromCallable(() -> {
+                    init();
+                    return doStats();
+                })
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -246,7 +289,10 @@ public class SqliteLabService {
     // ============= 重置 =============
 
     public Mono<Void> reset() {
-        return Mono.fromRunnable(this::doReset)
+        return Mono.fromRunnable(() -> {
+                    init();
+                    doReset();
+                })
                 .subscribeOn(Schedulers.boundedElastic())
                 .then();
     }

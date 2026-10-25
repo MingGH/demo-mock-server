@@ -44,6 +44,11 @@ class GrepVsSqliteServiceTest {
         assertTrue(status.dbSizeBytes() > 0, "DB should have content");
     }
 
+    @Test
+    void cleanup_before_initialization_is_safe() {
+        assertDoesNotThrow(() -> new GrepVsSqliteService().cleanup());
+    }
+
     // ============= 搜索 =============
 
     @Test

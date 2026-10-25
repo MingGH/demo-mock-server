@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <property name="LOG_PATTERN"
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} | %clr(%5p) | %clr(%t){faint} | %clr(%-40.40logger{39}) | %m%n"/>
+
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="numfeel-service"/>
+    <springProperty scope="context" name="active" source="spring.profiles.active" defaultValue="dev"/>
+    <property name="host" value="${HOSTNAME:-unknown}"/>
+    <property name="logPath" value="/tmp/numfeel-service-logs"/>
+
+    <!-- 未配置凭据时使用 .invalid 哨兵，并由 filter 丢弃事件，避免空转重试 -->
+    <springProperty scope="context" name="lokiUrl" source="loki.url" defaultValue="http://loki-not-configured.invalid/loki/api/v1/push"/>
+    <springProperty scope="context" name="lokiUser" source="loki.user" defaultValue=""/>
+    <springProperty scope="context" name="lokiToken" source="loki.token" defaultValue=""/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>utf8</charset>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+        <file>${logPath}/start.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${logPath}/start.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxHistory>3</maxHistory>
+            <maxFileSize>50MB</maxFileSize>
+            <totalSizeCap>512MB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <springProfile name="!prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="prod">
+        <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+            <filter class="run.runnable.numfeelservice.config.LokiConfigFilter"/>
+            <labels>
+                app = ${appName}
+                env = ${active}
+            </labels>
+            <structuredMetadata>
+                level = %level
+                thread = %thread
+                logger = %logger
+                host = ${host}
+            </structuredMetadata>
+            <message>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} | %5p | %t | %-40.40logger{39} | %m%n</pattern>
+            </message>
+            <http>
+                <url>${lokiUrl}</url>
+                <auth>
+                    <username>${lokiUser}</username>
+                    <password>${lokiToken}</password>
+                </auth>
+                <requestTimeoutMs>15000</requestTimeoutMs>
+                <maxRetries>2</maxRetries>
+            </http>
+            <batch>
+                <maxItems>500</maxItems>
+                <!-- Grafana Cloud 单批上限 64KB -->
+                <maxBytes>65536</maxBytes>
+                <timeoutMs>5000</timeoutMs>
+                <!-- 队列满丢日志，避免反压业务线程 -->
+                <sendQueueMaxBytes>8388608</sendQueueMaxBytes>
+            </batch>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="LOKI"/>
+        </root>
+    </springProfile>
+</configuration>

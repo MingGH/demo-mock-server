@@ -1,0 +1,20 @@
+# Grafana Cloud Loki：地址可默认，凭据必须由 K8s Secret 注入
+loki:
+  url: ${GRAFANA_LOKI_URL:https://logs-prod-030.grafana.net/loki/api/v1/push}
+  user: ${GRAFANA_LOKI_USER:}
+  token: ${GRAFANA_LOKI_TOKEN:}
+
+# Grafana Cloud OTLP：URL 必须是完整 /v1/metrics 地址
+management:
+  otlp:
+    metrics:
+      export:
+        enabled: ${GRAFANA_OTLP_METRICS_ENABLED:true}
+        url: ${GRAFANA_OTLP_METRICS_URL:https://otlp-gateway-prod-ap-northeast-0.grafana.net/otlp/v1/metrics}
+        step: 30s
+        headers:
+          Authorization: ${GRAFANA_OTLP_AUTHORIZATION:}
+  metrics:
+    tags:
+      # 每个 Pod 必须有独立标签，否则滚动重启/双副本指标会互相覆盖
+      pod: ${HOSTNAME:unknown}

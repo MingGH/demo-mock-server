@@ -54,6 +54,16 @@
 - 使用 **SLF4J**（`org.slf4j.Logger` / `org.slf4j.LoggerFactory`）。允许使用 Lombok `@Slf4j`。
 - **catch 块必须记录日志**，禁止空 catch。至少 warn 级别记录异常信息，使用 `log.warn("描述: {}", e.getMessage())` 模式，除非 debug/trace 级别否则不打印完整堆栈。
 
+## Grafana 可观测性
+
+- 生产 profile 使用 Loki4j 直推应用日志，Micrometer OTLP 直推指标；不依赖常驻采集 Agent。
+- 管理端口固定 `5006`，只暴露 `health,prometheus`，K8s 探针也走该端口，业务端口指标不受探针污染。
+- liveness 只看 `/actuator/health/liveness`；readiness 使用
+  `/actuator/health/readiness`（含 DB），避免数据库短暂故障导致 Pod 被反复重启。
+- Loki labels 只保留低基数 `app/env`；`level/thread/logger/host` 使用 structured metadata。
+- OTLP URL 必须写到完整 `/v1/metrics`；认证头通过 K3s Secret 注入，禁止硬编码。
+- 双 Pod/滚动副本必须有 `pod=${HOSTNAME}` 公共指标标签，避免 series 互相覆盖。
+
 ## 测试
 
 - **JUnit 5**（`org.junit.jupiter.api`）+ **Mockito**（`org.mockito`）。

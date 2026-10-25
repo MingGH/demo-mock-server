@@ -47,6 +47,28 @@ ENTRYPOINT 加 `-javaagent`）。拷 agent 必须在 `clean` 之后，否则会�
 | `NINJA_API_TOKEN`  | 上游统计 API 令牌 |（空）          |
 | `NUMFEEL_ECHO_BASE_URL` | echo 微服务基址（rpc-chain 演示） | `http://localhost:8100` |
 
+## Grafana 可观测性
+
+生产 profile（`SPRING_PROFILES_ACTIVE=prod`）通过应用内 SDK 直推 Grafana Cloud：
+
+- 日志：Loki4j 推送应用日志，labels 为 `app/env`，Pod 名放 structured metadata。
+- 指标：Micrometer OTLP 推送 HTTP/JVM/CPU/GC/R2DBC/MySQL 等指标，30 秒一步。
+- 本地排障：Actuator 管理端口 `5006` 暴露 `health,prometheus`，不进入 Service/Ingress。
+
+K3s Secret `grafana-observability-secret` 需要三个 key：
+
+| Key | 内容 |
+|---|---|
+| `loki-user` | Grafana Loki 实例 ID |
+| `loki-token` | `logs:write` Access Policy token |
+| `otlp-authorization` | `Basic base64(OTLP实例ID:metrics:write token)` 完整值 |
+
+URL 默认使用 Grafana Cloud 当前 stack，可通过
+`GRAFANA_LOKI_URL`、`GRAFANA_OTLP_METRICS_URL` 覆盖。
+
+部署前必须先按 `k3s-grafana-secret.yaml.example` 创建 Secret，否则 Pod 会进入
+`CreateContainerConfigError`。CI 已等待 rollout；Secret 缺失时部署会直接失败。
+
 ## 项目结构
 
 ```

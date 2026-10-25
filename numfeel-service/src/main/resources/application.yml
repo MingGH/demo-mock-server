@@ -20,6 +20,38 @@ spring:
 server:
   port: 8080
 
+# 管理端口只在集群内可达；生产指标通过 OTLP 推送，不依赖 Grafana 外抓
+management:
+  server:
+    port: 5006
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,r2dbc
+  otlp:
+    metrics:
+      export:
+        # 只有 prod profile 开启，避免本地向空端点重试
+        enabled: false
+  metrics:
+    tags:
+      application: numfeel-service
+    distribution:
+      slo:
+        "[http.server.requests]": 50ms,100ms,200ms,500ms,1s,2s,5s
+    web:
+      server:
+        max-uri-tags: 300
+
 # 上游统计 API (api.996.ninja) token，通过环境变量注入
 ninja:
   api:
@@ -72,5 +104,3 @@ logging:
     root: INFO
     io.netty: WARN
     io.r2dbc: WARN
-  pattern:
-    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

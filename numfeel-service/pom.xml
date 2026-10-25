@@ -52,6 +52,34 @@
 			<artifactId>spring-boot-starter-cache</artifactId>
 		</dependency>
 
+		<!-- 指标采集：Actuator + Prometheus（本地/集群内排障） -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
+		<!-- 生产指标直推 Grafana Cloud OTLP，管理端口不暴露公网 -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-otlp</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-opentelemetry</artifactId>
+		</dependency>
+
+		<!-- 应用日志直推 Grafana Cloud Loki，无需常驻采集 Agent -->
+		<dependency>
+			<groupId>com.github.loki4j</groupId>
+			<artifactId>loki-logback-appender</artifactId>
+			<!-- Spring Boot 4.0.6 使用 Logback 1.5.x，不能用要求 1.6.x 的 2.1.0 -->
+			<version>2.0.0</version>
+		</dependency>
+
 		<dependency>
 			<groupId>io.asyncer</groupId>
 			<artifactId>r2dbc-mysql</artifactId>

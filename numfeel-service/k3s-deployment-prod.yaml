@@ -26,6 +26,7 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
+            - containerPort: 5006   # actuator/Prometheus，仅集群内可达
           resources:
             requests:
               cpu: 100m
@@ -35,17 +36,34 @@ spec:
               memory: 2048Mi
           readinessProbe:
             httpGet:
-              path: /chinese-names?n=1
-              port: 8080
+              path: /actuator/health/readiness
+              port: 5006
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /chinese-names?n=1
-              port: 8080
+              path: /actuator/health/liveness
+              port: 5006
             initialDelaySeconds: 15
             periodSeconds: 30
           env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: GRAFANA_LOKI_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-observability-secret
+                  key: loki-user
+            - name: GRAFANA_LOKI_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-observability-secret
+                  key: loki-token
+            - name: GRAFANA_OTLP_AUTHORIZATION
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-observability-secret
+                  key: otlp-authorization
             - name: NINJA_API_TOKEN
               valueFrom:
                 secretKeyRef:

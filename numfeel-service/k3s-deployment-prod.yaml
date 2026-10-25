@@ -40,6 +40,15 @@ spec:
               port: 5006
             initialDelaySeconds: 10
             periodSeconds: 10
+          # 这个 demo 冷启动包含 GeoIP/词云/SQLite 初始化，实测约 86s；
+          # 启动探针成功后，liveness/readiness 才开始计时。
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 5006
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness

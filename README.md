@@ -52,7 +52,7 @@
 │   ├── k3s-deployment-prod.yaml         # K3s 部署配置
 │   └── pom.xml                          # Maven 配置
 ├── numfeel-site/          # 前端 — 原生 HTML/CSS/JS + Chart.js
-│   ├── pages/             # 演示页面（230 个互动演示）
+│   ├── pages/             # 演示页面（245 个互动演示）
 │   ├── components/        # 公共组件
 │   ├── images/            # 静态资源
 │   ├── docs/              # 文档

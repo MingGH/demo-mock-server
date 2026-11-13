@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="20 个完全没差别的按钮，跑 20 次 A/B 测试，至少一次 p<0.05 的概率是 64%。亲手体验 p-hacking、多重比较和边测边看如何制造假阳性。">
+  <title>显著实验室：没差别的按钮，为什么总有一个赢 | 数字直觉</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="engine.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1><i class="ti ti-flask"></i> 显著实验室</h1>
+    <p>下面这些按钮<strong>完全一样</strong>，真实转化率都是 10%。但只要你测得够多、看得够勤、挑得够巧，总有一个会「显著提升」。</p>
+  </div>
+
+  <section class="hero-card" aria-label="核心结果">
+    <div class="hero-main">
+      <span class="kicker">假阳性工厂</span>
+      <div class="hero-number" id="heroRate">64.2%</div>
+      <div class="hero-caption" id="heroRateLabel">20 次独立测试，至少出现一次 p &lt; 0.05 的概率</div>
+    </div>
+    <div class="hero-side">
+      <div class="mini-stat">
+        <span class="mini-value" id="sigCount">0</span>
+        <span class="mini-label">本次「显著」结果</span>
+      </div>
+      <div class="mini-stat">
+        <span class="mini-value" id="minP">--</span>
+        <span class="mini-label">最小 p 值</span>
+      </div>
+      <div class="mini-stat">
+        <span class="mini-value" id="thresholdLabel">0.050</span>
+        <span class="mini-label">当前判定阈值</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-title"><span class="step">1</span> 先设一个局</div>
+    <p class="hint">两组按钮的颜色其实完全一样，真实转化率都是 <strong id="trueRateHint">10%</strong>。你只是不停换颜色、换人群、换指标，直到数据「显著」。</p>
+
+    <div class="preset-row" id="presetRow" aria-label="预设场景">
+      <button class="preset" type="button" data-preset="once">只测一次<small>α = 0.05</small></button>
+      <button class="preset active" type="button" data-preset="twenty">测 20 个指标<small>至少一次假阳性 64%</small></button>
+      <button class="preset" type="button" data-preset="peek">边测边看<small>看到显著就停</small></button>
+      <button class="preset" type="button" data-preset="bonferroni">Bonferroni 校正<small>阈值 ÷ 20</small></button>
+    </div>
+
+    <div class="control-grid">
+      <label class="control">
+        <span class="control-head">实验次数 <output id="testsOut">20</output></span>
+        <input type="range" id="testsRange" min="1" max="50" step="1" value="20">
+        <span class="control-foot">每多测一次，就多一次撞大运的机会</span>
+      </label>
+
+      <label class="control">
+        <span class="control-head">每组样本量 <output id="sampleOut">1,000</output></span>
+        <input type="range" id="sampleRange" min="200" max="5000" step="100" value="1000">
+        <span class="control-foot">样本越大，随机波动反而越容易被判成「显著」</span>
+      </label>
+
+      <label class="control">
+        <span class="control-head">真实转化率 <output id="baseRateOut">10%</output></span>
+        <input type="range" id="baseRateRange" min="5" max="30" step="1" value="10">
+        <span class="control-foot">两组都从这个真实值里抽样本</span>
+      </label>
+
+      <label class="control">
+        <span class="control-head">显著性水平 α</span>
+        <select id="alphaSelect">
+          <option value="0.05" selected>0.05（常用）</option>
+          <option value="0.01">0.01（更严格）</option>
+          <option value="0.10">0.10（更宽松）</option>
+        </select>
+        <span class="control-foot">阈值越松，假阳性越多</span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <label class="toggle"><input type="checkbox" id="peekToggle"> 边测边看（每 10% 样本偷看一次）</label>
+      <label class="toggle"><input type="checkbox" id="correctionToggle"> 做 Bonferroni 多重比较校正</label>
+    </div>
+
+    <div class="run-row">
+      <button class="primary" type="button" id="runBtn"><i class="ti ti-player-play"></i> 再跑一次实验</button>
+      <button class="ghost" type="button" id="copyBtn"><i class="ti ti-copy"></i> 复制结论</button>
+      <span class="copy-status" id="copyStatus" role="status"></span>
+    </div>
+  </section>
+
+  <section class="result-grid">
+    <div class="card chart-card">
+      <div class="card-title"><span class="step">2</span> 看 p 值怎么分布</div>
+      <p class="hint">每组柱子是落在该区间的实验次数。红色柱子完全落在显著区；金色虚线是当前阈值——但两组按钮根本没有差别。</p>
+      <div class="chart-wrap">
+        <canvas id="pChart" role="img" aria-label="p 值分布图">p 值分布柱状图</canvas>
+      </div>
+    </div>
+
+    <div class="card report-card">
+      <div class="card-title"><span class="step">3</span> 你会怎么写周报</div>
+      <p class="hint" id="reportSummary" aria-live="polite">还没有结果，点上面的按钮跑一次。</p>
+      <div class="report-list" id="reportList"></div>
+    </div>
+  </section>
+
+  <section class="card takeaway-card">
+    <div class="card-title"><i class="ti ti-bulb"></i> 所以，问题出在哪</div>
+    <p class="takeaway" id="takeaway" aria-live="polite">只要测试次数够多，随机波动就会替你制造出一个「显著」结果。</p>
+    <div class="explain-grid">
+      <div class="explain">
+        <h3>多重比较</h3>
+        <p>测 1 个指标，假阳性率 5%；测 20 个，至少一个假阳性的概率是 64%。你不需要造假，只需要多试几次。</p>
+      </div>
+      <div class="explain">
+        <h3>边测边看</h3>
+        <p>每来一批样本就看一眼 p 值，看到显著就停。每次偷看都是一次新的检验，假阳性率会悄悄膨胀。</p>
+      </div>
+      <div class="explain">
+        <h3>只报喜</h3>
+        <p>把不显著的实验藏起来，只把显著的那次写进汇报。这不是撒谎，但是一种选择偏差。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-title"><i class="ti ti-shield-check"></i> 下次看到「显著提升」，先问四句</div>
+    <ul class="checklist">
+      <li><span>1</span> 一共测了多少个指标 / 多少组人群？</li>
+      <li><span>2</span> 是不是看到显著就提前停了？</li>
+      <li><span>3</span> 这个结果是事先假设的，还是事后从数据里挖出来的？</li>
+      <li><span>4</span> 换一批样本，还能复现吗？</li>
+    </ul>
+    <p class="footnote">真正靠谱的做法：预先注册假设、固定样本量、做多重比较校正、用独立数据复现。Bonferroni 只是最粗糙的一种校正，但已经能把 20 次测试的阈值从 0.05 压到 0.0025。</p>
+  </section>
+
+  <p class="page-foot">所有数据都是本地模拟，不上传任何内容。刷新页面会重新抽一组随机样本。</p>
+</div>
+</body>
+</html>

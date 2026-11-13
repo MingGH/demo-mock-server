@@ -5,6 +5,7 @@
 ## 📋 演示列表
 
 ### 🎲 概率与统计
+- [显著实验室：没差别的按钮，为什么总有一个赢](https://numfeel.996.ninja/pages/p-hacking-lab/) - 20 个完全没差别的按钮，跑 20 次 A/B 测试，至少一次 p<0.05 的...
 - [右转迷宫谣言粉碎机](https://numfeel.996.ninja/pages/right-hand-maze.html) - "一直向右就能出迷宫"是真的吗？用右手法和最短路对照，现场看它什么时候失灵。
 - [蒙提霍尔问题模拟](https://numfeel.996.ninja/pages/monty-hall-simulator.html) - 三门问题：换门中奖率真的是2/3吗？亲自玩一局，或者让电脑跑1000次给你看。
 - [排除选项后要不要改答案](https://numfeel.996.ninja/pages/switch-answer-probability/) - 随机选了A，检查时排除了B和C，改选D正确率从25%跳到75%。亲手玩10轮验证...

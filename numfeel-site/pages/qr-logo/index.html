@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="二维码中间盖个 Logo 还能扫，靠的是 H 级约 30% 的纠错冗余。但那是「码字」不是「面积」，而且功能图形一个都不能碰。逐模块采样 + jsQR 真实解码，量出你那个 Logo 到底花掉多少预算、什么尺寸开始扫不出。">
+  <title>二维码中间的 Logo 花掉多少纠错预算 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><i class="ti ti-qrcode"></i> 中间的 Logo，花掉了多少纠错预算</h1>
+    <p>二维码中间盖个 Logo 还能扫，靠的是 H 级约 <strong>30% 的纠错冗余</strong>。但那是「码字」，不是「面积」——而且功能图形一个都不能碰。拖一下尺寸，看这台扫码器还认不认得出来。</p>
+  </div>
+
+  <div class="err" id="err"></div>
+
+  <!-- ══════════ 1. 动手 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-fun">动手</span>
+      <h2><i class="ti ti-adjustments-horizontal"></i> 拖一个 Logo 上去</h2>
+    </div>
+    <p class="section-desc">左边逐模块上色：<em class="k-blue">蓝</em>是功能图形（碰不得），<em class="k-red">红</em>是真正被翻掉的模块。右边是扫码器收到的那张图。内容随便改——网址、一句话都行，默认那个扫出来是句彩蛋。</p>
+
+    <div class="presets" id="presets">
+      <button class="preset" data-preset="safe">
+        <b>稳妥 20%</b><span>预算用不到两成</span>
+      </button>
+      <button class="preset active" data-preset="common">
+        <b>常见 26%</b><span>品牌 Logo 的常见尺寸</span>
+      </button>
+      <button class="preset" data-preset="aggressive">
+        <b>激进 38%</b><span>预算过半，余量不多</span>
+      </button>
+      <button class="preset" data-preset="edge">
+        <b>越界 49%</b><span>H 级从这里开始扫不出</span>
+      </button>
+    </div>
+
+    <div class="grid-main">
+      <div class="views">
+        <figure class="card view-card">
+          <div class="card-head"><b>分析视图</b><span id="verLabel">—</span></div>
+          <div class="card-body">
+            <canvas id="preview" width="400" height="400"></canvas>
+            <div class="legend">
+              <span><i class="sw sw-blue"></i>功能图形</span>
+              <span><i class="sw sw-red"></i>被翻转的模块</span>
+              <span><i class="sw sw-gold"></i>校正图形被压</span>
+            </div>
+          </div>
+        </figure>
+
+        <figure class="card view-card">
+          <div class="card-head"><b>相机看到的</b><span id="badge" class="badge idle">等待</span></div>
+          <div class="card-body">
+            <canvas id="scan" width="400" height="400"></canvas>
+            <div class="legend"><span>模糊 / 距离 / 旋转 / 噪声 / 低对比 —— 现实世界的那部分损耗</span></div>
+          </div>
+        </figure>
+      </div>
+
+      <aside class="card panel">
+        <div class="card-head"><b>参数</b><span>改哪个都能立刻看到结果</span></div>
+        <div class="card-body">
+          <p class="panel-label">内容</p>
+          <input type="text" id="txt" spellcheck="false" autocomplete="off">
+          <div class="chips">
+            <button data-content="short">短网址</button>
+            <button data-content="long">长网址</button>
+            <button data-content="egg">彩蛋</button>
+          </div>
+
+          <p class="panel-label">纠错等级</p>
+          <div class="seg" id="lvSeg">
+            <button data-lv="L">L</button>
+            <button data-lv="M">M</button>
+            <button data-lv="Q">Q</button>
+            <button data-lv="H" class="active">H</button>
+          </div>
+
+          <label class="row" for="logo"><span>Logo 尺寸</span><output id="logoOut">26%</output></label>
+          <input type="range" id="logo" min="0" max="55" step="0.5" value="26">
+
+          <div class="toggles">
+            <label class="toggle"><input type="checkbox" id="showFn" checked> 显示功能图形</label>
+            <label class="toggle"><input type="checkbox" id="showDmg" checked> 显示受损码字</label>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ══════════ 2. 结算 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-easy">结算</span>
+      <h2><i class="ti ti-calculator"></i> 这笔账怎么算</h2>
+    </div>
+    <p class="section-desc">三个数都是实测的：把渲染出来的图逐模块采样，跟原始矩阵比，数出真正翻转的位，再按标准走位把模块归到码字上。</p>
+
+    <div class="metrics">
+      <div class="metric"><div class="k">规模</div><div class="v" id="mVer">—</div></div>
+      <div class="metric"><div class="k">数据码字</div><div class="v" id="mCw">—</div></div>
+      <div class="metric hot"><div class="k">受损码字</div><div class="v" id="mDmg">—</div></div>
+      <div class="metric" id="mVerdictCard"><div class="k">扫码判定</div><div class="v" id="mVerdict">—</div></div>
+    </div>
+
+    <div class="card budget">
+      <div class="budget-top">
+        <span>名义预算占用 <b id="budgetPct">0%</b></span>
+        <span id="budgetAbs">—</span>
+      </div>
+      <div class="bar"><div class="bar-fill" id="barFill"></div><div class="bar-mark"></div></div>
+      <div class="bar-scale"><span>0</span><span id="budgetLv">H 级上限</span><span>150%</span></div>
+      <div class="warn" id="warn"><i class="ti ti-alert-triangle"></i><span id="warnTxt"></span></div>
+    </div>
+  </section>
+
+  <!-- ══════════ 3. 现实损耗 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-medium">压力测试</span>
+      <h2><i class="ti ti-scan"></i> 预算不是拿来装饰的</h2>
+    </div>
+    <p class="section-desc">那 30% 同时是印刷糊边、反光、低分辨率、斜角拍摄的<strong>唯一保险</strong>。花在 Logo 上越多，留给现实世界的越少。往下拉，看余量怎么被吃掉。</p>
+
+    <div class="card">
+      <div class="loss-grid">
+        <div>
+          <label class="row" for="blur"><span>模糊</span><output id="blurOut">0</output></label>
+          <input type="range" id="blur" min="0" max="3" step="0.1" value="0">
+        </div>
+        <div>
+          <label class="row" for="dist"><span>拍摄距离</span><output id="distOut">1.00×</output></label>
+          <input type="range" id="dist" min="0.2" max="1" step="0.02" value="1">
+        </div>
+        <div>
+          <label class="row" for="rot"><span>旋转</span><output id="rotOut">0°</output></label>
+          <input type="range" id="rot" min="0" max="26" step="1" value="0">
+        </div>
+        <div>
+          <label class="row" for="noise"><span>噪声</span><output id="noiseOut">0</output></label>
+          <input type="range" id="noise" min="0" max="60" step="1" value="0">
+        </div>
+        <div>
+          <label class="row" for="contrast"><span>对比度</span><output id="contrastOut">100%</output></label>
+          <input type="range" id="contrast" min="0.05" max="1" step="0.01" value="1">
+        </div>
+      </div>
+    </div>
+
+    <div class="sweep-row">
+      <button class="btn btn-primary" id="sweep"><i class="ti ti-ruler-measure"></i> 量一下临界点</button>
+      <button class="btn btn-ghost" id="copyBtn"><i class="ti ti-copy"></i> 复制结论</button>
+    </div>
+    <div class="sweep-out" id="sweepOut"></div>
+  </section>
+
+  <!-- ══════════ 4. 怎么读 ══════════ -->
+  <section class="section">
+    <div class="round-head">
+      <span class="tag tag-easy">解读</span>
+      <h2><i class="ti ti-help-circle"></i> 三个容易搞错的地方</h2>
+    </div>
+
+    <div class="notes">
+      <div class="note">
+        <h3>为什么偏偏是中间</h3>
+        <p>对常见的小版本（v1–v6），中心是<strong>唯一一大块连续的纯数据区</strong>：四角是定位图形，横竖有时序图形，边上还有格式信息，只有中间能整块牺牲。所以这不是随便挑的位置，是被约束逼出来的最优解。</p>
+      </div>
+      <div class="note">
+        <h3>30% 是码字，不是面积</h3>
+        <p>一个码字是放置路径上连续的 8 个模块，盖住 1 个模块就算整个码字废掉。更关键的是：<strong>只有颜色真的被改掉的模块才算错</strong>。白底只坑到原本是黑的模块，所以你盖住的面积和付出的代价，差着一个差不多两倍的关系。</p>
+      </div>
+      <div class="note">
+        <h3>那到底算不算相悖</h3>
+        <p>机制上不相悖——纠错码本来就是为「符号一定被弄脏」设计的，主动盖一块只是把随机损坏换成可控损坏。真正值得骂的是<strong>不算账</strong>：不检查功能图形、不估码字损失、拿零劣化的实验室结果当结论。能扫和可靠，是两件事。</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">
+    实现：<code>qr-core.js</code> 负责功能图形地图、标准走位与码字归并（配 <code>node pages/qr-logo/qr-core.test.js</code> 单测）；
+    「相机看到的」那一栏由 <code>jsQR</code> 真实解码，不是模拟。名义容错比例用标准公布的保守值（L 7% / M 15% / Q 25% / H 30%），
+    真实容限由分块结构决定、通常更宽，所以偶尔会看到「预算爆表却还能扫」。中间那张示例图来自
+    <a href="../dithering/">抖色演示</a>的样图。想先补纠错码本身，去
+    <a href="../reed-solomon/">里德-所罗门码演示</a>把数据打烂一次。
+  </p>
+</div>
+
+<!-- 内联的 Logo 图（data URI 不会污染 canvas，直接双击本地文件打开也能读像素） -->
+<img id="logoImg" alt="" hidden src="data:image/jpeg;base64,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">
+
+<script src="qrcode.min.js"></script>
+<script src="jsqr.min.js"></script>
+<script src="qr-core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

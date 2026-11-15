@@ -435,6 +435,27 @@ input[type=range] {
 .note p { margin: 0; font-size: 12.5px; color: var(--dim); line-height: 1.85; }
 .note p strong { color: var(--ink); font-weight: 600; }
 
+/* ── 工具引导 ── */
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 22px;
+  padding: 16px 18px;
+  border-color: rgba(144, 202, 249, 0.26);
+  background: rgba(144, 202, 249, 0.06);
+}
+.cta-copy { flex: 1 1 380px; min-width: 0; }
+.cta-copy h3 {
+  margin: 0 0 6px;
+  font: 600 14px/1.4 -apple-system, "PingFang SC", sans-serif;
+  color: var(--blue);
+}
+.cta-copy h3 i { margin-right: 4px; }
+.cta-copy p { margin: 0; font-size: 12.5px; color: var(--dim); line-height: 1.8; }
+.cta-btn { flex: 0 0 auto; text-decoration: none; white-space: nowrap; }
+
 /* ── 脚注 ── */
 .foot {
   margin-top: 26px;
@@ -471,4 +492,5 @@ input[type=range] {
   .loss-grid { grid-template-columns: 1fr; }
   .sweep-row .btn { flex: 1; justify-content: center; }
   .presets { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cta-btn { flex: 1 1 100%; justify-content: center; }
 }

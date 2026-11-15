@@ -184,6 +184,18 @@
     </div>
   </section>
 
+  <section class="section">
+    <div class="card cta">
+      <div class="cta-copy">
+        <h3><i class="ti ti-wand"></i> 想直接给自己的码加张图</h3>
+        <p>这页只负责把账算清楚。真要生成带 Logo 的二维码，用工具坞的「二维码美化」：上传图片、调大小和形状、每改一次自动扫一遍，文本和图片都在浏览器本地处理。它默认就是 H 级。</p>
+      </div>
+      <a class="btn cta-btn" href="https://gongju.dev/docs/business/qr-code-logo" target="_blank" rel="noopener">
+        <i class="ti ti-external-link"></i> 打开二维码美化工具
+      </a>
+    </div>
+  </section>
+
   <p class="foot">
     实现：<code>qr-core.js</code> 负责功能图形地图、标准走位与码字归并（配 <code>node pages/qr-logo/qr-core.test.js</code> 单测）；
     「相机看到的」那一栏由 <code>jsQR</code> 真实解码，不是模拟。名义容错比例用标准公布的保守值（L 7% / M 15% / Q 25% / H 30%），

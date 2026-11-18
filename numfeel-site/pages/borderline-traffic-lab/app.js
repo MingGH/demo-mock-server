@@ -1,5 +1,5 @@
 /**
- * 擦边流量账本：719期视频的腾讯云打分实测 — 页面交互与图表渲染逻辑
+ * 擦边流量账本：719期视频的 IMS 打分实测 — 页面交互与图表渲染逻辑
  */
 (function () {
   'use strict';
@@ -240,12 +240,12 @@
           '<div class="ab-meta">发布于 ' + escapeHtml(r.p) + ' · 时长 ' + escapeHtml(r.d) + ' · 综合分 <strong>' + r.score.toFixed(1) + '</strong></div>' +
           '<div class="score-bars">' +
             '<div class="s-bar-row">' +
-              '<span class="s-bar-lbl">腾讯 Sexy</span>' +
+              '<span class="s-bar-lbl">IMS Sexy</span>' +
               '<div class="s-bar-track"><div class="s-bar-fill" style="width:' + r.sexy + '%;background:#ffb74d;"></div></div>' +
               '<span class="s-bar-val" style="color:#ffb74d;">' + r.sexy + '</span>' +
             '</div>' +
             '<div class="s-bar-row">' +
-              '<span class="s-bar-lbl">腾讯 Porn</span>' +
+              '<span class="s-bar-lbl">IMS Porn</span>' +
               '<div class="s-bar-track"><div class="s-bar-fill" style="width:' + r.porn + '%;background:#ff6b6b;"></div></div>' +
               '<span class="s-bar-val" style="color:#ff6b6b;">' + r.porn + '</span>' +
             '</div>' +
@@ -286,8 +286,8 @@
       return '<div class="phase-card' + activeCls + '" data-phase-id="' + p.id + '" data-min-seq="' + p.minSeq + '" data-max-seq="' + p.maxSeq + '">' +
         '<div class="ph-name">' + escapeHtml(p.name) + '</div>' +
         '<div class="ph-range">' + escapeHtml(p.rangeLabel) + '</div>' +
-        '<div class="phase-stat-row"><span>腾讯 Sexy 均分</span><span style="color:#ffb74d;">' + st.avgSexy.toFixed(1) + ' 分</span></div>' +
-        '<div class="phase-stat-row"><span>腾讯 Porn 均分</span><span style="color:#ff6b6b;">' + st.avgPorn.toFixed(1) + ' 分</span></div>' +
+        '<div class="phase-stat-row"><span>IMS Sexy 均分</span><span style="color:#ffb74d;">' + st.avgSexy.toFixed(1) + ' 分</span></div>' +
+        '<div class="phase-stat-row"><span>IMS Porn 均分</span><span style="color:#ff6b6b;">' + st.avgPorn.toFixed(1) + ' 分</span></div>' +
         '<div class="phase-stat-row"><span>Porn(色情)标签率</span><span style="color:#ff6b6b;">' + (st.pornLabelRate * 100).toFixed(1) + '%</span></div>' +
         '<div class="phase-stat-row"><span>公开视频中位播放</span><span style="color:#ffd700;">' + formatWan(st.medianViews) + '</span></div>' +
         '<div class="phase-stat-row"><span>付费会员视频占比</span><span style="color:#ce93d8;">' + (st.memberRate * 100).toFixed(1) + '%</span></div>' +
@@ -568,7 +568,7 @@
         datasets: [
           {
             type: 'line',
-            label: '腾讯 Porn（色情分）均值',
+            label: 'IMS Porn（色情分）均值',
             data: phases.map(function (p) { return +p.stats.avgPorn.toFixed(1); }),
             borderColor: '#ff6b6b',
             backgroundColor: '#ff6b6b',
@@ -693,12 +693,12 @@
     var showCat = E.computeCategoryBreakdown(VIDEOS).filter(function (c) { return c.id === 'show'; })[0];
 
     return [
-      '【擦边流量账本：Pan Piano ' + VIDEOS.length + ' 期视频腾讯云内容安全（IMS）实测摘要】',
+      '【擦边流量账本：Pan Piano ' + VIDEOS.length + ' 期视频 IMS 实测摘要】',
       '1. 阶梯溢价：0-19分（常服弹琴）中位播放 ' + formatWan(tiers[0].stats.medianViews) + ' → 80-100分（重度擦边）中位播放 ' + formatWan(tiers[3].stats.medianViews) + '（' + tierRatio + '倍），破百万比例从 ' + (tiers[0].stats.hit100wRate * 100).toFixed(1) + '% 升至 ' + (tiers[3].stats.hit100wRate * 100).toFixed(1) + '%。',
-      '2. 审核对比：腾讯云判定违规拦截（Block，全量 ' + verdicts.Block.totalCount + ' 期 / 公开 ' + verdicts.Block.publicCount + ' 期）中位播放达 ' + formatWan(verdicts.Block.medianViews) + '，比合规放行（Pass，全量 ' + verdicts.Pass.totalCount + ' 期 / 公开 ' + verdicts.Pass.publicCount + ' 期，' + formatWan(verdicts.Pass.medianViews) + '）高出 ' + ((verdicts.medianBoostRatio - 1) * 100).toFixed(1) + '%。',
+      '2. 审核对比：IMS 判定违规拦截（Block，全量 ' + verdicts.Block.totalCount + ' 期 / 公开 ' + verdicts.Block.publicCount + ' 期）中位播放达 ' + formatWan(verdicts.Block.medianViews) + '，比合规放行（Pass，全量 ' + verdicts.Pass.totalCount + ' 期 / 公开 ' + verdicts.Pass.publicCount + ' 期，' + formatWan(verdicts.Pass.medianViews) + '）高出 ' + ((verdicts.medianBoostRatio - 1) * 100).toFixed(1) + '%。',
       '3. 同曲对照：《红莲华》常服版 ' + songC.early.vd + ' → 低领重录版 ' + songC.late.vd + '（' + songC.multiplier + '倍），第三次继续拉高尺度至 93.4 分后回落至 ' + songC.extra.vd + '；《トリカゴ》常服版 ' + songT.early.vd + ' → 敞怀风衣版 ' + songT.late.vd + '（' + songT.multiplier + '倍），第三次高叉泳装版回落至 ' + songT.extra.vd + '。',
-      '4. 转型拐点：前 ' + msData.beforeVideos + ' 期常服弹琴耗时三年半攒下 ' + msData.beforeGainWan + ' 万粉；第 215 期后将腾讯 Sexy 均分拉到 ' + phases[1].stats.avgSexy.toFixed(1) + ' 分，仅用 ' + msData.afterVideos + ' 期视频就狂涨 ' + msData.afterGainWan + ' 万粉（单期涨粉效率 ' + msData.speedMultiplier.toFixed(1) + '×）。',
-      '5. 审美疲劳与付费转化：近 ' + phases[3].stats.totalCount + ' 期腾讯 Porn 均分升至 ' + phases[3].stats.avgPorn.toFixed(1) + ' 分（命中色情标签率 ' + (phases[3].stats.pornLabelRate * 100).toFixed(1) + '%），公开视频中位播放回落至 ' + formatWan(phases[3].stats.medianViews) + '，付费会员专享占比升至 ' + (phases[3].stats.memberRate * 100).toFixed(1) + '%（纯身体展示类达 ' + (showCat.stats.memberRate * 100).toFixed(1) + '%）。'
+      '4. 转型拐点：前 ' + msData.beforeVideos + ' 期常服弹琴耗时三年半攒下 ' + msData.beforeGainWan + ' 万粉；第 215 期后将 IMS Sexy 均分拉到 ' + phases[1].stats.avgSexy.toFixed(1) + ' 分，仅用 ' + msData.afterVideos + ' 期视频就狂涨 ' + msData.afterGainWan + ' 万粉（单期涨粉效率 ' + msData.speedMultiplier.toFixed(1) + '×）。',
+      '5. 审美疲劳与付费转化：近 ' + phases[3].stats.totalCount + ' 期 IMS Porn 均分升至 ' + phases[3].stats.avgPorn.toFixed(1) + ' 分（命中色情标签率 ' + (phases[3].stats.pornLabelRate * 100).toFixed(1) + '%），公开视频中位播放回落至 ' + formatWan(phases[3].stats.medianViews) + '，付费会员专享占比升至 ' + (phases[3].stats.memberRate * 100).toFixed(1) + '%（纯身体展示类达 ' + (showCat.stats.memberRate * 100).toFixed(1) + '%）。'
     ].join('\n');
   }
 

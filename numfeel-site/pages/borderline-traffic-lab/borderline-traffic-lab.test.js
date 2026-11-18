@@ -1,5 +1,5 @@
 /**
- * 擦边流量账本（719 期视频腾讯云内容安全打分与流量演化）单元测试
+ * 擦边流量账本（719 期视频 IMS 内容安全打分与流量演化）单元测试
  * 运行：node pages/borderline-traffic-lab/borderline-traffic-lab.test.js
  */
 'use strict';
@@ -32,7 +32,7 @@ assert(allStats.publicCount === 643, '有公开播放量的视频为 643 期');
 assert(allStats.memberCount === 76, '会员专享不显示播放量的视频为 76 期');
 assertClose(allStats.totalViews / 1e8, 6.7474, 0.01, '累计播放量约 6.75 亿次');
 assert(allStats.blockCount === 331 && allStats.reviewCount === 103 && allStats.passCount === 285,
-  '腾讯云审核结论 Pass=285 / Review=103 / Block=331');
+  'IMS 审核结论 Pass=285 / Review=103 / Block=331');
 assert(allStats.blockCount + allStats.reviewCount + allStats.passCount === 719, '审核结论三分类合计 719 期');
 
 console.log('\n=== 2. 综合分计算与整数区间切片唯一性 ===');
@@ -100,7 +100,7 @@ assertClose(phases[1].stats.medianViews / 10000, 130.0, 0.1, '阶段2(215~288期
 assertClose(phases[1].stats.blockRate, 55 / 74, 0.01, '阶段2 Block 率飙升至 74.3%');
 for (var pIdx = 1; pIdx < phases.length; pIdx++) {
   assert(phases[pIdx].stats.avgPorn > phases[pIdx - 1].stats.avgPorn,
-    '阶段 ' + (pIdx + 1) + ' 腾讯 Porn 均分高于前一阶段 (' + phases[pIdx].stats.avgPorn.toFixed(1) + ' > ' + phases[pIdx - 1].stats.avgPorn.toFixed(1) + ')');
+    '阶段 ' + (pIdx + 1) + ' IMS Porn 均分高于前一阶段 (' + phases[pIdx].stats.avgPorn.toFixed(1) + ' > ' + phases[pIdx - 1].stats.avgPorn.toFixed(1) + ')');
 }
 assertClose(phases[3].stats.memberRate, 44 / 169, 0.005, '阶段4 会员专享视频占比达 26.0%');
 assert(phases[0].stats.corrScoreLogViews < 0, '常服期内综合分与 log(播放) 相关系数为负值（反向）');

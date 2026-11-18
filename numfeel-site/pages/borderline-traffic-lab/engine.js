@@ -1,13 +1,13 @@
 /**
- * 擦边流量账本：719 期视频腾讯云内容安全打分与流量演化分析引擎
+ * 擦边流量账本：719 期视频 IMS 内容安全打分与流量演化分析引擎
  * 纯逻辑模块（不依赖 DOM，兼容浏览器与 Node.js 单元测试）
  */
 'use strict';
 
 /**
- * 计算封面综合擦边分（0.6 × 腾讯Sexy + 0.4 × 腾讯Porn）
- * @param {number} sexy - 腾讯 Sexy 分 (0~100)
- * @param {number} porn - 腾讯 Porn 分 (0~100)
+ * 计算封面综合擦边分（0.6 × IMS Sexy + 0.4 × IMS Porn）
+ * @param {number} sexy - IMS Sexy 分 (0~100)
+ * @param {number} porn - IMS Porn 分 (0~100)
  * @returns {number} 综合分，保留 1 位小数
  */
 function calcCompositeScore(sexy, porn) {
@@ -212,7 +212,7 @@ function computeScoreTiers(videos) {
 }
 
 /**
- * 按腾讯云审核结论（Pass / Review / Block）分组统计
+ * 按 IMS 审核结论（Pass / Review / Block）分组统计
  * @param {Object[]} videos - 全量视频数组
  * @returns {Object} 包含 Pass, Review, Block 统计及 Block 相对 Pass 的增益比
  */
@@ -271,7 +271,7 @@ function computeCareerPhases(videos) {
       shortName: '3.加码期(#289~550)',
       chartLabel: '加码期',
       rangeLabel: '第 289 至 550 期（中期 262 期）',
-      desc: '腾讯 Porn 均分从 34.6 涨到 50.6 分，但期内 Block 中位播放（74.0 万）仅比 Pass（71.5 万）高 3.5%，边际收益近乎消失。',
+      desc: 'IMS Porn 均分从 34.6 涨到 50.6 分，但期内 Block 中位播放（74.0 万）仅比 Pass（71.5 万）高 3.5%，边际收益近乎消失。',
       minSeq: 289,
       maxSeq: 550
     },
@@ -612,7 +612,7 @@ function filterAndSortVideos(videos, opts) {
  * @returns {string} CSV 字符串
  */
 function toCsvString(videos) {
-  var headers = ['时间序号', '擦边排名', '视频ID', '标题', '播放量(数值)', '播放量(显示)', '时长', '发布时间', '综合分', '腾讯Sexy', '腾讯Porn', '腾讯判定', '腾讯Label', 'NudeNet色情度', '内容分类'];
+  var headers = ['时间序号', '擦边排名', '视频ID', '标题', '播放量(数值)', '播放量(显示)', '时长', '发布时间', '综合分', 'IMS Sexy', 'IMS Porn', 'IMS 判定', 'IMS Label', 'NudeNet色情度', '内容分类'];
   var lines = [headers.join(',')];
   (videos || []).forEach(function (v) {
     var safeTitle = '"' + String(v.t || '').replace(/"/g, '""') + '"';

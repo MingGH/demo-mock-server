@@ -1,6 +1,6 @@
 /**
- * Pan Piano 全量 719 期视频播放量与腾讯云内容安全（IMS）审核打分数据集
- * 数据抓取时间：2026-11-15 | 审核接口：腾讯云 IMS (2020-12-29) & 本地 NudeNet 640px
+ * Pan Piano 全量 719 期视频播放量与 IMS 内容安全审核打分数据集
+ * 数据抓取时间：2026-11-15 | 审核接口：IMS (2020-12-29) & 本地 NudeNet 640px
  * 封面已统一打薄码并托管至 https://img.996.ninja/pan-piano-covers/<视频ID>.jpg
  */
 'use strict';

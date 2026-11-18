@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="抓取顶流钢琴与Cos博主Pan Piano跨越9年的全部719期视频封面与6.75亿次播放数据，用腾讯云图片内容安全接口（IMS）逐张封面打分。拖动擦边分数滑块、对比同曲不同衣着尺度的流量反差，还原一个普通才艺创作者从常服弹琴3年半到擦边破圈、再到审美疲劳转入付费会员的全过程。">
+  <title>擦边流量账本：719期视频的腾讯云打分实测 | 数字直觉</title>
+  <script src="../../components/header.js" defer></script>
+  <link rel="stylesheet" href="../../components/header.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <!-- ── Hero 头部（使用 .page-hero 避免与全局 header.css 冲突） ── -->
+  <div class="page-hero">
+    <h1><i class="ti ti-shield-half-filled"></i> 擦边流量账本：719期视频的腾讯云打分实测</h1>
+    <p class="subtitle">
+      同一个博主、同一架钢琴、同一双弹琴的手，固定在钢琴右侧 45 度机位连拍 9 年。<br>
+      我们抓取了 Pan Piano 全部 719 期视频封面与播放量，调用腾讯云内容安全接口（IMS）逐张打分，算清每一档暴露程度的流量价格与后续代价。
+    </p>
+    <div class="header-badges">
+      <span class="h-badge gold"><i class="ti ti-database"></i> 真实样本：719 期全量视频（公开 643 / 会员 76）</span>
+      <span class="h-badge"><i class="ti ti-eye"></i> 累计播放：6.75 亿次</span>
+      <span class="h-badge"><i class="ti ti-cloud-computing"></i> 审核引擎：腾讯云 IMS + 本地 NudeNet</span>
+    </div>
+    <div class="btn-row" style="justify-content:center;">
+      <button class="btn btn-primary" id="btnCopyReport"><i class="ti ti-copy"></i> 复制实验结论摘要</button>
+      <button class="btn" id="btnDownloadCsv"><i class="ti ti-download"></i> 下载全量 719 条 CSV 数据集</button>
+    </div>
+  </div>
+
+  <!-- ── 核心发现总览 KPI ── -->
+  <div class="kpi-grid">
+    <div class="kpi-card gold">
+      <div class="kpi-val" id="kpiTierHigh">70.5 万</div>
+      <div class="kpi-lbl">重度擦边（80–100分）中位播放</div>
+      <div class="kpi-sub" id="kpiTierHighSub">常服弹琴（0–19分）仅 29.0 万（2.4×）</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-val" id="kpiBlockPremium">+70.5%</div>
+      <div class="kpi-lbl">违规拦截（Block）封面中位溢价</div>
+      <div class="kpi-sub" id="kpiBlockPremiumSub">Block 中位 66.5 万 vs Pass 合规 39.0 万</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-val" id="kpiGrowthMult">8.1×</div>
+      <div class="kpi-lbl">第 215 期转型后单期涨粉效率</div>
+      <div class="kpi-sub" id="kpiGrowthMultSub">前 215 期涨 40 万粉 vs 后 73 期涨 110 万粉</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-val" id="kpiShowMemRate">80.8%</div>
+      <div class="kpi-lbl">后期「纯身体展示」锁会员比例</div>
+      <div class="kpi-sub" id="kpiShowMemRateSub">近 169 期整体会员专享占比达 26.0%</div>
+    </div>
+  </div>
+
+  <!-- ── 模块 1：流量标价调音台 ── -->
+  <div class="section" id="secTuner">
+    <div class="section-head">
+      <h2><i class="ti ti-adjustments-horizontal"></i> 每一档暴露程度都有明码标价的播放量</h2>
+    </div>
+    <p class="section-desc">
+      点击预设切片或拖动综合擦边分整数滑块（综合分 = 0.6×腾讯Sexy + 0.4×腾讯Porn），实时查看命中视频的平均播放量、中位播放量与破百万比例。
+    </p>
+
+    <div class="tuner-panel">
+      <div class="preset-row">
+        <span class="preset-label"><i class="ti ti-bolt"></i> 快速切片：</span>
+        <button class="btn btn-sm active" data-preset="all" id="btnPresetAll">全部视频 (719)</button>
+        <button class="btn btn-sm" data-preset="tier0" id="btnPresetTier0">0–19分 常服弹琴 (92)</button>
+        <button class="btn btn-sm" data-preset="tier1" id="btnPresetTier1">20–49分 轻度穿搭 (115)</button>
+        <button class="btn btn-sm" data-preset="tier2" id="btnPresetTier2">50–79分 中高擦边 (359)</button>
+        <button class="btn btn-sm" data-preset="tier3" id="btnPresetTier3">80–100分 重度擦边 (153)</button>
+        <button class="btn btn-sm" data-preset="pass" id="btnPresetPass">仅 Pass 合规 (285)</button>
+        <button class="btn btn-sm" data-preset="block" id="btnPresetBlock">仅 Block 违规拦截 (331)</button>
+      </div>
+
+      <div class="slider-row">
+        <div class="slider-box">
+          <label>
+            <span>封面综合分下限（整数 Min Score）</span>
+            <strong id="lblMinScore">0 分</strong>
+          </label>
+          <input type="range" id="rngMinScore" min="0" max="100" step="1" value="0" aria-label="封面综合分下限">
+        </div>
+        <div class="slider-box">
+          <label>
+            <span>封面综合分上限（整数 Max Score）</span>
+            <strong id="lblMaxScore">100 分</strong>
+          </label>
+          <input type="range" id="rngMaxScore" min="0" max="100" step="1" value="100" aria-label="封面综合分上限">
+        </div>
+      </div>
+
+      <div class="tuner-metrics">
+        <div class="t-metric">
+          <div class="tm-val" id="tmCount">719 期</div>
+          <div class="tm-lbl">命中样本数</div>
+          <div class="tm-diff" id="tmPubSub">公开 643 / 会员 76</div>
+        </div>
+        <div class="t-metric">
+          <div class="tm-val" id="tmMedian">52.0 万</div>
+          <div class="tm-lbl">公开视频中位播放</div>
+          <div class="tm-diff" id="tmMedianDiff">1.79× 常服基准</div>
+        </div>
+        <div class="t-metric">
+          <div class="tm-val" id="tmMean">104.9 万</div>
+          <div class="tm-lbl">公开视频平均播放</div>
+          <div class="tm-diff" id="tmMeanDiff">1.79× 常服基准</div>
+        </div>
+        <div class="t-metric">
+          <div class="tm-val" id="tmHitRate">29.2%</div>
+          <div class="tm-lbl">破百万播放比例</div>
+          <div class="tm-diff" id="tmHitDiff">破百万 188 期 / 643</div>
+        </div>
+        <div class="t-metric">
+          <div class="tm-val" id="tmBlockRate">46.0%</div>
+          <div class="tm-lbl">腾讯违规拦截率</div>
+          <div class="tm-diff" id="tmScoreAvg">综合均分 58.8 分</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3><i class="ti ti-chart-bar"></i> 四档综合擦边分 vs 播放量阶梯（公开视频 643 期）</h3>
+        <div class="chart-wrap">
+          <canvas id="tierChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3><i class="ti ti-shield-check"></i> 腾讯云审核结论（Pass / Review / Block）流量对比</h3>
+        <div class="chart-wrap">
+          <canvas id="verdictChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box" id="tunerInsight">
+      <strong>流量阶梯：</strong>从 0–19 分（常服弹琴，中位 29.0 万）到 80–100 分（重度擦边，中位 70.5 万），平均播放量、播放量中位数、破百万比例三项指标全部严格单调递增；被腾讯云判定违规拦截（Block，共 331 期 / 公开 300 期）的封面，中位播放量（66.5 万）比合规放行（Pass，共 285 期 / 公开 253 期，39.0 万）高出 <strong>70.5%</strong>。
+    </div>
+  </div>
+
+  <!-- ── 模块 2：同曲同人对照实验台 ── -->
+  <div class="section" id="secSameSong">
+    <div class="section-head">
+      <h2><i class="ti ti-arrows-left-right"></i> 同一首曲子穿不同的衣服能差出二十倍播放</h2>
+    </div>
+    <p class="section-desc">
+      为了排除歌曲本身热度的干扰，筛选出她不同时期重复弹奏同一首曲子的视频。点击下方 4 首歌切换：看早期常服版与转型重录版的巨大流量鸿沟，以及第三次继续加码后的审美疲劳回落。
+    </p>
+
+    <div class="song-tabs" id="songTabs"></div>
+    <div class="ab-stage" id="abStage"></div>
+    <div class="insight-box" id="songInsight"></div>
+  </div>
+
+  <!-- ── 模块 3：第 215 期转型拐点与四阶段演化 ── -->
+  <div class="section" id="secTurningPoint">
+    <div class="section-head">
+      <h2><i class="ti ti-timeline-event"></i> 正经弹琴三年半敌不过敞开衣领三个月，但终局是审美疲劳与付费墙</h2>
+    </div>
+    <p class="section-desc">
+      通过视频标题里的订阅人数纪念记录，还原她从「耗时三年半正经弹琴攒 40 万粉」到「73 期狂飙 110 万粉」，再到后期「观众胃口被喂大、公开播放回落、转入付费会员」的四个阶段。点击阶段卡片可直达下方账本对应区间。
+    </p>
+
+    <div class="milestone-list" id="milestoneList"></div>
+
+    <div class="phase-grid" id="phaseGrid"></div>
+
+    <div class="charts-grid" style="grid-template-columns: 1fr 1fr;">
+      <div class="chart-card">
+        <h3><i class="ti ti-trending-up"></i> 四阶段演化：Porn 色情分与会员占比飙升 vs 中位播放冲高回落</h3>
+        <div class="chart-wrap">
+          <canvas id="phaseChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3><i class="ti ti-chart-dots"></i> 全量 719 期时间序列（每 30 期分箱）</h3>
+        <div class="chart-wrap">
+          <canvas id="timelineChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <strong>审美疲劳与付费转化：</strong>在第 215 至 288 期刚转型时，腾讯 Porn（色情分）均值仅 34.6 分，就能拿到 130.0 万中位播放；到了最近的第 551 至 719 期，观众对普通性感产生耐受，Porn 均分被迫加码到 57.6 分（命中色情标签比例从 1.4% 暴增至 25.4%），但公开视频中位播放反而跌回 49.0 万（期内 Block 中位 49.0 万甚至低于 Pass 的 51.0 万），同时付费会员专享视频占比从 0% 飙升至 26.0%。
+    </div>
+  </div>
+
+  <!-- ── 模块 4：719 期视频腾讯云审核全量账本 ── -->
+  <div class="section" id="secLedger">
+    <div class="section-head">
+      <h2><i class="ti ti-list-search"></i> 719 期视频腾讯云审核全量检索账本</h2>
+    </div>
+    <p class="section-desc">
+      点击下方 4 个内容品类卡片或使用搜索栏筛选全部 719 期视频。封面已统一做薄码脱敏处理并托管至国内直连 CDN；默认开启「Block 违规封面高斯模糊护眼模式」，鼠标悬停单张封面或取消勾选即可查看清晰薄码图。
+    </p>
+
+    <div class="cat-grid" id="catGrid"></div>
+
+    <div class="ledger-toolbar">
+      <input type="search" id="inpSearch" placeholder="搜索视频标题或 YouTube ID（如：紅蓮華 / EVA / 開封 / 展示）">
+      <select id="selVerdict">
+        <option value="all">全部审核结论 (719)</option>
+        <option value="Block">Block 违规拦截 (331)</option>
+        <option value="Review">Review 人工复审 (103)</option>
+        <option value="Pass">Pass 合规放行 (285)</option>
+      </select>
+      <select id="selMember">
+        <option value="all">全部公开状态 (719)</option>
+        <option value="public">仅公开播放量 (643)</option>
+        <option value="member">仅付费会员专享 (76)</option>
+      </select>
+      <select id="selSort">
+        <option value="score-desc">按综合擦边分（高 → 低）</option>
+        <option value="views-desc">按播放量（高 → 低）</option>
+        <option value="porn-desc">按腾讯 Porn 分（高 → 低）</option>
+        <option value="sexy-desc">按腾讯 Sexy 分（高 → 低）</option>
+        <option value="nn-desc">按 NudeNet 分（高 → 低）</option>
+        <option value="seq-asc">按发布时间（第 1 期 → 第 719 期）</option>
+        <option value="seq-desc">按发布时间（最新 → 最早）</option>
+      </select>
+      <label class="blur-toggle">
+        <input type="checkbox" id="chkBlur" checked>
+        <span><i class="ti ti-eye-off"></i> Block 封面模糊护眼（悬停查看）</span>
+      </label>
+    </div>
+
+    <div class="video-grid" id="videoGrid"></div>
+
+    <div class="pagination-bar">
+      <div class="page-info" id="pageInfo">显示 1–20 / 共 719 期（第 1/36 页）</div>
+      <div class="btn-row">
+        <button class="btn btn-sm" id="btnPrevPage"><i class="ti ti-chevron-left"></i> 上一页</button>
+        <button class="btn btn-sm" id="btnNextPage">下一页 <i class="ti ti-chevron-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

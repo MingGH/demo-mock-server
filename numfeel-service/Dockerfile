@@ -5,9 +5,9 @@ COPY native/nativebench.cpp /tmp/nativebench.cpp
 # -O3 开自动向量化：给 C++ 最好的武器，别让「C++ 更快」输在编译选项上
 RUN gcc -O3 -shared -fPIC -o /tmp/libnativebench.so /tmp/nativebench.cpp
 
-# Eclipse Temurin 25（HotSpot，LTS）。与文章使用的 G1 / ZGC 等 HotSpot 概念保持一致，
+# Azul Zulu 25（HotSpot，LTS）。与文章使用的 G1 / ZGC 等 HotSpot 概念保持一致，
 # 也让 /jvm-memory 返回的 GC 名与内存池（Metaspace / Code Cache）对得上。
-FROM eclipse-temurin:25-jre
+FROM azul/zulu-openjdk:25-jre
 
 ARG JAR_FILE=target/numfeel-service-0.0.1-SNAPSHOT.jar
 # trace-agent 由 CI 先行构建并拷入 numfeel-service/target/（见 deploy.yml）

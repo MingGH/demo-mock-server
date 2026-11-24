@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.client.HttpClient;
@@ -364,14 +365,75 @@ public class ZhihuAnalyzeService {
         AnalyzeResponse base = buildAnalyzeResponse(items);
         FollowStats followStats = fetchFollowStats(accessSecret);
         CollectionStats collectionStats = fetchCollectionStats(accessSecret);
+        AccountStats accountStats = fetchAccountStats(accessSecret);
         return new AnalyzeResponse(
                 base.items(), base.total(), base.firstCreated(), base.lastCreated(),
                 base.totalLikes(), base.totalComments(), base.totalFavorites(),
                 base.byType(), base.byYear(), base.byMonth(),
                 base.topLiked(), base.topCommented(), base.topFavorited(),
                 base.wordCloud(), base.yearlyStats(),
-                followStats, collectionStats
+                followStats, collectionStats, accountStats
         );
+    }
+
+    /**
+     * 拉取账号级创作数据（阅读量、粉丝、来源分布等）。
+     * <p>
+     * 属于「尽力而为」的补充维度：上游没开通或调用失败时返回 {@code null}，
+     * 前端据此隐藏「阅读与读者」版块，不影响主分析。
+     *
+     * @param accessSecret 知乎 Access Secret
+     * @return 账号数据；不可用时返回 null
+     */
+    protected AccountStats fetchAccountStats(String accessSecret) {
+        JsonNode resp = getAuxJson("/api/v1/user/creator_account_stats", accessSecret);
+        if (resp == null || resp.path("Code").asInt(-1) != 0) {
+            log.warn("zhihu analyze: account stats unavailable: {}",
+                    resp == null ? "no response" : resp.path("Message").asText(""));
+            return null;
+        }
+        JsonNode data = resp.path("Data");
+        JsonNode metrics = data.path("Metrics");
+        JsonNode today = metrics.path("Today");
+        JsonNode yesterday = metrics.path("Yesterday");
+        JsonNode followers = data.path("Followers");
+        JsonNode period = data.path("FollowerDetails").path("Period");
+        return new AccountStats(
+                metrics.path("ViewCount").asLong(0),
+                metrics.path("UpvoteCount").asLong(0),
+                metrics.path("CommentCount").asLong(0),
+                metrics.path("LikeCount").asLong(0),
+                metrics.path("CollectCount").asLong(0),
+                metrics.path("ShareCount").asLong(0),
+                today.path("ViewCount").asLong(0),
+                yesterday.path("ViewCount").asLong(0),
+                followers.path("Total").asLong(0),
+                followers.path("ActiveRatio").asText(""),
+                period.path("NetIncrease7Days").asLong(0),
+                period.path("NetIncrease30Days").asLong(0),
+                shareEntries(data.path("Audience").path("Source")),
+                shareEntries(data.path("Audience").path("Location")),
+                metrics.path("Updated").asText("")
+        );
+    }
+
+    /**
+     * 把上游的 {Name, Ratio, Count} 数组转成占比条目，按占比降序，最多保留 6 条。
+     *
+     * @param array 上游数组
+     * @return 占比条目列表
+     */
+    private static List<ShareEntry> shareEntries(JsonNode array) {
+        List<ShareEntry> list = new ArrayList<>();
+        for (JsonNode node : array) {
+            list.add(new ShareEntry(
+                    node.path("Name").asText(""),
+                    node.path("Ratio").asDouble(0),
+                    node.path("Count").asLong(0)
+            ));
+        }
+        list.sort(Comparator.comparingDouble(ShareEntry::ratio).reversed());
+        return list.stream().limit(6).toList();
     }
 
     /**
@@ -413,6 +475,88 @@ public class ZhihuAnalyzeService {
             }
         }
         return null;
+    }
+
+    /** 一次最多复查几个关键词：控制知乎搜索额度与响应时长。 */
+    private static final int MAX_TOPIC_KEYWORDS = 5;
+
+    /**
+     * 用知乎搜索复查一批关键词，返回每个词当下的搜索结果。
+     * <p>
+     * 用于回答「这些老选题今天还有多少人在讨论」。单个关键词失败只返回空结果，
+     * 不影响其余关键词；词与词之间留 {{@value #PAGE_INTERVAL}} 的间隔避免撞限流。
+     *
+     * @param accessSecret 知乎 Access Secret，仅透传
+     * @param keywords     关键词列表，内部去空、去重并截断到 {@value #MAX_TOPIC_KEYWORDS} 个
+     * @return 每个关键词的搜索结果
+     */
+    public Mono<List<TopicDigest>> searchTopics(String accessSecret, List<String> keywords) {
+        List<String> cleaned = keywords == null ? List.of() : keywords.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(k -> !k.isEmpty())
+                .distinct()
+                .limit(MAX_TOPIC_KEYWORDS)
+                .toList();
+        if (cleaned.isEmpty()) {
+            return Mono.just(List.of());
+        }
+        return Flux.fromIterable(cleaned)
+                .concatMap(keyword -> searchOne(accessSecret, keyword, 1).delayElement(PAGE_INTERVAL))
+                .collectList();
+    }
+
+    /**
+     * 搜索单个关键词；遇到 30001 限流时线性退避重试，其他错误降级为空结果。
+     *
+     * @param accessSecret 知乎 Access Secret
+     * @param keyword      关键词
+     * @param attempt      当前尝试次数，从 1 开始
+     * @return 该关键词的搜索结果
+     */
+    private Mono<TopicDigest> searchOne(String accessSecret, String keyword, int attempt) {
+        return zhihuWebClient.get()
+                .uri(builder -> builder.path("/api/v1/content/zhihu_search")
+                        .queryParam("Query", keyword)
+                        .queryParam("Count", 5)
+                        .build())
+                .header("Authorization", "Bearer " + accessSecret)
+                .header("X-Request-Timestamp", String.valueOf(Instant.now().getEpochSecond()))
+                .header("Content-Type", "application/json")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .flatMap(resp -> {
+                    int code = resp.path("Code").asInt(-1);
+                    if (code == 30001 && attempt < PAGE_MAX_ATTEMPTS) {
+                        long delayMs = PAGE_RETRY_BASE_MS * attempt;
+                        log.warn("zhihu search: rate limited on '{}', retry in {}ms", keyword, delayMs);
+                        return Mono.delay(Duration.ofMillis(delayMs))
+                                .then(searchOne(accessSecret, keyword, attempt + 1));
+                    }
+                    if (code != 0) {
+                        log.warn("zhihu search: '{}' failed with code {} ({})",
+                                keyword, code, resp.path("Message").asText(""));
+                        return Mono.just(new TopicDigest(keyword, 0, List.of()));
+                    }
+                    List<TopicHit> hits = new ArrayList<>();
+                    for (JsonNode item : resp.path("Data").path("Items")) {
+                        hits.add(new TopicHit(
+                                item.path("Title").asText(""),
+                                item.path("Url").asText(""),
+                                item.path("ContentType").asText(""),
+                                item.path("ContentText").asText(""),
+                                item.path("VoteUpCount").asInt(0),
+                                item.path("CommentCount").asInt(0),
+                                item.path("AuthorName").asText(""),
+                                item.path("CreateTime").asLong(0)
+                        ));
+                    }
+                    return Mono.just(new TopicDigest(keyword, hits.size(), hits));
+                })
+                .onErrorResume(e -> {
+                    log.warn("zhihu search: '{}' network error: {}", keyword, e.getMessage());
+                    return Mono.just(new TopicDigest(keyword, 0, List.of()));
+                });
     }
 
     // ====== 关注画像 ======

@@ -119,6 +119,30 @@
         <div class="follow-grid" id="followGrid"></div>
       </section>
 
+      <!-- 阅读与读者（账号级数据：阅读量、来源、地域、粉丝） -->
+      <section class="article-block" id="accountSection" hidden>
+        <div class="kicker">阅读与读者</div>
+        <h2 class="h2">这些字被翻了多少遍</h2>
+        <p class="lede-para">知乎后台记着每一次打开。这里只放总数、来源和地域，不涉及任何具体读者。</p>
+        <div class="acct-grid">
+          <div class="acct-card"><span class="acct-val" id="acctViews">—</span><span class="acct-label">累计阅读</span></div>
+          <div class="acct-card"><span class="acct-val" id="acctToday">—</span><span class="acct-label">今日阅读</span></div>
+          <div class="acct-card"><span class="acct-val" id="acctUpvotes">—</span><span class="acct-label">累计赞同</span></div>
+          <div class="acct-card"><span class="acct-val" id="acctCollects">—</span><span class="acct-label">累计收藏</span></div>
+        </div>
+        <div class="acct-cols">
+          <div class="acct-col">
+            <h3 class="acct-sub">阅读从哪来</h3>
+            <div class="acct-bars" id="acctSources"></div>
+          </div>
+          <div class="acct-col">
+            <h3 class="acct-sub">读者在哪</h3>
+            <div class="acct-chips" id="acctLocations"></div>
+            <p class="acct-note" id="acctFollowers"></p>
+          </div>
+        </div>
+      </section>
+
       <!-- 收藏画像（个人信息，放最前） -->
       <section class="article-block" id="collectionSection" hidden>
         <div class="kicker">收藏画像</div>
@@ -138,6 +162,16 @@
           <span class="collect-sub">只收公开收藏夹里的</span>
         </div>
         <div class="collect-recent" id="collectionList"></div>
+      </section>
+
+
+      <!-- 选题复查（知乎搜索） -->
+      <section class="article-block" id="topicSection" hidden>
+        <div class="kicker">选题复查 · 知乎搜索</div>
+        <h2 class="h2">这些话题，现在还有人在问吗</h2>
+        <p class="lede-para">取词云里出现最多的五个词，用知乎搜索查一遍当下的站内结果。文章写完会旧，话题本身还在长。</p>
+        <div class="topic-list" id="topicList"></div>
+        <p class="acct-note" id="topicNote">结果由知乎开放平台的「知乎搜索」接口实时返回。<a href="javascript:void(0)" id="topicRetry">重新查一次</a></p>
       </section>
 
       <!-- 关键数字 -->

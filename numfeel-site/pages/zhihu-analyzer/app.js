@@ -48,6 +48,8 @@
   });
   initWordFilterUI();
   bindShare();
+  var topicRetryBtn = $('topicRetry');
+  if (topicRetryBtn) topicRetryBtn.addEventListener('click', function () { loadTopics(true); });
 
   function setMastDate() {
     var now = new Date();
@@ -67,7 +69,7 @@
   function resetToInput() {
     showOnly(frontSection);
     analyzeBtn.disabled = false;
-    secretInput.value = '';
+    // 保留用户已输入的 secret：限流后等一分钟重试，不必重新粘贴
     destroyCharts();
     var badge = $('cacheBadge');
     if (badge) { badge.hidden = true; badge.classList.remove('refreshing'); }
@@ -232,9 +234,126 @@
     renderTrend(items);
     renderFollow(rawData.followStats);
     renderCollection(rawData.collectionStats);
+    renderAccountStats(rawData.accountStats);
+    loadTopics();
     renderCacheBadge();
     bindCopy(items, stats);
     initReveals();
+  }
+
+  // ====== 阅读与读者（账号级数据） ======
+  function renderAccountStats(acct) {
+    var section = $('accountSection');
+    if (!section) return;
+    if (!acct) { section.hidden = true; return; }
+    section.hidden = false;
+    $('acctViews').textContent = E.formatNumber(acct.viewCount || 0);
+    $('acctToday').textContent = E.formatNumber(acct.todayViewCount || 0);
+    $('acctUpvotes').textContent = E.formatNumber(acct.upvoteCount || 0);
+    $('acctCollects').textContent = E.formatNumber(acct.collectCount || 0);
+
+    var sources = $('acctSources');
+    sources.innerHTML = '';
+    var list = (acct.sources || []).slice(0, 5);
+    var top = list.length ? (list[0].ratio || 1) : 1;
+    list.forEach(function (s) {
+      var pct = Math.round((s.ratio || 0) * 1000) / 10;
+      var row = document.createElement('div');
+      row.className = 'acct-bar';
+      row.innerHTML =
+        '<div class="acct-bar-head"><span>' + escapeHtml(s.name) + '</span><span>' + pct + '%</span></div>' +
+        '<div class="acct-bar-track"><div class="acct-bar-fill" style="width:' +
+        Math.max(2, Math.round(((s.ratio || 0) / top) * 100)) + '%"></div></div>';
+      sources.appendChild(row);
+    });
+
+    var locs = $('acctLocations');
+    locs.innerHTML = '';
+    (acct.locations || []).slice(0, 6).forEach(function (l) {
+      var chip = document.createElement('span');
+      chip.className = 'acct-chip';
+      chip.textContent = l.name + ' ' + (Math.round((l.ratio || 0) * 1000) / 10) + '%';
+      locs.appendChild(chip);
+    });
+
+    var parts = ['粉丝 ' + E.formatNumber(acct.followerTotal || 0)];
+    if (acct.netIncrease7Days) parts.push('近 7 天净增 ' + acct.netIncrease7Days);
+    if (acct.netIncrease30Days) parts.push('近 30 天净增 ' + acct.netIncrease30Days);
+    if (acct.activeRatio) parts.push('活跃占比 ' + acct.activeRatio);
+    if (acct.updated) parts.push('统计更新于 ' + acct.updated);
+    $('acctFollowers').textContent = parts.join(' · ');
+  }
+
+  // ====== 选题复查（知乎搜索） ======
+  var topicLoading = false;
+
+  /** 取词云前五个词，调用后端转发知乎搜索，看这些老选题现在的站内情况。 */
+  function loadTopics() {
+    var section = $('topicSection');
+    if (!section || topicLoading) return;
+    var words = ((rawData && rawData.wordCloud) || [])
+      .map(function (w) { return w.word; })
+      .filter(function (w) { return w && w.length >= 2; })
+      .slice(0, 5);
+    if (!words.length) { section.hidden = true; return; }
+    section.hidden = false;
+    topicLoading = true;
+    var list = $('topicList');
+    list.innerHTML = '<p class="topic-empty">正在用知乎搜索查这五个词…</p>';
+    fetch(API_BASE + '/zhihu/topics', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + currentSecret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keywords: words })
+    })
+      .then(function (res) {
+        return res.text().then(function (text) {
+          var body = null;
+          try { body = text ? JSON.parse(text) : null; } catch (e) { body = null; }
+          if (!res.ok || !body || body.status !== 200) {
+            throw new Error((body && body.message) || ('搜索失败（HTTP ' + res.status + '）'));
+          }
+          return body;
+        });
+      })
+      .then(function (body) { renderTopics(body.data || []); })
+      .catch(function (err) {
+        list.innerHTML = '<p class="topic-empty">这次没查成：' + escapeHtml(err.message || '网络错误') + '。稍后点「重新查一次」。</p>';
+      })
+      .then(function () { topicLoading = false; });
+  }
+
+  function renderTopics(topics) {
+    var list = $('topicList');
+    list.innerHTML = '';
+    if (!topics.length) { list.innerHTML = '<p class="topic-empty">没有拿到搜索结果。</p>'; return; }
+    topics.forEach(function (t) {
+      var block = document.createElement('div');
+      block.className = 'topic-block';
+      var head = document.createElement('div');
+      head.className = 'topic-head';
+      head.innerHTML = '<span class="topic-word">' + escapeHtml(t.keyword) + '</span>' +
+        '<span class="topic-count">站内 ' + (t.total || 0) + ' 条</span>';
+      block.appendChild(head);
+      if (!t.items || !t.items.length) {
+        var empty = document.createElement('p');
+        empty.className = 'topic-empty';
+        empty.textContent = '这个词暂时没搜到相关内容。';
+        block.appendChild(empty);
+      } else {
+        t.items.slice(0, 2).forEach(function (it) {
+          var a = document.createElement('a');
+          a.className = 'topic-hit';
+          a.href = it.url || '#';
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.innerHTML = '<div class="topic-hit-title">' + escapeHtml(it.title || '(无标题)') + '</div>' +
+            '<div class="topic-hit-meta">' + escapeHtml(it.authorName || '') + ' · ' +
+            E.formatDate(it.createTime) + ' · 赞 ' + (it.voteUpCount || 0) + ' · 评 ' + (it.commentCount || 0) + '</div>';
+          block.appendChild(a);
+        });
+      }
+      list.appendChild(block);
+    });
   }
 
   // ====== 关注画像 ======
@@ -1122,8 +1241,8 @@
     var list = $('topList');
     list.innerHTML = '';
     var count = Math.min(topItems.length, 5);
-    for (var i = 0; i < count; i++) {
-      var item = topItems[i];
+    for (let i = 0; i < count; i++) {
+      let item = topItems[i];
       var rankCls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'normal';
       var div = document.createElement('div');
       div.className = 'top-item';

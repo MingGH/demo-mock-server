@@ -106,6 +106,8 @@ public class RateLimitWebFilter implements WebFilter {
         rules.add(new Rule(isPost("/events/collect"), RateLimitWebFilter::routeKey, 30, 60));
         // 知乎创作分析：3/min/IP（拉取全量数据耗时较长，且知乎 API 本身有配额限制）
         rules.add(new Rule(isPost("/zhihu/analyze"), RateLimitWebFilter::routeKey, 3, 60));
+        // 选题复查（知乎搜索）：6/min/IP，一次最多打 5 个关键词，刷新一次即一个完整桶
+        rules.add(new Rule(isPost("/zhihu/topics"), RateLimitWebFilter::routeKey, 6, 60));
         // multipart 上传：20/min/IP（另有每小时 1GB 字节配额，见 MultipartUploadService）
         rules.add(new Rule(isPost("/multipart/upload"), RateLimitWebFilter::routeKey, 20, 60));
         // GraphQL 查询端点（rest-vs-graphql 演示）：60/min/IP，

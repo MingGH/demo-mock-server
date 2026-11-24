@@ -103,7 +103,8 @@ public final class ZhihuAnalyzeResponses {
             List<WordCloudEntry> wordCloud,
             List<YearlyStat> yearlyStats,
             FollowStats followStats,
-            CollectionStats collectionStats
+            CollectionStats collectionStats,
+            AccountStats accountStats
     ) {
         /** 兼容旧调用：不带关注/收藏画像时用空数据。 */
         public AnalyzeResponse(
@@ -125,7 +126,8 @@ public final class ZhihuAnalyzeResponses {
             this(items, total, firstCreated, lastCreated, totalLikes, totalComments, totalFavorites,
                     byType, byYear, byMonth, topLiked, topCommented, topFavorited, wordCloud, yearlyStats,
                     new FollowStats(0, List.of()),
-                    new CollectionStats(0, 0, List.of(), Map.of(), List.of()));
+                    new CollectionStats(0, 0, List.of(), Map.of(), List.of()),
+                    null);
         }
     }
 
@@ -239,5 +241,102 @@ public final class ZhihuAnalyzeResponses {
             CacheInfo cache
     ) {
     }
-}
 
+    /**
+     * 账号级创作数据（来自知乎「账号创作数据」接口）。
+     *
+     * @param viewCount         累计阅读量
+     * @param upvoteCount       累计赞同数
+     * @param commentCount      累计评论数
+     * @param likeCount         累计喜欢数
+     * @param collectCount      累计收藏数
+     * @param shareCount        累计分享数
+     * @param todayViewCount    今日阅读量
+     * @param yesterdayViewCount 昨日阅读量
+     * @param followerTotal     粉丝总数
+     * @param activeRatio       活跃粉丝占比（上游原值，字符串形式）
+     * @param netIncrease7Days  近 7 天粉丝净增
+     * @param netIncrease30Days 近 30 天粉丝净增
+     * @param sources           阅读来源分布
+     * @param locations         读者地域分布
+     * @param updated           上游统计更新时间
+     */
+    public record AccountStats(
+            long viewCount,
+            long upvoteCount,
+            long commentCount,
+            long likeCount,
+            long collectCount,
+            long shareCount,
+            long todayViewCount,
+            long yesterdayViewCount,
+            long followerTotal,
+            String activeRatio,
+            long netIncrease7Days,
+            long netIncrease30Days,
+            List<ShareEntry> sources,
+            List<ShareEntry> locations,
+            String updated
+    ) {
+    }
+
+    /**
+     * 占比条目（来源 / 地域 / 性别等通用结构）。
+     *
+     * @param name  名称
+     * @param ratio 占比，0~1
+     * @param count 数量
+     */
+    public record ShareEntry(
+            String name,
+            double ratio,
+            long count
+    ) {
+    }
+
+    /**
+     * 一个关键词的知乎搜索结果。
+     *
+     * @param keyword 关键词
+     * @param total   返回的结果条数
+     * @param items   搜索结果
+     */
+    public record TopicDigest(
+            String keyword,
+            int total,
+            List<TopicHit> items
+    ) {
+    }
+
+    /**
+     * 单条搜索结果。
+     *
+     * @param title        标题
+     * @param url          链接（带平台溯源参数）
+     * @param contentType  内容类型
+     * @param contentText  摘要
+     * @param voteUpCount  赞同数
+     * @param commentCount 评论数
+     * @param authorName   作者
+     * @param createTime   发布时间（秒级时间戳）
+     */
+    public record TopicHit(
+            String title,
+            String url,
+            String contentType,
+            String contentText,
+            int voteUpCount,
+            int commentCount,
+            String authorName,
+            long createTime
+    ) {
+    }
+
+    /**
+     * 选题复查请求体。
+     *
+     * @param keywords 要复查的关键词列表
+     */
+    public record TopicRequest(List<String> keywords) {
+    }
+}

@@ -291,9 +291,10 @@
   function loadTopics() {
     var section = $('topicSection');
     if (!section || topicLoading) return;
+    var NOISE = { 'https': 1, 'http': 1, 'www': 1, 'com': 1, 'cn': 1, 'html': 1, 'php': 1 };
     var words = ((rawData && rawData.wordCloud) || [])
       .map(function (w) { return w.word; })
-      .filter(function (w) { return w && w.length >= 2; })
+      .filter(function (w) { return w && w.length >= 2 && !NOISE[String(w).toLowerCase()]; })
       .slice(0, 5);
     if (!words.length) { section.hidden = true; return; }
     section.hidden = false;

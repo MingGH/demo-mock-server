@@ -108,7 +108,7 @@
     currentSecret = secret;
     showOnly(loadingSection);
     analyzeBtn.disabled = true;
-    runPrintingStages();
+    var printing = runPrintingStages();
 
     var url = API_BASE + '/zhihu/analyze' + (force ? '?force=true' : '');
     fetch(url, {
@@ -119,9 +119,13 @@
       }
     })
       .then(function (res) {
-        return res.json().then(function (body) {
-          if (!res.ok || body.status !== 200) {
-            throw new Error(body.message || '这期没印出来');
+        // 后端 5xx 会被前置 CDN 换成纯文本错误页，直接 res.json() 会抛 SyntaxError，
+        // 这里先取文本再尝试解析，保证任何响应都能给出人话。
+        return res.text().then(function (text) {
+          var body = null;
+          try { body = text ? JSON.parse(text) : null; } catch (e) { body = null; }
+          if (!res.ok || !body || body.status !== 200) {
+            throw new Error(explainHttpError(res.status, body));
           }
           return body;
         });
@@ -132,6 +136,7 @@
         if (!rawData.items || rawData.items.length === 0) {
           throw new Error('没找到你的公开创作，换个账号试试？');
         }
+        finishPrinting(printing);
         $('printingStep').textContent = '排版完成，正在出报…';
         setTimeout(function () {
           showOnly(report);
@@ -140,7 +145,8 @@
         }, 350);
       })
       .catch(function (err) {
-        $('errorText').textContent = err.message || '网络开小差了，重试一下。';
+        stopPrinting(printing);
+        $('errorText').textContent = explainNetworkError(err);
         showOnly(errorSection);
         analyzeBtn.disabled = false;
         // 强制刷新失败时重绘徽标，恢复「强制刷新」按钮
@@ -148,14 +154,35 @@
       });
   }
 
+  /** 把 HTTP 状态码 + 后端响应体翻成一句人话。 */
+  function explainHttpError(status, body) {
+    if (body && body.message) return body.message;
+    if (status === 429) return '知乎那边限流了，等一分钟再点一次。';
+    if (status === 502 || status === 503 || status === 504) return '后端暂时连不上知乎（HTTP ' + status + '），稍后重试。';
+    if (status === 401 || status === 403) return 'Access Secret 无效或已过期，去 developer.zhihu.com/profile 重新生成一个。';
+    if (!body) return '后端返回了非预期内容（HTTP ' + status + '），稍后重试。';
+    return '这期没印出来（HTTP ' + status + '）。';
+  }
+
+  /** fetch 的网络层错误（TypeError: Failed to fetch）也要有可读提示。 */
+  function explainNetworkError(err) {
+    var msg = (err && err.message) || '';
+    if (!msg || /Failed to fetch|NetworkError|Load failed|fetch/i.test(msg)) {
+      return '请求没送到后端：可能是网络中断，或后端正在重启。稍后再试。';
+    }
+    return msg;
+  }
+
   // 印刷进度：分阶段提示 + 进度条 + 骨架动画
+  // 真实全量拉取要 20~30 秒（知乎接口每个 token 每秒只放行几次），
+  // 所以进度条慢慢爬到 88% 停住，成功后再补到 100%；失败则原地停住。
   function runPrintingStages() {
     var steps = [
       '接通知乎开放平台…', '正在拉取你的创作…', '数点赞、算评论…', '分词，生成词云…', '排版成报纸…'
     ];
     var fill = $('printingFill');
     var stepEl = $('printingStep');
-    gsap.fromTo(fill, { width: '0%' }, { width: '100%', duration: 4.5, ease: 'power1.inOut' });
+    var tween = gsap.fromTo(fill, { width: '0%' }, { width: '88%', duration: 30, ease: 'power1.out' });
     var i = 0;
     stepEl.textContent = steps[0];
     var timer = setInterval(function () {
@@ -165,9 +192,23 @@
       } else {
         clearInterval(timer);
       }
-    }, 900);
+    }, 5200);
     // 骨架透视淡入
     gsap.from('.paper-skeleton .sk', { opacity: 0, y: 8, stagger: 0.06, duration: 0.5, ease: 'power2.out' });
+    return { timer: timer, tween: tween, fill: fill };
+  }
+
+  function finishPrinting(printing) {
+    if (!printing) return;
+    clearInterval(printing.timer);
+    printing.tween.kill();
+    gsap.to(printing.fill, { width: '100%', duration: 0.35, ease: 'power2.out' });
+  }
+
+  function stopPrinting(printing) {
+    if (!printing) return;
+    clearInterval(printing.timer);
+    printing.tween.kill();
   }
 
   // ====== 渲染全部 ======

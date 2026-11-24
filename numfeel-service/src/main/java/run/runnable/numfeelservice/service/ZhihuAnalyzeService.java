@@ -47,6 +47,16 @@ public class ZhihuAnalyzeService {
     private static final String CACHE_NAME = "zhihuAnalyze";
     private static final int PAGE_SIZE = 50;
     private static final int MAX_PAGES = 200;
+    /**
+     * 相邻两页之间的最小间隔。知乎开放平台对同一 token 有「每秒请求数」限制，
+     * 超额返回 {@code Code=30001}（second limit exceeded）。50 条/页 + 全量翻页时，
+     * 连续请求必然触发，所以这里主动降速。
+     */
+    private static final Duration PAGE_INTERVAL = Duration.ofMillis(320);
+    /** 单页最多尝试次数（含 30001 限流重试）。 */
+    private static final int PAGE_MAX_ATTEMPTS = 4;
+    /** 限流重试的基础退避时间：第 n 次重试等待 n × 1100ms。 */
+    private static final long PAGE_RETRY_BASE_MS = 1100;
     /** 缓存 TTL：15 分钟。和 CacheConfig 里 zhihuAnalyze 的 expireAfterWrite 保持一致。 */
     private static final int CACHE_TTL_SECONDS = 15 * 60;
 
@@ -194,28 +204,15 @@ public class ZhihuAnalyzeService {
             log.warn("zhihu analyze: reached max pages limit {}", MAX_PAGES);
             return Mono.just(accumulator);
         }
-        long now = Instant.now().getEpochSecond();
-        return zhihuWebClient.get()
-                .uri(builder -> builder.path("/api/v1/user/contents")
-                        .queryParam("ContentType", "all")
-                        .queryParam("Limit", PAGE_SIZE)
-                        .queryParam("Offset", offset)
-                        .queryParam("SortField", "ts")
-                        .queryParam("SortOrder", "desc")
-                        .build())
-                .header("Authorization", "Bearer " + accessSecret)
-                .header("X-Request-Timestamp", String.valueOf(now))
-                .header("Content-Type", "application/json")
-                .retrieve()
-                .bodyToMono(JsonNode.class)
+        return requestPage(accessSecret, offset, 1)
                 .flatMap(response -> {
                     int code = response.path("Code").asInt(-1);
                     if (code != 0) {
                         String message = response.path("Message").asText("unknown");
                         return switch (code) {
                             case 20001 -> Mono.error(ApiException.badRequest("知乎 Access Secret 无效，请检查后重试"));
-                            case 30001 -> Mono.error(new ApiException(429, "知乎 API 频率限制，请稍后重试"));
-                            case 30002 -> Mono.error(new ApiException(429, "知乎 API 配额已用尽，请稍后重试"));
+                            case 30001 -> Mono.error(new ApiException(429, "知乎接口限流，请等一分钟再试"));
+                            case 30002 -> Mono.error(new ApiException(429, "知乎接口配额已用尽，请明天再来"));
                             default -> Mono.error(new ApiException(502, "知乎 API 错误: " + message));
                         };
                     }
@@ -249,12 +246,52 @@ public class ZhihuAnalyzeService {
                     if (isEnd || pageItems.isEmpty()) {
                         return Mono.just(accumulator);
                     }
-                    return fetchPage(accessSecret, nextOffset, accumulator, pageCount + 1);
+                    // 主动节流：连续翻页会撞上知乎的每秒请求数限制
+                    return Mono.delay(PAGE_INTERVAL)
+                            .then(fetchPage(accessSecret, nextOffset, accumulator, pageCount + 1));
+                });
+    }
+
+    /**
+     * 请求一页内容，并在知乎返回 {@code Code=30001}（每秒请求数超限）时按线性退避重试。
+     * <p>
+     * 30001 是可恢复错误（等一秒再请求即可），因此由本方法内部消化；
+     * 其余错误（密钥无效、配额用尽、网络异常）原样抛出，交给上层映射成 400/429/502。
+     *
+     * @param accessSecret 知乎 Access Secret，仅透传
+     * @param offset       分页偏移量
+     * @param attempt      当前是第几次尝试，从 1 开始
+     * @return 知乎原始响应 JSON；重试次数用尽时返回最后一次的响应
+     */
+    private Mono<JsonNode> requestPage(String accessSecret, long offset, int attempt) {
+        long now = Instant.now().getEpochSecond();
+        return zhihuWebClient.get()
+                .uri(builder -> builder.path("/api/v1/user/contents")
+                        .queryParam("ContentType", "all")
+                        .queryParam("Limit", PAGE_SIZE)
+                        .queryParam("Offset", offset)
+                        .queryParam("SortField", "ts")
+                        .queryParam("SortOrder", "desc")
+                        .build())
+                .header("Authorization", "Bearer " + accessSecret)
+                .header("X-Request-Timestamp", String.valueOf(now))
+                .header("Content-Type", "application/json")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .flatMap(response -> {
+                    int code = response.path("Code").asInt(-1);
+                    if (code == 30001 && attempt < PAGE_MAX_ATTEMPTS) {
+                        long delayMs = PAGE_RETRY_BASE_MS * attempt;
+                        log.warn("zhihu analyze: rate limited at offset {} (attempt {}/{}), retry in {}ms",
+                                offset, attempt, PAGE_MAX_ATTEMPTS, delayMs);
+                        return Mono.delay(Duration.ofMillis(delayMs))
+                                .then(requestPage(accessSecret, offset, attempt + 1));
+                    }
+                    return Mono.just(response);
                 })
-                .onErrorResume(ApiException.class, Mono::error)
-                .onErrorResume(e -> {
-                    log.warn("zhihu analyze: network error fetching page {}: {}", pageCount + 1, e.getMessage());
-                    return Mono.error(new ApiException(502, "网络请求失败，请检查网络后重试"));
+                .onErrorResume(e -> !(e instanceof ApiException), e -> {
+                    log.warn("zhihu analyze: network error at offset {}: {}", offset, e.getMessage());
+                    return Mono.error(new ApiException(502, "连不上知乎接口，请稍后重试"));
                 });
     }
 
@@ -337,18 +374,52 @@ public class ZhihuAnalyzeService {
         );
     }
 
+    /**
+     * 以阻塞方式拉取一个「尽力而为」的辅助接口（关注列表 / 收藏夹 / 收藏内容）。
+     * <p>
+     * 这些数据只用于补充画像，不在主分析链路上：失败时返回 {@code null}，
+     * 调用方降级为空画像即可。遇到 30001 限流会等一秒重试一次。
+     * <p>
+     * 注意：这些调用只发生在 {@code fetchAndCache} 的 {@code boundedElastic} 线程里
+     * （见 {@code Mono.fromCallable(...).subscribeOn(...)}），不会阻塞 Netty 事件循环。
+     *
+     * @param uri          相对路径与查询串，例如 {@code /api/v1/user/followees?Limit=50}
+     * @param accessSecret 知乎 Access Secret，仅透传
+     * @return 知乎响应 JSON；请求失败或重试仍失败时返回 null
+     */
+    private JsonNode getAuxJson(String uri, String accessSecret) {
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            try {
+                JsonNode resp = zhihuWebClient.get()
+                        .uri(uri)
+                        .header("Authorization", "Bearer " + accessSecret)
+                        .header("X-Request-Timestamp", String.valueOf(Instant.now().getEpochSecond()))
+                        .header("Content-Type", "application/json")
+                        .retrieve()
+                        .bodyToMono(JsonNode.class)
+                        .block(Duration.ofSeconds(20));
+                if (resp != null && resp.path("Code").asInt(-1) == 30001 && attempt < 2) {
+                    log.warn("zhihu analyze: aux api rate limited {}, retrying in {}ms", uri, PAGE_RETRY_BASE_MS);
+                    Thread.sleep(PAGE_RETRY_BASE_MS);
+                    continue;
+                }
+                return resp;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            } catch (Exception e) {
+                log.warn("zhihu analyze: aux api failed {}: {}", uri, e.getMessage());
+                return null;
+            }
+        }
+        return null;
+    }
+
     // ====== 关注画像 ======
 
     private FollowStats fetchFollowStats(String accessSecret) {
         try {
-            JsonNode resp = zhihuWebClient.get()
-                    .uri(builder -> builder.path("/api/v1/user/followees").queryParam("Limit", 50).build())
-                    .header("Authorization", "Bearer " + accessSecret)
-                    .header("X-Request-Timestamp", String.valueOf(Instant.now().getEpochSecond()))
-                    .header("Content-Type", "application/json")
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block(Duration.ofSeconds(20));
+            JsonNode resp = getAuxJson("/api/v1/user/followees?Limit=50", accessSecret);
             if (resp == null || resp.path("Code").asInt(-1) != 0) {
                 return new FollowStats(0, List.of());
             }
@@ -403,14 +474,7 @@ public class ZhihuAnalyzeService {
 
     private List<FavlistEntry> fetchFavlistsSync(String accessSecret) {
         try {
-            JsonNode resp = zhihuWebClient.get()
-                    .uri(builder -> builder.path("/api/v1/user/favlists").queryParam("Limit", 50).build())
-                    .header("Authorization", "Bearer " + accessSecret)
-                    .header("X-Request-Timestamp", String.valueOf(Instant.now().getEpochSecond()))
-                    .header("Content-Type", "application/json")
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block(Duration.ofSeconds(20));
+            JsonNode resp = getAuxJson("/api/v1/user/favlists?Limit=50", accessSecret);
             if (resp == null || resp.path("Code").asInt(-1) != 0) {
                 return List.of();
             }
@@ -431,14 +495,7 @@ public class ZhihuAnalyzeService {
 
     private List<CollectionEntry> fetchCollectionsSync(String accessSecret) {
         try {
-            JsonNode resp = zhihuWebClient.get()
-                    .uri(builder -> builder.path("/api/v1/user/collections").queryParam("Limit", 50).build())
-                    .header("Authorization", "Bearer " + accessSecret)
-                    .header("X-Request-Timestamp", String.valueOf(Instant.now().getEpochSecond()))
-                    .header("Content-Type", "application/json")
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block(Duration.ofSeconds(20));
+            JsonNode resp = getAuxJson("/api/v1/user/collections?Limit=50", accessSecret);
             if (resp == null || resp.path("Code").asInt(-1) != 0) {
                 return List.of();
             }
